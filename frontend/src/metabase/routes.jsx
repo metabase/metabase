@@ -38,7 +38,6 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
 import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
-import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
@@ -56,8 +55,8 @@ import {
 } from "metabase/new_query/router_wrappers";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import NotFound from "metabase/components/NotFound.jsx";
-import Unauthorized from "metabase/components/Unauthorized.jsx";
+
+import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
@@ -252,7 +251,6 @@ export const getRoutes = store => (
 
       <Route path="/collections">
         <Route path="create" component={CollectionCreate} />
-        <Route path="permissions" component={CollectionPermissions} />
       </Route>
 
       {/* REFERENCE */}
@@ -365,6 +363,10 @@ export const getRoutes = store => (
       }
     />
     <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+    <Redirect
+      from="/collections/permissions"
+      to="/admin/permissions/collections"
+    />
 
     {/* MISC */}
     <Route path="/unauthorized" component={Unauthorized} />

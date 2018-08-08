@@ -516,8 +516,13 @@
   opacity: 1;
   box-shadow: 0 1px 2px var(--color-shadow);
   transition: transform 0.5s, opacity 0.5s;
-  min-width: 8em;
   position: relative;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .RunButton {
+    min-width: 8em;
+  }
 }
 
 .RunButton.RunButton--hidden {

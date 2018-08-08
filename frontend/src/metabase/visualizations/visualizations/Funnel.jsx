@@ -63,14 +63,14 @@ export default class Funnel extends Component {
 
   static settings = {
     "funnel.dimension": {
-      section: "Data",
+      section: t`Data`,
       title: t`Step`,
       ...dimensionSetting("funnel.dimension"),
       dashboard: false,
       useRawSeries: true,
     },
     "funnel.metric": {
-      section: "Data",
+      section: t`Data`,
       title: t`Measure`,
       ...metricSetting("funnel.metric"),
       dashboard: false,
@@ -78,7 +78,7 @@ export default class Funnel extends Component {
     },
     "funnel.type": {
       title: t`Funnel type`,
-      section: "Display",
+      section: t`Display`,
       widget: "select",
       props: {
         options: [

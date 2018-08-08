@@ -83,7 +83,8 @@
 (def ^:private ^{:arglists '([metric])} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))
 
-(defn- metric-name
+(defn metric-name
+  "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
   (cond
     (qp.expand/ga-metric? metric) (-> args first str (subs 3) str/capitalize)

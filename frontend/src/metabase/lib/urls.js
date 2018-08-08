@@ -99,6 +99,10 @@ export function collection(collectionId) {
   return `/collection/${collectionId || "root"}`;
 }
 
+export function collectionPermissions(collectionId) {
+  return `/collection/${collectionId || "root"}/permissions`;
+}
+
 export function label(label) {
   return `/questions/search?label=${encodeURIComponent(label.slug)}`;
 }

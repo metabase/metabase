@@ -435,15 +435,19 @@ export default class PeopleListingApp extends Component {
     let title = t`People`;
     if (deactivated.length > 0) {
       title = (
-        <Radio
-          className="h6"
-          value={!!showDeactivated}
-          options={[
-            { name: t`Active`, value: false },
-            { name: t`Deactivated`, value: true },
-          ]}
-          onChange={showDeactivated => this.setState({ showDeactivated })}
-        />
+        <div className="mb2">
+          <Radio
+            className="h6"
+            value={!!showDeactivated}
+            options={[
+              { name: t`Active`, value: false },
+              { name: t`Deactivated`, value: true },
+            ]}
+            underlined
+            py={1}
+            onChange={showDeactivated => this.setState({ showDeactivated })}
+          />
+        </div>
       );
     }
 

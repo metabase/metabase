@@ -9,6 +9,7 @@ import { Box, Flex } from "grid-styled";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
+import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
 import ItemTypeFilterBar, {
@@ -27,15 +28,15 @@ export default class SearchApp extends React.Component {
             <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
           </Flex>
         )}
-        <ItemTypeFilterBar
-          analyticsContext={`Search Results`}
-          filters={FILTERS.concat({
-            name: t`Collections`,
-            filter: "collection",
-            icon: "all",
-          })}
-        />
         <Box w={[1, 2 / 3]}>
+          <ItemTypeFilterBar
+            analyticsContext={`Search Results`}
+            filters={FILTERS.concat({
+              name: t`Collections`,
+              filter: "collection",
+              icon: "all",
+            })}
+          />
           <EntityListLoader
             entityType="search"
             entityQuery={location.query}
@@ -44,15 +45,15 @@ export default class SearchApp extends React.Component {
             {({ list }) => {
               if (list.length === 0) {
                 return (
-                  <Flex align="center" justify="center" my={4} py={4}>
-                    <Box>
-                      <img src="../app/assets/img/no_results.svg" />
-                    </Box>
-                    <Box mt={4}>
-                      <Subhead>{t`It's quiet around here...`}</Subhead>
-                      <p>{t`Metabase couldn't find any results for this.`}</p>
-                    </Box>
-                  </Flex>
+                  <Card>
+                    <EmptyState
+                      title={t`No results`}
+                      message={t`Metabase couldn't find any results for your search.`}
+                      illustrationElement={
+                        <img src="../app/assets/img/no_results.svg" />
+                      }
+                    />
+                  </Card>
                 );
               }
 
@@ -71,7 +72,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Dashboards`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.dashboard.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -79,6 +80,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Dashboard"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -93,7 +95,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Collections`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.collection.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -101,6 +103,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Collection"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -115,7 +118,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Questions`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.card.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -123,6 +126,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Question"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}
@@ -137,7 +141,7 @@ export default class SearchApp extends React.Component {
                       <div className="text-uppercase text-medium text-small text-bold my1">
                         {t`Pulse`}
                       </div>
-                      <Card px={2}>
+                      <Card>
                         {types.pulse.map(item => (
                           <Link
                             to={item.getUrl()}
@@ -145,6 +149,7 @@ export default class SearchApp extends React.Component {
                             data-metabase-event="Search Results;Item Click;Pulse"
                           >
                             <EntityItem
+                              variant="list"
                               name={item.getName()}
                               iconName={item.getIcon()}
                               iconColor={item.getColor()}

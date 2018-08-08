@@ -46,10 +46,14 @@ export default class LdapGroupMappingsWidget extends React.Component {
     };
   }
 
-  _showEditModal = (e: Event) => {
+  _showEditModal = async (e: Event) => {
     e.preventDefault();
+    // just load the setting again to make sure it's up to date
+    const setting = _.findWhere(await SettingsApi.list(), {
+      key: "ldap-group-mappings",
+    });
     this.setState({
-      mappings: this.props.settingValues["ldap-group-mappings"] || {},
+      mappings: (setting && setting.value) || {},
       showEditModal: true,
     });
     PermissionsApi.groups().then(groups => this.setState({ groups }));

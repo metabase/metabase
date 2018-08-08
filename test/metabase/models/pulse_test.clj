@@ -223,7 +223,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-pulse-in-collection [f]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection]
                     Pulse      [pulse  {:collection_id (u/get-id collection)}]
                     Database   [db    {:engine :h2}]

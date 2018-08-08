@@ -6,6 +6,7 @@ import { t } from "c-3po";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Button from "metabase/components/Button";
+import Radio from "metabase/components/Radio";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
@@ -138,21 +139,14 @@ class ChartSettings extends Component {
       <div className="flex flex-column spread">
         {tabNames.length > 1 && (
           <div className="border-bottom flex flex-no-shrink pl4">
-            {tabNames.map(tabName => (
-              <div
-                className={cx(
-                  "h3 py2 mr2 border-bottom cursor-pointer text-brand-hover border-brand-hover",
-                  {
-                    "text-brand border-brand": currentTab === tabName,
-                    "border-transparent": currentTab !== tabName,
-                  },
-                )}
-                style={{ borderWidth: 3 }}
-                onClick={() => this.handleSelectTab(tabName)}
-              >
-                {tabName}
-              </div>
-            ))}
+            <Radio
+              value={currentTab}
+              onChange={this.handleSelectTab}
+              options={tabNames}
+              optionNameFn={v => v}
+              optionValueFn={v => v}
+              underlined
+            />
           </div>
         )}
         <div className="full-height relative">

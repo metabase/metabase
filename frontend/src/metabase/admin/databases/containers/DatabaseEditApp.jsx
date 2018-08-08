@@ -4,7 +4,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
-import cx from "classnames";
 import { t } from "c-3po";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -13,9 +12,8 @@ import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
 import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
+import Radio from "metabase/components/Radio.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-
-import colors from "metabase/lib/colors";
 
 import {
   getEditingDatabase,
@@ -43,35 +41,6 @@ const mapStateToProps = (state, props) => ({
   formState: getFormState(state),
 });
 
-export const Tab = ({ name, setTab, currentTab }) => {
-  const isCurrentTab = currentTab === name.toLowerCase();
-
-  return (
-    <div
-      className={cx("cursor-pointer py2", { "text-brand": isCurrentTab })}
-      // TODO Use css classes instead?
-      style={
-        isCurrentTab ? { borderBottom: `3px solid ${colors["brand"]}` } : {}
-      }
-      onClick={() => setTab(name)}
-    >
-      <h3>{name}</h3>
-    </div>
-  );
-};
-
-export const Tabs = ({ tabs, currentTab, setTab }) => (
-  <div className="border-bottom">
-    <ol className="Form-offset flex align center">
-      {tabs.map((tab, index) => (
-        <li key={index} className="mr3">
-          <Tab name={tab} setTab={setTab} currentTab={currentTab} />
-        </li>
-      ))}
-    </ol>
-  </div>
-);
-
 const mapDispatchToProps = {
   reset,
   initializeDatabase,
@@ -84,18 +53,26 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
+type TabName = "connection" | "scheduling";
+type TabOption = { name: string, value: TabName };
+
+const TABS: TabOption[] = [
+  { name: t`Connection`, value: "connection" },
+  { name: t`Scheduling`, value: "scheduling" },
+];
+
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   state: {
-    currentTab: "connection" | "scheduling",
+    currentTab: TabName,
   };
 
   constructor(props, context) {
     super(props, context);
 
     this.state = {
-      currentTab: "connection",
+      currentTab: TABS[0].value,
     };
   }
 
@@ -156,13 +133,14 @@ export default class DatabaseEditApp extends Component {
           <div className="Grid-cell">
             <div className="Form-new bordered rounded shadowed pt0">
               {showTabs && (
-                <Tabs
-                  tabs={[t`Connection`, t`Scheduling`]}
-                  currentTab={currentTab}
-                  setTab={tab =>
-                    this.setState({ currentTab: tab.toLowerCase() })
-                  }
-                />
+                <div className="Form-offset border-bottom">
+                  <Radio
+                    value={currentTab}
+                    options={TABS}
+                    onChange={currentTab => this.setState({ currentTab })}
+                    underlined
+                  />
+                </div>
               )}
               <LoadingAndErrorWrapper loading={!database} error={null}>
                 {() => (

@@ -72,7 +72,7 @@
                         (update card :collection_id boolean)))))
 
 (defn- do-with-pulses-in-a-collection [grant-collection-perms-fn! pulses-or-ids f]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; use db/execute! instead of db/update! so the updated_at field doesn't get automatically updated!
@@ -254,7 +254,7 @@
                             :schedule_hour 12
                             :recipients    []})]
     :collection_id true})
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (tu/with-model-cleanup [Pulse]
@@ -275,7 +275,7 @@
 ;; Make sure we can create a Pulse with a Collection position
 (expect
   #metabase.models.pulse.PulseInstance{:collection_id true, :collection_position 1}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (let [pulse-name (tu/random-name)]
         (tt/with-temp* [Card       [card]
@@ -296,7 +296,7 @@
 ;; ...but not if we don't have permissions for the Collection
 (expect
   nil
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (let [pulse-name (tu/random-name)]
         (tt/with-temp* [Card       [card]
@@ -517,7 +517,7 @@
 
 ;; Does unarchiving a Pulse affect its Cards & Recipients? It shouldn't. This should behave as a PATCH-style endpoint!
 (expect
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection            [collection]
                     Pulse                 [pulse {:collection_id (u/get-id collection)}]
                     PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
@@ -542,7 +542,7 @@
    "a" 2
    "b" 3
    "c" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [{coll-id :id :as collection}]
       (card-api-test/with-ordered-items collection [Pulse a
                                                     Pulse b
@@ -559,7 +559,7 @@
    "c" 2
    "d" 3
    "b" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [{coll-id :id :as collection}]
       (card-api-test/with-ordered-items collection [Card      a
                                                     Pulse     b
@@ -576,7 +576,7 @@
    "d" 2
    "b" 3
    "c" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [{coll-id :id :as collection}]
       (card-api-test/with-ordered-items collection [Card      a
                                                     Card      b
@@ -593,7 +593,7 @@
    "c" 2
    "d" 3
    "a" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [{coll-id :id :as collection}]
       (card-api-test/with-ordered-items collection [Pulse     a
                                                     Dashboard b
@@ -610,7 +610,7 @@
    "a" 2
    "b" 3
    "c" 4}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [{coll-id :id :as collection}]
       (card-api-test/with-ordered-items collection [Dashboard a
                                                     Dashboard b
@@ -632,7 +632,7 @@
     "c" 3
     "g" 4
     "h" 5}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
       (card-api-test/with-ordered-items collection-1 [Pulse     a
@@ -661,7 +661,7 @@
     "f" 3
     "g" 4
     "h" 5}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
       (card-api-test/with-ordered-items collection-1 [Pulse     a
@@ -688,7 +688,7 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{coll-id :id :as collection}]
                     Card       [card-1]]
       (card-api-test/with-cards-in-readable-collection [card-1]
@@ -717,7 +717,7 @@
     "b" nil
     "c" 2
     "d" 3}]
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{coll-id :id :as collection}]
                     Card       [card-1]]
       (card-api-test/with-cards-in-readable-collection [card-1]
@@ -852,7 +852,7 @@
   {:response {:ok true}
    :emails   (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
                                   :body    {"Daily Sad Toucans" true}})}
-  (tu/with-all-users-no-root-collection-perms
+  (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (et/with-fake-inbox
         (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
@@ -882,3 +882,38 @@
 
                :emails
                (et/regex-email-bodies #"Daily Sad Toucans")))))))))
+
+;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
+;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
+;; of the same format that the pulse GET returns
+(tt/expect-with-temp [Card [card-1]
+                      Card [card-2]]
+  {:response {:ok true}
+   :emails   (et/email-to :rasta {:subject "Pulse: A Pulse"
+                                  :body    {"A Pulse" true}})}
+  (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+    (et/with-fake-inbox
+      (tu/with-model-cleanup [Pulse]
+        (tt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          ;; First create the pulse
+          (let [{pulse-id :id} ((user->client :rasta) :post 200 "pulse"
+                                {:name          "A Pulse"
+                                 :collection_id (u/get-id collection)
+                                 :skip_if_empty false
+                                 :cards         [{:id          (u/get-id card-1)
+                                                  :include_csv false
+                                                  :include_xls false}
+                                                 {:id          (u/get-id card-2)
+                                                  :include_csv false
+                                                  :include_xls false}]
+
+                                 :channels [(assoc daily-email-channel :recipients [(fetch-user :rasta)
+                                                                                    (fetch-user :crowberto)])]})
+                ;; Retrieve the pulse via GET
+                result        ((user->client :rasta) :get 200 (str "pulse/" pulse-id))
+                ;; Change our fetched copy of the pulse to only have Rasta for the recipients
+                email-channel (assoc (-> result :channels first) :recipients [(fetch-user :rasta)])]
+            ;; Don't update the pulse, but test the pulse with the updated recipients
+            {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
+             :emails   (et/regex-email-bodies #"A Pulse")}))))))

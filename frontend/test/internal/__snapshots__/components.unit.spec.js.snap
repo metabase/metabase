@@ -256,11 +256,11 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
           fill="currentcolor"
           height={16}
           name="pencil"
@@ -291,11 +291,11 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-burger Icon-cxuQhR pXSiy"
           fill="currentcolor"
           height={16}
           name="burger"
@@ -326,11 +326,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
           fill="currentcolor"
           height={16}
           name="pencil"
@@ -350,11 +350,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-share Icon-cxuQhR pXSiy"
           fill="currentcolor"
           fillRule="evenodd"
           height={20}
@@ -375,11 +375,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-burger Icon-cxuQhR pXSiy"
           fill="currentcolor"
           height={16}
           name="burger"
@@ -410,11 +410,11 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="x0 x1 xk xl xm xn x2 xo xp xq xa xr xs"
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share m1 Icon-cxuQhR kTAgZA"
+          className="Icon Icon-share Icon-cxuQhR pXSiy"
           fill="currentcolor"
           fillRule="evenodd"
           height={20}
@@ -458,20 +458,20 @@ exports[`Position should render "Relative" correctly 1`] = `
 
 exports[`ProgressBar should render "Animated" correctly 1`] = `
 <div
-  className="xt xu xv xn"
+  className="xk xl xm xn"
 >
   <div
-    className="xw xx xt xy xz x10 x11 x12 x13 x1d x1e x16 x17 x18 x1f x1a x1b x1g"
+    className="xo xp xk xq xr xs xt xu xv x15 x16 xy xz x10 x17 x12 x13 x18"
   />
 </div>
 `;
 
 exports[`ProgressBar should render "Default" correctly 1`] = `
 <div
-  className="xt xu xv xn"
+  className="xk xl xm xn"
 >
   <div
-    className="xw xx xt xy xz x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x1a x1b x1c"
+    className="xo xp xk xq xr xs xt xu xv xw xx xy xz x10 x11 x12 x13 x14"
   />
 </div>
 `;
@@ -481,8 +481,14 @@ exports[`Radio should render "default" correctly 1`] = `
   className="flex text-bold h3"
 >
   <li
-    className="flex align-center cursor-pointer mt1 mr2 text-brand-hover"
+    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
     onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
   >
     <input
       checked={true}
@@ -499,8 +505,14 @@ exports[`Radio should render "default" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mt1 mr2 text-brand-hover"
+    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
     onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
   >
     <input
       checked={false}
@@ -524,57 +536,14 @@ exports[`Radio should render "show buttons" correctly 1`] = `
   className="flex"
 >
   <li
-    className="flex align-center cursor-pointer mt1 mr2"
+    className="flex align-center cursor-pointer mr3 pt1"
     onClick={[Function]}
-  >
-    <input
-      checked={true}
-      className="Form-radio"
-      id="radio-2-0"
-      name="radio-2"
-      type="radio"
-      value={0}
-    />
-    <label
-      htmlFor="radio-2-0"
-    />
-    <span
-      className="text-brand"
-    >
-      Gadget
-    </span>
-  </li>
-  <li
-    className="flex align-center cursor-pointer mt1 mr2"
-    onClick={[Function]}
-  >
-    <input
-      checked={false}
-      className="Form-radio"
-      id="radio-2-1"
-      name="radio-2"
-      type="radio"
-      value={1}
-    />
-    <label
-      htmlFor="radio-2-1"
-    />
-    <span
-      className=""
-    >
-      Gizmo
-    </span>
-  </li>
-</ul>
-`;
-
-exports[`Radio should render "vertical" correctly 1`] = `
-<ul
-  className="flex flex-column"
->
-  <li
-    className="flex align-center cursor-pointer mt1 mr2"
-    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
   >
     <input
       checked={true}
@@ -594,8 +563,14 @@ exports[`Radio should render "vertical" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mt1 mr2"
+    className="flex align-center cursor-pointer mr3 pt1"
     onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
   >
     <input
       checked={false}
@@ -607,6 +582,122 @@ exports[`Radio should render "vertical" correctly 1`] = `
     />
     <label
       htmlFor="radio-3-1"
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "underlined" correctly 1`] = `
+<ul
+  className="flex text-bold h3"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": "3px solid transparent",
+        "borderColor": "#509EE3",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-2-0"
+      name="radio-2"
+      type="radio"
+      value={0}
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": "3px solid transparent",
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-2-1"
+      name="radio-2"
+      type="radio"
+      value={1}
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "vertical" correctly 1`] = `
+<ul
+  className="flex flex-column"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-4-0"
+      name="radio-4"
+      type="radio"
+      value={0}
+    />
+    <label
+      htmlFor="radio-4-0"
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-4-1"
+      name="radio-4"
+      type="radio"
+      value={1}
+    />
+    <label
+      htmlFor="radio-4-1"
     />
     <span
       className=""
@@ -930,7 +1021,7 @@ exports[`Styled(div) should render "with an icon" correctly 1`] = `
 
 exports[`Toggle should render "off" correctly 1`] = `
 <a
-  className="no-decoration "
+  className="no-decoration"
   onClick={null}
   style={
     Object {
@@ -942,7 +1033,7 @@ exports[`Toggle should render "off" correctly 1`] = `
 
 exports[`Toggle should render "on" correctly 1`] = `
 <a
-  className="no-decoration undefined "
+  className="no-decoration"
   onClick={null}
   style={
     Object {

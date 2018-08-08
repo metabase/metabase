@@ -24,6 +24,8 @@ import { getUser } from "metabase/home/selectors";
 
 import CollectionList from "metabase/components/CollectionList";
 
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Greeting from "metabase/lib/greeting";
 
@@ -73,10 +75,11 @@ class Overworld extends React.Component {
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
-          <MetabotLogo />
+          <Tooltip tooltip={t`Don't tell anyone, but you're my favorite.`}>
+            <MetabotLogo />
+          </Tooltip>
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-medium">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -89,30 +92,33 @@ class Overworld extends React.Component {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
+                    // if there are no items to show then just hide the section
+                    if (!candidates && !sampleCandidates) {
+                      return null;
+                    }
                     return (
-                      <Box mx={PAGE_PADDING} mt={2}>
+                      <Box mx={PAGE_PADDING} mt={[1, 3]}>
                         <SectionHeading>
-                          {t`Not sure where to start? Try these x-rays based on your data.`}
+                          {t`Try these x-rays based on your data.`}
                         </SectionHeading>
-                        <Card px={3} pb={1}>
+                        <Box>
                           <ExplorePane
                             candidates={candidates}
                             withMetabot={false}
                             title=""
                             gridColumns={[1, 1 / 3]}
-                            asCards={false}
-                            description={
-                              isSample
-                                ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : t``
-                            }
+                            asCards={true}
                           />
-                        </Card>
+                        </Box>
                       </Box>
                     );
                   }}
                 </CandidateListLoader>
               );
+            }
+
+            if (items.length === 0) {
+              return null;
             }
 
             return (
@@ -154,14 +160,15 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={PAGE_PADDING} my={3}>
-          <SectionHeading>{t`Our analytics`}</SectionHeading>
-          <Card p={[1, 2]} mt={2}>
+          <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
+          <Box p={[1, 2]} mt={2} bg={colors["bg-medium"]}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
               <CollectionList
                 collections={this.props.collections}
                 analyticsContext="Homepage"
+                asCards={true}
               />
             ) : (
               <Box className="text-centered">
@@ -173,8 +180,12 @@ class Overworld extends React.Component {
                 </Box>
                 <h3 className="text-medium">
                   {user.is_superuser
-                    ? t`Save  dashboards, questions, and collections in "Our Analytics"`
-                    : t`Access dashboards, questions, and collections in "Our Analytics"`}
+                    ? t`Save dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`
+                    : t`Access dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`}
                 </h3>
               </Box>
             )}
@@ -193,15 +204,18 @@ class Overworld extends React.Component {
                 </Box>
               </Flex>
             </Link>
-          </Card>
+          </Box>
         </Box>
 
-        <Box pt={2} px={PAGE_PADDING}>
-          <SectionHeading>{t`Our data`}</SectionHeading>
-          <Box mb={4}>
-            <DatabaseListLoader>
-              {({ databases }) => {
-                return (
+        <DatabaseListLoader>
+          {({ databases }) => {
+            if (databases.length === 0) {
+              return null;
+            }
+            return (
+              <Box pt={2} px={PAGE_PADDING}>
+                <SectionHeading>{t`Our data`}</SectionHeading>
+                <Box mb={4}>
                   <Grid>
                     {databases.map(database => (
                       <GridItem w={[1, 1 / 3]} key={database.id}>
@@ -212,7 +226,11 @@ class Overworld extends React.Component {
                             database.engine
                           }`}
                         >
-                          <Box p={3} bg={colors["bg-medium"]}>
+                          <Box
+                            p={3}
+                            bg={colors["bg-medium"]}
+                            className="hover-parent hover--visibility"
+                          >
                             <Icon
                               name="database"
                               color={normal.purple}
@@ -223,16 +241,6 @@ class Overworld extends React.Component {
                               <h3>{database.name}</h3>
                               <Box ml="auto" mr={1} className="hover-child">
                                 <Flex align="center">
-                                  <Tooltip tooltip={t`X-ray this table`}>
-                                    <Link to={`explore/${database.id}/`}>
-                                      <Icon
-                                        name="bolt"
-                                        mx={1}
-                                        color={normal.yellow}
-                                        size={20}
-                                      />
-                                    </Link>
-                                  </Tooltip>
                                   <Tooltip tooltip={t`Learn about this table`}>
                                     <Link
                                       to={`reference/databases/${database.id}`}
@@ -251,11 +259,11 @@ class Overworld extends React.Component {
                       </GridItem>
                     ))}
                   </Grid>
-                );
-              }}
-            </DatabaseListLoader>
-          </Box>
-        </Box>
+                </Box>
+              </Box>
+            );
+          }}
+        </DatabaseListLoader>
       </Box>
     );
   }
