@@ -648,6 +648,9 @@
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
+(def ^:private ^{:arglists '([source])} source->engine
+  (comp :engine Database (some-fn :db_id :database_id)))
+
 (defmulti
   ^{:private  true
     :arglists '([context entity])}
@@ -655,10 +658,12 @@
 
 (defmethod inject-root (type Field)
   [context field]
-  (let [field (assoc field :link (->> context
-                                      :tables
-                                      (m/find-first (comp #{(:table_id field)} u/get-id))
-                                      :link))]
+  (let [field (assoc field
+                :link   (->> context
+                             :tables
+                             (m/find-first (comp #{(:table_id field)} u/get-id))
+                             :link)
+                :engine (-> context :source source->engine))]
     (update context :dimensions
             (fn [dimensions]
               (->> dimensions
@@ -689,7 +694,7 @@
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
                                          (linked-tables source)))
-        engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
+        engine        (source->engine source)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
