@@ -18,6 +18,7 @@
              [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
+            [metabase.driver :as driver]
             [metabase.models
              [card :as card :refer [Card]]
              [database :refer [Database]]
@@ -286,9 +287,7 @@
       [:datetime-field reference (or aggregation
                                      (optimal-datetime-resolution field))]
 
-      (and aggregation
-           ; We don't handle binning on non-analyzed fields gracefully
-           (-> fingerprint :type :type/Number :min))
+      aggregation
       [:binning-strategy reference aggregation]
 
       :else
@@ -558,9 +557,11 @@
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type engine]}]
-  (not (and (isa? base_type :type/Number)
-            (= engine :druid))))
+  [{:keys [base_type engine fingerprint aggregation]}]
+  (or (nil? aggregation)
+      (not (isa? base_type :type/Number))
+      (and (driver/driver-supports? (driver/engine->driver engine) :binning)
+           (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
   [root]
@@ -601,7 +602,8 @@
          (map (partial zipmap used-dimensions))
          (filter (fn [bindings]
                    (->> dimensions
-                        (map (comp bindings second))
+                        (map (fn [[_ identifier opts]]
+                               (merge (bindings identifier) opts)))
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
@@ -643,10 +645,13 @@
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (db/select Field
-                                         :table_id           (u/get-id table)
-                                         :fk_target_field_id [:not= nil]))
+                                :table_id           (u/get-id table)
+                                :fk_target_field_id [:not= nil]))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
+
+(def ^:private ^{:arglists '([source])} source->engine
+  (comp :engine Database (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true
@@ -655,10 +660,12 @@
 
 (defmethod inject-root (type Field)
   [context field]
-  (let [field (assoc field :link (->> context
-                                      :tables
-                                      (m/find-first (comp #{(:table_id field)} u/get-id))
-                                      :link))]
+  (let [field (assoc field
+                :link   (->> context
+                             :tables
+                             (m/find-first (comp #{(:table_id field)} u/get-id))
+                             :link)
+                :engine (-> context :source source->engine))]
     (update context :dimensions
             (fn [dimensions]
               (->> dimensions
@@ -689,7 +696,7 @@
   (let [source        (:source root)
         tables        (concat [source] (when (instance? (type Table) source)
                                          (linked-tables source)))
-        engine        (-> source ((some-fn :db_id :database_id)) Database :engine)
+        engine        (source->engine source)
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
