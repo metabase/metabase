@@ -205,6 +205,7 @@ export function createEntity(def: EntityDefinition): Entity {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -249,6 +250,7 @@ export function createEntity(def: EntityDefinition): Entity {
         dispatch,
         getState,
       ) => {
+        trackAction("update", updatedObject, getState);
         // save the original object for undo
         const originalObject = entity.selectors.getObject(getState(), {
           entityId: entityObject.id,
@@ -305,6 +307,7 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("delete", getState);
         const statePath = [...getObjectStatePath(entityObject.id), "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -574,6 +577,16 @@ export function createEntity(def: EntityDefinition): Entity {
 
     entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
+  }
+
+  function trackAction(action, object, getState) {
+    // MetabaseAnalytics.trackEvent
+    console.log(
+      "entity:" + entity.name,
+      action,
+      entity.getAnalyticsMetadata &&
+        entity.getAnalyticsMetadata(action, object, getState),
+    );
   }
 
   return entity;
