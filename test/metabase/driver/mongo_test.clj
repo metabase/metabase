@@ -2,6 +2,7 @@
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
             [medley.core :as m]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -267,3 +268,11 @@
 (expect
   nil
   (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
+
+
+;; make sure x-rays don't use features that the driver doesn't support
+(expect
+  (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
+       :ordered_cards
+       (mapcat (comp :breakout :query :dataset_query :card))
+       (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))
