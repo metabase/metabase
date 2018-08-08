@@ -272,6 +272,7 @@
 
 ;; make sure x-rays don't use features that the driver doesn't support
 (datasets/expect-with-engine :mongo
+  true
   (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
        :ordered_cards
        (mapcat (comp :breakout :query :dataset_query :card))
