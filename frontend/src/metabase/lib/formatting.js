@@ -5,6 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import { ngettext, msgid } from "c-3po";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
@@ -319,11 +320,41 @@ export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
   }
 }
 
+const MARKDOWN_LINK_WHITELIST_REGEX = /^\[([^\]]+)\]\s*\((.*)\)$/;
+
+function formatMarkdown(value: Value, { jsx, rich }: FormattingOptions = {}) {
+  const markdown = String(value);
+  /*
+   * For now only allow markdown links that take up the whole string. When more functionality
+   * is added to control rich formatting this could be expanded. Control is needed or else
+   * we risk formatting strings incorectly due to parsing them as markup when instead they should
+   * be treated as raw strings.
+   */
+  if (jsx && rich && MARKDOWN_LINK_WHITELIST_REGEX.test(markdown)) {
+    return (
+      <ReactMarkdown
+        className="full flex-full flex flex-column"
+        skipHtml={true}
+        source={markdown}
+        renderers={{
+          link: ExternalLink,
+        }}
+        allowedTypes={["root", "text", "paragraph", "link", "linkReference"]} // TODO add "image" type
+      />
+    );
+  } else {
+    return value;
+  }
+}
+
 // fallback for formatting a string without a column special_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   value = formatUrl(value, options);
   if (typeof value === "string") {
     value = formatEmail(value, options);
+  }
+  if (typeof value === "string") {
+    value = formatMarkdown(value, options);
   }
   return value;
 }
