@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.query-processor.util :as qp.util]
-            [metabase.types]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n :refer [tru trs]]
