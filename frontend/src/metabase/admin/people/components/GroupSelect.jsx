@@ -7,7 +7,7 @@ import {
   isAdminGroup,
   canEditMembership,
   getGroupColor,
-  getGroupNameLocalized
+  getGroupNameLocalized,
 } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
