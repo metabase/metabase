@@ -3,6 +3,10 @@
   flex-shrink: 0;
 }
 
+.fullscreen nav {
+  display: none;
+}
+
 .QuestionCircle {
   display: inline-block;
   font-size: 3.25rem;

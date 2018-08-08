@@ -256,9 +256,8 @@ export default class Navbar extends Component {
       this.props.databases && this.props.databases.length > 0;
     return (
       <Flex
-        // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
-        // TODO: hide nav using state in redux instead?
         className="Nav relative bg-brand text-white z3"
+        is="nav"
         align="center"
         py={1}
         pr={2}
