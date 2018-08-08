@@ -25,13 +25,11 @@
             [metabase.models
              [activity :refer [Activity]]
              [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
              [collection :refer [Collection]]
              [collection-revision :refer [CollectionRevision]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
-             [dashboard-favorite :refer [DashboardFavorite]]
              [database :refer [Database]]
              [dependency :refer [Dependency]]
              [dimension :refer [Dimension]]
@@ -77,7 +75,6 @@
    Session
    Dashboard
    Card
-   CardFavorite
    DashboardCard
    DashboardCardSeries
    Activity
@@ -91,7 +88,6 @@
    PermissionsRevision
    Collection
    CollectionRevision
-   DashboardFavorite
    Dimension
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)

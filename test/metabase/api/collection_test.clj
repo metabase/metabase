@@ -121,7 +121,6 @@
       :collection_position nil
       :display            "table"
       :description         nil
-      :favorite            false
       :model               "card"}])
   (tu/obj->json->obj
    ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection) "/items"))))
@@ -152,7 +151,7 @@
 
 ;; check that you get to see the children as appropriate
 (expect
-  (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
+  (map default-item [{:name "Birthday Card", :description nil, :model "card", :display "table"}
                      {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                      {:name "Electro-Magnetic Pulse", :model "pulse"}])
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -356,7 +355,7 @@
 
 ;; Make sure you can see everything for Users that can see everything
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+  [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
    (collection-item "Crowberto Corv's Personal Collection")
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -372,7 +371,7 @@
 
 ;; ...but if they have read perms for the Root Collection they should get to see them
 (expect
-  [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+  [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
    (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
    (collection-item "Rasta Toucan's Personal Collection")]
@@ -424,7 +423,6 @@
     :description         nil
     :collection_position nil
     :display             "table"
-    :favorite            false
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]
     (collection-test/force-create-personal-collections!)

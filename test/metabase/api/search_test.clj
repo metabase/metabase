@@ -1,13 +1,12 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [dashboard-favorite :refer [DashboardFavorite]]
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -19,9 +18,8 @@
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
-(def default-search-row
-  {:description nil, :id true, :collection_id false,
-   :collection_position nil, :archived false, :favorite nil})
+(def ^:private default-search-row
+  {:description nil, :id true, :collection_id false, :collection_position nil, :archived false})
 
 (def ^:private default-search-results
   (set (map #(merge default-search-row %)
@@ -169,27 +167,13 @@
           (perms/grant-collection-read-permissions! group (u/get-id coll-1))
           (search-request :rasta :q "test"))))))
 
-;; Favorites are per user, so other user's favorites don't cause search results to be favorited
-(expect
-  default-results-with-collection
-  (with-search-items-in-collection {:keys [card dashboard]} "test"
-    (tt/with-temp* [CardFavorite      [_ {:card_id (u/get-id card)
-                                          :owner_id (user->id :rasta)}]
-                    DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                          :user_id (user->id :rasta)}]]
-      (search-request :crowberto :q "test"))))
-
-;; Basic search, should find 1 of each entity type and include favorites when available
+;; Basic search, should find 1 of each entity type
 (expect
   (on-search-types #{"dashboard" "card"}
-                   #(assoc % :favorite true)
+                   identity
                    default-results-with-collection)
   (with-search-items-in-collection {:keys [card dashboard]} "test"
-    (tt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
-                                          :owner_id (user->id :crowberto)}]
-                    DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                          :user_id      (user->id :crowberto)}]]
-      (search-request :crowberto :q "test"))))
+    (search-request :crowberto :q "test")))
 
 ;; Basic search should only return substring matches
 (expect

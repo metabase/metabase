@@ -11,7 +11,6 @@
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
              [collection :refer [Collection]]
              [database :refer [Database]]
              [dashboard :refer [Dashboard]]
@@ -241,18 +240,6 @@
                   Card [card-3 {:name "Card 3", :archived true}]]
     (with-cards-in-readable-collection [card-1 card-2 card-3]
       (set (map :name ((user->client :rasta) :get 200 "card", :f :archived))))))
-
-;;; Filter by `fav`
-(expect
-  [{:name "Card 1", :favorite true}]
-  (tt/with-temp* [Card         [card-1 {:name "Card 1"}]
-                  Card         [card-2 {:name "Card 2"}]
-                  Card         [card-3 {:name "Card 3"}]
-                  CardFavorite [_ {:card_id (u/get-id card-1), :owner_id (user->id :rasta)}]
-                  CardFavorite [_ {:card_id (u/get-id card-2), :owner_id (user->id :crowberto)}]]
-    (with-cards-in-readable-collection [card-1 card-2 card-3]
-      (for [card ((user->client :rasta) :get 200 "card", :f :fav)]
-        (select-keys card [:name :favorite])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1051,56 +1038,6 @@
 (expect
   "Not found."
   ((user->client :crowberto) :delete 404 "card/12345"))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   FAVORITING                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Helper Functions
-(defn- fave? [card]
-  (db/exists? CardFavorite, :card_id (u/get-id card), :owner_id (user->id :rasta)))
-
-(defn- fave! [card]
-  ((user->client :rasta) :post 200 (format "card/%d/favorite" (u/get-id card))))
-
-(defn- unfave! [card]
-  ((user->client :rasta) :delete 204 (format "card/%d/favorite" (u/get-id card))))
-
-;; ## GET /api/card/:id/favorite
-;; Can we see if a Card is a favorite ?
-(expect
-  false
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (fave? card))))
-
-;; ## POST /api/card/:id/favorite
-;; Can we favorite a card?
-(expect
-  {1 false
-   2 true}
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (array-map
-       1 (fave? card)
-       2 (do (fave! card)
-             (fave? card))))))
-
-;; DELETE /api/card/:id/favorite
-;; Can we unfavorite a card?
-(expect
-  {1 false
-   2 true
-   3 false}
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (array-map
-       1 (fave? card)
-       2 (do (fave! card)
-             (fave? card))
-       3 (do (unfave! card)
-             (fave? card))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

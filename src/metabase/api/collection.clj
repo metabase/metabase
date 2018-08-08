@@ -62,10 +62,9 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position :display]
-        :collection_id (:id collection)
-        :archived      archived?)
-      (hydrate :favorite)))
+  (db/select [Card :id :name :description :collection_position :display]
+    :collection_id (:id collection)
+    :archived      archived?))
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
@@ -146,9 +145,8 @@
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
 
-  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection
-  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective
-  location of `/`.
+  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection permissions,
+  but for people without Root Collection perms, we'll just show the objects that have an effective location of `/`.
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
   top-level objects you're allowed to access."

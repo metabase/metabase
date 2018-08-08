@@ -5,10 +5,8 @@
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint define-routes]]
             [metabase.models
              [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
@@ -25,11 +23,11 @@
 
 (def ^:private card-columns-without-type
   (concat default-columns
-          [:collection_id :collection_position [:card_fav.id :favorite]]))
+          [:collection_id :collection_position]))
 
 (def ^:private dashboard-columns-without-type
   (concat default-columns
-          [:collection_id :collection_position [:dashboard_fav.id :favorite]]))
+          [:collection_id :collection_position]))
 
 (def ^:private pulse-columns-without-type
   [:id :name :collection_id])
@@ -136,11 +134,6 @@
 (s/defmethod ^:private create-search-query :card
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Card "card" card-columns-without-type)
-      (h/left-join [(-> (h/select :id :card_id)
-                        (h/merge-from CardFavorite)
-                        (h/merge-where [:= :owner_id *current-user-id*]))
-                    :card_fav]
-                   [:= :card.id :card_fav.card_id])
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -153,11 +146,6 @@
 (s/defmethod ^:private create-search-query :dashboard
   [_ search-ctx :- SearchContext]
   (-> (make-honeysql-search-query Dashboard "dashboard" dashboard-columns-without-type)
-      (h/left-join [(-> (h/select :id :dashboard_id)
-                        (h/merge-from DashboardFavorite)
-                        (h/merge-where [:= :user_id *current-user-id*]))
-                    :dashboard_fav]
-                   [:= :dashboard.id :dashboard_fav.dashboard_id])
       (merge-name-and-archived-search search-ctx)
       (add-collection-criteria :collection_id search-ctx)))
 
@@ -180,23 +168,16 @@
   (-> (make-honeysql-search-query Segment "segment" segment-columns-without-type)
       (merge-name-and-archived-search search-ctx)))
 
-(defn- favorited->boolean [row]
-  (if-let [fav-value (get row :favorite)]
-    (assoc row :favorite (and (integer? fav-value)
-                              (not (zero? fav-value))))
-    row))
-
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (map favorited->boolean
-       (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
-                                   :let [query-map (create-search-query entity search-ctx)]
-                                   :when query-map]
-                               query-map)})))
+  (db/query {:union-all (for [entity [:card :collection :dashboard :pulse :segment :metric]
+                              :let [query-map (create-search-query entity search-ctx)]
+                              :when query-map]
+                          query-map)}))
 
 (s/defn ^:private make-search-context :- SearchContext
-  [search-string :- (s/maybe su/NonBlankString)
+  [search-string   :- (s/maybe su/NonBlankString)
    archived-string :- (s/maybe su/BooleanString)]
   {:search-string       search-string
    :archived?           (Boolean/parseBoolean archived-string)

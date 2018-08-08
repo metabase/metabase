@@ -14,7 +14,6 @@
              [collection :as collection]
              [dashboard :as dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
-             [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
              [query :as query :refer [Query]]
              [revision :as revision]]
@@ -26,17 +25,6 @@
              [hydrate :refer [hydrate]]])
   (:import java.util.UUID))
 
-(defn- hydrate-favorites
-  "Efficiently hydrate the `:favorite` status (whether the current User has favorited it) for a group of Dashboards."
-  [dashboards]
-  (let [favorite-dashboard-ids (when (seq dashboards)
-                                 (db/select-field :dashboard_id DashboardFavorite
-                                   :user_id      api/*current-user-id*
-                                   :dashboard_id [:in (set (map u/get-id dashboards))]))]
-    (for [dashboard dashboards]
-      (assoc dashboard
-        :favorite (contains? favorite-dashboard-ids (u/get-id dashboard))))))
-
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
@@ -44,8 +32,7 @@
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
-    (filter mi/can-read? <>)
-    (hydrate-favorites <>)))
+    (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -330,24 +317,6 @@
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id))
-
-
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
-
-(api/defendpoint POST "/:id/favorite"
-  "Favorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (db/insert! DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:id/favorite"
-  "Unfavorite a Dashboard."
-  [id]
-  (api/check-not-archived (api/read-check Dashboard id))
-  (api/let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*)]
-    (db/delete! DashboardFavorite, :id favorite-id))
-  api/generic-204-no-content)
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

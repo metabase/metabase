@@ -143,8 +143,7 @@
   (db/delete! 'PulseCard :card_id id)
   (db/delete! 'Revision :model "Card", :model_id id)
   (db/delete! 'DashboardCardSeries :card_id id)
-  (db/delete! 'DashboardCard :card_id id)
-  (db/delete! 'CardFavorite :card_id id))
+  (db/delete! 'DashboardCard :card_id id))
 
 
 (u/strict-extend (class Card)

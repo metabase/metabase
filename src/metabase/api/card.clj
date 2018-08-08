@@ -16,7 +16,6 @@
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
              [collection :as collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
@@ -42,19 +41,6 @@
   (:import java.util.UUID
            metabase.models.card.CardInstance))
 
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
-
-(defn hydrate-favorites
-  "Efficiently add `favorite` status for a large collection of `Cards`."
-  {:batched-hydrate :favorite}
-  [cards]
-  (when (seq cards)
-    (let [favorite-card-ids (db/select-field :card_id CardFavorite
-                              :owner_id api/*current-user-id*
-                              :card_id  [:in (map :id cards)])]
-      (for [card cards]
-        (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
-
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
@@ -67,15 +53,6 @@
   "Return all `Cards` created by current user."
   []
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(defn- cards:fav
-  "Return all `Cards` favorited by the current user."
-  []
-  (->> (hydrate (db/select [CardFavorite :card_id], :owner_id api/*current-user-id*)
-                :card)
-       (map :card)
-       (filter (complement :archived))
-       (sort-by :name)))
 
 (defn- cards:database
   "Return all `Cards` belonging to `Database` with DATABASE-ID."
@@ -127,7 +104,6 @@
      ((filter->option->fn :recent) model-id) -> (cards:recent)"
   {:all      (u/drop-first-arg cards:all)
    :mine     (u/drop-first-arg cards:mine)
-   :fav      (u/drop-first-arg cards:fav)
    :database cards:database
    :table    cards:table
    :recent   (u/drop-first-arg cards:recent)
@@ -136,7 +112,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id]
   (-> ((filter-option->fn (or filter-option :all)) model-id)
-      (hydrate :creator :collection :favorite)))
+      (hydrate :creator :collection)))
 
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -147,8 +123,8 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  `all`, but other options include `mine`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding
+  implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
   {f          (s/maybe CardFilterOption)
    model_id   (s/maybe su/IntGreaterThanZero)}
@@ -441,24 +417,6 @@
   (let [card (api/write-check Card id)]
     (db/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
-  api/generic-204-no-content)
-
-
-;;; --------------------------------------------------- Favoriting ---------------------------------------------------
-
-(api/defendpoint POST "/:card-id/favorite"
-  "Favorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (db/insert! CardFavorite :card_id card-id, :owner_id api/*current-user-id*))
-
-
-(api/defendpoint DELETE "/:card-id/favorite"
-  "Unfavorite a Card."
-  [card-id]
-  (api/read-check Card card-id)
-  (api/let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id api/*current-user-id*)]
-    (db/delete! CardFavorite, :id id))
   api/generic-204-no-content)
 
 
