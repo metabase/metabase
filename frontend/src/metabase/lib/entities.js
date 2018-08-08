@@ -585,6 +585,7 @@ export function createEntity(def: EntityDefinition): Entity {
   function trackAction(action, object, getState) {
     try {
       MetabaseAnalytics.trackEvent(
+        "entity actions",
         entity.name,
         action,
         entity.getAnalyticsMetadata &&
