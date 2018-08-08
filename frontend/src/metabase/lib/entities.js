@@ -17,6 +17,8 @@ import { normalize, denormalize, schema } from "normalizr";
 import { getIn, dissocIn, merge } from "icepick";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
@@ -141,6 +143,7 @@ export type Entity = {
   actionShouldInvalidateLists: (action: Action) => boolean,
 
   writableProperties?: string[],
+  getAnalyticsMetadata?: () => any,
 
   HACK_getObjectFromAction: (action: Action) => any,
 };
@@ -581,9 +584,8 @@ export function createEntity(def: EntityDefinition): Entity {
 
   function trackAction(action, object, getState) {
     try {
-      // MetabaseAnalytics.trackEvent
-      console.log(
-        "entity:" + entity.name,
+      MetabaseAnalytics.trackEvent(
+        entity.name,
         action,
         entity.getAnalyticsMetadata &&
           entity.getAnalyticsMetadata(action, object, getState),

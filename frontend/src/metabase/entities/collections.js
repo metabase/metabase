@@ -128,7 +128,7 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
-export const getCollectionType = (collectionId, state) =>
+export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
