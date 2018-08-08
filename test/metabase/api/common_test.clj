@@ -11,15 +11,25 @@
 
 (def ^:private four-oh-four
   "The expected format of a 404 response."
-  {:status 404
-   :body "Not found."})
+  {:status  404
+   :body    "Not found."
+   :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+             "Content-Security-Policy"           (-> @#'mb-middleware/content-security-policy-header vals first)
+             "Content-Type"                      "text/plain"
+             "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
+             "Last-Modified"                     true ; this will be current date, so do update-in ... string?
+             "Strict-Transport-Security"         "max-age=31536000"
+             "X-Content-Type-Options"            "nosniff"
+             "X-Frame-Options"                   "DENY"
+             "X-Permitted-Cross-Domain-Policies" "none"
+             "X-XSS-Protection"                  "1; mode=block"}})
 
 (defn ^:private my-mock-api-fn []
   ((mb-middleware/catch-api-exceptions
     (fn [_]
       (check-404 @*current-user*)
       {:status 200
-       :body @*current-user*}))
+       :body   @*current-user*}))
    nil))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
@@ -29,17 +39,20 @@
     (my-mock-api-fn)))
 
 ; check that 404 is returned otherwise
-(expect four-oh-four
-  (my-mock-api-fn))
+(expect
+  four-oh-four
+  (-> (my-mock-api-fn)
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;;let-404 should return nil if test fails
 (expect
   four-oh-four
-  ((mb-middleware/catch-api-exceptions
-    (fn [_]
-      (let-404 [user nil]
-        {:user user})))
-   nil))
+  (-> ((mb-middleware/catch-api-exceptions
+        (fn [_]
+          (let-404 [user nil]
+            {:user user})))
+       nil)
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;; otherwise let-404 should bind as expected
 (expect
