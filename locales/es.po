@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 16:27-0700\n"
+"POT-Creation-Date: 2018-08-08 13:53-0700\n"
 "PO-Revision-Date: 2018-03-02 01:00+0100\n"
 "Last-Translator: joe <joe@tsolucio.com>\n"
 "Language-Team: Spanish\n"
@@ -1582,6 +1582,13 @@ msgstr "Consultas SQL"
 msgid "View schemas"
 msgstr "Ver esquemas"
 
+#: frontend/src/metabase/admin/permissions/selectors.js:733
+#: frontend/src/metabase/components/CollectionLanding.jsx:341
+#: frontend/src/metabase/home/containers/SearchApp.jsx:35
+#: frontend/src/metabase/home/containers/SearchApp.jsx:96
+msgid "Collections"
+msgstr "Colecciones"
+
 #: frontend/src/metabase/admin/permissions/selectors.js:745
 msgid "Collection Access"
 msgstr "Acceso a Colección"
@@ -2497,7 +2504,7 @@ msgstr "Desarchive este {0}"
 #: frontend/src/metabase/components/BrowseApp.jsx:93
 #: frontend/src/metabase/components/BrowseApp.jsx:151
 #: frontend/src/metabase/components/BrowseApp.jsx:241
-#: frontend/src/metabase/containers/Overworld.jsx:220
+#: frontend/src/metabase/containers/Overworld.jsx:217
 msgid "Our data"
 msgstr "Nuestros datos"
 
@@ -2511,7 +2518,7 @@ msgid "X-ray this table"
 msgstr "Aplica rayos-X a esta tabla"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:199
-#: frontend/src/metabase/containers/Overworld.jsx:247
+#: frontend/src/metabase/containers/Overworld.jsx:244
 msgid "Learn about this table"
 msgstr "Aprende sobre esta tabla"
 
@@ -2621,12 +2628,6 @@ msgstr "Pins"
 msgid "Drag something here to pin it to the top"
 msgstr "Arrastra algo aquí para pegarlo arriba"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:341
-#: frontend/src/metabase/home/containers/SearchApp.jsx:35
-#: frontend/src/metabase/home/containers/SearchApp.jsx:96
-msgid "Collections"
-msgstr "Colecciones"
-
 #: frontend/src/metabase/components/CollectionLanding.jsx:411
 #: frontend/src/metabase/components/CollectionLanding.jsx:434
 msgid "Drag here to un-pin"
@@ -2665,12 +2666,12 @@ msgstr "Archivar esta colección"
 msgid "View the archive"
 msgstr "Ver el archivo"
 
-#: frontend/src/metabase/components/CollectionList.jsx:62
+#: frontend/src/metabase/components/CollectionList.jsx:64
 #: frontend/src/metabase/entities/collections.js:132
 msgid "My personal collection"
 msgstr "Mi colección personal"
 
-#: frontend/src/metabase/components/CollectionList.jsx:102
+#: frontend/src/metabase/components/CollectionList.jsx:106
 #: frontend/src/metabase/containers/CollectionForm.jsx:9
 msgid "New collection"
 msgstr "Nueva colección"
@@ -2852,15 +2853,15 @@ msgstr "Mostrar detalles del error"
 msgid "Here's the full error message"
 msgstr "Este es el mensaje de error completo"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:17
+#: frontend/src/metabase/components/ExplorePane.jsx:19
 msgid "Hi, Metabot here."
 msgstr "Hola, soy Metabot"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:93
+#: frontend/src/metabase/components/ExplorePane.jsx:95
 msgid "Based on the schema"
 msgstr "Basado en el esquema"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:167
+#: frontend/src/metabase/components/ExplorePane.jsx:174
 msgid "A look at your"
 msgstr "Una vista a tus"
 
@@ -3220,39 +3221,31 @@ msgstr "Este {0} ha sido archivado"
 msgid "Select a {0}"
 msgstr "Seleccione un(a) {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:81
+#: frontend/src/metabase/containers/Overworld.jsx:78
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "No se lo digas a nadie, pero eres mi favorito."
 
-#: frontend/src/metabase/containers/Overworld.jsx:101
-msgid "Not sure where to start? Try these x-rays based on your data."
+#: frontend/src/metabase/containers/Overworld.jsx:102
+#, fuzzy
+msgid "Try these x-rays based on your data."
 msgstr ""
 "¿No estás seguro por dónde empezar? Pruebe estos rayos-X en función de tus "
 "datos."
 
-#: frontend/src/metabase/containers/Overworld.jsx:112
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:85
-msgid ""
-"Once you connect your own data, I can show you some automatic explorations "
-"called x-rays. Here are some examples with sample data."
-msgstr ""
-"En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones "
-"automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
-
-#: frontend/src/metabase/containers/Overworld.jsx:130
+#: frontend/src/metabase/containers/Overworld.jsx:126
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr "Empieza aquí"
 
-#: frontend/src/metabase/containers/Overworld.jsx:186
+#: frontend/src/metabase/containers/Overworld.jsx:183
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Guardar cuadros de mando, preguntas, y colecciones en \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:189
+#: frontend/src/metabase/containers/Overworld.jsx:186
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Acceder cuadros de mando, preguntas, y colecciones en \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:204
+#: frontend/src/metabase/containers/Overworld.jsx:201
 msgid "Browse all items"
 msgstr "Ver todos los elementos"
 
@@ -7071,6 +7064,14 @@ msgstr ""
 "Esto parece que está tardando un tiempo. Mientras tanto, puedes ver una de "
 "estas exploraciones de ejemplo para ver lo qué Metabase puede hacer por ti."
 
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:85
+msgid ""
+"Once you connect your own data, I can show you some automatic explorations "
+"called x-rays. Here are some examples with sample data."
+msgstr ""
+"En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones "
+"automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
+
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:86
 msgid ""
 "I took a look at the data you just connected, and I have some explorations "
@@ -7299,35 +7300,45 @@ msgstr "Desmarcar"
 msgid "Rows {0}-{1} of {2}"
 msgstr "Filas {0}-{1} de {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:186
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:35
+#, fuzzy
+msgid "There was a problem displaying this chart."
+msgstr "Hubo un problema con tu pregunta"
+
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:36
+#, fuzzy
+msgid "Sorry, you don't have permission to see this card."
+msgstr "Lo siento, no tienes permiso para ver eso."
+
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:184
 msgid "Data truncated to {0} rows."
 msgstr "Datos truncados a {0} filas."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:351
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:349
 msgid "Could not find visualization"
 msgstr "No se pudo encontrar la visualización"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:358
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:356
 msgid "Could not display this chart with this data."
 msgstr "No se pudo mostrar este gráfico con esta información."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:456
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:454
 msgid "No results!"
 msgstr "Sin resultados!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:477
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "Still Waiting..."
 msgstr "Esperando..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:480
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:478
 msgid "This usually takes an average of {0}."
 msgstr "Esto suele tardar unos {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:486
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:484
 msgid "(This is a bit long for a dashboard)"
 msgstr "(Es un poco largo para un cuadro de mando)"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:490
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:488
 msgid "This is usually pretty fast but seems to be taking awhile right now."
 msgstr ""
 "Esto suele ser bastante rápido, pero parece estar tardando en este momento."
