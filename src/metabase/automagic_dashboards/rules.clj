@@ -386,7 +386,9 @@
   (->> strings
        (sort-by second) ; keep the same context together
        (map (fn [[s ctx]]
-              (format "msgctxt \"%s.yaml\"\nmsgid \"%s\"\nmsgstr \"\"\n" (str/join "/" ctx) s)))
+              (let [ctx (str/join "/" ctx)]
+                (format "#: resources/%s%s.yaml\nmsgctxt \"%s\"\nmsgid \"%s\"\nmsgstr \"\"\n"
+                        rules-dir ctx ctx s))))
        (str/join "\n")))
 
 (defn- all-rules
