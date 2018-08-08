@@ -17,6 +17,8 @@ import { normalize, denormalize, schema } from "normalizr";
 import { getIn, dissocIn, merge } from "icepick";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
@@ -141,6 +143,7 @@ export type Entity = {
   actionShouldInvalidateLists: (action: Action) => boolean,
 
   writableProperties?: string[],
+  getAnalyticsMetadata?: () => any,
 
   HACK_getObjectFromAction: (action: Action) => any,
 };
@@ -205,6 +208,7 @@ export function createEntity(def: EntityDefinition): Entity {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -249,6 +253,7 @@ export function createEntity(def: EntityDefinition): Entity {
         dispatch,
         getState,
       ) => {
+        trackAction("update", updatedObject, getState);
         // save the original object for undo
         const originalObject = entity.selectors.getObject(getState(), {
           entityId: entityObject.id,
@@ -305,6 +310,7 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("delete", getState);
         const statePath = [...getObjectStatePath(entityObject.id), "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -574,6 +580,20 @@ export function createEntity(def: EntityDefinition): Entity {
 
     entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
+  }
+
+  function trackAction(action, object, getState) {
+    try {
+      MetabaseAnalytics.trackEvent(
+        "entity actions",
+        entity.name,
+        action,
+        entity.getAnalyticsMetadata &&
+          entity.getAnalyticsMetadata(action, object, getState),
+      );
+    } catch (e) {
+      console.warn("trackAction threw an error:", e);
+    }
   }
 
   return entity;
