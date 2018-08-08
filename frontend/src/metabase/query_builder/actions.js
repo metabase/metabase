@@ -1251,7 +1251,9 @@ export const getDisplayTypeForCard = (card, queryResults) => {
   // try a little logic to pick a smart display for the data
   // TODO: less hard-coded rules for picking chart type
   const isScalarVisualization =
-    card.display === "scalar" || card.display === "progress";
+    card.display === "scalar" ||
+    card.display === "progress" ||
+    card.display === "gauge";
   if (
     !isScalarVisualization &&
     queryResult.data.rows &&
