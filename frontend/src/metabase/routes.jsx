@@ -55,8 +55,8 @@ import {
 } from "metabase/new_query/router_wrappers";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import NotFound from "metabase/components/NotFound.jsx";
-import Unauthorized from "metabase/components/Unauthorized.jsx";
+
+import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";

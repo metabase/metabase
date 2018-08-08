@@ -184,8 +184,9 @@
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true}))
 
-(def ^RootCollection root-collection-with-ui-details
+(defn root-collection-with-ui-details
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  []
   (assoc root-collection
     :name (tru "Our analytics")
     :id   "root"))
@@ -300,7 +301,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     []
-    (filter i/can-read? (cons root-collection-with-ui-details (ancestors collection)))))
+    (filter i/can-read? (cons (root-collection-with-ui-details) (ancestors collection)))))
 
 (s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
   "Get the immediate parent `collection` id, if set."
@@ -632,9 +633,9 @@
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection!")
+     (ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."

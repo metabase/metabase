@@ -111,7 +111,7 @@ $ yarn run build-watch
 All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
 ```
-./bin/build version uberjar && yarn run test
+yarn run test
 ```
 
 which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
@@ -123,10 +123,9 @@ Integration tests use an enforced file naming convention `<test-suite-name>.inte
 
 Useful commands:
 ```bash
-./bin/build version uberjar # Builds the JAR without frontend assets; run this every time you need to update the backend
 lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
 yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
-yarn run test-integrated-watch -- TestFileName # Watches the files in paths that match the given (regex) string
+yarn run test-integrated-watch TestFileName # Watches the files in paths that match the given (regex) string
 ```
 
 The way integration tests are written is a little unconventional so here is an example that hopefully helps in getting up to speed:
@@ -266,7 +265,7 @@ Start up an instant cheatsheet for the project + dependencies by running
     lein instant-cheatsheet
 
 ## Internationalization
-We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n. 
+We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n.
 ### The general workflow for developers is:
 
 1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):

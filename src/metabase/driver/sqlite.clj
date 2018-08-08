@@ -15,6 +15,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s])
   (:import [java.sql Time Timestamp]))
 
@@ -178,8 +179,8 @@
    (sql/IDriverSQLDefaultsMixin)
    {:date-interval   (u/drop-first-arg date-interval)
     :details-fields  (constantly [{:name         "db"
-                                   :display-name "Filename"
-                                   :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
+                                   :display-name (tru "Filename")
+                                   :placeholder  (tru "/home/camsaul/toucan_sightings.sqlite 😋")
                                    :required     true}])
     :features        (fn [this]
                        (-> (sql/features this)
