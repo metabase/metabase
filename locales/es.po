@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-07 16:27-0700\n"
+"POT-Creation-Date: 2018-08-08 15:18-0700\n"
 "PO-Revision-Date: 2018-03-02 01:00+0100\n"
 "Last-Translator: joe <joe@tsolucio.com>\n"
 "Language-Team: Spanish\n"
@@ -345,8 +345,8 @@ msgstr "Añadir base de datos"
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:375
 #: frontend/src/metabase/containers/EntitySearch.jsx:26
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:218
-#: frontend/src/metabase/entities/collections.js:82
-#: frontend/src/metabase/entities/dashboards.js:93
+#: frontend/src/metabase/entities/collections.js:86
+#: frontend/src/metabase/entities/dashboards.js:96
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:461
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:62
 msgid "Name"
@@ -784,7 +784,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:37
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:34
-#: frontend/src/metabase/entities/collections.js:85
+#: frontend/src/metabase/entities/collections.js:89
 msgid "Name is required"
 msgstr "Nombre es obligatorio"
 
@@ -1581,6 +1581,13 @@ msgstr "Consultas SQL"
 #: frontend/src/metabase/admin/permissions/selectors.js:656
 msgid "View schemas"
 msgstr "Ver esquemas"
+
+#: frontend/src/metabase/admin/permissions/selectors.js:733
+#: frontend/src/metabase/components/CollectionLanding.jsx:341
+#: frontend/src/metabase/home/containers/SearchApp.jsx:35
+#: frontend/src/metabase/home/containers/SearchApp.jsx:96
+msgid "Collections"
+msgstr "Colecciones"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:745
 msgid "Collection Access"
@@ -2497,7 +2504,7 @@ msgstr "Desarchive este {0}"
 #: frontend/src/metabase/components/BrowseApp.jsx:93
 #: frontend/src/metabase/components/BrowseApp.jsx:151
 #: frontend/src/metabase/components/BrowseApp.jsx:241
-#: frontend/src/metabase/containers/Overworld.jsx:220
+#: frontend/src/metabase/containers/Overworld.jsx:217
 msgid "Our data"
 msgstr "Nuestros datos"
 
@@ -2511,7 +2518,7 @@ msgid "X-ray this table"
 msgstr "Aplica rayos-X a esta tabla"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:199
-#: frontend/src/metabase/containers/Overworld.jsx:247
+#: frontend/src/metabase/containers/Overworld.jsx:244
 msgid "Learn about this table"
 msgstr "Aprende sobre esta tabla"
 
@@ -2621,12 +2628,6 @@ msgstr "Pins"
 msgid "Drag something here to pin it to the top"
 msgstr "Arrastra algo aquí para pegarlo arriba"
 
-#: frontend/src/metabase/components/CollectionLanding.jsx:341
-#: frontend/src/metabase/home/containers/SearchApp.jsx:35
-#: frontend/src/metabase/home/containers/SearchApp.jsx:96
-msgid "Collections"
-msgstr "Colecciones"
-
 #: frontend/src/metabase/components/CollectionLanding.jsx:411
 #: frontend/src/metabase/components/CollectionLanding.jsx:434
 msgid "Drag here to un-pin"
@@ -2665,12 +2666,12 @@ msgstr "Archivar esta colección"
 msgid "View the archive"
 msgstr "Ver el archivo"
 
-#: frontend/src/metabase/components/CollectionList.jsx:62
-#: frontend/src/metabase/entities/collections.js:132
+#: frontend/src/metabase/components/CollectionList.jsx:64
+#: frontend/src/metabase/entities/collections.js:148
 msgid "My personal collection"
 msgstr "Mi colección personal"
 
-#: frontend/src/metabase/components/CollectionList.jsx:102
+#: frontend/src/metabase/components/CollectionList.jsx:106
 #: frontend/src/metabase/containers/CollectionForm.jsx:9
 msgid "New collection"
 msgstr "Nueva colección"
@@ -2852,15 +2853,15 @@ msgstr "Mostrar detalles del error"
 msgid "Here's the full error message"
 msgstr "Este es el mensaje de error completo"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:17
+#: frontend/src/metabase/components/ExplorePane.jsx:19
 msgid "Hi, Metabot here."
 msgstr "Hola, soy Metabot"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:93
+#: frontend/src/metabase/components/ExplorePane.jsx:95
 msgid "Based on the schema"
 msgstr "Basado en el esquema"
 
-#: frontend/src/metabase/components/ExplorePane.jsx:167
+#: frontend/src/metabase/components/ExplorePane.jsx:174
 msgid "A look at your"
 msgstr "Una vista a tus"
 
@@ -3220,39 +3221,31 @@ msgstr "Este {0} ha sido archivado"
 msgid "Select a {0}"
 msgstr "Seleccione un(a) {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:81
+#: frontend/src/metabase/containers/Overworld.jsx:78
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "No se lo digas a nadie, pero eres mi favorito."
 
-#: frontend/src/metabase/containers/Overworld.jsx:101
-msgid "Not sure where to start? Try these x-rays based on your data."
+#: frontend/src/metabase/containers/Overworld.jsx:102
+#, fuzzy
+msgid "Try these x-rays based on your data."
 msgstr ""
 "¿No estás seguro por dónde empezar? Pruebe estos rayos-X en función de tus "
 "datos."
 
-#: frontend/src/metabase/containers/Overworld.jsx:112
-#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:85
-msgid ""
-"Once you connect your own data, I can show you some automatic explorations "
-"called x-rays. Here are some examples with sample data."
-msgstr ""
-"En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones "
-"automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
-
-#: frontend/src/metabase/containers/Overworld.jsx:130
+#: frontend/src/metabase/containers/Overworld.jsx:126
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr "Empieza aquí"
 
-#: frontend/src/metabase/containers/Overworld.jsx:186
+#: frontend/src/metabase/containers/Overworld.jsx:183
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Guardar cuadros de mando, preguntas, y colecciones en \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:189
+#: frontend/src/metabase/containers/Overworld.jsx:186
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Acceder cuadros de mando, preguntas, y colecciones en \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:204
+#: frontend/src/metabase/containers/Overworld.jsx:201
 msgid "Browse all items"
 msgstr "Ver todos los elementos"
 
@@ -3281,8 +3274,8 @@ msgid "What is the name of your card?"
 msgstr "¿Cuál es el nombre de tu tarjeta?"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:232
-#: frontend/src/metabase/entities/collections.js:90
-#: frontend/src/metabase/entities/dashboards.js:99
+#: frontend/src/metabase/entities/collections.js:94
+#: frontend/src/metabase/entities/dashboards.js:102
 #: frontend/src/metabase/lib/core.js:45 frontend/src/metabase/lib/core.js:200
 #: frontend/src/metabase/reference/databases/DatabaseDetail.jsx:156
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:211
@@ -3295,12 +3288,12 @@ msgid "Description"
 msgstr "Descripción"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:238
-#: frontend/src/metabase/entities/dashboards.js:101
+#: frontend/src/metabase/entities/dashboards.js:104
 msgid "It's optional but oh, so helpful"
 msgstr "Es opcional pero, tan útil"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:245
-#: frontend/src/metabase/entities/dashboards.js:105
+#: frontend/src/metabase/entities/dashboards.js:108
 msgid "Which collection should this go in?"
 msgstr "¿En qué colección debería ir esto?"
 
@@ -3530,33 +3523,33 @@ msgstr ""
 msgid "No valid fields"
 msgstr "No hay campos válidos"
 
-#: frontend/src/metabase/entities/collections.js:86
+#: frontend/src/metabase/entities/collections.js:90
 msgid "Name must be 100 characters or less"
 msgstr "El nombre debe tener 100 caracteres o menos"
 
-#: frontend/src/metabase/entities/collections.js:97
+#: frontend/src/metabase/entities/collections.js:101
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:48
 msgid "Color"
 msgstr "Color"
 
-#: frontend/src/metabase/entities/collections.js:100
+#: frontend/src/metabase/entities/collections.js:104
 msgid "Color is required"
 msgstr "Color es obligatorio"
 
-#: frontend/src/metabase/entities/collections.js:104
+#: frontend/src/metabase/entities/collections.js:108
 msgid "Collection it's saved in"
 msgstr ""
 
-#: frontend/src/metabase/entities/collections.js:124
+#: frontend/src/metabase/entities/collections.js:140
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "Nuestra Analítica"
 
-#: frontend/src/metabase/entities/collections.js:141
+#: frontend/src/metabase/entities/collections.js:157
 msgid "All personal collections"
 msgstr "Todas las colecciones personales"
 
-#: frontend/src/metabase/entities/dashboards.js:94
+#: frontend/src/metabase/entities/dashboards.js:97
 msgid "What is the name of your dashboard?"
 msgstr "¿Cuál es el nombre de tu cuadro de mando?"
 
@@ -7070,6 +7063,14 @@ msgid ""
 msgstr ""
 "Esto parece que está tardando un tiempo. Mientras tanto, puedes ver una de "
 "estas exploraciones de ejemplo para ver lo qué Metabase puede hacer por ti."
+
+#: frontend/src/metabase/setup/containers/PostSetupApp.jsx:85
+msgid ""
+"Once you connect your own data, I can show you some automatic explorations "
+"called x-rays. Here are some examples with sample data."
+msgstr ""
+"En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones "
+"automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:86
 msgid ""
