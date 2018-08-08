@@ -557,8 +557,9 @@
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type engine fingerprint]}]
-  (or (not (isa? base_type :type/Number))
+  [{:keys [base_type engine fingerprint aggregation]}]
+  (or (nil? aggregation)
+      (not (isa? base_type :type/Number))
       (and (driver/driver-supports? (driver/engine->driver engine) :binning)
            (-> fingerprint :type :type/Number :min))))
 
@@ -601,7 +602,8 @@
          (map (partial zipmap used-dimensions))
          (filter (fn [bindings]
                    (->> dimensions
-                        (map (comp bindings second))
+                        (map (fn [[_ identifier opts]]
+                               (merge (bindings identifier) opts)))
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
