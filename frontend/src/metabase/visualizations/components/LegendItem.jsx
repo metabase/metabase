@@ -75,7 +75,7 @@ export default class LegendItem extends Component {
         {showTitle && (
           <div className="flex align-center">
             <span className="mr1">
-              {/* <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified> */}
+              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             </span>
             {description && (
               <div className="hover-child">

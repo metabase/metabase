@@ -51,7 +51,7 @@ export default class Text extends Component {
   static supportsSeries = false;
   static hidden = true;
 
-  static minSize = { width: 4, height: 1 };
+  static minSize = { width: 2, height: 1 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here
@@ -79,7 +79,7 @@ export default class Text extends Component {
           { name: t`Bottom`, value: "bottom" },
         ],
       },
-      default: "top",
+      default: "middle",
     },
     "text.align_horizontal": {
       section: "Display",
@@ -92,7 +92,7 @@ export default class Text extends Component {
           { name: t`Right`, value: "right" },
         ],
       },
-      default: "left",
+      default: "center",
     },
     "dashcard.background": {
       section: "Display",

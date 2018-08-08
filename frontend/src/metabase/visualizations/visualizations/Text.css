@@ -32,35 +32,36 @@
 
 :local .Text .text-card-markdown h1 {
   font-weight: 900;
-  font-size: 1.831em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
+  font-size: 1.431em;
+  /* margin: 0.375em 0 0.25em 0; */
+  /* padding-right: 1.5em; */
 }
 :local .Text .text-card-markdown h2 {
-  font-size: 1.627em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
+  font-size: 1.227em;
+  /* margin: 0.375em 0 0.25em 0; */
+  /* padding-right: 1.5em; */
 }
 :local .Text .text-card-markdown h3 {
-  font-size: 1.447em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
+  font-size: 1.047em;
+  /* margin: 0.375em 0 0.25em 0; */
+  /* padding-right: 1.5em; */
 }
 :local .Text .text-card-markdown h4 {
-  font-size: 1.286em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
+  font-size: 0.886em;
+  /* margin: 0.375em 0 0.25em 0; */
+  /* padding-right: 1.5em; */
 }
 :local .Text .text-card-markdown h5 {
-  font-size: 1.143em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
+  font-size: 0.743em;
+  /* margin: 0.375em 0 0.25em 0; */
+  /* padding-right: 1.5em; */
 }
 :local .Text .text-card-markdown p {
-  font-size: 1.143em;
+  font-size: 0.743em;
   line-height: 1.602em;
   padding: 0;
-  margin: 0 1.5em 0.5em 0;
+  /* margin: 0 1.5em 0.5em 0; */
+  margin: 0 0 0.5em 0;
 }
 
 :local .text-card-markdown ul {

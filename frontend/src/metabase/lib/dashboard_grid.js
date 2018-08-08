@@ -2,11 +2,11 @@
 
 import type { DashCard } from "metabase/meta/types/Dashboard";
 
-export const GRID_WIDTH = 18;
+export const GRID_WIDTH = 24;
 export const GRID_ASPECT_RATIO = 4 / 3;
 export const GRID_MARGIN = 6;
 
-export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
+export const DEFAULT_CARD_SIZE = { width: 2, height: 2 };
 
 type DashCardPosition = {
   col: number,
