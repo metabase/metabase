@@ -202,7 +202,6 @@
     (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :transient_title)   TranslatableStr
     (s/optional-key :description)       TranslatableStr
-    (s/optional-key :description)       TranslatableStr
     (s/optional-key :metrics)           [Metric]
     (s/optional-key :filters)           [Filter]
     (s/optional-key :groups)            Groups
@@ -378,7 +377,7 @@
               (swap! strings conj x))
             (walk x))))
       false
-      Rules)
+      Rule)
      rule)
     @strings))
 
