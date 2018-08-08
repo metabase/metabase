@@ -14,6 +14,8 @@ import Link from "metabase/components/Link";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
@@ -77,7 +79,7 @@ class CollectionList extends React.Component {
               <GridItem w={w}>
                 <CollectionItem
                   collection={{
-                    name: t`Everyone else's personal collections`,
+                    name: PERSONAL_COLLECTIONS.name,
                     // Bit of a hack. The route /collection/users lists
                     // user collections but is not itself a colllection,
                     // but using the fake id users here works

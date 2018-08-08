@@ -69,7 +69,7 @@ export default class Text extends Component {
       default: "",
     },
     "text.align_vertical": {
-      section: "Display",
+      section: t`Display`,
       title: t`Vertical Alignment`,
       widget: "select",
       props: {
@@ -82,7 +82,7 @@ export default class Text extends Component {
       default: "top",
     },
     "text.align_horizontal": {
-      section: "Display",
+      section: t`Display`,
       title: t`Horizontal Alignment`,
       widget: "select",
       props: {
@@ -95,7 +95,7 @@ export default class Text extends Component {
       default: "left",
     },
     "dashcard.background": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show background`,
       dashboard: true,
       widget: "toggle",

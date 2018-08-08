@@ -90,11 +90,13 @@ const Dashboards = createEntity({
     fields: [
       {
         name: "name",
+        title: t`Name`,
         placeholder: t`What is the name of your dashboard?`,
         validate: name => (!name ? "Name is required" : null),
       },
       {
         name: "description",
+        title: t`Description`,
         type: "text",
         placeholder: t`It's optional but oh, so helpful`,
       },
