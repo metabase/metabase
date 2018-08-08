@@ -3,6 +3,8 @@
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
+            [puppetlabs.i18n.core :refer [tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -62,14 +64,14 @@
 (models/defmodel Revision :revision)
 
 (defn- pre-insert [revision]
-  (assoc revision :timestamp (u/new-sql-timestamp)))
+  (assoc revision :timestamp (du/new-sql-timestamp)))
 
 (u/strict-extend (class Revision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:object :json, :message :clob})
           :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
+          :pre-update (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))}))
 
 
 ;;; # Functions

@@ -1,12 +1,12 @@
 :local .Funnel {
-  color: #a2a2a2;
+  color: var(--color-text-medium);
   height: 100%;
 }
 
 :local .FunnelStep {
   width: 100%;
   min-width: 20px;
-  border-right: 1px solid #e2e2e2;
+  border-right: 1px solid var(--color-border);
 }
 
 :local .FunnelStep.Initial {

@@ -20,13 +20,16 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor.util :as qputil]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import java.sql.Time
            java.util.Date
            [metabase.query_processor.interface TimeValue]))
 
 (defrecord PrestoDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Presto"))
 
@@ -48,16 +51,16 @@
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (u/parse-date "HH:mm:ss.SSS ZZ" s))
-      (u/parse-date "HH:mm:ss.SSS ZZZ" s)))
+  (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
+      (du/parse-date "HH:mm:ss.SSS ZZZ" s)))
 
 (defn- parse-timestamp-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
-      (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
+  (or (u/ignore-exceptions (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
+      (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
 (def ^:private presto-date-time-formatter
-  (u/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+  (du/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (defn- parse-presto-time
   "Parsing time from presto using a specific formatter rather than the
@@ -65,7 +68,7 @@
   performance is important"
   [time-str]
   (->> time-str
-       (u/parse-date :hour-minute-second-ms)
+       (du/parse-date :hour-minute-second-ms)
        tcoerce/to-long
        Time.))
 
@@ -74,7 +77,7 @@
     #"decimal.*"                bigdec
     #"time"                     parse-presto-time
     #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial u/parse-date
+    #"timestamp"                (partial du/parse-date
                                          (if-let [report-tz (and report-timezone
                                                                  (time/time-zone-for-id report-timezone))]
                                            (tformat/with-zone presto-date-time-formatter report-tz)
@@ -215,7 +218,7 @@
 
 (defmethod sqlqp/->honeysql [PrestoDriver Date]
   [_ date]
-  (hsql/call :from_iso8601_timestamp (hx/literal (u/date->iso-8601 date))))
+  (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
 
 (def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
 
@@ -324,29 +327,14 @@
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      8080}
-                                                            {:name         "catalog"
-                                                             :display-name "Database name"
-                                                             :placeholder  "hive"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database"
-                                                             :default      "metabase"}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "ssl"
-                                                             :display-name "Use a secure connection (SSL)?"
-                                                             :type         :boolean
-                                                             :default      false}]))
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 8080)
+                                                            (assoc driver/default-dbname-details
+                                                              :name         "catalog"
+                                                              :placeholder  (tru "hive"))
+                                                            driver/default-user-details
+                                                            driver/default-password-details
+                                                            driver/default-ssl-details]))
           :execute-query                     (u/drop-first-arg execute-query)
           :features                          (constantly (set/union #{:set-timezone
                                                                       :basic-aggregations

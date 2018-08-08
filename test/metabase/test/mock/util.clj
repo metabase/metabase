@@ -8,7 +8,6 @@
    :points_of_interest      nil
    :show_in_getting_started false
    :schema                  nil
-   :raw_table_id            false
    :fields                  []
    :rows                    nil
    :updated_at              true
@@ -30,7 +29,6 @@
    :parent_id          false
    :special_type       nil
    :id                 true
-   :raw_column_id      false
    :last_analyzed      true
    :position           0
    :visibility_type    :normal
@@ -42,6 +40,20 @@
    :schedule_hour  nil
    :schedule_day   nil
    :enabled        true})
+
+(def venue-fingerprints
+  "Fingerprints for the full venues table"
+  {:name        {:global {:distinct-count 100},
+                 :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
+                                      :percent-email 0.0, :average-length 15.63}}}
+   :id          nil
+   :price       {:global {:distinct-count 4},
+                 :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}
+   :latitude    {:global {:distinct-count 94},
+                 :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51}}}
+   :category_id {:global {:distinct-count 28}}
+   :longitude   {:global {:distinct-count 84},
+                 :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0}}}})
 
 ;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
 ;; queries we know will get ran as part of sync

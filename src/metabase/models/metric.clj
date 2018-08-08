@@ -69,7 +69,7 @@
 
 (defn metric-dependencies
   "Calculate any dependent objects for a given `Metric`."
-  [this id {:keys [definition]}]
+  [_ _ {:keys [definition]}]
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 
@@ -94,7 +94,6 @@
                  :creator_id  creator-id
                  :name        metric-name
                  :description description
-                 :is_active   true
                  :definition  definition)]
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
@@ -103,7 +102,7 @@
   "Does an *active* `Metric` with ID exist?"
   ^Boolean [id]
   {:pre [(integer? id)]}
-  (db/exists? Metric :id id, :is_active true))
+  (db/exists? Metric :id id, :archived false))
 
 (defn retrieve-metric
   "Fetch a single `Metric` by its ID value. Hydrates its `:creator`."
@@ -123,8 +122,8 @@
          {:where    [:and [:= :table_id table-id]
                           (case state
                             :all     true
-                            :active  [:= :is_active true]
-                            :deleted [:= :is_active false])]
+                            :active  [:= :archived false]
+                            :deleted [:= :archived true])]
           :order-by [[:name :asc]]})
        (hydrate :creator))))
 
@@ -157,7 +156,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Metric not active
-  (db/update! Metric id, :is_active false)
+  (db/update! Metric id, :archived true)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
     (events/publish-event! :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

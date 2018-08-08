@@ -7,7 +7,7 @@
 
 .flex-full,
 :local(.flex-full) {
-  flex: 1;
+  flex: 1 0 auto;
 }
 
 .flex-half,
@@ -77,6 +77,10 @@
 .align-self-end,
 :local(.align-self-end) {
   align-self: flex-end;
+}
+
+.align-self-center {
+  align-self: center;
 }
 
 .flex-align-right,

@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
-import { inflect } from "metabase/lib/formatting";
+import { t, ngettext, msgid } from "c-3po";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -49,7 +48,9 @@ export default class MetadataSchemaList extends Component {
         </div>
         <ul className="AdminList-items">
           <li className="AdminList-section">
-            {filteredSchemas.length} {inflect("schema", filteredSchemas.length)}
+            {(n => ngettext(msgid`${n} schema`, `${n} schemas`, n))(
+              filteredSchemas.length,
+            )}
           </li>
           {filteredSchemas.map(schema => (
             <li key={schema.name}>

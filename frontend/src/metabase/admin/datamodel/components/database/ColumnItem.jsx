@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon";
 import { t } from "c-3po";
@@ -61,7 +61,7 @@ export default class Column extends Component {
       <li className="mt1 mb3 flex">
         <div className="flex flex-column flex-full">
           <div>
-            <Input
+            <InputBlurChange
               style={{ minWidth: 420 }}
               className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold"
               type="text"
@@ -89,7 +89,7 @@ export default class Column extends Component {
             </div>
           </div>
           <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
-            <Input
+            <InputBlurChange
               className="AdminInput TableEditor-field-description"
               type="text"
               value={this.props.field.description || ""}

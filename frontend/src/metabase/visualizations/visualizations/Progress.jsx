@@ -38,13 +38,13 @@ export default class Progress extends Component {
 
   static settings = {
     "progress.goal": {
-      section: "Display",
+      section: t`Display`,
       title: t`Goal`,
       widget: "number",
       default: 0,
     },
     "progress.color": {
-      section: "Display",
+      section: t`Display`,
       title: t`Color`,
       widget: "color",
       default: normal.green,
@@ -152,7 +152,7 @@ export default class Progress extends Component {
         >
           <div
             ref="container"
-            className="relative text-bold text-grey-4"
+            className="relative text-bold text-medium"
             style={{ height: 20 }}
           >
             <div ref="label" style={{ position: "absolute" }}>

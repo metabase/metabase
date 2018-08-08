@@ -1,4 +1,5 @@
 (ns metabase.models.query
+  "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [metabase.db :as mdb]
             [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
@@ -50,8 +51,8 @@
   (or
    ;; if there's already a matching Query update the rolling average
    (update-rolling-average-execution-time! query-hash execution-time-ms)
-   ;; otherwise try adding a new entry. If for some reason there was a race condition and a Query entry was added in the meantime
-   ;; we'll try updating that existing record
+   ;; otherwise try adding a new entry. If for some reason there was a race condition and a Query entry was added in
+   ;; the meantime we'll try updating that existing record
    (try (record-new-execution-time! query-hash execution-time-ms)
         (catch Throwable e
           (or (update-rolling-average-execution-time! query-hash execution-time-ms)
@@ -59,9 +60,8 @@
               (throw e))))))
 
 
-(defn- native-query? [query-type]
-  (or (= query-type "native")
-      (= query-type :native)))
+(def ^:private ^{:arglists '([query-type])} native-query?
+  (comp #{:native} qputil/normalize-token))
 
 (defn query->database-and-table-ids
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use

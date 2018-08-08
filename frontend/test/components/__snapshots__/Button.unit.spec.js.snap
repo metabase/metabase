@@ -2,7 +2,7 @@
 
 exports[`Button should render correctly 1`] = `
 <button
-  className="Button "
+  className="Button sc-bdVaJa bDWFJH "
 >
   <div
     className="flex layout-centered"
@@ -16,13 +16,13 @@ exports[`Button should render correctly 1`] = `
 
 exports[`Button should render correctly with an icon 1`] = `
 <button
-  className="Button "
+  className="Button sc-bdVaJa bDWFJH "
 >
   <div
     className="flex layout-centered"
   >
     <svg
-      className="Icon Icon-star mr1"
+      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={14}
       name="star"

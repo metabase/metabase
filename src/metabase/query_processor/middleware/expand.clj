@@ -9,7 +9,9 @@
              [interface :as i]
              [util :as qputil]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue
             DateTimeField Expression ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime
@@ -90,10 +92,12 @@
 
 (defn- datetime-unit
   "Determine the appropriate datetime unit that should be used for a field F and a value V.
-   (Sometimes the value may already have a 'default' value that should be replaced with the
-   value from the field it is being used with, e.g. in a filter clause.
-   For example when filtering by minute it is important both F and V are bucketed as minutes,
-   and thus both most have the same unit."
+
+  (Sometimes the value may already have a 'default' value that should be replaced with the value from the field it is
+  being used with, e.g. in a filter clause.)
+
+  For example when filtering by minute it is important both F and V are bucketed as minutes, and thus both most have
+  the same unit."
   [f v]
   (qputil/normalize-token (core/or (:datetime-unit f)
                                    (:unit f)
@@ -108,9 +112,9 @@
     (instance? RelativeDateTimeValue v) v
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
-    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
+    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (du/->Timestamp v), :field f})
     (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
-                                          (i/map->DateTimeValue {:value (u/->Timestamp v)
+                                          (i/map->DateTimeValue {:value (du/->Timestamp v)
                                                                  :field (i/map->DateTimeField {:field f :unit :default})})
                                           (i/map->Value {:value v, :field f}))
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
@@ -200,7 +204,8 @@
    (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
    (aggregate-field index))
 
-  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps
+  ;; (multiple aggregations)
   ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
    (cond
      (map? ag-or-ags)  (recur query [ag-or-ags])
@@ -220,15 +225,16 @@
 
 ;;; ## breakout & fields
 
-(s/defn ^:ql binning-strategy :- FieldPlaceholder
-  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
+(s/defn ^:ql binning-strategy :- (s/cond-pre FieldPlaceholder FieldLiteral)
+  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
+  `STRATEGY-PARAM`"
   ([f strategy-name & [strategy-param]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
      (assoc field :binning-strategy strategy, :binning-param strategy-param))))
 
 (defn- fields-list-clause
-  ([k query] query)
+  ([_ query] query)
   ([k query & fields] (assoc query k (mapv field fields))))
 
 (def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))

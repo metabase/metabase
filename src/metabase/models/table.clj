@@ -45,16 +45,20 @@
 (u/strict-extend (class Table)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys     (constantly [:table])
-          :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
-          :properties         (constantly {:timestamped? true})
-          :pre-insert         pre-insert
-          :pre-delete pre-delete})
+         {:hydration-keys (constantly [:table])
+          :types          (constantly {:entity_type      :keyword,
+                                       :visibility_type  :keyword,
+                                       :description      :clob,
+                                       :has_field_values :clob,
+                                       :fields_hash      :clob})
+          :properties     (constantly {:timestamped? true})
+          :pre-insert     pre-insert
+          :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         i/superuser?
-          :perms-objects-set  perms-objects-set}))
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        i/superuser?
+          :perms-objects-set perms-objects-set}))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -62,7 +66,11 @@
 (defn fields
   "Return the `FIELDS` belonging to a single TABLE."
   [{:keys [id]}]
-  (db/select Field, :table_id id :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+  (db/select Field
+    :table_id        id
+    :active          true
+    :visibility_type [:not= "retired"]
+    {:order-by [[:position :asc] [:name :asc]]}))
 
 (defn metrics
   "Retrieve the `Metrics` for a single TABLE."
@@ -108,7 +116,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
+      (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-metrics
@@ -117,7 +125,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], :is_active true, {:order-by [[:name :asc]]}))
+      (db/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -127,6 +135,7 @@
   (with-objects :fields
     (fn [table-ids]
       (db/select Field
+        :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
         {:order-by [[:position :asc] [:name :asc]]}))

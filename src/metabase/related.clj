@@ -1,7 +1,6 @@
 (ns metabase.related
   "Related entities recommendations."
   (:require [clojure.set :as set]
-            [clojure.string :as str]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models
@@ -104,13 +103,13 @@
   [table]
   (filter-visible (db/select Metric
                     :table_id  (:id table)
-                    :is_active true)))
+                    :archived false)))
 
 (defn- segments-for-table
   [table]
   (filter-visible (db/select Segment
                     :table_id  (:id table)
-                    :is_active true)))
+                    :archived false)))
 
 (defn- linking-to
   [table]
@@ -147,7 +146,7 @@
 (defn- similar-questions
   [card]
   (->> (db/select Card
-         :table_id (:table_id card)
+         :table_id (qp.util/get-normalized card :table-id)
          :archived false)
        filter-visible
        (rank-by-similarity card)
@@ -156,8 +155,8 @@
 (defn- canonical-metric
   [card]
   (->> (db/select Metric
-         :table_id (:table_id card)
-         :is_active true)
+         :table_id (qp.util/get-normalized card :table-id)
+         :archived false)
        filter-visible
        (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
                            :aggregation
@@ -207,7 +206,7 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table             (Table (:table_id card))
+  (let [table             (Table (qp.util/get-normalized card :table-id))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table

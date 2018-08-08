@@ -11,7 +11,9 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
   (:require [clojure.tools.logging :as log]
-            [metabase.models.field-values :as field-values]
+            [metabase.models
+             [field :as field]
+             [field-values :as field-values]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -28,28 +30,38 @@
       (isa? special-type :type/PK)
       (isa? special-type :type/FK)))
 
-(defn- field-should-be-category? [distinct-count field]
-  ;; only mark a Field as a Category if it doesn't already have a special type
-  (when-not (:special_type field)
-    (when (<= distinct-count field-values/category-cardinality-threshold)
+(defn- not-all-nil?
+  [fingerprint]
+  (or (some-> fingerprint :type :type/Number :min some?)
+      (some-> fingerprint :type :type/Text :average-length pos?)))
+
+(s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
+  [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
+  (let [distinct-count (get-in fingerprint [:global :distinct-count])]
+    ;; Only mark a Field as a Category if it doesn't already have a special type.
+    (when (and (nil? (:special_type field))
+               (or (not-all-nil? fingerprint)
+                   (isa? (:base_type field) :type/Boolean))
+               (<= distinct-count field-values/category-cardinality-threshold))
       (log/debug (format "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                          (sync-util/name-for-logging field)
                          distinct-count
                          field-values/category-cardinality-threshold))
       true)))
 
-(defn- field-should-be-list? [distinct-count field]
-  {:pre [(contains? field :has_field_values)]}
+(s/defn ^:private field-should-be-auto-list? :- (s/maybe s/Bool)
+  "Based on `distinct-count`, should we mark this `field` as `has_field_values` = `auto-list`?"
+  [distinct-count :- s/Int, field :- {:has_field_values (s/maybe (apply s/enum field/has-field-values-options))
+                                      s/Keyword         s/Any}]
   ;; only update has_field_values if it hasn't been set yet. If it's already been set then it was probably done so
   ;; manually by an admin, and we don't want to stomp over their choices.
   (when (nil? (:has_field_values field))
-    (when (<= distinct-count field-values/list-cardinality-threshold)
+    (when (<= distinct-count field-values/auto-list-cardinality-threshold)
       (log/debug (format "%s has %d distinct values. Since that is less than %d, it should have cached FieldValues."
                          (sync-util/name-for-logging field)
                          distinct-count
-                         field-values/list-cardinality-threshold))
+                         field-values/auto-list-cardinality-threshold))
       true)))
-
 
 (s/defn infer-is-category-or-list :- (s/maybe i/FieldInstance)
   "Classifier that attempts to determine whether FIELD ought to be marked as a Category based on its distinct count."
@@ -58,5 +70,5 @@
     (when-not (cannot-be-category-or-list? (:base_type field) (:special_type field))
       (when-let [distinct-count (get-in fingerprint [:global :distinct-count])]
         (cond-> field
-          (field-should-be-category? distinct-count field) (assoc :special_type :type/Category)
-          (field-should-be-list?     distinct-count field) (assoc :has_field_values "list"))))))
+          (field-should-be-category? fingerprint field)     (assoc :special_type :type/Category)
+          (field-should-be-auto-list? distinct-count field) (assoc :has_field_values :auto-list))))))

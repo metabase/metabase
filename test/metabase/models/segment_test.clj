@@ -37,7 +37,7 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
+   :archived                false
    :definition              {:clause ["a" "b"]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]]
@@ -64,7 +64,7 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
+   :archived                false
    :definition              {:database 45
                              :query    {:filter ["yay"]}}}
   (tt/with-temp* [Database [{database-id :id}]
@@ -87,14 +87,14 @@
     :show_in_getting_started false
     :caveats                 nil
     :points_of_interest      nil
-    :is_active               true
+    :archived                false
     :definition              {}}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
                   Segment  [{segement-id-1 :id} {:table_id table-id-1, :name "Segment 1", :description nil}]
                   Segment  [{segment-id-2 :id}  {:table_id table-id-2}]
-                  Segment  [{segment-id3 :id}   {:table_id table-id-1, :is_active false}]]
+                  Segment  [{segment-id3 :id}   {:table_id table-id-1, :archived true}]]
     (doall (for [segment (u/prog1 (retrieve-segments table-id-1)
                                   (assert (= 1 (count <>))))]
              (-> (dissoc (into {} segment) :id :table_id :created_at :updated_at)
@@ -116,7 +116,7 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
+   :archived                false
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
   (tt/with-temp* [Database [{database-id :id}]
@@ -143,7 +143,7 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               false
+   :archived                true
    :definition              {}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
@@ -165,7 +165,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :definition              {:filter ["AND",[">",4,"2014-10-19"]]}
-   :is_active               true}
+   :archived                false}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id

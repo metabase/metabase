@@ -2,8 +2,17 @@
   "Tests for the Google Analytics driver and query processor."
   (:require [expectations :refer :all]
             [metabase.driver.googleanalytics.query-processor :as qp]
+            [metabase.models
+             [card :refer [Card]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.util :as u]))
+            [metabase.test.data.users :as users]
+            [metabase.util :as u]
+            [metabase.util.date :as du]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             QUERY "TRANSFORMATION"                                             |
@@ -120,8 +129,8 @@
 
 ;; relative date -- last month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month -1))
-             :end-date   (u/format-date "yyyy-MM-01")})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month -1))
+             :end-date   (du/format-date "yyyy-MM-01")})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount -1
@@ -130,8 +139,8 @@
 
 ;; relative date -- this month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01")
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 1))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01")
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 1))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 0
@@ -140,8 +149,8 @@
 
 ;; relative date -- next month
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month 1))
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 2))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 1))
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 2))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 1
@@ -150,8 +159,8 @@
 
 ;; relative date -- 2 months from now
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-MM-01" (u/relative-date :month 2))
-             :end-date   (u/format-date "yyyy-MM-01" (u/relative-date :month 3))})
+  (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 2))
+             :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 3))})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :month)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount 2
@@ -160,18 +169,52 @@
 
 ;; relative date -- last year
 (expect
-  (ga-query {:start-date (u/format-date "yyyy-01-01" (u/relative-date :year -1))
-             :end-date   (u/format-date "yyyy-01-01")})
+  (ga-query {:start-date (du/format-date "yyyy-01-01" (du/relative-date :year -1))
+             :end-date   (du/format-date "yyyy-01-01")})
   (mbql->native {:query {:filter {:filter-type :=
                                   :field       (ga-date-field :year)
                                   :value       (qpi/map->RelativeDateTimeValue {:amount -1
                                                                                 :unit   :year
                                                                                 :field  (ga-date-field :year)})}}}))
 
-
-
-
 ;; limit
 (expect
   (ga-query {:max-results 25})
   (mbql->native {:query {:limit 25}}))
+
+
+;;; ------------------------------------------------ Saving GA Cards -------------------------------------------------
+
+;; Can we *save* a GA query that has two aggregations?
+
+(expect
+  1
+  (tt/with-temp* [Database [db    {:engine :googleanalytics}]
+                  Table    [table {:db_id (u/get-id db)}]
+                  Field    [field {:table_id (u/get-id table)}]]
+    (->> ((users/user->client :crowberto) :post 200 "card"
+          {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
+           :display                :table
+           :visualization_settings {}
+           :dataset_query          {:database (u/get-id db)
+                                    :type     :query
+                                    :query    {:source_table (u/get-id table)
+                                               :aggregation  [[:METRIC "ga:sessions"]
+                                                              [:METRIC "ga:1dayUsers"]]
+                                               :breakout     [[:datetime-field [:field-id (u/get-id field)] :day]]}}
+           :result_metadata        [{:base_type    :type/Date
+                                     :display_name :Date
+                                     :name         "ga:date"
+                                     :description  "The date of the session formatted as YYYYMMDD."
+                                     :unit         :day}
+                                    {:base_type    :type/Integer
+                                     :display_name "Ga:1day Users"
+                                     :name         "ga:1dayUsers"}
+                                    {:base_type    :type/Integer
+                                     :display_name "Ga:sessions"
+                                     :name         "ga:sessions"}]
+           :metadata_checksum      "VRyGLaFPj6T9RTIgMFvyAA=="})
+         ;; just make sure the API call actually worked by checking that the created Card is actually successfully
+         ;; saved in the DB
+         u/get-id
+         (db/count Card :id))))

@@ -14,14 +14,13 @@
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
-   validation.
-
-   Has to be a schema (or similar) record type because a simple map would just end up adding a new required key.
-   One easy way to get around this is to just wrap your schema in `s/named`."
+   validation."
   {:style/indent 1}
   [schema api-error-message]
-  {:pre [(record? schema)]}
-  (assoc schema :api-error-message api-error-message))
+  (if-not (record? schema)
+    ;; since this only works for record types, if `schema` isn't already one just wrap it in `s/named` to make it one
+    (recur (s/named schema api-error-message) api-error-message)
+    (assoc schema :api-error-message api-error-message)))
 
 (defn api-param
   "Return SCHEMA with an additional API-PARAM-NAME key that will be used in the auto-generate documentation and in
@@ -34,11 +33,7 @@
 
      ;; GOOD - Documentation/errors will mention correct param name, `type`
      [:is {{dimension-type :type} :body}]
-     {dimension-type (su/api-param \"type\" DimensionType)}
-
-   Note that as with `with-api-error-message`, this only works on schemas that are record types. This works by adding
-   an extra property to the record, which wouldn't work for plain maps, because the extra key would just be considered
-   another requrired param. An easy way to get around this is to wrap a non-record type schema in `s/named`."
+     {dimension-type (su/api-param \"type\" DimensionType)}"
   {:style/indent 1}
   [api-param-name schema]
   {:pre [(record? schema)]}
@@ -54,6 +49,13 @@
     (= existing-schema s/Bool)                          (tru "value must be a boolean.")
     (instance? java.util.regex.Pattern existing-schema) (tru "value must be a string that matches the regex `{0}`."
                                                              existing-schema)))
+
+(declare api-error-message)
+
+(defn- create-cond-schema-message [child-schemas]
+  (str (tru "value must satisfy one of the following requirements: ")
+       (str/join " " (for [[i child-schema] (m/indexed child-schemas)]
+                       (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
 (defn api-error-message
   "Extract the API error messages attached to a schema, if any.
@@ -79,13 +81,16 @@
       ;; 1) value must be a boolean.
       ;; 2) value must be a valid boolean string ('true' or 'false').
       (when (instance? schema.core.CondPre schema)
-        (str (tru "value must satisfy one of the following requirements: ")
-             (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
-                             (format "%d) %s" (inc i) (api-error-message child-schema))))))
+        (create-cond-schema-message (:schemas schema)))
+
+      ;; For conditional schemas we'll generate a string similar to `cond-pre` above
+      (when (instance? schema.core.ConditionalSchema schema)
+        (create-cond-schema-message (map second (:preds-and-schemas schema))))
+
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str (tru "value must be an array.") (when (= (count schema) 1)
-                                               (when-let [message (:api-error-message (first schema))]
+                                               (when-let [message (api-error-message (first schema))]
                                                  (str " " (tru "Each {0}" message))))))))
 
 
@@ -95,6 +100,7 @@
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
     (str (api-error-message schema) " " (tru "The array cannot be empty."))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 USEFUL SCHEMAS                                                 |
@@ -111,6 +117,12 @@
   (with-api-error-message
       (s/constrained s/Int (partial < 0) (tru "Integer greater than zero"))
     (tru "value must be an integer greater than zero.")))
+
+(def PositiveNum
+  "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
+  (with-api-error-message
+      (s/constrained s/Num (partial < 0) (tru "Number greater than zero"))
+    (tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."

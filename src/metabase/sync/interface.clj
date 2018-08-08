@@ -5,11 +5,9 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            metabase.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
-
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -24,7 +22,7 @@
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
   {:name                           su/NonBlankString
-   :database-type                  su/NonBlankString
+   :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
    (s/optional-key :special-type)  (s/maybe su/FieldType)
    (s/optional-key :pk?)           s/Bool
@@ -59,9 +57,10 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance "Schema for a valid instance of a Metabase Database." (class Database))
-(def TableInstance    "Schema for a valid instance of a Metabase Table."    (class Table))
-(def FieldInstance    "Schema for a valid instance of a Metabase Field."    (class Field))
+(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (class Database))
+(def TableInstance                "Schema for a valid instance of a Metabase Table."    (class Table))
+(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (class Field))
+(def ResultColumnMetadataInstance "Schema for a valid instance of a Metabase Field."    (class {}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -97,16 +96,16 @@
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
-  {(s/optional-key :min) s/Num
-   (s/optional-key :max) s/Num
-   (s/optional-key :avg) s/Num})
+  {(s/optional-key :min) (s/maybe s/Num)
+   (s/optional-key :max) (s/maybe s/Num)
+   (s/optional-key :avg) (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
-  {(s/optional-key :percent-json)   Percent
-   (s/optional-key :percent-url)    Percent
-   (s/optional-key :percent-email)  Percent
-   (s/optional-key :average-length) (s/constrained Double #(>= % 0) "Valid number greater than or equal to zero")})
+  {(s/optional-key :percent-json)   (s/maybe Percent)
+   (s/optional-key :percent-url)    (s/maybe Percent)
+   (s/optional-key :percent-email)  (s/maybe Percent)
+   (s/optional-key :average-length) s/Num})
 
 (def DateTimeFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/DateTime`."

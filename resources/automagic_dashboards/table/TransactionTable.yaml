@@ -1,5 +1,5 @@
-title: A look at your [[this]] table
-transient_title: "It looks like your [[this]] table has transactions, so here's a look at them"
+title: A look at your [[this]]
+transient_title: "It looks like your [[this]] has transactions, so here's a look at them"
 description: Some metrics we found about your transactions.
 metrics:
 - AvgDiscount:
@@ -20,8 +20,16 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - State:
     field_type: GenericTable.State
 - Country: GenericTable.Country

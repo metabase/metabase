@@ -4,7 +4,9 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -108,6 +110,28 @@
         (= k (normalize-token map-k)) (recur (dissoc m map-k) more)
         :else                         (recur m                more)))))
 
+(defn assoc-in-normalized
+  "Assoc the value for normalized sequence of keys KS in map M, regardless of how the keys were
+   specified in M, whether string or keyword, lisp-case, snake_case, or SCREAMING_SNAKE_CASE."
+  [m ks v]
+  {:pre [(u/maybe? sequential? ks)]}
+  (let [ks-map (loop [[k & k-rest :as ks-all] ks
+                      [[k-map v] & m-rest]    (seq m)
+                      ks-map                  []]
+                 (cond
+                   (empty? ks-all)
+                   ks-map
+
+                   (nil? k-map)
+                   (recur k-rest (seq m) (conj ks-map k))
+
+                   (= (normalize-token k) (normalize-token k-map))
+                   (recur k-rest (when (map? v) v) (conj ks-map k-map))
+
+                   :else
+                   (recur ks-all m-rest ks-map)))]
+    (assoc-in m ks-map v)))
+
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
@@ -138,3 +162,30 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
+
+;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
+
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
+
+(defn postwalk-collect
+  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
+  results.
+
+  Note: This would be much better as a zipper. It could have the same API, would be faster and would avoid side
+  affects."
+  [pred collect-fn form]
+  (let [results (atom [])]
+    (postwalk-pred pred
+                   (fn [node]
+                     (when-let [result (collect-fn node)]
+                       (swap! results conj result))
+                     node)
+                   form)
+    @results))

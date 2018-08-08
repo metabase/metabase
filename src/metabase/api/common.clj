@@ -6,22 +6,21 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes]]
+            [compojure.core :as compojure]
+            [honeysql.types :as htypes]
             [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [ring.util
-             [io :as rui]
-             [response :as rr]]
+            [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]))
+  (:import java.io.OutputStream))
 
 (declare check-403 check-404)
 
@@ -101,7 +100,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ex-info (format "Invalid field: %s" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -139,7 +138,7 @@
    (checkp-with f symb value (str "test failed: " f)))
   ([f symb value message]
    {:pre [(symbol? symb)]}
-   (checkp (f value) symb (format "Invalid value '%s' for '%s': %s" (str value) symb message))
+   (checkp (f value) symb (tru "Invalid value ''{0}'' for ''{1}'': {2}" (str value) symb message))
    value))
 
 (defn checkp-contains?
@@ -151,7 +150,8 @@
          [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
   [valid-values-set symb value]
   {:pre [(set? valid-values-set) (symbol? symb)]}
-  (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
+  (checkp-with (partial contains? valid-values-set) symb value
+               (tru "must be one of: {0}" valid-values-set)))
 
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
@@ -186,10 +186,10 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private generic-400
-  [400 "Invalid Request."])
+  [400 (tru "Invalid Request.")])
 
 (defn check-400
-  "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-400))
 
@@ -201,10 +201,10 @@
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 "Not found."])
+  [404 (tru "Not found.")])
 
 (defn check-404
-  "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-404))
 
@@ -217,10 +217,10 @@
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
 (def ^:private generic-403
-  [403 "You don't have permissions to do that."])
+  [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
-  "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-403))
 (defmacro let-403
@@ -229,13 +229,18 @@
   [& body]
   `(api-let ~generic-403 ~@body))
 
+(defn throw-403
+  "Throw a generic 403 (no permissions) error response."
+  []
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
-  [500 "Internal server error."])
+  [500 (tru "Internal server error.")])
 
 (defn check-500
-  "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-500))
 
@@ -253,6 +258,7 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
+;; e.g. `auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -277,32 +283,57 @@
         [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
                       :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
-        (catch-api-exceptions
-          (auto-parse ~args
-            ~@validate-param-calls
-            (wrap-response-if-needed (do ~@body))))))))
+        (auto-parse ~args
+          ~@validate-param-calls
+          (wrap-response-if-needed (do ~@body)))))))
 
+(defn- namespace->api-route-fns
+  "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
+  [nmspace]
+  (for [[symb varr] (ns-publics nmspace)
+        :when       (:is-endpoint? (meta varr))]
+    symb))
+
+(defn- api-routes-docstring [nmspace route-fns middleware]
+  (str
+   (format "Ring routes for %s:\n%s"
+           (-> (ns-name nmspace)
+               (str/replace #"^metabase\." "")
+               (str/replace #"\." "/"))
+           (u/pprint-to-str route-fns))
+   (when (seq middleware)
+     (str "\nMiddleware applied to all endpoints in this namespace:\n"
+          (u/pprint-to-str middleware)))))
 
 (defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with
-   `defendpoint` in the current namespace."
-  [& additional-routes]
-  (let [api-routes (for [[symb varr] (ns-publics *ns*)
-                         :when       (:is-endpoint? (meta varr))]
-                     symb)]
-    `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
-                                                       (-> (ns-name *ns*)
-                                                           (str/replace #"^metabase\." "")
-                                                           (str/replace #"\." "/"))
-                                                       (u/pprint-to-str (concat api-routes additional-routes))))
-       ~@additional-routes ~@api-routes)))
+  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
+  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
+
+     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
+  {:style/indent 0}
+  [& middleware]
+  (let [api-route-fns (namespace->api-route-fns *ns*)
+        routes        `(compojure/routes ~@api-route-fns)]
+    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~(if (seq middleware)
+          `(-> ~routes ~@middleware)
+          routes))))
+
+(defn +check-superuser
+  "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
+
+     (api/+check-superuser routes)"
+  [handler]
+  (fn [request]
+    (check-superuser)
+    (handler request)))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
@@ -352,7 +383,7 @@
 (extend-protocol protocols/StreamableResponseBody
   clojure.core.async.impl.channels.ManyToManyChannel
   (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/debug (u/format-color 'green "starting streaming request"))
+    (log/debug (u/format-color 'green (trs "starting streaming request")))
     (with-open [out (io/writer output-stream)]
       (loop [chunk (async/<!! output-queue)]
         (cond
@@ -362,7 +393,7 @@
               (.write out (str chunk))
               (.flush out)
               (catch org.eclipse.jetty.io.EofException e
-                (log/info e (u/format-color 'yellow "connection closed, canceling request"))
+                (log/info e (u/format-color 'yellow (trs "connection closed, canceling request")))
                 (async/close! output-queue)
                 (throw e)))
             (recur (async/<!! output-queue)))
@@ -419,7 +450,7 @@
             ;; a newline padding character as it's harmless and will allow us to check if the client is connected. If
             ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
             ;; no-ops when reading JSON which this depends upon.
-            (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+            (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
             (if (async/>!! output-chan \newline)
               ;; Success put the channel, wait and see if we get the response next time
               (recur)
@@ -443,19 +474,20 @@
       (assoc (response/response output-channel)
         :content-type "applicaton/json"))))
 
+
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
 (defn check-public-sharing-enabled
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
   (check (public-settings/enable-public-sharing)
-    [400 "Public sharing is not enabled."]))
+         [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
   (check (public-settings/enable-embedding)
-    [400 "Embedding is not enabled."]))
+    [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
   "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
@@ -463,4 +495,94 @@
   (u/prog1 object
     (check-404 object)
     (check (not (:archived object))
-      [404 {:message "The object has been archived.", :error_code "archived"}])))
+      [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+
+(s/defn column-will-change? :- s/Bool
+  "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
+  endpoint) is applied.
+
+    ;; assuming we have a Collection 10, that is not currently archived...
+    (api/column-will-change? :archived (Collection 10) {:archived true}) ; -> true, because value will change
+
+    (api/column-will-change? :archived (Collection 10) {:archived false}) ; -> false, because value did not change
+
+    (api/column-will-change? :archived (Collection 10) {}) ; -> false; value not specified in updates (request body)"
+  [k :- s/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  (boolean
+   (and (contains? object-updates k)
+        (not= (get object-before-updates k)
+              (get object-updates k)))))
+
+;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
+
+(s/defn reconcile-position-for-collection!
+  "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
+  for fixing card/dashboard/pulse changes that impact other instances in the collection"
+  [collection-id :- (s/maybe su/IntGreaterThanZero)
+   old-position :- (s/maybe su/IntGreaterThanZero)
+   new-position :- (s/maybe su/IntGreaterThanZero)]
+  (let [update-fn! (fn [plus-or-minus position-update-clause]
+                     (doseq [model '[Card Dashboard Pulse]]
+                       (db/update-where! model {:collection_id       collection-id
+                                                :collection_position position-update-clause}
+                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+    (when (not= new-position old-position)
+      (cond
+        (and (nil? new-position)
+             old-position)
+        (update-fn! :-  [:> old-position])
+
+        (and new-position (nil? old-position))
+        (update-fn! :+ [:>= new-position])
+
+        (> new-position old-position)
+        (update-fn! :- [:between old-position new-position])
+
+        (< new-position old-position)
+        (update-fn! :+ [:between new-position old-position])))))
+
+(def ^:private ModelWithPosition
+  "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
+  {:collection_id       (s/maybe su/IntGreaterThanZero)
+   :collection_position (s/maybe su/IntGreaterThanZero)
+   s/Any                s/Any})
+
+(def ^:private ModelWithOptionalPosition
+  "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
+  present, they didn't change. If they are present, they might have changed and we need to compare."
+  {(s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
+   s/Any                                 s/Any})
+
+(s/defn maybe-reconcile-collection-position!
+  "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
+  impact to the collection position of that model instance. If so, executes updates to fix the collection position
+  that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
+  updating an existing instance, but creating a new one)."
+  ([new-model-data :- ModelWithPosition]
+   (maybe-reconcile-collection-position! nil new-model-data))
+  ([{old-collection-id :collection_id, old-position :collection_position, :as before-update} :- (s/maybe ModelWithPosition)
+    {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
+   (let [updated-collection? (and (contains? model-updates :collection_id)
+                                  (not= old-collection-id new-collection-id))
+         updated-position?   (and (contains? model-updates :collection_position)
+                                  (not= old-position new-position))]
+     (cond
+       ;; If the collection hasn't changed, but we have a new collection position, we might need to reconcile
+       (and (not updated-collection?) updated-position?)
+       (reconcile-position-for-collection! old-collection-id old-position new-position)
+
+       ;; If we have a new collection id, but no new position, reconcile the old collection, then update the new
+       ;; collection with the existing position
+       (and updated-collection? (not updated-position?))
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil old-position))
+
+       ;; We have a new collection id AND and new collection position
+       ;; Update the old collection using the old position
+       ;; Update the new collection using the new position
+       (and updated-collection? updated-position?)
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil new-position))))))

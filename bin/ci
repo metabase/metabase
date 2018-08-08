@@ -61,13 +61,13 @@ node-5() {
     run_step lein with-profile +ci eastwood
 
     run_step yarn run test-karma
-    run_step yarn run test-unit
+    run_step yarn run test-unit --coverage
     report-frontend-coverage
 }
 node-6() {
-    run_step ./bin/build version sample-dataset uberjar
+    run_step ./bin/build-for-test
     run_step check-uberjar-file-count
-    run_step yarn run test-integrated
+    run_step yarn run test-integrated-no-build
 }
 
 report() {
@@ -129,6 +129,10 @@ install-presto() {
 }
 
 install-sparksql() {
+    # first, download the Spark Deps JAR and put it in the plugins/ dir
+    wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
+
+    # next, download Spark and run it
     spark_version='2.1.1' # Java 7 support was removed in Spark 2.2 so don't upgrade until we upgrade CI
     hadoop_version='2.7'
 
@@ -147,7 +151,7 @@ install-sparksql() {
          --conf spark.cores.max=1 \
          --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2 \
          --name "Thrift JDBC/ODBC Server" \
-         --executor-memory 1g \
+         --executor-memory 512m \
          spark-internal &>/dev/null &
 }
 

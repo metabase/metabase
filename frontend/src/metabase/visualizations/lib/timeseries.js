@@ -257,7 +257,9 @@ function timeseriesTicksInterval(
     },
   );
   // if we weren't able to find soemthing matching then we'll start from the beginning and try everything
-  if (initialIndex === -1) initialIndex = 0;
+  if (initialIndex === -1) {
+    initialIndex = 0;
+  }
 
   // now starting at the TIMESERIES_INTERVALS entry in question, calculate the expected tick count for that interval
   // based on the time range we are displaying. If the expected tick count is less than or equal to the target
@@ -265,8 +267,9 @@ function timeseriesTicksInterval(
   // example every 3 hours instead of every one hour. Continue until we find something with an interval large enough
   // to keep the total tick count under the max tick count
   for (const interval of _.rest(TIMESERIES_INTERVALS, initialIndex)) {
-    if (expectedTickCount(interval, timeRangeMilliseconds) <= maxTickCount)
+    if (expectedTickCount(interval, timeRangeMilliseconds) <= maxTickCount) {
       return interval;
+    }
   }
 
   // If we still failed to find an interval that will produce less ticks than the max then fall back to the largest

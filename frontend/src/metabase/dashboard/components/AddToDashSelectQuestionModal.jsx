@@ -33,22 +33,17 @@ export default class AddToDashSelectQuestionModal extends Component {
     }
   }
 
-  onAdd(card) {
+  onAdd = cardId => {
     this.props.addCardToDashboard({
       dashId: this.props.dashboard.id,
-      cardId: card.id,
+      cardId: cardId,
     });
     this.props.onEditingChange(true);
     this.props.onClose();
     MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
-  }
+  };
 
   render() {
-    return (
-      <AddToDashboard
-        onAdd={card => this.onAdd(card)}
-        onClose={this.props.onClose}
-      />
-    );
+    return <AddToDashboard onAdd={this.onAdd} onClose={this.props.onClose} />;
   }
 }

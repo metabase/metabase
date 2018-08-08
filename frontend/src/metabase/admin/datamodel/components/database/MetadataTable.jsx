@@ -5,8 +5,10 @@ import MetricsList from "./MetricsList.jsx";
 import ColumnsList from "./ColumnsList.jsx";
 import SegmentsList from "./SegmentsList.jsx";
 import { t } from "c-3po";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
+
+import { normal } from "metabase/lib/colors";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -50,7 +52,7 @@ export default class MetadataTable extends Component {
   }
 
   renderVisibilityType(text, type, any) {
-    var classes = cx(
+    let classes = cx(
       "mx1",
       "text-bold",
       "text-brand-hover",
@@ -73,11 +75,11 @@ export default class MetadataTable extends Component {
   }
 
   renderVisibilityWidget() {
-    var subTypes;
+    let subTypes;
     if (this.props.tableMetadata.visibility_type) {
       subTypes = (
         <span id="VisibilitySubTypes" className="border-left mx2">
-          <span className="mx2 text-uppercase text-grey-3">{t`Why Hide?`}</span>
+          <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
           {this.renderVisibilityType(t`Technical Data`, "technical")}
           {this.renderVisibilityType(t`Irrelevant/Cruft`, "cruft")}
         </span>
@@ -99,15 +101,15 @@ export default class MetadataTable extends Component {
     }
 
     return (
-      <div className="MetadataTable px3 flex-full">
+      <div className="MetadataTable px3">
         <div className="MetadataTable-title flex flex-column bordered rounded">
-          <Input
+          <InputBlurChange
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
             type="text"
             value={tableMetadata.display_name || ""}
             onBlurChange={this.onNameChange}
           />
-          <Input
+          <InputBlurChange
             className="AdminInput TableEditor-table-description rounded-bottom"
             type="text"
             value={tableMetadata.description || ""}
@@ -115,12 +117,17 @@ export default class MetadataTable extends Component {
             placeholder={t`No table description yet`}
           />
         </div>
-        <div className="MetadataTable-header flex align-center py2 text-grey-3">
+        <div className="MetadataTable-header flex align-center py2 text-medium">
           <span className="mx1 text-uppercase">{t`Visibility`}</span>
           {this.renderVisibilityWidget()}
           <span className="flex-align-right flex align-center">
             <span className="text-uppercase mr1">{t`Metadata Strength`}</span>
-            <ProgressBar percentage={tableMetadata.metadataStrength} />
+            <span style={{ width: 64 }}>
+              <ProgressBar
+                percentage={tableMetadata.metadataStrength}
+                color={normal.grey2}
+              />
+            </span>
           </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>

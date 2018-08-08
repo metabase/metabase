@@ -15,7 +15,7 @@ export default class MetricsList extends Component {
 
     tableMetadata.metrics = tableMetadata.metrics || [];
     tableMetadata.metrics = tableMetadata.metrics.filter(
-      mtrc => mtrc.is_active === true,
+      mtrc => mtrc.archived === false,
     );
 
     return (
@@ -50,7 +50,7 @@ export default class MetricsList extends Component {
           </tbody>
         </table>
         {tableMetadata.metrics.length === 0 && (
-          <div className="flex layout-centered m4 text-grey-3">
+          <div className="flex layout-centered m4 text-medium">
             {t`Create metrics to add them to the View dropdown in the query builder`}
           </div>
         )}

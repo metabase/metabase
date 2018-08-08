@@ -280,6 +280,7 @@ export class FieldValuesWidget extends Component {
           }}
           updateOnInputChange
           options={options}
+          // $FlowFixMe
           valueKey={0}
           valueRenderer={value => (
             <RemappedValue

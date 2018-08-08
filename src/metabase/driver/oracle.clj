@@ -12,9 +12,11 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]]
+            [puppetlabs.i18n.core :refer [tru]]))
 
 (defrecord OracleDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Oracle"))
 
@@ -78,7 +80,7 @@
   "Apply truncation / extraction to a date field or value for Oracle."
   [unit v]
   (case unit
-    :default         (hx/->date v)
+    :default         (some-> v hx/->date)
     :minute          (trunc :mi v)
     ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
     :minute-of-hour  (hsql/call :extract :minute (hx/->timestamp v))
@@ -264,27 +266,18 @@
          {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      1521}
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 1521)
                                                             {:name         "sid"
-                                                             :display-name "Oracle system ID (SID)"
-                                                             :placeholder  "Usually something like ORCL or XE. Optional if using service name"}
+                                                             :display-name (tru "Oracle system ID (SID)")
+                                                             :placeholder  (str (tru "Usually something like ORCL or XE.")
+                                                                                " "
+                                                                                (tru "Optional if using service name"))}
                                                             {:name         "service-name"
-                                                             :display-name "Oracle service name"
-                                                             :placeholder  "Optional TNS alias"}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database?"
-                                                             :required     true}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}]))
+                                                             :display-name (tru "Oracle service name")
+                                                             :placeholder  (tru "Optional TNS alias")}
+                                                            driver/default-user-details
+                                                            driver/default-password-details]))
           :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :current-db-time                   (driver/make-current-db-time-fn oracle-db-time-query oracle-date-formatters)})

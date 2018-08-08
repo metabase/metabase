@@ -3,33 +3,49 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.filters :as magic.filters]
-            [metabase.models.card :as card]
+            [metabase.automagic-dashboards.filters :as filters]
+            [metabase.models
+             [card :as card]
+             [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
+            [metabase.util :as u]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]
             [toucan.db :as db]))
 
-(def ^Long ^:const grid-width
+(def ^Long grid-width
   "Total grid width."
   18)
-(def ^Long ^:const default-card-width
+
+(def ^Long default-card-width
   "Default card width."
   6)
-(def ^Long ^:const default-card-height
+
+(def ^Long default-card-height
   "Default card height"
   4)
 
 (defn create-collection!
   "Create a new collection."
-  [title color description]
-  (when api/*is-superuser?*
-    (db/insert! 'Collection
-      :name        title
+  [title color description parent-collection-id]
+  (db/insert! 'Collection
+    (merge
+     {:name        title
       :color       color
-      :description description)))
+      :description description}
+     (when parent-collection-id
+       {:location (collection/children-location (db/select-one ['Collection :location :id]
+                                                  :id parent-collection-id))}))))
 
-(def ^:private colors
+(defn get-or-create-root-container-collection
+  "Get or create container collection for automagic dashboards in the root collection."
+  []
+  (or (db/select-one 'Collection
+        :name     "Automatically Generated Dashboards"
+        :location "/")
+      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
+
+(def colors
+  "Colors used for coloring charts and collections."
   ["#509EE3" "#9CC177" "#A989C5" "#EF8C8C" "#f9d45c" "#F1B556" "#A6E7F3" "#7172AD"])
 
 (defn- ensure-distinct-colors
@@ -42,6 +58,13 @@
             (conj acc color)
             (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
         [])))
+
+(defn map-to-colors
+  "Map given objects to distinct colors."
+  [objs]
+  (->> objs
+       (map (comp colors #(mod % (count colors)) hash))
+       ensure-distinct-colors))
 
 (defn- colorize
   "Pick the chart colors acording to the following rules:
@@ -67,27 +90,24 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              (tree-seq sequential? identity)
-                              (filter magic.filters/field-form?)
-                              (map last))
+                              filters/collect-field-references
+                              (map filters/field-reference->id))
                          aggregation)]
-        {:graph.colors (->> color-keys
-                            (map (comp colors #(mod % (count colors)) hash))
-                            ensure-distinct-colors)}))))
+        {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [metric-name (some-fn :name (comp str/capitalize name first :metric))
-        [display visualization-settings] visualization]
+  (let [[display visualization-settings] visualization]
     {:display display
-     :visualization_settings
-     (-> visualization-settings
-         (merge (colorize card))
-         (cond->
-           (some :name metrics) (assoc :graph.series_labels (map metric-name metrics))
-           series_labels        (assoc :graph.series_labels series_labels)
-           x_label              (assoc :graph.x_axis.title_text x_label)
-           y_label              (assoc :graph.y_axis.title_text y_label)))}))
+     :visualization_settings (-> visualization-settings
+                                 (assoc :graph.series_labels metrics)
+                                 (merge (colorize card))
+                                 (cond->
+                                     series_labels (assoc :graph.series_labels series_labels)
+
+                                     x_label       (assoc :graph.x_axis.title_text x_label)
+
+                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
@@ -119,7 +139,7 @@
                                     {:text         text
                                      :virtual_card {:name                   nil
                                                     :display                :text
-                                                    :dataset_query          nil
+                                                    :dataset_query          {}
                                                     :visualization_settings {}}}
                                     visualization-settings)
            :col                    y
@@ -240,7 +260,6 @@
                          :else        n)
          dashboard     {:name              title
                         :transient_name    (or transient_title title)
-                        :transient_filters (magic.filters/applied-filters refinements)
                         :description       description
                         :creator_id        api/*current-user-id*
                         :parameters        []}
@@ -254,32 +273,69 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/info (format "Adding %s cards to dashboard %s:\n%s"
-                       (count cards)
-                       title
-                       (str/join "; " (map :title cards))))
+     (log/infof (trs "Adding %s cards to dashboard %s:\n%s")
+                (count cards)
+                title
+                (str/join "; " (map :title cards)))
      (cond-> dashboard
-       (not-empty filters) (magic.filters/add-filters filters max-filters)))))
+       (not-empty filters) (filters/add-filters filters max-filters)))))
+
+(defn- downsize-titles
+  [markdown]
+  (->> markdown
+       str/split-lines
+       (map (fn [line]
+              (if (str/starts-with? line "#")
+                (str "#" line)
+                line)))
+       str/join))
+
+(defn- merge-filters
+  [ds]
+  (when (->> ds
+             (mapcat :ordered_cards)
+             (keep (comp :table_id :card))
+             distinct
+             count
+             (= 1))
+   [(->> ds (mapcat :parameters) distinct)
+    (->> ds
+         (mapcat :ordered_cards)
+         (mapcat :parameter_mappings)
+         (map #(dissoc % :card_id))
+         distinct)]))
 
 (defn merge-dashboards
-  "Merge dashboards `ds` into dashboard `d`."
-  [d & ds]
-  (reduce (fn [target dashboard]
-            (let [offset (->> dashboard
-                              :ordered_cards
-                              (map #(+ (:row %) (:sizeY %)))
-                              (apply max -2) ; -2 so it neturalizes +2 for spacing if
-                                             ; the target dashboard is empty.
-                              (+ 2))]
-              (-> target
-                  (add-text-card {:width  default-card-width
-                                  :height group-heading-height
-                                  :text   (:name dashboard)}
-                                 [offset 0])
-                  (update :ordered_cards concat
-                          (->> dashboard
-                               :ordered_cards
-                               (map #(update :row + offset group-heading-height))))
-                  (update :parameters concat (:parameters dashboard)))))
-          d
-          ds))
+  "Merge dashboards `dashboard` into dashboard `target`."
+  ([target dashboard] (merge-dashboards target dashboard {}))
+  ([target dashboard {:keys [skip-titles?]}]
+   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+         offset                         (->> target
+                                             :ordered_cards
+                                             (map #(+ (:row %) (:sizeY %)))
+                                             (apply max -1) ; -1 so it neturalizes +1 for spacing
+                                                            ; if the target dashboard is empty.
+                                             inc)
+         cards                        (->> dashboard
+                                           :ordered_cards
+                                           (map #(-> %
+                                                     (update :row + offset (if skip-titles?
+                                                                             0
+                                                                             group-heading-height))
+                                                     (u/update-in-when [:visualization_settings :text]
+                                                                       downsize-titles)
+                                                     (assoc :parameter_mappings
+                                                       (when-let [card-id (:card_id %)]
+                                                         (for [mapping parameter-mappings]
+                                                           (assoc mapping :card_id card-id)))))))]
+     (-> target
+         (assoc :parameters paramters)
+         (cond->
+           (not skip-titles?)
+           (add-text-card {:width                  grid-width
+                           :height                 group-heading-height
+                           :text                   (format "# %s" (:name dashboard))
+                           :visualization-settings {:dashcard.background false
+                                                    :text.align_vertical :bottom}}
+                          [offset 0]))
+         (update :ordered_cards concat cards)))))

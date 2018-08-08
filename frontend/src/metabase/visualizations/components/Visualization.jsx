@@ -92,6 +92,8 @@ type Props = {
   gridSize?: { width: number, height: number },
   // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
   gridUnit?: number,
+
+  classNameWidgets?: string,
 };
 
 type State = {
@@ -301,7 +303,9 @@ export default class Visualization extends Component {
   };
 
   hideActions = () => {
-    this.setState({ clicked: null });
+    if (this.state.clicked !== null) {
+      this.setState({ clicked: null });
+    }
   };
 
   render() {
@@ -400,7 +404,7 @@ export default class Visualization extends Component {
       </span>
     );
 
-    let { gridSize, gridUnit } = this.props;
+    let { gridSize, gridUnit, classNameWidgets } = this.props;
     if (!gridSize && gridUnit) {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
@@ -419,6 +423,7 @@ export default class Visualization extends Component {
         replacementContent ? (
           <div className="p1 flex-no-shrink">
             <LegendHeader
+              classNameWidgets={classNameWidgets}
               series={
                 settings["card.title"]
                   ? // if we have a card title set, use it

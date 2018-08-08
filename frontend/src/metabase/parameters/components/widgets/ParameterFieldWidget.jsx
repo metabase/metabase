@@ -88,7 +88,9 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       : this.props.placeholder || t`Enter a value...`;
 
     const focusChanged = isFocused => {
-      if (parentFocusChanged) parentFocusChanged(isFocused);
+      if (parentFocusChanged) {
+        parentFocusChanged(isFocused);
+      }
       this.setState({ isFocused });
     };
 
