@@ -62,7 +62,7 @@
       (assoc :created_at (boolean created_at)
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
-                             (dissoc :id :database_id :table_id :created_at :updated_at)
+                             (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
                              (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
@@ -203,7 +203,6 @@
                                                            :dataset_query          {}
                                                            :read_permissions       nil
                                                            :visualization_settings {}
-                                                           :query_average_duration nil
                                                            :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
