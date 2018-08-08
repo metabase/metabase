@@ -882,3 +882,38 @@
 
                :emails
                (et/regex-email-bodies #"Daily Sad Toucans")))))))))
+
+;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
+;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
+;; of the same format that the pulse GET returns
+(tt/expect-with-temp [Card [card-1]
+                      Card [card-2]]
+  {:response {:ok true}
+   :emails   (et/email-to :rasta {:subject "Pulse: A Pulse"
+                                  :body    {"A Pulse" true}})}
+  (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+    (et/with-fake-inbox
+      (tu/with-model-cleanup [Pulse]
+        (tt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          ;; First create the pulse
+          (let [{pulse-id :id} ((user->client :rasta) :post 200 "pulse"
+                                {:name          "A Pulse"
+                                 :collection_id (u/get-id collection)
+                                 :skip_if_empty false
+                                 :cards         [{:id          (u/get-id card-1)
+                                                  :include_csv false
+                                                  :include_xls false}
+                                                 {:id          (u/get-id card-2)
+                                                  :include_csv false
+                                                  :include_xls false}]
+
+                                 :channels [(assoc daily-email-channel :recipients [(fetch-user :rasta)
+                                                                                    (fetch-user :crowberto)])]})
+                ;; Retrieve the pulse via GET
+                result        ((user->client :rasta) :get 200 (str "pulse/" pulse-id))
+                ;; Change our fetched copy of the pulse to only have Rasta for the recipients
+                email-channel (assoc (-> result :channels first) :recipients [(fetch-user :rasta)])]
+            ;; Don't update the pulse, but test the pulse with the updated recipients
+            {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
+             :emails   (et/regex-email-bodies #"A Pulse")}))))))

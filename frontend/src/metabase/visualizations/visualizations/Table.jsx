@@ -57,7 +57,7 @@ export default class Table extends Component {
 
   static settings = {
     "table.pivot": {
-      section: "Data",
+      section: t`Data`,
       title: t`Pivot the table`,
       widget: "toggle",
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
@@ -69,7 +69,7 @@ export default class Table extends Component {
         data.cols.filter(isDimension).length === 2,
     },
     "table.columns": {
-      section: "Data",
+      section: t`Data`,
       title: t`Visible fields`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
@@ -90,7 +90,7 @@ export default class Table extends Component {
     },
     "table.column_widths": {},
     "table.column_formatting": {
-      section: "Formatting",
+      section: t`Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: ([{ data: { cols } }], settings) => ({

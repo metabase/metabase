@@ -12,7 +12,8 @@
              [postgres :as postgres]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]]
+            [puppetlabs.i18n.core :refer [tru]]))
 
 (defn- connection-details->spec
   "Create a database specification for a redshift database. Opts should include
@@ -82,27 +83,14 @@
          {:date-interval            (u/drop-first-arg date-interval)
           :describe-table-fks       (u/drop-first-arg describe-table-fks)
           :details-fields           (constantly (ssh/with-tunnel-config
-                                                  [{:name         "host"
-                                                    :display-name "Host"
-                                                    :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-                                                    :required     true}
-                                                   {:name         "port"
-                                                    :display-name "Port"
-                                                    :type         :integer
-                                                    :default      5439}
-                                                   {:name         "db"
-                                                    :display-name "Database name"
-                                                    :placeholder  "toucan_sightings"
-                                                    :required     true}
-                                                   {:name         "user"
-                                                    :display-name "Database username"
-                                                    :placeholder  "cam"
-                                                    :required     true}
-                                                   {:name         "password"
-                                                    :display-name "Database user password"
-                                                    :type         :password
-                                                    :placeholder  "*******"
-                                                    :required     true}]))
+                                                  [(assoc driver/default-host-details
+                                                     :placeholder (tru "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"))
+                                                   (assoc driver/default-port-details :default 5439)
+                                                   (assoc driver/default-dbname-details
+                                                     :name         "db"
+                                                     :placeholder  (tru "toucan_sightings"))
+                                                   driver/default-user-details
+                                                   driver/default-port-details]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
           :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatters)})
 

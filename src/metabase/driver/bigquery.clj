@@ -561,23 +561,23 @@
           :describe-database        (u/drop-first-arg describe-database)
           :describe-table           (u/drop-first-arg describe-table)
           :details-fields           (constantly [{:name         "project-id"
-                                                  :display-name "Project ID"
-                                                  :placeholder  "praxis-beacon-120871"
+                                                  :display-name (tru "Project ID")
+                                                  :placeholder  (tru "praxis-beacon-120871")
                                                   :required     true}
                                                  {:name         "dataset-id"
-                                                  :display-name "Dataset ID"
-                                                  :placeholder  "toucanSightings"
+                                                  :display-name (tru "Dataset ID")
+                                                  :placeholder  (tru "toucanSightings")
                                                   :required     true}
                                                  {:name         "client-id"
-                                                  :display-name "Client ID"
+                                                  :display-name (tru "Client ID")
                                                   :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
                                                   :required     true}
                                                  {:name         "client-secret"
-                                                  :display-name "Client Secret"
+                                                  :display-name (tru "Client Secret")
                                                   :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
                                                   :required     true}
                                                  {:name         "auth-code"
-                                                  :display-name "Auth Code"
+                                                  :display-name (tru "Auth Code")
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                   :required     true}])
           :execute-query            (u/drop-first-arg execute-query)

@@ -18,7 +18,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [trs]])
+            [puppetlabs.i18n.core :refer [trs tru]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))
@@ -168,26 +168,14 @@
           :describe-database  describe-database
           :describe-table     describe-table
           :describe-table-fks (constantly #{})
-          :details-fields     (constantly [{:name         "host"
-                                            :display-name "Host"
-                                            :default      "localhost"}
-                                           {:name         "port"
-                                            :display-name "Port"
-                                            :type         :integer
-                                            :default      10000}
-                                           {:name         "dbname"
-                                            :display-name "Database name"
-                                            :placeholder  "default"}
-                                           {:name         "user"
-                                            :display-name "Database username"
-                                            :placeholder  "What username do you use to login to the database?"}
-                                           {:name         "password"
-                                            :display-name "Database password"
-                                            :type         :password
-                                            :placeholder  "*******"}
-                                           {:name         "jdbc-flags"
-                                            :display-name "Additional JDBC settings, appended to the connection string"
-                                            :placeholder  ";transportMode=http"}])
+          :details-fields     (constantly [driver/default-host-details
+                                           (assoc driver/default-port-details :default 10000)
+                                           (assoc driver/default-dbname-details :placeholder (tru "default"))
+                                           driver/default-user-details
+                                           driver/default-password-details
+                                           (assoc driver/default-additional-options-details
+                                             :name        "jdbc-flags"
+                                             :placeholder ";transportMode=http")])
           :execute-query      execute-query
           :features           (constantly (set/union #{:basic-aggregations
                                                        :binning

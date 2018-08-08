@@ -27,6 +27,7 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import AutomaticDashboardApp from "metabase/dashboard/containers/AutomaticDashboardApp";
 
+import Presentation from "metabase/presentation/Presentation";
 import {
   BrowseApp,
   DatabaseBrowser,
@@ -55,8 +56,8 @@ import {
 } from "metabase/new_query/router_wrappers";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-import NotFound from "metabase/components/NotFound.jsx";
-import Unauthorized from "metabase/components/Unauthorized.jsx";
+
+import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
 // Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
@@ -219,6 +220,9 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
+        </Route>
+        <Route path="dashboard/:dashboardId/present" component={Presentation}>
+          <Route path=":slideIndex" component={Presentation} />
         </Route>
 
         <Route path="/question">
