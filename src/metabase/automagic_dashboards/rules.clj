@@ -367,7 +367,7 @@
   (get-in @rules (concat path [::leaf])))
 
 (defn- extract-i18n-strings
-  [rule]
+  [[path rule]]
   (let [strings (atom [])]
     ((spec/run-checker
       (fn [s params]
@@ -379,23 +379,32 @@
       false
       Rule)
      rule)
-    @strings))
+    (map vector (distinct @strings) (repeat path))))
 
 (defn- make-pot
   [strings]
   (->> strings
-       (map (partial format "msgid \"%s\"\nmsgstr \"\"\n"))
+       (sort-by second) ; keep the same context together
+       (map (fn [[s ctx]]
+              (format "msgctxt \"%s.yaml\"\nmsgid \"%s\"\nmsgstr \"\"\n" (str/join "/" ctx) s)))
        (str/join "\n")))
+
+(defn- all-rules
+  ([]
+   (all-rules [] @rules))
+  ([path rules]
+   (when (map? rules)
+     (mapcat (fn [[k v]]
+               (if (= k ::leaf)
+                 [[path v]]
+                 (all-rules (conj path k) v)))
+             rules))))
 
 (defn -main
   "Entry point for lein task `generate-automagic-dashboards-pot`"
   [& _]
-  (->> @rules
-       (tree-seq (some-fn map? sequential?) identity)
-       (filter map?)
-       (keep ::leaf)
+  (->> (all-rules)
        (mapcat extract-i18n-strings)
-       distinct
        make-pot
        (spit "locales/metabase-automatic-dashboards.pot"))
   (System/exit 0))
