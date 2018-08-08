@@ -580,13 +580,17 @@ export function createEntity(def: EntityDefinition): Entity {
   }
 
   function trackAction(action, object, getState) {
-    // MetabaseAnalytics.trackEvent
-    console.log(
-      "entity:" + entity.name,
-      action,
-      entity.getAnalyticsMetadata &&
-        entity.getAnalyticsMetadata(action, object, getState),
-    );
+    try {
+      // MetabaseAnalytics.trackEvent
+      console.log(
+        "entity:" + entity.name,
+        action,
+        entity.getAnalyticsMetadata &&
+          entity.getAnalyticsMetadata(action, object, getState),
+      );
+    } catch (e) {
+      console.warn("trackAction threw an error:", e);
+    }
   }
 
   return entity;
