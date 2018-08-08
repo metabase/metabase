@@ -18,6 +18,7 @@
              [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
+            [metabase.driver :as driver]
             [metabase.models
              [card :as card :refer [Card]]
              [database :refer [Database]]
@@ -286,9 +287,7 @@
       [:datetime-field reference (or aggregation
                                      (optimal-datetime-resolution field))]
 
-      (and aggregation
-           ; We don't handle binning on non-analyzed fields gracefully
-           (-> fingerprint :type :type/Number :min))
+      aggregation
       [:binning-strategy reference aggregation]
 
       :else
@@ -558,9 +557,10 @@
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type engine]}]
-  (not (and (isa? base_type :type/Number)
-            (= engine :druid))))
+  [{:keys [base_type engine fingerprint]}]
+  (or (not (isa? base_type :type/Number))
+      (and (driver/driver-supports? (driver/engine->driver engine) :binning)
+           (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
   [root]
@@ -643,8 +643,8 @@
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (db/select Field
-                                         :table_id           (u/get-id table)
-                                         :fk_target_field_id [:not= nil]))
+                                :table_id           (u/get-id table)
+                                :fk_target_field_id [:not= nil]))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
