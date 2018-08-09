@@ -31,11 +31,11 @@ export default class MetadataHeader extends Component {
   }
 
   renderDbSelector() {
-    var database = this.props.databases.filter(
+    let database = this.props.databases.filter(
       db => db.id === this.props.databaseId,
     )[0];
     if (database) {
-      var columns = [
+      let columns = [
         {
           selectedItem: database,
           items: this.props.databases,
@@ -46,7 +46,7 @@ export default class MetadataHeader extends Component {
           },
         },
       ];
-      var triggerElement = (
+      let triggerElement = (
         <span className="text-bold cursor-pointer text-default">
           {database.name}
           <Icon className="ml1" name="chevrondown" size={8} />
@@ -67,7 +67,9 @@ export default class MetadataHeader extends Component {
   // TODO - it would be nicer just to disable the gear so the page doesn't jump around once you select a Table.
   renderTableSettingsButton() {
     const isViewingTable = this.props.location.pathname.match(/table\/\d+\/?$/);
-    if (!isViewingTable) return null;
+    if (!isViewingTable) {
+      return null;
+    }
 
     return (
       <span className="ml4 mr3">
@@ -82,7 +84,7 @@ export default class MetadataHeader extends Component {
     return (
       <div className="MetadataEditor-header flex align-center flex-no-shrink">
         <div className="MetadataEditor-headerSection py2 h2">
-          <span className="text-grey-4">{t`Current database:`}</span>{" "}
+          <span className="text-medium">{t`Current database:`}</span>{" "}
           {this.renderDbSelector()}
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">

@@ -161,12 +161,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -176,7 +186,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -184,16 +194,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -425,16 +425,16 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1381,
+          "distinct-count": 1387,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2015-11-05T00:00:00.000-08:00",
-            "latest": "2019-11-02T00:00:00.000-07:00",
+            "earliest": "2016-04-30T00:00:00.000-07:00",
+            "latest": "2020-04-19T00:00:00.000-07:00",
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 1,
@@ -445,7 +445,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 9,
       "special_type": "type/CreationTimestamp",
       "table_id": 1,
       "target": null,
@@ -516,17 +515,17 @@ Object {
       "display_name": "Discount",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1022,
+          "distinct-count": 700,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 5.382008821780497,
-            "max": 70.30699128866013,
-            "min": 0.21249216890034361,
+            "avg": 5.161255547580321,
+            "max": 61.69684269960571,
+            "min": 0.17088996672584322,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 35,
@@ -537,7 +536,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": null,
       "special_type": "type/Discount",
       "table_id": 1,
       "target": null,
@@ -565,7 +563,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 2,
@@ -576,7 +574,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 10,
       "special_type": "type/PK",
       "table_id": 1,
       "target": null,
@@ -598,13 +595,13 @@ Object {
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 100.0589,
+            "avg": 100.5084,
             "max": 200,
             "min": 1,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": 24,
       "has_field_values": "none",
       "id": 3,
@@ -615,7 +612,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 11,
       "special_type": "type/FK",
       "table_id": 1,
       "target": Object {
@@ -637,7 +633,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 1,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 24,
@@ -648,7 +644,6 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
-        "raw_column_id": 4,
         "special_type": "type/PK",
         "table_id": 3,
         "visibility_type": "normal",
@@ -724,13 +719,13 @@ Object {
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 4.0585,
-            "max": 87,
+            "avg": 3.7015,
+            "max": 100,
             "min": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 36,
@@ -741,7 +736,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": null,
       "special_type": "type/Quantity",
       "table_id": 1,
       "target": null,
@@ -812,17 +806,17 @@ Object {
       "display_name": "Subtotal",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 400,
+          "distinct-count": 340,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 79.59262891828064,
-            "max": 129.06849213878442,
-            "min": 31.478481306013133,
+            "avg": 77.01295465356537,
+            "max": 148.22900526552291,
+            "min": 15.691943673970439,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 4,
@@ -833,7 +827,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 12,
       "special_type": null,
       "table_id": 1,
       "target": null,
@@ -904,17 +897,17 @@ Object {
       "display_name": "Tax",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 761,
+          "distinct-count": 797,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 3.263451999999993,
-            "max": 9.68,
+            "avg": 3.8722099999999875,
+            "max": 11.12,
             "min": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 5,
@@ -925,7 +918,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 13,
       "special_type": null,
       "table_id": 1,
       "target": null,
@@ -1000,13 +992,13 @@ Object {
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 85.6977993498081,
-            "max": 249.05982750877476,
-            "min": 12.377464066307697,
+            "avg": 82.96014815230829,
+            "max": 238.32732001721533,
+            "min": 12.061602936923117,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 6,
@@ -1017,7 +1009,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 14,
       "special_type": "type/Income",
       "table_id": 1,
       "target": null,
@@ -1035,17 +1026,17 @@ Object {
       "display_name": "User ID",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1787,
+          "distinct-count": 929,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 979.7903,
-            "max": 1952,
+            "avg": 678.6893,
+            "max": 1322,
             "min": 1,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": 13,
       "has_field_values": "none",
       "id": 7,
@@ -1056,7 +1047,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 15,
       "special_type": "type/FK",
       "table_id": 1,
       "target": Object {
@@ -1078,7 +1068,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 1,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 13,
@@ -1089,7 +1079,6 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
-        "raw_column_id": 21,
         "special_type": "type/PK",
         "table_id": 2,
         "visibility_type": "normal",
@@ -1101,7 +1090,6 @@ Object {
   "metrics": Array [],
   "name": "ORDERS",
   "points_of_interest": null,
-  "raw_table_id": 2,
   "rows": 12805,
   "schema": "PUBLIC",
   "segments": Array [],
@@ -1271,12 +1259,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -1286,7 +1284,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -1294,16 +1292,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -1391,18 +1379,18 @@ Object {
       "display_name": "Address",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2500,
+          "distinct-count": 2490,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 17.9912,
+            "average-length": 20.85,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 8,
@@ -1413,7 +1401,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 16,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -1575,16 +1562,16 @@ Object {
       "display_name": "Birth Date",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2293,
+          "distinct-count": 2308,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "1957-11-06T00:00:00.000-08:00",
-            "latest": "1999-10-31T00:00:00.000-07:00",
+            "earliest": "1958-04-26T00:00:00.000-08:00",
+            "latest": "2000-04-03T00:00:00.000-07:00",
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 9,
@@ -1595,7 +1582,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 17,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -1613,18 +1599,18 @@ Object {
       "display_name": "City",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2469,
+          "distinct-count": 1966,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 12.1504,
+            "average-length": 8.284,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 10,
@@ -1635,7 +1621,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 18,
       "special_type": "type/City",
       "table_id": 2,
       "target": null,
@@ -1797,16 +1782,16 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 980,
+          "distinct-count": 992,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2015-11-02T00:00:00.000-08:00",
-            "latest": "2018-11-02T00:00:00.000-07:00",
+            "earliest": "2016-04-19T00:00:00.000-07:00",
+            "latest": "2019-04-19T00:00:00.000-07:00",
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 11,
@@ -1817,7 +1802,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 19,
       "special_type": "type/CreationTimestamp",
       "table_id": 2,
       "target": null,
@@ -1839,14 +1823,14 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 24.1664,
+            "average-length": 24.1824,
             "percent-email": 1,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 12,
@@ -1857,7 +1841,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 20,
       "special_type": "type/Email",
       "table_id": 2,
       "target": null,
@@ -1885,7 +1868,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 13,
@@ -1896,7 +1879,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 21,
       "special_type": "type/PK",
       "table_id": 2,
       "target": null,
@@ -1932,6 +1914,16 @@ Object {
             "binning-strategy",
             null,
             "bin-width",
+            0.1,
+          ],
+          "name": "Bin every 0.1 degrees",
+          "type": "type/Coordinate",
+        },
+        Object {
+          "mbql": Array [
+            "binning-strategy",
+            null,
+            "bin-width",
             1,
           ],
           "name": "Bin every 1 degree",
@@ -1958,16 +1950,6 @@ Object {
           "type": "type/Coordinate",
         },
         Object {
-          "mbql": Array [
-            "binning-strategy",
-            null,
-            "bin-width",
-            50,
-          ],
-          "name": "Bin every 50 degrees",
-          "type": "type/Coordinate",
-        },
-        Object {
           "mbql": null,
           "name": "Don't bin",
           "type": "type/Coordinate",
@@ -1977,17 +1959,17 @@ Object {
       "display_name": "Latitude",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2500,
+          "distinct-count": 2491,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 0.2000029228840675,
-            "max": 89.9420089232147,
-            "min": -89.62556830684696,
+            "avg": 39.879346704840046,
+            "max": 70.6355001,
+            "min": 25.775827,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 14,
@@ -1998,7 +1980,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 22,
       "special_type": "type/Latitude",
       "table_id": 2,
       "target": null,
@@ -2034,6 +2015,16 @@ Object {
             "binning-strategy",
             null,
             "bin-width",
+            0.1,
+          ],
+          "name": "Bin every 0.1 degrees",
+          "type": "type/Coordinate",
+        },
+        Object {
+          "mbql": Array [
+            "binning-strategy",
+            null,
+            "bin-width",
             1,
           ],
           "name": "Bin every 1 degree",
@@ -2060,16 +2051,6 @@ Object {
           "type": "type/Coordinate",
         },
         Object {
-          "mbql": Array [
-            "binning-strategy",
-            null,
-            "bin-width",
-            50,
-          ],
-          "name": "Bin every 50 degrees",
-          "type": "type/Coordinate",
-        },
-        Object {
           "mbql": null,
           "name": "Don't bin",
           "type": "type/Coordinate",
@@ -2079,17 +2060,17 @@ Object {
       "display_name": "Longitude",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2500,
+          "distinct-count": 2491,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 0.7039410787134972,
-            "max": 179.9427208287961,
-            "min": -179.693556788217,
+            "avg": -95.18741780364007,
+            "max": -67.96735199999999,
+            "min": -166.5425726,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 15,
@@ -2100,7 +2081,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 23,
       "special_type": "type/Longitude",
       "table_id": 2,
       "target": null,
@@ -2118,18 +2098,18 @@ Object {
       "display_name": "Name",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2500,
+          "distinct-count": 2499,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 13.516,
+            "average-length": 13.532,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 16,
@@ -2140,7 +2120,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 24,
       "special_type": "type/Name",
       "table_id": 2,
       "target": null,
@@ -2169,7 +2148,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 17,
@@ -2180,7 +2159,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 25,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -2202,14 +2180,14 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 7.4096,
+            "average-length": 7.4084,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 18,
@@ -2220,7 +2198,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 26,
       "special_type": "type/Source",
       "table_id": 2,
       "target": null,
@@ -2238,7 +2215,7 @@ Object {
       "display_name": "State",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 62,
+          "distinct-count": 49,
         },
         "type": Object {
           "type/Text": Object {
@@ -2249,7 +2226,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 19,
@@ -2260,7 +2237,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 27,
       "special_type": "type/State",
       "table_id": 2,
       "target": null,
@@ -2278,7 +2254,7 @@ Object {
       "display_name": "Zip",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2467,
+          "distinct-count": 2235,
         },
         "type": Object {
           "type/Text": Object {
@@ -2289,7 +2265,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 20,
@@ -2300,7 +2276,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 28,
       "special_type": "type/ZipCode",
       "table_id": 2,
       "target": null,
@@ -2311,7 +2286,6 @@ Object {
   "metrics": Array [],
   "name": "PEOPLE",
   "points_of_interest": null,
-  "raw_table_id": 3,
   "rows": 2500,
   "schema": "PUBLIC",
   "segments": Array [],
@@ -2481,12 +2455,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -2496,7 +2480,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -2504,16 +2488,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -2605,14 +2579,14 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 6.515,
+            "average-length": 6.375,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 21,
@@ -2623,7 +2597,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 1,
       "special_type": "type/Category",
       "table_id": 3,
       "target": null,
@@ -2785,16 +2758,16 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 178,
+          "distinct-count": 186,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2015-11-07T00:00:00.000-08:00",
-            "latest": "2018-11-02T00:00:00.000-07:00",
+            "earliest": "2016-04-26T00:00:00.000-07:00",
+            "latest": "2019-04-15T00:00:00.000-07:00",
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 22,
@@ -2805,7 +2778,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 2,
       "special_type": "type/CreationTimestamp",
       "table_id": 3,
       "target": null,
@@ -2834,7 +2806,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 23,
@@ -2845,7 +2817,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 3,
       "special_type": null,
       "table_id": 3,
       "target": null,
@@ -2873,7 +2844,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 24,
@@ -2884,7 +2855,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 4,
       "special_type": "type/PK",
       "table_id": 3,
       "target": null,
@@ -2955,17 +2925,17 @@ Object {
       "display_name": "Price",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 200,
+          "distinct-count": 170,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 60.18227577428187,
-            "max": 86.04566142585628,
-            "min": 31.478481306013133,
+            "avg": 55.74639966792074,
+            "max": 98.81933684368194,
+            "min": 15.691943673970439,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 25,
@@ -2976,7 +2946,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 5,
       "special_type": null,
       "table_id": 3,
       "target": null,
@@ -3051,13 +3020,13 @@ Object {
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 3.928500000000003,
+            "avg": 3.4715000000000007,
             "max": 5,
             "min": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 26,
@@ -3068,7 +3037,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 6,
       "special_type": "type/Score",
       "table_id": 3,
       "target": null,
@@ -3086,18 +3054,18 @@ Object {
       "display_name": "Title",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 198,
+          "distinct-count": 199,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 21.305,
+            "average-length": 21.495,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 27,
@@ -3108,7 +3076,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 7,
       "special_type": "type/Title",
       "table_id": 3,
       "target": null,
@@ -3130,14 +3097,14 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 19.915,
+            "average-length": 20.6,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 28,
@@ -3148,7 +3115,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 8,
       "special_type": "type/Company",
       "table_id": 3,
       "target": null,
@@ -3159,7 +3125,6 @@ Object {
   "metrics": Array [],
   "name": "PRODUCTS",
   "points_of_interest": null,
-  "raw_table_id": 1,
   "rows": 200,
   "schema": "PUBLIC",
   "segments": Array [],
@@ -3329,12 +3294,22 @@ Object {
         "binning-strategy",
         null,
         "bin-width",
+        0.1,
+      ],
+      "name": "Bin every 0.1 degrees",
+      "type": "type/Coordinate",
+    },
+    "22": Object {
+      "mbql": Array [
+        "binning-strategy",
+        null,
+        "bin-width",
         1,
       ],
       "name": "Bin every 1 degree",
       "type": "type/Coordinate",
     },
-    "22": Object {
+    "23": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -3344,7 +3319,7 @@ Object {
       "name": "Bin every 10 degrees",
       "type": "type/Coordinate",
     },
-    "23": Object {
+    "24": Object {
       "mbql": Array [
         "binning-strategy",
         null,
@@ -3352,16 +3327,6 @@ Object {
         20,
       ],
       "name": "Bin every 20 degrees",
-      "type": "type/Coordinate",
-    },
-    "24": Object {
-      "mbql": Array [
-        "binning-strategy",
-        null,
-        "bin-width",
-        50,
-      ],
-      "name": "Bin every 50 degrees",
       "type": "type/Coordinate",
     },
     "25": Object {
@@ -3449,18 +3414,18 @@ Object {
       "display_name": "Body",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 984,
+          "distinct-count": 1112,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 178.66158536585365,
+            "average-length": 180.6501798561151,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 29,
@@ -3471,7 +3436,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": false,
-      "raw_column_id": 31,
       "special_type": "type/Description",
       "table_id": 4,
       "target": null,
@@ -3633,16 +3597,16 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 624,
+          "distinct-count": 720,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2015-12-16T00:00:00.000-08:00",
-            "latest": "2019-11-02T00:00:00.000-07:00",
+            "earliest": "2016-06-03T00:00:00.000-07:00",
+            "latest": "2020-04-19T00:00:00.000-07:00",
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 30,
@@ -3653,7 +3617,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 32,
       "special_type": "type/CreationTimestamp",
       "table_id": 4,
       "target": null,
@@ -3671,17 +3634,17 @@ Object {
       "display_name": "ID",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 984,
+          "distinct-count": 1112,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 492.5,
-            "max": 984,
+            "avg": 556.5,
+            "max": 1112,
             "min": 1,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 31,
@@ -3692,7 +3655,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 33,
       "special_type": "type/PK",
       "table_id": 4,
       "target": null,
@@ -3710,17 +3672,17 @@ Object {
       "display_name": "Product ID",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 195,
+          "distinct-count": 176,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 100.0670731707317,
+            "avg": 96.88489208633094,
             "max": 200,
             "min": 1,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": 24,
       "has_field_values": "none",
       "id": 32,
@@ -3731,7 +3693,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 34,
       "special_type": "type/FK",
       "table_id": 4,
       "target": Object {
@@ -3753,7 +3714,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 1,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 24,
@@ -3764,7 +3725,6 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
-        "raw_column_id": 4,
         "special_type": "type/PK",
         "table_id": 3,
         "visibility_type": "normal",
@@ -3840,13 +3800,13 @@ Object {
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 4.0477642276422765,
+            "avg": 3.987410071942446,
             "max": 5,
             "min": 1,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 33,
@@ -3857,7 +3817,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 35,
       "special_type": "type/Score",
       "table_id": 4,
       "target": null,
@@ -3875,18 +3834,18 @@ Object {
       "display_name": "Reviewer",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 936,
+          "distinct-count": 1076,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 9.570121951219512,
+            "average-length": 9.972122302158274,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 1,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 34,
@@ -3897,7 +3856,6 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
-      "raw_column_id": 36,
       "special_type": null,
       "table_id": 4,
       "target": null,
@@ -3908,7 +3866,6 @@ Object {
   "metrics": Array [],
   "name": "REVIEWS",
   "points_of_interest": null,
-  "raw_table_id": 5,
   "rows": 984,
   "schema": "PUBLIC",
   "segments": Array [],

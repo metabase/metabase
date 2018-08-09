@@ -79,7 +79,7 @@ const SORTABLE_AGGREGATION_TYPES = new Set([
   "max",
 ]);
 
-var Query = {
+const Query = {
   isStructured(dataset_query) {
     return dataset_query && dataset_query.type === "query";
   },
@@ -205,13 +205,15 @@ var Query = {
       delete query.limit;
     }
 
-    if (query.expressions) delete query.expressions[""]; // delete any empty expressions
+    if (query.expressions) {
+      delete query.expressions[""];
+    } // delete any empty expressions
 
     return query;
   },
 
   canAddDimensions(query) {
-    var MAX_DIMENSIONS = 2;
+    let MAX_DIMENSIONS = 2;
     return query && query.breakout && query.breakout.length < MAX_DIMENSIONS;
   },
 
@@ -266,7 +268,7 @@ var Query = {
       return fields;
     } else if (Query.hasValidBreakout(query)) {
       // further filter field list down to only fields in our breakout clause
-      var breakoutFieldList = [];
+      let breakoutFieldList = [];
 
       const breakouts = Query.getBreakouts(query);
       breakouts.map(function(breakoutField) {
@@ -315,11 +317,15 @@ var Query = {
 
   // remove an expression with NAME. Returns scrubbed QUERY with all references to expression removed.
   removeExpression(query, name) {
-    if (!query.expressions) return query;
+    if (!query.expressions) {
+      return query;
+    }
 
     delete query.expressions[name];
 
-    if (_.isEmpty(query.expressions)) delete query.expressions;
+    if (_.isEmpty(query.expressions)) {
+      delete query.expressions;
+    }
 
     // ok, now "scrub" the query to remove any references to the expression
     function isExpressionReference(obj) {
@@ -518,7 +524,7 @@ var Query = {
     filterFn = _.identity,
     usedFields = {},
   ) {
-    var results = {
+    let results = {
       count: 0,
       fields: null,
       fks: [],
@@ -532,7 +538,7 @@ var Query = {
       results.fks = fields
         .filter(f => isFK(f.special_type) && f.target)
         .map(joinField => {
-          var targetFields = filterFn(joinField.target.table.fields).filter(
+          let targetFields = filterFn(joinField.target.table.fields).filter(
             f =>
               (!Array.isArray(f.id) || f.id[0] !== "aggregation") &&
               !usedFields[f.id],
@@ -676,7 +682,7 @@ var Query = {
   },
 
   getFilterClauseDescription(tableMetadata, filter, options) {
-    if (filter[0] === "AND" || filter[0] === "OR") {
+    if (mbqlEq(filter[0], "AND") || mbqlEq(filter[0], "OR")) {
       let clauses = filter
         .slice(1)
         .map(f => Query.getFilterClauseDescription(tableMetadata, f, options));

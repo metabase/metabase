@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t, jt } from "c-3po";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 
 export default class SettingsSingleSignOnForm extends Component {
   constructor(props, context) {
@@ -40,7 +40,9 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   updateClientID(newValue) {
-    if (newValue === this.state.clientIDValue) return;
+    if (newValue === this.state.clientIDValue) {
+      return;
+    }
 
     this.setState({
       clientIDValue: newValue && newValue.length ? newValue : null,
@@ -49,7 +51,9 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   updateDomain(newValue) {
-    if (newValue === this.state.domain.value) return;
+    if (newValue === this.state.domain.value) {
+      return;
+    }
 
     this.setState({
       domainValue: newValue && newValue.length ? newValue : null,
@@ -112,10 +116,10 @@ export default class SettingsSingleSignOnForm extends Component {
             className="mb2"
           />
           <h2>{t`Sign in with Google`}</h2>
-          <p className="text-grey-4">
+          <p className="text-medium">
             {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
           </p>
-          <p className="text-grey-4">
+          <p className="text-medium">
             {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
               <a
                 className="link"
@@ -126,7 +130,7 @@ export default class SettingsSingleSignOnForm extends Component {
               </a>
             )}`}
           </p>
-          <Input
+          <InputBlurChange
             className="SettingsInput AdminInput bordered rounded h3"
             type="text"
             value={this.state.clientIDValue}
@@ -135,11 +139,11 @@ export default class SettingsSingleSignOnForm extends Component {
           />
           <div className="py3">
             <div className="flex align-center">
-              <p className="text-grey-4">{t`Allow users to sign up on their own if their Google account email address is from:`}</p>
+              <p className="text-medium">{t`Allow users to sign up on their own if their Google account email address is from:`}</p>
             </div>
             <div className="mt1 bordered rounded inline-block">
               <div className="inline-block px2 h2">@</div>
-              <Input
+              <InputBlurChange
                 className="SettingsInput inline-block AdminInput h3 border-left"
                 type="text"
                 value={this.state.domainValue}

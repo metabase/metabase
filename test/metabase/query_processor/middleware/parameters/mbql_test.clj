@@ -8,7 +8,8 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets])
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util.date :as du])
     (:import [metabase.query_processor.interface EqualityFilter BetweenFilter]))
 
 (defn- expand-parameters [query]
@@ -113,6 +114,8 @@
                                     :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "2014-05-10~2014-05-16"}]}))
 
+;; Test that the right filter is returned when selecting "Previous/Next x day/week/month/year
+;; in the date filter 
 (expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "day" {:include-current true}))
 (expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "day"))
 (expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "day" {:include-current true}))
@@ -268,10 +271,10 @@
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
                 "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
-   :params [(u/->Timestamp #inst "2014-06-01")
-            (u/->Timestamp #inst "2014-06-30")
-            (u/->Timestamp #inst "2015-06-01")
-            (u/->Timestamp #inst "2015-06-30")]}
+   :params [(du/->Timestamp #inst "2014-06-01")
+            (du/->Timestamp #inst "2014-06-30")
+            (du/->Timestamp #inst "2015-06-01")
+            (du/->Timestamp #inst "2015-06-30")]}
   (let [inner-query (data/query checkins
                       (ql/aggregation (ql/count)))
         outer-query (-> (data/wrap-inner-query inner-query)

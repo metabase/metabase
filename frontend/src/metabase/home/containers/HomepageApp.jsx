@@ -6,15 +6,18 @@ import { push } from "react-router-redux";
 
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
+import Card from "metabase/components/Card";
+import Subhead from "metabase/components/Subhead";
 
 import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
-import Smile from "../components/Smile";
 import NewUserOnboardingModal from "../components/NewUserOnboardingModal";
 import NextStep from "../components/NextStep";
 
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
+
+import { Box, Flex } from "grid-styled";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),
@@ -58,7 +61,7 @@ export default class HomepageApp extends Component {
     const { user } = this.props;
 
     return (
-      <div className="full">
+      <Box mx={4}>
         {this.state.onboarding ? (
           <Modal>
             <NewUserOnboardingModal
@@ -67,32 +70,21 @@ export default class HomepageApp extends Component {
             />
           </Modal>
         ) : null}
-
-        <div className="bg-white md-bg-brand text-brand md-text-white md-pl4">
-          <div className="HomepageGreeting">
-            <div className="Layout-mainColumn">
-              <header className="flex align-center px2 py3 md-pb4">
-                <Smile />
-                <div className="h1 text-bold md-ml2">{this.state.greeting}</div>
-              </header>
-            </div>
-          </div>
-        </div>
-        <div className="flex">
-          <div className="wrapper">
-            <div className="Layout-mainColumn pl2">
-              <div className="md-pt4 h3 md-h2">{t`Activity`}</div>
+        <Box py={3}>
+          <Subhead>{t`Activity`}</Subhead>
+        </Box>
+        <Flex>
+          <Box w={2 / 3}>
+            <Card px={1}>
               <Activity {...this.props} />
-            </div>
-          </div>
-          <div className="Layout-sidebar flex-no-shrink hide sm-show">
-            <div>
-              <NextStep />
-              <RecentViews {...this.props} />
-            </div>
-          </div>
-        </div>
-      </div>
+            </Card>
+          </Box>
+          <Box w={1 / 3}>
+            <NextStep />
+            <RecentViews {...this.props} />
+          </Box>
+        </Flex>
+      </Box>
     );
   }
 }

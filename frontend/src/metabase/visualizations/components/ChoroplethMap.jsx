@@ -1,3 +1,5 @@
+/* eslint-disable no-color-literals */
+
 import React, { Component } from "react";
 import { t } from "c-3po";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
@@ -30,6 +32,7 @@ import _ from "underscore";
 // ];
 // const HEAT_MAP_ZERO_COLOR = '#CCC';
 
+// TODO COLOR
 const HEAT_MAP_COLORS = [
   // "#E2F2FF",
   "#C4E4FF",
@@ -228,7 +231,7 @@ export default class ChoroplethMap extends Component {
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
-    var colorScale = d3.scale
+    let colorScale = d3.scale
       .quantile()
       .domain(groups.map(cluster => cluster[0]))
       .range(heatMapColors);

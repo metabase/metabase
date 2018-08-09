@@ -5,6 +5,7 @@ import {
 
 import React from "react";
 import { mount } from "enzyme";
+import { assocIn } from "icepick";
 
 import { CardApi, SegmentApi } from "metabase/services";
 
@@ -15,7 +16,7 @@ import {
   FETCH_SEGMENT_REVISIONS,
 } from "metabase/redux/metadata";
 
-import { LOAD_ENTITIES } from "metabase/questions/questions";
+import Questions from "metabase/entities/questions";
 
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
@@ -23,6 +24,8 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
+// NOTE: database/table_id/source_table are hard-coded, this might be a problem at some point
 
 describe("The Reference Section", () => {
   // Test data
@@ -80,12 +83,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Segments State", async () => {
-      var segmentIds = [];
+      let segmentIds = [];
 
       beforeAll(async () => {
         // Create some segments to have something to look at
-        var segment = await SegmentApi.create(segmentDef);
-        var anotherSegment = await SegmentApi.create(anotherSegmentDef);
+        let segment = await SegmentApi.create(segmentDef);
+        let anotherSegment = await SegmentApi.create(anotherSegmentDef);
         segmentIds.push(segment.id);
         segmentIds.push(anotherSegment.id);
       });
@@ -137,7 +140,10 @@ describe("The Reference Section", () => {
         const store = await createTestStore();
         store.pushPath("/reference/segments/" + segmentIds[0] + "/questions");
         mount(store.connectContainer(<SegmentQuestionsContainer />));
-        await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES]);
+        await store.waitForActions([
+          FETCH_SEGMENT_TABLE,
+          Questions.actions.fetchList,
+        ]);
       });
       // segment revisions
       it("Should show revisions", async () => {
@@ -151,7 +157,12 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        var card = await CardApi.create(segmentCardDef);
+        const cardDef = assocIn(
+          segmentCardDef,
+          ["dataset_query", "query", "filter", 1],
+          segmentIds[0],
+        );
+        let card = await CardApi.create(cardDef);
 
         expect(card.name).toBe(segmentCardDef.name);
 
@@ -160,7 +171,10 @@ describe("The Reference Section", () => {
         const store = await createTestStore();
         store.pushPath("/reference/segments/" + segmentIds[0] + "/questions");
         mount(store.connectContainer(<SegmentQuestionsContainer />));
-        await store.waitForActions([FETCH_SEGMENT_TABLE, LOAD_ENTITIES]);
+        await store.waitForActions([
+          FETCH_SEGMENT_TABLE,
+          Questions.actions.fetchList,
+        ]);
       });
     });
   });

@@ -2,12 +2,15 @@
 
 import d3 from "d3";
 
+import colors from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
+import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
 const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
 const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
+const X_LABEL_DISABLED_SPACING = 6; // spacing to use if the x-axis is disabled completely
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -169,7 +172,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
     this.parentNode.appendChild(this);
   });
   chart.selectAll(".goal .line").attr({
-    stroke: "rgba(157,160,164, 0.7)",
+    stroke: colors["text-medium"],
     "stroke-dasharray": "5,5",
   });
 
@@ -203,7 +206,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: "rgb(157,160,164)",
+        fill: colors["text-medium"],
       })
       .on("mouseenter", function() {
         onGoalHover(this);
@@ -372,15 +375,18 @@ function rotateSize(size, rotation) {
 }
 
 function computeXAxisMargin(chart) {
+  if (chart.settings["graph.x_axis.axis_enabled"] === false) {
+    return X_LABEL_DISABLED_SPACING;
+  }
   const rotation = getXAxisRotation(chart);
   const maxSize = computeXAxisLabelMaxSize(chart);
   const rotatedMaxSize = rotateSize(maxSize, rotation);
   return Math.max(0, rotatedMaxSize.width - maxSize.height); // subtract the existing height
 }
 
-function checkLabelOverlap(chart) {
+export function checkXAxisLabelOverlap(chart, selector = "g.x text") {
   const rects = [];
-  for (const elem of chart.selectAll("g.x text")[0]) {
+  for (const elem of chart.selectAll(selector)[0]) {
     rects.push(elem.getBoundingClientRect());
     if (
       rects.length > 1 &&
@@ -422,7 +428,7 @@ function computeXAxisSpacing(chart) {
 function beforeRenderComputeXAxisLabelType(chart) {
   // treat graph.x_axis.axis_enabled === true as "auto"
   if (chart.settings["graph.x_axis.axis_enabled"] === true) {
-    const overlaps = checkLabelOverlap(chart);
+    const overlaps = checkXAxisLabelOverlap(chart);
     if (overlaps) {
       if (chart.isOrdinal()) {
         const spacing = computeXAxisSpacing(chart);
@@ -452,6 +458,10 @@ function beforeRenderFixMargins(chart) {
   // run before adjusting margins
   const mins = computeMinHorizontalMargins(chart);
   const xAxisMargin = computeXAxisMargin(chart);
+
+  // re-adjust Y axis ticks to account for xAxisMargin due to rotated labels
+  adjustYAxisTicksIfNeeded(chart.yAxis(), chart.height() - xAxisMargin);
+  adjustYAxisTicksIfNeeded(chart.rightYAxis(), chart.height() - xAxisMargin);
 
   // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
   adjustMargin(

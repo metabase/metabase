@@ -1,7 +1,8 @@
 :root {
   --default-font-family: "Lato";
   --default-font-size: 0.875em;
-  --default-font-color: #727479;
+  --default-font-color: var(--color-text-dark);
+  --default-bg-color: var(--color-bg-light);
 }
 
 html {
@@ -14,11 +15,12 @@ body {
   font-size: var(--default-font-size);
   font-weight: 400;
   font-style: normal;
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   margin: 0;
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
+  background-color: var(--color-bg-light);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -49,6 +51,7 @@ button {
 a {
   color: inherit;
   cursor: pointer;
+  text-decoration: none;
 }
 
 input,
@@ -73,7 +76,7 @@ textarea {
 }
 
 .MB-lightBG {
-  background-color: #f9fbfc;
+  background-color: var(--color-bg-light);
 }
 
 .circle {

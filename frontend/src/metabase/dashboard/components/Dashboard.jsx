@@ -1,5 +1,7 @@
 /* @flow */
 
+// TODO: merge with metabase/dashboard/containers/Dashboard.jsx
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -281,7 +283,7 @@ export default class Dashboard extends Component {
                   <div className="text-normal mt3 mb1">
                     {t`This dashboard is looking empty.`}
                   </div>
-                  <div className="text-normal text-grey-2">
+                  <div className="text-normal text-light">
                     {t`Add a question to start making it useful!`}
                   </div>
                 </div>

@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import ModalContent from "metabase/components/ModalContent.jsx";
 import { t } from "c-3po";
-import cx from "classnames";
+
+import Button from "metabase/components/Button";
+import ModalContent from "metabase/components/ModalContent.jsx";
 
 export default class DeleteDatabaseModal extends Component {
   constructor(props, context) {
@@ -33,9 +33,9 @@ export default class DeleteDatabaseModal extends Component {
   render() {
     const { database } = this.props;
 
-    var formError;
+    let formError;
     if (this.state.error) {
-      var errorMessage = t`Server error encountered`;
+      let errorMessage = t`Server error encountered`;
       if (this.state.error.data && this.state.error.data.message) {
         errorMessage = this.state.error.data.message;
       } else {
@@ -53,7 +53,7 @@ export default class DeleteDatabaseModal extends Component {
         title={t`Delete this database?`}
         onClose={this.props.onClose}
       >
-        <div className="Form-inputs mb4">
+        <div className="mb4">
           {database.is_sample && (
             <p className="text-paragraph">{t`<strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost.`}</p>
           )}
@@ -73,17 +73,14 @@ export default class DeleteDatabaseModal extends Component {
           />
         </div>
 
-        <div className="Form-actions ml-auto">
-          <button
-            className="Button"
-            onClick={this.props.onClose}
-          >{t`Cancel`}</button>
-          <button
-            className={cx("Button Button--danger ml2", {
-              disabled: !confirmed,
-            })}
+        <div className="ml-auto">
+          <Button onClick={this.props.onClose}>{t`Cancel`}</Button>
+          <Button
+            ml={2}
+            danger
+            disabled={!confirmed}
             onClick={() => this.deleteDatabase()}
-          >{t`Delete`}</button>
+          >{t`Delete`}</Button>
           {formError}
         </div>
       </ModalContent>

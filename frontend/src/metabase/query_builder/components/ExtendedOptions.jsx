@@ -121,7 +121,7 @@ export default class ExtendedOptions extends Component {
     if ((sortList && sortList.length > 0) || addSortButton) {
       return (
         <div className="pb3">
-          <div className="pb1 h6 text-uppercase text-grey-3 text-bold">{t`Sort`}</div>
+          <div className="pb1 h6 text-uppercase text-medium text-bold">{t`Sort`}</div>
           {sortList}
           {addSortButton}
         </div>
@@ -131,7 +131,9 @@ export default class ExtendedOptions extends Component {
 
   renderExpressionWidget() {
     // if we aren't editing any expression then there is nothing to do
-    if (!this.state.editExpression || !this.props.tableMetadata) return null;
+    if (!this.state.editExpression || !this.props.tableMetadata) {
+      return null;
+    }
 
     const { query } = this.props;
 
@@ -158,7 +160,9 @@ export default class ExtendedOptions extends Component {
   }
 
   renderPopover() {
-    if (!this.state.isOpen) return null;
+    if (!this.state.isOpen) {
+      return null;
+    }
 
     const { features, query } = this.props;
 
@@ -186,7 +190,7 @@ export default class ExtendedOptions extends Component {
 
           {features.limit && (
             <div>
-              <div className="mb1 h6 text-uppercase text-grey-3 text-bold">{t`Row limit`}</div>
+              <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
               <LimitWidget limit={query.limit()} onChange={this.setLimit} />
             </div>
           )}
@@ -197,7 +201,9 @@ export default class ExtendedOptions extends Component {
 
   render() {
     const { features } = this.props;
-    if (!features.sort && !features.limit) return null;
+    if (!features.sort && !features.limit) {
+      return null;
+    }
 
     const onClick = this.props.tableMetadata
       ? () => this.setState({ isOpen: true })
@@ -206,7 +212,7 @@ export default class ExtendedOptions extends Component {
     return (
       <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
         <span
-          className={cx("EllipsisButton no-decoration text-grey-1 px1", {
+          className={cx("EllipsisButton no-decoration text-light px1", {
             "cursor-pointer": onClick,
           })}
           onClick={onClick}

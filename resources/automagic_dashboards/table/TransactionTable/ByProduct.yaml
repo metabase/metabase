@@ -1,0 +1,65 @@
+title: "[[this]] per product"
+transient_title: Here's a closer look at your [[this]] by products
+description: How your different products are performing.
+applies_to: TransactionTable
+metrics:
+- TotalOrders: [count]
+dimensions:
+- ProductCategoryMedium:
+    field_type: ProductTable.Category
+    max_cardinality: 10
+- ProductCategoryLarge:
+    field_type: ProductTable.Category
+- Rating: ProductTable.Score
+- Country: GenericTable.Country
+- State: GenericTable.State
+- Timestamp:
+    field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
+- Timestamp:
+    field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
+- Source:
+    field_type: UserTable.Source
+    max_cardinality: 10
+dashboard_filters:
+- Source
+- Timestamp
+- State
+- Country
+- ProductCategoryMedium
+cards:
+- OrdersVsRating:
+    title: Sales vs. rating
+    visualization:
+      scatter:
+        graph.metrics: TotalOrders
+        graph.dimensions: Rating
+    dimensions: Rating
+    metrics: TotalOrders
+    width: 12
+    height: 8
+- OrdersByProductCategoryMedium:
+    title: Sales per product [[ProductCategoryMedium]]
+    visualization: row
+    dimensions:
+      - ProductCategoryMedium
+    metrics: TotalOrders
+    order_by:
+     - TotalOrders: descending
+    height: 8
+- OrdersByProductCategoryLarge:
+    title: Sales per product [[ProductCategoryLarge]]
+    visualization: table
+    dimensions:
+      - ProductCategoryLarge
+    metrics: TotalOrders
+    order_by:
+     - TotalOrders: descending
+    height: 8

@@ -1,0 +1,147 @@
+title: A look at your [[this]]
+transient_title: We crunched the numbers for your [[this]]
+description: A breakdown of your [[this]] over time, and its min, max, average and more.
+applies_to: GenericTable.Number
+metrics:
+- Sum: [sum, [dimension, this]]
+- Avg: [avg, [dimension, this]]
+- Min: [min, [dimension, this]]
+- Max: [max, [dimension, this]]
+- SD: [stddev, [dimension, this]]
+- Count: [count]
+- Distinct: [distinct, [dimension, this]]
+dimensions:
+  - GenericNumber: GenericTable.Number
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      max_cardinality: 12
+      score: 90
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+# bind just so they don't get used
+  - LongLat: GenericTable.Coordinate
+  - ZipCode: GenericTable.ZipCode
+# only used for filters
+  - Country:
+      field_type: GenericTable.Country
+  - State:
+      field_type: GenericTable.State
+filters:
+  - Nils: [is-null, [dimension, this]]
+dashboard_filters:
+  - Timestamp
+  - State
+  - Country
+  - GenericCategoryMedium
+groups:
+  - Overview:
+      title: Overview
+  - Breakdowns:
+      title: How the [[this]] is distributed across categories
+      comparison_title: How they compare by distribution
+  - Seasonality:
+      title: How the [[this]] changes with time
+      comparison_title: How they compare across time
+  - Geographical:
+      title: How the [[this]] is distributed geographically
+      comparison_title: How they compare acrosss location
+cards:
+  - Count:
+      title: Count
+      visualization: scalar
+      metrics: Count
+      group: Overview
+      width: 6
+  - Nils:
+      title: Null values
+      visualization: scalar
+      metrics: Count
+      filters: Nils
+      group: Overview
+      width: 6
+  - Distinct:
+      title: Distinct values
+      visualization: scalar
+      metrics: Distinct
+      group: Overview
+      width: 6
+  - Stats:
+      title: Summary statistics
+      visualization: table
+      metrics:
+      - Sum
+      - Avg
+      - Min
+      - Max
+      - SD
+      group: Overview
+      width: 9
+  - Distribution:
+      title: How the [[this]] is distributed
+      visualization: bar
+      metrics: Count
+      dimensions:
+        - this:
+            aggregation: default
+      group: Overview
+      width: 9
+  - ByDateTime:
+      title: "[[this]] by [[Timestamp]]"
+      visualization: line
+      metrics:
+      - Sum
+      - Avg
+      dimensions: Timestamp
+      group: Seasonality
+      width: 9
+  - ByCategory:
+      title: "[[this]] by [[GenericCategoryMedium]]"
+      visualization: bar
+      metrics:
+      - Sum
+      - Avg
+      dimensions: GenericCategoryMedium
+      group: Breakdowns
+      height: 6
+      width: 9
+  - ByCountrySum:
+      title: "Sum of [[this]] by [[Country]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics:
+      - Sum
+      dimensions: Country
+      group: Geographical
+  - ByCountryAvg:
+      title: "Average of [[this]] by [[Country]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      metrics:
+      - Avg
+      dimensions: Country
+      group: Geographical
+  - ByStateSum:
+      title: "Sum of [[this]] by [[State]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      metrics:
+      - Sum
+      dimensions: State
+      group: Geographical
+  - ByStateAvg:
+      title: "Average of [[this]] by [[State]]"
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      metrics:
+      - Avg
+      dimensions: State
+      group: Geographical

@@ -12,7 +12,7 @@ import {
 } from "metabase/lib/redux";
 import { normalize, schema } from "normalizr";
 
-import { saveDashboard } from "metabase/dashboards/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 
 import {
   createParameter,
@@ -51,6 +51,7 @@ import {
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -138,7 +139,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(
 ) {
   return async function(dispatch, getState) {
     let cards = await CardApi.list({ f: filterMode });
-    for (var c of cards) {
+    for (let c of cards) {
       c.updated_at = moment(c.updated_at);
     }
     return normalize(cards, [card]);
@@ -292,7 +293,9 @@ export const saveDashboardAndCards = createThunkAction(
       // update the dashboard itself
       if (dashboard.isDirty) {
         let { id, name, description, parameters } = dashboard;
-        await dispatch(saveDashboard({ id, name, description, parameters }));
+        await dispatch(
+          Dashboards.actions.update({ id }, { name, description, parameters }),
+        );
       }
 
       // reposition the cards
@@ -341,7 +344,7 @@ export const saveDashboardAndCards = createThunkAction(
         }
       }
 
-      await dispatch(saveDashboard(dashboard));
+      await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(fetchDashboard(dashboard.id, null, true)); // disable using query parameters when saving
@@ -770,7 +773,7 @@ const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
-    const { metadata } = getState();
+    const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
     const cardIsDirty = !_.isEqual(

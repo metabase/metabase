@@ -11,23 +11,21 @@
             [metabase.api
              [card :as card-api]
              [common :as api]
-             [dataset :as dataset-api]
              [dashboard :as dashboard-api]
+             [dataset :as dataset-api]
              [field :as field-api]]
             [metabase.models
-             [card :refer [Card] :as card]
+             [card :as card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
-             [field-values :refer [FieldValues]]
              [params :as params]]
-            [metabase.query-processor :as qp]
-            metabase.query-processor.interface ; because we refer to Field
             [metabase.util
              [embed :as embed]
              [schema :as su]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -202,7 +200,7 @@
                    (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
                    ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
                    ;; trying to inject new params
-                   (throw (Exception. (str "Invalid param: " slug))))]]
+                   (throw (Exception. (str (tru "Invalid param: {0}" slug)))))]]
         (merge query-param dashboard-param)))))
 
 (defn- check-card-is-in-dashboard

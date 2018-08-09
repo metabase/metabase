@@ -1,0 +1,170 @@
+title: "[[this]] per country"
+transient_title: Here's a closer look at your [[this]] per country
+description: A deeper look at how different countries are performing for you.
+applies_to: TransactionTable
+metrics:
+- TotalIncome:
+    metric: [sum, [dimension, Income]]
+- AvgIncome: [avg, [dimension, Income]]
+- AvgQuantity:
+    metric: [avg, [dimension, Quantity]]
+- TotalOrders: [count]
+- TotalUsers: [distinct, [dimension, User]]
+dimensions:
+- Timestamp:
+    field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
+- Timestamp:
+    field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
+- Country:
+    field_type: UserTable.Country
+- Income: Income
+- Quantity:
+    field_type: Quantity
+- User:
+    field_type: User
+    score: 100
+- User:
+    field_type: FK
+    links_to: UserTable
+    score: 100
+- Cohort:
+    field_type: UserTable.JoinTimestamp
+    score: 100
+- Cohort:
+    field_type: UserTable.CreationTimestamp
+    score: 90
+- Cohort:
+    field_type: UserTable.DateTime
+    score: 80
+- Product:
+    field_type: Product
+    score: 90
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Name
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Title
+    max_cardinality: 10
+- ProductCategory:
+    field_type: ProductTable.Category
+    named: category
+    max_cardinality: 10
+    score: 90
+- Source:
+    field_type: GenericTable.Source
+    max_cardinality: 10
+    score: 90
+- State: GenericTable.State
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+  - NewUsers:
+      filter: ["time-interval", [dimension, Cohort], -30, day]
+groups:
+- Top10:
+    title: Top performers
+- Transactions:
+    title: Transactions per country
+- Users:
+    title: User acquisition by country
+dashboard_filters:
+  - Timestamp
+  - Source
+  - Country
+  - State
+  - Product
+  - ProductCategory
+cards:
+- TopCountrysBySales:
+    title: Top 10 countries by sales
+    visualization: row
+    dimensions: Country
+    metrics: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    limit: 10
+    score: 100
+    height: 8
+    group: Top10
+- TopCountrysBySalesLast30Days:
+    title: Top 10 countries by sales in the last 30 days
+    visualization: row
+    dimensions: Country
+    metrics: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    filters: Last30Days
+    limit: 10
+    score: 100
+    height: 8
+    group: Top10
+- OrdersByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: Sales per country
+    dimensions: Country
+    metrics: TotalOrders
+    score: 90
+    group: Transactions
+- QuantityByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: Average quantity per country
+    dimensions: Country
+    metrics: AvgQuantity
+    score: 90
+    group: Transactions
+- IncomeByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: Income per country
+    dimensions: Country
+    metrics: TotalIncome
+    score: 90
+    group: Transactions
+- AverageIncomeByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: Average income per country
+    dimensions: Country
+    metrics: AvgIncome
+    score: 90
+    group: Transactions
+- UsersByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: Users in each country
+    dimensions: Country
+    metrics: TotalUsers
+    score: 90
+    group: Users
+- NewUsersByCountry:
+    visualization:
+      map:
+        map.type: region
+        map.region: world_countries
+    title: New users per country in the last 30 days
+    dimensions: Country
+    metrics: TotalUsers
+    filters: NewUsers
+    score: 90
+    group: Users

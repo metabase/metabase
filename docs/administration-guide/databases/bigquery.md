@@ -21,9 +21,12 @@ Starting in v0.15.0 Metabase provides a driver for connecting to BigQuery direct
 Metabase will now begin inspecting your BigQuery Dataset and finding any tables and fields to build up a sense for the schema.  Give it a little bit of time to do its work and then you're all set to start querying.
 
 
-## Using Standard SQL
+## Using Legacy SQL
 
-By default, Metabase tells BigQuery to interpret queries as [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql). If you prefer using
-[Standard SQL](https://cloud.google.com/bigquery/docs/reference/standard-sql/) instead, you can tell Metabase to do so by including a `#standardSQL` directive at the beginning of your query:
+As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL](https://cloud.google.com/bigquery/docs/reference/standard-sql/). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
 
-![Enabling Standard SQL](../images/bigquery_standard_sql.png)
+```sql
+#legacySQL
+SELECT *
+FROM [my_dataset.my_table]
+```

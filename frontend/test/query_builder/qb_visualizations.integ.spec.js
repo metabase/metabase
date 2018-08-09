@@ -2,6 +2,7 @@ import {
   useSharedAdminLogin,
   createTestStore,
   createSavedQuestion,
+  cleanup,
 } from "__support__/integrated_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
@@ -20,8 +21,7 @@ import Question from "metabase-lib/lib/Question";
 import { getCard, getQuestion } from "metabase/query_builder/selectors";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Radio from "metabase/components/Radio";
-import { LOAD_COLLECTIONS } from "metabase/questions/collections";
-import { CardApi } from "metabase/services";
+
 import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import Popover from "metabase/components/Popover";
@@ -39,18 +39,28 @@ const timeBreakoutQuestion = Question.create({
   .setDisplayName("Time breakout question");
 
 describe("Query Builder visualization logic", () => {
-  let questionId = null;
   let savedTimeBreakoutQuestion = null;
+  let app;
 
   beforeAll(async () => {
     useSharedAdminLogin();
     savedTimeBreakoutQuestion = await createSavedQuestion(timeBreakoutQuestion);
+    cleanup.question(savedTimeBreakoutQuestion);
+  });
+
+  afterAll(cleanup);
+
+  afterEach(() => {
+    if (app) {
+      app.unmount();
+      app = null;
+    }
   });
 
   it("should save the default x axis and y axis to `visualization_settings` when saving a new question in QB", async () => {
     const store = await createTestStore();
     store.pushPath(timeBreakoutQuestion.getUrl());
-    const app = mount(store.connectContainer(<QueryBuilder />));
+    app = mount(store.connectContainer(<QueryBuilder />));
     await store.waitForActions([INITIALIZE_QB]);
 
     expect(getCard(store.getState()).visualization_settings).toEqual({});
@@ -65,8 +75,6 @@ describe("Query Builder visualization logic", () => {
         .first()
         .find("a"),
     );
-
-    await store.waitForActions([LOAD_COLLECTIONS]);
 
     setInputValue(
       app.find(SaveQuestionModal).find("input[name='name']"),
@@ -85,13 +93,13 @@ describe("Query Builder visualization logic", () => {
       "graph.metrics": ["count"],
     });
 
-    questionId = getQuestion(store.getState()).id();
+    cleanup.question(getQuestion(store.getState()).id());
   });
 
-  it("should save the default x axis and y axis to `visualization_settings` when saving a new question in QB", async () => {
+  it("should save the default x axis and y axis to `visualization_settings` when saving an existing question in QB", async () => {
     const store = await createTestStore();
     store.pushPath(Urls.question(savedTimeBreakoutQuestion.id()));
-    const app = mount(store.connectContainer(<QueryBuilder />));
+    app = mount(store.connectContainer(<QueryBuilder />));
     await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
     expect(getCard(store.getState()).visualization_settings).toEqual({});
 
@@ -131,11 +139,5 @@ describe("Query Builder visualization logic", () => {
       "graph.dimensions": ["CREATED_AT"],
       "graph.metrics": ["count"],
     });
-  });
-  afterAll(async () => {
-    if (questionId) {
-      await CardApi.delete({ cardId: questionId });
-      await CardApi.delete({ cardId: savedTimeBreakoutQuestion.id() });
-    }
   });
 });

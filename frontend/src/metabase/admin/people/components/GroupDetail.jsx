@@ -7,6 +7,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
   canEditMembership,
+  getGroupNameLocalized,
 } from "metabase/lib/groups";
 
 import { PermissionsApi } from "metabase/services";
@@ -28,9 +29,9 @@ const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
     <div className="px2 text-measure">
       <p>
-        {t`All users belong to the ${
-          group.name
-        } group and can't be removed from it. Setting permissions for this group is a great way to
+        {t`All users belong to the ${getGroupNameLocalized(
+          group,
+        )} group and can't be removed from it. Setting permissions for this group is a great way to
                 make sure you know what new Metabase users will be able to see.`}
       </p>
     </div>
@@ -115,10 +116,10 @@ const AddUserRow = ({
         onCancel={onCancel}
       >
         {selectedUsers.map(user => (
-          <div className="bg-slate-light p1 px2 mr1 rounded flex align-center">
+          <div className="bg-medium p1 px2 mr1 rounded flex align-center">
             {user.common_name}
             <Icon
-              className="pl1 cursor-pointer text-slate text-grey-4-hover"
+              className="pl1 cursor-pointer text-slate text-medium-hover"
               name="close"
               onClick={() => onRemoveUserFromSelection(user)}
             />
@@ -147,7 +148,7 @@ const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
         className="text-right cursor-pointer"
         onClick={onRemoveUserClicked.bind(null, user)}
       >
-        <Icon name="close" className="text-grey-1" size={16} />
+        <Icon name="close" className="text-light" size={16} />
       </td>
     ) : null}
   </tr>
@@ -324,8 +325,8 @@ export default class GroupDetail extends Component {
 
     return (
       <AdminPaneLayout
-        title={group.name}
-        buttonText="Add members"
+        title={getGroupNameLocalized(group)}
+        buttonText={t`Add members`}
         buttonAction={
           canEditMembership(group) ? this.onAddUsersClicked.bind(this) : null
         }

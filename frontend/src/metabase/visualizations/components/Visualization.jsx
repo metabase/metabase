@@ -32,10 +32,8 @@ import { assoc, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-export const ERROR_MESSAGE_GENERIC =
-  "There was a problem displaying this chart.";
-export const ERROR_MESSAGE_PERMISSION =
-  "Sorry, you don't have permission to see this card.";
+export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
+export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
 import type {
@@ -92,6 +90,8 @@ type Props = {
   gridSize?: { width: number, height: number },
   // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
   gridUnit?: number,
+
+  classNameWidgets?: string,
 };
 
 type State = {
@@ -301,7 +301,9 @@ export default class Visualization extends Component {
   };
 
   hideActions = () => {
-    this.setState({ clicked: null });
+    if (this.state.clicked !== null) {
+      this.setState({ clicked: null });
+    }
   };
 
   render() {
@@ -400,7 +402,7 @@ export default class Visualization extends Component {
       </span>
     );
 
-    let { gridSize, gridUnit } = this.props;
+    let { gridSize, gridUnit, classNameWidgets } = this.props;
     if (!gridSize && gridUnit) {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
@@ -419,6 +421,7 @@ export default class Visualization extends Component {
         replacementContent ? (
           <div className="p1 flex-no-shrink">
             <LegendHeader
+              classNameWidgets={classNameWidgets}
               series={
                 settings["card.title"]
                   ? // if we have a card title set, use it

@@ -20,7 +20,6 @@ const ColorSquare = ({ color, size }) => (
 
 class ColorPicker extends Component {
   static defaultProps = {
-    colors: [...Object.values(normal)],
     size: DEFAULT_COLOR_SQUARE_SIZE,
     triggerSize: DEFAULT_COLOR_SQUARE_SIZE,
     padding: 4,
@@ -35,7 +34,8 @@ class ColorPicker extends Component {
   };
 
   render() {
-    const { colors, onChange, padding, size, triggerSize, value } = this.props;
+    const { onChange, padding, size, triggerSize, value } = this.props;
+    const colors = this.props.colors || [...Object.values(normal)];
     return (
       <div className="inline-block">
         <PopoverWithTrigger

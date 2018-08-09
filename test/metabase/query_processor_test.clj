@@ -9,7 +9,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util.date :as du]))
 
 ;; make sure all the driver test extension namespaces are loaded <3 if this isn't done some things will get loaded at
 ;; the wrong time which can end up causing test databases to be created more than once, which fails
@@ -31,11 +32,13 @@
   (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn non-timeseries-engines-with-feature
-  "Set of engines that support a given FEATURE."
-  [feature]
-  (set (for [engine non-timeseries-engines
-             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
-         engine)))
+  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  supported."
+  [feature & more-features]
+  (let [features (set (cons feature more-features))]
+    (set (for [engine non-timeseries-engines
+               :when  (set/subset? features (driver/features (driver/engine->driver engine)))]
+           engine))))
 
 (defn non-timeseries-engines-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
@@ -140,7 +143,7 @@
                   :base_type    (data/id-field-type)
                   :name         (data/format-name "id")
                   :display_name "ID"
-                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 8.0}}}}
+                  :fingerprint  nil}
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
@@ -177,7 +180,7 @@
                    :base_type    (data/id-field-type)
                    :name         (data/format-name "id")
                    :display_name "ID"
-                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 50.5}}}}
+                   :fingerprint  nil}
      :category_id {:extra_info   (if (data/fks-supported?)
                                    {:target_table_id (data/id :categories)}
                                    {})
@@ -188,12 +191,14 @@
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
                    :display_name "Category ID"
-                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}}}
+                   :fingerprint  (if (data/fks-supported?)
+                                   {:global {:distinct-count 28}}
+                                   {:global {:distinct-count 28}, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
-                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}}
+                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
@@ -237,7 +242,9 @@
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"
-                :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 51.965}}}}
+                :fingerprint  (if (data/fks-supported?)
+                                {:global {:distinct-count 100}}
+                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.965}}})}
      :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
                                   {})
                 :target       (target-field (users-col :id))
@@ -247,7 +254,9 @@
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "user_id")
                 :display_name "User ID"
-                :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 7.929}}}})))
+                :fingerprint  (if (data/fks-supported?)
+                                {:global {:distinct-count 15}}
+                                {:global {:distinct-count 15}, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.929}}})})))
 
 
 ;;; #### aggregate columns
@@ -313,7 +322,8 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
+                                    (throw (ex-info (:error rows) rows)))
 
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
@@ -358,3 +368,13 @@
       driver/engine->driver
       driver/features
       (contains? :set-timezone)))
+
+(defmacro with-h2-db-timezone
+  "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
+  involving a database, but does need to parse dates"
+  [& body]
+  `(du/with-effective-timezone {:engine   :h2
+                                :timezone "UTC"
+                                :name     "mock_db"
+                                :id       1}
+    ~@body))

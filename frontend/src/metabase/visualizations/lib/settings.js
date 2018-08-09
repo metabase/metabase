@@ -64,52 +64,49 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
 
 function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
   let type = getChartTypeFromData(cols, rows, false);
-  switch (type) {
-    case DIMENSION_DIMENSION_METRIC:
-      let dimensions = [cols[0], cols[1]];
-      if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
-        // if the series dimension is a date but the axis dimension is not then swap them
-        dimensions.reverse();
-      } else if (
-        getColumnCardinality(cols, rows, 1) >
-        getColumnCardinality(cols, rows, 0)
-      ) {
-        // if the series dimension is higher cardinality than the axis dimension then swap them
-        dimensions.reverse();
-      }
-      return {
-        dimensions: dimensions.map(col => col.name),
-        metrics: [cols[2].name],
-      };
-    case DIMENSION_METRIC:
-      return {
-        dimensions: [cols[0].name],
-        metrics: [cols[1].name],
-      };
-    case DIMENSION_METRIC_METRIC:
-      return {
-        dimensions: [cols[0].name],
-        metrics: cols.slice(1).map(col => col.name),
-      };
-    default:
-      return {
-        dimensions: [null],
-        metrics: [null],
-      };
+  if (type === DIMENSION_DIMENSION_METRIC) {
+    let dimensions = [cols[0], cols[1]];
+    if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
+      // if the series dimension is a date but the axis dimension is not then swap them
+      dimensions.reverse();
+    } else if (
+      getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)
+    ) {
+      // if the series dimension is higher cardinality than the axis dimension then swap them
+      dimensions.reverse();
+    }
+    return {
+      dimensions: dimensions.map(col => col.name),
+      metrics: [cols[2].name],
+    };
+  } else if (type === DIMENSION_METRIC) {
+    return {
+      dimensions: [cols[0].name],
+      metrics: [cols[1].name],
+    };
+  } else if (type === DIMENSION_METRIC_METRIC) {
+    return {
+      dimensions: [cols[0].name],
+      metrics: cols.slice(1).map(col => col.name),
+    };
   }
+  return {
+    dimensions: [null],
+    metrics: [null],
+  };
 }
 
-export function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
-  const type = getChartTypeFromData(cols, rows, false);
+export function getDefaultDimensionAndMetric([{ data }]) {
+  const type = data && getChartTypeFromData(data.cols, data.rows, false);
   if (type === DIMENSION_METRIC) {
     return {
-      dimension: cols[0].name,
-      metric: cols[1].name,
+      dimension: data.cols[0].name,
+      metric: data.cols[1].name,
     };
   } else if (type === DIMENSION_DIMENSION_METRIC) {
     return {
       dimension: null,
-      metric: cols[2].name,
+      metric: data.cols[2].name,
     };
   } else {
     return {
@@ -210,7 +207,7 @@ function getSetting(settingDefs, id, vizSettings, series) {
       return (vizSettings[id] = settingDef.default);
     }
   } catch (e) {
-    console.error("Error getting setting", id, e);
+    console.warn("Error getting setting", id, e);
   }
   return (vizSettings[id] = undefined);
 }
@@ -237,14 +234,8 @@ export function getPersistableDefaultSettings(series) {
 
   for (let id in settingsDefs) {
     const settingDef = settingsDefs[id];
-    const seriesForSettingsDef =
-      settingDef.useRawSeries && series._raw ? series._raw : series;
-
     if (settingDef.persistDefault) {
-      persistableDefaultSettings[id] = settingDef.getDefault(
-        seriesForSettingsDef,
-        completeSettings,
-      );
+      persistableDefaultSettings[id] = completeSettings[id];
     }
   }
 

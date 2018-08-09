@@ -10,6 +10,7 @@
              [database :as database]]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test.data :as data]
+            [metabase.util.date :as du]
             [toucan.util.test :as tt]))
 
 (def ^:private ^{:arglists '([query])} fetch-source-query (fetch-source-query/fetch-source-query identity))
@@ -52,7 +53,8 @@
       qp/expand
       (m/dissoc-in [:database :features])
       (m/dissoc-in [:database :details])
-      (m/dissoc-in [:database :timezone])))
+      (m/dissoc-in [:database :timezone])
+      (dissoc :driver)))
 
 (defn default-expanded-results [query]
   {:database     {:name "test-data", :id (data/id), :engine :h2}
@@ -60,7 +62,8 @@
    :fk-field-ids #{}
    :query        query})
 
-;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call `fetch-source-query`)
+;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call
+;; `fetch-source-query`)
 (expect
   (default-expanded-results
    {:source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
@@ -73,21 +76,22 @@
                        :query    {:source-table (str "card__" (u/get-id card))}})))
 
 (expect
-  (default-expanded-results
-   {:source-query {:source-table {:schema "PUBLIC" :name "CHECKINS" :id (data/id :checkins)}, :join-tables nil}
-    :filter {:filter-type :between,
-             :field {:field-name "date", :base-type :type/Date},
-             :min-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-01-01"))
-                       :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}},
-             :max-val {:value (tcoerce/to-timestamp (u/str->date-time "2015-02-01"))
-                       :field {:field {:field-name "date", :base-type :type/Date}, :unit :default}}}})
+  (let [date-field-literal {:field-name "date", :base-type :type/Date, :binning-strategy nil, :binning-param nil, :fingerprint nil}]
+    (default-expanded-results
+     {:source-query {:source-table {:schema "PUBLIC" :name "CHECKINS" :id (data/id :checkins)}, :join-tables nil}
+      :filter       {:filter-type :between,
+                     :field       date-field-literal
+                     :min-val     {:value (tcoerce/to-timestamp (du/str->date-time "2015-01-01"))
+                                   :field {:field date-field-literal, :unit :default}},
+                     :max-val     {:value (tcoerce/to-timestamp (du/str->date-time "2015-02-01"))
+                                   :field {:field date-field-literal, :unit :default}}}}))
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :checkins)}}}]
     (expand-and-scrub {:database database/virtual-id
                        :type     :query
                        :query    {:source-table (str "card__" (u/get-id card))
-                                  :filter ["BETWEEN" ["field-id" ["field-literal" "date" "type/Date"]] "2015-01-01" "2015-02-01"]}})))
+                                  :filter       ["BETWEEN" ["field-id" ["field-literal" "date" "type/Date"]] "2015-01-01" "2015-02-01"]}})))
 
 ;; make sure that nested nested queries work as expected
 (expect

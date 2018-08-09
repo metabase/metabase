@@ -16,7 +16,7 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
-import * as colors from "metabase/lib/colors";
+import { normal, harmony } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -27,7 +27,7 @@ const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = Math.PI / 180 * 1; // 1 degree in radians
-const SLICE_THRESHOLD = 1 / 360; // 1 degree in percentage
+const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
@@ -58,30 +58,31 @@ export default class PieChart extends Component {
 
   static settings = {
     "pie.dimension": {
-      section: "Data",
+      section: t`Data`,
       title: t`Dimension`,
       ...dimensionSetting("pie.dimension"),
     },
     "pie.metric": {
-      section: "Data",
+      section: t`Data`,
       title: t`Measure`,
       ...metricSetting("pie.metric"),
     },
     "pie.show_legend": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
     },
     "pie.show_legend_perecent": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
     },
     "pie.slice_threshold": {
-      section: "Display",
+      section: t`Display`,
       title: t`Minimum slice percentage`,
       widget: "number",
+      default: SLICE_THRESHOLD * 100,
     },
   };
 
@@ -135,9 +136,7 @@ export default class PieChart extends Component {
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
-    let sliceColors = Object.values(
-      rows.length > 5 ? colors.harmony : colors.normal,
-    );
+    let sliceColors = Object.values(rows.length > 5 ? harmony : normal);
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
@@ -161,7 +160,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: "gray",
+          color: normal.grey1,
         };
         slices.push(otherSlice);
       }
@@ -170,6 +169,7 @@ export default class PieChart extends Component {
     }
 
     // increase "other" slice so it's barely visible
+    // $FlowFixMe
     if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
       otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
@@ -182,6 +182,16 @@ export default class PieChart extends Component {
     ]);
     let legendColors = slices.map(slice => slice.color);
 
+    // no non-zero slices
+    if (slices.length === 0) {
+      otherSlice = {
+        value: 1,
+        color: normal.grey1,
+        noHover: true,
+      };
+      slices.push(otherSlice);
+    }
+
     const pie = d3.layout
       .pie()
       .sort(null)
@@ -192,35 +202,45 @@ export default class PieChart extends Component {
       .outerRadius(OUTER_RADIUS)
       .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-    const hoverForIndex = (index, event) => ({
-      index,
-      event: event && event.nativeEvent,
-      data:
-        slices[index] === otherSlice
-          ? others.map(o => ({
-              key: formatDimension(o.key, false),
-              value: formatMetric(o.value, false),
-            }))
-          : [
-              {
-                key: getFriendlyName(cols[dimensionIndex]),
-                value: formatDimension(slices[index].key),
-              },
-              {
-                key: getFriendlyName(cols[metricIndex]),
-                value: formatMetric(slices[index].value),
-              },
-            ].concat(
-              showPercentInTooltip
-                ? [
-                    {
-                      key: "Percentage",
-                      value: formatPercent(slices[index].percentage),
-                    },
-                  ]
-                : [],
-            ),
-    });
+    function hoverForIndex(index, event) {
+      const slice = slices[index];
+      if (!slice || slice.noHover) {
+        return null;
+      } else if (slice === otherSlice) {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: others.map(o => ({
+            key: formatDimension(o.key, false),
+            value: formatMetric(o.value, false),
+          })),
+        };
+      } else {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: [
+            {
+              key: getFriendlyName(cols[dimensionIndex]),
+              value: formatDimension(slice.key),
+            },
+            {
+              key: getFriendlyName(cols[metricIndex]),
+              value: formatMetric(slice.value),
+            },
+          ].concat(
+            showPercentInTooltip && slice.percentage != null
+              ? [
+                  {
+                    key: "Percentage",
+                    value: formatPercent(slice.percentage),
+                  },
+                ]
+              : [],
+          ),
+        };
+      }
+    }
 
     let value, title;
     if (

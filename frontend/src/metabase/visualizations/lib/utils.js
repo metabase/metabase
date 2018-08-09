@@ -6,7 +6,7 @@ import d3 from "d3";
 import { t } from "c-3po";
 import crossfilter from "crossfilter";
 
-import * as colors from "metabase/lib/colors";
+import { harmony } from "metabase/lib/colors";
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
@@ -172,8 +172,8 @@ export function getCardColors(card) {
     chartColorList = settings.line.colors;
   }
   return _.uniq(
-    [chartColor || Object.values(colors.harmony)[0]].concat(
-      chartColorList || Object.values(colors.harmony),
+    [chartColor || Object.values(harmony)[0]].concat(
+      chartColorList || Object.values(harmony),
     ),
   );
 }

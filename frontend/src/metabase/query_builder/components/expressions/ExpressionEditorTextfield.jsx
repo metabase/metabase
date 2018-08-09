@@ -26,6 +26,14 @@ import { isExpression } from "metabase/lib/expressions";
 
 const MAX_SUGGESTIONS = 30;
 
+const SUGGESTION_SECTION_NAMES = {
+  fields: t`Fields`,
+  aggregations: t`Aggregations`,
+  operators: t`Operators`,
+  metrics: t`Metrics`,
+  other: t`Other`,
+};
+
 export default class ExpressionEditorTextfield extends Component {
   constructor(props, context) {
     super(props, context);
@@ -263,7 +271,9 @@ export default class ExpressionEditorTextfield extends Component {
 
   render() {
     let errorMessage = this.state.expressionErrorMessage;
-    if (errorMessage && !errorMessage.length) errorMessage = t`unknown error`;
+    if (errorMessage && !errorMessage.length) {
+      errorMessage = t`unknown error`;
+    }
 
     const { placeholder } = this.props;
     const { suggestions, showAll } = this.state;
@@ -312,9 +322,10 @@ export default class ExpressionEditorTextfield extends Component {
                   (i === 0 || suggestion.type !== suggestions[i - 1].type) && (
                     <li
                       ref={"header-" + i}
-                      className="mx2 h6 text-uppercase text-bold text-grey-3 py1 pt2"
+                      className="mx2 h6 text-uppercase text-bold text-medium py1 pt2"
                     >
-                      {suggestion.type}
+                      {SUGGESTION_SECTION_NAMES[suggestion.type] ||
+                        suggestion.type}
                     </li>
                   ),
                   <li
@@ -354,7 +365,7 @@ export default class ExpressionEditorTextfield extends Component {
                   <li
                     style={{ paddingTop: 5, paddingBottom: 5 }}
                     onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
-                    className="px2 text-italic text-grey-3 cursor-pointer text-brand-hover"
+                    className="px2 text-italic text-medium cursor-pointer text-brand-hover"
                   >
                     and {suggestions.length - MAX_SUGGESTIONS} more
                   </li>

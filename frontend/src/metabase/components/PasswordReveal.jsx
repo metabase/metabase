@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import CopyButton from "metabase/components/CopyButton";
 import { t } from "c-3po";
+import colors from "metabase/lib/colors";
 
 type State = {
   visible: boolean,
@@ -15,14 +16,14 @@ const styles = {
   input: {
     fontSize: "1.2rem",
     letterSpacing: "2",
-    color: "#676C72",
+    color: colors["text-dark"],
     outline: "none",
   },
 };
 
 const Label = () => (
   <div style={{ top: -12 }} className="absolute text-centered left right">
-    <span className="px1 bg-white h6 text-bold text-grey-3 text-uppercase">
+    <span className="px1 bg-white h6 text-bold text-medium text-uppercase">
       {t`Temporary Password`}
     </span>
   </div>
@@ -39,7 +40,7 @@ export default class PasswordReveal extends Component {
     return (
       <div
         style={{ borderWidth: 2 }}
-        className="bordered rounded flex align-center  p3 relative"
+        className="bordered rounded flex align-center p3 relative"
       >
         <Label />
 
@@ -47,7 +48,7 @@ export default class PasswordReveal extends Component {
           <input
             ref="input"
             style={styles.input}
-            className="text-grey-2 text-normal mr3 borderless"
+            className="text-light text-normal mr3 borderless"
             value={password}
             onClick={({ target }) =>
               target.setSelectionRange(0, target.value.length)
