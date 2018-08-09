@@ -8,7 +8,8 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets])
+    (:import [metabase.query_processor.interface EqualityFilter BetweenFilter]))
 
 (defn- expand-parameters [query]
   (expand (dissoc query :parameters) (:parameters query)))
@@ -112,6 +113,41 @@
                                     :target ["dimension" ["field-id" (data/id :users :last_login)]]
                                     :value  "2014-05-10~2014-05-16"}]}))
 
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "day" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "day"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "day" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "day"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "day" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "day"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "day" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "day"))
+
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "week" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "week"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "week" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "week"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "week" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "week"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "week" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "week"))
+
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "month" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "month"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "month" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "month"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "month" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "month"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "month" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "month"))
+
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "year" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "year"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "year" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "year"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "year" {:include-current true}))
+(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "year"))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "year" {:include-current true}))
+(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "year"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
