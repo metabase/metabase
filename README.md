@@ -96,7 +96,10 @@ To get started with a development installation of the Metabase, follow the instr
 
 Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
-Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase). 
+Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase).
+
+# Internationalization
+We want Metabase to be avaliable in as many languages as possible. See what translations are avaliable and help contribute to internationalization using our project [over at POEditor](https://poeditor.com/join/project/ynjQmwSsGh)
 
 # Extending and Deep Integrations
 
