@@ -1,0 +1,154 @@
+{
+  "charset": "utf-8",
+  "headers": {
+    "project-id-version": "metabase",
+    "report-msgid-bugs-to": "docs@metabase.com",
+    "pot-creation-date": "2017-08-21 21:54+0200",
+    "po-revision-date": "2018-01-09 22:14+0200",
+    "last-translator": "Valko Volodya <valko.volodya@gmai.com>",
+    "language-team": "Ukrainian",
+    "language": "ua",
+    "mime-version": "1.0",
+    "content-type": "text/plain; charset=UTF-8",
+    "content-transfer-encoding": "8bit",
+    "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#": "",
+    "plural-forms": "nplurals=2; plural=(n != 1);",
+    "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#": ""
+  },
+  "translations": {
+    "": {
+      "Hello World!": {
+        "msgid": "Hello World!",
+        "msgstr": [
+          "Привіт Світ!"
+        ]
+      },
+      "Metabase is up and running.": {
+        "msgid": "Metabase is up and running.",
+        "msgstr": [
+          "Metabase запущено"
+        ]
+      },
+      "removed the filter {item.details.name}": {
+        "msgid": "removed the filter {item.details.name}",
+        "msgstr": [
+          "видалено фільтр {item.details.name}"
+        ]
+      },
+      "joined!": {
+        "msgid": "joined!",
+        "msgstr": [
+          "приєднався!"
+        ]
+      },
+      "Setup Tip": {
+        "msgid": "Setup Tip",
+        "msgstr": [
+          "Порада встановлення"
+        ]
+      },
+      "View all": {
+        "msgid": "View all",
+        "msgstr": [
+          "Переглянути все"
+        ]
+      },
+      "Recently Viewed": {
+        "msgid": "Recently Viewed",
+        "msgstr": [
+          "Нещодавно переглянуте"
+        ]
+      },
+      "You haven't looked at any dashboards or questions recently": {
+        "msgid": "You haven't looked at any dashboards or questions recently",
+        "msgstr": [
+          "Останнім часом ви не переглядали панелі чи питання"
+        ]
+      },
+      "Activity": {
+        "msgid": "Activity",
+        "msgstr": [
+          "Активність"
+        ]
+      },
+      "Hey there": {
+        "msgid": "Hey there",
+        "msgstr": [
+          "Привіт"
+        ]
+      },
+      "How's it going": {
+        "msgid": "How's it going",
+        "msgstr": [
+          "Як поживаєш"
+        ]
+      },
+      "Howdy": {
+        "msgid": "Howdy",
+        "msgstr": [
+          "Як справи"
+        ]
+      },
+      "Greetings": {
+        "msgid": "Greetings",
+        "msgstr": [
+          "Вітання"
+        ]
+      },
+      "Good to see you": {
+        "msgid": "Good to see you",
+        "msgstr": [
+          "Раді Вас бачити"
+        ]
+      },
+      "What do you want to know?": {
+        "msgid": "What do you want to know?",
+        "msgstr": [
+          "Що ви хочете дізнатися?"
+        ]
+      },
+      "What's on your mind?": {
+        "msgid": "What's on your mind?",
+        "msgstr": [
+          "Що в вас на думці?"
+        ]
+      },
+      "What do you want to find out?": {
+        "msgid": "What do you want to find out?",
+        "msgstr": [
+          "Що ви хочете знайти?"
+        ]
+      },
+      "Dashboards": {
+        "msgid": "Dashboards",
+        "msgstr": [
+          "Панелі"
+        ]
+      },
+      "Questions": {
+        "msgid": "Questions",
+        "msgstr": [
+          "Питання"
+        ]
+      },
+      "Pulses": {
+        "msgid": "Pulses",
+        "msgstr": [
+          "Пульси"
+        ]
+      },
+      "Data Reference": {
+        "msgid": "Data Reference",
+        "msgstr": [
+          "Відповідність даних"
+        ]
+      },
+      "New Question": {
+        "msgid": "New Question",
+        "msgstr": [
+          "Нове питання"
+        ]
+      }
+    }
+  }
+}
