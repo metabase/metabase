@@ -134,9 +134,9 @@
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
 ;; Test including a breakout of a nested query column that follows an FK
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
   {:rows [[1 174] [2 474] [3 78] [4 39]]
-   :cols [{:name "price", :base_type :type/Integer}
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "count", :base_type :type/Integer}]}
   (rows+cols
     (format-rows-by [int int]
@@ -150,13 +150,13 @@
                     :breakout     [(ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))]}}))))
 
 ;; Test two breakout columns from the nested query, both following an FK
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
   {:rows [[2 33.7701 7]
           [2 33.8894 8]
           [2 33.9997 7]
           [3 10.0646 2]
           [4 33.983 2]],
-   :cols [{:name "price", :base_type :type/Integer}
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "latitude", :base_type :type/Float}
           {:name "count", :base_type :type/Integer}]}
   (rows+cols
@@ -173,13 +173,13 @@
                                    (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :latitude))]}}))))
 
 ;; Test two breakout columns from the nested query, one following an FK the other from the source table
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
   {:rows  [[1 1 6]
            [1 2 14]
            [1 3 13]
            [1 4 8]
            [1 5 10]],
-   :cols [{:name "price", :base_type :type/Integer}
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "user_id", :base_type :type/Integer}
           {:name "count", :base_type :type/Integer}]}
   (rows+cols

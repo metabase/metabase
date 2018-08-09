@@ -85,7 +85,7 @@
          :data)))
 
 ;; Test that we can remap inside an MBQL nested query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
   (data/with-data
     (fn []
@@ -96,8 +96,8 @@
     (->> (qp/process-query
            {:database (data/id)
             :type :query
-            :query {:source-query {:source-table (data/id :checkins)
-                                   :order-by [[(data/id :checkins :date) :ascending]]}
+            :query {:source-query {:source-table (data/id :checkins)}
+                    :order-by [[(data/id :checkins :date) :ascending]]
                     :limit 5}})
          rows
          (map last))))
