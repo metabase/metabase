@@ -120,6 +120,7 @@
     "file-loader": "^0.11.1",
     "flow-bin": "^0.37.4",
     "fs-promise": "^2.0.2",
+    "gifencoder": "^1.1.0",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.30.1",
@@ -142,6 +143,7 @@
     "karma-webpack": "^2.0.5",
     "lint-staged": "^3.3.1",
     "mockdate": "^2.0.2",
+    "png-file-stream": "^1.0.0",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
@@ -154,6 +156,7 @@
     "sauce-connect-launcher": "^1.1.1",
     "selenium-webdriver": "^2.53.3",
     "style-loader": "^0.19.0",
+    "tempdir": "^2.0.0",
     "uglifyjs-webpack-plugin": "^1.0.0",
     "unused-files-webpack-plugin": "^3.0.0",
     "webchauffeur": "^1.2.0",
@@ -162,26 +165,20 @@
     "webpack-postcss-tools": "^1.1.2"
   },
   "scripts": {
-    "dev":
-      "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
+    "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
     "lint": "yarn lint-eslint && yarn lint-prettier",
-    "lint-eslint":
-      "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
-    "lint-prettier":
-      "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
+    "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
+    "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "flow": "yarn && flow check",
     "test": "yarn test-unit && yarn test-integrated && yarn test-karma",
     "test-integrated": "./bin/build-for-test && yarn test-integrated-no-build",
     "test-integrated-watch": "yarn test-integrated --watch",
-    "test-integrated-no-build":
-      "yarn && babel-node ./frontend/test/__runner__/run_integrated_tests.js",
+    "test-integrated-no-build": "yarn && babel-node ./frontend/test/__runner__/run_integrated_tests.js",
     "test-unit": "yarn && jest --maxWorkers=8 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
     "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",
-    "test-karma":
-      "yarn && karma start frontend/test/karma.conf.js --single-run",
-    "test-karma-watch":
-      "yarn && karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
+    "test-karma": "yarn && karma start frontend/test/karma.conf.js --single-run",
+    "test-karma-watch": "yarn && karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "build": "yarn && webpack --bail",
     "build-watch": "yarn && webpack --watch",
     "build-hot": "yarn && NODE_ENV=hot webpack-dev-server --progress",
@@ -189,18 +186,18 @@
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "start": "yarn build && lein ring server",
     "precommit": "lint-staged",
-    "preinstall":
-      "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
+    "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
-    "docs":
-      "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
+    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
-    "ci-backend":
-      "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
+    "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
     "screenshots": "babel-node bin/screenshot.js"
   },
   "lint-staged": {
-    "frontend/**/*.{js,jsx,css}": ["prettier --write", "git add"]
+    "frontend/**/*.{js,jsx,css}": [
+      "prettier --write",
+      "git add"
+    ]
   }
 }
