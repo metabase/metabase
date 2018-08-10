@@ -111,7 +111,7 @@ export const buildResultProvider = (mainResult: DatasetData, totalsSeries: Datas
       return canBeInCache(aggregations) && get(totalsLookupTree, [...groups, valueKey]) || buildResultsFor(key);
 
 
-    throw new Error("InvalidArgumentException - BANG!!!!" + key + '    ' + key[0].subtract(mainResult.columns).size + '  ' + key[0].size);
+    throw new Error("InvalidArgumentException - BANG!!!!");
   };
 };
 
@@ -131,9 +131,11 @@ export const getQueryPlan = (settings: SummaryTableSettings, canTotalize: Column
 
   const queriesBreakouts = allBreakouts.reduce(({acc, prev}, br) => {
     const next = prev.add(br);
+
     const newAcc = showTotalsFor(br) ? [prev, ...acc] : acc;
     return {acc : newAcc, prev:next};
   }, {acc:[], prev: Set.of()});
+
 
   if(!showTotalsFor(settings.columnsSource))
     return {groupings: queriesBreakouts.acc.map(p => [p]), aggregations};

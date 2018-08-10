@@ -105,11 +105,10 @@ const unusedSourceItem : DraggableItem = createSectionItem(t`Unused fields`);
 
 
 const convertStateToValue = (state : State) : ValueSerializedSupertype => {
-
-  const metadataPart = state.columnNameToMetadata ? {columnNameToMetadata : state.columnNameToMetadata} : {};
   const columnsPart = state.items ? convertItemsToState(state.items) : {};
-
-  return {...metadataPart, ...columnsPart};
+  const oldMetadata = state.columnNameToMetadata || {};
+  const columnNameToMetadata = state.items ? createMetadata(oldMetadata, columnsPart)  :oldMetadata;
+  return {columnNameToMetadata, ...columnsPart};
 };
 
 const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype =>{
@@ -328,3 +327,8 @@ const SectionHeader = ({text}) =>
 <div style={{fontSize: '1rem'}}>
   <hr className={styles.charthr}/>
   <h2 className="text-bold text-paragraph mb2 no-select">{text}</h2></div>;
+
+const createMetadata = (metadata : {}, {groupsSources, columnsSource} : ValueSerializedSupertype): {} =>{
+  const names = [...groupsSources, ...[columnsSource].filter(p => p)];
+  return names.reduce((acc, name) => ({...acc, [name]: metadata[name] || emptyColumnMetadata}) , {});
+};
