@@ -2,7 +2,7 @@ import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 import flatMap from 'lodash.flatmap';
 import unset from 'lodash.unset';
-import mapValues from 'lodash.mapvalues';
+import orderBy from 'lodash.orderby';
 import {
   COLUMNS_SETTINGS,
 } from "metabase/visualizations/visualizations/SummaryTable";
@@ -38,10 +38,17 @@ export class GroupingManager {
     const summarySettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
     const isPivoted = summarySettings.columnsSource;
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
+    const getAscDesc = colName => (summarySettings.columnNameToMetadata[colName] || {}).isAscSortOrder;
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
+    const mainSsortOrderMethod = columnsIndexesForGrouping.map(getValueByIndex);
+    const ascDesc = (summaryTableSettings.groupsSources || []).map(getAscDesc)
+      .map(isAsc => isAsc ? 'asc' : 'desc' );
+
+
 
     const normalizedRows = getAllQueryKeys(qp, canTotalizeBuilder(rawCols))
       .map(keys =>[flatMap(keys , key => normalizeRows(settings, rp(key))), keys])
+      .map(res => res[1].includes(mainKey) ? [sortMainGroup(res[0], mainSsortOrderMethod, ascDesc), res[1]] : res)
       .map(res => isPivoted ? [pivotRows(res[0], sortOrderMethod), res[1]] : res)
       .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summarySettings.columnsSource));
 
@@ -58,18 +65,20 @@ export class GroupingManager {
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
     if(isPivoted){
       const pivotColumnNumber = columnsIndexesForGrouping.length;
-      const columns = new Set(Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
+      const columns = Set.of(...Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
+      const hasUndef = columns.delete('undefined');
+      const pivotedColumns = orderBy([...columns], p => p, getAscDesc(summarySettings.columnsSource)? 'asc' : 'desc');
+      if(hasUndef)
+        pivotedColumns.push(undefined);
 
-      const pivotedColumns = _.sortBy(Array.from(columns));
       const tmp = getAvailableColumnIndexes(settings, rawCols);
       const colsTmp = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
-      // this.probeRowIndexes = [...colsTmp.map(col => this.rows.indexOf(row => col.getValue(row)))];
 
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
       const grColumnsLength = (summarySettings.groupsSources || []).length;
       const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i), parentName: ["",1] }));
       const values = colsTmp.slice(grColumnsLength + 1);
-      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length, k === 'undefined' ? undefined : colsTmp[grColumnsLength]] : undefined})).filter(col => k !== 'undefined' || canTotalize(col.base_type)))
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined})).filter(col => k !== 'undefined' || canTotalize(col.base_type)))
       this.probeCols = grCols.concat(tt[0]);
       this.valueColsLen = (tt[0] || []).length;
       cols = grCols.concat(...tt);
@@ -146,6 +155,8 @@ const canTotalizeBuilder = (cols : Column[]): (ColumnName => boolean) =>{
   const columnNameToType = cols.reduce((acc, {name, base_type})=>({...acc, [name]: base_type}), {});
   return p => canTotalize(columnNameToType[p]);
 };
+
+const sortMainGroup = (rows : Row[], sortOrderMethod : methods[], ascDesc: string[]) => _.orderBy(rows, sortOrderMethod, ascDesc);
 
 const getValueByIndex = (index : Number) => (row ) => row[index];
 const getPivotValue = (key, offset ) => (index: Number) => row => (row.piv[key] || [])[index + offset];

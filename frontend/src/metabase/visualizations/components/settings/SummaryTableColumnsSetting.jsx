@@ -21,8 +21,8 @@ type ArrayMoveArg ={oldIndex : number, newIndex : number};
 
 export type ColumnMetadata = {
   enabled?: boolean,
-  showTotals?: boolean,
-  isAscSortOrder?: boolean,
+  showTotals: boolean,
+  isAscSortOrder: boolean,
 };
 
 
@@ -211,7 +211,7 @@ const SortableItem = SortableElement(({value, valueIndex, columnMetadata , itemT
   return <SectionHeader text={value.displayName}/>;
 });
 
-const emptyColumnMetadata : ColumnMetadata = {showTotals : true};
+const emptyColumnMetadata : ColumnMetadata = {showTotals : true, isAscSortOrder: true};
 
 const SortableList = SortableContainer(({items, isChanging, updateState , itemTypeHelper, columnNameToMetadata}) => {
   const updateMetadata = updateMetadataBuilder(columnNameToMetadata, updateState);
