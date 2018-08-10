@@ -8,25 +8,7 @@ import fs from "fs";
 import pngFileStream from "png-file-stream";
 import GIFEncoder from "gifencoder";
 
-const CAPTURES = [
-  {
-    url: "/",
-    imagePath: "test-img/test1",
-  },
-  {
-    url: "/collection/root",
-    imagePath: "test-img/test2",
-  },
-  {
-    url: "/question/1",
-    imagePath: "test-img/question",
-    setup: page => [
-      page.waitForSelector(".LineAreaBarChart"),
-      page.click(".AddButton"),
-    ],
-    gif: true,
-  },
-];
+import SCREENSHOT_LIST from "../docs/screenshot-list";
 
 const PAGE_CONFIG = {
   width: 1280,
@@ -36,12 +18,12 @@ const PAGE_CONFIG = {
 
 const BASE_URL = "http://localhost:3000";
 
-(async () => {
+(async CAPTURES => {
   const browser = await puppeteer.launch();
 
   // Basically a rip of webgif. Thanks to https://github.com/anishkny/webgif for
   // the inspiration to add gif support
-  async function captureGif({ url, imagePath, setup, gif, duration = 10 }) {
+  async function captureGif({ url, imagePath, setup, gif, duration }) {
     const page = await browser.newPage();
 
     // create a directory to store our sequential pngs until we create the gif
@@ -58,6 +40,9 @@ const BASE_URL = "http://localhost:3000";
       );
       return false;
     }
+
+    // the gif duration should be equal to the number of steps
+    duration = setup(page).length;
 
     console.log(`GIF Capture for ${url}`);
 
@@ -156,7 +141,7 @@ const BASE_URL = "http://localhost:3000";
 
   console.log("Tasks complete, closing browser");
   browser.close();
-})();
+})(SCREENSHOT_LIST);
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
