@@ -20,6 +20,12 @@ const CAPTURES = [
   },
 ];
 
+const PAGE_CONFIG = {
+  width: 1280,
+  height: 960,
+  deviceScaleFactor: 2,
+};
+
 const BASE_URL = "http://localhost:3000";
 
 (async () => {
@@ -27,6 +33,8 @@ const BASE_URL = "http://localhost:3000";
 
   async function capturePage({ url, imagePath, setup }) {
     const page = await browser.newPage();
+
+    page.setViewport(PAGE_CONFIG);
 
     console.log(`Navigating to ${url}`);
 
