@@ -1,43 +1,90 @@
 import puppeteer from "puppeteer";
 import creds from "./creds";
 
-let browser, page;
+const CAPTURES = [
+  {
+    url: "/",
+    imagePath: "test-img/test1",
+  },
+  {
+    url: "/collection/root",
+    imagePath: "test-img/test2",
+  },
+  {
+    url: "/question/1",
+    imagePath: "test-img/question",
+    setup: page => [
+      page.waitForSelector(".LineAreaBarChart"),
+      page.click(".AddButton"),
+    ],
+  },
+];
 
-async function setup() {
-  browser = await puppeteer.launch();
-  page = await browser.newPage();
-  page.setViewport({ width: 1280, height: 920, deviceScaleFactor: 2 });
-}
+const BASE_URL = "http://localhost:3000";
 
-async function login() {
-  const EMAIL_SELECTOR = `input[type="email"]`;
-  const PASSWORD_SELECTOR = `input[type="password"]`;
-  const LOGIN_BUTTON_SELECTOR = ".Button--primary";
+(async () => {
+  const browser = await puppeteer.launch();
 
-  await page.goto("http://localhost:3000");
-  await page.click(EMAIL_SELECTOR);
-  await page.keyboard.type(creds.username);
+  async function capturePage({ url, imagePath, setup }) {
+    const page = await browser.newPage();
 
-  await page.click(PASSWORD_SELECTOR);
-  await page.keyboard.type(creds.password);
+    console.log(`Navigating to ${url}`);
 
-  await page.click(LOGIN_BUTTON_SELECTOR);
+    try {
+      await page.goto(`${BASE_URL}${url}`, {
+        waitUntil: ["load"],
+        timeout: 12000,
+      });
+    } catch (error) {
+      console.log("error", error);
+    }
 
-  await page.waitForNavigation();
-}
+    console.log(`${url} loaded`);
 
-async function getReadMeImage() {
-  await setup();
+    console.log(await page.url());
+
+    if (setup) {
+      console.log("Setup steps defined, performing those steps...");
+      await Promise.all(setup(page));
+      console.log("Setup steps complete");
+    }
+
+    console.log(`Taking screenshot`);
+    await page.screenshot({ path: `${imagePath}.png` });
+    console.log(`Screenshot taken`);
+
+    return page;
+  }
+
+  async function login() {
+    const EMAIL_SELECTOR = `input[type="email"]`;
+    const PASSWORD_SELECTOR = `input[type="password"]`;
+    const LOGIN_BUTTON_SELECTOR = ".Button--primary";
+
+    const page = await browser.newPage();
+    console.log("Starting login");
+
+    await page.goto(BASE_URL);
+    await page.click(EMAIL_SELECTOR);
+    await page.keyboard.type(creds.username);
+
+    await page.click(PASSWORD_SELECTOR);
+    await page.keyboard.type(creds.password);
+
+    await Promise.all([
+      page.click(LOGIN_BUTTON_SELECTOR),
+      page.waitForNavigation(),
+    ]);
+
+    console.log("Login complete");
+  }
+
   await login();
 
-  await page.goto("http://localhost:3000/question/1");
-  await page.waitForSelector(".LineAreaBarChart");
+  for (let capture of CAPTURES) {
+    await capturePage(capture);
+  }
 
-  await page.click(".AddButton");
-
-  await page.screenshot({ path: "docs/metabase-product-screenshot.png" });
-
-  await browser.close();
-}
-
-getReadMeImage();
+  console.log("Tasks complete, closing browser");
+  browser.close();
+})();
