@@ -1,7 +1,7 @@
 import {Row} from "metabase/meta/types/Dataset";
 import _ from 'lodash';
 import flatMap from 'lodash.flatmap';
-import mapKeys from 'lodash.mapkeys';
+import unset from 'lodash.unset';
 import mapValues from 'lodash.mapvalues';
 import {
   COLUMNS_SETTINGS,
@@ -72,12 +72,15 @@ export class GroupingManager {
       const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k === 'undefined' ? 'Grand totals' : k, values.length, k === 'undefined' ? undefined : colsTmp[grColumnsLength]] : undefined})).filter(col => k !== 'undefined' || canTotalize(col.base_type)))
       this.probeCols = grCols.concat(tt[0]);
       this.valueColsLen = (tt[0] || []).length;
-      cols = grCols.concat(...tt)
+      cols = grCols.concat(...tt);
+      unset(this.columnIndexToFirstInGroupIndexes, columnsIndexesForGrouping.length-1);
     }
+    else
+      this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
 
     this.probeRows = [this.rows[this.rows.length -1], ...cols.map(p => this.rows.find(row => p.getValue(row))).filter(p => p)]
     this.cols = cols;
-    this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
+
   }
 
 

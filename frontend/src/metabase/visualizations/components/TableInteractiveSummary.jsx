@@ -666,6 +666,7 @@ export default class TableInteractiveSummary extends Component {
               scrollLeft={scrollLeft}
               tabIndex={null}
               overscanRowCount={20}
+              cellRenderer={() => {}}
               cellRangeRenderer={rangeArgs => {
                 const res = defaultCellRangeRenderer({...rangeArgs, cellRenderer: (renderArgs => this.cellRenderer(rangeArgs, renderArgs))});
 

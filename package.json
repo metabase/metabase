@@ -46,6 +46,7 @@
     "lodash.memoize": "^4.1.2",
     "lodash.orderby": "^4.6.0",
     "lodash.set": "^4.1.2",
+    "lodash.unset": "^4.1.2",
     "lodash.values": "^4.3.0",
     "lodash.zip": "^4.2.0",
     "moment": "2.19.3",
