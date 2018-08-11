@@ -45,6 +45,7 @@ const flattenParam = ([key, value]) => {
   if (value instanceof Array) {
     return value.map(p => [key, p]);
   }
+
   return [[key, value]];
 };
 

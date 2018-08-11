@@ -220,18 +220,24 @@ export function getTableDimensions(
       let targetField = field.target;
       if (targetField && depth > 0) {
         let targetTable = targetField.table;
-        return getTableDimensions(targetTable, depth - 1, filter).map(
-          (dimension: Dimension) => ({
-            ...dimension,
-            parentName: stripId(field.display_name),
-            target: [
-              "fk->",
-              field.id,
-              getDimensionTargetFieldId(dimension.target),
-            ],
-            depth: dimension.depth + 1,
-          }),
-        );
+        const dimensions = getTableDimensions(
+          targetTable,
+          depth - 1,
+          filter,
+        ).map((dimension: Dimension) => ({
+          ...dimension,
+          parentName: stripId(field.display_name),
+          target: [
+            "fk->",
+            field.id,
+            getDimensionTargetFieldId(dimension.target),
+          ],
+          depth: dimension.depth + 1,
+        }));
+        if (filter(field)) {
+          dimensions.push(getFieldDimension(field));
+        }
+        return dimensions;
       } else if (filter(field)) {
         return [getFieldDimension(field)];
       }
@@ -262,7 +268,10 @@ export function getCardVariables(
   return [];
 }
 
-function fieldFilterForParameter(parameter: Parameter) {
+function fieldFilterForParameter(parameter: ?Parameter = null) {
+  if (!parameter) {
+    return () => true;
+  }
   return fieldFilterForParameterType(parameter.type);
 }
 
@@ -298,7 +307,12 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
   );
 }
 
-function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
+function tagFilterForParameter(
+  parameter: ?Parameter = null,
+): TemplateTagFilter {
+  if (!parameter) {
+    return () => true;
+  }
   const [type, subtype] = parameter.type.split("/");
   switch (type) {
     case "date":
@@ -321,7 +335,7 @@ const VARIABLE_ICONS = {
 
 export function getParameterMappingOptions(
   metadata: Metadata,
-  parameter: Parameter,
+  parameter: ?Parameter = null,
   card: Card,
 ): Array<ParameterMappingUIOption> {
   let options = [];

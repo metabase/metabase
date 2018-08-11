@@ -66,7 +66,8 @@ const values = handleActions(
       }),
     },
   },
-  {},
+  // seed with setting values from MetabaseBootstrap
+  window.MetabaseBootstrap,
 );
 
 const settings = handleActions(

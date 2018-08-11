@@ -263,22 +263,26 @@ export default class Navbar extends Component {
         py={1}
         pr={2}
       >
-        <Link
-          to="/"
-          data-metabase-event={"Navbar;Logo"}
-          className="relative cursor-pointer z2 rounded flex justify-center transition-background"
-          p={1}
-          mx={1}
-          hover={{ backgroundColor: DefaultSearchColor }}
-        >
-          <LogoIcon dark />
-        </Link>
-        <Flex
-          className="absolute top left right bottom z1"
-          px={4}
-          align="center"
-        >
-          <Box w={2 / 3}>
+        <Flex style={{ minWidth: 64 }} align="center" justify="center">
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="relative cursor-pointer z2 rounded flex justify-center transition-background"
+            p={1}
+            mx={1}
+            hover={{ backgroundColor: DefaultSearchColor }}
+          >
+            <Flex
+              style={{ minWidth: 32, height: 32 }}
+              align="center"
+              justify="center"
+            >
+              <LogoIcon dark height={32} />
+            </Flex>
+          </Link>
+        </Flex>
+        <Flex className="flex-full z1" pr={2} align="center">
+          <Box w={1} style={{ maxWidth: 500 }}>
             <SearchBar
               location={this.props.location}
               onChangeLocation={this.props.onChangeLocation}

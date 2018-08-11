@@ -83,6 +83,18 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
   };
 });
 
+export const LOGIN_SSO = "metabase/auth/LOGIN_SSO";
+export const loginSSO = createThunkAction(LOGIN_SSO, function(redirectUrl) {
+  return async function(dispatch, getState) {
+    MetabaseAnalytics.trackEvent("Auth", "SSO Login Start");
+    // use `window.location` instead of `push` since it's not a frontend route
+    window.location =
+      MetabaseSettings.get("site_url") +
+      "/auth/sso" +
+      (redirectUrl ? "?redirect=" + encodeURIComponent(redirectUrl) : "");
+  };
+});
+
 // logout
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, function() {

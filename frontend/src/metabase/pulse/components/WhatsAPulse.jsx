@@ -17,6 +17,7 @@ export default class WhatsAPulse extends Component {
         </h2>
         <div className="mx4">
           <RetinaImage
+            className="brand-hue"
             width={574}
             src="app/assets/img/pulse_empty_illustration.png"
             forceOriginalDimensions={false}
