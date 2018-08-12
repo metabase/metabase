@@ -18,8 +18,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
 
-import cx from "classnames";
-
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
@@ -231,7 +229,7 @@ export default class PulseEditChannels extends Component {
           <div className="pt2">
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
-              className={cx("Button", { disabled: !isValid })}
+              disabled={!isValid}
               normalText={
                 channelSpec.type === "email"
                   ? t`Send email now`

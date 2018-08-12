@@ -25,7 +25,7 @@ export function channelIsValid(channel, channelSpec) {
       return false;
   }
   if (channelSpec.recipients) {
-    if (!channel.recipients /* || channel.recipients.length === 0*/) {
+    if (!channel.recipients || channel.recipients.length === 0) {
       return false;
     }
   }
