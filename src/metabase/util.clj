@@ -549,9 +549,8 @@
 
 (defn is-java-9-or-higher?
   "Are we running on Java 9 or above?"
-  []
-  (when-let [java-major-version (some-> (System/getProperty "java.version")
-                                        (s/split #"\.")
-                                        first
-                                        Integer/parseInt)]
-    (>= java-major-version 9)))
+  ([]
+   (is-java-9-or-higher? (System/getProperty "java.version")))
+  ([java-version-str]
+   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
+     (>= (Integer/parseInt java-major-version-str) 9))))
