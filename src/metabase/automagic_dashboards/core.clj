@@ -76,7 +76,8 @@
    :cum-sum   (tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
-  (comp #{:metric} qp.util/normalize-token first))
+  (every-pred (comp #{:metric} qp.util/normalize-token first)
+              (complement qp.expand/ga-metric?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
   (comp #{:named} qp.util/normalize-token first))
