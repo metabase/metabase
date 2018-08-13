@@ -10,9 +10,9 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
             [metabase.test.data :as data]
-            [metabase.test.data.users :as users]
-            [toucan.util.test :as tt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]))
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.util.test :as tt][metabase.test.data.users :as users]
+            [toucan.util.test :as tt]))
 
 (expect
   #{[:field-id 1] [:metric 1] [:field-id 2] [:segment 1]}
