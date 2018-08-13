@@ -103,6 +103,7 @@ export class SchemaBrowser extends React.Component {
                         mb={1}
                         hover={{ color: normal.purple }}
                         data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
+                        className="overflow-hidden"
                       >
                         <Card hoverable px={1}>
                           <Flex align="center">
@@ -173,6 +174,7 @@ export class TableBrowser extends React.Component {
                               ml={1}
                               hover={{ color: normal.purple }}
                               data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                              className="overflow-hidden"
                             >
                               <EntityItem
                                 item={table}
