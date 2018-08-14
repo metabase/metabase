@@ -497,6 +497,11 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
+(defn with-current-user-info
+  "Associates the login-attributes of the current users to `m`"
+  [m]
+  (assoc m :user @*current-user*))
+
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
