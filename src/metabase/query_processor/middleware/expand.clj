@@ -390,8 +390,14 @@
           include-current? (qputil/get-normalized options :include-current)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime  0 unit)))
-        (core/= n -1) (= f (value f (relative-datetime -1 unit)))
-        (core/= n  1) (= f (value f (relative-datetime  1 unit)))
+        (core/= n -1) (if include-current?
+                       (between f (value f (relative-datetime n unit))
+                                 (value f (relative-datetime 0 unit)))
+                       (= f (value f (relative-datetime -1 unit))))
+        (core/= n  1) (if include-current?
+                       (between f (value f (relative-datetime 0 unit))
+                                 (value f (relative-datetime n unit)))
+                       (= f (value f (relative-datetime  1 unit))))
         (core/< n -1) (between f (value f (relative-datetime                          n unit))
                                  (value f (relative-datetime (if include-current? 0 -1) unit)))
         (core/> n  1) (between f (value f (relative-datetime (if include-current? 0  1) unit))
