@@ -116,7 +116,7 @@ export default class Scalar extends Component {
     } = this.props;
     let description = settings["card.description"];
 
-    let isSmall = gridSize && gridSize.width < 4;
+    let isSmall = gridSize && gridSize.width < 5;
     const column = cols[0];
 
     let scalarValue = rows[0] && rows[0][0];
