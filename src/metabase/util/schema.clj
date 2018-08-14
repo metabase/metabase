@@ -106,6 +106,10 @@
 ;;; |                                                 USEFUL SCHEMAS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def AllowedBlankString
+  "Schema for a string."
+  (s/named (s/cond-pre s/Str) (tru "String")))
+
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (with-api-error-message (s/constrained s/Str (complement str/blank?) "Non-blank string")

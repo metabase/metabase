@@ -322,7 +322,7 @@
 (def AnyValueLiteral
   "Schema for anything that is a considered a valid value literal in MBQL - `nil`, a `Boolean`, `Number`, `String`, or
   relative datetime form."
-  (s/named (s/maybe (s/cond-pre s/Bool su/NonBlankString OrderableValueLiteral))
+  (s/named (s/maybe (s/cond-pre s/Bool su/AllowedBlankString OrderableValueLiteral))
            "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
 
 
