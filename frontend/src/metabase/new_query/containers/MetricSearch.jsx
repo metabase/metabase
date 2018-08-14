@@ -9,6 +9,9 @@ import { t } from "c-3po";
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import EmptyState from "metabase/components/EmptyState";
+import { Flex } from "grid-styled";
+
+import fitViewPort from "metabase/hoc/FitViewPort";
 
 import type { StructuredQuery } from "metabase/meta/types/Query";
 import { getCurrentQuery } from "metabase/new_query/selectors";
@@ -87,25 +90,30 @@ export default class MetricSearch extends Component {
               />
             );
           } else {
-            return (
-              <div className="mt2 flex-full flex align-center justify-center">
-                <EmptyState
-                  message={
-                    <span>
-                      {t`Defining common metrics for your team makes it even easier to ask questions`}
-                    </span>
-                  }
-                  image="app/img/metrics_illustration"
-                  action={t`How to create metrics`}
-                  link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
-                  className="mt2"
-                  imageClassName="mln2"
-                />
-              </div>
-            );
+            return <MetricEmptyState />;
           }
         }}
       </LoadingAndErrorWrapper>
     );
   }
 }
+
+const MetricEmptyState = fitViewPort(({ fitClassNames }) => (
+  <Flex
+    mt={2}
+    align="center"
+    flexDirection="column"
+    justify="center"
+    className={fitClassNames}
+  >
+    <EmptyState
+      message={t`Defining common metrics for your team makes it even easier to ask questions`}
+      title={t`No metrics`}
+      image="app/img/metrics_illustration"
+      action={t`How to create metrics`}
+      link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
+      className="mt2"
+      imageClassName="mln2"
+    />
+  </Flex>
+));

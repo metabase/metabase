@@ -1021,7 +1021,7 @@ exports[`Styled(div) should render "with an icon" correctly 1`] = `
 
 exports[`Toggle should render "off" correctly 1`] = `
 <a
-  className="no-decoration "
+  className="no-decoration"
   onClick={null}
   style={
     Object {
@@ -1033,7 +1033,7 @@ exports[`Toggle should render "off" correctly 1`] = `
 
 exports[`Toggle should render "on" correctly 1`] = `
 <a
-  className="no-decoration undefined "
+  className="no-decoration"
   onClick={null}
   style={
     Object {

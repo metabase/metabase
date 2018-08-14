@@ -54,6 +54,53 @@
    :username-incorrect                 (tru "Looks like your username is incorrect.")
    :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
 
+(def default-host-details
+  "Map of the db host details field, useful for `details-fields` implementations"
+  {:name         "host"
+   :display-name (tru "Host")
+   :default      "localhost"})
+
+(def default-port-details
+  "Map of the db port details field, useful for `details-fields` implementations. Implementations should assoc a
+  `:default` key."
+  {:name         "port"
+   :display-name (tru "Port")
+   :type         :integer})
+
+(def default-user-details
+  "Map of the db user details field, useful for `details-fields` implementations"
+  {:name         "user"
+   :display-name (tru "Database username")
+   :placeholder  (tru "What username do you use to login to the database?")
+   :required     true})
+
+(def default-password-details
+  "Map of the db password details field, useful for `details-fields` implementations"
+  {:name         "password"
+   :display-name (tru "Database password")
+   :type         :password
+   :placeholder  "*******"})
+
+(def default-dbname-details
+  "Map of the db name details field, useful for `details-fields` implementations"
+  {:name         "dbname"
+   :display-name (tru "Database name")
+   :placeholder  (tru "birds_of_the_world")
+   :required     true})
+
+(def default-ssl-details
+  "Map of the db ssl details field, useful for `details-fields` implementations"
+  {:name         "ssl"
+   :display-name (tru "Use a secure connection (SSL)?")
+   :type         :boolean
+   :default      false})
+
+(def default-additional-options-details
+  "Map of the db `additional-options` details field, useful for `details-fields` implementations. Should assoc a
+  `:placeholder` key"
+  {:name         "additional-options"
+   :display-name (tru "Additional JDBC connection string options")})
+
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
    `IDriverDefaultsMixin`. Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on

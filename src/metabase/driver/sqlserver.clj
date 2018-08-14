@@ -9,7 +9,8 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import java.sql.Time))
 
 (defrecord SQLServerDriver []
@@ -176,38 +177,22 @@
    (sql/IDriverSQLDefaultsMixin)
    {:date-interval  (u/drop-first-arg date-interval)
     :details-fields (constantly (ssh/with-tunnel-config
-                                  [{:name         "host"
-                                    :display-name "Host"
-                                    :default      "localhost"}
-                                   {:name         "port"
-                                    :display-name "Port"
-                                    :placeholder  "1433"
-                                    :type         :integer}
-                                   {:name         "db"
-                                    :display-name "Database name"
-                                    :placeholder  "BirdsOfTheWorld"
-                                    :required     true}
+                                  [driver/default-host-details
+                                   (assoc driver/default-port-details :placeholder "1433")
+                                   (assoc driver/default-dbname-details
+                                     :name         "db"
+                                     :placeholder  (tru "BirdsOfTheWorld"))
                                    {:name         "instance"
-                                    :display-name "Database instance name"
-                                    :placeholder  "N/A"}
+                                    :display-name (tru "Database instance name")
+                                    :placeholder  (tru "N/A")}
                                    {:name         "domain"
-                                    :display-name "Windows domain"
-                                    :placeholder  "N/A"}
-                                   {:name         "user"
-                                    :display-name "Database username"
-                                    :placeholder  "What username do you use to login to the database?"
-                                    :required     true}
-                                   {:name         "password"
-                                    :display-name "Database password"
-                                    :type         :password
-                                    :placeholder  "*******"}
-                                   {:name         "ssl"
-                                    :display-name "Use a secure connection (SSL)?"
-                                    :type         :boolean
-                                    :default      false}
-                                   {:name         "additional-options"
-                                    :display-name "Additional JDBC connection string options"
-                                    :placeholder  "trustServerCertificate=false"}]))
+                                    :display-name (tru "Windows domain")
+                                    :placeholder  (tru "N/A")}
+                                   driver/default-user-details
+                                   driver/default-password-details
+                                   driver/default-ssl-details
+                                   (assoc driver/default-additional-options-details
+                                     :placeholder  "trustServerCertificate=false")]))
     :current-db-time (driver/make-current-db-time-fn sqlserver-db-time-query sqlserver-date-formatters)
     :features        (fn [this]
                        ;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the

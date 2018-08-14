@@ -29,13 +29,21 @@
 }
 
 :local(.toggle.selected):after {
-  content: "";
-  width: 20px;
-  height: 20px;
-  border-radius: 99px;
-  position: absolute;
-  top: 1px;
   left: 25px;
 
   background-color: white;
+}
+
+:local(.toggle.small) {
+  width: 28px;
+  height: 17px;
+}
+
+:local(.toggle.small):after {
+  width: 13px;
+  height: 13px;
+}
+
+:local(.toggle.small.selected):after {
+  left: 12px;
 }

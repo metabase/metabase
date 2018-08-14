@@ -161,7 +161,7 @@
              (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
                    candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                    dashcards     (:ordered_cards dashboard)
-                   dashcards-new (map #(add-filter % filter-id candidate) dashcards)]
+                   dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
                ;; Only add filters that apply to all cards.
                (if (= (count dashcards) (count dashcards-new))
                  (-> dashboard

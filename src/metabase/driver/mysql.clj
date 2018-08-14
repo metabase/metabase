@@ -269,28 +269,13 @@
    (sql/IDriverSQLDefaultsMixin)
    {:date-interval                     (u/drop-first-arg date-interval)
     :details-fields                    (constantly (ssh/with-tunnel-config
-                                                     [{:name         "host"
-                                                       :display-name "Host"
-                                                       :default      "localhost"}
-                                                      {:name         "port"
-                                                       :display-name "Port"
-                                                       :type         :integer
-                                                       :default      3306}
-                                                      {:name         "dbname"
-                                                       :display-name "Database name"
-                                                       :placeholder  "birds_of_the_word"
-                                                       :required     true}
-                                                      {:name         "user"
-                                                       :display-name "Database username"
-                                                       :placeholder  "What username do you use to login to the database?"
-                                                       :required     true}
-                                                      {:name         "password"
-                                                       :display-name "Database password"
-                                                       :type         :password
-                                                       :placeholder  "*******"}
-                                                      {:name         "additional-options"
-                                                       :display-name "Additional JDBC connection string options"
-                                                       :placeholder  "tinyInt1isBit=false"}]))
+                                                     [driver/default-host-details
+                                                      (assoc driver/default-port-details :default 3306)
+                                                      driver/default-dbname-details
+                                                      driver/default-user-details
+                                                      driver/default-password-details
+                                                      (assoc driver/default-additional-options-details
+                                                        :placeholder  "tinyInt1isBit=false")]))
     :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
     :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)
     :features                          (fn [this]
