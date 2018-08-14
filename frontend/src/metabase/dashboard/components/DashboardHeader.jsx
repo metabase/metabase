@@ -18,7 +18,6 @@ import { getDashboardActions } from "./DashboardActions";
 import ParametersPopover from "./ParametersPopover";
 import Popover from "metabase/components/Popover";
 
-import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";

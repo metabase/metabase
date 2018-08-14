@@ -6,7 +6,7 @@ export const GRID_WIDTH = 24;
 export const GRID_ASPECT_RATIO = 4 / 3;
 export const GRID_MARGIN = 6;
 
-export const DEFAULT_CARD_SIZE = { width: 2, height: 2 };
+export const DEFAULT_CARD_SIZE = { width: 3, height: 3 };
 
 type DashCardPosition = {
   col: number,

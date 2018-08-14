@@ -26,7 +26,7 @@ export default class Scalar extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = { width: 2, height: 2 };
 
   _scalar: ?HTMLElement;
 
