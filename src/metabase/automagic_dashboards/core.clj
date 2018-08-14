@@ -276,7 +276,7 @@
     :day))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation fingerprint name base_type] :as field}]
+  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
@@ -287,7 +287,8 @@
       [:datetime-field reference (or aggregation
                                      (optimal-datetime-resolution field))]
 
-      aggregation
+      (and aggregation
+           (isa? base_type :type/Number))
       [:binning-strategy reference aggregation]
 
       :else
