@@ -207,3 +207,50 @@
   (qputil/postwalk-collect set?
                            identity
                            test-tree))
+
+(def ^:private test-inner-map
+  {:test {:value 10}})
+
+;; get-in-query should work for a nested query
+(expect
+  10
+  (qputil/get-in-query {:query {:source-query test-inner-map}} [:test :value]))
+
+;; Not currently supported, but get-in-query should work for a double nested query
+(expect
+  10
+  (qputil/get-in-query {:query {:source-query {:source-query test-inner-map}}} [:test :value]))
+
+;; get-in-query should also work with non-nested queries
+(expect
+  10
+  (qputil/get-in-query {:query test-inner-map} [:test :value]))
+
+;; Not providing a `not-found` value should just return nil
+(expect
+  nil
+  (qputil/get-in-query {} [:test]))
+
+;; Providing a `not-found` value should return that
+(let [not-found (gensym)]
+  (expect
+    not-found
+    (qputil/get-in-query {} [:test] not-found)))
+
+(def ^:private updated-test-map
+  {:test {:value 11}})
+
+;; assoc-in-query works with a non-nested query
+(expect
+  {:query updated-test-map}
+  (qputil/assoc-in-query {:query test-inner-map} [:test :value] 11))
+
+;; assoc-in-query works with a nested query
+(expect
+  {:query {:source-query updated-test-map}}
+  (qputil/assoc-in-query {:query {:source-query test-inner-map}} [:test :value] 11))
+
+;; Not supported yet, but assoc-in-query should do the right thing with a double nested query
+(expect
+  {:query {:source-query {:source-query updated-test-map}}}
+  (qputil/assoc-in-query {:query {:source-query {:source-query test-inner-map}}} [:test :value] 11))
