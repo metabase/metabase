@@ -218,6 +218,20 @@
 
 ;;; ## CLAUSE APPLICATION
 
+;;; ### initial lookup
+
+(defn- add-initial-lookup [query pipeline-ctx]
+  (if-not (query :join-tables)
+    pipeline-ctx
+    (update pipeline-ctx :query concat (map (fn [join-table] {
+      :$lookup {
+        :from (:table-name join-table),
+        :localField (:field-name (:source-field join-table)),
+        :foreignField (:field-name (:pk-field join-table)),
+        :as (str (:table-name join-table) "/" (:field-name (:pk-field join-table)))
+      }
+    }) (query :join-tables)))))
+
 ;;; ### initial projection
 
 (defn- add-initial-projection [query pipeline-ctx]
@@ -385,7 +399,8 @@
   (reduce (fn [pipeline-ctx f]
             (f query pipeline-ctx))
           {:projections [], :query []}
-          [add-initial-projection
+          [add-initial-lookup
+           add-initial-projection
            handle-filter
            handle-breakout+aggregation
            handle-order-by
