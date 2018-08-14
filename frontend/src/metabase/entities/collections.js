@@ -5,7 +5,11 @@ import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import { getUser, getUserDefaultCollectionId } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserDefaultCollectionId,
+  getUserPersonalCollectionId,
+} from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
@@ -106,6 +110,11 @@ const Collections = createEntity({
       },
     ],
   },
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.parent_id, getState());
+    return type && `collection=${type}`;
+  },
 });
 
 export default Collections;
@@ -118,6 +127,13 @@ export const canonicalCollectionId = (
   collectionId == null || collectionId === "root"
     ? null
     : parseInt(collectionId, 10);
+
+export const getCollectionType = (collectionId: string, state: {}) =>
+  collectionId === null || collectionId === "root"
+    ? "root"
+    : collectionId === getUserPersonalCollectionId(state)
+      ? "personal"
+      : collectionId !== undefined ? "other" : null;
 
 export const ROOT_COLLECTION = {
   id: "root",

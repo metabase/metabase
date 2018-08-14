@@ -32,10 +32,8 @@ import { assoc, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-export const ERROR_MESSAGE_GENERIC =
-  "There was a problem displaying this chart.";
-export const ERROR_MESSAGE_PERMISSION =
-  "Sorry, you don't have permission to see this card.";
+export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
+export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
 import type {
