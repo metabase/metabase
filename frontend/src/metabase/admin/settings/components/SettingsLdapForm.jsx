@@ -41,7 +41,7 @@ export default class SettingsLdapForm extends Component {
           },
           {
             title: t`Group Schema`,
-            settings: ["ldap-group-sync", "ldap-group-base"],
+            settings: ["ldap-group-sync", "ldap-group-base", "ldap-group-schema"],
           },
         ]}
         updateSettings={this.props.updateLdapSettings}
