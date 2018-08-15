@@ -40,8 +40,8 @@
   special type with a nil special type"
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
-                                          ;; If we already know the special type, becouse it is stored, don't classify again.
-                                          ;; Also try to refine special type set upstream for aggregation cols (which comes back as :type/Number)
+                                          ;; If we already know the special type, becouse it is stored, don't classify again,
+                                          ;; but try to refine special type set upstream for aggregation cols (which come back as :type/Number).
                                           (case original-value
                                             (nil :type/Number) (classify-name/infer-special-type col)
                                             original-value))))
@@ -52,19 +52,23 @@
   populate the ResultColumnMetadata"
   [column]
   (merge
-   ;; if base-type isn't set put a default one in there. Similarly just use humanized value of `:name` for `:display_name` if one isn't set
-   {:base_type    :type/*
-    :display_name (humanization/name->human-readable-name (name (:name column)))}
    (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])
    ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as DateTime columns
    (when (= (:unit column) :year)
      {:base_type :type/Text
       :unit      nil})))
 
+(defn- ensure-base-fields
+  "If base-type isn't set put a default one in there. Similarly just use humanized value of `:name` for `:display_name` if one isn't set."
+  [column]
+  (merge {:base_type    :type/*
+          :display_name (humanization/name->human-readable-name (name (:name column)))}
+         column))
+
 (s/defn results->column-metadata :- ResultsMetadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
-  (let [result-metadata (for [col (:cols results)]
+  (let [result-metadata (for [col (map ensure-base-fields (:cols results))]
                           (-> col
                               stored-column-metadata->result-column-metadata
                               (maybe-infer-special-type col)))]
