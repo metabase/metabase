@@ -3,8 +3,7 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.models.humanization :as humanization]
-            [metabase.query-processor.interface :as qp.i]
+  (:require [metabase.query-processor.interface :as qp.i]
             [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -58,17 +57,10 @@
      {:base_type :type/Text
       :unit      nil})))
 
-(defn- ensure-base-fields
-  "If base-type isn't set put a default one in there. Similarly just use humanized value of `:name` for `:display_name` if one isn't set."
-  [column]
-  (merge {:base_type    :type/*
-          :display_name (humanization/name->human-readable-name (name (:name column)))}
-         column))
-
 (s/defn results->column-metadata :- ResultsMetadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
-  (let [result-metadata (for [col (map ensure-base-fields (:cols results))]
+  (let [result-metadata (for [col (:cols results)]
                           (-> col
                               stored-column-metadata->result-column-metadata
                               (maybe-infer-special-type col)))]
