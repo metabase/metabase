@@ -128,7 +128,7 @@
                            :type   {:type/Text {:percent-json   0.0
                                                 :percent-url    0.0
                                                 :percent-email  0.0
-                                                :average-length 8.333}}}})))
+                                                :average-length 8.33}}}})))
 
 ;; #### users
 (defn users-col
@@ -152,7 +152,7 @@
                                  :type   {:type/Text {:percent-json   0.0
                                                       :percent-url    0.0
                                                       :percent-email  0.0
-                                                      :average-length 13.267}}}}
+                                                      :average-length 13.27}}}}
      :last_login {:special_type nil
                   :base_type    (data/expected-base-type->actual :type/DateTime)
                   :name         (data/format-name "last_login")
@@ -193,22 +193,22 @@
                    :display_name "Category ID"
                    :fingerprint  (if (data/fks-supported?)
                                    {:global {:distinct-count 28}}
-                                   {:global {:distinct-count 28}, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}})}
+                                   {:global {:distinct-count 28}, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 6.9, :q3 49.24}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
-                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}}
+                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49 }}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
-                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.374, :max -73.953, :avg -115.998}}}
+                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.41, :q3 -118.26}}}
                    :display_name "Longitude"}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "latitude")
                    :display_name "Latitude"
-                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.065, :max 40.779, :avg 35.506}}}}
+                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.06, :q3 37.77}}}}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
@@ -244,7 +244,7 @@
                 :display_name "Venue ID"
                 :fingerprint  (if (data/fks-supported?)
                                 {:global {:distinct-count 100}}
-                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.965}}})}
+                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97}}})}
      :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
                                   {})
                 :target       (target-field (users-col :id))
@@ -256,7 +256,7 @@
                 :display_name "User ID"
                 :fingerprint  (if (data/fks-supported?)
                                 {:global {:distinct-count 15}}
-                                {:global {:distinct-count 15}, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.929}}})})))
+                                {:global {:distinct-count 15}, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93}}})})))
 
 
 ;;; #### aggregate columns

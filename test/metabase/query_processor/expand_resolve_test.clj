@@ -98,7 +98,7 @@
                                                    :table-name         "VENUES"
                                                    :values             price-field-values
                                                    :fingerprint        {:global {:distinct-count 4}
-                                                                        :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})
+                                                                        :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49}}}})
                               :value       {:value 1
                                             :field (merge field-defaults
                                                           {:field-id           true
@@ -112,17 +112,18 @@
                                                            :table-name         "VENUES"
                                                            :values             price-field-values
                                                            :fingerprint        {:global {:distinct-count 4}
-                                                                                :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})}}
+                                                                                :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49}}}})}}
 
 
                :join-tables nil}
     :fk-field-ids #{}
     :table-ids    #{(id :venues)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
-                                                     (ql/filter (ql/and (ql/> $price 1))))))]
-    (tu/boolean-ids-and-timestamps
-     (mapv obj->map [expanded-form
-                     (resolve' expanded-form)]))))
+                                                          (ql/filter (ql/and (ql/> $price 1))))))]
+    (tu/round-all-decimals 2
+     (tu/boolean-ids-and-timestamps
+      (mapv obj->map [expanded-form
+                      (resolve' expanded-form)])))))
 
 (def category-field-values
   {:values                (defs/field-values defs/test-data-map "categories" "name")
@@ -309,7 +310,7 @@
                                                              :table-name         "VENUES__via__VENUE_ID"
                                                              :values             price-field-values
                                                              :fingerprint        {:global {:distinct-count 4}
-                                                                                  :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}})}]
+                                                                                  :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49}}}})}]
                    :breakout     [{:field (merge field-defaults
                                                  {:database-type      "DATE"
                                                   :base-type          :type/Date
@@ -337,9 +338,10 @@
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins
                                                           (ql/aggregation (ql/sum $venue_id->venues.price))
                                                           (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
-    (tu/boolean-ids-and-timestamps
-     (mapv obj->map [expanded-form
-                     (resolve' expanded-form)]))))
+    (tu/round-all-decimals 2
+     (tu/boolean-ids-and-timestamps
+      (mapv obj->map [expanded-form
+                      (resolve' expanded-form)])))))
 
 ;; check that a schema invalidation error produces a reasonably-sized exception, < 50 lines.
 ;; previously the entire schema was being dumped which resulted in a ~5200 line exception (#5978)

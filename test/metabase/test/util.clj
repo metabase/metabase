@@ -397,14 +397,14 @@
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
                                                      num
-                                                     (u/round-to-decimals 3 num)))))
+                                                     (u/round-to-decimals 2 num)))))
           fprint-type-map fields))
 
 (defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  "Rounds the numerical fields of a fingerprint to 2 decimal places"
   [field]
   (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg :q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
 
 (defn round-fingerprint-cols [query-results]
