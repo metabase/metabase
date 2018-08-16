@@ -98,7 +98,9 @@
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   {(s/optional-key :min) (s/maybe s/Num)
    (s/optional-key :max) (s/maybe s/Num)
-   (s/optional-key :avg) (s/maybe s/Num)})
+   (s/optional-key :avg) (s/maybe s/Num)
+   (s/optional-key :q1)  (s/maybe s/Num)
+   (s/optional-key :q3)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
@@ -157,7 +159,7 @@
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
-   2 #{:type/DateTime}})
+   2 #{:type/Number :type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."
