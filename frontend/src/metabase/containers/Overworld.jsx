@@ -314,8 +314,8 @@ const AdminPinMessage = () => {
       >
         <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
         <Box ml={1}>
-          <h3>{t`Your most important dashboards go here`}</h3>
-          <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in the space`}</p>
+          <h3>{t`Your team's most important dashboards go here`}</h3>
+          <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear here for everyone`}</p>
         </Box>
       </Flex>
     </Box>
