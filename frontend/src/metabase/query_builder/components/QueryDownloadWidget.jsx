@@ -38,7 +38,7 @@ const QueryDownloadWidget = ({
     triggerClasses={cx(className, "text-brand-hover")}
     triggerClassesClose={classNameClose}
   >
-    <Box p={3} style={{ maxWidth: 320 }}>
+    <Box p={3} w={300}>
       <h4>{t`Download full results`}</h4>
       {result.data != null &&
         result.data.rows_truncated != null && (
@@ -50,7 +50,7 @@ const QueryDownloadWidget = ({
         )}
       <Box>
         {EXPORT_FORMATS.map(type => (
-          <Box py={1}>
+          <Box>
             {dashcardId && token ? (
               <DashboardEmbedQueryButton
                 key={type}
