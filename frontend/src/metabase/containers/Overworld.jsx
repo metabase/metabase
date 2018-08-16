@@ -298,29 +298,63 @@ class Overworld extends React.Component {
   }
 }
 
-const AdminPinMessage = () => {
-  const link = (
-    <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
-  );
-  return (
-    <Box>
-      <SectionHeading>{t`Start here`}</SectionHeading>
+class AdminPinMessage extends React.Component {
+  state = {
+    showMessage: false,
+  };
 
-      <Flex
-        bg={colors["bg-medium"]}
-        p={2}
-        align="center"
-        style={{ borderRadius: 6 }}
-      >
-        <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
-        <Box ml={1}>
-          <h3>{t`Your team's most important dashboards go here`}</h3>
-          <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear here for everyone`}</p>
-        </Box>
-      </Flex>
-    </Box>
-  );
-};
+  static storageKey = "mb-admin-homepage-pin-propaganda-hidden";
+
+  componentWillMount = async () => {
+    const isHidden = await window.localStorage.getItem(this.storageKey);
+    this.setState({
+      showMessage: !isHidden,
+    });
+  };
+  dismissPinMessage = async () => {
+    await window.localStorage.setItem(this.storageKey, true);
+    this.setState({
+      showMessage: false,
+    });
+  };
+  render() {
+    const { showMessage } = this.state;
+
+    if (!showMessage) {
+      return null;
+    }
+
+    const link = (
+      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+    );
+
+    return (
+      <Box>
+        <SectionHeading>{t`Start here`}</SectionHeading>
+
+        <Flex
+          bg={colors["bg-medium"]}
+          p={2}
+          align="center"
+          style={{ borderRadius: 6 }}
+          className="hover-parent hover--visibility"
+        >
+          <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
+          <Box ml={1}>
+            <h3>{t`Your team's most important dashboards go here`}</h3>
+            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear here for everyone`}</p>
+          </Box>
+          <Icon
+            className="hover-child text-brand-hover cursor-pointer bg-medium"
+            name="close"
+            ml="auto"
+            onClick={() => this.dismissPinMessage()}
+          />
+        </Flex>
+      </Box>
+    );
+  }
+}
 
 const SectionHeading = ({ children }) => (
   <Box mb={1}>
