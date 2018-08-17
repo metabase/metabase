@@ -132,6 +132,28 @@
                    (recur ks-all m-rest ks-map)))]
     (assoc-in m ks-map v)))
 
+(defn get-in-query
+  "Similar to `get-in-normalized` but will look in either `:query` or recursively in `[:query :source-query]`. Using
+  this function will avoid having to check if there's a nested query vs. top-level query."
+  ([m ks]
+   (get-in-query m ks nil))
+  ([m ks not-found]
+   (if-let [source-query (get-in-normalized m [:query :source-query])]
+     (recur (assoc m :query source-query) ks not-found)
+     (get-in-normalized m (cons :query ks) not-found))))
+
+(defn assoc-in-query
+  "Similar to `assoc-in-normalized` but will look in either `:query` or recursively in `[:query :source-query]`. Using
+  this function will avoid having to check if there's a nested query vs. top-level query."
+  [m ks v]
+  (if-let [source-query (get-in-normalized m [:query :source-query])]
+    ;; We have a soure-query, we need to recursively `assoc-in` with the source query as the query
+    (assoc-in-normalized m
+                         [:query :source-query]
+                         (-> (assoc m :query source-query)
+                             (assoc-in-query ks v)
+                             :query))
+    (assoc-in-normalized m (cons :query ks) v)))
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
