@@ -46,7 +46,7 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}))
+  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0}}))
 
 ;; test that Card result metadata is saved after running a Card
 (expect
@@ -120,7 +120,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
-                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
+                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query

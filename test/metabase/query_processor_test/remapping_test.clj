@@ -32,7 +32,8 @@
            (ql/order-by (ql/asc $name))
            (ql/limit 4))
          booleanize-native-form
-         (format-rows-by [str int str]))))
+         (format-rows-by [str int str])
+         tu/round-fingerprint-cols)))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed
