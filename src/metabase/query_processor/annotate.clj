@@ -364,6 +364,14 @@
            ;; add FK info
            add-extra-info-to-fk-fields))))
 
+(defn- pre-sort-index->post-sort-index
+  "Return a  mapping of how columns should be sorted:
+   [2 1 0] means the 1st column should be 3rd, 2nd should remain 2nd, and  3rd
+   should become the 1st."
+  [unsorted-columns sorted-columns]
+  (let [column-index (zipmap unsorted-columns (range))]
+    (map column-index sorted-columns)))
+
 (defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:
 
@@ -371,17 +379,18 @@
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
       frontend."
   [query {:keys [columns rows], :as results}]
-  (let [initial-rows      (for [row (take 10 rows)]
-                            (zipmap columns row))
-        cols              (resolve-sort-and-format-columns (:query query) (distinct columns) initial-rows)
-        original-ordering (zipmap columns (range))
-        columns           (mapv :name cols)
-        reordering        (map original-ordering columns)]
+  (let [cols                   (resolve-sort-and-format-columns (:query query)
+                                                                (distinct columns)
+                                                                (for [row (take 10 rows)]
+                                                                  (zipmap columns row)))
+        sorted-columns         (mapv :name cols)
+
+        sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
     (assoc results
       :cols    (vec (for [col cols]
                       (update col :name name)))
-      :columns (mapv name columns)
-      :rows    (if (not= reordering (sort reordering))
+      :columns (mapv name sorted-columns)
+      :rows    (if (not= sorted-column-ordering (sort sorted-column-ordering))
                  (for [row rows]
-                   (mapv (partial nth (vec row)) reordering))
+                   (mapv (partial nth (vec row)) sorted-column-ordering))
                  rows))))
