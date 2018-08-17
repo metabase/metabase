@@ -244,7 +244,7 @@
                 :display_name "Venue ID"
                 :fingerprint  (if (data/fks-supported?)
                                 {:global {:distinct-count 100}}
-                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 27.63, :q3 76.13}}})}
+                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 27.7, :q3 76.13}}})}
      :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
                                   {})
                 :target       (target-field (users-col :id))
