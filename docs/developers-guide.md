@@ -293,7 +293,7 @@ and in the backend using `trs` and related macros (see more details in https://g
 6. Commit changes to ./locales/LOCALE.po and ./resources/frontend_client/app/locales/LOCALE.json
 
 
-To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_TOOL_OPTIONS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
+To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_OPTS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
 
 
 ## License
