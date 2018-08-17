@@ -48,12 +48,12 @@
                                       :percent-email 0.0, :average-length 15.63}}}
    :id          nil
    :price       {:global {:distinct-count 4},
-                 :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49}}}
+                 :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0}}}
    :latitude    {:global {:distinct-count 94},
-                 :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.06, :q3 37.77}}}
+                 :type   {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.0, :q3 38.0}}}
    :category_id {:global {:distinct-count 28}}
    :longitude   {:global {:distinct-count 84},
-                 :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.41, :q3 -118.26}}}})
+                 :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0}}}})
 
 ;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
 ;; queries we know will get ran as part of sync
