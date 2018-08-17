@@ -366,8 +366,7 @@
 
 (defn- pre-sort-index->post-sort-index
   "Return a  mapping of how columns should be sorted:
-   [2 1 0] means the 1st column should be 3rd, 2nd should remain 2nd, and  3rd
-   should become the 1st."
+   [2 1 0] means the 1st column should be 3rd, 2nd remain 2nd, and 3rd should come 1st."
   [unsorted-columns sorted-columns]
   (let [column-index (zipmap unsorted-columns (range))]
     (map column-index sorted-columns)))
@@ -384,7 +383,6 @@
                                                                 (for [row (take 10 rows)]
                                                                   (zipmap columns row)))
         sorted-columns         (mapv :name cols)
-
         sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
     (assoc results
       :cols    (vec (for [col cols]
