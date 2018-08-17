@@ -378,17 +378,17 @@
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
       frontend."
   [query {:keys [columns rows], :as results}]
-  (let [cols                   (resolve-sort-and-format-columns (:query query)
-                                                                (distinct columns)
-                                                                (for [row (take 10 rows)]
-                                                                  (zipmap columns row)))
-        sorted-columns         (mapv :name cols)
-        sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
+  (let [cols           (resolve-sort-and-format-columns (:query query)
+                                                        (distinct columns)
+                                                        (for [row (take 10 rows)]
+                                                          (zipmap columns row)))
+        sorted-columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]
                       (update col :name name)))
       :columns (mapv name sorted-columns)
-      :rows    (if (not= sorted-column-ordering (sort sorted-column-ordering))
-                 (for [row rows]
-                   (mapv (partial nth (vec row)) sorted-column-ordering))
+      :rows    (if (not= columns sorted-columns)
+                 (let [sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
+                   (for [row rows]
+                     (mapv (partial nth (vec row)) sorted-column-ordering)))
                  rows))))
