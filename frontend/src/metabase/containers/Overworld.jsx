@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
@@ -70,8 +70,25 @@ const getParitionedCollections = createSelector(
   user: getUser(state, props),
 }))
 class Overworld extends React.Component {
+  state = {
+    showXrays: false,
+  };
+
+  componentWillMount = async () => {
+    const isDismissed = await window.localStorage.getItem(
+      "mb-hide-homepage-xrays",
+    );
+    this.setState({
+      showXrays: !isDismissed,
+    });
+  };
+  dismissXrays = async () => {
+    await window.localStorage.setItem("mb-hide-homepage-xrays", true);
+    this.setState({ showXrays: false });
+  };
   render() {
     const { user } = this.props;
+    const { showXrays } = this.state;
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
@@ -98,18 +115,30 @@ class Overworld extends React.Component {
                     }
                     return (
                       <Box mx={PAGE_PADDING} mt={[1, 3]}>
-                        <SectionHeading>
-                          {t`Try these x-rays based on your data.`}
-                        </SectionHeading>
-                        <Box>
-                          <ExplorePane
-                            candidates={candidates}
-                            withMetabot={false}
-                            title=""
-                            gridColumns={[1, 1 / 3]}
-                            asCards={true}
-                          />
-                        </Box>
+                        {user.is_superuser && <AdminPinMessage />}
+                        {showXrays && (
+                          <Box mt={[1, 3]}>
+                            <Flex align="center">
+                              <SectionHeading>
+                                {t`Try these x-rays based on your data.`}
+                              </SectionHeading>
+                              <Link
+                                ml="auto"
+                                onClick={() => this.dismissXrays()}
+                                color={colors["text-medium"]}
+                              >{t`I'm done looking at these`}</Link>
+                            </Flex>
+                            <Box>
+                              <ExplorePane
+                                candidates={candidates}
+                                withMetabot={false}
+                                title=""
+                                gridColumns={[1, 1 / 3]}
+                                asCards={true}
+                              />
+                            </Box>
+                          </Box>
+                        )}
                       </Box>
                     );
                   }}
@@ -264,6 +293,64 @@ class Overworld extends React.Component {
             );
           }}
         </DatabaseListLoader>
+      </Box>
+    );
+  }
+}
+
+class AdminPinMessage extends React.Component {
+  state = {
+    showMessage: false,
+  };
+
+  static storageKey = "mb-admin-homepage-pin-propaganda-hidden";
+
+  componentWillMount = async () => {
+    const isHidden = await window.localStorage.getItem(this.storageKey);
+    this.setState({
+      showMessage: !isHidden,
+    });
+  };
+  dismissPinMessage = async () => {
+    await window.localStorage.setItem(this.storageKey, true);
+    this.setState({
+      showMessage: false,
+    });
+  };
+  render() {
+    const { showMessage } = this.state;
+
+    if (!showMessage) {
+      return null;
+    }
+
+    const link = (
+      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+    );
+
+    return (
+      <Box>
+        <SectionHeading>{t`Start here`}</SectionHeading>
+
+        <Flex
+          bg={colors["bg-medium"]}
+          p={2}
+          align="center"
+          style={{ borderRadius: 6 }}
+          className="hover-parent hover--visibility"
+        >
+          <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
+          <Box ml={1}>
+            <h3>{t`Your team's most important dashboards go here`}</h3>
+            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear here for everyone`}</p>
+          </Box>
+          <Icon
+            className="hover-child text-brand-hover cursor-pointer bg-medium"
+            name="close"
+            ml="auto"
+            onClick={() => this.dismissPinMessage()}
+          />
+        </Flex>
       </Box>
     );
   }
