@@ -377,24 +377,62 @@
                               ;; the first 30 here
                               :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
+(defn- create-fk-id+table-id->table
+  "Create the `fk-id+table-id->table` map used in resolving table names in `resolve-table` calls"
+  [{source-table-id :id :as source-table} joined-tables]
+  (into {[nil source-table-id] source-table}
+        (for [{:keys [source-field table-id join-alias]} joined-tables]
+          {[(:field-id source-field) table-id] {:name join-alias
+                                                :id   table-id}})))
+
+(defn- append-new-fields
+  "Returns a vector fields that have all `existing-fields` and any field in `new-fields` not already found in
+  `existing-fields`"
+  [existing-fields new-fields]
+  (let [existing-field-names (set (map name existing-fields))]
+    (vec (concat existing-fields
+                 (remove (comp existing-field-names name) new-fields)))))
+
+;; Needed as `resolve-tables-in-nested-query` and `resolved-tables` are mutually recursive
+(declare resolve-tables)
+
+(defn- resolve-tables-in-nested-query
+  "This function is pull up a nested query found in `expanded-query-dict` and run it through
+  `resolve-tables`. Unfortunately our work isn't done there. If `expanded-query-dict` has a breakout that refers to a
+  column from the nested query we will need to resolve the fields in that breakout after the nested query has been
+  resolved. More comments in-line that breakout the work for that."
+  [expanded-query-dict]
+  (let [source-query (qputil/get-in-normalized expanded-query-dict [:query :source-query])]
+    ;; No need to try and resolve a nested native query
+    (if (:native source-query)
+      expanded-query-dict
+      (let [ ;; Resolve the nested query as if it were a top level query
+            {nested-q :query :as nested-qd} (resolve-tables (assoc expanded-query-dict :query source-query))
+            nested-source-table             (qputil/get-in-normalized nested-qd [:query :source-table])
+            ;; Build a list of join tables found from the newly resolved nested query
+            nested-joined-tables            (fk-field-ids->joined-tables (:id nested-source-table)
+                                                                         (:fk-field-ids nested-qd))
+            ;; Create the map of fk to table info from the resolved nested query
+            fk-id+table-id->table           (create-fk-id+table-id->table nested-source-table nested-joined-tables)
+            ;; Resolve the top level (original) breakout fields with the join information from the resolved nested query
+            resolved-breakout               (for [breakout (get-in expanded-query-dict [:query :breakout])]
+                                              (resolve-table breakout fk-id+table-id->table))]
+        (assoc-in expanded-query-dict [:query :source-query]
+                  (if (and (contains? nested-q :fields)
+                           (seq resolved-breakout))
+                    (update nested-q :fields append-new-fields resolved-breakout)
+                    nested-q))))))
+
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{:keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{:keys [fk-field-ids], :as expanded-query-dict}]
   (let [{source-table-id :id :as source-table} (qputil/get-in-normalized expanded-query-dict [:query :source-table])]
     (if-not source-table-id
       ;; if we have a `source-query`, recurse and resolve tables in that
-      (update-in expanded-query-dict [:query :source-query] (fn [source-query]
-                                                              (if (:native source-query)
-                                                                source-query
-                                                                (:query (resolve-tables (assoc expanded-query-dict
-                                                                                          :query source-query))))))
+      (resolve-tables-in-nested-query expanded-query-dict)
       ;; otherwise we can resolve tables in the (current) top-level
-      (let [table-ids             (conj table-ids source-table-id)
-            joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
-            fk-id+table-id->table (into {[nil source-table-id] source-table}
-                                        (for [{:keys [source-field table-id join-alias]} joined-tables]
-                                          {[(:field-id source-field) table-id] {:name join-alias
-                                                                                :id   table-id}}))]
+      (let [joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
+            fk-id+table-id->table (create-fk-id+table-id->table source-table joined-tables)]
         (as-> expanded-query-dict <>
           (assoc-in <> [:query :join-tables]  joined-tables)
           (walk/postwalk #(resolve-table % fk-id+table-id->table) <>))))))

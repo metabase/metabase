@@ -264,18 +264,19 @@
   "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
   slightly based on whether the two Fields are the same Field."
   [field search-field value limit]
-  {:database (db-id field)
-   :type     :query
-   :query    {:source-table (table-id field)
-              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
-              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-              ;; identifiers/aliases
-              :breakout     (if (= (u/get-id field) (u/get-id search-field))
-                              [[:field-id (u/get-id field)]]
-                              [[:field-id (u/get-id field)]
-                               [:field-id (u/get-id search-field)]])
-              :limit        limit}})
+  (api/with-current-user-info
+    {:database (db-id field)
+     :type     :query
+     :query    {:source-table (table-id field)
+                :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
+                ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                ;; identifiers/aliases
+                :breakout     (if (= (u/get-id field) (u/get-id search-field))
+                                [[:field-id (u/get-id field)]]
+                                [[:field-id (u/get-id field)]
+                                 [:field-id (u/get-id search-field)]])
+                :limit        limit}}))
 
 (s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like

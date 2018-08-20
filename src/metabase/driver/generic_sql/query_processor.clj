@@ -21,7 +21,7 @@
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
+            ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -277,19 +277,32 @@
   [driver honeysql-form {clause :filter}]
   (h/where honeysql-form (filter-clause->predicate driver clause)))
 
+(declare build-honeysql-form)
+
+(defn- make-honeysql-join-clauses
+  "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
+  a `JoinQuery`"
+  [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
+  (let [{{source-table-name :name, source-schema :schema} :source-table} *query*]
+    [[table-or-query-expr (keyword join-alias)]
+     [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
+
+(defmethod ->honeysql [Object JoinTable]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [schema table-name] :as jt} ]
+  (make-honeysql-join-clauses (hx/qualify-and-escape-dots schema table-name) jt))
+
+(defmethod ->honeysql [Object JoinQuery]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [query] :as jq}]
+  (make-honeysql-join-clauses (build-honeysql-form driver query) jq))
+
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to `honeysql-form`. Default implementation of `apply-join-tables` for SQL
   drivers."
-  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  ;; TODO - why doesn't this use ->honeysql like mostly everything else does?
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [driver honeysql-form {:keys [join-tables]}]
+  (reduce (partial apply h/merge-left-join) honeysql-form (map #(->honeysql driver %) join-tables)))
 
 (defn apply-limit
   "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
