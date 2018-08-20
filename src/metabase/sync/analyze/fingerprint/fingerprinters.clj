@@ -126,7 +126,9 @@
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))
-  ([acc] (du/date->iso-8601 acc))
+  ([acc]
+   (when (not= acc (earliest))
+     (du/date->iso-8601 acc)))
   ([^java.util.Date acc dt]
    (if dt
      (if (.before ^java.util.Date dt acc)
@@ -136,7 +138,9 @@
 
 (defn- latest
   ([] (java.util.Date. 0))
-  ([acc] (du/date->iso-8601 acc))
+  ([acc]
+   (when (not= acc (latest))
+     (du/date->iso-8601 acc)))
   ([^java.util.Date acc dt]
    (if dt
      (if (.after ^java.util.Date dt acc)
