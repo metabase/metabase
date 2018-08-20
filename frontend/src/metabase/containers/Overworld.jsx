@@ -274,24 +274,16 @@ class Overworld extends React.Component {
   }
 }
 
+const PIN_MESSAGE_STORAGE_KEY = "mb-admin-homepage-pin-propaganda-hidden";
+
 class AdminPinMessage extends React.Component {
   state = {
-    showMessage: false,
+    showMessage: !window.localStorage.getItem(PIN_MESSAGE_STORAGE_KEY),
   };
 
-  static storageKey = "mb-admin-homepage-pin-propaganda-hidden";
-
-  componentWillMount = async () => {
-    const isHidden = await window.localStorage.getItem(this.storageKey);
-    this.setState({
-      showMessage: !isHidden,
-    });
-  };
-  dismissPinMessage = async () => {
-    await window.localStorage.setItem(this.storageKey, true);
-    this.setState({
-      showMessage: false,
-    });
+  dismissPinMessage = () => {
+    window.localStorage.setItem(PIN_MESSAGE_STORAGE_KEY, "true");
+    this.setState({ showMessage: false });
   };
   render() {
     const { showMessage } = this.state;
