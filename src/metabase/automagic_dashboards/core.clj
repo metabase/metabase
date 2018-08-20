@@ -658,7 +658,8 @@
   (for [{:keys [id target]} (field/with-targets
                               (db/select Field
                                 :table_id           (u/get-id table)
-                                :fk_target_field_id [:not= nil]))
+                                :fk_target_field_id [:not= nil]
+                                :active             true))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
@@ -712,7 +713,8 @@
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
-                                     :visibility_type "normal")
+                                     :visibility_type "normal"
+                                     :active          true)
                                    field/with-targets
                                    (map #(assoc % :engine engine))
                                    (group-by :table_id))
@@ -1196,7 +1198,8 @@
   (when (not-empty tables)
     (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
-                                      :where    [:in :table_id (map u/get-id tables)]
+                                      :where    [:and [:in :table_id (map u/get-id tables)]
+                                                 [:= :active true]]
                                       :group-by [:table_id]})
                            (into {} (map (juxt :table_id :count))))
           list-like?  (->> (when-let [candidates (->> field-count
@@ -1206,6 +1209,7 @@
                              (db/query {:select   [:table_id]
                                         :from     [Field]
                                         :where    [:and [:in :table_id candidates]
+                                                   [:= :active true]
                                                    [:or [:not= :special_type "type/PK"]
                                                     [:= :special_type nil]]]
                                         :group-by [:table_id]
@@ -1214,6 +1218,7 @@
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
+                                                 [:= :active true]
                                                  [:in :special_type ["type/PK" "type/FK"]]]
                                       :group-by [:table_id]})
                            (filter (fn [{:keys [table_id count]}]
@@ -1244,7 +1249,8 @@
    (let [rules (rules/get-rules ["table"])]
      (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
                  (cond-> [:db_id           (u/get-id database)
-                          :visibility_type nil]
+                          :visibility_type nil
+                          :active          true]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
