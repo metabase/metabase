@@ -76,7 +76,8 @@
    :cum-sum   (tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
-  (comp #{:metric} qp.util/normalize-token first))
+  (every-pred (comp #{:metric} qp.util/normalize-token first)
+              (complement qp.expand/ga-metric?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
   (comp #{:named} qp.util/normalize-token first))
@@ -92,6 +93,13 @@
     (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
     (saved-metric? metric)        (-> args first Metric :name)
     :else                         (second args)))
+
+(defn metric-op
+  "Return the name op of the metric"
+  [[op & args :as metric]]
+  (if (saved-metric? metric)
+    (-> args first Metric (get-in [:definition :aggregation 0 0]))
+    op))
 
 (defn- join-enumeration
   [xs]
@@ -266,7 +274,7 @@
                                       :type
                                       :type/DateTime
                                       ((juxt :earliest :latest))
-                                      (map t.format/parse))]
+                                      (map date/str->date-time))]
     (condp > (t/in-hours (t/interval earliest latest))
       3               :minute
       (* 24 7)        :hour
@@ -621,7 +629,10 @@
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       (map (some-fn :name (comp metric-name :metric)) metrics)
+                             :metrics       (for [metric metrics]
+                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
+                                               :op   (-> metric :metric metric-op)})
+                             :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
 (defn- matching-rules
