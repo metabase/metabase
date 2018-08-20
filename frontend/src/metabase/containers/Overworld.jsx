@@ -274,9 +274,10 @@ class Overworld extends React.Component {
   }
 }
 
-const PIN_MESSAGE_STORAGE_KEY = "mb-admin-homepage-pin-propaganda-hidden";
+export const PIN_MESSAGE_STORAGE_KEY =
+  "mb-admin-homepage-pin-propaganda-hidden";
 
-class AdminPinMessage extends React.Component {
+export class AdminPinMessage extends React.Component {
   state = {
     showMessage: !window.localStorage.getItem(PIN_MESSAGE_STORAGE_KEY),
   };
