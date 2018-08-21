@@ -9,7 +9,7 @@ describe('summary table query plan', () =>{
   describe('given query plan initialized by grouped columns: a,b,c', () => {
     const settings: SummaryTableSettings = {
       groupsSources: ['a','b','c'],
-      columnsSource: null,
+      columnsSource: [],
       valuesSources: [],
       columnNameToMetadata: {}
     };
@@ -20,7 +20,7 @@ describe('summary table query plan', () =>{
     describe('given query plan initialized by grouped columns: a,b,c and values: d,e', () => {
       const settings: SummaryTableSettings = {
         groupsSources: ['a','b','c'],
-        columnsSource: null,
+        columnsSource: [],
         valuesSources: ['d','e'],
         columnNameToMetadata: {}
       };
@@ -32,7 +32,7 @@ describe('summary table query plan', () =>{
     describe('given query plan initialized by grouped columns: a,b,c and values: d,e and totals for a,c', () => {
       const settings: SummaryTableSettings = {
         groupsSources: ['a','b','c'],
-        columnsSource: null,
+        columnsSource: [],
         valuesSources: ['d','e'],
         columnNameToMetadata: {a : {showTotals : true}, c : {showTotals: true}}
       };
@@ -48,7 +48,7 @@ describe('summary table query plan', () =>{
     describe('given query plan initialized by grouped columns: a,b,c and values: d and pivot for e and totals for a,b', () => {
       const settings: SummaryTableSettings = {
         groupsSources: ['a','b','c'],
-        columnsSource: 'e',
+        columnsSource: ['e'],
         valuesSources: ['d'],
         columnNameToMetadata: {b : {showTotals : true}, a : {showTotals : true}}
       };
@@ -63,7 +63,7 @@ describe('summary table query plan', () =>{
     describe('given query plan initialized by grouped columns: a,b,c and values: d, f and pivot for e and totals for a,c, e', () => {
       const settings: SummaryTableSettings = {
         groupsSources: ['a','b','c'],
-        columnsSource: 'e',
+        columnsSource: ['e'],
         valuesSources: ['d', 'f'],
         columnNameToMetadata: {a : {showTotals : true}, c : {showTotals : true}, e : {showTotals : true}}
       };

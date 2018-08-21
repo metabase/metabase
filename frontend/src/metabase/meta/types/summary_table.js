@@ -10,7 +10,7 @@ export type AggregationKey = [Groups, Aggregations];
 
 export type SummaryTableSettings = {
   groupsSources: string[],
-  columnsSource: ?string,
+  columnsSource: string[],
   valuesSources: string[],
   columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
 };

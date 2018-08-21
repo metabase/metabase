@@ -74,7 +74,7 @@ export default class SummaryTable extends Component {
         {
           const gs = columns.slice(0, columns.length -1);
           const vs = columns.slice(columns.length -1);
-          return {groupsSources : gs, columnsSource: null, valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
+          return {groupsSources : gs, columnsSource: [], valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: {showTotals : true}}), {} )}
 
 
       }

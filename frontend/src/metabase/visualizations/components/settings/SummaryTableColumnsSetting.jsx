@@ -61,7 +61,7 @@ type ItemTypeHelper = {
 
 type ValueSerializedSupertype = {
   groupsSources?: string[],
-  columnsSource?: string,
+  columnsSource?: string[],
   valuesSources?: string[],
   columnNameToMetadata?: { [key: ColumnName]: ColumnMetadata },
 }
@@ -76,7 +76,7 @@ const getUnusedColumns = (settings: SummaryTableSettings, columnNames): string[]
 
 const emptyStateSerialized: SummaryTableSettings = ({
   groupsSources: [],
-  columnsSource: null,
+  columnsSource: [],
   valuesSources: [],
   columnNameToMetadata: {}
 });
@@ -85,10 +85,9 @@ const convertValueToState = (stateSerialized: SummaryTableSettings, columnNames)
   const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
   const {groupsSources, columnsSource, valuesSources, columnNameToMetadata} = fatStateSerialized;
   const unusedColumns = getUnusedColumns(fatStateSerialized, columnNames);
-  const columnSourceArray = columnsSource ? [columnsSource] : [];
 
   const items = [ ...groupsSources.map(n => createDraggableColumn(n, columnNames[n])),
-                          columnSourceItem, ...columnSourceArray.map(n => createDraggableColumn(n, columnNames[n])),
+                          columnSourceItem, ...columnsSource.map(n => createDraggableColumn(n, columnNames[n])),
                           valueSourceItem, ...valuesSources.map(n => createDraggableColumn(n, columnNames[n])),
                           unusedSourceItem, ...unusedColumns.map(n => createDraggableColumn(n, columnNames[n]))];
   
@@ -106,6 +105,7 @@ const unusedSourceItem : DraggableItem = createSectionItem(t`Unused fields`);
 
 const convertStateToValue = (state : State) : ValueSerializedSupertype => {
   const columnsPart = state.items ? convertItemsToState(state.items) : {};
+  console.log(columnsPart, 'sadasdas');
   const oldMetadata = state.columnNameToMetadata || {};
   const columnNameToMetadata = state.items ? createMetadata(oldMetadata, columnsPart)  :oldMetadata;
   return {columnNameToMetadata, ...columnsPart};
@@ -116,7 +116,7 @@ const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype
   const gs = items.slice(0, columnSourceItemIndex).map(p => p.columnName);
   const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.columnName);
   const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.columnName);
-  return {groupsSources : gs, columnsSource : cs[0], valuesSources: vs};
+  return {groupsSources : gs, columnsSource : cs, valuesSources: vs};
 };
 
 export default class SummaryTableColumnsSetting extends Component<any, Props, State> {
@@ -248,14 +248,16 @@ const removeItemBuilder = (items:DraggableItem[],updateState : StateSuperType =>
 
 const moveItem = (updateState : StateSuperType => Promise<*>) => async (items: DraggableItem[], {oldIndex, newIndex} : ArrayMoveArg) : Promise<*> => {
   if(oldIndex !== newIndex){
+    items = arrayMove(items, oldIndex, newIndex);
+
     //force: column source size <= 1
-    if(items[newIndex] === valueSourceItem && items[newIndex-1] !== columnSourceItem){
-      newIndex++;
-    }else if (items[newIndex-1] === columnSourceItem && items[newIndex] !== valueSourceItem ){
-      items = arrayMove(items, newIndex, newIndex+1);
-    }
-  await updateState({
-    items: arrayMove(items, oldIndex, newIndex),
+    if(items[newIndex-1] === columnSourceItem && items[newIndex+1] !== valueSourceItem)
+      items = arrayMove(items, newIndex+1, newIndex+2);
+    else if (items[newIndex-1] !== columnSourceItem && items[newIndex+1] === valueSourceItem )
+      items = arrayMove(items, newIndex-2, newIndex-1);
+
+    await updateState({
+    items,
     isChanging : false
   });
   }
@@ -329,6 +331,6 @@ const SectionHeader = ({text}) =>
   <h2 className="text-bold text-paragraph mb2 no-select">{text}</h2></div>;
 
 const createMetadata = (metadata : {}, {groupsSources, columnsSource} : ValueSerializedSupertype): {} =>{
-  const names = [...groupsSources, ...[columnsSource].filter(p => p)];
+  const names = [...groupsSources, ...columnsSource];
   return names.reduce((acc, name) => ({...acc, [name]: metadata[name] || emptyColumnMetadata}) , {});
 };

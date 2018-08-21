@@ -36,7 +36,7 @@ export class GroupingManager {
     const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
     const summarySettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
-    const isPivoted = summarySettings.columnsSource;
+    const isPivoted = summarySettings.columnsSource.length > 0;
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
     const getAscDesc = colName => (summarySettings.columnNameToMetadata[colName] || {}).isAscSortOrder;
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
@@ -50,7 +50,7 @@ export class GroupingManager {
       .map(keys =>[flatMap(keys , key => normalizeRows(settings, rp(key))), keys])
       .map(res => res[1].includes(mainKey) ? [sortMainGroup(res[0], mainSsortOrderMethod, ascDesc), res[1]] : res)
       .map(res => isPivoted ? [pivotRows(res[0], sortOrderMethod), res[1]] : res)
-      .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summarySettings.columnsSource));
+      .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summarySettings.columnsSource[0]));
 
     const tmp = getAvailableColumnIndexes(settings, rawCols);
     let cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
@@ -67,7 +67,7 @@ export class GroupingManager {
       const pivotColumnNumber = columnsIndexesForGrouping.length;
       const columns = Set.of(...Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
       const hasUndef = columns.delete('undefined');
-      const pivotedColumns = orderBy([...columns], p => p, getAscDesc(summarySettings.columnsSource)? 'asc' : 'desc');
+      const pivotedColumns = orderBy([...columns], p => p, getAscDesc(summarySettings.columnsSource[0])? 'asc' : 'desc');
       if(hasUndef)
         pivotedColumns.push(undefined);
 
@@ -258,9 +258,7 @@ const pivotRows = (rows, cmp) =>{
   const res2 = res.reduce(({resArr, prevElem}, elem) =>{const r = new Set([...prevElem, ...elem]); resArr.push(r); return {resArr, prevElem : r} },{ resArr: [], prevElem : new Set()}).resArr;
 
   const pivotColumnNumber = cmp.length - 1;
-  // columns.delete(undefined);
-
-  const dd = _.sortBy(Array.from(res2[res2.length -2]));
+  const dd = _.sortBy(Array.from(res2[res2.length -2] || []));
   const [x, ...tail] = dd;
   const ttttttttttt = tail.reduce((acc, currentValue, index) => {acc[dd[index]] = currentValue - 1; return acc}, {});
   const functionf = v => createUberRows(pivotColumnNumber, v);

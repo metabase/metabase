@@ -19,10 +19,10 @@ const AGGREGATION = "aggregation";
 const BREAKOUT = "breakout";
 
 export const settingsAreValid = (settings: SummaryTableSettings, data: DatasetData) =>
-  settings && columnsAreValid(getColumnsFromSettings(settings), data);
+  settings && columnsAreValid(getColumnsFromSettings(settings), data) && settings.columnsSource.length <= 1;
 
 export const getColumnsFromSettings = (value: SummaryTableSettings) =>
-  [...value.groupsSources, ... [value.columnsSource].filter(p => p), ...value.valuesSources];
+  [...value.groupsSources, ... value.columnsSource, ...value.valuesSources];
 
 export const createKey = (groups:ColumnName[], totals: ColumnName[]) : AggregationKey => [Set.of(...groups), Set.of(...totals)];
 
@@ -124,7 +124,7 @@ export const getQueryPlan = (settings: SummaryTableSettings, canTotalize: Column
     return emptyQueryPlan;
 
   const showTotalsFor = name => (settings.columnNameToMetadata[name] || {}).showTotals;
-  const allBreakouts = [...[settings.columnsSource].filter(p => p), ... settings.groupsSources];
+  const allBreakouts = [...settings.columnsSource, ... settings.groupsSources];
 
   if(!allBreakouts.find(showTotalsFor))
     return emptyQueryPlan;
@@ -137,10 +137,10 @@ export const getQueryPlan = (settings: SummaryTableSettings, canTotalize: Column
   }, {acc:[], prev: Set.of()});
 
 
-  if(!showTotalsFor(settings.columnsSource))
+  if(!showTotalsFor(settings.columnsSource[0]))
     return {groupings: queriesBreakouts.acc.map(p => [p]), aggregations};
 
-  const groupings = queriesBreakouts.acc.splice(0, queriesBreakouts.acc.length -1).map(p => [p, p.remove(settings.columnsSource)]);
+  const groupings = queriesBreakouts.acc.splice(0, queriesBreakouts.acc.length -1).map(p => [p, p.remove(settings.columnsSource[0])]);
 
 
   return {
