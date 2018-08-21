@@ -293,9 +293,10 @@ export default class TableInteractiveSummary extends Component {
     else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
-    if(groupingManager.isGrouped(columnIndex))
-      key = key + (columnIndex + '-' + Array.from(Array(columnIndex+1).keys()).map(i => row[i] || 'dd').join('-')) + (row.isTotalColumnIndex || '');
-
+    if(groupingManager.isGrouped(columnIndex) && !(key || '').startsWith('column'))
+    {
+      key = groupingManager.createKey(rowIndex, columnIndex)
+    }
     const clicked = getTableCellClickedObject(
       this.props.data,
       rowIndex,
@@ -668,19 +669,7 @@ export default class TableInteractiveSummary extends Component {
               tabIndex={null}
               overscanRowCount={20}
               cellRenderer={() => {}}
-              cellRangeRenderer={rangeArgs => {
-                const res = defaultCellRangeRenderer({...rangeArgs, cellRenderer: (renderArgs => this.cellRenderer(rangeArgs, renderArgs))});
-
-                                // console.log(res[0]);
-                const a = []
-                return res.filter(p => {
-                  const r = a.indexOf(p.key) === -1;
-                  if(r)
-                    a.push(p.key);
-
-                  return r;
-                });
-              }}
+              cellRangeRenderer={rangeArgs => defaultCellRangeRenderer({...rangeArgs, cellRenderer: (renderArgs => this.cellRenderer(rangeArgs, renderArgs))})}
             />
           </div>
         )}

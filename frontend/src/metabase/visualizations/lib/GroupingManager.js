@@ -148,6 +148,15 @@ export class GroupingManager {
     return 1;
   };
 
+  createKey = (rowIndex: Number, columnIndex: Number) =>{
+    const firstIndexesInGroup = this.columnIndexToFirstInGroupIndexes[columnIndex];
+    if(!firstIndexesInGroup)
+      return rowIndex + '-' +columnIndex;
+
+    const ri = getFirstRowInGroupIndex(firstIndexesInGroup, rowIndex);
+
+    return ri + '-' +columnIndex;
+  }
 }
 
 
