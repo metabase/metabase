@@ -76,7 +76,8 @@
    :cum-sum   (tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
-  (comp #{:metric} qp.util/normalize-token first))
+  (every-pred (comp #{:metric} qp.util/normalize-token first)
+              (complement qp.expand/ga-metric?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
   (comp #{:named} qp.util/normalize-token first))
@@ -92,6 +93,13 @@
     (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
     (saved-metric? metric)        (-> args first Metric :name)
     :else                         (second args)))
+
+(defn metric-op
+  "Return the name op of the metric"
+  [[op & args :as metric]]
+  (if (saved-metric? metric)
+    (-> args first Metric (get-in [:definition :aggregation 0 0]))
+    op))
 
 (defn- join-enumeration
   [xs]
@@ -266,7 +274,7 @@
                                       :type
                                       :type/DateTime
                                       ((juxt :earliest :latest))
-                                      (map t.format/parse))]
+                                      (map date/str->date-time))]
     (condp > (t/in-hours (t/interval earliest latest))
       3               :minute
       (* 24 7)        :hour
@@ -276,7 +284,7 @@
     :day))
 
 (defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation fingerprint name base_type] :as field}]
+  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (cond
                     link               [:fk-> link id]
                     fk_target_field_id [:fk-> id fk_target_field_id]
@@ -287,7 +295,8 @@
       [:datetime-field reference (or aggregation
                                      (optimal-datetime-resolution field))]
 
-      aggregation
+      (and aggregation
+           (isa? base_type :type/Number))
       [:binning-strategy reference aggregation]
 
       :else
@@ -621,7 +630,10 @@
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       (map (some-fn :name (comp metric-name :metric)) metrics)
+                             :metrics       (for [metric metrics]
+                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
+                                               :op   (-> metric :metric metric-op)})
+                             :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
 (defn- matching-rules
@@ -646,7 +658,8 @@
   (for [{:keys [id target]} (field/with-targets
                               (db/select Field
                                 :table_id           (u/get-id table)
-                                :fk_target_field_id [:not= nil]))
+                                :fk_target_field_id [:not= nil]
+                                :active             true))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
@@ -700,7 +713,8 @@
         table->fields (if (instance? (type Table) source)
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
-                                     :visibility_type "normal")
+                                     :visibility_type "normal"
+                                     :active          true)
                                    field/with-targets
                                    (map #(assoc % :engine engine))
                                    (group-by :table_id))
@@ -1184,7 +1198,8 @@
   (when (not-empty tables)
     (let [field-count (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
-                                      :where    [:in :table_id (map u/get-id tables)]
+                                      :where    [:and [:in :table_id (map u/get-id tables)]
+                                                 [:= :active true]]
                                       :group-by [:table_id]})
                            (into {} (map (juxt :table_id :count))))
           list-like?  (->> (when-let [candidates (->> field-count
@@ -1194,6 +1209,7 @@
                              (db/query {:select   [:table_id]
                                         :from     [Field]
                                         :where    [:and [:in :table_id candidates]
+                                                   [:= :active true]
                                                    [:or [:not= :special_type "type/PK"]
                                                     [:= :special_type nil]]]
                                         :group-by [:table_id]
@@ -1202,6 +1218,7 @@
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
+                                                 [:= :active true]
                                                  [:in :special_type ["type/PK" "type/FK"]]]
                                       :group-by [:table_id]})
                            (filter (fn [{:keys [table_id count]}]
@@ -1232,7 +1249,8 @@
    (let [rules (rules/get-rules ["table"])]
      (->> (apply db/select [Table :id :schema :display_name :entity_type :db_id]
                  (cond-> [:db_id           (u/get-id database)
-                          :visibility_type nil]
+                          :visibility_type nil
+                          :active          true]
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
