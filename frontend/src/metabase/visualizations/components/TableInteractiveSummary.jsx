@@ -276,9 +276,16 @@ export default class TableInteractiveSummary extends Component {
     const groupingManager = this.props.data;
     let value = column.getValue(row);
 
+    let formatedRes = formatValue(value, {
+      column: column,
+      type: "cell",
+      jsx: true,
+      rich: true,
+      isTotal : row.isTotalColumnIndex === columnIndex + 1
+    });
 
     if (isGrandTotal && columnIndex === 0)
-      value = 'Grand totals';
+      formatedRes = 'Grand totals';
 
     let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, visibleRowIndices, style)};
     if(isGrandTotal)
@@ -298,13 +305,7 @@ export default class TableInteractiveSummary extends Component {
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
 
-    let formatedRes = formatValue(value, {
-      column: column,
-      type: "cell",
-      jsx: true,
-      rich: true,
-      isTotal : row.isTotalColumnIndex === columnIndex + 1
-    });
+
 
     if(row.isTotalColumnIndex === columnIndex + 1 && typeof formatedRes === 'string')
       formatedRes = 'Totals for ' + formatedRes;
