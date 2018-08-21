@@ -30,9 +30,6 @@ const ownAlertClasses = cxs({
 const unsubscribeButtonClasses = cxs({
   transform: `translateY(4px)`,
 });
-const popoverClasses = cxs({
-  minWidth: "410px",
-});
 
 @connect(
   state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
@@ -89,7 +86,7 @@ export class AlertListPopoverContent extends Component {
     const hasOwnAndOthers = hasOwnAlerts && othersAlerts.length > 0;
 
     return (
-      <div className={popoverClasses}>
+      <div style={{ minWidth: 410 }}>
         <ul>
           {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
