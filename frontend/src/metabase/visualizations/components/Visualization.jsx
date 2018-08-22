@@ -2,6 +2,8 @@
 
 import React, { Component, Element } from "react";
 
+import { Box, Flex } from "grid-styled";
+
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
@@ -324,6 +326,8 @@ export default class Visualization extends Component {
 
     let { hovered, clicked } = this.state;
 
+    const insights = this.props.rawSeries[0].data.insights;
+
     const clickActions = this.getClickActions(clicked);
     if (clickActions.length > 0) {
       hovered = null;
@@ -518,6 +522,29 @@ export default class Visualization extends Component {
                 : null
             }
           />
+        )}
+        {insights && (
+          <Flex align="center">
+            <Box>
+              <h4>{t`Current`}</h4>
+              <Box
+                color={Math.sign(insights["last-change"]) > 0 ? "green" : "red"}
+              >
+                <Flex is="h2" align="center">
+                  <Icon
+                    mr={1}
+                    name={
+                      Math.sign(insights["last-change"]) > 0
+                        ? "chevronup"
+                        : "chevrondown"
+                    }
+                  />
+                  {insights["last-value"].toFixed(2)}
+                  ({formatNumber(insights["last-change"])}%)
+                </Flex>
+              </Box>
+            </Box>
+          </Flex>
         )}
         <ChartTooltip series={series} hovered={hovered} />
         {this.props.onChangeCardAndRun && (
