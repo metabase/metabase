@@ -145,7 +145,7 @@
 (defn- execute-query
   [driver {:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [final-query (str "-- " (qputil/query->remark outer-query) "\n"
-                               (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
+                               (unprepare/unprepare (cons sql params) :quote-escape "\"", :iso-8601-fn :from_iso8601_timestamp))
         results (run-query database final-query {})
         columns (into [] (keys (first results)))
         rows (->> results

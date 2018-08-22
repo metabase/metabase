@@ -9,7 +9,7 @@
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]))
 
-(qp-expect-with-all-engines
+(qp-expect-with-all-engines-except  #{:athena}
   {:rows  [["20th Century Cafe" 12 "Café Sweets"]
            ["25°" 11 "Café"]
            ["33 Taps" 7 "Beer Garden"]

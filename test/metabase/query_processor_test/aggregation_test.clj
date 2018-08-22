@@ -59,7 +59,7 @@
 
 ;;; ------------------------------------------------- NO AGGREGATION -------------------------------------------------
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
-(qp-expect-with-all-engines
+(qp-expect-with-all-engines-except #{:athena}
     {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
                    [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
                    [ 3 "The Apple Pan"                11 34.0406 -118.428 2]

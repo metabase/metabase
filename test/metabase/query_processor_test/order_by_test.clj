@@ -4,7 +4,8 @@
             [metabase.query-processor-test :refer :all]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
+            [metabase.test.data.datasets :as datasets :refer [*engine*]]
+            [clojure.set :as set]))
 
 (expect-with-non-timeseries-dbs
   [[1 12 375]
@@ -86,7 +87,7 @@
 
 
 ;;; order_by aggregate ["avg" field-id]
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:athena}
   {:columns     [(data/format-name "price")
                  "avg"]
    :rows        [[3 22]
@@ -106,13 +107,13 @@
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :standard-deviation-aggregations) (set #{:athena}))
   {:columns     [(data/format-name "price")
                  "stddev"]
-   :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
+   :rows        [[3 (if (contains? #{:mysql :crate :athena} *engine*) 25 26)]
                  [1 24]
                  [2 21]
-                 [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
+                 [4 (if (contains? #{:mysql :crate :athena} *engine*) 14 15)]]
    :cols        [(breakout-col (venues-col :price))
                  (aggregate-col :stddev (venues-col :category_id))]
    :native_form true}

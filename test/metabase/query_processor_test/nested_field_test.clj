@@ -3,11 +3,12 @@
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [clojure.set :as set]))
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   [[8   "Kyle's Low-Carb Grill"]
    [67  "Kyle's Low-Carb Grill"]
    [80  "Kyle's Low-Carb Grill"]
@@ -26,7 +27,7 @@
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   [[446
     {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
     "Cam's Mexican Gastro Pub is a historical and underappreciated place to conduct a business meeting with friends."
@@ -63,7 +64,7 @@
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   [99]
   (first-row (data/dataset geographical-tips
                (data/run-query tips

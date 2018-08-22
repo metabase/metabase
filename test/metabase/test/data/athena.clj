@@ -87,7 +87,7 @@
        (str root-path "/" table ".json")))))
 
 ; (dataset->json! "/tmp/test" defs/test-data)
-; (dataset->json! "/tmp/tupac" defs/tupac-sightings)
-; (dataset->json! "/tmp/toucan" defs/sad-toucan-incidents)
+; (dataset->json! "/home/thiagoslopes/workspace/metabase/tests/" defs/tupac-sightings)
+; (dataset->json! "//home/thiagoslopes/workspace/metabase/tests/toucan" defs/sad-toucan-incidents)
 ; (dataset->json! "/tmp/urls" defs/half-valid-urls)
 ; (dataset->json! "/tmp/places" defs/places-cam-likes)

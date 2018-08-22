@@ -9,7 +9,8 @@
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [clojure.set :as set]))
 
 ;; sum, *
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
@@ -151,7 +152,7 @@
             (ql/breakout $price)))))
 
 ;; Sorting by an un-named aggregate expression
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
   (format-rows-by [int int]
     (rows (data/run-query users

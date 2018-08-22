@@ -66,6 +66,16 @@
      (-> ~query-form
          ~@post-process-fns)))
 
+(defmacro qp-expect-with-all-engines-except
+  {:style/indent 0}
+  [excluded-engines data query-form & post-process-fns]
+  `(expect-with-non-timeseries-dbs-except ~excluded-engines
+     {:status    :completed
+      :row_count ~(count (:rows data))
+      :data      ~data}
+     (-> ~query-form
+         ~@post-process-fns)))
+
 ;; TODO - this is only used in a single place, consider removing it
 (defmacro qp-expect-with-engines
   {:style/indent 1}
