@@ -253,7 +253,8 @@
          (ql/aggregation (ql/cum-sum $id))
          (ql/breakout $price))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
@@ -319,4 +320,5 @@
          (ql/aggregation (ql/cum-count))
          (ql/breakout $price))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))

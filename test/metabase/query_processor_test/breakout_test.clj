@@ -35,7 +35,8 @@
          (ql/breakout $user_id)
          (ql/order-by (ql/asc $user_id)))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
@@ -48,7 +49,8 @@
          (ql/breakout $user_id)
          (ql/limit 10))
        booleanize-native-form
-       (format-rows-by [int])))
+       (format-rows-by [int])
+       tu/round-fingerprint-cols))
 
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
@@ -67,7 +69,8 @@
          (ql/breakout $user_id $venue_id)
          (ql/limit 10))
        booleanize-native-form
-       (format-rows-by [int int int])))
+       (format-rows-by [int int int])
+       tu/round-fingerprint-cols))
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
@@ -86,7 +89,8 @@
          (ql/order-by (ql/desc $user_id))
          (ql/limit 10))
        booleanize-native-form
-       (format-rows-by [int int int])))
+       (format-rows-by [int int int])
+       tu/round-fingerprint-cols))
 
 (qp-expect-with-all-engines
   {:rows  [[2 8 "Artisan"]
@@ -116,7 +120,8 @@
            (ql/breakout $category_id)
            (ql/limit 5))
          booleanize-native-form
-         (format-rows-by [int int str]))))
+         (format-rows-by [int int str])
+         tu/round-fingerprint-cols)))
 
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]

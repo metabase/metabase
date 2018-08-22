@@ -4,7 +4,8 @@
             [metabase.query-processor-test :refer :all]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
+            [metabase.test.data.datasets :as datasets :refer [*engine*]]
+            [metabase.test.util :as tu]))
 
 (expect-with-non-timeseries-dbs
   [[1 12 375]
@@ -44,7 +45,8 @@
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order_by aggregate ["sum" field-id]
@@ -63,7 +65,8 @@
          (ql/breakout $price)
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order_by aggregate ["distinct" field-id]
@@ -82,7 +85,8 @@
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order_by aggregate ["avg" field-id]
@@ -101,7 +105,9 @@
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        booleanize-native-form
-       :data (format-rows-by [int int])))
+       :data
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
@@ -121,4 +127,6 @@
          (ql/breakout $price)
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        booleanize-native-form
-       :data (format-rows-by [int (comp int math/round)])))
+       :data
+       (format-rows-by [int (comp int math/round)])
+       tu/round-fingerprint-cols))
