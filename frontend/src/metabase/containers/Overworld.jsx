@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
@@ -98,17 +98,22 @@ class Overworld extends React.Component {
                     }
                     return (
                       <Box mx={PAGE_PADDING} mt={[1, 3]}>
-                        <SectionHeading>
-                          {t`Try these x-rays based on your data.`}
-                        </SectionHeading>
-                        <Box>
-                          <ExplorePane
-                            candidates={candidates}
-                            withMetabot={false}
-                            title=""
-                            gridColumns={[1, 1 / 3]}
-                            asCards={true}
-                          />
+                        {user.is_superuser && <AdminPinMessage />}
+                        <Box mt={[1, 3]}>
+                          <Flex align="center">
+                            <SectionHeading>
+                              {t`Try these x-rays based on your data.`}
+                            </SectionHeading>
+                          </Flex>
+                          <Box>
+                            <ExplorePane
+                              candidates={candidates}
+                              withMetabot={false}
+                              title=""
+                              gridColumns={[1, 1 / 3]}
+                              asCards={true}
+                            />
+                          </Box>
                         </Box>
                       </Box>
                     );
@@ -264,6 +269,57 @@ class Overworld extends React.Component {
             );
           }}
         </DatabaseListLoader>
+      </Box>
+    );
+  }
+}
+
+export const PIN_MESSAGE_STORAGE_KEY =
+  "mb-admin-homepage-pin-propaganda-hidden";
+
+export class AdminPinMessage extends React.Component {
+  state = {
+    showMessage: !window.localStorage.getItem(PIN_MESSAGE_STORAGE_KEY),
+  };
+
+  dismissPinMessage = () => {
+    window.localStorage.setItem(PIN_MESSAGE_STORAGE_KEY, "true");
+    this.setState({ showMessage: false });
+  };
+  render() {
+    const { showMessage } = this.state;
+
+    if (!showMessage) {
+      return null;
+    }
+
+    const link = (
+      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+    );
+
+    return (
+      <Box>
+        <SectionHeading>{t`Start here`}</SectionHeading>
+
+        <Flex
+          bg={colors["bg-medium"]}
+          p={2}
+          align="center"
+          style={{ borderRadius: 6 }}
+          className="hover-parent hover--visibility"
+        >
+          <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
+          <Box ml={1}>
+            <h3>{t`Your team's most important dashboards go here`}</h3>
+            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
+          </Box>
+          <Icon
+            className="hover-child text-brand-hover cursor-pointer bg-medium"
+            name="close"
+            ml="auto"
+            onClick={() => this.dismissPinMessage()}
+          />
+        </Flex>
       </Box>
     );
   }

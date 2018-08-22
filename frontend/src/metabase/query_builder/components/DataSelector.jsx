@@ -548,6 +548,7 @@ export default class DataSelector extends Component {
         triggerElement={this.getTriggerElement()}
         triggerClasses={triggerClasses}
         horizontalAttachments={["center", "left", "right"]}
+        sizeToFit
       >
         {this.renderActiveStep()}
       </PopoverWithTrigger>
