@@ -13,18 +13,12 @@
              [#inst "2013" #inst "2018" #inst "2015"]))
 
 (expect
-  {:global {:distinct-count 1}
-   :type {:type/DateTime {:earliest nil
-                          :latest   nil}}}
-  (transduce identity
-             (fingerprinter (field/map->FieldInstance {:base_type :type/DateTime}))
-             (repeat 10 nil)))
-
-(expect
   {:global {:distinct-count 3}
    :type {:type/Number {:avg 2.0
                         :min 1.0
-                        :max 3.0}}}
+                        :max 3.0
+                        :q1 1.25
+                        :q3 2.75}}}
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
              [1.0 2.0 3.0]))
