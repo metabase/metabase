@@ -107,7 +107,7 @@
       (get-in [:data :results_metadata])
       (update :checksum class)
       round-all-decimals'
-      tu/round-fingerprint-cols))
+      (->> (tu/round-fingerprint-cols [:columns]))))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
 ;; do datetime breakouts on years

@@ -204,6 +204,6 @@
   (apply col-wise (for [field fields]
                     (fingerprinter
                      (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with  on first sync
+                       ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :special_type :last_analyzed) field))
                        (assoc :special_type (classify.name/infer-special-type field)))))))
