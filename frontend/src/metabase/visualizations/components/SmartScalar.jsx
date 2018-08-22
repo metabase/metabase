@@ -14,12 +14,12 @@ const SmartScalar = ({ period, title }) => {
           fontWeight: 900,
           textTransform: "uppercase",
           color: colors["text-medium"],
-          fontSize: 12,
+          fontSize: 11,
         }}
       >
         {title}
       </h4>
-      <Box color={isNegative ? "red" : "green"}>
+      <Box color={isNegative ? colors["error"] : colors["success"]}>
         <Flex is="h3" align="center">
           <Icon mr={1} name={isNegative ? "chevrondown" : "chevronup"} />
           {formatNumber(period["last-value"])}

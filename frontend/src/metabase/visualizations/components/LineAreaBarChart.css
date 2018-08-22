@@ -96,6 +96,12 @@
   stroke-opacity: 1 !important;
 }
 
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot:last-child {
+  r: 5px !important;
+  fill: currentColor;
+  stroke: white;
+}
+
 .LineAreaBarChart .dc-chart circle.bubble {
   fill-opacity: 0.8;
   stroke-width: 1;
