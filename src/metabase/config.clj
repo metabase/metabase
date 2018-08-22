@@ -61,7 +61,10 @@
 (defn- version-info-from-shell-script []
   (try
     (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-      {:tag tag, :hash hash, :branch branch, :date date})
+      {:tag    (or tag "?")
+       :hash   (or hash "?")
+       :branch (or branch "?")
+       :date   (or date "?")})
     ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
     (catch Throwable _
       {:tag "?", :hash "?", :branch "?", :date "?"})))
