@@ -326,7 +326,10 @@ export default class Visualization extends Component {
 
     let { hovered, clicked } = this.state;
 
-    const insights = this.props.rawSeries[0].data.insights;
+    const insights =
+      this.props.rawSeries &&
+      this.props.rawSeries[0].data &&
+      this.props.rawSeries[0].data.insights;
 
     const clickActions = this.getClickActions(clicked);
     if (clickActions.length > 0) {
@@ -523,29 +526,32 @@ export default class Visualization extends Component {
             }
           />
         )}
-        {insights && (
-          <Flex align="center">
-            <Box>
-              <h4>{t`Current`}</h4>
-              <Box
-                color={Math.sign(insights["last-change"]) > 0 ? "green" : "red"}
-              >
-                <Flex is="h2" align="center">
-                  <Icon
-                    mr={1}
-                    name={
-                      Math.sign(insights["last-change"]) > 0
-                        ? "chevronup"
-                        : "chevrondown"
-                    }
-                  />
-                  {insights["last-value"].toFixed(2)}
-                  ({formatNumber(insights["last-change"])}%)
-                </Flex>
+        {insights &&
+          settings["graph.show_insights"] && (
+            <Flex align="center">
+              <Box>
+                <h4>{t`Current`}</h4>
+                <Box
+                  color={
+                    Math.sign(insights["last-change"]) > 0 ? "green" : "red"
+                  }
+                >
+                  <Flex is="h2" align="center">
+                    <Icon
+                      mr={1}
+                      name={
+                        Math.sign(insights["last-change"]) > 0
+                          ? "chevronup"
+                          : "chevrondown"
+                      }
+                    />
+                    {formatNumber(insights["last-value"])}
+                    ({formatNumber(insights["last-change"])}%)
+                  </Flex>
+                </Box>
               </Box>
-            </Box>
-          </Flex>
-        )}
+            </Flex>
+          )}
         <ChartTooltip series={series} hovered={hovered} />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
