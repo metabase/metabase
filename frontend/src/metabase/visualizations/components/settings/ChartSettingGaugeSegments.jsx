@@ -90,7 +90,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
         onClick={() =>
           onChange(
             segments.concat({
-              min: segments[segments.length - 1].max * 1.5,
+              min: segments[segments.length - 1].max,
               max: segments[segments.length - 1].max * 2,
               color: normal.gray,
               label: "",

@@ -30,7 +30,7 @@ export default class Gauge extends Component {
 
   static uiName = t`Gauge`;
   static identifier = "gauge";
-  static iconName = "number";
+  static iconName = "gauge";
 
   static minSize = { width: 3, height: 3 };
 
@@ -112,7 +112,6 @@ export default class Gauge extends Component {
     const angle = d3.scale
       .linear()
       .domain(range) // NOTE: confusing, but the "range" is the domain for the arc scale
-      // .domain([segments[0].value, segments[segments.length - 1].value])
       .range([
         ARC_DEGREES / 180 * -Math.PI / 2,
         ARC_DEGREES / 180 * Math.PI / 2,
