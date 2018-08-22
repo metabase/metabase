@@ -452,7 +452,7 @@ const Insights = ({ insights, granularity }) => {
       </Box>
       <SmartScalar
         value={insights["last-value"]}
-        change={insights["last-change"]}
+        change={insights["last-change"] * 100}
         title={t`Most recent ${granularity}`}
       />
     </Flex>
