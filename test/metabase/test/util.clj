@@ -111,7 +111,7 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login}
+                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]

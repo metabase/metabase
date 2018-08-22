@@ -463,6 +463,15 @@
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
+(defn resolve-fields-if-needed
+  "Resolves any unresolved fields found in `fields`. Will just return resolved fields with no changes."
+  [fields]
+  (let [fields-to-resolve (map unresolved-field-id fields)]
+    (if-let [field-id->field (and (seq fields-to-resolve)
+                                  (u/key-by :field-id (fetch-fields fields-to-resolve)))]
+      (map #(resolve-field % field-id->field) fields)
+      fields)))
+
 (defn resolve
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
   [expanded-query-dict]
