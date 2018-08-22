@@ -2,8 +2,6 @@
 
 import React, { Component, Element } from "react";
 
-import { Box, Flex } from "grid-styled";
-
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
@@ -14,8 +12,6 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { t, jt } from "c-3po";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
-
-import colors from "metabase/lib/colors";
 
 import {
   getVisualizationTransformed,
@@ -328,11 +324,6 @@ export default class Visualization extends Component {
 
     let { hovered, clicked } = this.state;
 
-    const insights =
-      this.props.rawSeries &&
-      this.props.rawSeries[0].data &&
-      this.props.rawSeries[0].data.insights;
-
     const clickActions = this.getClickActions(clicked);
     if (clickActions.length > 0) {
       hovered = null;
@@ -450,39 +441,6 @@ export default class Visualization extends Component {
             />
           </div>
         ) : null}
-        {insights &&
-          settings["graph.show_insights"] && (
-            <Flex align="center" py={2} mx={2}>
-              <Box className="text-right" ml="auto">
-                <h4
-                  style={{
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    color: colors["text-medium"],
-                    fontSize: 12,
-                  }}
-                >{t`Most recent`}</h4>
-                <Box
-                  color={
-                    Math.sign(insights["last-change"]) > 0 ? "green" : "red"
-                  }
-                >
-                  <Flex is="h3" align="center">
-                    <Icon
-                      mr={1}
-                      name={
-                        Math.sign(insights["last-change"]) > 0
-                          ? "chevronup"
-                          : "chevrondown"
-                      }
-                    />
-                    {formatNumber(insights["last-value"])}
-                    ({formatNumber(insights["last-change"])}%)
-                  </Flex>
-                </Box>
-              </Box>
-            </Flex>
-          )}
         {replacementContent ? (
           replacementContent
         ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0

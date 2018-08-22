@@ -2,10 +2,13 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box } from "grid-styled";
 import { t } from "c-3po";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
+
+import SmartScalar from "metabase/visualizations/components/SmartScalar";
 
 import "./LineAreaBarChart.css";
 
@@ -247,6 +250,11 @@ export default class LineAreaBarChart extends Component {
 
     const hasTitle = showTitle && settings["card.title"];
 
+    const insights =
+      this.props.rawSeries &&
+      this.props.rawSeries[0].data &&
+      this.props.rawSeries[0].data.insights;
+
     return (
       <div
         className={cx(
@@ -276,6 +284,12 @@ export default class LineAreaBarChart extends Component {
             visualizationIsClickable={visualizationIsClickable}
           />
         ) : null}
+        {insights &&
+          settings["graph.show_insights"] && (
+            <Box ml="auto" className="text-right" mr={1} mb={1}>
+              <SmartScalar period={insights} title={t`Most recent`} />
+            </Box>
+          )}
         <CardRenderer
           {...this.props}
           series={series}
