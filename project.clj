@@ -28,6 +28,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.5-alpha2"                                ; Async HTTP library; WebSockets
                   :exclusions [org.clojure/tools.logging]]
+                 [bigml/histogram "4.1.3"]                            ; Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)

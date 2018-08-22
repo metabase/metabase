@@ -46,7 +46,7 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}))
+  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0}}))
 
 ;; test that Card result metadata is saved after running a Card
 (expect
@@ -55,7 +55,10 @@
     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                         :info {:card-id    (u/get-id card)
                                :query-hash (byte-array 0)}))
-    (round-all-decimals' (card-metadata card))))
+    (-> card
+        card-metadata
+        round-all-decimals'
+        tu/round-fingerprint-cols)))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
 (expect
@@ -103,7 +106,8 @@
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
-      round-all-decimals'))
+      round-all-decimals'
+      tu/round-fingerprint-cols))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
 ;; do datetime breakouts on years
@@ -120,7 +124,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
-                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
+                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query
@@ -129,4 +133,7 @@
                                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
                        :info     {:card-id    (u/get-id card)
                                   :query-hash (byte-array 0)}})
-    (round-all-decimals' (card-metadata card))))
+    (-> card
+        card-metadata
+        round-all-decimals'
+        tu/round-fingerprint-cols)))

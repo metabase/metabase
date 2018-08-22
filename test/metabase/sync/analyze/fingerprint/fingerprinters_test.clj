@@ -24,7 +24,9 @@
   {:global {:distinct-count 3}
    :type {:type/Number {:avg 2.0
                         :min 1.0
-                        :max 3.0}}}
+                        :max 3.0
+                        :q1 1.25
+                        :q3 2.75}}}
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
              [1.0 2.0 3.0]))

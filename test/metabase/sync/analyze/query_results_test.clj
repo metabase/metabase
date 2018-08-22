@@ -24,7 +24,7 @@
 
 (defn- name->fingerprints [field-or-metadata]
   (zipmap (map column->name-keyword field-or-metadata)
-          (map :fingerprint field-or-metadata)))
+          (map :fingerprint (tu/round-fingerprint-cols field-or-metadata))))
 
 (defn- name->special-type [field-or-metadata]
   (zipmap (map column->name-keyword field-or-metadata)
@@ -72,7 +72,7 @@
 ;; Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but
 ;; they should sill be the same except for some of the optimizations we do when we have all the information.
 (expect
-  (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}})
+  (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0}})
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :native
                                               :native   {:query "select * from venues"}}}]
