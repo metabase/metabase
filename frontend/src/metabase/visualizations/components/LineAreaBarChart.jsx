@@ -8,6 +8,10 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
 
+import * as Query from "metabase/lib/query/query";
+import * as Card from "metabase/meta/Card";
+import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+
 import SmartScalar from "metabase/visualizations/components/SmartScalar";
 
 import "./LineAreaBarChart.css";
@@ -232,6 +236,7 @@ export default class LineAreaBarChart extends Component {
 
   render() {
     const {
+      card,
       series,
       hovered,
       showTitle,
@@ -255,6 +260,14 @@ export default class LineAreaBarChart extends Component {
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
 
+    let granularity;
+    if (Card.isStructured(card)) {
+      const query = Card.getQuery(card);
+      const breakouts = query && Query.getBreakouts(query);
+      granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
+    }
+
+    console.log(granularity);
     return (
       <div
         className={cx(
@@ -271,6 +284,10 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
+        {insights &&
+          settings["graph.show_insights"] && (
+            <Insights insights={insights} granularity={granularity} />
+          )}
         {multiseriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
           <LegendHeader
             className="flex-no-shrink"
@@ -284,22 +301,6 @@ export default class LineAreaBarChart extends Component {
             visualizationIsClickable={visualizationIsClickable}
           />
         ) : null}
-        {insights &&
-          settings["graph.show_insights"] && (
-            <Flex align="center" ml="auto" mr={1} mb={2}>
-              <Box mr={2}>
-                <SmartScalar
-                  value={insights["previous-value"]}
-                  title={t`Previous period`}
-                />
-              </Box>
-              <SmartScalar
-                value={insights["last-value"]}
-                change={insights["last-change"]}
-                title={t`Most recent`}
-              />
-            </Flex>
-          )}
         <CardRenderer
           {...this.props}
           series={series}
@@ -439,3 +440,21 @@ function transformSingleSeries(s, series, seriesIndex) {
     };
   });
 }
+
+const Insights = ({ insights, granularity }) => {
+  return (
+    <Flex align="center" ml="auto" mr={1} mb={2}>
+      <Box mr={2}>
+        <SmartScalar
+          value={insights["previous-value"]}
+          title={t`Previous ${granularity}`}
+        />
+      </Box>
+      <SmartScalar
+        value={insights["last-value"]}
+        change={insights["last-change"]}
+        title={t`Most recent ${granularity}`}
+      />
+    </Flex>
+  );
+};
