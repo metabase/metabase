@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 
-import ParameterWidget from "./ParameterWidget.jsx";
+import StaticParameterWidget from "./ParameterWidget.jsx";
 
 import querystring from "querystring";
 import cx from "classnames";
@@ -98,6 +98,11 @@ export default class Parameters extends Component {
     }
   }
 
+  handleSortEnd = ({ oldIndex, newIndex }) => {
+    const { parameters, setParameterIndex } = this.props;
+    setParameterIndex(parameters[oldIndex].id, newIndex);
+  };
+
   render() {
     const {
       className,
@@ -110,6 +115,7 @@ export default class Parameters extends Component {
       setParameterName,
       setParameterValue,
       setParameterDefaultValue,
+      setParameterIndex,
       removeParameter,
       vertical,
       commitImmediately,
@@ -117,19 +123,32 @@ export default class Parameters extends Component {
 
     const parameters = this._parametersWithValues();
 
+    let ParameterWidget;
+    let ParameterWidgetList;
+    if (isEditing) {
+      ParameterWidget = SortableParameterWidget;
+      ParameterWidgetList = SortableParameterWidgetList;
+    } else {
+      ParameterWidget = StaticParameterWidget;
+      ParameterWidgetList = StaticParameterWidgetList;
+    }
+
     return (
-      <div
+      <ParameterWidgetList
         className={cx(
           className,
           "flex align-end flex-wrap",
           vertical ? "flex-column" : "flex-row",
           { mt1: isQB },
         )}
+        axis="x"
+        onSortEnd={this.handleSortEnd}
       >
-        {parameters.map(parameter => (
+        {parameters.map((parameter, index) => (
           <ParameterWidget
-            className={vertical ? "mb2" : null}
             key={parameter.id}
+            index={index}
+            className={vertical ? "mb2" : null}
             isEditing={isEditing}
             isFullscreen={isFullscreen}
             isNightMode={isNightMode}
@@ -152,7 +171,21 @@ export default class Parameters extends Component {
             commitImmediately={commitImmediately}
           />
         ))}
-      </div>
+      </ParameterWidgetList>
     );
   }
 }
+import {
+  SortableContainer,
+  SortableElement,
+  arrayMove,
+} from "react-sortable-hoc";
+
+const StaticParameterWidgetList = ({ children, ...props }) => {
+  return <div {...props}>{children}</div>;
+};
+
+const SortableParameterWidget = SortableElement(StaticParameterWidget);
+const SortableParameterWidgetList = SortableContainer(
+  StaticParameterWidgetList,
+);
