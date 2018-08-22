@@ -5,8 +5,6 @@ import Icon from "metabase/components/Icon";
 import { formatNumber } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
-import { t } from "c-3po";
-
 const SmartScalar = ({ period, title }) => {
   const isNegative = Math.sign(period["last-change"]) < 0;
   return (
