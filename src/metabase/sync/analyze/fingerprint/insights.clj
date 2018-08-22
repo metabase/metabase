@@ -14,6 +14,16 @@
   ([acc] acc)
   ([_ x] x))
 
+(defn- last-n
+  [n]
+  (fn
+    ([] [])
+    ([acc] acc)
+    ([acc x]
+     (if (< (count acc) n)
+       (conj acc x)
+       (conj (subvec acc 1) x)))))
+
 (defn- first-value
   ([] nil)
   ([acc] (unreduced acc))
@@ -30,14 +40,6 @@
         (and (neg? x1) (pos? x2)) (- (change x1 x2))
         (neg? x1)                 (- (change x2 x1))
         :else                     (/ (- x2 x1) x1)))))
-
-(defn- last-change
-  ([] {:previous nil
-       :current  nil})
-  ([{:keys [previous current]}] (change current previous))
-  ([{:keys [current]} x]
-   {:previous current
-    :current  x}))
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
@@ -65,18 +67,18 @@
                              f/->date
                              (.getTime))
          yfn        #(nth % y-position)]
-     (redux/juxt ((map yfn) last-change)
-                 ((map yfn) last-value)
+     (redux/juxt ((map yfn) (last-n 2))
                  ((map xfn) first-value)
-                 ((map xfn) last-value)
+                 ((map xfn) (last-n 1))
                  stats/count
                  (stats/simple-linear-regression xfn yfn)))
-   (fn [[last-change last-value start end n linear-regression-coefficients]]
+   (fn [[[previous current] start [end] n linear-regression-coefficients]]
      (let [[offset slope] (normalize-linear-function linear-regression-coefficients start end n)]
-       {:last-value  last-value
-        :last-change last-change
-        :slope       slope
-        :offset      offset}))))
+       {:last-value     current
+        :previous-value previous
+        :last-chagne    (change current previous)
+        :slope          slope
+        :offset         offset}))))
 
 (defn insights
   ""
