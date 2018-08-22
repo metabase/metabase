@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
@@ -286,9 +286,19 @@ export default class LineAreaBarChart extends Component {
         ) : null}
         {insights &&
           settings["graph.show_insights"] && (
-            <Box ml="auto" className="text-right" mr={1} mb={1}>
-              <SmartScalar period={insights} title={t`Most recent`} />
-            </Box>
+            <Flex align="center" ml="auto" mr={1} mb={2}>
+              <Box mr={2}>
+                <SmartScalar
+                  value={insights["previous-value"]}
+                  title={t`Previous period`}
+                />
+              </Box>
+              <SmartScalar
+                value={insights["last-value"]}
+                change={insights["last-change"]}
+                title={t`Most recent`}
+              />
+            </Flex>
           )}
         <CardRenderer
           {...this.props}

@@ -1,29 +1,44 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import Icon from "metabase/components/Icon";
 
 import { formatNumber } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
-const SmartScalar = ({ period, title }) => {
-  const isNegative = Math.sign(period["last-change"]) < 0;
+const SmartScalar = ({ value, change = null, title }) => {
+  const isNegative = (change && Math.sign(change) < 0) || false;
   return (
-    <Box>
+    <Box className="text-right">
       <h4
         style={{
           fontWeight: 900,
           textTransform: "uppercase",
           color: colors["text-medium"],
           fontSize: 11,
+          letterSpacing: 0.24,
         }}
       >
         {title}
       </h4>
-      <Box color={isNegative ? colors["error"] : colors["success"]}>
-        <Flex is="h3" align="center">
-          <Icon mr={1} name={isNegative ? "chevrondown" : "chevronup"} />
-          {formatNumber(period["last-value"])}
-          ({formatNumber(period["last-change"])}%)
+      <Box
+        color={
+          !change
+            ? colors["text-dark"]
+            : isNegative ? colors["error"] : colors["success"]
+        }
+      >
+        <Flex
+          align="center"
+          ml="auto"
+          style={{ fontWeight: 900 }}
+          className="text-right"
+        >
+          <h3
+            className="flex align-center text-right ml-auto"
+            style={{ fontWeight: 900 }}
+          >
+            {formatNumber(value)}
+            {change && `(${formatNumber(change)}%)`}
+          </h3>
         </Flex>
       </Box>
     </Box>

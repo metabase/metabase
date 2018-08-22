@@ -76,7 +76,7 @@
      (let [[offset slope] (normalize-linear-function linear-regression-coefficients start end n)]
        {:last-value     current
         :previous-value previous
-        :last-chagne    (change current previous)
+        :last-change    (change current previous)
         :slope          slope
         :offset         offset}))))
 
