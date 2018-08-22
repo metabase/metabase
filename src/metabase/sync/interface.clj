@@ -159,7 +159,8 @@
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
-   2 #{:type/Number :type/DateTime}})
+   2 #{:type/Number}
+   3 #{:type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

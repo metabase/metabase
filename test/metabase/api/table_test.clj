@@ -493,7 +493,8 @@
     ;; Now fetch the metadata for this "table"
     (->> card
          u/get-id
-         ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata"))
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
          (tu/round-fingerprint-cols [:fields])
          (tu/round-all-decimals 2))))
 
@@ -538,7 +539,8 @@
     ;; Now fetch the metadata for this "table"
     (->> card
          u/get-id
-         ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata"))
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
          (tu/round-fingerprint-cols [:fields])
          (tu/round-all-decimals 2))))
 

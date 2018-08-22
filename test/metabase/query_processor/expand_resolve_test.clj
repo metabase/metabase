@@ -112,7 +112,7 @@
                                                            :table-name         "VENUES"
                                                            :values             price-field-values
                                                            :fingerprint        {:global {:distinct-count 4}
-                                                                                :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0}}}})}}
+                                                                                :type   {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.46, :q3 2.49}}}})}}
 
 
                :join-tables nil}

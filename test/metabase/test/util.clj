@@ -416,7 +416,7 @@
                              [:data :cols]
                              [:cols])]
        (round-fingerprint-cols maybe-data-cols query-results))
-     (map round-fingerprint)))
+     (map round-fingerprint query-results)))
   ([k query-results]
    (update-in query-results k #(map round-fingerprint %))))
 
