@@ -409,11 +409,16 @@
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols [query-results]
-  (let [maybe-data-cols (if (contains? query-results :data)
-                          [:data :cols]
-                          [:cols])]
-    (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+(defn round-fingerprint-cols
+  ([query-results]
+   (if (map? query-results)
+     (let [maybe-data-cols (if (contains? query-results :data)
+                             [:data :cols]
+                             [:cols])]
+       (round-fingerprint-cols maybe-data-cols query-results))
+     (map round-fingerprint)))
+  ([k query-results]
+   (update-in query-results k #(map round-fingerprint %))))
 
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"

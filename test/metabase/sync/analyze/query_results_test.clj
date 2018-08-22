@@ -24,7 +24,7 @@
 
 (defn- name->fingerprints [field-or-metadata]
   (zipmap (map column->name-keyword field-or-metadata)
-          (map :fingerprint field-or-metadata)))
+          (map :fingerprint (tu/round-fingerprint-cols field-or-metadata))))
 
 (defn- name->special-type [field-or-metadata]
   (zipmap (map column->name-keyword field-or-metadata)

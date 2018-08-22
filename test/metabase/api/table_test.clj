@@ -491,7 +491,11 @@
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata"))
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 ;; Test date dimensions being included with a nested query
 (tt/expect-with-temp [Card [card {:name          "Users"
@@ -532,7 +536,11 @@
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata"))
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables

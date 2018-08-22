@@ -55,7 +55,10 @@
     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                         :info {:card-id    (u/get-id card)
                                :query-hash (byte-array 0)}))
-    (round-all-decimals' (card-metadata card))))
+    (-> card
+        card-metadata
+        round-all-decimals'
+        tu/round-fingerprint-cols)))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
 (expect
@@ -103,7 +106,8 @@
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
-      round-all-decimals'))
+      round-all-decimals'
+      tu/round-fingerprint-cols))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
 ;; do datetime breakouts on years
@@ -129,4 +133,7 @@
                                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
                        :info     {:card-id    (u/get-id card)
                                   :query-hash (byte-array 0)}})
-    (round-all-decimals' (card-metadata card))))
+    (-> card
+        card-metadata
+        round-all-decimals'
+        tu/round-fingerprint-cols)))
