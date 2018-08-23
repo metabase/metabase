@@ -94,7 +94,7 @@ export const buildResultProvider = (mainResult: DatasetData, totalsSeries: Datas
 
   const canBuildResults = canBuildResultsBuilder(mainResult);
   //all results from totalsSeries should have the same aggregations
-  const canBeInCache = isSuperset(get(totalsSeries, [0,1], mainKey)[1]);
+  const canBeInCache = isSuperset(get(totalsWithKeys, [0,1], mainKey)[1]);
 
   const buildResultsFor = resultsBuilder(mainResult);
 
