@@ -200,7 +200,7 @@ export const INSIGHT_SETTINGS = {
     section: t`Display`,
     title: t`Show insights about the values`,
     widget: "toggle",
-    default: "true",
+    default: "false",
   },
 };
 

@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import Scalar from "./visualizations/Scalar.jsx";
+import SmartScalar from "./visualizations/SmartScalar.jsx";
 import Progress from "./visualizations/Progress.jsx";
 import Table from "./visualizations/Table.jsx";
 import Text from "./visualizations/Text.jsx";
@@ -123,6 +124,7 @@ const extractRemappedColumns = data => {
 };
 
 registerVisualization(Scalar);
+registerVisualization(SmartScalar);
 registerVisualization(Progress);
 registerVisualization(Table);
 registerVisualization(Text);

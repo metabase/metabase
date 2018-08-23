@@ -36,7 +36,7 @@ const SmartScalar = ({ value, change = null, title }) => {
             className="flex align-center text-right ml-auto"
             style={{ fontWeight: 900 }}
           >
-            {formatNumber(value)}
+            {value && formatNumber(value)}
             {change && `(${formatNumber(change)}%)`}
           </h3>
         </Flex>

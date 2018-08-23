@@ -267,7 +267,6 @@ export default class LineAreaBarChart extends Component {
       granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
     }
 
-    console.log(granularity);
     return (
       <div
         className={cx(
