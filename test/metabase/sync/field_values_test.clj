@@ -18,40 +18,43 @@
 (defn- venues-price-field-values []
   (db/select-one-field :values FieldValues, :field_id (data/id :venues :price)))
 
+(defn- sync-database!' [step database]
+  (let [{:keys [step-info task-history]} (sut/sync-database! step database)]
+    [(sut/only-step-keys step-info)
+     (:task_details task-history)]))
+
 (expect
   {1 [1 2 3 4]
    2 nil
-   3 {:errors 0, :created 1, :updated 5, :deleted 0}
+   3 (repeat 2 {:errors 0, :created 1, :updated 5, :deleted 0})
    4 [1 2 3 4]}
-  (array-map
-   ;; 1. Check that we have expected field values to start with
+  {;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)
    ;; 2. Delete the Field values, make sure they're gone
    2 (do (db/delete! FieldValues :field_id (data/id :venues :price))
          (venues-price-field-values))
    ;; 3. After the delete, a field values should be created, the rest updated
-   3 (sut/only-step-keys (sut/sync-database! "update-field-values" (Database (data/id))))
+   3 (sync-database!' "update-field-values" (Database (data/id)))
    ;; 4. Now re-sync the table and make sure they're back
    4 (do (sync/sync-table! (Table (data/id :venues)))
-         (venues-price-field-values))))
+         (venues-price-field-values))})
 
 ;; Test that syncing will cause FieldValues to be updated
 (expect
   {1 [1 2 3 4]
    2 [1 2 3]
-   3 {:errors 0, :created 0, :updated 6, :deleted 0}
+   3 (repeat 2 {:errors 0, :created 0, :updated 6, :deleted 0})
    4 [1 2 3 4]}
-  (array-map
-   ;; 1. Check that we have expected field values to start with
+  { ;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)
    ;; 2. Update the FieldValues, remove one of the values that should be there
    2 (do (db/update! FieldValues (db/select-one-id FieldValues :field_id (data/id :venues :price))
            :values [1 2 3])
          (venues-price-field-values))
    ;; 3. Now re-sync the table and validate the field values updated
-   3 (sut/only-step-keys (sut/sync-database! "update-field-values" (Database (data/id))))
+   3 (sync-database!' "update-field-values" (Database (data/id)))
    ;; 4. Make sure the value is back
-   4 (venues-price-field-values)))
+   4 (venues-price-field-values)})
 
 
 ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was
