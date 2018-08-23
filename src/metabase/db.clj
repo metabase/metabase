@@ -20,6 +20,7 @@
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
            liquibase.Liquibase
+           liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -155,7 +156,7 @@
     (when (migration-lock-exists? liquibase)
       (Thread/sleep 2000)
       (throw
-       (Exception.
+       (LockException.
         (str
          (trs "Database has migration lock; cannot run migrations.")
          " "
@@ -240,6 +241,16 @@
     (when-not fresh-install?
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
 
+(defn- release-lock-if-needed!
+  "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
+  intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
+  [^Liquibase liquibase]
+  (when (migration-lock-exists? liquibase)
+    (try
+      (.forceReleaseLocks liquibase)
+      (catch Exception e
+        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
   migrate up`):
@@ -266,8 +277,8 @@
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
      (log/info (trs "Setting up Liquibase..."))
-     (try
-       (let [liquibase (conn->liquibase conn)]
+     (let [liquibase (conn->liquibase conn)]
+       (try
          (consolidate-liquibase-changesets conn)
          (log/info (trs "Liquibase is ready."))
          (case direction
@@ -275,16 +286,27 @@
            :force         (force-migrate-up-if-needed! conn liquibase)
            :down-one      (.rollback liquibase 1 "")
            :print         (println (migrations-sql liquibase))
-           :release-locks (.forceReleaseLocks liquibase)))
-       ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
-       (jdbc/db-unset-rollback-only! conn)
-       :done
-       ;; If for any reason any part of the migrations fail then rollback all changes
-       (catch Throwable e
-         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
-         ;; better safe than sorry
-         (.rollback (jdbc/get-connection conn))
-         (throw e))))))
+           :release-locks (.forceReleaseLocks liquibase))
+         ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
+         (jdbc/db-unset-rollback-only! conn)
+         :done
+         ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+         ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+         ;; clear the lock in that case, so handle that case separately
+         (catch LockException e
+           ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
+           ;; better safe than sorry
+           (.rollback (jdbc/get-connection conn))
+           (throw e))
+         ;; If for any reason any part of the migrations fail then rollback all changes
+         (catch Throwable e
+           ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
+           ;; better safe than sorry
+           (.rollback (jdbc/get-connection conn))
+           ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+           ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+           (release-lock-if-needed! liquibase)
+           (throw e)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
