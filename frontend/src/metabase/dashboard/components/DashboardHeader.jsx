@@ -11,7 +11,6 @@ import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
-import * as Urls from "metabase/lib/urls";
 
 import { getDashboardActions } from "./DashboardActions";
 
