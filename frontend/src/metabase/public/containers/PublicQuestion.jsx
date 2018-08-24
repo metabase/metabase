@@ -55,7 +55,7 @@ const mapDispatchToProps = {
 };
 
 @connect(null, mapDispatchToProps)
-@ExplicitSize
+@ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
   state: State;

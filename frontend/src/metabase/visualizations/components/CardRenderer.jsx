@@ -16,7 +16,7 @@ type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class CardRenderer extends Component {
   props: Props;
 

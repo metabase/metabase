@@ -33,7 +33,7 @@ type State = {
   sortDescending: boolean,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableSimple extends Component {
   props: Props;
   state: State;

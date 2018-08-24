@@ -88,7 +88,7 @@ type GridComponent = Component<void, void, void> & {
   recomputeGridSize: () => void,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableInteractive extends Component {
   state: State;
   props: Props;
