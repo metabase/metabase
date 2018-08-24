@@ -40,8 +40,8 @@ export default class RunButton extends Component {
       {
         "RunButton--hidden": !buttonText,
         "Button--primary": isDirty,
-        "text-light": !isDirty,
-        "text-medium-hover": !isDirty,
+        "text-medium": !isDirty,
+        "text-brand-hover": !isDirty,
       },
     );
     return (
