@@ -15,7 +15,7 @@ import ChartSettingRange from "metabase/visualizations/components/settings/Chart
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 const OUTER_RADIUS = 45; // within 100px SVG element
-const INNER_RADIUS_RATIO = 4 / 5;
+const INNER_RADIUS_RATIO = 3.7 / 5;
 const INNER_RADIUS = OUTER_RADIUS * INNER_RADIUS_RATIO;
 
 // arrow shape, currently an equilateral triangle
@@ -33,7 +33,7 @@ const ARROW_STROKE_COLOR = "white";
 // in ems, but within the scaled 100px SVG element
 const FONT_SIZE_SEGMENT_LABEL = 0.15;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
-const FONT_SIZE_CENTER_LABEL_MAX = 1.25;
+const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
 // hide labels if SVG width is smaller than this
 const MIN_WIDTH_LABEL_THRESHOLD = 400;
@@ -248,6 +248,7 @@ export default class Gauge extends Component {
                 style={{
                   fill: CENTER_LABEL_COLOR,
                   fontSize: "1em",
+                  fontWeight: "bold",
                   textAnchor: "middle",
                   transform: "translate(0,0.2em)",
                 }}
