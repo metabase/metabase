@@ -18,12 +18,13 @@
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
+            [compojure.core :refer [GET POST]]
             [medley.core :as m]
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]
-             [public :as public-api]]
+             [public :as public-api]
+             [card :as card-api]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -229,16 +230,19 @@
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
+(defn- dashcard-parameters
+  "Return parameters for running the query belonging to a DashboardCard."
+  [dashboard-id dashcard-id card-id embedding-params token-params query-params]
+  {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
+         (map? token-params) (map? query-params)]}
+  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))]
+    (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id) parameter-values)))
 
 (defn dashcard-results
   "Return results for running the query belonging to a DashboardCard."
   {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
-  {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
-         (map? token-params) (map? query-params)]}
-  (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
-                                                 parameter-values)]
+  (let [parameters (dashcard-parameters dashboard-id dashcard-id card-id embedding-params token-params query-params)]
     (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
 
 
@@ -339,6 +343,8 @@
   [token dashcard-id card-id query-params]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (log/error query-params)
+    (log/error (map? query-params))
     (check-embedding-enabled-for-dashboard dashboard-id)
     (dashcard-results
       :dashboard-id     dashboard-id
@@ -352,6 +358,20 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
   (card-for-signed-token token dashcard-id card-id query-params ))
+
+(api/defendpoint POST "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/subquery"
+  [token dashcard-id card-id :as {{query :sub-query } :body, :as all} & {:keys [query-params] :or {query-params {}}}]
+  (let [unsigned-token (eu/unsign token)
+        dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        database-id (api/check-404 (db/select-one-field :database_id Card
+                                                        :id          card-id))
+        embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
+        token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
+        parameters (dashcard-parameters dashboard-id dashcard-id card-id embedding-params token-params query-params)
+        queryUpdated (assoc-in (assoc-in (assoc query :database database-id) [:query :base_query] {:source-table (str "card__" card-id) :type :wrapped}) [:query :base_query :parameters] parameters)]
+    (check-embedding-enabled-for-dashboard dashboard-id)
+    (public-api/check-card-is-in-dashboard card-id dashboard-id)
+    (dataset-api/download-dataset queryUpdated)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |

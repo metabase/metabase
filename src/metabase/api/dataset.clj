@@ -31,9 +31,8 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(api/defendpoint POST "/"
-  "Execute a query and retrieve the results in the usual format."
-  [:as {{:keys [database], :as query} :body}]
+(defn download-dataset
+  [{:keys [database], :as query}]
   {database s/Int}
   ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
   (when-not (= database database/virtual-id)
@@ -44,6 +43,12 @@
      (fn []
        (qp/process-query-and-save-with-max! query {:executed-by api/*current-user-id*, :context :ad-hoc,
                                                    :card-id     source-card-id,        :nested? (boolean source-card-id)})))))
+
+(api/defendpoint POST "/"
+  "Execute a query and retrieve the results in the usual format."
+  [:as {query :body}]
+  (download-dataset query))
+
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------

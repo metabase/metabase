@@ -485,22 +485,42 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     }
 
-    const queries = result && result.data && result.data.cols && getAggregationQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery, datasetQuery.parameters) || [];
-    const seriesAll = queries.map(q => {
-      const datasetQueryWithParameters = {...q,
-        parameters: datasetQuery.parameters
-          ? JSON.stringify(datasetQuery.parameters)
-          : undefined,};
-      return fetchDataOrError(MetabaseApi.dataset(
-        datasetQueryWithParameters));
-    });
-    const series = await Promise.all(seriesAll);
+    const totalsQueries = result && result.data && result.data.cols && getAggregationQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery, datasetQuery.parameters) || [];
+    let totalsTasks;
+
+    if (dashboardType === "public") {
+      //todo
+
+    } else if (dashboardType === "embed") {
+      totalsTasks = totalsQueries.map(datasetQuery => {
+        return fetchDataOrError(EmbedApi.dashboardCardSubQuery({
+            token: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            'sub-query': datasetQuery,
+          ... getParametersBySlug(dashboard.parameters, parameterValues)
+          }
+        ));
+      });
+
+    } else {
+      totalsTasks = totalsQueries.map(q => {
+        const datasetQueryWithParameters = {...q,
+          parameters: datasetQuery.parameters
+            ? JSON.stringify(datasetQuery.parameters)
+            : undefined,};
+        return fetchDataOrError(MetabaseApi.dataset(
+          datasetQueryWithParameters));
+      });
+    }
+
+    const totals = await Promise.all(totalsTasks || []);
     clearTimeout(slowCardTimer);
     
     return {
       dashcard_id: dashcard.id,
       card_id: card.id,
-      result: {...result, data: {...result.data, totalsData: series.map(p => p.data).filter(p => p)}},
+      result: {...result, data: {...result.data, totalsData: totals.map(p => p.data).filter(p => p)}},
     };
   };
 });

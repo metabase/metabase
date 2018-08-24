@@ -105,7 +105,6 @@ const unusedSourceItem : DraggableItem = createSectionItem(t`Unused fields`);
 
 const convertStateToValue = (state : State) : ValueSerializedSupertype => {
   const columnsPart = state.items ? convertItemsToState(state.items) : {};
-  console.log(columnsPart, 'sadasdas');
   const oldMetadata = state.columnNameToMetadata || {};
   const columnNameToMetadata = state.items ? createMetadata(oldMetadata, columnsPart)  :oldMetadata;
   return {columnNameToMetadata, ...columnsPart};

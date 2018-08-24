@@ -92,6 +92,7 @@ export const EmbedApi = {
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
+  dashboardCardSubQuery: POST(embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId/subquery"),
 };
 
 type $AutoApi = {

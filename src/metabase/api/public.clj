@@ -203,7 +203,7 @@
                    (throw (Exception. (str (tru "Invalid param: {0}" slug)))))]]
         (merge query-param dashboard-param)))))
 
-(defn- check-card-is-in-dashboard
+(defn check-card-is-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
   as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
   [card-id dashboard-id]
