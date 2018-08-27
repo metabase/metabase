@@ -63,6 +63,38 @@ describe('summary table result provider', () =>{
 
   });
 
+  describe('given result provider initialized by main and totals results', () =>{
+    const mainResults = buildData(allRows, allColumns);
+
+    const grandTotalKey = createKey([], ['C3']);
+    const grandTotalResults = buildData([[8]], [addSource(columnNumeric)]);
+
+    const totalsKey = createKey(['C1'], ['C3']);
+    const totalsResults = buildData([['a',  7], ['b',1], ['c', 0]], [columnText1, columnNumeric].map(p => addSource(p)));
+
+    const resultsProvider = buildResultProvider(mainResults,[grandTotalResults, totalsResults]);
+
+    it('results provider should return main results', () => expect(resultsProvider(mainKey)).toBe(mainResults));
+    it('results provider should return results for grand totals', () => {
+      expect(resultsProvider(grandTotalKey)).toBe(grandTotalResults);
+    });
+    it('results provider should return results for totals on C1', () => {
+      expect(resultsProvider(totalsKey)).toBe(totalsResults);
+    });
+
+    it('results provider should compute results for totals on C2', () => {
+      const totalsKey = createKey(['C1', 'C2'], ['C3']);
+      const resRows = [['a', 'a', 3],
+        [ 'b','a', 4],
+        [ 'a','b', 1],
+        [ 'b','c', 0]];
+      const expectedResults = buildData(resRows, [columnText2, columnText1, columnNumeric].map(p => addSource(p)));
+      const data = resultsProvider(totalsKey);
+      expect(datasAreEqual(data, expectedResults)).toEqual(true);
+    });
+
+  });
+
 });
 
 const rowsCmpFunctions = [row => row[0],row => row[1],row => row[2]];
