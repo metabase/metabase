@@ -95,7 +95,6 @@ export default class TableInteractiveSummary extends Component {
 
   static propTypes = {
     data: PropTypes.object.isRequired,
-    isPivoted: PropTypes.bool.isRequired,
     sort: PropTypes.array,
   };
 
@@ -175,7 +174,7 @@ export default class TableInteractiveSummary extends Component {
               key: "lowerHeader",
               style: {},
             })}
-            {probeRows.map((probeRow, ri) => this.renderCell(probeRow, column, columnIndex, { start: 0, stop : rows.length}, "column-" + columnIndex + " row1-" + ri, 0, true, {}
+            {probeRows.map(probeRow => this.renderCell(probeRow, column, columnIndex, { start: 0, stop : rows.length}, "key: " + Math.random(), 0, true, {}
               ))}
           </div>
         ))}
@@ -293,10 +292,6 @@ export default class TableInteractiveSummary extends Component {
     else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
-    if(groupingManager.isGrouped(columnIndex) && !(key || '').startsWith('column'))
-    {
-      key = groupingManager.createKey(rowIndex, columnIndex)
-    }
     const clicked = getTableCellClickedObject(
       this.props.data,
       rowIndex,
