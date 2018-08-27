@@ -12,6 +12,8 @@ import {
 
 const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
+import TableApp from "metabase/internal/components/TableApp";
+
 // $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
