@@ -360,7 +360,7 @@
   (card-for-signed-token token dashcard-id card-id query-params ))
 
 (api/defendpoint POST "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/subquery"
-  [token dashcard-id card-id :as {{query :sub-query } :body, :as all} & {:keys [query-params] :or {query-params {}}}]
+  [token dashcard-id card-id :as {{query :sub-query } :body} & {:keys [query-params] :or {query-params {}}}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         database-id (api/check-404 (db/select-one-field :database_id Card

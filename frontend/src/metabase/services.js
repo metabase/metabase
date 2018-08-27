@@ -83,6 +83,7 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardSubQuery: POST("/api/public/dashboard/:uuid/card/:cardId/subquery"),
 };
 
 export const EmbedApi = {

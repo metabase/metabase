@@ -489,7 +489,17 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     let totalsTasks;
 
     if (dashboardType === "public") {
-      //todo
+      totalsTasks = totalsQueries.map(datasetQuery => {
+        return fetchDataOrError(
+          PublicApi.dashboardCardSubQuery({
+          uuid: dashcard.dashboard_id,
+          cardId: card.id,
+            'sub-query': datasetQuery,
+          parameters: datasetQuery.parameters
+            ? JSON.stringify(datasetQuery.parameters)
+            : undefined,
+        }));
+      });
 
     } else if (dashboardType === "embed") {
       totalsTasks = totalsQueries.map(datasetQuery => {

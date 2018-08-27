@@ -2,7 +2,7 @@
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [clojure.walk :as walk]
-            [compojure.core :refer [GET]]
+            [compojure.core :refer [GET POST]]
             [medley.core :as m]
             [metabase
              [db :as mdb]
@@ -227,6 +227,23 @@
                                                                      parameters))
     :context context, :dashboard-id dashboard-id))
 
+
+(defn public-dashcard-subquery-results
+  [dashboard-id card-id parameters query]
+  (check-card-is-in-dashboard card-id dashboard-id)
+  (let [database-id (api/check-404 (db/select-one-field :database_id Card
+                                                                :id          card-id))
+        resolved-params (resolve-params dashboard-id (if (string? parameters)
+                                              (json/parse-string parameters keyword)
+                                              parameters))
+        queryUpdated (assoc-in (assoc-in (assoc query :database database-id) [:query :base_query]
+                                         {:source-table (str "card__" card-id) :type :wrapped}) [:query :base_query :parameters] parameters)]
+    (binding [api/*current-user-permissions-set*     (atom #{"/"})
+              qp/*allow-queries-with-no-executor-id* true]
+    (dataset-api/download-dataset queryUpdated))))
+
+
+
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
@@ -235,6 +252,15 @@
   (api/check-public-sharing-enabled)
   (public-dashcard-results
    (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
+
+(api/defendpoint POST "/dashboard/:uuid/card/:card-id/subquery"
+  "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
+   sharing must be enabled."
+  [uuid card-id sub-query parameters :as {{query :sub-query } :body}]
+  {parameters (s/maybe su/JSONString)}
+  (api/check-public-sharing-enabled)
+  (public-dashcard-subquery-results
+   (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters query))
 
 
 (api/defendpoint GET "/oembed"
