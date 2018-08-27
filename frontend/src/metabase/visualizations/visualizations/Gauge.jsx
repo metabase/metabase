@@ -285,7 +285,7 @@ const GaugeNeedle = ({ angle }) => (
     transform={`translate(0,-${INNER_RADIUS}) rotate(${degrees(
       angle,
     )}, 0, ${INNER_RADIUS})`}
-    style={{ transition: "transform 0.5s ease-in-out" }}
+    style={{ transition: "transform 1.5s ease-in-out" }}
     stroke={ARROW_STROKE_COLOR}
     strokeWidth={ARROW_STROKE_THICKNESS}
     fill={ARROW_FILL_COLOR}
