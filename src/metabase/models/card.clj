@@ -17,8 +17,9 @@
              [revision :as revision]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.query :as q]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [query :as q]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -81,12 +82,12 @@
 
         (ids-already-seen source-card-id)
         (throw
-         (ex-info (tru "Cannot save Question: source query has circular references.")
+         (ui18n/ex-info (tru "Cannot save Question: source query has circular references.")
            {:status-code 400}))
 
         :else
         (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
-                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
+                   (throw (ui18n/ex-info (tru "Card {0} does not exist." source-card-id)
                             {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
 

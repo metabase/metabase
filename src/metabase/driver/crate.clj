@@ -7,7 +7,7 @@
              [util :as u]]
             [metabase.driver.crate.util :as crate-util]
             [metabase.driver.generic-sql :as sql]
-            [puppetlabs.i18n.core :refer [tru]])
+            [metabase.util.i18n :refer [tru]])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type

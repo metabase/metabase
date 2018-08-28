@@ -6,7 +6,7 @@
              [interface :as i]
              [util :as qputil]]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (defn- trim-query

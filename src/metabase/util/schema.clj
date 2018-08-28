@@ -5,7 +5,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
 ;; always validate all schemas in s/defn function declarations. See

@@ -1,6 +1,6 @@
 (ns metabase.models.query-execution
   (:require [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.models :as models]))
 

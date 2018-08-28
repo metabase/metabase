@@ -9,8 +9,9 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]

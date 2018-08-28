@@ -3,8 +3,9 @@
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
