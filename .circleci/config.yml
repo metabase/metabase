@@ -16,6 +16,7 @@ jobs:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=America/Los_Angeles"
     # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
     # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
     # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
