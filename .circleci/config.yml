@@ -29,9 +29,9 @@ jobs:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
     steps:
-      - run:
-          name: Set timezone to America/Los_Angeles
-          command: sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    - run:
+        name: Set timezone to America/Los_Angeles
+        command: sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
     # Machine Setup
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
