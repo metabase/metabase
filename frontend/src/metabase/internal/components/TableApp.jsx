@@ -42,22 +42,19 @@ const TableStyles = {
         y: 2,
       },
     },
+    cell: {},
   },
 };
 
 const SampleData = [
-  { id: 1 },
-  { id: 2 },
-  { id: 3 },
-  { id: 4 },
-  { id: 5 },
-  { id: 6 },
-  { id: 7 },
-  { id: 8 },
-  { id: 9 },
-  { id: 10 },
-  { id: 11 },
-  { id: 12 },
+  { id: 1, name: "Kyle", address: "420 Cool St", spent: "100.11" },
+  {
+    id: 2,
+    name: "Maz",
+    address: "Whatever the giants stadium address is",
+    spent: 220,
+  },
+  { id: 3, name: "Cam", address: "11 Birds Nest Way", spent: 300 },
 ];
 
 const COLUMNS = ["id", "avatar_url", "name", "address", "spent"];
@@ -67,6 +64,7 @@ const ColumnFields = {
     name: "ID",
   },
   avatar_url: {
+    name: "Avatar",
     baseType: "string",
   },
   name: {
@@ -94,26 +92,45 @@ const SortIndicator = () => (
 );
 
 const ColumnHeader = ({ field, variant }) => (
+  <th>
+    <Box
+      px={TableStyles[variant].header.padding.x}
+      py={TableStyles[variant].header.padding.x}
+      style={{ ...TableStyles.base.header }}
+    >
+      <Flex
+        align="center"
+        className="hover-parent hover--visibility cursor-pointer text-brand-hover"
+      >
+        <Box mr={1}>{field.name}</Box>
+        <Box className="hover-child">
+          <SortIndicator />
+        </Box>
+      </Flex>
+    </Box>
+  </th>
+);
+
+const ColumnCell = ({ cell, variant }) => (
   <Box
     px={TableStyles[variant].header.padding.x}
     py={TableStyles[variant].header.padding.x}
-    style={{ ...TableStyles.base.header }}
+    style={{ ...TableStyles.base.cell }}
   >
-    <Flex
-      align="center"
-      className="hover-parent hover--visibility cursor-pointer text-brand-hover"
-    >
-      <Box mr={1}>{field.name}</Box>
-      <Box className="hover-child">
-        <SortIndicator />
-      </Box>
-    </Flex>
+    {cell}
   </Box>
 );
 
-const Row = ({ row }) => {
-  console.log(row);
-  return <Box>ROW</Box>;
+const Row = ({ row, variant }) => {
+  return (
+    <tr>
+      {COLUMNS.map(c => (
+        <td>
+          <ColumnCell cell={row[c]} variant={variant} />
+        </td>
+      ))}
+    </tr>
+  );
 };
 
 class TableApp extends React.Component {
@@ -135,12 +152,16 @@ class TableApp extends React.Component {
           </Box>
         </Flex>
         <Box className="bordered rounded shadowed" w="100%" mt={3}>
-          <Flex align="center" p={TableStyles[density].padding}>
-            {COLUMNS.map(c => (
-              <ColumnHeader field={ColumnFields[c]} variant={density} />
-            ))}
-          </Flex>
-          <Box>{SampleData.map(d => <Row row={d} />)}</Box>
+          <table>
+            <thead align="center" p={TableStyles[density].padding}>
+              {COLUMNS.map(c => (
+                <ColumnHeader field={ColumnFields[c]} variant={density} />
+              ))}
+            </thead>
+            <tbody>
+              {SampleData.map(d => <Row row={d} variant={density} />)}
+            </tbody>
+          </table>
         </Box>
       </Box>
     );
