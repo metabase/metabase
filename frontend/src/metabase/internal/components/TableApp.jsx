@@ -100,30 +100,32 @@ const Avatar = ({ cell, field, variant }) => (
 
 const ColumnHeader = ({ field, variant }) => (
   <th>
-    <Box
-      px={TableStyles[variant].header.padding.x}
-      py={TableStyles[variant].header.padding.y}
-      style={{
-        ...TableStyles.base.header,
-        ...TableStyles.base.types[field.baseType],
-      }}
-    >
-      <Flex
-        align="center"
-        className="hover-parent hover--visibility cursor-pointer text-brand-hover"
-        flexDirection={
-          field.baseType === "integer" || field.baseType === "float"
-            ? "row-reverse"
-            : "row"
-        }
-        style={{ textAlign: "inherit" }}
+    {!field.hideLabel && (
+      <Box
+        px={TableStyles[variant].header.padding.x}
+        py={TableStyles[variant].header.padding.y}
+        style={{
+          ...TableStyles.base.header,
+          ...TableStyles.base.types[field.baseType],
+        }}
       >
-        <Box mr={1}>{field.name}</Box>
-        <Box className="hover-child">
-          <SortIndicator />
-        </Box>
-      </Flex>
-    </Box>
+        <Flex
+          align="center"
+          className="hover-parent hover--visibility cursor-pointer text-brand-hover"
+          flexDirection={
+            field.baseType === "integer" || field.baseType === "float"
+              ? "row-reverse"
+              : "row"
+          }
+          style={{ textAlign: "inherit" }}
+        >
+          <Box mr={1}>{field.name}</Box>
+          <Box className="hover-child">
+            <SortIndicator />
+          </Box>
+        </Flex>
+      </Box>
+    )}
   </th>
 );
 
@@ -173,17 +175,18 @@ const Change = ({ cell, variant, field }) => (
 
 const JsonCell = ({ cell, variant, column }) => {
   return (
-    <Box>
-      <Flex align="center" justify="center">
-        <Icon name="json" />
-      </Flex>
+    <Box
+      px={TableStyles[variant].header.padding.x - 1}
+      py={TableStyles[variant].header.padding.y}
+    >
+      <Icon name="json" />
     </Box>
   );
 };
 
 const Histogram = ({ cell, variant, column }) => {
   return (
-    <Box className="relative overflow-hidden">
+    <Box className="relative overflow-hidden" w="60px">
       <ProgressBar percentage={cell * 0.01} height={6} />
     </Box>
   );
