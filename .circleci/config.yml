@@ -30,8 +30,17 @@ jobs:
       command: /sbin/init
     steps:
     - run:
+        name: Enable MySQL Timezone support
+        command: "sudo service mysql start; mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql"
+    - run:
         name: Set timezone to America/Los_Angeles
-        command: sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+        command: "sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime"
+    - run:
+        name: Set timezone to America/Los_Angeles (Part II)
+        command: "echo 'America/Los_Angeles' | sudo tee -a /etc/timezone; sudo dpkg-reconfigure -f noninteractive tzdata;"
+    - run:
+        name: restart DBMSes
+        command: "sudo service mysql restart; sudo service postgresql restart;"
     # Machine Setup
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
@@ -39,20 +48,19 @@ jobs:
     # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
     # In many cases you can simplify this from what is generated here.
     # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-    - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-    # This is based on your 1.0 configuration file or project settings
     - run:
-        name: Set timezone to America/Los_Angeles (a different way) and restart DBMSes
-        command: 'echo ''America/Los_Angeles'' | sudo tee -a /etc/timezone; sudo dpkg-reconfigure
-          -f noninteractive tzdata; sudo service mysql restart; sudo service postgresql
-          restart; '
+        name: Make Circle artifact directories
+        command:  mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
     - run:
+        name: Switch to Java 8
         working_directory: ~/metabase/metabase
         command: sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $BASH_ENV
     - run:
+        name: Install NVM
         working_directory: ~/metabase/metabase
         command: nvm install 8.9.0 && nvm alias default 8.9.0
     - run:
+        name: Start Docker
         working_directory: ~/metabase/metabase
         command: 'sudo docker info >/dev/null 2>&1 || sudo service docker start; '
     # Dependencies
@@ -67,10 +75,18 @@ jobs:
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
     # This is based on your 1.0 configuration file or project settings
-    - run: lein deps
-    - run: npm install -g 'yarn@>=0.16.0'
-    - run: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
-    - run: mkdir plugins
+    - run:
+        name: Install lein dependencies
+        command: "lein deps"
+    - run:
+        name: Install yarn
+        command: "npm install -g 'yarn@>=0.16.0'"
+    - run:
+        name: Run yarn
+        command: "SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn"
+    - run:
+        name: Create ./plugins directory
+        command: "mkdir plugins"
     # Save dependency cache
     - save_cache:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
@@ -89,12 +105,12 @@ jobs:
         - ~/.yarn
         - ~/.yarn-cache
         - ./node_modules
-    # This is based on your 1.0 configuration file or project settings
-    - run: mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
-    - run: ./bin/ci
+    - run:
+        name: Run ./bin/ci
+        command: "./bin/ci"
     # Deployment
     # Your existing circle.yml file contains deployment steps.
     # The config translation tool does not support translating deployment steps
