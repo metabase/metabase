@@ -5,6 +5,7 @@ import colors from "metabase/lib/colors";
 import ProgressBar from "metabase/components/ProgressBar";
 
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 const COLUMNS = [
   "id",
@@ -13,6 +14,20 @@ const COLUMNS = [
   "address",
   "spent",
   "histogram",
+  "views",
+  "change",
+  "created",
+  "data",
+  "email",
+  "zip",
+  "city",
+  "state",
+];
+
+const UNIFIED_COLUMNS = [
+  "unifiedUser",
+  "unifiedAddress",
+  "spent",
   "views",
   "change",
   "created",
@@ -70,6 +85,28 @@ const ColumnFields = {
     specialType: "change",
     hideLabel: true,
   },
+  unifiedUser: {
+    name: "User",
+    specialType: "unifiedUser",
+    unifiedFields: ["name", "avatar_url", "email"],
+  },
+  unifiedAddress: {
+    name: "Address",
+    specialType: "unifiedAddress",
+    unifiedFields: ["address", "city", "state", "zip"],
+  },
+  email: {
+    name: "Email",
+  },
+  state: {
+    name: "State",
+  },
+  city: {
+    name: "City",
+  },
+  zip: {
+    name: "Zipcode",
+  },
 };
 
 const SortIndicator = () => (
@@ -79,24 +116,37 @@ const SortIndicator = () => (
   </Flex>
 );
 
-const Avatar = ({ cell, field, variant }) => (
-  <Box
-    px={TableStyles[variant].header.padding.x}
-    py={TableStyles[variant].header.padding.y}
-  >
+const Avatar = ({ cell, field, variant }) => {
+  let size;
+  switch (variant) {
+    case "comfortable":
+      size = 40;
+      break;
+    case "compact":
+      size = 22;
+      break;
+    default:
+      size = 32;
+  }
+  return (
     <Box
-      w="22px"
-      style={{
-        borderRadius: 99,
-        backgroundColor: "red",
-        height: 22,
-        overflow: "hidden",
-      }}
+      px={variant && TableStyles[variant].header.padding.x}
+      py={variant && TableStyles[variant].header.padding.y}
     >
-      <img src="http://placekitten.com/g/22/22" />
+      <Box
+        w={`${size}px`}
+        style={{
+          borderRadius: 99,
+          backgroundColor: "red",
+          height: size,
+          overflow: "hidden",
+        }}
+      >
+        <img src={`http://placekitten.com/g/${size}/${size}`} />
+      </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
 const ColumnHeader = ({ field, variant }) => (
   <th>
@@ -132,8 +182,8 @@ const ColumnHeader = ({ field, variant }) => (
 const AddressField = ({ cell, variant, field }) => (
   <Flex
     align="center"
-    px={TableStyles[variant].header.padding.x}
-    py={TableStyles[variant].header.padding.y}
+    px={variant && TableStyles[variant].header.padding.x}
+    py={variant && TableStyles[variant].header.padding.y}
   >
     {variant != "compact" && <Icon name="location" mx="6px" color="#d1d8de" />}
     {cell}
@@ -142,8 +192,8 @@ const AddressField = ({ cell, variant, field }) => (
 
 const Currency = ({ cell, variant, field }) => (
   <Box
-    px={TableStyles[variant].header.padding.x}
-    py={TableStyles[variant].header.padding.y}
+    px={variant && TableStyles[variant].header.padding.x}
+    py={variant && TableStyles[variant].header.padding.y}
     style={{
       fontWeight: 700,
       fontSize: 12.5,
@@ -192,6 +242,47 @@ const Histogram = ({ cell, variant, column }) => {
   );
 };
 
+const UnifiedAddress = ({ cell, variant, column, row }) => (
+  <Box
+    px={TableStyles[variant].header.padding.x}
+    py={TableStyles[variant].header.padding.y}
+  >
+    <Flex align="center">
+      {variant !== "compact" && <Icon name="location" mr={1} size={14} />}
+      <Box>
+        <Box style={{ fontWeight: 700 }}>{row["address"]}</Box>
+        <Box
+          style={{ textTransform: "uppercase", fontSize: 11, fontWeight: 700 }}
+        >
+          {row["city"]},{row["state"]}
+          {row["zip"]}
+        </Box>
+      </Box>
+    </Flex>
+  </Box>
+);
+
+const UnifiedUser = ({ variant, column, row }) => (
+  <Box
+    px={TableStyles[variant].header.padding.x}
+    py={TableStyles[variant].header.padding.y}
+  >
+    <Link to={row["id"]} className="link">
+      <Flex align="center">
+        {variant !== "compact" && (
+          <Box mr={1}>
+            <Avatar />
+          </Box>
+        )}
+        <Box>
+          <Box style={{ fontWeight: 900 }}>{row["name"]}</Box>
+          <Box>{row["email"]}</Box>
+        </Box>
+      </Flex>
+    </Link>
+  </Box>
+);
+
 const TableStyles = {
   base: {
     header: {
@@ -227,6 +318,12 @@ const TableStyles = {
       },
       histogram: {
         component: Histogram,
+      },
+      unifiedAddress: {
+        component: UnifiedAddress,
+      },
+      unifiedUser: {
+        component: UnifiedUser,
       },
     },
   },
@@ -266,6 +363,7 @@ const SampleData = [
   {
     id: 1,
     name: "Kyle",
+    email: "kyle@metabase.com",
     address: "420 Cool St",
     spent: "100.11",
     views: 33,
@@ -273,10 +371,14 @@ const SampleData = [
     data: `{ test : []}`,
     change: -22,
     histogram: 77,
+    state: "OR",
+    city: "Portland",
+    zip: "97227",
   },
   {
     id: 2,
     name: "Maz",
+    email: "maz@metabase.com",
     address: "Baseball Drive",
     spent: 220,
     views: 87,
@@ -284,10 +386,14 @@ const SampleData = [
     data: `{ test : []}`,
     change: 16.1,
     histogram: 77,
+    state: "CA",
+    zip: "94102",
+    city: "San Francisco",
   },
   {
     id: 3,
     name: "Cam",
+    email: "cam@metabase.com",
     address: "11 Birds Nest Way",
     spent: 300,
     views: 2,
@@ -295,53 +401,67 @@ const SampleData = [
     data: `{}`,
     change: -7.1,
     histogram: 77,
+    state: "CA",
+    zip: "94102",
   },
   {
     id: 4,
     name: "Tom",
+    email: "tom@metabase.com",
     address: "420 Cool St",
     spent: "100.11",
     views: 11,
     data: `{}`,
     change: 72.1,
     histogram: 77,
+    state: "CA",
+    zip: "94102",
   },
   {
     id: 5,
     name: "Sameer",
+    email: "sameer@metabase.com",
     address: "Burn Desert",
     spent: 0,
     views: 100,
     data: `{}`,
     change: 12.1,
     histogram: 77,
+    city: "Black Rock",
+    state: "NV",
+    zip: "94102",
   },
   {
     id: 6,
     name: "Ryan",
+    email: "ryan@metabase.com",
     address: "11 Birds Nest Way",
     spent: 300,
     views: 8,
     data: `{}`,
     change: -11,
     histogram: 77,
+    state: "MO",
+    zip: "94102",
   },
   {
     id: 7,
     name: "Simon",
+    email: "simon@metabase.com",
     address: "11 Birds Nest Way",
     spent: 110.11,
     views: 0,
     data: `{}`,
     change: 1,
     histogram: 11,
+    city: "Bus",
+    state: "Van",
+    zip: "beach",
   },
 ];
 
-const ColumnCell = ({ cell, variant, column }) => {
+const ColumnCell = ({ cell, variant, column, row }) => {
   const typeStyles = TableStyles.base.types[column.baseType] || {};
-
-  console.log(typeStyles);
 
   const Component =
     (TableStyles.base.types[column.baseType] &&
@@ -350,7 +470,8 @@ const ColumnCell = ({ cell, variant, column }) => {
       TableStyles.base.types[column.specialType].component);
 
   if (Component) {
-    return <Component field={column} cell={cell} variant={variant} />;
+    console.log(Component);
+    return <Component field={column} cell={cell} variant={variant} row={row} />;
   }
 
   return (
@@ -368,15 +489,16 @@ const ColumnCell = ({ cell, variant, column }) => {
   );
 };
 
-const Row = ({ row, variant }) => {
+const Row = ({ row, variant, columns }) => {
   return (
     <tr>
-      {COLUMNS.map(c => (
+      {columns.map(c => (
         <td style={{ borderBottom: "1px solid #ececec" }}>
           <ColumnCell
             cell={row[c]}
             variant={variant}
             column={ColumnFields[c]}
+            row={row}
           />
         </td>
       ))}
@@ -384,7 +506,7 @@ const Row = ({ row, variant }) => {
   );
 };
 
-class TableApp extends React.Component {
+class ExampleTable extends React.Component {
   state = {
     density: "normal",
   };
@@ -392,7 +514,7 @@ class TableApp extends React.Component {
   render() {
     const { density } = this.state;
     return (
-      <Box p={2} w="100%">
+      <Box w="100%">
         <Flex align="center" ml="auto">
           <Box onClick={() => this.setState({ density: "compact" })}>
             Compact
@@ -405,14 +527,36 @@ class TableApp extends React.Component {
         <Box className="bordered rounded shadowed" w="100%" mt={3}>
           <table>
             <thead align="center" p={TableStyles[density].padding}>
-              {COLUMNS.map(c => (
-                <ColumnHeader field={ColumnFields[c]} variant={density} />
-              ))}
+              {this.props.columns.map(
+                c =>
+                  ColumnFields[c] && (
+                    <ColumnHeader field={ColumnFields[c]} variant={density} />
+                  ),
+              )}
             </thead>
             <tbody>
-              {SampleData.map(d => <Row row={d} variant={density} />)}
+              {this.props.data.map(d => (
+                <Row row={d} variant={density} columns={this.props.columns} />
+              ))}
             </tbody>
           </table>
+        </Box>
+      </Box>
+    );
+  }
+}
+
+class TableApp extends React.Component {
+  render() {
+    return (
+      <Box>
+        <Box p={3} w="100%">
+          <h2>Basic enhancements</h2>
+          <ExampleTable columns={COLUMNS} data={SampleData} />
+        </Box>
+        <Box p={3} w="100%">
+          <h2>Unified</h2>
+          <ExampleTable columns={UNIFIED_COLUMNS} data={SampleData} />
         </Box>
       </Box>
     );
