@@ -31,16 +31,26 @@ jobs:
     steps:
     - run:
         name: Enable MySQL Timezone support
-        command: "sudo service mysql start; mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql"
+        command: >
+          sudo service mysql start;
+          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
     - run:
         name: Set timezone to America/Los_Angeles
-        command: "sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime"
-    - run:
-        name: Set timezone to America/Los_Angeles (Part II)
-        command: "echo 'America/Los_Angeles' | sudo tee -a /etc/timezone; sudo dpkg-reconfigure -f noninteractive tzdata;"
+        command: >
+          sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
+          echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
+          sudo dpkg-reconfigure -f noninteractive tzdata;
     - run:
         name: restart DBMSes
-        command: "sudo service mysql restart; sudo service postgresql restart;"
+        command: >
+          sudo service mysql restart;
+          sudo service postgresql restart;
+    - run:
+        name: What is our timezone?
+        command: >
+          mysql -e 'SELECT @@global.time_zone, @@session.time_zone, @@system_time_zone;';
+          echo 'System time zone:';
+          date +'%:z %Z';
     # Machine Setup
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
