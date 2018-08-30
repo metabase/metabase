@@ -16,6 +16,8 @@ jobs:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+      DEBIAN_FRONTEND: noninteractive
+      DEBCONF_NONINTERACTIVE_SEEN: true
     # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
     # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
     # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
@@ -25,15 +27,19 @@ jobs:
     # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
     # To see the list of pre-built images that CircleCI provides for most common languages see
     # https://circleci.com/docs/2.0/circleci-images/
-    machine:
-      image: circleci/classic:201808-01
+    docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
     steps:
     - run:
         name: Set timezone to America/Los_Angeles
         command: >
-          export TZ="/usr/share/zoneinfo/America/Los_Angeles";
           sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
           echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
+          # See https://stackoverflow.com/questions/8671308
+          echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
+          echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
+          debconf-set-selections tz_pre_seed.txt
           sudo dpkg-reconfigure -f noninteractive tzdata;
     - run:
         name: Restart DBMSes
@@ -57,6 +63,8 @@ jobs:
     # Machine Setup
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
+    - setup_remote_docker:
+        docker_layer_caching: true
     - checkout
     # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
     # In many cases you can simplify this from what is generated here.
@@ -65,17 +73,19 @@ jobs:
         name: Make Circle artifact directories
         command:  mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
     - run:
-        name: Switch to Java 8
-        working_directory: ~/metabase/metabase
-        command: sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $BASH_ENV
+        name: What's our Java version?
+        command: java -version
     - run:
         name: Install NVM
-        working_directory: ~/metabase/metabase
-        command: nvm install 8.9.0 && nvm alias default 8.9.0
+        command: >
+          nvm install 8.9.0;
+          nvm alias default 8.9.0;
+          node --version
     - run:
-        name: Start Docker
-        working_directory: ~/metabase/metabase
-        command: 'sudo docker info >/dev/null 2>&1 || sudo service docker start; '
+        name: Does docker work??
+        command: >
+          docker --version;
+          docker run hello-world
     # Dependencies
     #   This would typically go in either a build or a build-and-test job when using workflows
     # Restore the dependency cache

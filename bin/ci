@@ -54,8 +54,8 @@ node-4() {
     run_step ./bin/reflection-linter
 
     run_step ./bin/build version frontend sample-dataset uberjar
-    report-frontend-size
-    report-uberjar-size
+    # report-frontend-size
+    # report-uberjar-size
 }
 node-5() {
     run_step lein with-profile +ci eastwood
