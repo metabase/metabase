@@ -91,5 +91,6 @@
                                              (isa? % :type/DateTime) :datetimes
                                              :else                   :others)
                                           :base_type)))]
-    (when (timeseries? cols-by-type)
-      (timeseries-insight cols-by-type))))
+    (cond
+      (timeseries? cols-by-type) (timeseries-insight cols-by-type)
+      :else                      (f/constant-fingerprinter nil))))
