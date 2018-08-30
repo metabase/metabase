@@ -19,11 +19,13 @@
             metabase.query-processor.interface
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [schema.core :as s])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           honeysql.types.SqlCall
            [java.sql DatabaseMetaData ResultSet]
-           java.util.Map
+           [java.util Date Map]
            metabase.models.field.FieldInstance
            [metabase.query_processor.interface Field Value]))
 
@@ -89,20 +91,6 @@
      calls `name`, which returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
-
-  (prepare-sql-param [this obj]
-    "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in
-     a parameterized raw SQL query. For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is
-     converted to SQL like `WHERE date > ?`, and the value of `x` is passed as a `java.sql.Timestamp`. Some databases,
-     notably SQLite, don't work with `Timestamps`, and dates must be passed as string literals instead; the SQLite
-     driver overrides this method to convert dates as needed.
-
-  The default implementation is `identity`.
-
-  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because
-  the multimethod `metabase.driver.generic-sql.query-processor/->honeysql` provides an opportunity for drivers to do
-  type conversions as needed. In the future we may simplify a bit and combine them into a single method used in both
-  places.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when
@@ -288,8 +276,9 @@
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
-  `(jdbc/with-db-metadata [~binding (db->jdbc-connection-spec ~database)]
-     ~@body))
+  `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
+     (let [~binding (.getMetaData conn#)]
+       ~@body)))
 
 (defmacro ^:private with-resultset-open
   "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
@@ -395,6 +384,62 @@
                                  :schema (:pktable_schem result)}
               :dest-column-name (:pkcolumn_name result)})))))
 
+;;; ## Native SQL parameter functions
+
+(def PreparedStatementSubstitution
+  "Represents the SQL string replace value (usually ?) and the typed parameter value"
+  {:sql-string   s/Str
+   :param-values [s/Any]})
+
+(s/defn make-stmt-subs :- PreparedStatementSubstitution
+  "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
+  [sql-string param-seq]
+  {:sql-string   sql-string
+   :param-values param-seq})
+
+(defmulti ^{:doc          (str "Returns a `PreparedStatementSubstitution` for `x` and the given driver. "
+                               "This allows driver specific parameters and SQL replacement text (usually just ?). "
+                               "The param value is already prepared and ready for inlcusion in the query, such as "
+                               "what's needed for SQLite and timestamps.")
+            :arglists     '([driver x])
+            :style/indent 1}
+  ->prepared-substitution
+  (fn [driver x]
+    [(class driver) (class x)]))
+
+(s/defn ^:private honeysql->prepared-stmt-subs
+  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  [driver x]
+  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver))]
+    (make-stmt-subs snippet args)))
+
+(s/defmethod ->prepared-substitution [Object nil] :- PreparedStatementSubstitution
+  [driver _]
+  (honeysql->prepared-stmt-subs driver nil))
+
+(s/defmethod ->prepared-substitution [Object Object] :- PreparedStatementSubstitution
+  [driver obj]
+  (honeysql->prepared-stmt-subs driver (str obj)))
+
+(s/defmethod ->prepared-substitution [Object Number] :- PreparedStatementSubstitution
+  [driver num]
+  (honeysql->prepared-stmt-subs driver num))
+
+(s/defmethod ->prepared-substitution [Object Boolean] :- PreparedStatementSubstitution
+  [driver b]
+  (honeysql->prepared-stmt-subs driver b))
+
+(s/defmethod ->prepared-substitution [Object Keyword] :- PreparedStatementSubstitution
+  [driver kwd]
+  (honeysql->prepared-stmt-subs driver kwd))
+
+(s/defmethod ->prepared-substitution [Object SqlCall] :- PreparedStatementSubstitution
+  [driver sql-call]
+  (honeysql->prepared-stmt-subs driver sql-call))
+
+(s/defmethod ->prepared-substitution [Object Date] :- PreparedStatementSubstitution
+  [driver date]
+  (make-stmt-subs "?" [date]))
 
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
@@ -417,7 +462,6 @@
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
-   :prepare-sql-param    (u/drop-first-arg identity)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)
    :stddev-fn            (constantly :STDDEV)})

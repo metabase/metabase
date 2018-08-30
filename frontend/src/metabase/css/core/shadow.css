@@ -1,13 +1,13 @@
 :root {
-  --shadow-color: rgba(0, 0, 0, 0.08);
-  --shadow-hover-color: rgba(0, 0, 0, 0.12);
+  --shadow-color: var(--color-shadow);
+  --shadow-hover-color: var(--color-shadow);
 }
 .shadowed,
 :local(.shadowed) {
-  box-shadow: 0 2px 2px var(--shadow-color);
+  box-shadow: 0 2px 2px var(--color-shadow);
 }
 
 .shadow-hover:hover {
-  box-shadow: 0 2px 2px var(--shadow-hover-color);
+  box-shadow: 0 2px 2px color(var(--color-shadow) alpha(20%));
   transition: box-shadow 300ms linear;
 }

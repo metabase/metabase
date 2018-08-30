@@ -9,6 +9,6 @@ export type Segment = {
   name: string,
   id: SegmentId,
   table_id: TableId,
-  is_active: boolean,
+  archived: boolean,
   description: string,
 };

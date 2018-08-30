@@ -6,7 +6,7 @@
              [format :as time]]
             [clojure
              [set :as set]
-             [string :as s]]
+             [string :as str]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -15,13 +15,17 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [schema.core :as s])
   (:import java.sql.Time
            [java.util Date TimeZone]
+           metabase.util.honeysql_extensions.Literal
            org.joda.time.format.DateTimeFormatter))
 
 (defrecord MySQLDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "MySQL"))
 
@@ -60,7 +64,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
+    :YEAR       :type/Integer} (keyword (str/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
 (def ^:private ^:const default-connection-args
   "Map of args for the MySQL JDBC connection string.
@@ -77,8 +81,8 @@
    :useJDBCCompliantTimezoneShift :true})
 
 (def ^:private ^:const ^String default-connection-args-string
-  (s/join \& (for [[k v] default-connection-args]
-               (str (name k) \= (name v)))))
+  (str/join \& (for [[k v] default-connection-args]
+                 (str (name k) \= (name v)))))
 
 (defn- append-connection-args
   "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to
@@ -120,25 +124,25 @@
   (when timezone-id
     (time/unparse (.withZone timezone-offset-formatter (t/time-zone-for-id timezone-id)) date-time)))
 
-(defn- ^String system-timezone->offset-str
-  "Get the system/JVM timezone offset specified at `date-time`. The time is needed here as offsets can change for a
-  given timezone based on the time of year (i.e. daylight savings time)."
-  [date-time]
-  (timezone-id->offset-str (.getID (TimeZone/getDefault)) date-time))
+(def ^:private ^TimeZone utc   (TimeZone/getTimeZone "UTC"))
+(def ^:private utc-hsql-offset (hx/literal "+00:00"))
 
-;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
-;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
-(defmethod sqlqp/->honeysql [MySQLDriver Date]
-  [_ date]
-  (let [date-as-dt                 (tcoerce/from-date date)
-        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)
-        system-timezone-offset-str (system-timezone->offset-str date-as-dt)]
+(s/defn ^:private create-hsql-for-date
+  "Returns an HoneySQL structure representing the date for MySQL. If there's a report timezone, we need to ensure the
+  timezone conversion is wrapped around the `date-literal-or-string`. It supports both an `hx/literal` and a plain
+  string depending on whether or not the date value should be emedded in the statement or separated as a prepared
+  statement parameter. Use a string for prepared statement values, a literal if you want it embedded in the statement"
+  [date-obj :- java.util.Date
+   date-literal-or-string :- (s/either s/Str Literal)]
+  (let [date-as-dt                 (tcoerce/from-date date-obj)
+        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)]
     (if (and report-timezone-offset-str
-             (not= report-timezone-offset-str system-timezone-offset-str))
+             (not (.hasSameRules utc (TimeZone/getTimeZone (driver/report-timezone)))))
       ;; if we have a report timezone we want to generate SQL like convert_tz('2004-01-01T12:00:00','-8:00','-2:00')
-      ;; to convert our timestamp from system timezone -> report timezone.
+      ;; to convert our timestamp from the UTC timezone -> report timezone. Note `date-object-literal` is assumed to be
+      ;; in UTC as `du/format-date` is being used which defaults to UTC.
       ;; See https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_convert-tz
-      ;; (We're using raw offsets for the JVM timezone instead of the timezone ID because we can't be 100% sure that
+      ;; (We're using raw offsets for the JVM/report timezone instead of the timezone ID because we can't be 100% sure that
       ;; MySQL will accept either of our timezone IDs as valid.)
       ;;
       ;; Note there's a small chance that report timezone will never be set on the MySQL connection, if attempting to
@@ -149,12 +153,29 @@
       ;; preferable to have timezones slightly wrong in these rare theoretical situations, instead of all the time, as
       ;; was the previous behavior.
       (hsql/call :convert_tz
-        (hx/literal (u/format-date :date-hour-minute-second-ms date))
-        (hx/literal system-timezone-offset-str)
+        date-literal-or-string
+        utc-hsql-offset
         (hx/literal report-timezone-offset-str))
       ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared
       ;; statement param
-      date)))
+      date-obj)))
+
+;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
+;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
+(defmethod sqlqp/->honeysql [MySQLDriver Date]
+  [_ date]
+  (create-hsql-for-date date (hx/literal (du/format-date :date-hour-minute-second-ms date))))
+
+;; The sqlqp/->honeysql entrypoint is used by MBQL, but native queries with field filters have the same issue. Below
+;; will return a map that will be used in the prepared statement to correctly convert and parameterize the date
+(s/defmethod sql/->prepared-substitution [MySQLDriver Date] :- sql/PreparedStatementSubstitution
+  [_ date]
+  (let [date-str (du/format-date :date-hour-minute-second-ms date)]
+    (sql/make-stmt-subs (-> (create-hsql-for-date date date-str)
+                            hx/->date
+                            (hsql/format :quoting (sql/quote-style (MySQLDriver.)))
+                            first)
+                        [date-str])))
 
 (defmethod sqlqp/->honeysql [MySQLDriver Time]
   [_ time-value]
@@ -245,28 +266,13 @@
    (sql/IDriverSQLDefaultsMixin)
    {:date-interval                     (u/drop-first-arg date-interval)
     :details-fields                    (constantly (ssh/with-tunnel-config
-                                                     [{:name         "host"
-                                                       :display-name "Host"
-                                                       :default      "localhost"}
-                                                      {:name         "port"
-                                                       :display-name "Port"
-                                                       :type         :integer
-                                                       :default      3306}
-                                                      {:name         "dbname"
-                                                       :display-name "Database name"
-                                                       :placeholder  "birds_of_the_word"
-                                                       :required     true}
-                                                      {:name         "user"
-                                                       :display-name "Database username"
-                                                       :placeholder  "What username do you use to login to the database?"
-                                                       :required     true}
-                                                      {:name         "password"
-                                                       :display-name "Database password"
-                                                       :type         :password
-                                                       :placeholder  "*******"}
-                                                      {:name         "additional-options"
-                                                       :display-name "Additional JDBC connection string options"
-                                                       :placeholder  "tinyInt1isBit=false"}]))
+                                                     [driver/default-host-details
+                                                      (assoc driver/default-port-details :default 3306)
+                                                      driver/default-dbname-details
+                                                      driver/default-user-details
+                                                      driver/default-password-details
+                                                      (assoc driver/default-additional-options-details
+                                                        :placeholder  "tinyInt1isBit=false")]))
     :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
     :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)
     :features                          (fn [this]

@@ -13,8 +13,16 @@ metrics:
 dimensions:
 - Timestamp:
     field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
 - Timestamp:
     field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
 - State:
     field_type: UserTable.State
 - Income: Income

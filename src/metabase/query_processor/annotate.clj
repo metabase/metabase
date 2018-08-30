@@ -1,10 +1,12 @@
 (ns metabase.query-processor.annotate
   "Code that analyzes the results of running a query and adds relevant type information about results (including
   foreign key information). This also does things like taking lisp-case keys used in the QP and converting them back
-  to snake_case ones used in the frontend."
-  ;; TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's
-  ;;        head around :)
-  ;; TODO - This namespace should be called something like `metabase.query-processor.middleware.annotate`
+  to snake_case ones used in the frontend.
+
+  TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's
+         head around :)
+
+  TODO - This namespace should be called something like `metabase.query-processor.middleware.annotate`"
   (:require [clojure
              [set :as set]
              [string :as str]]
@@ -18,8 +20,7 @@
              [humanization :as humanization]]
             [metabase.query-processor
              [interface :as i]
-             [sort :as sort]
-             [util :as qputil]]
+             [sort :as sort]]
             [toucan.db :as db])
   (:import [metabase.query_processor.interface Expression ExpressionRef]))
 
@@ -196,9 +197,8 @@
   "Return a set of bare-bones metadata for a Field named K when all else fails.
    Scan the INITIAL-VALUES of K in an attempt to determine the `base-type`."
   [k & [initial-values]]
-  {:base-type          (if (seq initial-values)
-                         (driver/values->base-type initial-values)
-                         :type/*)
+  {:base-type          (or (driver/values->base-type initial-values)
+                           :type/*)
    :preview-display    true
    :special-type       nil
    :field-name         k
@@ -317,7 +317,7 @@
      (fk-field->dest-fn fields fk-ids id->dest-id (u/key-by :id (db/select [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
                                                                   :id [:in (vals id->dest-id)])))))
   ;; Return a function that will return the corresponding destination Field for a given Field
-  ([fields fk-ids id->dest-id dest-id->field]
+  ([_ _ id->dest-id dest-id->field]
    (fn [{:keys [id]}]
      (some-> id id->dest-id dest-id->field))))
 
@@ -363,6 +363,13 @@
            ;; add FK info
            add-extra-info-to-fk-fields))))
 
+(defn- pre-sort-index->post-sort-index
+  "Return a  mapping of how columns should be sorted:
+   [2 1 0] means the 1st column should be 3rd, 2nd remain 2nd, and 3rd should come 1st."
+  [unsorted-columns sorted-columns]
+  (let [column-index (zipmap unsorted-columns (range))]
+    (map column-index sorted-columns)))
+
 (defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:
 
@@ -370,13 +377,17 @@
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
       frontend."
   [query {:keys [columns rows], :as results}]
-  (let [row-maps (for [row rows]
-                   (zipmap columns row))
-        cols    (resolve-sort-and-format-columns (:query query) (distinct columns) (take 10 row-maps))
-        columns (mapv :name cols)]
+  (let [cols           (resolve-sort-and-format-columns (:query query)
+                                                        (distinct columns)
+                                                        (for [row (take 10 rows)]
+                                                          (zipmap columns row)))
+        sorted-columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]
                       (update col :name name)))
-      :columns (mapv name columns)
-      :rows    (for [row row-maps]
-                 (mapv row columns)))))
+      :columns (mapv name sorted-columns)
+      :rows    (if (not= columns sorted-columns)
+                 (let [sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
+                   (for [row rows]
+                     (mapv (partial nth (vec row)) sorted-column-ordering)))
+                 rows))))

@@ -74,28 +74,38 @@ const TYPES = {
 };
 
 export function isFieldType(type, field) {
-  if (!field) return false;
+  if (!field) {
+    return false;
+  }
 
   const typeDefinition = TYPES[type];
   // check to see if it belongs to any of the field types:
   for (const prop of ["base", "special"]) {
     const allowedTypes = typeDefinition[prop];
-    if (!allowedTypes) continue;
+    if (!allowedTypes) {
+      continue;
+    }
 
     const fieldType = field[prop + "_type"];
     for (const allowedType of allowedTypes) {
-      if (isa(fieldType, allowedType)) return true;
+      if (isa(fieldType, allowedType)) {
+        return true;
+      }
     }
   }
 
   // recursively check to see if it's NOT another field type:
   for (const excludedType of typeDefinition.exclude || []) {
-    if (isFieldType(excludedType, field)) return false;
+    if (isFieldType(excludedType, field)) {
+      return false;
+    }
   }
 
   // recursively check to see if it's another field type:
   for (const includedType of typeDefinition.include || []) {
-    if (isFieldType(includedType, field)) return true;
+    if (isFieldType(includedType, field)) {
+      return true;
+    }
   }
   return false;
 }
@@ -112,7 +122,9 @@ export function getFieldType(field) {
     STRING_LIKE,
     BOOLEAN,
   ]) {
-    if (isFieldType(type, field)) return type;
+    if (isFieldType(type, field)) {
+      return type;
+    }
   }
 }
 
@@ -122,6 +134,7 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
+export const isLocation = isFieldType.bind(null, LOCATION);
 
 export const isDimension = col => col && col.source !== "aggregation";
 export const isMetric = col =>
@@ -141,7 +154,7 @@ export const isNumericBaseType = field =>
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.special_type == null || field.special_type === TYPE.Number);
+  (field.special_type == null || isa(field.special_type, TYPE.Number));
 
 export const isTime = field => isa(field && field.base_type, TYPE.Time);
 

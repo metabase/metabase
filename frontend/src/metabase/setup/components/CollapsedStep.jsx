@@ -27,6 +27,7 @@ export default class CollapsedStep extends Component {
       rounded: true,
       full: true,
       relative: true,
+      "bg-white": true,
       "SetupStep--completed shadowed": isCompleted,
       "SetupStep--todo": !isCompleted,
     });

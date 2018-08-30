@@ -1,7 +1,10 @@
 (ns metabase.driver.mysql-test
   (:require [clj-time.core :as t]
             [expectations :refer :all]
+            [honeysql.core :as hsql]
             [metabase
+             [query-processor :as qp]
+             [query-processor-test :as qpt]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
@@ -15,9 +18,7 @@
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [honeysql.core :as hsql]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import metabase.driver.mysql.MySQLDriver))
@@ -99,8 +100,8 @@
     (tu/db-timezone-id)))
 
 
-(def before-daylight-savings (u/str->date-time "2018-03-10 10:00:00"))
-(def after-daylight-savings (u/str->date-time "2018-03-12 10:00:00"))
+(def before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
+(def after-daylight-savings (du/str->date-time "2018-03-12 10:00:00" du/utc))
 
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
@@ -114,18 +115,64 @@
 ;; make sure DateTime types generate appropriate SQL...
 ;; ...with no report-timezone set
 (expect
-  ["?" (u/->Timestamp "2018-01-03")]
+  ["?" (du/->Timestamp #inst "2018-01-03")]
   (tu/with-temporary-setting-values [report-timezone nil]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))
 
 ;; ...with a report-timezone set
 (expect
   ["convert_tz('2018-01-03T00:00:00.000', '+00:00', '-08:00')"]
   (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))
 
 ;; ...with a report-timezone set to the same as the system timezone (shouldn't need to do TZ conversion)
 (expect
-  ["?" (u/->Timestamp "2018-01-03")]
+  ["?" (du/->Timestamp #inst "2018-01-03")]
   (tu/with-temporary-setting-values [report-timezone "UTC"]
-    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (u/->Timestamp "2018-01-03")))))
+    (hsql/format (sqlqp/->honeysql (MySQLDriver.) (du/->Timestamp #inst "2018-01-03")))))
+
+;; Most of our tests either deal in UTC (offset 00:00) or America/Los_Angeles timezones (-07:00/-08:00). When dealing
+;; with dates, we will often truncate the timestamp to a date. When we only test with negative timezone offsets, in
+;; combination with this truncation, means we could have a bug and it's hidden by this negative-only offset. As an
+;; example, if we have a datetime like 2018-08-17 00:00:00-08:00, converting to UTC this becomes 2018-08-17
+;; 08:00:00+00:00, which when truncated is still 2018-08-17. That same scenario in Hong Kong is 2018-08-17
+;; 00:00:00+08:00, which then becomes 2018-08-16 16:00:00+00:00 when converted to UTC, which will truncate to
+;; 2018-08-16, instead of 2018-08-17
+;;
+;; This test ensures if our JVM timezone and reporting timezone are Asia/Hong_Kong, we get a correctly formatted date
+(expect-with-engine :mysql
+  ["2018-04-18T00:00:00.000+08:00"]
+  (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+    (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
+      (qpt/first-row
+        (du/with-effective-timezone (Database (data/id))
+          (qp/process-query
+           {:database (data/id),
+            :type :native,
+            :settings {:report-timezone "UTC"}
+            :native     {:query "SELECT cast({{date}} as date)"
+                         :template_tags {:date {:name "date" :display_name "Date" :type "date" }}}
+            :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
+
+;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone is in Los
+;; Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run with a UTC JVM
+;; timezone. This test catches a bug where we are incorrectly assuming a date is in UTC when the JVM timezone is
+;; different.
+;;
+;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code was
+;; parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming that date was
+;; in the system timezone rather than UTC which caused an incorrect conversion and with the trucation, let to it being
+;; off by a day
+(expect-with-engine :mysql
+  ["2018-04-18T00:00:00.000-07:00"]
+  (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+    (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (qpt/first-row
+        (du/with-effective-timezone (Database (data/id))
+          (qp/process-query
+            {:database (data/id),
+             :type :native,
+             :settings {:report-timezone "UTC"}
+             :native     {:query "SELECT cast({{date}} as date)"
+                          :template_tags {:date {:name "date" :display_name "Date" :type "date" }}}
+             :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))

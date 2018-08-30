@@ -62,7 +62,7 @@ export default class DatabaseSchedulingStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep rounded full relative SetupStep--active">
+        <section className="SetupStep bg-white rounded full relative SetupStep--active">
           <StepTitle title={stepText} circleText={schedulingIcon} />
           <div className="mb4">
             <div className="text-default">

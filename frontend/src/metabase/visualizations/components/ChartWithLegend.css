@@ -65,12 +65,12 @@
 /* DEBUG */
 /*
 :local .ChartWithLegend .Legend {
-  background-color: rgba(0,0,255,0.1);
+  background-color: color(var(--color-bg-black) alpha(-90%));
 }
 :local .ChartWithLegend .Chart {
-  background-color: rgba(0,255,0,0.1);
+  background-color: color(var(--color-success) alpha(-90%));
 }
 :local .ChartWithLegend.flexChart .Chart {
-  background-color: rgba(255,0,0,0.1);
+  background-color: color(var(--color-error) alpha(-90%));
 }
 */

@@ -33,9 +33,9 @@
         </viewController>
         <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
             <items>
-                <menuItem title="Metabase" id="1Xt-HY-uBw">
+                <menuItem title="Discovery" id="1Xt-HY-uBw">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Metabase" systemMenu="apple" id="uQy-DD-JDr">
+                    <menu key="submenu" title="Discovery" systemMenu="apple" id="uQy-DD-JDr">
                         <items>
                             <menuItem title="Check for Updates..." id="deG-HF-Nuu">
                                 <modifierMask key="keyEquivalentModifierMask"/>
@@ -44,7 +44,7 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="45c-9m-ljg"/>
-                            <menuItem title="Hide Metabase" keyEquivalent="h" id="Olw-nP-bQN">
+                            <menuItem title="Hide Discovery" keyEquivalent="h" id="Olw-nP-bQN">
                                 <connections>
                                     <action selector="hide:" target="-1" id="PnN-Uc-m68"/>
                                 </connections>
@@ -62,7 +62,7 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="kCx-OE-vgT"/>
-                            <menuItem title="Quit Metabase" keyEquivalent="q" id="4sb-4s-VLi">
+                            <menuItem title="Quit Discovery" keyEquivalent="q" id="4sb-4s-VLi">
                                 <connections>
                                     <action selector="terminate:" target="-1" id="Te7-pn-YzF"/>
                                 </connections>
@@ -213,7 +213,7 @@
                     <subviews>
                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="BVV-jo-b9C">
                             <rect key="frame" x="229" y="8" width="65" height="17"/>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" enabled="NO" sendsActionOnEndEditing="YES" title="Metabase" id="Vvp-PZ-SY5">
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" enabled="NO" sendsActionOnEndEditing="YES" title="Discovery" id="Vvp-PZ-SY5">
                                 <font key="font" metaFont="system"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>

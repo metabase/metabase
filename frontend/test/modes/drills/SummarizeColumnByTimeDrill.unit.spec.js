@@ -28,7 +28,7 @@ describe("SummarizeColumnByTimeDrill", () => {
       question: question,
       clicked: clickedFloatHeader,
     });
-    expect(actions).toHaveLength(2);
+    expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       source_table: ORDERS_TABLE_ID,

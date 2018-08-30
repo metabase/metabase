@@ -1,41 +1,36 @@
-# NOTE: this Dockerfile builds Metabase from source. We recommend deploying the pre-built
-# images hosted on Docker Hub https://hub.docker.com/r/metabase/metabase/ which use the
-# Dockerfile located at ./bin/docker/Dockerfile
+###################
+# STAGE 1: builder
+###################
 
-FROM java:openjdk-8-jdk-alpine
+FROM java:openjdk-8-jdk-alpine as builder
 
-ARG VERSION
-
-ENV JAVA_HOME=/usr/lib/jvm/default-jvm
-ENV PATH /usr/local/bin:$PATH
-ENV LEIN_ROOT 1
+WORKDIR /app/source
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
-# install core build tools
-# fix broken cacerts
-# install lein
-# add the application source to the image
+# bash:    various shell scripts
+# wget:    installing lein
+# git:     ./bin/version
+# nodejs:  frontend building
+# make:    backend building
+# gettext: translations
+RUN apk add --update bash nodejs git wget make gettext
+
 ADD . /app/source
-ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
-RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
-    npm install -g yarn && \
-    ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/" && \
-    rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    chmod 744 /usr/local/bin/lein && \
-    lein install -h && \
-    mkdir /root/.crossdata/ && \
+
+# import Crossdata and defaultSecrets
+RUN mkdir /root/.crossdata/ && \
     mkdir /root/defaultsecrets/ && \
     mv /app/source/resources/security/* /root/defaultsecrets/. && \
     mkdir /root/kms/ && \
     mv  /app/source/resources/kms/* /root/kms/.
 
-
 ENV MAVEN_VERSION="3.2.5" \
     M2_HOME=/usr/lib/mvn
 
+# To generate local docker, comment mvn dependency:get and mv. Download jar in ./bin/lib/
+# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.0-5000715/stratio-crossdata-jdbc4-2.13.0-5000715.jar
 RUN apk add --update wget && \
     cd /tmp && \
     wget "http://ftp.unicamp.br/pub/apache/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz" && \
@@ -49,24 +44,72 @@ RUN apk add --update wget && \
     mv /root/.m2/repository/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.0-5000715/stratio-crossdata-jdbc4-2.13.0-5000715.jar /app/source/bin/lib/stratio-crossdata-jdbc4-2.13.0-5000715.jar && \
     mvn install:install-file -Dfile=/app/source/bin/lib/stratio-crossdata-jdbc4-2.13.0-5000715.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.0-5000715 -Dpackaging=jar
 
-# To generate local docker, comment mvn dependency:get and mv. Download jar in ./bin/lib/
-# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.0-5000715/stratio-crossdata-jdbc4-2.13.0-5000715.jar
+# yarn:    frontend dependencies
+RUN npm install -g yarn
 
+# lein:    backend dependencies and building
+ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
+RUN chmod 744 /usr/local/bin/lein
+RUN lein upgrade
+
+# install dependencies before adding the rest of the source to maximize caching
+
+# backend dependencies
+ADD project.clj .
+RUN lein deps
+
+# frontend dependencies
+ADD yarn.lock package.json ./
+RUN yarn --ignore-engines
+
+# add the rest of the source
+ADD . .
 
 # build the app
-WORKDIR /app/source
+RUN bin/build
 
-# build & remove unnecessary packages & tidy up
-RUN bin/build && \
-    apk del nodejs git wget python make g++ && \
-    rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /root/.yarn /root/.yarn-cache /tmp/* /var/cache/apk/* /app/source/node_modules /app/source/target/uberjar/classes /usr/bin/mvn /app/source/target/uberjar/metabase-metabase-SNAPSHOT.jar && \
-    apk add --update openssl curl ca-certificates && \
-    mkdir -p /etc/pki/tls/certs && \
-    ln -s /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt
+# install updated cacerts to /etc/ssl/certs/java/cacerts
+RUN apk add --update java-cacerts
+
+# import AWS RDS cert into /etc/ssl/certs/java/cacerts
+ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
+RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
+  -file rds-combined-ca-bundle.pem \
+  -keystore /etc/ssl/certs/java/cacerts \
+  -keypass changeit -storepass changeit
+
+
+# ###################
+# # STAGE 2: runner
+# ###################
+
+FROM java:openjdk-8-jre-alpine as runner
+
+WORKDIR /app
+
+ENV FC_LANG en-US
+ENV LC_CTYPE en_US.UTF-8
+
+# dependencies
+RUN apk add --update bash ttf-dejavu fontconfig && \
+    apk add --update curl && \
+    apk add --update jq && \
+    apk add --update openssl && \
+    rm -rf /var/cache/apk/*
+
+# add fixed cacerts
+COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
+
+# add Metabase script and uberjar
+RUN mkdir -p bin target/uberjar && \
+    mkdir -p bin /root/.crossdata/
+COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
+COPY --from=builder /app/source/bin/start /app/bin/
+COPY --from=builder /root/defaultsecrets/* /root/defaultsecrets/
+COPY --from=builder /root/kms/* /root/kms/
 
 # expose our default runtime port
 EXPOSE 3000
 
-# build and then run it
-WORKDIR /app/source
-ENTRYPOINT ["./bin/start"]
+# run it
+ENTRYPOINT ["/app/bin/start"]

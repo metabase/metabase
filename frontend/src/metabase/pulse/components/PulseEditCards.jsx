@@ -4,10 +4,13 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
 
-import CardPicker from "./CardPicker.jsx";
 import PulseCardPreview from "./PulseCardPreview.jsx";
 
+import QuestionSelect from "metabase/containers/QuestionSelect";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
+
+import colors from "metabase/lib/colors";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
@@ -33,8 +36,6 @@ export default class PulseEditCards extends Component {
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
     cardPreviews: PropTypes.object.isRequired,
-    cards: PropTypes.object.isRequired,
-    cardList: PropTypes.array.isRequired,
     fetchPulseCardPreview: PropTypes.func.isRequired,
     setPulse: PropTypes.func.isRequired,
     attachmentsEnabled: PropTypes.bool,
@@ -62,7 +63,7 @@ export default class PulseEditCards extends Component {
   };
 
   addCard(index, cardId) {
-    this.setCard(index, { id: cardId });
+    this.setCard(index, { id: cardId, include_csv: false, include_xls: false });
     this.trackPulseEvent("AddCard", index);
   }
 
@@ -147,7 +148,7 @@ export default class PulseEditCards extends Component {
   }
 
   render() {
-    let { pulse, cards, cardList, cardPreviews } = this.props;
+    let { pulse, cardPreviews } = this.props;
 
     let pulseCards = pulse ? pulse.cards.slice() : [];
     if (pulseCards.length < HARD_LIMIT) {
@@ -157,50 +158,50 @@ export default class PulseEditCards extends Component {
     return (
       <div className="py1">
         <h2>{t`Pick your data`}</h2>
-        <p className="mt1 h4 text-bold text-grey-3">
+        <p className="mt1 h4 text-bold text-medium">
           {t`Choose questions you'd like to send in this pulse`}.
         </p>
         <ol className="my3">
-          {cards &&
-            pulseCards.map((card, index) => (
-              <li key={index} className="my1">
-                {index === SOFT_LIMIT && (
-                  <div
-                    className="my4 ml3"
-                    style={{
-                      width: 375,
-                      borderTop: "1px dashed rgb(214,214,214)",
-                    }}
-                  />
-                )}
-                <div className="flex align-top">
-                  <div className="flex align-top" style={{ width: 400 }}>
-                    <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
-                    {card ? (
-                      <PulseCardPreview
-                        card={card}
-                        cardPreview={cardPreviews[card.id]}
-                        onChange={this.setCard.bind(this, index)}
-                        onRemove={this.removeCard.bind(this, index)}
-                        fetchPulseCardPreview={this.props.fetchPulseCardPreview}
-                        attachmentsEnabled={
-                          this.props.attachmentsEnabled &&
-                          !isAutoAttached(cardPreviews[card.id])
-                        }
-                        trackPulseEvent={this.trackPulseEvent}
-                      />
-                    ) : (
-                      <CardPicker
-                        cardList={cardList}
-                        onChange={this.addCard.bind(this, index)}
-                        attachmentsEnabled={this.props.attachmentsEnabled}
-                      />
-                    )}
-                  </div>
-                  {this.renderCardNotices(card, index)}
+          {pulseCards.map((card, index) => (
+            <li key={index} className="my1">
+              {index === SOFT_LIMIT && (
+                <div
+                  className="my4 ml3"
+                  style={{
+                    width: 375,
+                    borderTop: `1px dashed ${colors["border"]}`,
+                  }}
+                />
+              )}
+              <div className="flex align-top">
+                <div className="flex align-top" style={{ width: 400 }}>
+                  <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
+                  {card ? (
+                    <PulseCardPreview
+                      card={card}
+                      cardPreview={cardPreviews[card.id]}
+                      onChange={this.setCard.bind(this, index)}
+                      onRemove={this.removeCard.bind(this, index)}
+                      fetchPulseCardPreview={this.props.fetchPulseCardPreview}
+                      attachmentsEnabled={
+                        this.props.attachmentsEnabled &&
+                        !isAutoAttached(cardPreviews[card.id])
+                      }
+                      trackPulseEvent={this.trackPulseEvent}
+                    />
+                  ) : (
+                    <QuestionSelect
+                      onChange={questionId => this.addCard(index, questionId)}
+                      className="flex-full"
+                      // TODO: reimplement CardPicker's warnings for unsuitable cards
+                      // attachmentsEnabled={this.props.attachmentsEnabled}
+                    />
+                  )}
                 </div>
-              </li>
-            ))}
+                {this.renderCardNotices(card, index)}
+              </div>
+            </li>
+          ))}
         </ol>
       </div>
     );

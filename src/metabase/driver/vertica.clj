@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
 
@@ -52,7 +53,7 @@
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
   noop."
   [expr]
-  (if (u/is-temporal? expr)
+  (if (du/is-temporal? expr)
     (hx/cast :timestamp expr)
     expr))
 
@@ -107,6 +108,7 @@
 
 
 (defrecord VerticaDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Vertica"))
 
@@ -119,28 +121,13 @@
          {:date-interval     (u/drop-first-arg date-interval)
           :describe-database describe-database
           :details-fields    (constantly (ssh/with-tunnel-config
-                                           [{:name         "host"
-                                             :display-name "Host"
-                                             :default      "localhost"}
-                                            {:name         "port"
-                                             :display-name "Port"
-                                             :type         :integer
-                                             :default      5433}
-                                            {:name         "dbname"
-                                             :display-name "Database name"
-                                             :placeholder  "birds_of_the_word"
-                                             :required     true}
-                                            {:name         "user"
-                                             :display-name "Database username"
-                                             :placeholder  "What username do you use to login to the database?"
-                                             :required     true}
-                                            {:name         "password"
-                                             :display-name "Database password"
-                                             :type         :password
-                                             :placeholder  "*******"}
-                                            {:name         "additional-options"
-                                             :display-name "Additional JDBC connection string options"
-                                             :placeholder  "ConnectionLoadBalance=1"}]))
+                                           [driver/default-host-details
+                                            (assoc driver/default-port-details :default 5433)
+                                            driver/default-dbname-details
+                                            driver/default-user-details
+                                            driver/default-password-details
+                                            (assoc driver/default-additional-options-details
+                                              :placeholder "ConnectionLoadBalance=1")]))
           :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatters)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

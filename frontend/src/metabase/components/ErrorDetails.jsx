@@ -26,9 +26,14 @@ export default class ErrorDetails extends React.Component {
           <h2>{t`Here's the full error message`}</h2>
           <div
             style={{ fontFamily: "monospace" }}
-            className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1"
+            className="QueryError2-detailBody bordered rounded bg-light text-bold p2 mt1"
           >
-            {details}
+            {/* ensure we don't try to render anything except a string */}
+            {typeof details === "string"
+              ? details
+              : typeof details.message === "string"
+                ? details.message
+                : String(details)}
           </div>
         </div>
       </div>

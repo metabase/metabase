@@ -2,6 +2,7 @@
 
 ## 0.31.0 (upcoming)
 
+* [DGPB-1357] Upgrade to metabase 0.30.1
 * [DGPB-1345] Add more metadata refresh options
 
 ## 0.30.0-78eb83f (Built: June 27, 2018 | Released: July 13, 2018)

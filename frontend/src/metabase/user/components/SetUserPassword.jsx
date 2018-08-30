@@ -36,7 +36,9 @@ export default class SetUserPassword extends Component {
     // required: first_name, last_name, email
     for (let fieldName in this.refs) {
       let node = ReactDOM.findDOMNode(this.refs[fieldName]);
-      if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
+      if (node.required && MetabaseUtils.isEmpty(node.value)) {
+        isValid = false;
+      }
     }
 
     if (isValid !== valid) {
@@ -86,7 +88,9 @@ export default class SetUserPassword extends Component {
   render() {
     const { updatePasswordResult } = this.props;
     let { formError, valid } = this.state;
-    const passwordComplexity = MetabaseSettings.passwordComplexity(true);
+    const passwordComplexity = MetabaseSettings.passwordComplexityDescription(
+      true,
+    );
 
     formError =
       updatePasswordResult && !formError ? updatePasswordResult : formError;

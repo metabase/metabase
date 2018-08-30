@@ -26,8 +26,9 @@
                         :let [col (nth columns i)]]
                     {:name         (name col)
                      :display_name (humanization/name->human-readable-name (name col))
-                     :base_type    (driver/values->base-type (for [row rows]
-                                                               (nth row i)))}))))
+                     :base_type    (or (driver/values->base-type (for [row rows]
+                                                                   (nth row i)))
+                                       :type/*)}))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+

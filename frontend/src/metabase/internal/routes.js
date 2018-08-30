@@ -1,7 +1,16 @@
 /* @flow */
 
 import React from "react";
-import { Route, IndexRoute } from "react-router";
+import { Link, Route, IndexRoute } from "react-router";
+
+import {
+  Archived,
+  GenericError,
+  NotFound,
+  Unauthorized,
+} from "metabase/containers/ErrorPages";
+
+const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
 // $FlowFixMe: doesn't know about require.context
 const req = require.context(
@@ -39,9 +48,12 @@ const InternalLayout = ({ children }) => {
         <ul className="flex ml-auto">
           {Object.keys(PAGES).map(name => (
             <li key={name}>
-              <a className="link mx2" href={"/_internal/" + name.toLowerCase()}>
+              <Link
+                className="link mx2"
+                to={"/_internal/" + name.toLowerCase()}
+              >
                 {name}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -61,5 +73,12 @@ export default (
           <Route path={name.toLowerCase()} component={Component} />
         )),
     )}
+    <Route path="errors">
+      <Route path="404" component={NotFound} />
+      <Route path="archived" component={Archived} />
+      <Route path="unauthorized" component={Unauthorized} />
+      <Route path="generic" component={GenericError} />
+      <Route path="details" component={ErrorWithDetails} />
+    </Route>
   </Route>
 );

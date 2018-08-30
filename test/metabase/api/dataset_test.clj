@@ -4,24 +4,26 @@
              [core :as json]
              [generate :as generate]]
             [clojure.data.csv :as csv]
-            [clojure.java.jdbc :as jdbc]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [database :as database]
              [query-execution :refer [QueryExecution]]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.sync :as sync]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-engine]]
              [dataset-definitions :as defs]
+             [datasets :refer [expect-with-engine]]
              [users :refer :all]]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn user-details [user]
   (tu/match-$ user
@@ -33,20 +35,6 @@
      :is_superuser $
      :is_qbnewb    $
      :common_name  $}))
-
-(defn remove-ids-and-boolean-timestamps [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (remove-ids-and-boolean-timestamps v)
-              (coll? v) (mapv remove-ids-and-boolean-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (when-not (or (= :id k)
-                             (.endsWith (name k) "_id"))
-                 (if (or (= :created_at k)
-                         (= :updated_at k))
-                   [k (some? v)]
-                   [k (f v)]))))))
 
 (defn format-response [m]
   (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
@@ -131,7 +119,8 @@
     :pulse_id     nil
     :card_id      nil
     :dashboard_id nil}]
-  ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that it exists and contains the substring "Syntax error in SQL statement"
+  ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that
+  ;; it exists and contains the substring "Syntax error in SQL statement"
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
@@ -219,3 +208,16 @@
                 (json/generate-string (wrap-inner-query
                                         (query users))))]
     (take 5 (parse-and-sort-csv result))))
+
+;; Check that we can export the results of a nested query
+(expect
+  16
+  (tt/with-temp Card [card {:dataset_query {:database (id)
+                                            :type :native
+                                            :native {:query "SELECT * FROM USERS;"}}}]
+    (let [result ((user->client :rasta) :post 200 "dataset/csv"
+                  :query (json/generate-string
+                          {:database database/virtual-id
+                           :type :query
+                           :query {:source_table (str "card__" (u/get-id card))}}))]
+      (count (csv/read-csv result)))))

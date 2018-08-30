@@ -23,3 +23,7 @@
 .hover-parent:hover.hover--visibility .hover-child {
   visibility: visible;
 }
+
+.hover-parent:hover.hover--inherit > * {
+  color: inherit !important;
+}

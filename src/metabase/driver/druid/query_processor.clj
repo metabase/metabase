@@ -12,7 +12,8 @@
             [metabase.query-processor
              [annotate :as annotate]
              [interface :as i]]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.date :as du])
   (:import java.util.TimeZone
            [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field
             RelativeDateTimeValue Value]
@@ -64,8 +65,8 @@
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc unit value (get-timezone-id))))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc unit (u/relative-date unit amount) (get-timezone-id)))))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (du/date->iso-8601 (du/date-trunc unit value (get-timezone-id))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (du/date->iso-8601 (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id)))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]

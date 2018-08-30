@@ -48,13 +48,10 @@ export const BackendResource = createSharedResource("BackendResource", {
       server.process = spawn(
         "java",
         [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 7/8 should ignore Java 9 options)
+          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
           "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
           "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-XX:MaxPermSize=256m", // (Java 7) Give JVM a little more headroom in the PermGen space. Cloure makes lots of one-off classes!
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
-          "-XX:+CMSClassUnloadingEnabled", // (Java 7) Allow GC to collect classes. Clojure makes lots of one-off dynamic classes
-          "-XX:+UseConcMarkSweepGC", // (Java 7) Use Concurrent Mark & Sweep GC which allows classes to be GC'ed
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "--add-modules=java.xml.bind", // Tell Java 9 we want to use java.xml stuff
           "-jar",
@@ -148,7 +145,6 @@ function createSharedResource(
         };
         entriesByKey.set(entry.key, entry);
         entriesByResource.set(entry.resource, entry);
-      } else {
       }
       ++entry.references;
       return entry.resource;

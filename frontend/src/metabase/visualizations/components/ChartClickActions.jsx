@@ -18,7 +18,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom",
+    icon: "zoom-in",
   },
   records: {
     icon: "table2",
@@ -164,7 +164,7 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-grey-3">
+          <div className="text-bold text-medium">
             {sections.map(([key, actions]) => (
               <div
                 key={key}
@@ -203,7 +203,7 @@ export const ChartClickAction = ({
 }) => {
   const className = cx(
     "text-brand-hover cursor-pointer no-decoration",
-    isLastItem ? "pr2" : "pr4",
+    isLastItem ? "pr2" : "pr3",
   );
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through

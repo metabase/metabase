@@ -15,33 +15,24 @@
              [dataset-definitions :as defs]
              [datasets :as datasets :refer [*driver* *engine*]]
              [interface :as i]])
-  (:import java.util.TimeZone
-           [org.joda.time DateTime DateTimeZone]))
+  (:import org.joda.time.DateTime))
 
-;; The below tests cover the various date bucketing/grouping scenarios
-;; that we support. There are are always two timezones in play when
-;; querying using these date bucketing features. The most visible is
-;; how timestamps are returned to the user. With no report timezone
-;; specified, the JVM's timezone is used to represent the timestamps
-;; regardless of timezone of the database. Specifying a report
-;; timezone (if the database supports it) will return the timestamps
-;; in that timezone (manifesting itself as an offset for that
-;; time). Using the JVM timezone that doesn't match the database
-;; timezone (assuming the database doesn't support a report timezone)
-;; can lead to incorrect results.
+;; The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
+;; timezones in play when querying using these date bucketing features. The most visible is how timestamps are
+;; returned to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps
+;; regardless of timezone of the database. Specifying a report timezone (if the database supports it) will return the
+;; timestamps in that timezone (manifesting itself as an offset for that time). Using the JVM timezone that doesn't
+;; match the database timezone (assuming the database doesn't support a report timezone) can lead to incorrect
+;; results.
 ;;
-;; The second place timezones can impact this is calculations in the
-;; database. A good example of this is grouping something by day. In
-;; that case, the start (or end) of the day will be different
-;; depending on what timezone the database is in. The start of the day
-;; in pacific time is 7 (or 8) hours earlier than UTC. This means
-;; there might be a different number of results depending on what
-;; timezone we're in. Report timezone lets the user specify that, and
-;; it gets pushed into the database so calculations are made in that
-;; timezone.
+;; The second place timezones can impact this is calculations in the database. A good example of this is grouping
+;; something by day. In that case, the start (or end) of the day will be different depending on what timezone the
+;; database is in. The start of the day in pacific time is 7 (or 8) hours earlier than UTC. This means there might be
+;; a different number of results depending on what timezone we're in. Report timezone lets the user specify that, and
+;; it gets pushed into the database so calculations are made in that timezone.
 ;;
-;; If a report timezone is specified and the database supports it, the
-;; JVM timezone should have no impact on queries or their results.
+;; If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries
+;; or their results.
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -49,12 +40,10 @@
     x))
 
 (defn- oracle-or-redshift?
-  "We currently have a bug in how report-timezone is used in
-  Oracle. The timeone is applied correctly, but the date operations
-  that we use aren't using that timezone. It's written up as
-  https://github.com/metabase/metabase/issues/5789. This function is
-  used to differentiate Oracle from the other report-timezone
-  databases until that bug can get fixed. Redshift also has this issue."
+  "We currently have a bug in how report-timezone is used in Oracle. The timeone is applied correctly, but the date
+  operations that we use aren't using that timezone. It's written up as
+  https://github.com/metabase/metabase/issues/5789. This function is used to differentiate Oracle from the other
+  report-timezone databases until that bug can get fixed. Redshift also has this issue."
   [engine]
   (contains? #{:oracle :redshift} engine))
 
@@ -82,28 +71,25 @@
 (def ^:private utc-tz     (time/time-zone-for-id "UTC"))
 
 (defn- source-date-formatter
-  "Create a date formatter, interpretting the datestring as being in `TZ`"
+  "Create a date formatter, interpretting the datestring as being in `tz`"
   [tz]
   (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) tz))
 
 (defn- result-date-formatter
-  "Create a formatter for converting a date to `TZ` and in the format
-  that the query processor would return"
+  "Create a formatter for converting a date to `tz` and in the format that the query processor would return"
   [tz]
   (tformat/with-zone (tformat/formatters :date-time) tz))
 
 (def ^:private result-date-formatter-without-tz
-  "sqlite and crate return date strings that do not include their
-  timezone, this formatter is useful for those DBs"
+  "sqlite and crate return date strings that do not include their timezone, this formatter is useful for those DBs"
   (tformat/formatters :mysql))
 
 (def ^:private date-formatter-without-time
-  "sqlite and crate return dates that do not include their time, this
-  formatter is useful for those DBs"
+  "sqlite and crate return dates that do not include their time, this formatter is useful for those DBs"
   (tformat/formatters :date))
 
 (defn- adjust-date
-  "Parses `DATES` using `SOURCE-FORMATTER` and convert them to a string via `RESULT-FORMATTER`"
+  "Parses `dates` using `source-formatter` and convert them to a string via `result-formatter`"
   [source-formatter result-formatter dates]
    (map (comp #(tformat/unparse result-formatter %)
               #(tformat/parse source-formatter %))
@@ -116,11 +102,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private sad-toucan-dates
-  "This is the first 10 sad toucan dates when converted from millis
-  since epoch in the UTC timezone. The timezone is left off of the
-  timezone string so that we can emulate how certain conversions work
-  in the code today. As an example, the UTC dates in Oracle are
-  interpreted as the reporting timezone when they're UTC"
+  "This is the first 10 sad toucan dates when converted from millis since epoch in the UTC timezone. The timezone is
+  left off of the timezone string so that we can emulate how certain conversions work in the code today. As an
+  example, the UTC dates in Oracle are interpreted as the reporting timezone when they're UTC"
   ["2015-06-01T10:31:00.000"
    "2015-06-01T16:06:00.000"
    "2015-06-01T17:23:00.000"
@@ -133,8 +117,8 @@
    "2015-06-02T11:11:00.000"])
 
 (defn- sad-toucan-result
-  "Creates a sad toucan resultset using the given `SOURCE-FORMATTER`
-  and `RESULT-FORMATTER`. Pairs the dates with the record counts."
+  "Creates a sad toucan resultset using the given `source-formatter` and `result-formatter`. Pairs the dates with the
+  record counts."
   [source-formatter result-formatter]
   (mapv vector
         (adjust-date source-formatter result-formatter sad-toucan-dates)
@@ -155,8 +139,8 @@
     (supports-report-timezone? *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
-    ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting
-    ;; Our tests force UTC time, so this should always be UTC
+    ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting Our
+    ;; tests force UTC time, so this should always be UTC
     :else
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter utc-tz)))
   (sad-toucan-incidents-with-bucketing :default pacific-tz))
@@ -181,14 +165,12 @@
 
   (sad-toucan-incidents-with-bucketing :default eastern-tz))
 
-;; Changes the JVM timezone from UTC to Pacific, this test isn't run
-;; on H2 as the database stores it's timezones in the JVM timezone
-;; (UTC on startup). When we change that timezone, it then assumes the
-;; data was also stored in that timezone. This leads to incorrect
-;; results. In this example it applies the pacific offset twice
+;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
+;; the JVM timezone (UTC on startup). When we change that timezone, it then assumes the data was also stored in that
+;; timezone. This leads to incorrect results. In this example it applies the pacific offset twice
 ;;
-;; The exclusions here are databases that give incorrect answers when
-;; the JVM timezone doesn't match the databases timezone
+;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
+;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -213,8 +195,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; This dataset doesn't have multiple events in a minute, the results
-;; are the same as the default grouping
+;; This dataset doesn't have multiple events in a minute, the results are the same as the default grouping
 (expect-with-non-timeseries-dbs
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -251,12 +232,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private sad-toucan-dates-grouped-by-hour
-  "This is the first 10 groupings of sad toucan dates at the same hour
-  when converted from millis since epoch in the UTC timezone. The
-  timezone is left off of the timezone string so that we can emulate
-  how certain conversions are broken in the code today. As an example,
-  the UTC dates in Oracle are interpreted as the reporting timezone
-  when they're UTC"
+  "This is the first 10 groupings of sad toucan dates at the same hour when converted from millis since epoch in the UTC
+  timezone. The timezone is left off of the timezone string so that we can emulate how certain conversions are broken
+  in the code today. As an example, the UTC dates in Oracle are interpreted as the reporting timezone when they're
+  UTC"
   ["2015-06-01T10:00:00.000"
    "2015-06-01T16:00:00.000"
    "2015-06-01T17:00:00.000"
@@ -269,8 +248,8 @@
    "2015-06-02T13:00:00.000"])
 
 (defn- results-by-hour
-  "Creates a sad toucan resultset using the given `SOURCE-FORMATTER`
-  and `RESULT-FORMATTER`. Pairs the dates with the the record counts"
+  "Creates a sad toucan resultset using the given `source-formatter` and `result-formatter`. Pairs the dates with the
+  the record counts"
   [source-formatter result-formatter]
   (mapv vector
         (adjust-date source-formatter result-formatter sad-toucan-dates-grouped-by-hour)
@@ -326,14 +305,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- offset-time
-  "Add to `DATE` offset from UTC found in `TZ`"
+  "Add to `date` offset from UTC found in `tz`"
   [tz date]
   (time/minus date
               (time/seconds
                (/ (.getOffset tz date) 1000))))
 
 (defn- find-events-in-range
-  "Find the number of sad toucan events between `START-DATE-STR` and `END-DATE-STR`"
+  "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
   (-> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
         (data/run-query incidents
@@ -349,10 +328,8 @@
       (or 0)))
 
 (defn- new-events-after-tz-shift
-  "Given a `DATE-STR` and a `TZ`, how many new events would appear if
-  the time were shifted by the offset in `TZ`. This function is useful
-  for figuring out what the counts would be if the database was in
-  that timezone"
+  "Given a `date-str` and a `tz`, how many new events would appear if the time were shifted by the offset in `tz`. This
+  function is useful for figuring out what the counts would be if the database was in that timezone"
   [date-str tz]
   (let [date-obj (tformat/parse (tformat/formatters :date) date-str)
         next-day (time/plus date-obj (time/days 1))
@@ -389,9 +366,8 @@
    "2015-06-10"])
 
 (defn- results-by-day
-  "Creates a sad toucan resultset using the given `SOURCE-FORMATTER`
-  and `RESULT-FORMATTER`. Pairs the dates with the record counts
-  supplied in `COUNTS`"
+  "Creates a sad toucan resultset using the given `source-formatter` and `result-formatter`. Pairs the dates with the
+  record counts supplied in `counts`"
   [source-formatter result-formatter counts]
   (mapv vector
         (adjust-date source-formatter result-formatter sad-toucan-events-grouped-by-day)
@@ -465,18 +441,15 @@
 
   (sad-toucan-incidents-with-bucketing :day eastern-tz))
 
-;; This tests out the JVM timezone's impact on the results. For
-;; databases supporting a report timezone, this should have no affect
-;; on the results. When no report timezone is used it should convert
-;; dates to the JVM's timezone
+;; This tests out the JVM timezone's impact on the results. For databases supporting a report timezone, this should
+;; have no affect on the results. When no report timezone is used it should convert dates to the JVM's timezone
 ;;
-;; H2 doesn't support us switching timezones after the dates have been
-;; stored. This causes H2 to (incorrectly) apply the timezone shift
-;; twice, so instead of -07:00 it will become -14:00. Leaving out the
-;; test rather than validate wrong results.
+;; H2 doesn't support us switching timezones after the dates have been stored. This causes H2 to (incorrectly) apply
+;; the timezone shift twice, so instead of -07:00 it will become -14:00. Leaving out the test rather than validate
+;; wrong results.
 ;;
-;; The exclusions here are databases that give incorrect answers when
-;; the JVM timezone doesn't match the databases timezone
+;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
+;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -560,9 +533,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- results-by-week
-  "Creates a sad toucan resultset using the given `SOURCE-FORMATTER`
-  and `RESULT-FORMATTER`. Pairs the dates with the record counts
-  supplied in `COUNTS`"
+  "Creates a sad toucan resultset using the given `source-formatter` and `result-formatter`. Pairs the dates with the
+  record counts supplied in `counts`"
   [source-formatter result-formatter counts]
   (mapv vector
         (adjust-date source-formatter result-formatter ["2015-05-31"
@@ -584,7 +556,7 @@
   (sad-toucan-incidents-with-bucketing :week utc-tz))
 
 (defn- new-weekly-events-after-tz-shift
-  "Finds the change in sad toucan events if the timezone is shifted to `TZ`"
+  "Finds the change in sad toucan events if the timezone is shifted to `tz`"
   [date-str tz]
   (let [date-obj (tformat/parse (tformat/formatters :date) date-str)
         next-week (time/plus date-obj (time/days 7))
@@ -595,21 +567,18 @@
      ;; Subtract the number of events that we will loose with the timezone shift
      (find-events-in-range (unparse-utc date-obj) (unparse-utc (offset-time tz date-obj))))))
 
-;; This test helps in debugging why event counts change with a given
-;; timezone. It queries only a UTC H2 datatabase to find how those
-;; counts would change if time was in pacific time. The results of
-;; this test are also in the UTC test above and pacific test below,
-;; but this is still useful for debugging as it doesn't involve changing
-;; timezones or database settings
+;; This test helps in debugging why event counts change with a given timezone. It queries only a UTC H2 datatabase to
+;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
+;; above and pacific test below, but this is still useful for debugging as it doesn't involve changing timezones or
+;; database settings
 (datasets/expect-with-engines #{:h2}
   [3 0 -1 -2 0]
   (map #(new-weekly-events-after-tz-shift % pacific-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
 
-;; Sad toucan incidents by week. Databases in UTC that don't support
-;; report timezones will be the same as the UTC test above. Databases
-;; that support report timezone will have different counts as the week
-;; starts and ends 7 hours earlier
+;; Sad toucan incidents by week. Databases in UTC that don't support report timezones will be the same as the UTC test
+;; above. Databases that support report timezone will have different counts as the week starts and ends 7 hours
+;; earlier
 (expect-with-non-timeseries-dbs
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -634,16 +603,14 @@
 
   (sad-toucan-incidents-with-bucketing :week pacific-tz))
 
-;; Similar to above this test finds the difference in event counts for
-;; each week if we were in the eastern timezone
+;; Similar to above this test finds the difference in event counts for each week if we were in the eastern timezone
 (datasets/expect-with-engines #{:h2}
   [1 1 -1 -1 0]
   (map #(new-weekly-events-after-tz-shift % eastern-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
 
-;; Tests eastern timezone grouping by week, UTC databases don't
-;; change, databases with reporting timezones need to account for the
-;; 4-5 hour difference
+;; Tests eastern timezone grouping by week, UTC databases don't change, databases with reporting timezones need to
+;; account for the 4-5 hour difference
 (expect-with-non-timeseries-dbs
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -668,12 +635,11 @@
 
   (sad-toucan-incidents-with-bucketing :week eastern-tz))
 
-;; Setting the JVM timezone will change how the datetime results are
-;; displayed but don't impact the calculation of the begin/end of the
-;; week
+;; Setting the JVM timezone will change how the datetime results are displayed but don't impact the calculation of the
+;; begin/end of the week
 ;;
-;; The exclusions here are databases that give incorrect answers when
-;; the JVM timezone doesn't match the databases timezone
+;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
+;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
     (contains? #{:sqlite :crate} *engine*)
@@ -725,10 +691,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; All of the sad toucan events in the test data fit in June. The
-;; results are the same on all databases and the only difference is
-;; how the beginning of hte month is represented, since we always
-;; return times with our dates
+;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
+;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (expect-with-non-timeseries-dbs
   [[(cond
       (contains? #{:sqlite :crate} *engine*)
@@ -846,11 +810,12 @@
                            (apply ql/relative-datetime relative-datetime-args)))))
       first-row first int))
 
-;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran and loading data into BigQuery is mind-bogglingly slow.
-;;        Don't worry, I promise these work though!
+;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran
+;;        and loading data into BigQuery is mind-bogglingly slow. Don't worry, I promise these work though!
 
-;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly when it takes so long to load the data that the times are
-;; no longer current (these tests pass locally if your machine isn't as slow as the CircleCI ones)
+;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
+;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
+;; machine isn't as slow as the CircleCI ones)
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
 
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
@@ -883,10 +848,9 @@
           (ql/filter (ql/time-interval $timestamp :last :week))))
       first-row first int))
 
-;; Make sure that when referencing the same field multiple times with different units we return the one
-;; that actually reflects the units the results are in.
-;; eg when we breakout by one unit and filter by another, make sure the results and the col info
-;; use the unit used by breakout
+;; Make sure that when referencing the same field multiple times with different units we return the one that actually
+;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
+;; and the col info use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
                                         :or   {with-interval :current}}]
   (let [results (data/with-temp-db [_ (checkins:1-per-day)]
@@ -918,7 +882,8 @@
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
-;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows (#3910)
+;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows
+;; (#3910)
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval -2))

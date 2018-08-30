@@ -5,13 +5,17 @@ import _ from "underscore";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  getGroupNameLocalized,
+} from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import { PermissionsApi } from "metabase/services";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Alert from "metabase/components/Alert.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -79,7 +83,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
   return (
     <PopoverWithTrigger
       className="block"
-      triggerElement={<Icon className="text-grey-1" name="ellipsis" />}
+      triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className="UserActionsSelect">
         <li
@@ -109,7 +113,7 @@ function EditingGroupRow({
   return (
     <tr className="bordered border-brand rounded">
       <td>
-        <Input
+        <InputBlurChange
           className="AdminInput h3"
           type="text"
           autoFocus={true}
@@ -175,9 +179,12 @@ function GroupRow({
           className="link no-decoration"
         >
           <span className="text-white inline-block">
-            <UserAvatar background={color} user={{ first_name: group.name }} />
+            <UserAvatar
+              background={color}
+              user={{ first_name: getGroupNameLocalized(group) }}
+            />
           </span>
-          <span className="ml2 text-bold">{group.name}</span>
+          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
         </Link>
       </td>
       <td>{group.members || 0}</td>
@@ -280,8 +287,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error creating group:", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }
@@ -354,8 +362,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error updating group name:", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }
@@ -373,8 +382,9 @@ export default class GroupsListing extends Component {
       },
       error => {
         console.error("Error deleting group: ", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
+        }
       },
     );
   }

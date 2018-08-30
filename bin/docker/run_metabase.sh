@@ -85,7 +85,6 @@ fi
 # directory rather than a specific file, then we are safe to set permissions on
 # that directory so there is no need to move anything.
 
-# an example file would look like /tmp/metabase.db/metabase.db.mv.db
 new_db_dir=$(dirname $db_file)/$(basename $db_file)
 
 if [[ $db_exists = "true" && ! $db_directory = "true" ]]; then
@@ -113,8 +112,6 @@ chown metabase:metabase $new_db_dir $new_db_dir/* 2>/dev/null  # all that fussin
 JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
 JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
-JAVA_OPTS="${JAVA_OPTS} -XX:+CMSClassUnloadingEnabled"              # These two needed for Java 7 to GC dynamically generated classes
-JAVA_OPTS="${JAVA_OPTS} -XX:+UseConcMarkSweepGC"
 JAVA_OPTS="${JAVA_OPTS} -server"
 JAVA_OPTS="${JAVA_OPTS} --add-modules=java.xml.bind"                # needed for Java 9 (Oracle VM only) because java.xml.bind is no longer on SE classpath by default since it's EE
 

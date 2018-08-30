@@ -167,7 +167,7 @@ export default class PublicQuestion extends Component {
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-grey-4-hover"
+        className="m1 text-medium-hover"
         uuid={uuid}
         token={token}
         result={result}
@@ -183,7 +183,7 @@ export default class PublicQuestion extends Component {
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result}>
+        <LoadingAndErrorWrapper loading={!result} className="flex flex-full">
           {() => (
             <Visualization
               rawSeries={[{ card: card, data: result && result.data }]}

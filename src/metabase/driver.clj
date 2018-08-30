@@ -16,23 +16,19 @@
              [format :as tformat]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.models
              [database :refer [Database]]
-             field
-             [setting :refer [defsetting]]
-             table]
+             [setting :refer [defsetting]]]
             [metabase.sync.interface :as si]
-            [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]
-            [schema.core :as s]
+            [metabase.util.date :as du]
             [puppetlabs.i18n.core :refer [trs tru]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            java.text.SimpleDateFormat
-           metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance
-           metabase.models.table.TableInstance
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
@@ -58,6 +54,53 @@
    :username-incorrect                 (tru "Looks like your username is incorrect.")
    :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
 
+(def default-host-details
+  "Map of the db host details field, useful for `details-fields` implementations"
+  {:name         "host"
+   :display-name (tru "Host")
+   :default      "localhost"})
+
+(def default-port-details
+  "Map of the db port details field, useful for `details-fields` implementations. Implementations should assoc a
+  `:default` key."
+  {:name         "port"
+   :display-name (tru "Port")
+   :type         :integer})
+
+(def default-user-details
+  "Map of the db user details field, useful for `details-fields` implementations"
+  {:name         "user"
+   :display-name (tru "Database username")
+   :placeholder  (tru "What username do you use to login to the database?")
+   :required     true})
+
+(def default-password-details
+  "Map of the db password details field, useful for `details-fields` implementations"
+  {:name         "password"
+   :display-name (tru "Database password")
+   :type         :password
+   :placeholder  "*******"})
+
+(def default-dbname-details
+  "Map of the db name details field, useful for `details-fields` implementations"
+  {:name         "dbname"
+   :display-name (tru "Database name")
+   :placeholder  (tru "birds_of_the_world")
+   :required     true})
+
+(def default-ssl-details
+  "Map of the db ssl details field, useful for `details-fields` implementations"
+  {:name         "ssl"
+   :display-name (tru "Use a secure connection (SSL)?")
+   :type         :boolean
+   :default      false})
+
+(def default-additional-options-details
+  "Map of the db `additional-options` details field, useful for `details-fields` implementations. Should assoc a
+  `:placeholder` key"
+  {:name         "additional-options"
+   :display-name (tru "Additional JDBC connection string options")})
+
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
    `IDriverDefaultsMixin`. Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on
@@ -73,23 +116,23 @@
 
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By
-     default, this returns an `Timestamp` by calling `metabase.util/relative-date`; but when possible drivers should
+     default, this returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should
      return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a
      HoneySQL form to call the appropriate SQL fns:
 
        (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
-  (describe-database ^java.util.Map [this, ^DatabaseInstance database]
+  (describe-database ^java.util.Map [this database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of
      tables. It is expected that this function will be peformant and avoid draining meaningful resources of the
      database. Results should match the `DatabaseMetadata` schema.")
 
-  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^TableInstance table]
+  (describe-table ^java.util.Map [this database table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `TableMetadata` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^TableInstance table]
+  (describe-table-fks ^java.util.Set [this database table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
      Results should match the `FKMetadata` schema.")
 
@@ -193,7 +236,7 @@
        {:query \"-- [Contents of `(query->remark query)`]
                  SELECT * FROM my_table\"}")
 
-  (notify-database-updated [this, ^DatabaseInstance database]
+  (notify-database-updated [this database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed. This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
@@ -208,7 +251,7 @@
          (fn [query]
            (qp query)))")
 
-  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this database ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
@@ -217,7 +260,7 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
+  (table-rows-seq ^clojure.lang.Sequential [this database ^java.util.Map table]
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name`
      and `:schema` keys. (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in
      `metabase.sync.interface`.) Currently, this is only used for iterating over the values in a `_metabase_metadata`
@@ -225,7 +268,7 @@
      table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
      returned in any given order.")
 
-  (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
+  (current-db-time ^org.joda.time.DateTime [this database]
     "Returns the current time and timezone from the perspective of `DATABASE`.")
 
   (default-to-case-sensitive? ^Boolean [this]
@@ -235,7 +278,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg du/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
@@ -323,6 +366,7 @@
 ;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
 ;; date
 (defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+  :load-ns true
   ParseDateTimeString
   (parse [_ date-time-str]
     (let [sdf         (SimpleDateFormat. format-str)
@@ -346,8 +390,9 @@
         (parse formatter time-str))))
 
 (defn make-current-db-time-fn
-  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query for the current time. Returns a function that
-  executes the query and parses the date returned preserving it's timezone"
+  "Takes a clj-time date formatter `DATE-FORMATTER` and a native query
+  for the current time. Returns a function that executes the query and
+  parses the date returned preserving it's timezone"
   [native-query date-formatters]
   (fn [driver database]
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
@@ -394,7 +439,8 @@
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
-             [org.postgresql.util.PGobject   :type/*]])
+             [org.postgresql.util.PGobject   :type/*]
+             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
@@ -403,7 +449,7 @@
   [values]
   (->> values
        (take 100)                                   ; take up to 100 values
-       (filter (complement nil?))                   ; filter out `nil` values
+       (remove nil?)                                ; filter out `nil` values
        (group-by (comp class->base-type class))     ; now group by their base-type
        (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
        ffirst))                                     ; take the base-type from the first pair
@@ -486,10 +532,12 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

@@ -24,7 +24,9 @@ export function precision(a) {
 }
 
 export function decimalCount(a) {
-  if (!isFinite(a)) return 0;
+  if (!isFinite(a)) {
+    return 0;
+  }
   let e = 1,
     p = 0;
   while (Math.round(a * e) / e !== a) {
@@ -56,3 +58,9 @@ export function logTickFormat(axis) {
   let formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
   axis.tickFormat(formatTick);
 }
+
+export const getModuloScaleFactor = base =>
+  Math.max(1, Math.pow(10, Math.ceil(Math.log10(1 / base))));
+
+export const isMultipleOf = (value, base, scale = getModuloScaleFactor(base)) =>
+  (value * scale) % (base * scale) === 0;

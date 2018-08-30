@@ -21,7 +21,7 @@ export default class SettingsUpdatesForm extends Component {
   renderVersion(version) {
     return (
       <div className="pb3">
-        <h3 className="text-grey-4">
+        <h3 className="text-medium">
           {this.removeVersionPrefixIfNeeded(version.version)}{" "}
           {version.patch ? "(patch release)" : null}
         </h3>
@@ -41,7 +41,9 @@ export default class SettingsUpdatesForm extends Component {
     let versionInfo = _.findWhere(this.props.settings, { key: "version-info" }),
       currentVersion = MetabaseSettings.get("version").tag;
 
-    if (versionInfo) versionInfo = versionInfo.value;
+    if (versionInfo) {
+      versionInfo = versionInfo.value;
+    }
 
     /*
             We expect the versionInfo to take on the JSON structure detailed below.
@@ -93,7 +95,7 @@ export default class SettingsUpdatesForm extends Component {
     } else {
       return (
         <div>
-          <div className="p2 bg-green bordered rounded border-green flex flex-row align-center justify-between">
+          <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
             <span className="text-white text-bold">{jt`Metabase ${this.removeVersionPrefixIfNeeded(
               versionInfo.latest.version,
             )} is available.  You're running ${this.removeVersionPrefixIfNeeded(
@@ -110,7 +112,7 @@ export default class SettingsUpdatesForm extends Component {
             >{t`Update`}</a>
           </div>
 
-          <div className="text-grey-3">
+          <div className="text-medium">
             <h3 className="py3 text-uppercase">{t`What's Changed:`}</h3>
 
             {this.renderVersion(versionInfo.latest)}

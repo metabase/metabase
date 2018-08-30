@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
-            [metabase.types]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
@@ -12,15 +12,14 @@
              [coerce :as sc]
              [core :as s]]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files))
+  (:import [java.nio.file Files FileSystem FileSystems Path]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (format (trs "0 <= score <= %s") max-score)))
+                                    (trs "0 <= score <= {0}" max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -81,8 +80,7 @@
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (format (trs "1 <= width <= %s")
-                                             populate/grid-width)))
+                                     (trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
@@ -107,8 +105,9 @@
                (s/optional-key :series_labels) [s/Str]}})
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)       s/Str
-               (s/optional-key :description) s/Str}})
+  {Identifier {(s/required-key :title)            s/Str
+               (s/optional-key :comparison_title) s/Str
+               (s/optional-key :description)      s/Str}})
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -122,8 +121,7 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{"dimension"} str/lower-case name))
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
    su/Map])
@@ -191,9 +189,10 @@
   "Rules defining an automagic dashboard."
   (constrained-all
    {(s/required-key :title)             s/Str
-    (s/required-key :dimensions)        [Dimension]
-    (s/required-key :cards)             [Card]
     (s/required-key :rule)              s/Str
+    (s/required-key :specificity)       s/Int
+    (s/optional-key :cards)             [Card]
+    (s/optional-key :dimensions)        [Dimension]
     (s/optional-key :applies_to)        AppliesTo
     (s/optional-key :transient_title)   s/Str
     (s/optional-key :short_title)       s/Str
@@ -281,6 +280,10 @@
 (def ^:private ^{:arglists '([f])} file->entity-type
   (comp (partial re-find #".+(?=\.yaml$)") str (memfn ^Path getFileName)))
 
+(defn- specificity
+  [rule]
+  (transduce (map (comp count ancestors)) + (:applies_to rule)))
+
 (defn- load-rule
   [^Path f]
   (try
@@ -289,9 +292,11 @@
           .toUri
           slurp
           yaml/parse-string
-          (assoc :rule entity-type)
+          (assoc :rule        entity-type
+                 :specificity 0)
           (update :applies_to #(or % entity-type))
-          rules-validator))
+          rules-validator
+          (as-> rule (assoc rule :specificity (specificity rule)))))
     (catch Exception e
       (log/errorf (trs "Error parsing %s:\n%s")
                   (.getFileName f)

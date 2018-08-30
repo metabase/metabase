@@ -1,7 +1,7 @@
 (ns metabase.plugins
   "The Metabase 'plugins' system automatically adds JARs in the `./plugins/` directory (parallel to `metabase.jar`) to
-  the classpath at runtime. This works great on Java 7 and 8, but never really worked properly on Java 9; as of 0.29.4
-  we're planning on telling people to just add extra external dependencies with `-cp` when using Java 9."
+  the classpath at runtime. This works great on Java 8, but never really worked properly on Java 9; as of 0.29.4 we're
+  planning on telling people to just add extra external dependencies with `-cp` when using Java 9."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [dynapath.util :as dynapath]
@@ -11,7 +11,7 @@
             [puppetlabs.i18n.core :refer [trs]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Java 7 + 8                                                   |
+;;; |                                                     Java 8                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- plugins-dir
@@ -48,7 +48,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                     Java 9                                                     |
+;;; |                                                    Java 9+                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- show-java-9-message
@@ -71,9 +71,33 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn load-plugins!
-  "Dynamically add JARs if we're running on Java 7 or 8. For Java 9, where this doesn't work, just display a nice
-  message instead."
+  "Dynamically add JARs if we're running on Java 8. For Java 9+, where this doesn't work, just display a nice message
+  instead."
   []
   (if (u/is-java-9-or-higher?)
     (show-java-9-message)
     (dynamically-add-jars!)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Running Plugin Setup Fns                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn setup-plugins!
+  "Look for any namespaces on the classpath with the pattern `metabase.*plugin-setup` For each matching namespace, load
+  it. If the namespace has a function named `-init-plugin!`, call that function with no arguments.
+
+  This is intended as a startup hook for Metabase plugins to run any startup logic that needs to be done. This
+  function is normally called once in Metabase startup, after `load-plugins!` runs above (which simply adds JARs to
+  the classpath in the `plugins` directory.)"
+  []
+  ;; find each namespace ending in `plugin-setup`
+  (doseq [ns-symb @u/metabase-namespace-symbols
+          :when   (re-find #"plugin-setup$" (name ns-symb))]
+    ;; load the matching ns
+    (log/info (u/format-color 'magenta "Loading plugin setup namespace %s... %s" (name ns-symb) (u/emoji "🔌")))
+    (require ns-symb)
+    ;; now look for a fn in that namespace called `-init-plugin!`. If it exists, call it
+    (when-let [init-fn-var (ns-resolve ns-symb '-init-plugin!)]
+      (log/info (u/format-color 'magenta "Running plugin init fn %s/-init-plugin!... %s" (name ns-symb) (u/emoji "🔌")))
+      (init-fn-var))))

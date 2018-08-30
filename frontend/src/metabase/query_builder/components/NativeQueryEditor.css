@@ -22,7 +22,7 @@
   padding-top: 2px;
   font-size: 10px;
   font-weight: 700;
-  color: color(var(--base-grey) shade(30%));
+  color: var(--color-text-medium);
   padding-left: 0;
   padding-right: 0;
   display: block;
@@ -30,8 +30,8 @@
 }
 
 .NativeQueryEditor .ace_editor .ace_gutter {
-  background-color: #f9fbfc;
-  border-right: 1px solid var(--border-color);
+  background-color: var(--color-bg-light);
+  border-right: 1px solid var(--color-border);
   padding-left: 5px;
   padding-right: 5px;
 }

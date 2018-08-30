@@ -54,7 +54,7 @@ export const SchemaAndSegmentTriggerContent = ({
     );
   } else {
     return (
-      <span className="text-grey-4 no-decoration">{t`Pick a segment or table`}</span>
+      <span className="text-medium no-decoration">{t`Pick a segment or table`}</span>
     );
   }
 };
@@ -70,7 +70,7 @@ export const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
     <span className="text-grey no-decoration">{selectedDatabase.name}</span>
   ) : (
-    <span className="text-grey-4 no-decoration">{t`Select a database`}</span>
+    <span className="text-medium no-decoration">{t`Select a database`}</span>
   );
 
 export const SchemaTableAndFieldDataSelector = props => (
@@ -85,7 +85,7 @@ export const SchemaTableAndFieldDataSelector = props => (
 export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   if (!selectedField || !selectedField.table) {
     return (
-      <span className="flex-full text-grey-4 no-decoration">{t`Select...`}</span>
+      <span className="flex-full text-medium no-decoration">{t`Select...`}</span>
     );
   } else {
     const hasMultipleSchemas =
@@ -93,7 +93,7 @@ export const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
     return (
       <div className="flex-full cursor-pointer">
-        <div className="h6 text-bold text-uppercase text-grey-2">
+        <div className="h6 text-bold text-uppercase text-light">
           {hasMultipleSchemas && selectedField.table.schema + " > "}
           {selectedField.table.display_name}
         </div>
@@ -125,7 +125,7 @@ export const TableTriggerContent = ({ selectedTable }) =>
       {selectedTable.display_name || selectedTable.name}
     </span>
   ) : (
-    <span className="text-grey-4 no-decoration">{t`Select a table`}</span>
+    <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
 @connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
@@ -482,8 +482,6 @@ export default class DataSelector extends Component {
           />
         );
       case TABLE_STEP:
-        const canGoBack = this.hasPreviousStep();
-
         return (
           <TablePicker
             selectedDatabase={selectedDatabase}
@@ -493,7 +491,7 @@ export default class DataSelector extends Component {
             segments={segments}
             disabledTableIds={disabledTableIds}
             onChangeTable={this.onChangeTable}
-            onBack={canGoBack && this.onBack}
+            onBack={this.hasPreviousStep() && this.onBack}
             hasAdjacentStep={hasAdjacentStep}
           />
         );
@@ -550,6 +548,7 @@ export default class DataSelector extends Component {
         triggerElement={this.getTriggerElement()}
         triggerClasses={triggerClasses}
         horizontalAttachments={["center", "left", "right"]}
+        sizeToFit
       >
         {this.renderActiveStep()}
       </PopoverWithTrigger>
@@ -699,7 +698,7 @@ export const DatabaseSchemaPicker = ({
   const sections = databases.map(database => ({
     name: database.name,
     items: database.schemas.length > 1 ? database.schemas : [],
-    className: database.is_saved_questions ? "bg-slate-extra-light" : null,
+    className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
   }));
 
@@ -747,7 +746,9 @@ export const TablePicker = ({
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
-    if (onBack) onBack();
+    if (onBack) {
+      onBack();
+    }
     return null;
   }
 
@@ -817,7 +818,7 @@ export const TablePicker = ({
           showItemArrows={hasAdjacentStep}
         />
         {isSavedQuestionList && (
-          <div className="bg-slate-extra-light p2 text-centered border-top">
+          <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <a
               href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
@@ -843,7 +844,9 @@ export class FieldPicker extends Component {
     } = this.props;
     // In case DataSelector props get reseted
     if (!selectedTable) {
-      if (onBack) onBack();
+      if (onBack) {
+        onBack();
+      }
       return null;
     }
 

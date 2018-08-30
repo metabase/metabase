@@ -4,16 +4,16 @@
    The new implementation uses prepared statement args instead of substituting them directly into the query,
    and is much better-organized and better-documented."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [instaparse.core :as insta]
             [medley.core :as m]
             [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -21,6 +21,7 @@
            honeysql.types.SqlCall
            java.text.NumberFormat
            java.util.regex.Pattern
+           java.util.UUID
            metabase.models.field.FieldInstance))
 
 ;; The Basics:
@@ -46,9 +47,6 @@
 ;; can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
 
-(def ^:private ^:dynamic *timezone* nil)
-
-
 ;; various record types below are used as a convenience for differentiating the different param types.
 
 ;; "Dimension" here means a "FIELD FILTER", e.g. something that expands to a clause like "some_field BETWEEN 1 AND 10"
@@ -70,6 +68,9 @@
 (defn- no-value? [x]
   (instance? NoValue x))
 
+(def ^:private ParamType
+  (s/enum "number" "dimension" "text" "date"))
+
 ;; various schemas are used to check that various functions return things in expected formats
 
 ;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a
@@ -82,7 +83,7 @@
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
    :name                         su/NonBlankString
    :display_name                 su/NonBlankString
-   :type                         (s/enum "number" "dimension" "text" "date")
+   :type                         ParamType
    (s/optional-key :dimension)   [s/Any]
    (s/optional-key :widget_type) su/NonBlankString ; type of the [default] value if `:type` itself is `dimension`
    (s/optional-key :required)    s/Bool
@@ -173,8 +174,10 @@
   Filter\" in the Native Query Editor."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (when-let [dimension (:dimension tag)]
-    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id], :id (dimension->field-id dimension))
-                                (throw (Exception. (str "Can't find field with ID: " (dimension->field-id dimension)))))
+    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id :base_type],
+                                  :id (dimension->field-id dimension))
+                                (throw (Exception. (str (tru "Can't find field with ID: {0}"
+                                                             (dimension->field-id dimension))))))
                      :param (or
                              ;; look in the sequence of params we were passed to see if there's anything that matches
                              (param-with-target params ["dimension" ["template-tag" (:name tag)]])
@@ -195,7 +198,7 @@
   [{:keys [default display_name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (format "'%s' is a required param." display_name))))))
+        (throw (Exception. (str (tru "''{0}'' is a required param." display_name)))))))
 
 
 ;;; Parsing Values
@@ -230,18 +233,47 @@
         ;; otherwise just return the single number
         (first parts)))))
 
-(s/defn ^:private parse-value-for-type :- ParamValue
-  [param-type value]
+(s/defn ^:private parse-value-for-field-base-type :- s/Any
+  "Do special parsing for value for a (presumably textual) FieldFilter 'dimension' param (i.e., attempt to parse it as
+  appropriate based on the base-type of the Field associated with it). These are special cases for handling types that
+  do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
+  [base-type :- su/FieldType, value]
   (cond
-    (no-value? value)                                value
-    (= param-type "number")                          (value->number value)
-    (= param-type "date")                            (map->Date {:s value})
+    (isa? base-type :type/UUID) (UUID/fromString value)
+    :else                       value))
+
+(s/defn ^:private parse-value-for-type :- ParamValue
+  "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
+  created, `value` here might be a raw value or a map including information about the Field it references as well as a
+  value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
+  additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
+  base type Fields as UUIDs."
+  [param-type :- ParamType, value]
+  (cond
+    (no-value? value)
+    value
+
+    (= param-type "number")
+    (value->number value)
+
+    (= param-type "date")
+    (map->Date {:s value})
+
     (and (= param-type "dimension")
-         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] value->number)
-    (sequential? value)                              (map->MultipleValues
-                                                      {:values (for [v value]
-                                                                 (parse-value-for-type param-type v))})
-    :else                                            value))
+         (= (get-in value [:param :type]) "number"))
+    (update-in value [:param :value] value->number)
+
+    (sequential? value)
+    (map->MultipleValues {:values (for [v value]
+                                    (parse-value-for-type param-type v))})
+
+    (and (= param-type "dimension")
+         (get-in value [:field :base_type])
+         (string? (get-in value [:param :value])))
+    (update-in value [:param :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+
+    :else
+    value))
 
 (s/defn ^:private value-for-tag :- ParamValue
   "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS
@@ -300,7 +332,7 @@
 (s/defn ^:private relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
   ;; TODO - get timezone from query dict
-  (-> (date-params/date-string->range value *timezone*)
+  (-> (date-params/date-string->range value (.getID du/*report-timezone*))
       map->DateRange
       ->replacement-snippet-info))
 
@@ -331,7 +363,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style *driver*))]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -340,9 +372,9 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the PARAM-TYPE."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* field)]
+  (-> (honeysql->replacement-snippet-info (let [identifier (sql/field->identifier *driver* field)]
                                             (if (date-param-type? param-type)
-                                              ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
+                                              (sql/date *driver* :day identifier)
                                               identifier)))
       :replacement-snippet))
 
@@ -352,13 +384,24 @@
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
+(defn- create-replacement-snippet [nil-or-obj]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* nil-or-obj)]
+    {:replacement-snippet     sql-string
+     :prepared-statement-args param-values}))
+
+(defn- prepared-ts-subs [operator date-str]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* (du/->Timestamp date-str))]
+    {:replacement-snippet     (str operator " " sql-string)
+     :prepared-statement-args param-values}))
+
 (extend-protocol ISQLParamSubstituion
-  nil     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Object  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
-  Number  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Boolean (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  SqlCall (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  nil     (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Object  (->replacement-snippet-info [this] (create-replacement-snippet (str this)))
+  Number  (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Boolean (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Keyword (->replacement-snippet-info [this] (create-replacement-snippet this))
+  SqlCall (->replacement-snippet-info [this] (create-replacement-snippet this))
+  UUID    (->replacement-snippet-info [this] {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
   NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
 
   CommaSeparatedNumbers
@@ -373,15 +416,24 @@
 
   Date
   (->replacement-snippet-info [{:keys [s]}]
-    (honeysql->replacement-snippet-info (u/->Timestamp s)))
+    (create-replacement-snippet (du/->Timestamp s)))
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
     (cond
-      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
-      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+      (= start end)
+      (prepared-ts-subs \= start)
+
+      (nil? start)
+      (prepared-ts-subs \< end)
+
+      (nil? end)
+      (prepared-ts-subs \> start)
+
+      :else
+      (let [params (map (comp #(sql/->prepared-substitution *driver* %) du/->Timestamp) [start end])]
+        {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
+         :prepared-statement-args (vec (mapcat :param-values params))})))
 
   ;; TODO - clean this up if possible!
   Dimension
@@ -509,14 +561,9 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- prepare-sql-param-for-driver [param]
-  ((resolve 'metabase.driver.generic-sql/prepare-sql-param) *driver* param))
-
 (s/defn ^:private expand-query-params
   [{sql :query, :as native}, param-key->value :- ParamValues]
-  (merge native
-         ;; `prepare-sql-param-for-driver` can't be lazy as it needs `*driver*` to be bound
-         (update (parse-template sql param-key->value) :params #(mapv prepare-sql-param-for-driver %))))
+  (merge native (parse-template sql param-key->value)))
 
 (defn- ensure-driver
   "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
@@ -529,8 +576,7 @@
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
-  (binding [*driver*   (ensure-driver query)
-            *timezone* (get-in query [:settings :report-timezone])]
+  (binding [*driver*   (ensure-driver query)]
     (if (driver/driver-supports? *driver* :native-query-params)
       (update query :native expand-query-params (query->params-map query))
       query)))

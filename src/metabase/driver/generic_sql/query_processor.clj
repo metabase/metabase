@@ -14,12 +14,14 @@
              [annotate :as annotate]
              [interface :as i]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import clojure.lang.Keyword
-           [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]]
+            [puppetlabs.i18n.core :refer [trs]])
+  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
+            ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
@@ -282,17 +284,32 @@
   [driver honeysql-form {clause :filter}]
   (h/where honeysql-form (filter-clause->predicate driver clause)))
 
+(declare build-honeysql-form)
+
+(defn- make-honeysql-join-clauses
+  "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
+  a `JoinQuery`"
+  [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
+  (let [{{source-table-name :name, source-schema :schema} :source-table} *query*]
+    [[table-or-query-expr (keyword join-alias)]
+     [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
+
+(defmethod ->honeysql [Object JoinTable]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [schema table-name] :as jt} ]
+  (make-honeysql-join-clauses (hx/qualify-and-escape-dots schema table-name) jt))
+
+(defmethod ->honeysql [Object JoinQuery]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [query] :as jq}]
+  (make-honeysql-join-clauses (build-honeysql-form driver query) jq))
+
 (defn apply-join-tables
-  "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
-  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  "Apply expanded query `join-tables` clause to `honeysql-form`. Default implementation of `apply-join-tables` for SQL
+  drivers."
+  [driver honeysql-form {:keys [join-tables]}]
+  (reduce (partial apply h/merge-left-join) honeysql-form (map #(->honeysql driver %) join-tables)))
 
 (defn apply-limit
   "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
@@ -322,7 +339,7 @@
   "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
   Override as needed."
   [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [table-name]}
+  {:pre [(seq table-name)]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
 (declare apply-clauses)
@@ -390,7 +407,7 @@
   land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
-    (if-let [parsed-date (u/str->date-time tz date-string)]
+    (if-let [parsed-date (du/str->date-time date-string tz)]
       parsed-date
       (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
 
@@ -489,11 +506,11 @@
   [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
-                                                           :read-columns   (read-columns-with-date-handling timezone)
-                                                           :set-parameters (set-parameters-with-timezone timezone)})]
-    {:rows    (or rows [])
-     :columns columns}))
+        [columns & rows] (cancellable-run-query connection sql params {:identifiers    identity, :as-arrays? true
+                                                                       :read-columns   (read-columns-with-date-handling timezone)
+                                                                       :set-parameters (set-parameters-with-timezone timezone)})]
+       {:rows    (or rows [])
+        :columns columns}))
 
 (defn run-query-with-out-remark
   "Run the query itself."
@@ -549,19 +566,21 @@
     (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [driver settings connection query]
+(defn- run-query-without-timezone [_ _ connection query]
   (do-in-transaction connection (partial run-query query nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
+                                    (run-query query
+                                               (some-> report-timezone TimeZone/getTimeZone)
+                                               transaction-connection)))
     (catch SQLException e
-      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (trs "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error "Failed to set timezone:\n" (.getMessage e))
+      (log/error (trs "Failed to set timezone:") "\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 

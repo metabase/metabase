@@ -6,7 +6,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.crate.util :as crate-util]
-            [metabase.driver.generic-sql :as sql])
+            [metabase.driver.generic-sql :as sql]
+            [puppetlabs.i18n.core :refer [tru]])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type
@@ -60,7 +61,7 @@
   (hsql/call :char_length field-key))
 
 (defn- describe-table-fields
-  [database, driver, {:keys [schema name]}]
+  [database _ {:keys [schema name]}]
   (let [columns (jdbc/query
                  (sql/db->jdbc-connection-spec database)
                  [(format "select column_name, data_type as type_name
@@ -95,6 +96,7 @@
          (add-table-pks metadata))))
 
 (defrecord CrateDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Crate"))
 
@@ -108,7 +110,7 @@
           :date-interval   crate-util/date-interval
           :describe-table  describe-table
           :details-fields  (constantly [{:name         "hosts"
-                                         :display-name "Hosts"
+                                         :display-name (tru "Hosts")
                                          :default      "localhost:5432/"}])
           :features        (comp (u/rpartial disj :foreign-keys) sql/features)
           :current-db-time (driver/make-current-db-time-fn crate-db-time-query crate-date-formatters)})

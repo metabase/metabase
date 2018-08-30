@@ -26,6 +26,9 @@ visualizations.get = function(key) {
 };
 
 export function registerVisualization(visualization) {
+  if (visualization == null) {
+    throw new Error(t`Visualization is null`);
+  }
   let identifier = visualization.identifier;
   if (identifier == null) {
     throw new Error(
