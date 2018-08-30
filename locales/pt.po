@@ -2523,7 +2523,7 @@ msgstr "Algo deu errado."
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:25
 msgid "We've run into an error. You can try refreshing the page, or just go back."
-msgstr "Encontratmos um erro. Você pode tentar atualizar a página, ou voltar."
+msgstr "Encontramos um erro. Você pode tentar atualizar a página, ou voltar."
 
 #: frontend/src/metabase/components/Header.jsx:97
 #: frontend/src/metabase/components/HeaderBar.jsx:45
