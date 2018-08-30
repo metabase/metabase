@@ -41,10 +41,13 @@ jobs:
           echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
           sudo dpkg-reconfigure -f noninteractive tzdata;
     - run:
-        name: restart DBMSes
+        name: Restart DBMSes
         command: >
           sudo service mysql restart;
           sudo service postgresql restart;
+    - run:
+        name: Seriously, MySQL please be in Pacific time
+        command: mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles'"
     - run:
         name: What is our timezone?
         command: >
