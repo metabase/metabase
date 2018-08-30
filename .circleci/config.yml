@@ -30,24 +30,25 @@ jobs:
       command: /sbin/init
     steps:
     - run:
-        name: Enable MySQL Timezone support
-        command: >
-          sudo service mysql start;
-          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
-    - run:
         name: Set timezone to America/Los_Angeles
         command: >
+          export TZ="/usr/share/zoneinfo/America/Los_Angeles";
           sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
           echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
           sudo dpkg-reconfigure -f noninteractive tzdata;
     - run:
         name: Restart DBMSes
         command: >
-          sudo service mysql restart;
           sudo service postgresql restart;
+          sudo service mysql restart --default-time-zone='America/Los_Angeles';
+    - run:
+        name: Enable MySQL Timezone support
+        command: >
+          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
     - run:
         name: Seriously, MySQL please be in Pacific time
-        command: mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles'"
+        command: >
+          mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
     - run:
         name: What is our timezone?
         command: >
