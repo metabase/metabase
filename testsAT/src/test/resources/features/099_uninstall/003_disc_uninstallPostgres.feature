@@ -28,5 +28,6 @@ Feature: Uninstall Postgres instances
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DISCOVERY_DATASTORE_DB:-discovery}'"' in the ssh connection
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "DROP DATABASE ${DISCOVERY_DATASTORE_DB:-discovery}"' in the ssh connection
     Then the command output contains 'DROP DATABASE'
+    When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DISCOVERY_DATA_DB:-pruebadiscovery}'"' in the ssh connection
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "DROP DATABASE ${DISCOVERY_DATA_DB:-pruebadiscovery}"' in the ssh connection
     Then the command output contains 'DROP DATABASE'
