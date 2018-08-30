@@ -38,6 +38,6 @@ export const wrapQuery = (query: DatasetQuery,     aggregation: AggregationClaus
     return query;
 
   const wrapped = {base_query : query.query || query.native, aggregation, breakout};
-  return {database : query.database, parameters : query.parameters, query : wrapped,  type: "query"};
+  return {aggregation, breakout};
 
 };

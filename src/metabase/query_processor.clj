@@ -33,7 +33,8 @@
              [resolve :as resolve]
              [resolve-driver :as resolve-driver]
              [results-metadata :as results-metadata]
-             [source-table :as source-table]]
+             [source-table :as source-table]
+             [superquery :as superquery]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [date :as du]
@@ -88,6 +89,7 @@
   ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
   (-> f
       dev/guard-multiple-calls
+      superquery/attach-params
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       annotate-and-sort/annotate-and-sort
       perms/check-query-permissions
@@ -104,6 +106,7 @@
       source-table/resolve-source-table-middleware
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
+      superquery/expand-superquery
       parameters/substitute-parameters
       expand-macros/expand-macros
       driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)

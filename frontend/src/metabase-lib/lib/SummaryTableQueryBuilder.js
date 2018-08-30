@@ -37,23 +37,23 @@ export const getAggregationQueries = (visualizationSettings) => (card:Card, fiel
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
 
-  if(query.type === 'native')
-  {
-    query = {
-      type: "query",
-      database: query.database,
-      query: {
-        source_table : 'card__' + card.id
-      }
-    };
-  }
+  // if(query.type === 'native')
+  // {
+  //   query = {
+  //     type: "query",
+  //     database: query.database,
+  //     query: {
+  //       source_table : 'card__' + card.id
+  //     }
+  //   };
+  // }
 
-  if(query.query) {
-    const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
-    const metadata = {fields: fieldsNorm || {}};
-    const filters = (parameters || []).map(datasetParameter => parameterToMBQLFilter(datasetParameter, metadata)).reduce((acc, p) => (acc && ['AND', acc, p]) || p, query.query.filter);
-    query = {...query, query: {...query.query, filter: filters}};
-  }
+  // if(query.query) {
+  //   const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
+  //   const metadata = {fields: fieldsNorm || {}};
+  //   const filters = (parameters || []).map(datasetParameter => parameterToMBQLFilter(datasetParameter, metadata)).reduce((acc, p) => (acc && ['AND', acc, p]) || p, query.query.filter);
+  //   query = {...query, query: {...query.query, filter: filters}};
+  // }
   const nameToTypeMap = getNameToTypeMap(fields);
 
   const createLiteral = (name) => ['field-literal', name, nameToTypeMap[name]];

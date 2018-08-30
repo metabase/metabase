@@ -343,8 +343,6 @@
   [token dashcard-id card-id query-params]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (log/error query-params)
-    (log/error (map? query-params))
     (check-embedding-enabled-for-dashboard dashboard-id)
     (dashcard-results
       :dashboard-id     dashboard-id
@@ -359,19 +357,16 @@
   [token dashcard-id card-id & query-params]
   (card-for-signed-token token dashcard-id card-id query-params ))
 
-(api/defendpoint POST "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/subquery"
-  [token dashcard-id card-id :as {{query :sub-query } :body} & {:keys [query-params] :or {query-params {}}}]
+(api/defendpoint POST "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/superquery"
+  [token dashcard-id card-id  :as {{super-query :super-query parameters :parameters} :body}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        database-id (api/check-404 (db/select-one-field :database_id Card
-                                                        :id          card-id))
         embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
         token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
-        parameters (dashcard-parameters dashboard-id dashcard-id card-id embedding-params token-params query-params)
-        queryUpdated (assoc-in (assoc-in (assoc query :database database-id) [:query :base_query] {:source-table (str "card__" card-id) :type :wrapped}) [:query :base_query :parameters] parameters)]
+        resolved-parameters (dashcard-parameters dashboard-id dashcard-id card-id embedding-params token-params parameters)]
     (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/check-card-is-in-dashboard card-id dashboard-id)
-    (dataset-api/download-dataset queryUpdated)))
+    (card-api/run-superquery-for-card card-id super-query  resolved-parameters)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |

@@ -500,11 +500,12 @@ export default class Question {
 
     return mainQueryPromise.then(async res => {
       const {data : {cols}} = res;
-      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields)(this.atomicQueries()[0].datasetQuery());
+      const mainQuery = this.atomicQueries()[0].datasetQuery();
+      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields)(mainQuery);
       if(queries.length === 0 )
         return res;
 
-      const aggregationRes = await Promise.all(queries.map(getDatasetQueryResult));
+      const aggregationRes = await Promise.all(queries.map(p => ({...mainQuery, 'super-query': p}) ).map(getDatasetQueryResult));
       return {...res, data: {...res.data, totalsData: aggregationRes.map(p => p.data).filter(p => p)}};
       }).then(p => [p]);
   }

@@ -489,12 +489,12 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     let totalsTasks;
 
     if (dashboardType === "public") {
-      totalsTasks = totalsQueries.map(datasetQuery => {
+      totalsTasks = totalsQueries.map(sq => {
         return fetchDataOrError(
-          PublicApi.dashboardCardSubQuery({
+          PublicApi.dashboardCardSuperQuery({
           uuid: dashcard.dashboard_id,
           cardId: card.id,
-            'sub-query': datasetQuery,
+          'super-query': sq,
           parameters: datasetQuery.parameters
             ? JSON.stringify(datasetQuery.parameters)
             : undefined,
@@ -503,22 +503,20 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
 
     } else if (dashboardType === "embed") {
       totalsTasks = totalsQueries.map(datasetQuery => {
-        return fetchDataOrError(EmbedApi.dashboardCardSubQuery({
+        return fetchDataOrError(EmbedApi.dashboardCardSuperQuery({
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
             cardId: card.id,
-            'sub-query': datasetQuery,
-          ... getParametersBySlug(dashboard.parameters, parameterValues)
+            'super-query': datasetQuery,
+          parameters :getParametersBySlug(dashboard.parameters, parameterValues)
           }
         ));
       });
 
     } else {
+
       totalsTasks = totalsQueries.map(q => {
-        const datasetQueryWithParameters = {...q,
-          parameters: datasetQuery.parameters
-            ? JSON.stringify(datasetQuery.parameters)
-            : undefined,};
+        const datasetQueryWithParameters = {...datasetQuery, 'super-query' : q};
         return fetchDataOrError(MetabaseApi.dataset(
           datasetQueryWithParameters));
       });

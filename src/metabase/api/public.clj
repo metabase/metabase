@@ -228,19 +228,15 @@
     :context context, :dashboard-id dashboard-id))
 
 
-(defn public-dashcard-subquery-results
-  [dashboard-id card-id parameters query]
+(defn public-dashcard-superquery-results
+  [dashboard-id card-id parameters super-query]
   (check-card-is-in-dashboard card-id dashboard-id)
-  (let [database-id (api/check-404 (db/select-one-field :database_id Card
-                                                                :id          card-id))
-        resolved-params (resolve-params dashboard-id (if (string? parameters)
+  (let [resolved-params (resolve-params dashboard-id (if (string? parameters)
                                               (json/parse-string parameters keyword)
-                                              parameters))
-        queryUpdated (assoc-in (assoc-in (assoc query :database database-id) [:query :base_query]
-                                         {:source-table (str "card__" card-id) :type :wrapped}) [:query :base_query :parameters] parameters)]
+                                              parameters))]
     (binding [api/*current-user-permissions-set*     (atom #{"/"})
               qp/*allow-queries-with-no-executor-id* true]
-    (dataset-api/download-dataset queryUpdated))))
+    (card-api/run-superquery-for-card card-id super-query resolved-params))))
 
 
 
@@ -253,14 +249,12 @@
   (public-dashcard-results
    (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
 
-(api/defendpoint POST "/dashboard/:uuid/card/:card-id/subquery"
-  "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
-   sharing must be enabled."
-  [uuid card-id sub-query parameters :as {{query :sub-query } :body}]
+(api/defendpoint POST "/dashboard/:uuid/card/:card-id/superquery"
+  [uuid card-id :as {{:keys [super-query parameters]} :body}]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-  (public-dashcard-subquery-results
-   (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters query))
+  (public-dashcard-superquery-results
+   (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters super-query))
 
 
 (api/defendpoint GET "/oembed"

@@ -581,6 +581,15 @@
     (api/check-not-archived card)
     (qp/process-query-and-save-execution! query options)))
 
+(defn run-superquery-for-card
+  {:style/indent 1}
+  [card-id super-query parameters ]
+  {:pre [(u/maybe? sequential? parameters)]}
+  (let [card    (api/read-check (Card card-id))
+        constraints qp/default-query-constraints
+        query   (assoc (query-for-card card parameters constraints nil) :super-query super-query)]
+    (dataset-api/download-dataset query)))
+
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
