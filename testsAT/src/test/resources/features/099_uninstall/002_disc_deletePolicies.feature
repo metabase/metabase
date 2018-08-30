@@ -1,5 +1,5 @@
 @rest
-Feature: Create Policy for user crossdata-1 in Gosec
+Feature: Delete Policy for user crossdata-1 in Gosec
 
   Background: Initial setup
     Given I open a ssh connection to '${BOOTSTRAP_IP}' with user '${REMOTE_USER:-operador}' using pem file 'src/test/resources/credentials/${PEM_FILE:-key.pem}'
@@ -11,7 +11,14 @@ Feature: Create Policy for user crossdata-1 in Gosec
   @runOnEnv(DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
   @runOnEnv(DISCOVERY_POLICIES=true)
   Scenario: [Delete policy for user crossdata-1 in Gosec][01] Deletion policy user crossdata-1
-    Given I set sso token using host '${CLUSTER_SSO:-nightly.labs.stratio.com}' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
-    And I securely send requests to '${CLUSTER_SSO:-nightly.labs.stratio.com}:443'
+    Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
+    And I securely send requests to '${CLUSTER_ID:-nightly}.labs.stratio.com:443'
+    When I send a 'PUT' request to '${BASE_END_POINT:-/service/gosecmanagement}/api/policy/discovery' based on 'schemas/objectPolicy.conf' as 'json' with:
+      | $.id                                            | UPDATE  | ${DISCOVERY_POLICY_ID:-discovery}               | string |
+      | $.name                                          | UPDATE  | ${DISCOVERY_POLICY_NAME:-discovery}             | string |
+      | $.users                                         | REPLACE | []                                              | array  |
+      | $.services[0].instancesAcl[0].instances[0].name | UPDATE  | ${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}       | string |
+    Then the service response status must be '200'
+    And I wait '120' seconds
     When I send a 'DELETE' request to '${BASE_END_POINT:-/service/gosecmanagement}/api/policy/${DISCOVERY_POLICY_ID:-discovery}'
     Then the service response status must be '200'
