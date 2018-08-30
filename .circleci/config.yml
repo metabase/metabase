@@ -1,11 +1,3 @@
-# This configuration was automatically generated from a CircleCI 1.0 config.
-# It should include any build commands you had along with commands that CircleCI
-# inferred from your project structure. We strongly recommend you read all the
-# comments in this file to understand the structure of CircleCI 2.0, as the idiom
-# for configuration has changed substantially in 2.0 to allow arbitrary jobs rather
-# than the prescribed lifecycle of 1.0. In general, we recommend using this generated
-# configuration as a reference rather than using it in production, though in most
-# cases it should duplicate the execution of your original 1.0 config.
 version: 2
 jobs:
   build:
@@ -16,45 +8,20 @@ jobs:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: "/usr/share/zoneinfo/America/Los_Angeles"
-    # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
-    # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
-    # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
-    # We have selected a pre-built image that mirrors the build environment we use on
-    # the 1.0 platform, but we recommend you choose an image more tailored to the needs
-    # of each job. For more information on choosing an image (or alternatively using a
-    # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
-    # To see the list of pre-built images that CircleCI provides for most common languages see
-    # https://circleci.com/docs/2.0/circleci-images/
     docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
+    - image: circleci/clojure:lein-2.8.1-node
+    - image: postgres:9.6.10-alpine
+      environment:
+        TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+    - image: mysql:5.7.23
+      environment:
+        TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+        MYSQL_ALLOW_EMPTY_PASSWORD: yes
     steps:
     - run:
-        name: Set timezone to America/Los_Angeles
+        name: What's our node version?
         command: >
-          export TZ="/usr/share/zoneinfo/America/Los_Angeles";
-          sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
-          echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
-          sudo dpkg-reconfigure -f noninteractive tzdata;
-    - run:
-        name: Restart DBMSes
-        command: >
-          sudo service postgresql restart;
-          sudo service mysql restart --default-time-zone='America/Los_Angeles';
-    - run:
-        name: Enable MySQL Timezone support
-        command: >
-          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
-    - run:
-        name: Seriously, MySQL please be in Pacific time
-        command: >
-          mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
-    - run:
-        name: What is our timezone?
-        command: >
-          mysql -e 'SELECT @@global.time_zone, @@session.time_zone, @@system_time_zone;';
-          echo 'System time zone:';
-          date +'%:z %Z';
+          node --version
     # Machine Setup
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
@@ -65,60 +32,6 @@ jobs:
     - run:
         name: Make Circle artifact directories
         command:  mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-    - run:
-        name: Switch to Java 8
-        working_directory: ~/metabase/metabase
-        command: sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $BASH_ENV
-    - run:
-        name: Install NVM
-        working_directory: ~/metabase/metabase
-        command: nvm install 8.9.0 && nvm alias default 8.9.0
-    - run:
-        name: Start Docker
-        working_directory: ~/metabase/metabase
-        command: 'sudo docker info >/dev/null 2>&1 || sudo service docker start; '
-    # Dependencies
-    #   This would typically go in either a build or a build-and-test job when using workflows
-    # Restore the dependency cache
-    - restore_cache:
-        keys:
-        # This branch if available
-        - v1-dep-{{ .Branch }}-
-        # Default branch if not
-        - v1-dep-master-
-        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1-dep-
-    # This is based on your 1.0 configuration file or project settings
-    - run:
-        name: Install lein dependencies
-        command: "lein deps"
-    - run:
-        name: Install yarn
-        command: "npm install -g 'yarn@>=0.16.0'"
-    - run:
-        name: Run yarn
-        command: "SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn"
-    - run:
-        name: Create ./plugins directory
-        command: "mkdir plugins"
-    # Save dependency cache
-    - save_cache:
-        key: v1-dep-{{ .Branch }}-{{ epoch }}
-        paths:
-        # This is a broad list of cache paths to include many possible development environments
-        # You can probably delete some of these entries
-        - vendor/bundle
-        - ~/virtualenvs
-        - ~/.m2
-        - ~/.ivy2
-        - ~/.bundle
-        - ~/.go_workspace
-        - ~/.gradle
-        - ~/.cache/bower
-        # These cache paths were specified in the 1.0 config
-        - ~/.yarn
-        - ~/.yarn-cache
-        - ./node_modules
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
