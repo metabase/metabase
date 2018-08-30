@@ -7,7 +7,9 @@
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]])
+            [metabase.util.schema :as su]
+            [puppetlabs.i18n.core :refer [trs]]
+            [schema.core :as s])
   (:import clojure.lang.Keyword
            [java.sql Time Timestamp]
            [java.util Calendar Date TimeZone]
@@ -456,3 +458,9 @@
    (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
            coerce/to-long
            Time.)))
+
+(s/defn calculate-duration :- su/NonNegativeInt
+  "Given two datetimes, caculate the time between them, return the result in millis"
+  [begin-time :- (s/protocol coerce/ICoerce)
+   end-time :- (s/protocol coerce/ICoerce)]
+  (- (coerce/to-long end-time) (coerce/to-long begin-time)))
