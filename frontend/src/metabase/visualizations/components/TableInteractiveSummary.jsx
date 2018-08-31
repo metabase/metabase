@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isID } from "metabase/lib/schema_metadata";
 import {
-  getTableCellClickedObject,
+  getTableCellClickedObjectForSummary,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 
@@ -275,12 +275,14 @@ export default class TableInteractiveSummary extends Component {
     const groupingManager = this.props.data;
     let value = column.getValue(row);
 
+    const isTotal = row.isTotalColumnIndex === columnIndex + 1;
+
     let formatedRes = formatValue(value, {
       column: column,
       type: "cell",
       jsx: true,
       rich: true,
-      isTotal : row.isTotalColumnIndex === columnIndex + 1
+      isTotal : isTotal
     });
 
     if (isGrandTotal && columnIndex === 0)
@@ -292,18 +294,19 @@ export default class TableInteractiveSummary extends Component {
     else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
-    const clicked = getTableCellClickedObject(
+    const clicked = getTableCellClickedObjectForSummary(
       this.props.data,
       rowIndex,
       columnIndex,
       false,
     );
+
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
 
 
 
-    if(row.isTotalColumnIndex === columnIndex + 1 && typeof formatedRes === 'string')
+    if(isTotal && typeof formatedRes === 'string')
       formatedRes = 'Totals for ' + formatedRes;
 
     return (
