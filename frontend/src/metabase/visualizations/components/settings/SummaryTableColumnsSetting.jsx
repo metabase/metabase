@@ -210,7 +210,7 @@ const SortableItem = SortableElement(({value, valueIndex, columnMetadata , itemT
   return <SectionHeader text={value.displayName}/>;
 });
 
-const emptyColumnMetadata : ColumnMetadata = {showTotals : true, isAscSortOrder: true};
+export const emptyColumnMetadata : ColumnMetadata = {showTotals : true, isAscSortOrder: true};
 
 const SortableList = SortableContainer(({items, isChanging, updateState , itemTypeHelper, columnNameToMetadata}) => {
   const updateMetadata = updateMetadataBuilder(columnNameToMetadata, updateState);
