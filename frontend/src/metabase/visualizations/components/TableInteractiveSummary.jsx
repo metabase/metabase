@@ -352,6 +352,7 @@ export default class TableInteractiveSummary extends Component {
     }
 
     let clicked;
+/*
     if (isPivoted) {
       // if it's a pivot table, the first column is
       if (columnIndex >= 0) {
@@ -360,7 +361,7 @@ export default class TableInteractiveSummary extends Component {
     } else {
       clicked = { column };
     }
-
+*/
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
 
@@ -430,6 +431,7 @@ export default class TableInteractiveSummary extends Component {
     }
 
     let clicked;
+/*
     if (isPivoted) {
       // if it's a pivot table, the first column is
       if (columnIndex >= 0) {
@@ -438,7 +440,7 @@ export default class TableInteractiveSummary extends Component {
     } else {
       clicked = { column };
     }
-
+*/
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source;
