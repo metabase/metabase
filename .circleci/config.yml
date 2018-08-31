@@ -14,7 +14,12 @@ jobs:
       image: circleci/classic:201808-01
     steps:
     - checkout
-    # TODO - we only need to install Postgres & MySQL for tests that run [ci drivers]. Consider moving this to ./bin/ci
+    - run:
+        name: Stop automatic VM updates
+        command: >
+          sudo systemctl stop apt-daily.service;
+          sudo systemctl kill --kill-who=all apt-daily.service;
+          while ! (systemctl list-units --all apt-daily.service | fgrep -q dead); do sleep 1; done;
     - run:
         name: Install Postgres & MySQL
         command: >
