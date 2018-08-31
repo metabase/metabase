@@ -85,19 +85,19 @@ jobs:
     - run:
         name: Install lein dependencies
         working_directory: ~/metabase/metabase
-        command: "lein deps"
+        command: lein deps
     - run:
         name: Install yarn
         working_directory: ~/metabase/metabase
-        command: "npm install -g 'yarn@>=0.16.0'"
+        command: npm install -g 'yarn@>=0.16.0'
     - run:
         name: Run yarn
         working_directory: ~/metabase/metabase
-        command: "SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn"
+        command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
     - run:
         name: Create ./plugins directory
         working_directory: ~/metabase/metabase
-        command: "mkdir plugins"
+        command: mkdir plugins
     # Save dependency cache
     - save_cache:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
@@ -112,7 +112,8 @@ jobs:
         - ./node_modules
     - run:
         name: Run ./bin/ci
-        command: "./bin/ci"
+        working_directory: ~/metabase/metabase
+        command: ./bin/ci
     # Deployment
     # Your existing circle.yml file contains deployment steps.
     # The config translation tool does not support translating deployment steps
