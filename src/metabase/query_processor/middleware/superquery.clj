@@ -1,7 +1,5 @@
 (ns metabase.query-processor.middleware.superquery
-  (:require             [clojure.tools.logging :as log])
-  (:require             [clojure.data :as data])
-  )
+  (:require [clojure.data :as data]))
 
 (defn native-to-source
   [maybe-native-query]

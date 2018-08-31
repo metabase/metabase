@@ -5,7 +5,7 @@ import React, {Component} from "react";
 
 import {t} from "c-3po";
 
-import styles from './SummaryTableColumnsSettings.css';
+import styles from './ChartSettingSummaryTableColumns.css';
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
@@ -118,7 +118,7 @@ const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype
   return {groupsSources : gs, columnsSource : cs, valuesSources: vs};
 };
 
-export default class SummaryTableColumnsSetting extends Component<any, Props, State> {
+export default class ChartSettingSummaryTableColumns extends Component<any, Props, State> {
   state : State;
 
   constructor(props : Props) {

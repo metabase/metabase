@@ -9,7 +9,7 @@ import { t } from "c-3po";
 import {
   getFriendlyName,
 } from "metabase/visualizations/lib/utils";
-import SummaryTableColumnsSetting from "metabase/visualizations/components/settings/SummaryTableColumnsSetting.jsx";
+import ChartSettingSummaryTableColumns from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -28,7 +28,7 @@ import {
   getQueryPlan,
   settingsAreValid
 } from "metabase/visualizations/lib/settings/summary_table";
-import {emptyColumnMetadata} from "metabase/visualizations/components/settings/SummaryTableColumnsSetting";
+import {emptyColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
 
 
 type Props = {
@@ -68,7 +68,7 @@ export default class SummaryTable extends Component {
 
   static settings = {
     [COLUMNS_SETTINGS]: {
-      widget: SummaryTableColumnsSetting,
+      widget: ChartSettingSummaryTableColumns,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
       getDefault: ([{data : {columns}}]) : SummaryTableSettings =>
