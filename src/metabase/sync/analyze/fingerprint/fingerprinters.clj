@@ -10,7 +10,8 @@
             [metabase.util.date :as du]
             [puppetlabs.i18n.core :as i18n :refer [trs]]
             [redux.core :as redux])
-  (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
+  (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           org.joda.time.DateTime))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -157,6 +158,7 @@
   nil                    (->date [_] nil)
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this)
+  DateTime               (->date [this] (t.coerce/to-date this))
   Long                   (->date [^Long this] (java.util.Date. this)))
 
 (deffingerprinter :type/DateTime
