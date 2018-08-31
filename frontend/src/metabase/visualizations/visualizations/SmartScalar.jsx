@@ -3,13 +3,14 @@ import { Box, Flex } from "grid-styled";
 import SmartScalar from "metabase/visualizations/components/SmartScalar";
 import { t } from "c-3po";
 import { formatNumber } from "metabase/lib/formatting";
+import colors from "metabase/lib/colors";
 
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 export default class Smart extends React.Component {
-  static uiName = "Change";
+  static uiName = "Smart Scalar";
   static identifier = "SmartScalar";
   static iconName = "star";
 
@@ -24,7 +25,7 @@ export default class Smart extends React.Component {
       this.props.rawSeries &&
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
-    const { isDashboard, card } = this.props;
+    const { isDashboard, card, gridSize } = this.props;
 
     let granularity;
     if (Card.isStructured(card)) {
@@ -33,69 +34,49 @@ export default class Smart extends React.Component {
       granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
     }
 
-    return isDashboard ? (
-      <DashCardRendering
-        {...this.props}
-        granularity={granularity}
-        insights={insights}
-      />
-    ) : (
-      <QueryBuilderRendering
-        {...this.props}
-        granularity={granularity}
-        insights={insights}
-      />
+    const shouldBeVertical = gridSize && gridSize.height > gridSize.width;
+    return (
+      <Flex
+        align="center"
+        justify="center"
+        className="full-height full"
+        flex={1}
+        style={{ fontSize: isDashboard ? "1rem" : "2rem" }}
+      >
+        <Flex flexDirection={shouldBeVertical ? "column" : "row"}>
+          <Flex style={{ alignSelf: "flex-end" }}>
+            <Box>
+              <h4
+                style={{
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  color: colors["text-medium"],
+                  fontSize: 11,
+                  letterSpacing: 0.24,
+                }}
+              >
+                {t`Most recent ${granularity}`}
+              </h4>
+              <h1 style={{ fontSize: "2em", fontWeight: 900, lineHeight: 1 }}>
+                {formatNumber(insights["last-value"])}
+              </h1>
+            </Box>
+            <Box mt="auto">
+              <SmartScalar change={insights["last-change"] * 100} />
+            </Box>
+          </Flex>
+          <Box
+            ml={shouldBeVertical ? 0 : 3}
+            mt={shouldBeVertical ? 3 : 0}
+            style={{ alignSelf: shouldBeVertical ? "flex-start" : "flex-end" }}
+          >
+            <SmartScalar
+              title={`Previous ${granularity}`}
+              value={insights["previous-value"]}
+            />
+          </Box>
+        </Flex>
+      </Flex>
     );
   }
 }
-
-const QueryBuilderRendering = ({ granularity, insights }) => (
-  <Flex
-    align="center"
-    justify="center"
-    flexDirection="column"
-    className="full-height full"
-  >
-    <Box>
-      <h1 style={{ fontSize: 64, fontWeight: 900 }}>
-        {formatNumber(insights["last-value"])}
-      </h1>
-      <h3>{t`Most recent ${granularity}`}</h3>
-      <Flex align="center" my={3}>
-        <SmartScalar title={`Change`} change={insights["last-change"] * 100} />
-        <Box mx={2}>
-          <SmartScalar
-            title={`Previous ${granularity}`}
-            value={insights["previous-value"]}
-          />
-        </Box>
-      </Flex>
-    </Box>
-  </Flex>
-);
-
-const DashCardRendering = ({ granularity, insights }) => (
-  <Flex
-    align="center"
-    justify="center"
-    flexDirection="column"
-    className="full-height full"
-    flex={1}
-  >
-    <Box>
-      <h1 style={{ fontSize: "2rem", fontWeight: 900 }}>
-        {formatNumber(insights["last-value"])}
-      </h1>
-      <h3>{t`Most recent ${granularity}`}</h3>
-      <Flex align="center" my={3}>
-        <SmartScalar title={`Change`} change={insights["last-change"] * 100} />
-        <Box mx={2}>
-          <SmartScalar
-            title={`Previous ${granularity}`}
-            value={insights["previous-value"]}
-          />
-        </Box>
-      </Flex>
-    </Box>
-  </Flex>
-);
