@@ -41,9 +41,14 @@ export default class Smart extends React.Component {
         justify="center"
         className="full-height full"
         flex={1}
-        style={{ fontSize: isDashboard ? "1rem" : "2rem" }}
+        style={{ fontSize: isDashboard ? "1rem" : "2rem", flexWrap: "wrap" }}
+        m={2}
+        flexWrap="wrap"
       >
-        <Flex flexDirection={shouldBeVertical ? "column" : "row"}>
+        <Flex
+          flexDirection={shouldBeVertical ? "column" : "row"}
+          style={{ flexWrap: "wrap" }}
+        >
           <Flex style={{ alignSelf: "flex-end" }}>
             <Box>
               <h4
