@@ -52,7 +52,11 @@ const StandardForm = ({
     <div className={cx("flex", { "Form-offset": !newForm })}>
       <div className="ml-auto flex align-center">
         {onClose && (
-          <Button className="mr1" onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            type="button"
+            className="mr1"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
         )}
         <Button
           type="submit"
