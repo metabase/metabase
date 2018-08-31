@@ -16,10 +16,21 @@ jobs:
     - checkout
     - run:
         name: Stop automatic VM updates
+        working_directory: ~/metabase/metabase
+        command: sudo ./.circleci/stop-auto-updates.sh
+    - run:
+        name: M O N G O ?
         command: >
-          sudo systemctl stop apt-daily.service;
-          sudo systemctl kill --kill-who=all apt-daily.service;
-          while ! (systemctl list-units --all apt-daily.service | fgrep -q dead); do sleep 1; done;
+          sudo apt-get purge mongo* || true;
+          sudo apt-get purge mongodb-org* || true;
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5;
+          echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.6 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list;
+          sudo apt-get update;
+          sudo ./bin/ci-install -y mongodb-org-server=3.6.7;
+          sudo systemctl unmask mongod;
+          sudo systemctl enable mongod.service || echo 'Enable mongod.service failed';
+          sudo systemctl enable mongod || echo 'Enable mongod failed';
+          sudo service mongod restart;
     - run:
         name: Install Postgres & MySQL
         command: >
@@ -77,15 +88,16 @@ jobs:
     # Dependencies
     #   This would typically go in either a build or a build-and-test job when using workflows
     # Restore the dependency cache
-    - restore_cache:
-        working_directory: ~/metabase/metabase
-        keys:
-        # This branch if available
-        - v1-dep-{{ .Branch }}-
-        # Default branch if not
-        - v1-dep-master-
-        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1-dep-
+# TEMPORARILY DISABLED UNTIL POST CIRCLE-2.0 MIGRATION SINCE 1.0 CACHE IS INCOMPATIBLE
+# - restore_cache:
+#     working_directory: ~/metabase/metabase
+#     keys:
+#     # This branch if available
+#     - v1-dep-{{ .Branch }}-
+#     # Default branch if not
+#     - v1-dep-master-
+#     # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+#     - v1-dep-
     # This is based on your 1.0 configuration file or project settings
     - run:
         name: Install lein dependencies
