@@ -34,7 +34,7 @@ node-2() {
         run_step install-presto
     fi
     MB_ENCRYPTION_SECRET_KEY='Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=' MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
-        MB_PRESTO_TEST_HOST=localhost MB_PRESTO_TEST_PORT=8080 MB_POSTGRESQL_TEST_USER=ubuntu MB_POSTGRESQL_TEST_PASS=123456 \
+        MB_PRESTO_TEST_HOST=localhost MB_PRESTO_TEST_PORT=8080 MB_POSTGRESQL_TEST_USER=ubuntu MB_POSTGRESQL_TEST_PASSWORD=123456 \
         run_step lein-test
 }
 node-3() {

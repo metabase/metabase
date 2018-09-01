@@ -37,14 +37,23 @@ jobs:
         name: Restart DBMSes
         command: >
           sudo service postgresql restart;
-          sudo service mysql restart --default-time-zone='America/Los_Angeles';
+          sudo service mysql restart;
     - run:
         name: Create MySQL user
         command: >
-          sudo mysql --defaults-file=/etc/mysql/debian.cnf --database mysql -e "CREATE USER ubuntu; GRANT ALL PRIVILEGES ON *.* TO 'ubuntu'@'%';"
+          sudo mysql --defaults-file=/etc/mysql/debian.cnf --database mysql -e "CREATE USER ubuntu; GRANT ALL PRIVILEGES ON *.* TO 'ubuntu'@'%';";
     - run:
         name: Enable MySQL Timezone support
         command: mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
+    - run:
+        name: Seriously, MySQL please be in Pacific time
+        command: mysql -u ubuntu --database mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
+    - run:
+        name: What is our timezone?
+        command: >
+          mysql -u ubuntu --database mysql -e 'SELECT @@global.time_zone, @@session.time_zone, @@system_time_zone;';
+          echo 'System time zone:';
+          date +'%:z %Z';
     - run:
         name: Create MySQL test DB
         command: mysql -u ubuntu --database mysql -e 'CREATE DATABASE circle_test;'
@@ -53,7 +62,9 @@ jobs:
         command: sudo -u postgres psql postgres -c "CREATE USER ubuntu SUPERUSER; ALTER ROLE ubuntu PASSWORD '123456';"
     - run:
         name: Create Postgres test DB
-        command: PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE circle_test;'
+        command: >
+          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE circle_test;';
+          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE ubuntu;'
     # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
     # In many cases you can simplify this from what is generated here.
     # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
