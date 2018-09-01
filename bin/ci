@@ -105,7 +105,8 @@ report-uberjar-size() {
 # }
 
 install-mongodb() {
-    echo "We installed Mongo in config.yml"
+    docker run --detach --publish 27017:27017 mongo:3.2
+    sleep 10
 }
 
 install-oracle() {

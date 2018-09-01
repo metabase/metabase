@@ -19,19 +19,6 @@ jobs:
         working_directory: ~/metabase/metabase
         command: sudo ./.circleci/stop-auto-updates.sh
     - run:
-        name: M O N G O ?
-        command: >
-          sudo apt-get purge mongo* || true;
-          sudo apt-get purge mongodb-org* || true;
-          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5;
-          echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.6 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list;
-          sudo apt-get update;
-          sudo ./bin/ci-install -y mongodb-org-server=3.6.7;
-          sudo systemctl unmask mongod;
-          sudo systemctl enable mongod.service || echo 'Enable mongod.service failed';
-          sudo systemctl enable mongod || echo 'Enable mongod failed';
-          sudo service mongod restart;
-    - run:
         name: Install Postgres & MySQL
         command: >
           sudo apt update &&
