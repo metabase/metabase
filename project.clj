@@ -161,7 +161,7 @@
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
                             :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
-                                       "-Duser.timezone=US/Pacific"
+                                       "-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"

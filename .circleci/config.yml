@@ -23,21 +23,21 @@ jobs:
         command: >
           sudo apt update &&
           sudo ./bin/ci-install postgresql mysql-server
-    - run:
-        name: Set timezone to America/Los_Angeles
-        command: >
-          sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
-          echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
-          # See https://stackoverflow.com/questions/8671308
-          echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
-          echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
-          debconf-set-selections tz_pre_seed.txt
-          sudo dpkg-reconfigure -f noninteractive tzdata;
-    - run:
-        name: Restart DBMSes
-        command: >
-          sudo service postgresql restart;
-          sudo service mysql restart;
+#    - run:
+#        name: Set timezone to America/Los_Angeles
+#        command: >
+#          sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
+#          echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
+#          # See https://stackoverflow.com/questions/8671308
+#          echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
+#          echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
+#          debconf-set-selections tz_pre_seed.txt
+#          sudo dpkg-reconfigure -f noninteractive tzdata;
+#    - run:
+#        name: Restart DBMSes
+#        command: >
+#          sudo service postgresql restart;
+#          sudo service mysql restart;
     - run:
         name: Create MySQL user
         command: >
@@ -45,9 +45,9 @@ jobs:
     - run:
         name: Enable MySQL Timezone support
         command: mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
-    - run:
-        name: Seriously, MySQL please be in Pacific time
-        command: mysql -u ubuntu --database mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
+#    - run:
+#        name: Seriously, MySQL please be in Pacific time
+#        command: mysql -u ubuntu --database mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
     - run:
         name: What is our timezone?
         command: >
