@@ -7,7 +7,7 @@ jobs:
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-      TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+      # TZ: "/usr/share/zoneinfo/America/Los_Angeles"
       DEBIAN_FRONTEND: noninteractive
       DEBCONF_NONINTERACTIVE_SEEN: true
     machine:
@@ -51,6 +51,7 @@ jobs:
     - run:
         name: What is our timezone?
         command: >
+          # sudo -u postgres psql postgres -c 'SHOW timezone;';
           mysql -u ubuntu --database mysql -e 'SELECT @@global.time_zone, @@session.time_zone, @@system_time_zone;';
           echo 'System time zone:';
           date +'%:z %Z';
