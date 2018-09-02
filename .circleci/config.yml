@@ -1,7 +1,6 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/metabase/metabase
     parallelism: 7
     shell: /bin/bash --login
     environment:
@@ -16,31 +15,27 @@ jobs:
     - checkout
     - run:
         name: Stop automatic VM updates
-        working_directory: ~/metabase/metabase
         command: sudo ./.circleci/stop-auto-updates.sh
     - run:
         name: Install Postgres & MySQL
         command: >
           sudo apt update &&
           sudo ./bin/ci-install postgresql mysql-server
-    - run:
-        name: What's our MySQL version?
-        command: mysql --version
-#    - run:
-#        name: Set timezone to America/Los_Angeles
-#        command: >
-#          sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
-#          echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
-#          # See https://stackoverflow.com/questions/8671308
-#          echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
-#          echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
-#          debconf-set-selections tz_pre_seed.txt
-#          sudo dpkg-reconfigure -f noninteractive tzdata;
-#    - run:
-#        name: Restart DBMSes
-#        command: >
-#          sudo service postgresql restart;
-#          sudo service mysql restart;
+    #- run:
+    #    name: Set timezone to America/Los_Angeles
+    #    command: >
+    #      sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
+    #      echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
+    #      # See https://stackoverflow.com/questions/8671308
+    #      echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
+    #      echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
+    #      debconf-set-selections tz_pre_seed.txt
+    #      sudo dpkg-reconfigure -f noninteractive tzdata;
+    #- run:
+    #   name: Restart MySQL
+    #   command: >
+    #     # sudo service postgresql restart;
+    #     sudo service mysql restart;
     - run:
         name: Create MySQL user
         command: >
@@ -68,95 +63,51 @@ jobs:
         name: Create Postgres test DB
         command: >
           PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE circle_test;';
-          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE ubuntu;'
+          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE ubuntu;';
     - run:
-        name: Just run timezone tests until we get this figured out
-        working_directory: ~/metabase/metabase
+        name: Make Circle artifact directories
+        command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+    - run:
+        name: Install NVM
         command: >
-          MB_DB_TYPE=h2 ENGINES=h2,mysql,postgres MB_POSTGRESQL_TEST_USER=ubuntu MB_POSTGRESQL_TEST_PASSWORD=123456
-          MB_MYSQL_TEST_USER=ubuntu lein test metabase.query-processor-test.date-bucketing-test metabase.query-processor-test.timezones-test
-#    # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
-#    # In many cases you can simplify this from what is generated here.
-#    # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-#    - run:
-#        name: Make Circle artifact directories
-#        command:  mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-#    - run:
-#        name: Install NVM
-#        working_directory: ~/metabase/metabase
-#        command: >
-#          nvm install 8.9.0;
-#          nvm alias default 8.9.0;
-#          node --version
-#    - run:
-#        name: Does docker work??
-#        command: >
-#          docker --version;
-#          docker run hello-world
-#    # Dependencies
-#    #   This would typically go in either a build or a build-and-test job when using workflows
-#    # Restore the dependency cache
-## TEMPORARILY DISABLED UNTIL POST CIRCLE-2.0 MIGRATION SINCE 1.0 CACHE IS INCOMPATIBLE
-## - restore_cache:
-##     working_directory: ~/metabase/metabase
-##     keys:
-##     # This branch if available
-##     - v1-dep-{{ .Branch }}-
-##     # Default branch if not
-##     - v1-dep-master-
-##     # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-##     - v1-dep-
-#    # This is based on your 1.0 configuration file or project settings
-#    - run:
-#        name: Install lein dependencies
-#        working_directory: ~/metabase/metabase
-#        command: lein deps
-#    - run:
-#        name: Install yarn
-#        working_directory: ~/metabase/metabase
-#        command: npm install -g 'yarn@>=0.16.0'
-#    - run:
-#        name: Run yarn
-#        working_directory: ~/metabase/metabase
-#        command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
-#    - run:
-#        name: Create ./plugins directory
-#        working_directory: ~/metabase/metabase
-#        command: mkdir plugins
-#    # Save dependency cache
-#    - save_cache:
-#        key: v1-dep-{{ .Branch }}-{{ epoch }}
-#        working_directory: ~/metabase/metabase
-#        paths:
-#        # This is a broad list of cache paths to include many possible development environments
-#        # You can probably delete some of these entries
-#        - vendor/bundle
-#        - ~/.m2
-#        - ~/.yarn
-#        - ~/.yarn-cache
-#        - ./node_modules
-#    - run:
-#        name: Run ./bin/ci
-#        working_directory: ~/metabase/metabase
-#        command: ./bin/ci
-#    # Deployment
-#    # Your existing circle.yml file contains deployment steps.
-#    # The config translation tool does not support translating deployment steps
-#    # since deployment in CircleCI 2.0 are better handled through workflows.
-#    # See the documentation for more information https://circleci.com/docs/2.0/workflows/
-#    # Teardown
-#    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-#    # Save test results
-#    - store_test_results:
-#        path: /tmp/circleci-test-results
-#    # Save artifacts
-#    - store_artifacts:
-#        path: /tmp/circleci-artifacts
-#    - store_artifacts:
-#        path: target/uberjar/metabase.jar
-#    - store_artifacts:
-#        path: screenshots
-#    - store_artifacts:
-#        path: /tmp/circleci-test-results
-#
-#
+          nvm install 8.9.0;
+          nvm alias default 8.9.0;
+   # Dependencies
+   #   This would typically go in either a build or a build-and-test job when using workflows
+   # Restore the dependency cache
+    - restore_cache:
+        keys:
+          - v2-deps
+    - run:
+        name: Install lein dependencies
+        command: lein deps
+    - run:
+        name: Install yarn
+        command: npm install -g 'yarn@>=0.16.0'
+    - run:
+        name: Run yarn
+        command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
+    - run:
+        name: Create ./plugins directory
+        command: mkdir plugins
+    # Save dependency cache
+    - save_cache:
+        key: v2-deps
+        paths:
+          - ~/.m2
+          - ~/.yarn
+          - ~/.yarn-cache
+          - ./node_modules
+    - run:
+        name: Run ./bin/ci
+        command: ./bin/ci
+    - store_test_results:
+        path: /tmp/circleci-test-results
+    - store_artifacts:
+        path: /tmp/circleci-artifacts
+    - store_artifacts:
+        path: target/uberjar/metabase.jar
+    - store_artifacts:
+        path: screenshots
+    - store_artifacts:
+        path: /tmp/circleci-test-results
