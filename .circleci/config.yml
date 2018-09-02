@@ -23,6 +23,9 @@ jobs:
         command: >
           sudo apt update &&
           sudo ./bin/ci-install postgresql mysql-server
+    - run:
+        name: What's our MySQL version?
+        command: mysql --version
 #    - run:
 #        name: Set timezone to America/Los_Angeles
 #        command: >
