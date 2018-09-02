@@ -26,7 +26,7 @@
   [db-spec]
   (empty? (jdbc/query db-spec "select 1 from users where id=1 and last_login='2014-04-01 01:30:00'")))
 
-(defn- update-mysql-timestamps
+#_(defn- update-mysql-timestamps
   "Unfortunately the timestamps we insert in this dataset are in UTC, but MySQL is inserting them as if they were in
   pacific time. This means that they are rolling them forward 7 (or 8) hours. Instead of inserting 08:30 it's
   inserting 15:30. This is wrong, rather than hack something together that weaves through all of the data loading
@@ -44,7 +44,7 @@
     ;; The database doesn't exist, so we need to create it
     (data/get-or-create-database! defs/test-data-with-timezones)
     ;; The db has been created but the timestamps are wrong on MySQL, fix them up
-    (update-mysql-timestamps))
+    #_(update-mysql-timestamps))
   ;; The database can now be used in tests
   (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
     (f)))
