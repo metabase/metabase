@@ -1,0 +1,70 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/metabase/metabase
+    parallelism: 7
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/postgres:9.6.10-alpine
+        environment:
+          TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+          POSTGRES_USER: ubunutu
+          POSTGRES_DB: circle_test
+      - image: circleci/mysql:5.7.23
+        environment:
+          TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_USER: ubuntu
+          MYSQL_DATABASE: circle_test
+      - image: sumitchawla/vertica
+      - image: metabase/presto-mb-ci
+      - image: circleci/mongo:3.2
+    steps:
+      - run:
+          name: Install build-essential
+          command: sudo apt install build-essential
+      - run:
+          name: Install yarn
+          command: >
+            sudo npm install -g 'yarn@>=0.16.0';
+            sudo chmod 755 /usr/local/bin/yarn
+      - checkout
+      - run:
+          name: Make Circle artifact directories
+          command:  mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - restore_cache:
+          keys:
+            - v2-deps
+      - run:
+          name: Run yarn
+          command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
+      - run:
+          name: Make plugins dir
+          command: mkdir plugins
+      - run:
+          name: Run ./bin/ci
+          command: ./bin/ci
+      - save_cache:
+          key: v2-deps
+          paths:
+            - ~/.m2
+            - ~/.yarn
+            - ~/.yarn-cache
+            - ~/metabase/metabase/node_modules
+      - store_test_results:
+          path: /tmp/circleci-test-results
+      # Save artifacts
+      - store_artifacts:
+          path: /tmp/circleci-artifacts
+      - store_artifacts:
+          path: target/uberjar/metabase.jar
+      - store_artifacts:
+          path: screenshots
+      - store_artifacts:
+          path: /tmp/circleci-test-results
