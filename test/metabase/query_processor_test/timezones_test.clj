@@ -20,31 +20,11 @@
 
 (def ^:private mysql-driver (MySQLDriver.))
 
-(defn- fix-mysql-timestamps?
-  "Returns true if the database at `db-spec` needs to have it's timestamps fixed. See the `update-mysql-timestamps
-  comment for more information on why these are being fixed"
-  [db-spec]
-  (empty? (jdbc/query db-spec "select 1 from users where id=1 and last_login='2014-04-01 01:30:00'")))
-
-(defn- update-mysql-timestamps
-  "Unfortunately the timestamps we insert in this dataset are in UTC, but MySQL is inserting them as if they were in
-  pacific time. This means that they are rolling them forward 7 (or 8) hours. Instead of inserting 08:30 it's
-  inserting 15:30. This is wrong, rather than hack something together that weaves through all of the data loading
-  code, this function just fixes up the timestamps after the data is loaded using MySQL's `convert_tz` function"
-  []
-  (when (= :mysql *engine*)
-    (let [details (i/database->connection-details mysql-driver :db {:database-name "test-data-with-timezones"})
-          db-spec (sql/connection-details->spec mysql-driver details)]
-      (when (fix-mysql-timestamps? db-spec)
-        (jdbc/execute! db-spec "update users set last_login=convert_tz(last_login,'UTC','America/Los_Angeles')")))))
-
 (defn- call-with-timezones-db [f]
   ;; Does the database exist?
   (when-not (i/metabase-instance defs/test-data-with-timezones *engine*)
     ;; The database doesn't exist, so we need to create it
-    (data/get-or-create-database! defs/test-data-with-timezones)
-    ;; The db has been created but the timestamps are wrong on MySQL, fix them up
-    (update-mysql-timestamps))
+    (data/get-or-create-database! defs/test-data-with-timezones))
   ;; The database can now be used in tests
   (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
     (f)))

@@ -1,0 +1,113 @@
+version: 2
+jobs:
+  build:
+    parallelism: 7
+    shell: /bin/bash --login
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      # TZ: "/usr/share/zoneinfo/America/Los_Angeles"
+      DEBIAN_FRONTEND: noninteractive
+      DEBCONF_NONINTERACTIVE_SEEN: true
+    machine:
+      image: circleci/classic:201808-01
+    steps:
+    - checkout
+    - run:
+        name: Stop automatic VM updates
+        command: sudo ./.circleci/stop-auto-updates.sh
+    - run:
+        name: Install Postgres & MySQL
+        command: >
+          sudo apt update &&
+          sudo ./bin/ci-install postgresql mysql-server
+    #- run:
+    #    name: Set timezone to America/Los_Angeles
+    #    command: >
+    #      sudo cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime;
+    #      echo 'America/Los_Angeles' | sudo tee -a /etc/timezone;
+    #      # See https://stackoverflow.com/questions/8671308
+    #      echo 'tzdata tzdata/Areas select America' > tz_pre_seed.txt
+    #      echo 'tzdata tzdata/Zones/America select Los_Angeles' >> tz_pre_seed.txt
+    #      debconf-set-selections tz_pre_seed.txt
+    #      sudo dpkg-reconfigure -f noninteractive tzdata;
+    #- run:
+    #   name: Restart MySQL
+    #   command: >
+    #     # sudo service postgresql restart;
+    #     sudo service mysql restart;
+    - run:
+        name: Create MySQL user
+        command: >
+          sudo mysql --defaults-file=/etc/mysql/debian.cnf --database mysql -e "CREATE USER ubuntu; GRANT ALL PRIVILEGES ON *.* TO 'ubuntu'@'%';";
+    - run:
+        name: Enable MySQL Timezone support
+        command: mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ubuntu mysql;
+#    - run:
+#        name: Seriously, MySQL please be in Pacific time
+#        command: mysql -u ubuntu --database mysql -e "SET GLOBAL time_zone = 'America/Los_Angeles';"
+    - run:
+        name: What is our timezone?
+        command: >
+          # sudo -u postgres psql postgres -c 'SHOW timezone;';
+          mysql -u ubuntu --database mysql -e 'SELECT @@global.time_zone, @@session.time_zone, @@system_time_zone;';
+          echo 'System time zone:';
+          date +'%:z %Z';
+    - run:
+        name: Create MySQL test DB
+        command: mysql -u ubuntu --database mysql -e 'CREATE DATABASE circle_test;'
+    - run:
+        name: Create Postgres user
+        command: sudo -u postgres psql postgres -c "CREATE USER ubuntu SUPERUSER; ALTER ROLE ubuntu PASSWORD '123456';"
+    - run:
+        name: Create Postgres test DB
+        command: >
+          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE circle_test;';
+          PGPASSWORD='123456' psql -U ubuntu -h localhost postgres -c 'CREATE DATABASE ubuntu;';
+    - run:
+        name: Make Circle artifact directories
+        command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+    - run:
+        name: Install NVM
+        command: >
+          nvm install 8.9.0;
+          nvm alias default 8.9.0;
+   # Dependencies
+   #   This would typically go in either a build or a build-and-test job when using workflows
+   # Restore the dependency cache
+    - restore_cache:
+        keys:
+          - v2-deps
+    - run:
+        name: Install lein dependencies
+        command: lein deps
+    - run:
+        name: Install yarn
+        command: npm install -g 'yarn@>=0.16.0'
+    - run:
+        name: Run yarn
+        command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
+    - run:
+        name: Create ./plugins directory
+        command: mkdir plugins
+    # Save dependency cache
+    - save_cache:
+        key: v2-deps
+        paths:
+          - ~/.m2
+          - ~/.yarn
+          - ~/.yarn-cache
+          - ./node_modules
+    - run:
+        name: Run ./bin/ci
+        command: ./bin/ci
+    - store_test_results:
+        path: /tmp/circleci-test-results
+    - store_artifacts:
+        path: /tmp/circleci-artifacts
+    - store_artifacts:
+        path: target/uberjar/metabase.jar
+    - store_artifacts:
+        path: screenshots
+    - store_artifacts:
+        path: /tmp/circleci-test-results
