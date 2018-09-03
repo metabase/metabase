@@ -171,4 +171,18 @@ export const getAllAggregationKeysFlatten = (qp : QueryPlan, totalValueFilter: C
   return [mainQueryColumn,...flatMap(totals)];
 };
 
-export const canTotalize = (type : string) => type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
+export const canTotalizeByType = (type : string) => type ==='type/BigInteger' || type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
+
+
+
+export const shouldTotalizeDefaultBuilder = (columns : Column[]) : (ColumnName => boolean) => {
+
+  const aggrColumns = columns[0].source === 'fields' || !columns[0].source || columns.filter(p => p.source !== BREAKOUT).length === 0
+    ? columns.filter(p => !p.special_type).filter(p => canTotalizeByType(p.base_type))
+    : columns.filter(p => p.source === AGGREGATION);
+
+
+  const aggregations = Set.of(...aggrColumns.map(p => p.name));
+  return name => aggregations.has(name);
+};
+

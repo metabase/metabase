@@ -19,7 +19,7 @@ import type {
   SummaryTableSettings
 } from "metabase/meta/types/summary_table";
 import {
-  canTotalize,
+  canTotalizeByType,
   getAllAggregationKeysFlatten,
   getQueryPlan
 } from "metabase/visualizations/lib/settings/summary_table";
@@ -36,30 +36,13 @@ export const getAggregationQueries = (visualizationSettings) => (card:Card, fiel
   if(card.display !== SummaryTable.identifier || !isOk(settings))
     return [];
 
-  // if(query.type === 'native')
-  // {
-  //   query = {
-  //     type: "query",
-  //     database: query.database,
-  //     query: {
-  //       source_table : 'card__' + card.id
-  //     }
-  //   };
-  // }
-
-  // if(query.query) {
-  //   const fieldsNorm = fields instanceof Array ? fields.reduce((acc, p) => ({...acc, [p.id] : p}), {}) : fields;
-  //   const metadata = {fields: fieldsNorm || {}};
-  //   const filters = (parameters || []).map(datasetParameter => parameterToMBQLFilter(datasetParameter, metadata)).reduce((acc, p) => (acc && ['AND', acc, p]) || p, query.query.filter);
-  //   query = {...query, query: {...query.query, filter: filters}};
-  // }
   const nameToTypeMap = getNameToTypeMap(fields);
 
   const createLiteral = (name) => ['field-literal', name, nameToTypeMap[name]];
   const createTotal = (name) => ['named', ["sum", createLiteral(name)], name];
 
   const queryPlan = getQueryPlan(settings);
-  const allKeys = getAllAggregationKeysFlatten(queryPlan, p => canTotalize(nameToTypeMap[p]));
+  const allKeys = getAllAggregationKeysFlatten(queryPlan, p => canTotalizeByType(nameToTypeMap[p]));
 
   return allKeys.map(([groupings, aggregations]) =>
     ({ aggregation : aggregations.toArray().map(createTotal), breakout: groupings.toArray().map(createLiteral)}));

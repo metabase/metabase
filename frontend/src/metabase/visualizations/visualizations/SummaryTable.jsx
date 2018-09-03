@@ -16,7 +16,7 @@ import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
-import type {DatasetData, SummaryDatasetData} from "metabase/meta/types/Dataset";
+import type {ColumnName, DatasetData, SummaryDatasetData} from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
@@ -26,7 +26,7 @@ import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 import {
   buildResultProvider,
   getQueryPlan,
-  settingsAreValid
+  settingsAreValid, shouldTotalizeDefaultBuilder
 } from "metabase/visualizations/lib/settings/summary_table";
 import {emptyColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
 
@@ -71,20 +71,21 @@ export default class SummaryTable extends Component {
       widget: ChartSettingSummaryTableColumns,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{data : {columns}}]) : SummaryTableSettings =>
+      getDefault: ([{data : {columns, cols}}]) : SummaryTableSettings =>
         {
-          const gs = columns.slice(0, columns.length -1);
-          const vs = columns.slice(columns.length -1);
-          return {groupsSources : gs, columnsSource: [], valuesSources: vs, columnNameToMetadata: gs.reduce((acc, column) => ({...acc, [column]: emptyColumnMetadata}), {} )}
+          const shouldTotal = shouldTotalizeDefaultBuilder(cols);
 
+          const groupsSources = columns.filter(p => !shouldTotal(p));
+          const valuesSources = columns.filter(shouldTotal);
 
-      }
-      ,
-        // cols.map(col => ({
-        //   name: col.name,
-        //   //todo: ?details-only
-        //   enabled: col.visibility_type !== "details-only",
-        // })),
+          return {
+            groupsSources,
+            columnsSource: [],
+            valuesSources,
+            columnNameToMetadata: groupsSources.reduce((acc, column) => ({...acc, [column]: emptyColumnMetadata}), {} )
+          };
+      },
+
       getProps: ([props]) => ({
         columnNames: props.data.cols.reduce(
           (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
