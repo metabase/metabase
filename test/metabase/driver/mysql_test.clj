@@ -86,7 +86,7 @@
       (db->fields db))))
 
 (expect-with-engine :mysql
-  "America/Los_Angeles"
+  "UTC"
   (tu/db-timezone-id))
 
 (expect-with-engine :mysql
