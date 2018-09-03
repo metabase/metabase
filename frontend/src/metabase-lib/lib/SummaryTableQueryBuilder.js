@@ -9,7 +9,6 @@ import SummaryTable, {
 } from "metabase/visualizations/visualizations/SummaryTable";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {WrappedQuery, wrapQuery} from "metabase-lib/lib/queries/WrappedQuery";
 import {parameterToMBQLFilter} from "metabase/meta/Parameter";
 import {updateIn} from "icepick";
 import type {NativeQuery} from "metabase/meta/types/Query";
@@ -63,7 +62,7 @@ export const getAggregationQueries = (visualizationSettings) => (card:Card, fiel
   const allKeys = getAllAggregationKeysFlatten(queryPlan, p => canTotalize(nameToTypeMap[p]));
 
   return allKeys.map(([groupings, aggregations]) =>
-    wrapQuery(query, aggregations.toArray().map(createTotal), groupings.toArray().map(createLiteral)));
+    ({ aggregation : aggregations.toArray().map(createTotal), breakout: groupings.toArray().map(createLiteral)}));
 };
 
 const getNameToTypeMap = (fields) => {
