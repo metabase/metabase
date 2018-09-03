@@ -131,6 +131,11 @@ export default class ChartSettingSummaryTableColumns extends Component<any, Prop
     await this.props.onChange(convertStateToValue(this.state));
   };
 
+  componentWillReceiveProps = newProps => {
+    if(newProps !== this.props)
+      this.setState(convertValueToState(newProps.value, newProps.columnNames));
+  };
+
   onSortEnd = ({oldIndex, newIndex}: ArrayMoveArg) => moveItem(this.updateState)(this.state.items, {oldIndex, newIndex});
 
   onSortStart = () => this.setState({isChanging : true});
