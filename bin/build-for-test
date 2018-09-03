@@ -29,10 +29,11 @@ check-uberjar-hash() {
 }
 
 build-uberjar-for-test() {
-  ./bin/build version
   echo "$VERSION_PROPERTY_NAME=$(source-hash)" >> resources/version.properties
   ./bin/build uberjar
 }
+
+./bin/build version
 
 if [ ! -f "target/uberjar/metabase.jar" ] || ! check-uberjar-hash; then
   echo "Building uberjar for testing"
