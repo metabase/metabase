@@ -24,7 +24,6 @@ export class GroupingManager {
   columnIndexToFirstInGroupIndexes: {};
   rows: Row[];
   cols;
-  settings;
   probeRows: Row[];
   probeCols;
   valueColsLen = 1;
@@ -32,30 +31,26 @@ export class GroupingManager {
 
   constructor( defaultRowHeight: Number, settings, rawCols, rp : ResultProvider, qp : QueryPlan) {
     this.defaultRowHeight = defaultRowHeight;
-    this.settings = settings;
-    const summaryTableSettings = settings[COLUMNS_SETTINGS];
 
-    const summarySettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
-    const isPivoted = summarySettings.columnsSource.length > 0;
+    const summaryTableSettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
+
+    const isPivoted = summaryTableSettings.columnsSource.length > 0;
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];
-    const getAscDesc = colName => (summarySettings.columnNameToMetadata[colName] || {}).isAscSortOrder;
+    const getAscDesc = colName => (summaryTableSettings.columnNameToMetadata[colName] || {}).isAscSortOrder;
     const sortOrderMethod = columnsIndexesForGrouping.map(funGen);
     const mainSsortOrderMethod = columnsIndexesForGrouping.map(getValueByIndex);
     const ascDesc = (summaryTableSettings.groupsSources || []).map(getAscDesc)
       .map(isAsc => isAsc ? 'asc' : 'desc' );
 
 
-
     const normalizedRows = getAllQueryKeys(qp, canTotalizeBuilder(rawCols))
-      .map(keys =>[flatMap(keys , key => normalizeRows(settings, rp(key))), keys])
+      .map(keys =>[flatMap(keys , key => normalizeRows(summaryTableSettings, rp(key))), keys])
       .map(res => res[1].includes(mainKey) ? [sortMainGroup(res[0], mainSsortOrderMethod, ascDesc), res[1]] : res)
       .map(res => isPivoted ? [pivotRows(res[0], sortOrderMethod), res[1]] : res)
-      .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summarySettings.columnsSource[0]));
-
-    const tmp = getAvailableColumnIndexes(settings, rawCols);
+      .map(([rows, keys]) => tryAddColumnTotalIndex(rows, keys, summaryTableSettings.columnsSource[0]));
+    const tmp = getAvailableColumnIndexes(summaryTableSettings, rawCols);
     let cols = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
     this.probeCols = cols;
-    //
     const rows = [].concat(...normalizedRows);
     //
     this.rows = _.sortBy(rows, sortOrderMethod);
@@ -67,15 +62,15 @@ export class GroupingManager {
       const pivotColumnNumber = columnsIndexesForGrouping.length;
       const columns = Set.of(...Array.from([].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv)))));
       const hasUndef = columns.delete('undefined');
-      const pivotedColumns = orderBy([...columns], p => p, getAscDesc(summarySettings.columnsSource[0])? 'asc' : 'desc');
+      const pivotedColumns = orderBy([...columns], p => p, getAscDesc(summaryTableSettings.columnsSource[0])? 'asc' : 'desc');
       if(hasUndef)
         pivotedColumns.push(undefined);
 
-      const tmp = getAvailableColumnIndexes(settings, rawCols);
+      const tmp = getAvailableColumnIndexes(summaryTableSettings, rawCols);
       const colsTmp = tmp.map(p => rawCols[p[0]]).map((col, i) => ({...col, getValue: getValueByIndex(i)}));
 
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
-      const grColumnsLength = (summarySettings.groupsSources || []).length;
+      const grColumnsLength = (summaryTableSettings.groupsSources || []).length;
       const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({...col, getValue: getValueByIndex(i), parentName: ["",1] }));
       const values = colsTmp.slice(grColumnsLength + 1);
       const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined})).filter(col => k !== undefined || canTotalize(col.base_type)));
@@ -86,7 +81,6 @@ export class GroupingManager {
     }
     else
       this.columnIndexToFirstInGroupIndexes = res3.reduce((acc, [columnIndex,value]) => {acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value); return acc;}, {});
-
     this.probeRows = [this.rows[this.rows.length -1], ...cols.map(p => this.rows.find(row => p.getValue(row))).filter(p => p)]
     this.cols = cols;
 
@@ -235,7 +229,7 @@ const getFirstInGroupMap = (rows:Row) => (columnIndex :  Number) => {
   });
 };
 
-const getAvailableColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings[COLUMNS_SETTINGS])
+const getAvailableColumnIndexes = (settings,  cols) => getColumnsFromSettings(settings)
   .map(f => [_.findIndex(cols, c => c.name === f), f])
   .filter(i => i[0] < cols.length);
 
@@ -277,4 +271,4 @@ const pivotRows = (rows, cmp) =>{
 }
 
 //todo remove, use from SummaryTableQueryBuilder
-const canTotalize = (type : string) => type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
+export const canTotalize = (type : string) => type ==='type/Integer' || type === 'type/Float' || type === 'type/Decimal';
