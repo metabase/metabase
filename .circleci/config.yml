@@ -1,9 +1,22 @@
-defaults: &defaults
+# Image with only java & leiningen
+lein-only-image: &lein-only-image
+  working_directory: /home/circleci/metabase/metabase/
+  docker:
+    - image: circleci/clojure:lein-2.8.1
+
+# Image with node 8.11.4 & yarn & browsers
+fe-only-image: &fe-only-image
   working_directory: /home/circleci/metabase/metabase/
   # This is just the circleci/clojure:lein-2.8.1-node-browsers image with make & yarn installed
   docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+    - image: circleci/node:8.11.4-browsers
 
+# Image with everything: lein, node, yarn, build-essential (make), browsers
+full-ci-image: &full-ci-image
+  working_directory: /home/circleci/metabase/metabase/
+  # This is just the circleci/clojure:lein-2.8.1-node-browsers image with make & yarn installed
+  docker:
+    - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
 
 restore-be-deps-cache: &restore-be-deps-cache
   keys:
@@ -23,8 +36,13 @@ restore-uberjar-cache: &restore-uberjar-cache
 
 version: 2.1
 jobs:
+
+########################################################################################################################
+#                                                       CHECKOUT                                                       #
+########################################################################################################################
+
   checkout:
-    <<: *defaults
+    <<: *fe-only-image
     steps:
       - restore_cache:
           keys:
@@ -41,8 +59,12 @@ jobs:
           paths:
             - metabase/metabase
 
+########################################################################################################################
+#                                                       BACKEND                                                        #
+########################################################################################################################
+
   be-deps:
-    <<: *defaults
+    <<: *lein-only-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -55,7 +77,7 @@ jobs:
             - /home/circleci/.m2
 
   be-tests:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -67,7 +89,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-eastwood:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -79,7 +101,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-docstring-checker:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -91,7 +113,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-bikeshed:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -103,7 +125,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-reflection-warnings:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -243,7 +265,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sqlserver:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -257,7 +279,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-bigquery:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -273,7 +295,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sqlite:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -288,7 +310,7 @@ jobs:
             lein with-profile +ci test
 
   be-tests-druid:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -304,7 +326,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-redshift:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -343,7 +365,7 @@ jobs:
 
 
   be-tests-oracle:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -366,8 +388,13 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+
+########################################################################################################################
+#                                                       FRONTEND                                                       #
+########################################################################################################################
+
   fe-deps:
-    <<: *defaults
+    <<: *fe-only-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -385,7 +412,7 @@ jobs:
             - /home/circleci/metabase/metabase/node_modules
 
   fe-tests-karma:
-    <<: *defaults
+    <<: *fe-only-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -397,7 +424,7 @@ jobs:
           no_output_timeout: 5m
 
   fe-tests-unit:
-    <<: *defaults
+    <<: *fe-only-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -409,7 +436,7 @@ jobs:
           no_output_timeout: 5m
 
   build-uberjar:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -427,7 +454,7 @@ jobs:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
   fe-tests-integrated:
-    <<: *defaults
+    <<: *full-ci-image
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -442,6 +469,11 @@ jobs:
           name: Run frontend integrated tests
           command: yarn run test-integrated-no-build
           no_output_timeout: 5m
+
+
+########################################################################################################################
+#                                                      WORKFLOWS                                                       #
+########################################################################################################################
 
 workflows:
   version: 2
