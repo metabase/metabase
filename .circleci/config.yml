@@ -13,12 +13,6 @@ restore-fe-deps-cache: &restore-fe-deps-cache
     - fe-deps-{{ checksum "yarn.lock" }}
     - fe-deps-
 
-restore-uberjar-cache: &restore-uberjar-cache
-  keys:
-    - uberjar-{{ .Branch }}-{{ .Revision }}
-    - uberjar-{{ .Branch }}
-    - uberjar-
-
 version: 2.1
 jobs:
 
@@ -39,6 +33,15 @@ jobs:
           key: source-{{ .Branch }}-{{ .Revision }}
           paths:
             - .git
+      # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
+      # `./backend-checksums.txt`. Then we'll use the checksum of that files for uberjar caching; thus we can reuse
+      # the same uberjar for integration tests across any build where the backend files are the same
+      - run:
+          name: Generate checksums of all backend source files to use as Uberjar cache key
+          command: >
+            for file in `find ./src -type f -name '*.clj' | sort`;
+              do echo `md5sum $file` >> backend-checksums.txt;
+            done
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -428,13 +431,15 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - restore_cache:
-          <<: *restore-uberjar-cache
+          keys:
+            - uberjar-{{ checksum "./backend-checksums.txt" }}
       - run:
-          name: Build uberjar
-          command: ./bin/build-for-test
+          name: Build uberjar if needed
+          command: >
+            if [ ! -f './target/uberjar/metabase.jar' ]; then ./bin/build version uberjar; fi
           no_output_timeout: 5m
       - save_cache:
-          key: uberjar-{{ .Branch }}-{{ .Revision }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
@@ -446,7 +451,8 @@ jobs:
       - restore_cache:
           <<: *restore-fe-deps-cache
       - restore_cache:
-          <<: *restore-uberjar-cache
+          keys:
+            - uberjar-{{ checksum "./backend-checksums.txt" }}
       - run:
           name: Generate version file
           command: ./bin/build version
