@@ -72,7 +72,8 @@
     (transduce identity
                (redux/post-complete
                 (apply f/col-wise (for [metadata result-metadata]
-                                    (if (some-> metadata :fingerprint nil?)
+                                    (if (and metadata
+                                             (nil? (:fingerprint metadata)))
                                       (f/fingerprinter metadata)
                                       (f/constant-fingerprinter (:fingerprint metadata)))))
                 (fn [fingerprints]
