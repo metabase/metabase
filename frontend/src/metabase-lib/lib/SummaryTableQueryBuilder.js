@@ -27,9 +27,7 @@ import {
 
 
 
-export const getAggregationQueries = (visualizationSettings) => (card:Card, fields) => (
-  query: DatasetQuery, parameters: Array<Parameter>
-                        ) : DatasetQuery[] => {
+export const getAggregationQueries = (visualizationSettings) => (card:Card, fields) : DatasetQuery[] => {
 
   const settings : SummaryTableSettings = visualizationSettings[COLUMNS_SETTINGS];
 
@@ -52,11 +50,6 @@ const getNameToTypeMap = (fields) => {
   return Object.keys(fields || {}).reduce((acc, value) => ({...acc, [fields[value].name]: fields[value].base_type}), {});
 };
 
-const buildQuery = (baseQuery : StructuredQuery, aggregations) : StructuredQuery =>{
-  let res = baseQuery;
-  aggregations.forEach(aggr => res = res.addAggregation(aggr));
-  return res;
-};
 
 const isOk = (settings : SummaryTableSettings) : Boolean => {
   return settings

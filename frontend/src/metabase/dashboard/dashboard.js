@@ -485,7 +485,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     }
 
-    const totalsQueries = result && result.data && result.data.cols && getAggregationQueries(card.visualization_settings)(card, result.data.cols)(datasetQuery, datasetQuery.parameters) || [];
+    const totalsQueries = result && result.data && result.data.cols && getAggregationQueries(card.visualization_settings)(card, result.data.cols) || [];
     let totalsTasks;
 
     if (dashboardType === "public") {

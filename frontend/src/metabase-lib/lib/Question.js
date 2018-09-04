@@ -500,7 +500,7 @@ export default class Question {
     return mainQueryPromise.then(async res => {
       const {data : {cols}} = res;
       const mainQuery = this.atomicQueries()[0].datasetQuery();
-      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields)(mainQuery);
+      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields);
       if(queries.length === 0 )
         return res;
 
