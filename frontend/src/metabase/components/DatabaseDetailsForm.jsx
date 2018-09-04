@@ -246,8 +246,8 @@ export default class DatabaseDetailsForm extends Component {
               <h3
               >{t`Use the Java Virtual Machine (JVM) timezone`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`We suggest you leave this off unless you're doing manual transformations of timestamps in
-                                many or most of your queries.`}
+                {t`We suggest you leave this off unless you're doing manual timezone casting in
+                                many or most of your queries with this data.`}
               </div>
             </div>
           </div>
