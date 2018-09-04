@@ -1,22 +1,7 @@
-# Image with only java & leiningen
-lein-only-image: &lein-only-image
+defaults: &defaults
   working_directory: /home/circleci/metabase/metabase/
   docker:
-    - image: circleci/clojure:lein-2.8.1
-
-# Image with node 8.11.4 & yarn & browsers
-fe-only-image: &fe-only-image
-  working_directory: /home/circleci/metabase/metabase/
-  # This is just the circleci/clojure:lein-2.8.1-node-browsers image with make & yarn installed
-  docker:
-    - image: circleci/node:8.11.4-browsers
-
-# Image with everything: lein, node, yarn, build-essential (make), browsers
-full-ci-image: &full-ci-image
-  working_directory: /home/circleci/metabase/metabase/
-  # This is just the circleci/clojure:lein-2.8.1-node-browsers image with make & yarn installed
-  docker:
-    - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+    - image: circleci/clojure:lein-2.8.1-node-browsers
 
 restore-be-deps-cache: &restore-be-deps-cache
   keys:
@@ -28,12 +13,6 @@ restore-fe-deps-cache: &restore-fe-deps-cache
     - fe-deps-{{ checksum "yarn.lock" }}
     - fe-deps-
 
-restore-uberjar-cache: &restore-uberjar-cache
-  keys:
-    - uberjar-{{ .Branch }}-{{ .Revision }}
-    - uberjar-{{ .Branch }}
-    - uberjar-
-
 version: 2.1
 jobs:
 
@@ -42,7 +21,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    <<: *fe-only-image
+    <<: *defaults
     steps:
       - restore_cache:
           keys:
@@ -54,6 +33,15 @@ jobs:
           key: source-{{ .Branch }}-{{ .Revision }}
           paths:
             - .git
+      # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
+      # `./backend-checksums.txt`. Then we'll use the checksum of that files for uberjar caching; thus we can reuse
+      # the same uberjar for integration tests across any build where the backend files are the same
+      - run:
+          name: Generate checksums of all backend source files to use as Uberjar cache key
+          command: >
+            for file in `find ./src -type f -name '*.clj' | sort`;
+              do echo `md5sum $file` >> backend-checksums.txt;
+            done
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -64,7 +52,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    <<: *lein-only-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -77,7 +65,7 @@ jobs:
             - /home/circleci/.m2
 
   be-tests:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -89,7 +77,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-eastwood:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -101,7 +89,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-docstring-checker:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -113,7 +101,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-bikeshed:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -125,7 +113,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-reflection-warnings:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -139,7 +127,7 @@ jobs:
   be-tests-mysql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mysql:5.7.23
     steps:
       - attach_workspace:
@@ -165,7 +153,7 @@ jobs:
   be-tests-postgres:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/postgres:9.6-alpine
         environment:
           POSTGRES_USER: circle_test
@@ -193,7 +181,7 @@ jobs:
   be-tests-sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/spark:2.1.1
     steps:
       - attach_workspace:
@@ -224,7 +212,7 @@ jobs:
   be-tests-mongo:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mongo:3.2
     steps:
       - attach_workspace:
@@ -241,7 +229,7 @@ jobs:
   be-tests-vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: sumitchawla/vertica
     steps:
       - attach_workspace:
@@ -265,7 +253,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sqlserver:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -279,7 +267,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-bigquery:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -295,7 +283,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sqlite:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -310,7 +298,7 @@ jobs:
             lein with-profile +ci test
 
   be-tests-druid:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -326,7 +314,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-redshift:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -345,7 +333,7 @@ jobs:
   be-tests-presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
+      - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
     steps:
       - attach_workspace:
@@ -365,7 +353,7 @@ jobs:
 
 
   be-tests-oracle:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -394,7 +382,7 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    <<: *fe-only-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -412,7 +400,7 @@ jobs:
             - /home/circleci/metabase/metabase/node_modules
 
   fe-tests-karma:
-    <<: *fe-only-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -424,7 +412,7 @@ jobs:
           no_output_timeout: 5m
 
   fe-tests-unit:
-    <<: *fe-only-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -436,32 +424,35 @@ jobs:
           no_output_timeout: 5m
 
   build-uberjar:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - restore_cache:
-          <<: *restore-uberjar-cache
+          keys:
+            - uberjar-{{ checksum "./backend-checksums.txt" }}
       - run:
-          name: Build uberjar
-          command: ./bin/build-for-test
+          name: Build uberjar if needed
+          command: >
+            if [ ! -f './target/uberjar/metabase.jar' ]; then ./bin/build version uberjar; fi
           no_output_timeout: 5m
       - save_cache:
-          key: uberjar-{{ .Branch }}-{{ .Revision }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
   fe-tests-integrated:
-    <<: *full-ci-image
+    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-fe-deps-cache
       - restore_cache:
-          <<: *restore-uberjar-cache
+          keys:
+            - uberjar-{{ checksum "./backend-checksums.txt" }}
       - run:
           name: Generate version file
           command: ./bin/build version
