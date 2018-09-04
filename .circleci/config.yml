@@ -7,7 +7,9 @@ defaults: &defaults
 version: 2.1
 jobs:
   checkout:
-    <<: *defaults
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
     steps:
       - restore_cache:
           keys:
@@ -25,7 +27,10 @@ jobs:
             - metabase/metabase
 
   be-deps:
-    <<: *defaults
+    # Using this image instead of our custom one since it's a lot faster to spin up
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -322,6 +327,10 @@ jobs:
           no_output_timeout: 5m
 
   fe-deps:
+    # Using this image instead of our custom one since it's a lot faster to spin up
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/node:8.11.4-browsers
     <<: *defaults
     steps:
       - attach_workspace:
