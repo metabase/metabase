@@ -9,7 +9,16 @@ jobs:
   checkout:
     <<: *defaults
     steps:
+      - restore_cache:
+          keys:
+            - source-{{ .Branch }}-{{ .Revision }}
+            - source-{{ .Branch }}
+            - source-
       - checkout
+      - save_cache:
+          key: source-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - .git
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -22,9 +31,13 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           keys:
-            - mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
-            - mb-deps
+            - be-deps-{{ checksum "project.clj" }}
+            - be-deps-
       - run: lein deps
+      - save_cache:
+          key: be-deps-{{ checksum "project.clj" }}
+          paths:
+            - /home/circleci/.m2
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -313,12 +326,18 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           keys:
-            - mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
-            - mb-deps
+            - fe-deps-{{ checksum "yarn.lock" }}
+            - fe-deps-
       - run:
           name: Run yarn
           command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
           no_output_timeout: 5m
+      - save_cache:
+          key: fe-deps-{{ checksum "yarn.lock" }}
+          paths:
+            - /home/circleci/.yarn
+            - /home/circleci/.yarn-cache
+            - /home/circleci/metabase/metabase/node_modules
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -351,10 +370,19 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          keys:
+            - uberjar-{{ .Branch }}-{{ .Revision }}
+            - uberjar-{{ .Branch }}
+            - uberjar-
       - run:
           name: Build uberjar
           command: ./bin/build-for-test
           no_output_timeout: 5m
+      - save_cache:
+          key: uberjar-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -370,21 +398,6 @@ jobs:
           name: Run frontend integrated tests
           command: yarn run test-integrated-no-build
           no_output_timeout: 5m
-
-  cache-dependencies:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - save_cache:
-          key: mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
-          paths:
-            - /home/circleci/.m2
-            - /home/circleci/.yarn
-            - /home/circleci/.yarn-cache
-            - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/metabase/metabase/target/uberjar
-
 
 workflows:
   version: 2
@@ -461,8 +474,3 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
-      - cache-dependencies:
-          requires:
-            - be-deps
-            - fe-deps
-            - build-uberjar
