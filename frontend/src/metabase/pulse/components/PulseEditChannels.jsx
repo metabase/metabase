@@ -9,7 +9,7 @@ import RecipientPicker from "./RecipientPicker.jsx";
 
 import SchedulePicker from "metabase/components/SchedulePicker.jsx";
 import ActionButton from "metabase/components/ActionButton.jsx";
-import Select from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
@@ -153,27 +153,34 @@ export default class PulseEditChannels extends Component {
   renderFields(channel, index, channelSpec) {
     return (
       <div>
-        {channelSpec.fields.map(field => (
-          <div key={field.name} className={field.name}>
-            <span className="h4 text-bold mr1">{field.displayName}</span>
-            {field.type === "select" ? (
-              <Select
-                className="h4 text-bold bg-white"
-                value={channel.details && channel.details[field.name]}
-                options={field.options}
-                optionNameFn={o => o}
-                optionValueFn={o => o}
-                // Address #5799 where `details` object is missing for some reason
-                onChange={o =>
-                  this.onChannelPropertyChange(index, "details", {
-                    ...channel.details,
-                    [field.name]: o,
-                  })
-                }
-              />
-            ) : null}
-          </div>
-        ))}
+        {channelSpec.fields.map(field => {
+          return (
+            <div key={field.name} className={field.name}>
+              <span className="h4 text-bold mr1">{field.displayName}</span>
+              {field.type === "select" ? (
+                <Select
+                  className="h4 text-bold bg-white inline-block"
+                  value={channel.details && channel.details[field.name]}
+                  placeholder={t`Pick a user or channel...`}
+                  searchProp="name"
+                  // Address #5799 where `details` object is missing for some reason
+                  onChange={o =>
+                    this.onChannelPropertyChange(index, "details", {
+                      ...channel.details,
+                      [field.name]: o.target.value,
+                    })
+                  }
+                >
+                  {field.options.map(option => (
+                    <Option name={option} value={option}>
+                      {option}
+                    </Option>
+                  ))}
+                </Select>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     );
   }
