@@ -24,9 +24,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {RawSeries} from "metabase/meta/types/Visualization";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 import {
-  buildResultProvider,
+  buildResultProvider, enrichSettings,
   getQueryPlan,
-  settingsAreValid, shouldTotalizeDefaultBuilder
+  settingsAreValid,
 } from "metabase/visualizations/lib/settings/summary_table";
 import {emptyColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
 
@@ -71,26 +71,10 @@ export default class SummaryTable extends Component {
       widget: ChartSettingSummaryTableColumns,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{data : {columns, cols}}]) : SummaryTableSettings =>
-        {
-          const shouldTotal = shouldTotalizeDefaultBuilder(cols);
-
-          const groupsSources = columns.filter(p => !shouldTotal(p));
-          const valuesSources = columns.filter(shouldTotal);
-
-          return {
-            groupsSources,
-            columnsSource: [],
-            valuesSources,
-            columnNameToMetadata: groupsSources.reduce((acc, column) => ({...acc, [column]: emptyColumnMetadata}), {} )
-          };
-      },
-
-      getProps: ([props]) => ({
-        columnNames: props.data.cols.reduce(
-          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-          {},
-        ),
+      getDefault: ([{data : {columns, cols}}]) : SummaryTableSettings => enrichSettings(null, cols, columns),
+      getProps: ([{data: { columns, cols}}]) => ({
+        cols,
+        columns
       }),},
     "summaryTable.column_widths": {},
   };
@@ -126,10 +110,12 @@ export default class SummaryTable extends Component {
   }) {
  {
 
+   const summarySettings = enrichSettings(settings[COLUMNS_SETTINGS], data.cols, data.columns);
+
    const aaaa = buildResultProvider(data, data.totalsData);
-   const bbbb =getQueryPlan(settings[COLUMNS_SETTINGS]);
+   const bbbb =getQueryPlan(summarySettings);
    //todo: fix 30
-   const groupingManager = new GroupingManager(30, settings, data.cols, aaaa, bbbb);
+   const groupingManager = new GroupingManager(30, summarySettings, data.cols, aaaa, bbbb);
 
 
    this.setState({

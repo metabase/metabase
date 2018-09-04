@@ -13,8 +13,9 @@ import Toggle from "metabase/components/Toggle";
 import {SortableContainer, SortableElement, arrayMove} from "react-sortable-hoc";
 
 import type {ColumnName} from "metabase/meta/types/Dataset";
-import {getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
+import {enrichSettings, getColumnsFromSettings} from "metabase/visualizations/lib/settings/summary_table";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import {getFriendlyName} from "metabase/visualizations/lib/utils";
 
 
 type ArrayMoveArg ={oldIndex : number, newIndex : number};
@@ -46,7 +47,8 @@ type DraggableItem = {
 
 type Props = {
   value: SummaryTableSettings,
-  columnNames: { [key: string]: string },
+  cols: Column[],
+  columns: ColumnName[],
 
   onChange: ValueSerializedSupertype => void
 }
@@ -67,24 +69,12 @@ type ValueSerializedSupertype = {
 }
 
 
-const getUnusedColumns = (settings: SummaryTableSettings, columnNames): string[] => {
-  const allColumns = getColumnsFromSettings(settings);
-  return Object.getOwnPropertyNames(columnNames)
-    .filter(p => !allColumns.includes(p));
-};
+const convertValueToState = (stateSerialized: SummaryTableSettings, cols: Column[], columns) : State => {
 
+  const fatState = enrichSettings(stateSerialized, cols, columns);
+  const {groupsSources, columnsSource, valuesSources, columnNameToMetadata, unusedColumns} = fatState;
 
-const emptyStateSerialized: SummaryTableSettings = ({
-  groupsSources: [],
-  columnsSource: [],
-  valuesSources: [],
-  columnNameToMetadata: {}
-});
-
-const convertValueToState = (stateSerialized: SummaryTableSettings, columnNames) : State => {
-  const fatStateSerialized = {...emptyStateSerialized, ...stateSerialized};
-  const {groupsSources, columnsSource, valuesSources, columnNameToMetadata} = fatStateSerialized;
-  const unusedColumns = getUnusedColumns(fatStateSerialized, columnNames);
+  const columnNames = cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col) }), {});
 
   const items = [ ...groupsSources.map(n => createDraggableColumn(n, columnNames[n])),
                           columnSourceItem, ...columnsSource.map(n => createDraggableColumn(n, columnNames[n])),
@@ -115,7 +105,8 @@ const convertItemsToState = (items : DraggableItem[]) : ValueSerializedSupertype
   const gs = items.slice(0, columnSourceItemIndex).map(p => p.columnName);
   const cs = items.slice(columnSourceItemIndex+1, valueSourceItemIndex).map(p => p.columnName);
   const vs = items.slice(valueSourceItemIndex+1, unusedSourceItemIndex).map(p => p.columnName);
-  return {groupsSources : gs, columnsSource : cs, valuesSources: vs};
+  const us = items.slice(unusedSourceItemIndex+1).map(p => p.columnName);
+  return {groupsSources : gs, columnsSource : cs, valuesSources: vs, unusedColumns: us};
 };
 
 export default class ChartSettingSummaryTableColumns extends Component<any, Props, State> {
@@ -123,7 +114,9 @@ export default class ChartSettingSummaryTableColumns extends Component<any, Prop
 
   constructor(props : Props) {
     super(props);
-    this.state = convertValueToState(this.props.value, this.props.columnNames);
+    const {value, cols, columns} = this.props;
+    const convertedValue = enrichSettings(value, cols, columns);
+    this.state = convertValueToState(convertedValue, cols, columns);
   }
 
   updateState = async (newState : StateSuperType) => {
@@ -131,9 +124,9 @@ export default class ChartSettingSummaryTableColumns extends Component<any, Prop
     await this.props.onChange(convertStateToValue(this.state));
   };
 
-  componentWillReceiveProps = newProps => {
+  componentWillReceiveProps = (newProps : Props) => {
     if(newProps !== this.props)
-      this.setState(convertValueToState(newProps.value, newProps.columnNames));
+      this.setState(convertValueToState(newProps.value, newProps.cols, newProps.columns));
   };
 
   onSortEnd = ({oldIndex, newIndex}: ArrayMoveArg) => moveItem(this.updateState)(this.state.items, {oldIndex, newIndex});

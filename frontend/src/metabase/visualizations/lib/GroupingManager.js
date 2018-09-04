@@ -29,10 +29,9 @@ export class GroupingManager {
   valueColsLen = 1;
 
 
-  constructor( defaultRowHeight: Number, settings, rawCols, rp : ResultProvider, qp : QueryPlan) {
+  constructor( defaultRowHeight: Number, summaryTableSettings: SummaryTableSettings, rawCols, rp : ResultProvider, qp : QueryPlan) {
     this.defaultRowHeight = defaultRowHeight;
 
-    const summaryTableSettings: SummaryTableSettings = settings[COLUMNS_SETTINGS];
 
     const isPivoted = summaryTableSettings.columnsSource.length > 0;
     const columnsIndexesForGrouping =[...new Array((summaryTableSettings.groupsSources || []).length + (isPivoted ? 1 : 0)).keys()];

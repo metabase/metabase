@@ -13,6 +13,7 @@ import invert from 'lodash.invert';
 import flatMap from 'lodash.flatmap';
 import _ from 'lodash';
 import {Set} from 'immutable';
+import {emptyColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
 
 
 const AGGREGATION = "aggregation";
@@ -175,7 +176,7 @@ export const canTotalizeByType = (type : string) => type ==='type/BigInteger' ||
 
 
 
-export const shouldTotalizeDefaultBuilder = (columns : Column[]) : (ColumnName => boolean) => {
+const shouldTotalizeDefaultBuilder = (columns : Column[]) : (ColumnName => boolean) => {
 
   const aggrColumns = columns[0].source === 'fields' || !columns[0].source || columns.filter(p => p.source !== BREAKOUT).length === 0
     ? columns.filter(p => !p.special_type).filter(p => canTotalizeByType(p.base_type))
@@ -186,3 +187,37 @@ export const shouldTotalizeDefaultBuilder = (columns : Column[]) : (ColumnName =
   return name => aggregations.has(name);
 };
 
+const emptyStateSerialized: SummaryTableSettings = ({
+  groupsSources: [],
+  columnsSource: [],
+  valuesSources: [],
+  unusedColumns: [],
+  columnNameToMetadata: {}
+});
+
+export const enrichSettings = (stateSerialized, cols, columns) : SummaryTableSettings =>{
+  const stateNormalized = {...emptyStateSerialized, ...stateSerialized};
+  const {columnsSource, groupsSources, valuesSources, unusedColumns, columnNameToMetadata} = stateNormalized;
+
+  const usedColumns = Set.of(...columnsSource
+    ,...groupsSources
+    ,...valuesSources
+    ,...unusedColumns);
+  const newColumns = columns.filter(p => !usedColumns.has(p));
+  const unusedColumnsNew = unusedColumns.filter(p => columns.includes(p));
+
+  if(newColumns.length === 0)
+    return {...stateNormalized, unusedColumns: unusedColumnsNew};
+
+  const shouldTotal = shouldTotalizeDefaultBuilder(cols);
+
+  const groupsSourcesNew = newColumns.filter(p => !shouldTotal(p));
+  const valuesSourcesNew = newColumns.filter(shouldTotal);
+
+  return {...stateNormalized,
+    groupsSources: [...groupsSources,...groupsSourcesNew],
+    valuesSources: [...valuesSources,...valuesSourcesNew],
+    unusedColumns: unusedColumnsNew,
+    columnNameToMetadata: groupsSourcesNew.reduce((acc, column) => ({...acc, [column]: columnNameToMetadata[column] || emptyColumnMetadata}), columnNameToMetadata )
+  };
+};

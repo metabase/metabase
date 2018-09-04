@@ -12,6 +12,7 @@ export type SummaryTableSettings = {
   groupsSources: string[],
   columnsSource: string[],
   valuesSources: string[],
+  unusedColumns: string[],
   columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
 };
 
