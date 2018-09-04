@@ -22,8 +22,8 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           keys:
-            - mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
-            - mb-deps
+            - mb-cache-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
+            - mb-cache
       - run: lein deps
       - persist_to_workspace:
           root: /home/circleci/
@@ -313,8 +313,8 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           keys:
-            - mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
-            - mb-deps
+            - mb-cache-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
+            - mb-cache
       - run:
           name: Run yarn
           command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
@@ -377,13 +377,13 @@ jobs:
       - attach_workspace:
           at: /home/circleci/
       - save_cache:
-          key: mb-deps-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
+          key: mb-cache-{{ checksum "yarn.lock" }}-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/metabase/metabase/target/uberjar
+            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
 
 workflows:
