@@ -4,6 +4,23 @@ defaults: &defaults
   docker:
       - image: metabase/ci:java-8-lein-2.8.1-yarn-0.16.0
 
+
+restore-be-deps-cache: &restore-be-deps-cache
+  keys:
+    - be-deps-{{ checksum "project.clj" }}
+    - be-deps-
+
+restore-fe-deps-cache: &restore-fe-deps-cache
+  keys:
+    - fe-deps-{{ checksum "yarn.lock" }}
+    - fe-deps-
+
+restore-uberjar-cache: &restore-uberjar-cache
+  keys:
+    - uberjar-{{ .Branch }}-{{ .Revision }}
+    - uberjar-{{ .Branch }}
+    - uberjar-
+
 version: 2.1
 jobs:
   checkout:
@@ -30,24 +47,20 @@ jobs:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
-          keys:
-            - be-deps-{{ checksum "project.clj" }}
-            - be-deps-
+          <<: *restore-be-deps-cache
       - run: lein deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
-      - persist_to_workspace:
-          root: /home/circleci/
-          paths:
-            - .m2
 
   be-tests:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests
           command: lein with-profile +ci test
@@ -58,6 +71,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run Eastwood linter
           command: lein with-profile +ci eastwood
@@ -68,6 +83,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run dockstring-checker
           command: lein with-profile +ci docstring-checker
@@ -78,6 +95,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run dockstring-checker
           command: lein with-profile +ci bikeshed
@@ -88,6 +107,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run dockstring-checker
           command: ./bin/reflection-linter
@@ -101,6 +122,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (MySQL)
           environment:
@@ -128,6 +151,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (Postgres)
           environment:
@@ -151,6 +176,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -180,6 +207,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (MongoDB 3.2)
           command: >
@@ -195,6 +224,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -216,6 +247,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQL Server)
           command: >
@@ -228,6 +261,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (BigQuery)
           environment:
@@ -242,6 +277,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQLite)
           environment:
@@ -255,6 +292,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (Druid)
           environment:
@@ -269,6 +308,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (Redshift)
           environment:
@@ -287,6 +328,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (Presto)
           environment:
@@ -304,6 +347,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -327,9 +372,7 @@ jobs:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
-          keys:
-            - fe-deps-{{ checksum "yarn.lock" }}
-            - fe-deps-
+          <<: *restore-fe-deps-cache
       - run:
           name: Run yarn
           command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
@@ -340,18 +383,14 @@ jobs:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
-      - persist_to_workspace:
-          root: /home/circleci/
-          paths:
-            - .yarn
-            - .yarn-cache
-            - metabase/metabase/node_modules
 
   fe-tests-karma:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
       - run:
           name: Run frontend tests (karma)
           command: yarn run test-karma
@@ -362,6 +401,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
       - run:
           name: Run frontend unit tests
           command: yarn run test-unit
@@ -373,10 +414,9 @@ jobs:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
-          keys:
-            - uberjar-{{ .Branch }}-{{ .Revision }}
-            - uberjar-{{ .Branch }}
-            - uberjar-
+          <<: *restore-be-deps-cache
+      - restore_cache:
+          <<: *restore-uberjar-cache
       - run:
           name: Build uberjar
           command: ./bin/build-for-test
@@ -385,17 +425,19 @@ jobs:
           key: uberjar-{{ .Branch }}-{{ .Revision }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-      - persist_to_workspace:
-          root: /home/circleci/
-          paths:
-            - metabase/metabase/resources/version.properties
-            - metabase/metabase/target/uberjar/metabase.jar
 
   fe-tests-integrated:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - restore_cache:
+          <<: *restore-uberjar-cache
+      - run:
+          name: Generate version file
+          command: ./bin/build version
       - run:
           name: Run frontend integrated tests
           command: yarn run test-integrated-no-build
