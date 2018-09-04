@@ -61,27 +61,25 @@
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
   (let [result-metadata (for [col (:cols results)]
-                          (-> col
-                              stored-column-metadata->result-column-metadata
-                              (maybe-infer-special-type col)))]
+                          ;; Rarely certain queries will return columns with no names. For example
+                          ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name.
+                          ;; Since we can't use those as field literals in subsequent queries,
+                          ;; filter them out.
+                          (when (seq (:name col))
+                            (-> col
+                                stored-column-metadata->result-column-metadata
+                                (maybe-infer-special-type col))))]
     (transduce identity
                (redux/post-complete
                 (apply f/col-wise (for [metadata result-metadata]
-                                    (if (and (seq (:name metadata))
-                                             (nil? (:fingerprint metadata)))
+                                    (if (some-> metadata :fingerprint nil?)
                                       (f/fingerprinter metadata)
                                       (f/constant-fingerprinter (:fingerprint metadata)))))
                 (fn [fingerprints]
-                  ;; Rarely certain queries will return columns with no names. For example
-                  ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
-                  ;; can't use those as field literals in subsequent queries just filter them out
                   (->> (map (fn [fingerprint metadata]
-                              (cond
-                                (instance? Throwable fingerprint)
+                              (if (instance? Throwable fingerprint)
                                 metadata
-
-                                (not-empty (:name metadata))
-                                (assoc metadata :fingerprint fingerprint)))
+                                (some-> metadata (assoc :fingerprint fingerprint))))
                             fingerprints
                             result-metadata)
                        (remove nil?))))
