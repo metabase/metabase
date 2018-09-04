@@ -159,7 +159,9 @@ jobs:
           command: wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
       - run:
           name: Wait for SparkSQL to be ready
-          command: while ! nc -z localhost 10000; do sleep 0.1; done
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            while ! nc -z localhost 10000; do sleep 0.1; done
           no_output_timeout: 5m
       - run:
           name: Run backend unit tests (SparkSQL)
