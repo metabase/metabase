@@ -2,17 +2,10 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
-
-import * as Query from "metabase/lib/query/query";
-import * as Card from "metabase/meta/Card";
-import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
-
-import SmartScalar from "metabase/visualizations/components/SmartScalar";
 
 import "./LineAreaBarChart.css";
 
@@ -236,7 +229,6 @@ export default class LineAreaBarChart extends Component {
 
   render() {
     const {
-      card,
       series,
       hovered,
       showTitle,
@@ -255,18 +247,6 @@ export default class LineAreaBarChart extends Component {
 
     const hasTitle = showTitle && settings["card.title"];
 
-    const insights =
-      this.props.rawSeries &&
-      this.props.rawSeries[0].data &&
-      this.props.rawSeries[0].data.insights;
-
-    let granularity;
-    if (Card.isStructured(card)) {
-      const query = Card.getQuery(card);
-      const breakouts = query && Query.getBreakouts(query);
-      granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
-    }
-
     return (
       <div
         className={cx(
@@ -283,10 +263,6 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
-        {insights &&
-          settings["graph.show_insights"] && (
-            <Insights insights={insights} granularity={granularity} />
-          )}
         {multiseriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
           <LegendHeader
             className="flex-no-shrink"
@@ -439,21 +415,3 @@ function transformSingleSeries(s, series, seriesIndex) {
     };
   });
 }
-
-const Insights = ({ insights, granularity }) => {
-  return (
-    <Flex align="center" ml="auto" mr={1} mb={2}>
-      <Box mr={2}>
-        <SmartScalar
-          value={insights["previous-value"]}
-          title={t`Previous ${granularity}`}
-        />
-      </Box>
-      <SmartScalar
-        value={insights["last-value"]}
-        change={insights["last-change"] * 100}
-        title={t`Most recent ${granularity}`}
-      />
-    </Flex>
-  );
-};

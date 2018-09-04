@@ -1,7 +1,6 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
-import SmartScalar from "metabase/visualizations/components/SmartScalar";
-import { t } from "c-3po";
+import { Flex } from "grid-styled";
+import { jt } from "c-3po";
 import { formatNumber } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
@@ -25,7 +24,7 @@ export default class Smart extends React.Component {
       this.props.rawSeries &&
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
-    const { isDashboard, card, gridSize } = this.props;
+    const { isDashboard, card } = this.props;
 
     let granularity;
     if (Card.isStructured(card)) {
@@ -34,52 +33,46 @@ export default class Smart extends React.Component {
       granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
     }
 
-    const shouldBeVertical = gridSize && gridSize.height > gridSize.width;
+    const change = formatNumber(insights["last-change"] * 100);
+    const isNegative = (change && Math.sign(change) < 0) || false;
+
+    const changeDisplay = (
+      <span style={{ color: isNegative ? colors["error"] : colors["success"] }}>
+        {change}%
+      </span>
+    );
+
+    const granularityDisplay = (
+      <span
+        style={{ fontSize: "0.98em", letterSpacing: 1.02 }}
+      >{jt`last ${granularity}`}</span>
+    );
+
     return (
       <Flex
         align="center"
         justify="center"
+        flexDirection="column"
         className="full-height full"
         flex={1}
         style={{ fontSize: isDashboard ? "1rem" : "2rem", flexWrap: "wrap" }}
-        m={2}
-        flexWrap="wrap"
       >
-        <Flex
-          flexDirection={shouldBeVertical ? "column" : "row"}
-          style={{ flexWrap: "wrap" }}
-        >
-          <Flex style={{ alignSelf: "flex-end" }}>
-            <Box>
-              <h4
-                style={{
-                  fontWeight: 900,
-                  textTransform: "uppercase",
-                  color: colors["text-medium"],
-                  fontSize: 11,
-                  letterSpacing: 0.24,
-                }}
-              >
-                {t`Most recent ${granularity}`}
-              </h4>
-              <h1 style={{ fontSize: "2em", fontWeight: 900, lineHeight: 1 }}>
-                {formatNumber(insights["last-value"])}
-              </h1>
-            </Box>
-            <Box mt="auto">
-              <SmartScalar change={insights["last-change"] * 100} />
-            </Box>
-          </Flex>
-          <Box
-            ml={shouldBeVertical ? 0 : 3}
-            mt={shouldBeVertical ? 3 : 0}
-            style={{ alignSelf: shouldBeVertical ? "flex-start" : "flex-end" }}
+        <h1 style={{ fontSize: "2em", fontWeight: 900, lineHeight: 1 }}>
+          {formatNumber(insights["last-value"])}
+        </h1>
+        <Flex align="center" mt={1} flexWrap="wrap">
+          <h4
+            style={{
+              fontWeight: 900,
+              textTransform: "uppercase",
+              color: colors["text-medium"],
+              fontSize: isDashboard ? "0.8em" : "0.68em",
+            }}
           >
-            <SmartScalar
-              title={`Previous ${granularity}`}
-              value={insights["previous-value"]}
-            />
-          </Box>
+            {jt`${changeDisplay} (${formatNumber(
+              insights["previous-value"],
+            )} ${granularityDisplay})`}
+          </h4>
         </Flex>
       </Flex>
     );
