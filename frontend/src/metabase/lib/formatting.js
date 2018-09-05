@@ -16,11 +16,12 @@ import {
   isLatitude,
   isLongitude,
 } from "metabase/lib/schema_metadata";
-import { isa, TYPE } from "metabase/lib/types";
+import { isa, TYPE, isCurrency } from "metabase/lib/types";
 import { parseTimestamp, parseTime } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
+import currency from "metabase/lib/currency";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
@@ -387,6 +388,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatColumn(column: Column): string {
+  console.log(column);
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
@@ -396,6 +398,11 @@ export function formatColumn(column: Column): string {
     let columnTitle = getFriendlyName(column);
     if (column.unit && column.unit !== "default") {
       columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "));
+    }
+    if (isCurrency(column.special_type)) {
+      // TODO - this should be the actual chosen currency symbol once we have
+      // it stored in the right spot
+      columnTitle = `$ ${columnTitle}`;
     }
     return columnTitle;
   }
