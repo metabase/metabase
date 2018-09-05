@@ -172,6 +172,19 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
+  onCurrencyTypeChange = async currency => {
+    const { field, updateField } = this.props;
+
+    field.caveats = currency;
+
+    await updateField(field);
+    MetabaseAnalytics.trackEvent(
+      "Data Model",
+      "Update Currency Type",
+      currency,
+    );
+  };
+
   onTargetChange = async target_field => {
     const { field, updateField } = this.props;
     field.fk_target_field_id = target_field.id;
@@ -225,12 +238,19 @@ export class SpecialTypeAndTargetPicker extends Component {
             className={cx("TableEditor-field-target", className)}
             triggerClasses={this.props.triggerClasses}
             placeholder={t`Select a currency type`}
-            onChange={this.onTargetChange}
+            onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
             searchProp="name"
+            value={field.caveats}
+            searchCaseSensitive="false"
           >
             {Object.values(currency).map(c => (
               <Option name={c.name} value={c.code}>
-                {c.name}
+                <span className="flex full align-center">
+                  {c.name}{" "}
+                  <span className="text-bold text-light ml-auto">
+                    {c.symbol}
+                  </span>
+                </span>
               </Option>
             ))}
           </Select>
