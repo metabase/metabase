@@ -42,6 +42,7 @@
 (derive :type/Price :type/Number)
 (derive :type/GrossMargin :type/Number)
 (derive :type/Cost :type/Number)
+(derive :type/Currency :type/Float)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)
