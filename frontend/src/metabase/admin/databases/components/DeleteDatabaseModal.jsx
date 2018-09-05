@@ -32,6 +32,7 @@ export default class DeleteDatabaseModal extends Component {
 
   render() {
     const { database } = this.props;
+    const { confirmValue } = this.state;
 
     let formError;
     if (this.state.error) {
@@ -46,7 +47,10 @@ export default class DeleteDatabaseModal extends Component {
       formError = <span className="text-error px2">{errorMessage}</span>;
     }
 
-    let confirmed = this.state.confirmValue.toUpperCase() === "DELETE";
+    // allow English or localized
+    let confirmed =
+      confirmValue.toUpperCase() === "DELETE" ||
+      confirmValue.toUpperCase() === t`DELETE`;
 
     const headsUp = <strong>{t`Just a heads up:`}</strong>;
     return (
