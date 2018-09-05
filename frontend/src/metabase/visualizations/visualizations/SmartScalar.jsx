@@ -45,7 +45,7 @@ export default class Smart extends React.Component {
     const granularityDisplay = (
       <span
         style={{ fontSize: "0.98em", letterSpacing: 1.02 }}
-      >{jt`last ${granularity}`}</span>
+      >{jt`past ${granularity}`}</span>
     );
 
     return (
