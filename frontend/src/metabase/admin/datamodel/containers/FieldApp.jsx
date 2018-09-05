@@ -6,6 +6,7 @@
 
 import React, { Component } from "react";
 import { Link } from "react-router";
+import { Box } from "grid-styled";
 import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
@@ -21,6 +22,9 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel";
+
+import { isCurrency } from "metabase/lib/types";
+import currency from "metabase/lib/currency";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -219,6 +223,18 @@ export default class FieldApp extends Component {
                   idfields={idfields}
                   selectSeparator={<SelectSeparator />}
                 />
+                {isCurrency(field.special_type) && (
+                  <Box my={2}>
+                    <label>{t`Default number of decimal points`}</label>
+                    <Box>
+                      <input
+                        className="input"
+                        type="text"
+                        value={currency[field.caveats].decimal_digits}
+                      />
+                    </Box>
+                  </Box>
+                )}
               </Section>
 
               <Section>
