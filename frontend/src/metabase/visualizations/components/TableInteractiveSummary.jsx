@@ -298,13 +298,10 @@ export default class TableInteractiveSummary extends Component {
       this.props.data,
       rowIndex,
       columnIndex,
-      false,
     );
 
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
-
-
 
     if(isTotal && typeof formatedRes === 'string')
       formatedRes = 'Totals for ' + formatedRes;
