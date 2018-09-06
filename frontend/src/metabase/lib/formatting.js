@@ -35,7 +35,6 @@ export type FormattingOptions = {
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
   // number options:
-  comma?: boolean,
   compact?: boolean,
   round?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
@@ -43,7 +42,6 @@ export type FormattingOptions = {
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
-  comma: true,
   compact: false,
   round: true,
 };
@@ -88,7 +86,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     if (options.round) {
       number = d3.round(number, 2);
     }
-    if (options.comma) {
+    if (isNumber(options.column)) {
       return FIXED_NUMBER_FORMATTER(number);
     } else {
       return FIXED_NUMBER_FORMATTER_NO_COMMA(number);
@@ -334,7 +332,6 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   options = {
     jsx: false,
     remap: true,
-    comma: isNumber(column),
     ...options,
   };
 
