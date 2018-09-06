@@ -21,7 +21,8 @@
   (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (id)})
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 ;; Check that column ordering is maintained
 (expect
@@ -38,7 +39,8 @@
   (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (id)})
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
