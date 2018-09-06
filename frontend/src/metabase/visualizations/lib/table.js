@@ -53,16 +53,11 @@ export function isColumnRightAligned(column: Column) {
 
 
 export function getTableCellClickedObjectForSummary(
-  data: DatasetData,
-  rowIndex: number,
-  columnIndex: number,
+  cols,
+  column,
+  row,
+  value,
 ): ClickObject {
-  const { rows, cols } = data;
-
-  const column = cols[columnIndex];
-  const row = rows[rowIndex];
-  const value = row[columnIndex];
-
   if (row.isTotalColumnIndex !== undefined) {
     let dimensions = cols
       .filter((column, index) => index < row.isTotalColumnIndex)
@@ -79,8 +74,10 @@ export function getTableCellClickedObjectForSummary(
       .map((column, index) => ({value: row[index], column}))
       .filter(dimension => dimension.column.source === "breakout")
     ;
-      if(column.pivotedDimension)
-        dimensions.push(column.pivotedDimension);
+    if(column.pivotedDimension)
+      dimensions.push(column.pivotedDimension);
+    if(!value)
+      value="";  // so that SortAction won't be available when dilling  
     return {
       value,
       column,

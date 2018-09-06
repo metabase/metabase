@@ -295,9 +295,10 @@ export default class TableInteractiveSummary extends Component {
       mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
 
     const clicked = getTableCellClickedObjectForSummary(
-      this.props.data,
-      rowIndex,
-      columnIndex,
+      this.props.data.cols,
+      column,
+      row,
+      value,
     );
 
     const isClickable =
