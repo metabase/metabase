@@ -10,7 +10,7 @@ import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
-  static identifier = "SmartScalar";
+  static identifier = "smartscalar";
   static iconName = "star";
 
   static minSize = { width: 3, height: 3 };
