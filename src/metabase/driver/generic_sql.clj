@@ -321,7 +321,7 @@
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                            (get-tables metadata nil))]
-         {:name   (:table_name table)
+         {:name   (str/trim (:table_name table))    ;; Firebird JDBC appends trailing spaces to table names
           :schema (:table_schem table)})))
 
 (defn- database-type->base-type
