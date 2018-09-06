@@ -1,8 +1,8 @@
 /* @flow */
 
-import type {ColumnName, DatasetData} from "metabase/meta/types/Dataset";
-import type {ColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
-import {Set} from 'immutable';
+import type { ColumnName, DatasetData } from "metabase/meta/types/Dataset";
+import type { ColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
+import { Set } from "immutable";
 
 export type Groups = Set<ColumnName>;
 export type Aggregations = Set<ColumnName>;
@@ -16,7 +16,10 @@ export type SummaryTableSettings = {
   columnNameToMetadata: { [key: ColumnName]: ColumnMetadata },
 };
 
-
 export type ResultProvider = AggregationKey => DatasetData;
 
-export type QueryPlan = {mainQueryTotalColumn?: Groups, groupings: Groups[][], aggregations : Aggregations };
+export type QueryPlan = {
+  mainQueryTotalColumn?: Groups,
+  groupings: Groups[][],
+  aggregations: Aggregations,
+};

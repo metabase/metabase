@@ -50,8 +50,6 @@ export function isColumnRightAligned(column: Column) {
   return isNumber(column) || isCoordinate(column);
 }
 
-
-
 export function getTableCellClickedObjectForSummary(
   data: DatasetData,
   rowIndex: number,
@@ -80,28 +78,26 @@ export function getTableCellClickedObjectForSummary(
     }
   } else if (row.isTotalColumnIndex !== undefined) {
     return {
-//      value: "",
-//      column,
+      //      value: "",
+      //      column,
       dimensions: cols
         .filter((column, index) => index < row.isTotalColumnIndex)
-        .map((column, index) => ({value: row[index], column}))
-        .filter(dimension => dimension.column.source === "breakout")
-      ,
+        .map((column, index) => ({ value: row[index], column }))
+        .filter(dimension => dimension.column.source === "breakout"),
       isTotalColumnIndex: row.isTotalColumnIndex,
     };
   } else if (column.source === "aggregation") {
-//    console.log("[debug] getTableCellClickedObject:  aggregation >  isTotal: ",isTotal,"  value: ",value,"  column:",column);
+    //    console.log("[debug] getTableCellClickedObject:  aggregation >  isTotal: ",isTotal,"  value: ",value,"  column:",column);
     return {
       value,
       column,
       dimensions: cols
-        .map((column, index) => ({value: row[index], column}))
-        .filter(dimension => dimension.column.source === "breakout")
-      ,
+        .map((column, index) => ({ value: row[index], column }))
+        .filter(dimension => dimension.column.source === "breakout"),
       isTotalColumnIndex: row.isTotalColumnIndex,
     };
   } else {
-//    console.log("[debug] getTableCellClickedObject:  default >  value: "+value+"  column:"+column);
+    //    console.log("[debug] getTableCellClickedObject:  default >  value: "+value+"  column:"+column);
     return { value, column, isTotalColumnIndex: row.isTotalColumnIndex };
   }
 }

@@ -83,7 +83,9 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
-  dashboardCardSuperQuery: POST("/api/public/dashboard/:uuid/card/:cardId/superquery"),
+  dashboardCardSuperQuery: POST(
+    "/api/public/dashboard/:uuid/card/:cardId/superquery",
+  ),
 };
 
 export const EmbedApi = {
@@ -93,7 +95,10 @@ export const EmbedApi = {
   dashboardCardQuery: GET(
     embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId",
   ),
-  dashboardCardSuperQuery: POST(embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId/superquery"),
+  dashboardCardSuperQuery: POST(
+    embedBase +
+      "/dashboard/:token/dashcard/:dashcardId/card/:cardId/superquery",
+  ),
 };
 
 type $AutoApi = {

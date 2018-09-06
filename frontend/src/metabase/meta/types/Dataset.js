@@ -34,11 +34,9 @@ export type DatasetData = {
   rows: Row[],
 };
 // $FlowFixMe
-export type SummaryDatasetData = DatasetData & { totalsData : DatasetData[] }
+export type SummaryDatasetData = DatasetData & { totalsData: DatasetData[] };
 
 export type Dataset = {
   data: DatasetData,
   json_query: DatasetQuery,
 };
-
-

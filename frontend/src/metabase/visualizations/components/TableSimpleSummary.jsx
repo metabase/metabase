@@ -72,11 +72,16 @@ export default class TableSimpleSummary extends Component {
       this.refs.header,
     ).getBoundingClientRect().height;
     let footerHeight = this.refs.footer
-      ? (ReactDOM.findDOMNode(this.refs.footer || this.refs.header) || headerHeight).getBoundingClientRect().height
+      ? (
+          ReactDOM.findDOMNode(this.refs.footer || this.refs.header) ||
+          headerHeight
+        ).getBoundingClientRect().height
       : 0;
     let rowHeight =
-      (ReactDOM.findDOMNode(this.refs.firstRow || this.refs.header) || headerHeight).getBoundingClientRect().height +
-      1;
+      (
+        ReactDOM.findDOMNode(this.refs.firstRow || this.refs.header) ||
+        headerHeight
+      ).getBoundingClientRect().height + 1;
     let pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
@@ -93,7 +98,7 @@ export default class TableSimpleSummary extends Component {
       visualizationIsClickable,
       isPivoted,
     } = this.props;
-    const { rows, cols } = data;
+    const { rows, columnsHeaders, cols } = data;
 
     const groupingManager = data;
 
@@ -126,80 +131,62 @@ export default class TableSimpleSummary extends Component {
               )}
             >
               <thead ref="header">
-              <tr >
-                {cols.map((col, colIndex) => {
-                  if (col.parentName) {
-                    return (
-                    <th
-                      key={`1-${colIndex}`}
-                      className={cx(
-                        "TableInteractive-headerCellData cellData text-brand-hover",
-                        {
-                          "TableInteractive-headerCellData--sorted":
-                          sortColumn === colIndex,
-                          "text-right": isColumnRightAligned(col.parentName[2]),
-                        },
-                      )}
-                      colSpan={col.parentName[1]}
-                    >
-                      <div className="relative">
-                        <Icon
-                          name={sortDescending ? "chevrondown" : "chevronup"}
-                          width={8}
-                          height={8}
-                          style={{
-                            position: "absolute",
-                            right: "100%",
-                            marginRight: 3,
-                          }}
-                        />
-                        <Ellipsified>{formatValue(col.parentName[0], {
-                          column: col.parentName[2],
-                          jsx: true,
-                          rich: true,
-                        })}
-                        </Ellipsified>
-                      </div>
-                    </th>)
-                  }
-                })}
-              </tr>
-                <tr>
-                  {cols.map((col, colIndex) => (
-                    <th
-                      key={`2-${colIndex}`}
-                      className={cx(
-                        "TableInteractive-headerCellData cellData text-brand-hover",
-                        {
-                          "TableInteractive-headerCellData--sorted":
-                            sortColumn === colIndex,
-                          "text-right": isColumnRightAligned(col),
-                        },
-                      )}
-                      onClick={() => this.setSort(colIndex)}
-                    >
-                      <div className="relative">
-                        <Icon
-                          name={sortDescending ? "chevrondown" : "chevronup"}
-                          width={8}
-                          height={8}
-                          style={{
-                            position: "absolute",
-                            right: "100%",
-                            marginRight: 3,
-                          }}
-                        />
-                        <Ellipsified>{col && formatColumn(col)}</Ellipsified>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
+              {columnsHeaders.map((cols, rowIndex) =>
+                <tr key={`header-${rowIndex}`}>
+                  {cols.map((col, colIndex) => {
+                    if (col) {
+                      return (
+                        <th
+                          key={`header-${rowIndex}-${colIndex}`}
+                          className={cx(
+                            "TableInteractive-headerCellData cellData text-brand-hover",
+                            {
+                              "TableInteractive-headerCellData--sorted":
+                                sortColumn === colIndex,
+                              "text-right": isColumnRightAligned(
+                                isColumnRightAligned(col.column),
+                              ),
+                            },
+                          )}
+                          colSpan={col.columnSpan}
+                        >
+                          <div className="relative">
+                            <Icon
+                              name={
+                                sortDescending ? "chevrondown" : "chevronup"
+                              }
+                              width={8}
+                              height={8}
+                              style={{
+                                position: "absolute",
+                                right: "100%",
+                                marginRight: 3,
+                              }}
+                            />
+                            <Ellipsified>
+                              {col.displayText|| col.value && formatValue(col.value, {
+                                column: col.column,
+                                jsx: true,
+                                rich: true,
+                              }) || formatColumn(col.column)}
+                            </Ellipsified>
+                          </div>
+                        </th>
+                      );
+                    }
+                  })}
+                </tr>)
+              }
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
                     {cols.map((_, columnIndex) => {
-                      if (groupingManager.isVisible(rowIndex, columnIndex, {start, stop:end})
+                      if (
+                        groupingManager.isVisible(rowIndex, columnIndex, {
+                          start,
+                          stop: end,
+                        })
                       ) {
                         const column = cols[columnIndex];
                         const row = rows[rowIndex];
@@ -213,17 +200,40 @@ export default class TableSimpleSummary extends Component {
                         const isClickable =
                           onVisualizationClick &&
                           visualizationIsClickable(clicked);
-                        const rowSpan = groupingManager.getRowSpan(rowIndex, columnIndex, {start, stop:end});
+                        const rowSpan = groupingManager.getRowSpan(
+                          rowIndex,
+                          columnIndex,
+                          { start, stop: end },
+                        );
                         const isGrandTotal = row.isTotalColumnIndex === 0;
                         if (isGrandTotal && columnIndex === 0)
-                          cell = 'Grand totals';
+                          cell = "Grand totals";
 
-                        let mappedStyle = {... groupingManager.mapStyle(rowIndex, columnIndex, {start, stop:end}, {})};
-                        if(isGrandTotal)
-                          mappedStyle = {... mappedStyle, background: '#509ee3', color: 'white', fontWeight:'bold'};
-                        else if (row.isTotalColumnIndex && row.isTotalColumnIndex <= columnIndex +1)
-                          mappedStyle = {... mappedStyle, background: '#EDEFF0', color: '#6E757C', fontWeight:'bold' };
-
+                        let mappedStyle = {
+                          ...groupingManager.mapStyle(
+                            rowIndex,
+                            columnIndex,
+                            { start, stop: end },
+                            {},
+                          ),
+                        };
+                        if (isGrandTotal)
+                          mappedStyle = {
+                            ...mappedStyle,
+                            background: "#509ee3",
+                            color: "white",
+                            fontWeight: "bold",
+                          };
+                        else if (
+                          row.isTotalColumnIndex &&
+                          row.isTotalColumnIndex <= columnIndex + 1
+                        )
+                          mappedStyle = {
+                            ...mappedStyle,
+                            background: "#EDEFF0",
+                            color: "#6E757C",
+                            fontWeight: "bold",
+                          };
 
                         let formatedRes = formatValue(cell, {
                           column: column,
@@ -231,14 +241,20 @@ export default class TableSimpleSummary extends Component {
                           rich: true,
                         });
 
-                        if(row.isTotalColumnIndex === columnIndex + 1 && typeof formatedRes === 'string')
-                          formatedRes = 'Totals for ' + formatedRes;
-
+                        if (
+                          row.isTotalColumnIndex === columnIndex + 1 &&
+                          typeof formatedRes === "string"
+                        )
+                          formatedRes = "Totals for " + formatedRes;
 
                         const res = (
                           <td
-                            key={rowIndex + '-' + columnIndex}
-                            style={{...mappedStyle, whiteSpace: "nowrap", verticalAlign :'top' }}
+                            key={rowIndex + "-" + columnIndex}
+                            style={{
+                              ...mappedStyle,
+                              whiteSpace: "nowrap",
+                              verticalAlign: "top",
+                            }}
                             className={cx("px1 border-bottom", {
                               "text-right": isColumnRightAligned(
                                 cols[columnIndex],

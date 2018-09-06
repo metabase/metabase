@@ -6,9 +6,6 @@ import TableInteractiveSummary from "../components/TableInteractiveSummary.jsx";
 import TableSimpleSummary from "../components/TableSimpleSummary.jsx";
 import { t } from "c-3po";
 
-import {
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
 import ChartSettingSummaryTableColumns from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns.jsx";
 
 import _ from "underscore";
@@ -16,20 +13,22 @@ import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
-import type {ColumnName, DatasetData, SummaryDatasetData} from "metabase/meta/types/Dataset";
+import type {
+  DatasetData,
+  SummaryDatasetData,
+} from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type {RawSeries} from "metabase/meta/types/Visualization";
-import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import type { RawSeries } from "metabase/meta/types/Visualization";
+import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
-  buildResultProvider, enrichSettings,
+  buildResultProvider,
+  enrichSettings,
   getQueryPlan,
   settingsAreValid,
 } from "metabase/visualizations/lib/settings/summary_table";
-import {emptyColumnMetadata} from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
-
 
 type Props = {
   card: Card,
@@ -38,13 +37,12 @@ type Props = {
   settings: VisualizationSettings,
   isDashboard: boolean,
   query: StructuredQuery,
-  ddd: string;
+  ddd: string,
 };
 type State = {
   data: ?DatasetData,
-  query: any
+  query: any,
 };
-
 
 export const COLUMNS_SETTINGS = "summaryTable.columns";
 
@@ -71,11 +69,13 @@ export default class SummaryTable extends Component {
       widget: ChartSettingSummaryTableColumns,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
-      getDefault: ([{data : {columns, cols}}]) : SummaryTableSettings => enrichSettings(null, cols, columns),
-      getProps: ([{data: { columns, cols}}]) => ({
+      getDefault: ([{ data }]): SummaryTableSettings =>
+         enrichSettings(null, (data || {}).cols || [], (data || {}).columns || []),
+      getProps: ([{ data: { columns, cols } }]) => ({
         cols,
-        columns
-      }),},
+        columns,
+      }),
+    },
     "summaryTable.column_widths": {},
   };
 
@@ -83,7 +83,7 @@ export default class SummaryTable extends Component {
     super(props);
     this.state = {
       data: null,
-      query: props.query
+      query: props.query,
     };
   }
 
@@ -103,29 +103,34 @@ export default class SummaryTable extends Component {
 
   _updateData({
     data,
-    settings
+    settings,
   }: {
     data: SummaryDatasetData,
-    settings: VisualizationSettings
+    settings: VisualizationSettings,
   }) {
- {
+    {
+      const summarySettings = enrichSettings(
+        settings[COLUMNS_SETTINGS],
+        data.cols,
+        data.columns,
+      );
 
-   const summarySettings = enrichSettings(settings[COLUMNS_SETTINGS], data.cols, data.columns);
+      const aaaa = buildResultProvider(data, data.totalsData);
+      const bbbb = getQueryPlan(summarySettings);
+      //todo: fix 30
+      const groupingManager = new GroupingManager(
+        30,
+        summarySettings,
+        data.cols,
+        aaaa,
+        bbbb,
+      );
 
-   const aaaa = buildResultProvider(data, data.totalsData);
-   const bbbb =getQueryPlan(summarySettings);
-   //todo: fix 30
-   const groupingManager = new GroupingManager(30, summarySettings, data.cols, aaaa, bbbb);
-
-
-   this.setState({
-        data: groupingManager
+      this.setState({
+        data: groupingManager,
       });
     }
   }
-
-
-
 
   render() {
     const { card, isDashboard } = this.props;
@@ -133,13 +138,14 @@ export default class SummaryTable extends Component {
     const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
     const isColumnsDisabled = false;
     //todo:
-      // (settings[COLUMNS_SETTINGS] || []).filter(f => f.enabled).length < 1;
-    const TableComponent = isDashboard ? TableSimpleSummary : TableInteractiveSummary;
+    // (settings[COLUMNS_SETTINGS] || []).filter(f => f.enabled).length < 1;
+    const TableComponent = isDashboard
+      ? TableSimpleSummary
+      : TableInteractiveSummary;
 
     if (!data) {
       return null;
     }
-
 
     if (isColumnsDisabled) {
       return (
@@ -161,11 +167,7 @@ export default class SummaryTable extends Component {
     } else {
       return (
         // $FlowFixMe
-        <TableComponent
-          {...this.props}
-          data={data}
-          sort={sort}
-        />
+        <TableComponent {...this.props} data={data} sort={sort} />
       );
     }
   }
@@ -184,5 +186,3 @@ TestTable.identifier = SummaryTable.identifier;
 TestTable.iconName = SummaryTable.iconName;
 TestTable.minSize = SummaryTable.minSize;
 TestTable.settings = SummaryTable.settings;
-
-

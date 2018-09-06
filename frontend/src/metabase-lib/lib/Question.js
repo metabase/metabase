@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import Query from "./queries/Query";
-import {getAggregationQueries} from "./SummaryTableQueryBuilder";
+import { getAggregationQueries } from "./SummaryTableQueryBuilder";
 
 import Metadata from "./metadata/Metadata";
 import Table from "./metadata/Table";
@@ -467,8 +467,6 @@ export default class Question {
       // only the superset of parameters object that API expects
       .map(param => _.pick(param, "type", "target", "value"));
 
-
-
     const getDatasetQueryResult = async datasetQuery => {
       const datasetQueryWithParameters = {
         ...datasetQuery,
@@ -481,7 +479,7 @@ export default class Question {
       );
     };
 
-    let mainQueryPromise : Promise<Dataset>;
+    let mainQueryPromise: Promise<Dataset>;
 
     if (canUseCardApiEndpoint) {
       const queryParams = {
@@ -494,19 +492,34 @@ export default class Question {
         cancelled: cancelDeferred.promise,
       });
     } else
-      mainQueryPromise = getDatasetQueryResult(this.atomicQueries().map(p => p.datasetQuery())[0]);
+      mainQueryPromise = getDatasetQueryResult(
+        this.atomicQueries().map(p => p.datasetQuery())[0],
+      );
 
+    return mainQueryPromise
+      .then(async res => {
+        const { data: { cols } } = res;
+        const mainQuery = this.atomicQueries()[0].datasetQuery();
+        const queries = getAggregationQueries(this.visualizationSettings())(
+          this.card(),
+          cols || this.metadata().fields,
+        );
+        if (queries.length === 0) return res;
 
-    return mainQueryPromise.then(async res => {
-      const {data : {cols}} = res;
-      const mainQuery = this.atomicQueries()[0].datasetQuery();
-      const queries = getAggregationQueries(this.visualizationSettings())(this.card(), cols || this.metadata().fields);
-      if(queries.length === 0 )
-        return res;
-
-      const aggregationRes = await Promise.all(queries.map(p => ({...mainQuery, 'super-query': p}) ).map(getDatasetQueryResult));
-      return {...res, data: {...res.data, totalsData: aggregationRes.map(p => p.data).filter(p => p)}};
-      }).then(p => [p]);
+        const aggregationRes = await Promise.all(
+          queries
+            .map(p => ({ ...mainQuery, "super-query": p }))
+            .map(getDatasetQueryResult),
+        );
+        return {
+          ...res,
+          data: {
+            ...res.data,
+            totalsData: aggregationRes.map(p => p.data).filter(p => p),
+          },
+        };
+      })
+      .then(p => [p]);
   }
 
   // NOTE: prefer `reduxCreate` so the store is automatically updated
