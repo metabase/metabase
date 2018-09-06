@@ -1,5 +1,5 @@
 (ns metabase.sync.analyze.fingerprint.insights
-  "Non-identifying fingerprinters for various field types."
+  "Deeper statistical analysis of results."
   (:require [clj-time.coerce :as t.coerce]
             [kixi.stats
              [core :as stats]
@@ -7,12 +7,8 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [redux.core :as redux]))
-
-(defn- last-value
-  ([] nil)
-  ([acc] acc)
-  ([_ x] x))
 
 (defn- last-n
   [n]
@@ -81,16 +77,17 @@
         :offset         offset}))))
 
 (defn insights
-  ""
+  "Based on the shape of returned data construct a transducer to statistically analyize data."
   [cols]
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (comp #(cond
-                                             (isa? % :type/Number)   :numbers
-                                             (isa? % :type/DateTime) :datetimes
-                                             :else                   :others)
-                                          :base_type)))]
+                          (group-by (fn [{:keys [base_type unit]}]
+                                      (cond
+                                        (du/date-extract-units unit)    :numbers
+                                        (isa? base_type :type/Number)   :numbers
+                                        (isa? base_type :type/DateTime) :datetimes
+                                        :else                           :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))
