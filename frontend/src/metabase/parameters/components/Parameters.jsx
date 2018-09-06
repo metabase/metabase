@@ -144,8 +144,8 @@ export default class Parameters extends Component {
           { mt1: isQB },
         )}
         axis="x"
+        distance={5}
         onSortEnd={this.handleSortEnd}
-        useDragHandle
       >
         {parameters.map((parameter, index) => (
           <ParameterWidget
