@@ -116,35 +116,31 @@ msgstr "Guardando..."
 msgid "Server error encountered"
 msgstr "Se ha encontrado un error en el servidor"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:53
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:54
 msgid "Delete this database?"
 msgstr "¿Eliminar esta base de datos?"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:58
-msgid "<strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
-msgstr "<strong>Solo un aviso:</strong> sin el conjunto de datos de muestra, el tutorial del Generador de Consultas no funcionará. Siempre puedes restaurar el conjunto de datos de muestra, pero se perderán todas las preguntas que hayas guardado con estos datos."
-
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:61
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
 msgid "All saved questions, metrics, and segments that rely on this database will be lost."
 msgstr "Todas las preguntas, métricas y segmentos guardados que dependen de esta base de datosse perderán."
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:63
 msgid "This cannot be undone."
 msgstr "Esta acción no se puede deshacer."
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "If you're sure, please type"
 msgstr "Si estás seguro, por favor teclea:"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "DELETE"
 msgstr "ELIMINAR"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "in this box:"
 msgstr "en esta casilla:"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:77
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:78
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:50
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:87
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:93
@@ -184,7 +180,7 @@ msgstr "en esta casilla:"
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:83
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:84
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:123
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:397
 msgid "Delete"
@@ -331,13 +327,14 @@ msgstr "¡Creado con éxito!"
 msgid "Successfully saved!"
 msgstr "¡Guardado con éxito!"
 
+#. Editar
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:44
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:276
 #: frontend/src/metabase/parameters/components/ParameterWidget.jsx:173
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:209
 #: frontend/src/metabase/reference/components/EditButton.jsx:18
 msgid "Edit"
-msgstr "Edita"
+msgstr "Editar"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:59
 msgid "Revision History"
@@ -411,10 +408,11 @@ msgstr "Selecciona una referencia"
 msgid "Columns"
 msgstr "Columnas"
 
+#. Campo
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:22
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:44
 msgid "Column"
-msgstr "Columna"
+msgstr "Campo"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList.jsx:24
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:121
@@ -469,9 +467,10 @@ msgstr "Irrelevante"
 msgid "Queryable"
 msgstr "Consultable"
 
+#. Oculto
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:91
 msgid "Hidden"
-msgstr "Escondido"
+msgstr "Oculto"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:117
 msgid "No table description yet"
@@ -565,7 +564,7 @@ msgstr "editado el"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:40
 msgid "made some changes"
-msgstr "hecho algunos cambios"
+msgstr "he hecho algunos cambios"
 
 #: frontend/src/metabase/admin/datamodel/components/revisions/Revision.jsx:46
 #: frontend/src/metabase/home/components/Activity.jsx:80
@@ -587,7 +586,7 @@ msgstr "Historial de Revisiones para"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:185
 msgid "{0} – Field Settings"
-msgstr "{0} – Configuración"
+msgstr "{0} – Configuración de campos"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:204
 msgid "Where this field will appear throughout Metabase"
@@ -2159,18 +2158,18 @@ msgid "Unarchive this {0}"
 msgstr "Desarchive este {0}"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:93
-#: frontend/src/metabase/components/BrowseApp.jsx:151
-#: frontend/src/metabase/components/BrowseApp.jsx:241
+#: frontend/src/metabase/components/BrowseApp.jsx:152
+#: frontend/src/metabase/components/BrowseApp.jsx:243
 #: frontend/src/metabase/containers/Overworld.jsx:217
 msgid "Our data"
 msgstr "Nuestros datos"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:186
+#: frontend/src/metabase/components/BrowseApp.jsx:188
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:51
 msgid "X-ray this table"
 msgstr "Aplica rayos-X a esta tabla"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:199
+#: frontend/src/metabase/components/BrowseApp.jsx:201
 #: frontend/src/metabase/containers/Overworld.jsx:244
 msgid "Learn about this table"
 msgstr "Aprende sobre esta tabla"
@@ -3256,11 +3255,11 @@ msgstr "Consejo de configuración"
 msgid "View all"
 msgstr "Ver todos"
 
-#: frontend/src/metabase/home/components/RecentViews.jsx:39
+#: frontend/src/metabase/home/components/RecentViews.jsx:40
 msgid "Recently Viewed"
 msgstr "Visto Recientemente"
 
-#: frontend/src/metabase/home/components/RecentViews.jsx:73
+#: frontend/src/metabase/home/components/RecentViews.jsx:75
 msgid "You haven't looked at any dashboards or questions recently"
 msgstr "No has consultado ningún cuadro de mando o pregunta recientemente"
 
@@ -3601,7 +3600,7 @@ msgstr "Hola"
 #: frontend/src/metabase/lib/greeting.js:5
 #: frontend/src/metabase/lib/greeting.js:29
 msgid "How's it going"
-msgstr "¿Cómo va?"
+msgstr "¿Cómo te va"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Howdy"
@@ -4712,7 +4711,7 @@ msgstr[1] "Ver estos {0}"
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:220
 #: frontend/src/metabase/qb/components/drill/ZoomDrill.jsx:26
 msgid "Zoom in"
-msgstr "Acercarse"
+msgstr "Ampliar"
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:19
 msgid "Custom Expression"
@@ -5051,12 +5050,12 @@ msgstr "Mostrar Consulta"
 msgid "This metric has been retired.  It's no longer available for use."
 msgstr "Esta métrica ha sido retirada. Ya no está disponible para su uso."
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:35
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:43
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:34
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:46
 msgid "Download full results"
 msgstr "Descarga los resultados completos"
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:36
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:35
 msgid "Download this data"
 msgstr "Descargar esta información"
 
@@ -5064,11 +5063,11 @@ msgstr "Descargar esta información"
 msgid "Warning"
 msgstr "Aviso"
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:47
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:52
 msgid "Your answer has a large number of rows so it could take a while to download."
 msgstr "Tu respuesta tiene una gran cantidad de filas, por lo que podría tardar un tiempo en descargarse."
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:48
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:53
 msgid "The maximum download size is 1 million rows."
 msgstr "El tamaño máximo de descarga es de 1 millón de filas."
 
@@ -6461,35 +6460,35 @@ msgstr "Desmarcar"
 msgid "Rows {0}-{1} of {2}"
 msgstr "Filas {0}-{1} de {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:186
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:184
 msgid "Data truncated to {0} rows."
 msgstr "Datos truncados a {0} filas."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:351
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:349
 msgid "Could not find visualization"
 msgstr "No se pudo encontrar la visualización"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:358
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:356
 msgid "Could not display this chart with this data."
 msgstr "No se pudo mostrar este gráfico con esta información."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:456
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:454
 msgid "No results!"
 msgstr "Sin resultados!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:477
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "Still Waiting..."
 msgstr "Esperando..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:480
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:478
 msgid "This usually takes an average of {0}."
 msgstr "Esto suele tardar unos {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:486
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:484
 msgid "(This is a bit long for a dashboard)"
 msgstr "(Es un poco largo para un cuadro de mando)"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:490
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:488
 msgid "This is usually pretty fast but seems to be taking awhile right now."
 msgstr "Esto suele ser bastante rápido, pero parece estar tardando en este momento."
 
@@ -8247,7 +8246,7 @@ msgstr "No puedes eliminar una Colección Personal!"
 
 #: src/metabase/models/collection.clj
 msgid "{0} {1}''s Personal Collection"
-msgstr "{0} Colección Personal de {1}"
+msgstr "Colección Personal de {0} {1}"
 
 #: src/metabase/models/collection_revision.clj
 msgid "You cannot update a CollectionRevision!"
@@ -8916,7 +8915,7 @@ msgstr "Ver subcolección"
 msgid "Remember Me"
 msgstr "Recuerdame"
 
-#: frontend/src/metabase/components/BrowseApp.jsx:117
+#: frontend/src/metabase/components/BrowseApp.jsx:118
 msgid "X-ray this schema"
 msgstr "Aplica rayos-X a este esquema"
 
@@ -9255,4 +9254,20 @@ msgstr "Hubo un problema al mostrar esta gráfico."
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:36
 msgid "Sorry, you don't have permission to see this card."
 msgstr "Lo siento, no tienes permiso para ver etsa tarjeta."
+
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:51
+msgid "Just a heads up:"
+msgstr "Solo un aviso:"
+
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:59
+msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
+msgstr "{0} sin el conjunto de datos de muestra, el tutorial del generador de consultas no funcionará. Siempre puede restaurar el conjunto de datos de muestra, pero cualquier pregunta que haya guardado con esta información se perderá"
+
+#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:27
+msgid "X-ray"
+msgstr "Aplica rayos-X"
+
+#: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:27
+msgid "Compare to the rest"
+msgstr "Compara con el resto"
 

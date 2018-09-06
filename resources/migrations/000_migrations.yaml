@@ -4988,3 +4988,64 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_field
             columnName: raw_column_id
+
+# Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
+  - changeSet:
+      id: 94
+      author: senior
+      comment: 'Added 0.31.0'
+      changes:
+        - createTable:
+            tableName: task_history
+            remarks: 'Timing and metadata info about background/quartz processes'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: task
+                  type: VARCHAR(254)
+                  remarks: 'Name of the task'
+                  constraints:
+                    nullable: false
+              # The sync tasks all have a db_id, but there are others that won't, such as the pulses
+              # task or task history cleanup. The way around this is to create a join table between
+              # TASK_HISTORY and METABASE_DATABASE, but that doesn't seem worth it right now.
+              - column:
+                  name: db_id
+                  type: integer
+              - column:
+                  name: started_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_details
+                  remarks: 'JSON string with additional info on the task'
+                  type: text
+        - createIndex:
+            indexName: idx_task_history_end_time
+            tableName: task_history
+            columns:
+              - column:
+                  name: ended_at
+        - createIndex:
+            indexName: idx_task_history_db_id
+            tableName: task_history
+            columns:
+              - column:
+                  name: db_id

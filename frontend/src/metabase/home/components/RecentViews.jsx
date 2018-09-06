@@ -1,9 +1,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { t } from "c-3po";
 
 import Icon from "metabase/components/Icon.jsx";
+import Ellipsified from "metabase/components/Ellipsified";
+import Link from "metabase/components/Link";
 import SidebarSection from "./SidebarSection.jsx";
 import * as Urls from "metabase/lib/urls";
 
@@ -56,9 +57,10 @@ export default class RecentViews extends Component {
                     data-metabase-event={
                       "Recent Views;" + item.model + ";" + item.cnt
                     }
-                    className="ml1 flex-full link"
+                    ml={1}
+                    className="link overflow-hidden"
                   >
-                    {item.model_object.name}
+                    <Ellipsified>{item.model_object.name}</Ellipsified>
                   </Link>
                 </li>
               );
