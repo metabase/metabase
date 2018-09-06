@@ -40,12 +40,14 @@ export type FormattingOptions = {
   round?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
   noRange?: boolean,
+  decimalPlaces: number,
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   comma: true,
   compact: false,
   round: true,
+  decimalPlaces: 2,
 };
 
 const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
@@ -86,7 +88,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   } else {
     // anything else rounds to at most 2 decimal points, unless disabled
     if (options.round) {
-      number = d3.round(number, 2);
+      number = d3.round(number, options.decimalPlaces);
     }
     if (options.comma) {
       return FIXED_NUMBER_FORMATTER(number);
