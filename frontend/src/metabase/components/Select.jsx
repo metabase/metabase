@@ -36,8 +36,11 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
+
     isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
     // NOTE - @kdoh
@@ -58,6 +61,7 @@ class BrowserSelect extends Component {
     height: 320,
     rowHeight: 40,
     multiple: false,
+    searchFuzzy: true,
   };
 
   isSelected(otherValue) {
@@ -80,6 +84,7 @@ class BrowserSelect extends Component {
       onChange,
       searchProp,
       searchCaseInsensitive,
+      searchFuzzy,
       isInitiallyOpen,
       placeholder,
       triggerElement,
@@ -107,6 +112,8 @@ class BrowserSelect extends Component {
           return false;
         } else if (searchCaseInsensitive) {
           return childValue.toLowerCase().startsWith(inputValue.toLowerCase());
+        } else if (searchFuzzy) {
+          return childValue.indexOf(inputValue) >= 0;
         } else {
           return childValue.startsWith(inputValue);
         }
@@ -143,6 +150,11 @@ class BrowserSelect extends Component {
               ))}
             </SelectButton>
           )
+        }
+        pinInitialAttachment={
+          // keep the popover from jumping around one its been opened,
+          // this can happen when filtering items via search
+          true
         }
         triggerClasses={className}
         verticalAttachments={["top", "bottom"]}
