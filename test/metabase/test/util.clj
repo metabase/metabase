@@ -1,7 +1,9 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -29,6 +31,7 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.util :as qputil]
@@ -226,6 +229,17 @@
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class TaskHistory)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_]
+                         (let [started (time/now)
+                               ended   (time/plus started (time/millis 10))]
+                           {:db_id      (data/id)
+                            :task       (random-name)
+                            :started_at (du/->Timestamp started)
+                            :ended_at   (du/->Timestamp ended)
+                            :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
   test/WithTempDefaults
