@@ -153,34 +153,32 @@ export default class PulseEditChannels extends Component {
   renderFields(channel, index, channelSpec) {
     return (
       <div>
-        {channelSpec.fields.map(field => {
-          return (
-            <div key={field.name} className={field.name}>
-              <span className="h4 text-bold mr1">{field.displayName}</span>
-              {field.type === "select" ? (
-                <Select
-                  className="h4 text-bold bg-white inline-block"
-                  value={channel.details && channel.details[field.name]}
-                  placeholder={t`Pick a user or channel...`}
-                  searchProp="name"
-                  // Address #5799 where `details` object is missing for some reason
-                  onChange={o =>
-                    this.onChannelPropertyChange(index, "details", {
-                      ...channel.details,
-                      [field.name]: o.target.value,
-                    })
-                  }
-                >
-                  {field.options.map(option => (
-                    <Option name={option} value={option}>
-                      {option}
-                    </Option>
-                  ))}
-                </Select>
-              ) : null}
-            </div>
-          );
-        })}
+        {channelSpec.fields.map(field => (
+          <div key={field.name} className={field.name}>
+            <span className="h4 text-bold mr1">{field.displayName}</span>
+            {field.type === "select" ? (
+              <Select
+                className="h4 text-bold bg-white inline-block"
+                value={channel.details && channel.details[field.name]}
+                placeholder={t`Pick a user or channel...`}
+                searchProp="name"
+                // Address #5799 where `details` object is missing for some reason
+                onChange={o =>
+                  this.onChannelPropertyChange(index, "details", {
+                    ...channel.details,
+                    [field.name]: o.target.value,
+                  })
+                }
+              >
+                {field.options.map(option => (
+                  <Option name={option} value={option}>
+                    {option}
+                  </Option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
+        ))}
       </div>
     );
   }
