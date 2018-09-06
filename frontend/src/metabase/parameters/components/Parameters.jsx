@@ -3,6 +3,8 @@
 import React, { Component } from "react";
 
 import StaticParameterWidget from "./ParameterWidget.jsx";
+import Icon from "metabase/components/Icon";
+import colors from "metabase/lib/colors";
 
 import querystring from "querystring";
 import cx from "classnames";
@@ -143,12 +145,15 @@ export default class Parameters extends Component {
         )}
         axis="x"
         onSortEnd={this.handleSortEnd}
+        useDragHandle
       >
         {parameters.map((parameter, index) => (
           <ParameterWidget
             key={parameter.id}
             index={index}
-            className={vertical ? "mb2" : null}
+            className={cx("relative hover-parent hover--visibility", {
+              mb2: vertical,
+            })}
             isEditing={isEditing}
             isFullscreen={isFullscreen}
             isNightMode={isNightMode}
@@ -169,7 +174,12 @@ export default class Parameters extends Component {
             }
             remove={removeParameter && (() => removeParameter(parameter.id))}
             commitImmediately={commitImmediately}
-          />
+          >
+            {/* show drag handle if editing and setParameterIndex provided */}
+            {isEditing && setParameterIndex ? (
+              <SortableParameterHandle />
+            ) : null}
+          </ParameterWidget>
         ))}
       </ParameterWidgetList>
     );
@@ -178,12 +188,26 @@ export default class Parameters extends Component {
 import {
   SortableContainer,
   SortableElement,
+  SortableHandle,
   arrayMove,
 } from "react-sortable-hoc";
 
 const StaticParameterWidgetList = ({ children, ...props }) => {
   return <div {...props}>{children}</div>;
 };
+
+const SortableParameterHandle = SortableHandle(() => (
+  <div
+    className="absolute top bottom left flex layout-centered hover-child cursor-pointer"
+    style={{
+      color: colors["border"],
+      // width should match the left padding of the ParameterWidget container class so that it's centered
+      width: "1em",
+    }}
+  >
+    <Icon name="grabber2" size={12} />
+  </div>
+));
 
 const SortableParameterWidget = SortableElement(StaticParameterWidget);
 const SortableParameterWidgetList = SortableContainer(

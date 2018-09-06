@@ -363,7 +363,9 @@ export default class NativeQueryEditor extends Component {
               parameters={parameters}
               query={location.query}
               setParameterValue={setParameterValue}
+              setParameterIndex={() => alert("NYI!")}
               syncQueryString
+              isEditing
               isQB
               commitImmediately
             />
