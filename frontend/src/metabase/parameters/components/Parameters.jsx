@@ -144,7 +144,7 @@ export default class Parameters extends Component {
           { mt1: isQB },
         )}
         axis="x"
-        distance={5}
+        distance={9}
         onSortEnd={this.handleSortEnd}
       >
         {parameters.map((parameter, index) => (
@@ -198,7 +198,7 @@ const StaticParameterWidgetList = ({ children, ...props }) => {
 
 const SortableParameterHandle = SortableHandle(() => (
   <div
-    className="absolute top bottom left flex layout-centered hover-child cursor-pointer"
+    className="absolute top bottom left flex layout-centered hover-child cursor-grab"
     style={{
       color: colors["border"],
       // width should match the left padding of the ParameterWidget container class so that it's centered
