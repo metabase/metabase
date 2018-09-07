@@ -38,15 +38,17 @@ class Perf150Users30MinutesHighActivityCrossdata extends Simulation with Common 
   val start = System.currentTimeMillis
 
   val scenarioBuilder = scenario(scenarioName)
-    .repeat(numRepetitionsByUser) {
-      asLongAs(session => (System.currentTimeMillis - start) < maxDuration.toMillis) {
-        exec(
-          http(executionName)
-            .post(queryEndpoint)
-            .body(body)
-            .headers(commonHeaders)
-            .check(status.is(checkStatus))
-        ).pause(pauseTime)
+    .during(maxDuration) {
+      repeat(numRepetitionsByUser) {
+        doIf(session => {(System.currentTimeMillis - start) < maxDuration.toMillis}) {
+          exec(
+            http(executionName)
+              .post(queryEndpoint)
+              .body(body)
+              .headers(commonHeaders)
+              .check(status.is(checkStatus))
+          ).pause(pauseTime)
+        }
       }
     }
 
