@@ -109,8 +109,8 @@
 
 (def DateTimeFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/DateTime`."
-  {(s/optional-key :earliest) s/Str
-   (s/optional-key :latest)   s/Str})
+  {(s/optional-key :earliest) (s/maybe s/Str)
+   (s/optional-key :latest)   (s/maybe s/Str)})
 
 (def TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."
@@ -157,7 +157,7 @@
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
-   2 #{:type/DateTime}})
+   3 #{:type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

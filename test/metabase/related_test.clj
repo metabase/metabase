@@ -1,13 +1,17 @@
 (ns metabase.related-test
-  (:require [expectations :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [expectations :refer :all]
+            [metabase
+             [related :as r :refer :all]
+             [sync :as sync]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
-            [metabase.related :as r :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.users :as users]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.util.test :as tt][metabase.test.data.users :as users]
             [toucan.util.test :as tt]))
 
 (expect
@@ -128,6 +132,28 @@
    :tables      [(data/id :users)]}
   (->> ((users/user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues)))
        result-mask))
+
+
+;; We should ignore non-active entities
+
+(defn- exec! [& statements]
+  (doseq [statement statements]
+    (jdbc/execute! one-off-dbs/*conn* [statement])))
+
+(expect
+  [1 0]
+  (one-off-dbs/with-blank-db
+    (exec! "CREATE TABLE blueberries_consumed (num SMALLINT NOT NULL, weight FLOAT)")
+    (one-off-dbs/insert-rows-and-sync! (range 50))
+    (let [count-related-fields (fn []
+                                 (->> ((users/user->client :crowberto) :get 200
+                                       (format "field/%s/related" (data/id :blueberries_consumed :num)))
+                                      :fields
+                                      count))
+          before               (count-related-fields)]
+      (exec! "ALTER TABLE blueberries_consumed DROP COLUMN weight")
+      (sync/sync-database! (data/db))
+      [before (count-related-fields)])))
 
 
 ;; Test transitive similarity:

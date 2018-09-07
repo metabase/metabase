@@ -424,7 +424,7 @@
   (for [row results]
     (into {} (for [[k v] row]
                {k (if (and (map? v)
-                           (:___date v))
+                           (contains? v :___date))
                     (du/->Timestamp (:___date v) (TimeZone/getDefault))
                     v)}))))
 

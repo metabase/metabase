@@ -133,6 +133,7 @@
     "jasmine-reporters": "^2.2.0",
     "jasmine-spec-reporter": "^3.0.0",
     "jest": "^19.0.2",
+    "jest-localstorage-mock": "^2.2.0",
     "jscodeshift": "0.5.0",
     "jsonwebtoken": "^7.2.1",
     "karma": "^1.3.0",

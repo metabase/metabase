@@ -100,7 +100,9 @@
   (let [[display visualization-settings] visualization]
     {:display display
      :visualization_settings (-> visualization-settings
-                                 (assoc :graph.series_labels metrics)
+                                 (assoc :graph.series_labels (map :name metrics)
+                                        :graph.metrics       (map :op metrics)
+                                        :graph.dimensions    dimensions)
                                  (merge (colorize card))
                                  (cond->
                                      series_labels (assoc :graph.series_labels series_labels)

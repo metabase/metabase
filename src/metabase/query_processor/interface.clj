@@ -79,6 +79,19 @@
   nil
   :load-ns true)
 
+(declare Query)
+
+;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
+(s/defrecord JoinQuery [source-field :- JoinTableField
+                        pk-field     :- JoinTableField
+                        table-id     :- su/IntGreaterThanZero
+                        schema       :- (s/maybe su/NonBlankString)
+                        join-alias   :- su/NonBlankString
+                        query        :- {s/Any  s/Any
+                                         :query Query}]
+  nil
+  :load-ns true)
+
 ;;; --------------------------------------------------- PROTOCOLS ----------------------------------------------------
 
 (defprotocol IField
@@ -528,8 +541,6 @@
 
 
 ;;; source-query
-
-(declare Query)
 
 (def SourceQuery
   "Schema for a valid value for a `:source-query` clause."

@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn } from "icepick";
+import { updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -644,10 +644,11 @@ export const updateTemplateTag = createThunkAction(
         delete updatedCard.description;
       }
 
-      return assocIn(
+      // using updateIn instead of assocIn due to not preserving order of keys
+      return updateIn(
         updatedCard,
-        ["dataset_query", "native", "template_tags", templateTag.name],
-        templateTag,
+        ["dataset_query", "native", "template_tags"],
+        tags => ({ ...tags, [templateTag.name]: templateTag }),
       );
     };
   },

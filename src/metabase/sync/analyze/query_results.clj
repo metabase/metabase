@@ -3,8 +3,7 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.models.humanization :as humanization]
-            [metabase.query-processor.interface :as qp.i]
+  (:require [metabase.query-processor.interface :as qp.i]
             [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -40,8 +39,8 @@
   special type with a nil special type"
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
-                                          ;; If we already know the special type, becouse it is stored, don't classify again.
-                                          ;; Also try to refine special type set upstream for aggregation cols (which comes back as :type/Number)
+                                          ;; If we already know the special type, becouse it is stored, don't classify again,
+                                          ;; but try to refine special type set upstream for aggregation cols (which come back as :type/Number).
                                           (case original-value
                                             (nil :type/Number) (classify-name/infer-special-type col)
                                             original-value))))
@@ -52,9 +51,6 @@
   populate the ResultColumnMetadata"
   [column]
   (merge
-   ;; if base-type isn't set put a default one in there. Similarly just use humanized value of `:name` for `:display_name` if one isn't set
-   {:base_type    :type/*
-    :display_name (humanization/name->human-readable-name (name (:name column)))}
    (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])
    ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as DateTime columns
    (when (= (:unit column) :year)

@@ -197,9 +197,8 @@
   "Return a set of bare-bones metadata for a Field named K when all else fails.
    Scan the INITIAL-VALUES of K in an attempt to determine the `base-type`."
   [k & [initial-values]]
-  {:base-type          (if (seq initial-values)
-                         (driver/values->base-type initial-values)
-                         :type/*)
+  {:base-type          (or (driver/values->base-type initial-values)
+                           :type/*)
    :preview-display    true
    :special-type       nil
    :field-name         k
@@ -364,6 +363,13 @@
            ;; add FK info
            add-extra-info-to-fk-fields))))
 
+(defn- pre-sort-index->post-sort-index
+  "Return a  mapping of how columns should be sorted:
+   [2 1 0] means the 1st column should be 3rd, 2nd remain 2nd, and 3rd should come 1st."
+  [unsorted-columns sorted-columns]
+  (let [column-index (zipmap unsorted-columns (range))]
+    (map column-index sorted-columns)))
+
 (defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:
 
@@ -371,13 +377,17 @@
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
       frontend."
   [query {:keys [columns rows], :as results}]
-  (let [row-maps (for [row rows]
-                   (zipmap columns row))
-        cols    (resolve-sort-and-format-columns (:query query) (distinct columns) (take 10 row-maps))
-        columns (mapv :name cols)]
+  (let [cols           (resolve-sort-and-format-columns (:query query)
+                                                        (distinct columns)
+                                                        (for [row (take 10 rows)]
+                                                          (zipmap columns row)))
+        sorted-columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]
                       (update col :name name)))
-      :columns (mapv name columns)
-      :rows    (for [row row-maps]
-                 (mapv row columns)))))
+      :columns (mapv name sorted-columns)
+      :rows    (if (not= columns sorted-columns)
+                 (let [sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
+                   (for [row rows]
+                     (mapv (partial nth (vec row)) sorted-column-ordering)))
+                 rows))))
