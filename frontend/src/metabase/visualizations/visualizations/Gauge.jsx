@@ -20,14 +20,14 @@ const INNER_RADIUS = OUTER_RADIUS * INNER_RADIUS_RATIO;
 
 // arrow shape, currently an equilateral triangle
 const ARROW_HEIGHT = (OUTER_RADIUS - INNER_RADIUS) * 3 / 4; // 2/3 of segment thickness
-const ARROW_BASE = ARROW_HEIGHT / Math.tan(60 / 180 * Math.PI);
+const ARROW_BASE = ARROW_HEIGHT / Math.tan(64 / 180 * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
 const BACKGROUND_ARC_COLOR = colors["bg-medium"];
 const SEGMENT_LABEL_COLOR = colors["text-dark"];
 const CENTER_LABEL_COLOR = colors["text-dark"];
-const ARROW_FILL_COLOR = colors["text-dark"];
+const ARROW_FILL_COLOR = colors["text-medium"];
 const ARROW_STROKE_COLOR = "white";
 
 // in ems, but within the scaled 100px SVG element
