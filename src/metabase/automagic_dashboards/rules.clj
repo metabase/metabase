@@ -79,9 +79,11 @@
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
                                      (trs "1 <= width <= {0}" populate/grid-width)))
-(def ^:private Height (s/constrained s/Int pos?))
+(def ^:private Height su/IntGreaterThanZero)
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
+
+(def ^:private MaxRepetitions (s/cond-pre su/IntGreaterThanZero (s/enum "smart")))
 
 (def ^:private Card
   {Identifier {(s/required-key :title)                  s/Str
@@ -101,6 +103,7 @@
                (s/optional-key :group)                  s/Str
                (s/optional-key :y_label)                s/Str
                (s/optional-key :x_label)                s/Str
+               (s/optional-key :max_repetitions)        MaxRepetitions
                (s/optional-key :series_labels)          [s/Str]}})
 
 (def ^:private Groups

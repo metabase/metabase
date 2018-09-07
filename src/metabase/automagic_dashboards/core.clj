@@ -606,10 +606,30 @@
              :height                 1)
     card))
 
+(defn- limit-repetitions
+  [{:keys [max_repetitions] :as card} metrics cards]
+  (if (some->> max_repetitions (> (count cards)))
+    (concat (take max_repetitions cards)
+            [(assoc card
+               :text                   (format "[More like this](%sadhoc/%s)"
+                                               public-endpoint
+                                               (-> cards
+                                                   first
+                                                   :dataset_query
+                                                   (m/dissoc-in [:query :breakout])
+                                                   encode-base64-json))
+               :visualization          "text"
+               :visualization-settings {:dashcard.background false
+                                        :text.align_vertical :top}
+               :score                  (apply max (map :score cards))
+               :height                 1
+               :width                  populate/default-card-width)])
+    cards))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
+  [context {:keys [metrics filters dimensions score limit order_by query max_repetitions] :as card}]
   (let [order_by        (build-order-by dimensions metrics order_by)
         metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
@@ -655,7 +675,8 @@
                                               {:name ((some-fn :name (comp metric-name :metric)) metric)
                                                :op   (-> metric :metric metric-op)})
                              :dimensions    (map (comp :name bindings second) dimensions)
-                             :score         score))))))))
+                             :score         score)))))
+         (limit-repetitions card metrics))))
 
 (defn- matching-rules
   "Return matching rules orderd by specificity.

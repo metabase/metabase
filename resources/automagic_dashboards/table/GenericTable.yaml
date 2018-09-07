@@ -157,6 +157,7 @@ cards:
       height: 8
       score: 70
       group: General
+      max_repetitions: 1
       order_by:
         - Count: descending
 # Geographical
