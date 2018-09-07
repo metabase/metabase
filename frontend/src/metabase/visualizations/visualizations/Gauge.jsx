@@ -36,9 +36,9 @@ export default class Gauge extends Component {
       section: "Display",
       title: t`Segments`,
       default: [
-        { value: 0, color: normal.green },
+        { value: 0, color: normal.red },
         { value: 33, color: normal.yellow },
-        { value: 66, color: normal.red },
+        { value: 66, color: normal.green },
         { value: 100, color: normal.gray },
       ],
       widget: ChartSettingGaugeSegments,

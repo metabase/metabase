@@ -4,7 +4,7 @@ BASEDIR=$(dirname $0)
 CURRENTDIR=$PWD
 
 DOCKERHUB_REPO=metabase
-S3_BUCKET=downloads.metabase.com
+S3_BUCKET=goldbely-metabase
 
 
 # parse any cmd line arguments

@@ -5,8 +5,7 @@ BASEDIR=$(dirname $0)
 CURRENTDIR=$PWD
 PROJECT_ROOT=$(cd ${BASEDIR}/..; pwd)
 
-ARTIFACTS_S3BUCKET=${S3BUCKET:=metabase-artifacts}
-
+ARTIFACTS_S3BUCKET=${S3BUCKET:=goldbely-metabase} # metabase-artifacts
 
 export LANG=en_US.UTF-8
 export LANGUAGE=$LANG
@@ -34,7 +33,7 @@ make_eb_version() {
 
     RELEASE_FILE="/tmp/${MB_TAG}.zip"
 
-    echo "Building Elastic Beanstalk app version for Metabase using Docker Image: metabase/${MB_DOCKER_REPOSITORY}:${MB_TAG}"
+    echo "Building Elastic Beanstalk app version for Metabase using Docker Image: ${MB_DOCKER_REPOSITORY}:${MB_TAG}"
 
     # dynamically insert our MB version into the EB config file
     sed "s/@@MB_REPOSITORY@@/${MB_DOCKER_REPOSITORY}/" < ${BASEDIR}/Dockerrun.aws.json.template > ${BASEDIR}/Dockerrun.aws.json.tmp

@@ -1,7 +1,7 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-    "Name": "metabase/@@MB_REPOSITORY@@:@@MB_TAG@@",
+    "Name": "321916119305.dkr.ecr.us-east-1.amazonaws.com/@@MB_REPOSITORY@@:latest",
     "Update": "true"
   },
   "Ports": [

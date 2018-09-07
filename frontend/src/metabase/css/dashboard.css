@@ -2,7 +2,7 @@
   --night-mode-color: color(var(--color-text-white) alpha(-14%));
 }
 .Dashboard {
-  background-color: var(--color-bg-light);
+  background-color: white;
   min-height: 100vh;
 }
 
@@ -318,7 +318,7 @@
 
 @media screen and (min-width: 1540px) {
   .Dashboard.Dashboard--fullscreen {
-    font-size: 1.4em;
+    font-size: 1.2em;
   }
 }
 

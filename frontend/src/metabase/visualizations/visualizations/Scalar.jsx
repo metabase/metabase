@@ -26,7 +26,7 @@ export default class Scalar extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = { width: 2, height: 2 };
 
   _scalar: ?HTMLElement;
 
@@ -116,7 +116,7 @@ export default class Scalar extends Component {
     } = this.props;
     let description = settings["card.description"];
 
-    let isSmall = gridSize && gridSize.width < 4;
+    let isSmall = gridSize && gridSize.width < 5;
     const column = cols[0];
 
     let scalarValue = rows[0] && rows[0][0];

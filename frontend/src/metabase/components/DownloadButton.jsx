@@ -30,7 +30,9 @@ const DownloadButton = ({
   ...props
 }) => (
   <Box>
-    <form method={method} action={url}>
+    <form method={method} action={url} onSubmit={e => {
+      alert("Your download is being prepared and will download automatically.");
+    }}>
       {params && extractQueryParams(params).map(getInput)}
       <Flex
         is="button"

@@ -5,7 +5,8 @@ set -e
 BASEDIR=$(dirname $0)
 PROJECT_ROOT="$BASEDIR/../.."
 
-DOCKERHUB_NAMESPACE=metabase
+DOCKERHUB_NAMESPACE=goldbely
+AWS_ECR_URL=321916119305.dkr.ecr.us-east-1.amazonaws.com
 
 
 BUILD_TYPE=$1
@@ -28,22 +29,23 @@ if [ "$4" == "--latest" ]; then
     LATEST="YES"
 fi
 
-if [ "$PUBLISH" == "YES" ] && [ -z "$DOCKERHUB_USERNAME" -o -z "$DOCKERHUB_PASSWORD" ]; then
-    echo "In order to publish an image to Dockerhub you must set \$DOCKERHUB_USERNAME and \$DOCKERHUB_PASSWORD before running."
-    exit 1
-fi
+# if [ "$PUBLISH" == "YES" ] && [ -z "$DOCKERHUB_USERNAME" -o -z "$DOCKERHUB_PASSWORD" ]; then
+#     echo "In order to publish an image to Dockerhub you must set \$DOCKERHUB_USERNAME and \$DOCKERHUB_PASSWORD before running."
+#     exit 1
+# fi
 
 # TODO: verify we have access to docker cmd and minimum version?
 
 
 if [ "$BUILD_TYPE" == "release" ]; then
     DOCKERHUB_REPOSITORY=metabase
-    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:${MB_TAG}"
+    DOCKER_IMAGE="${DOCKERHUB_REPOSITORY}:${MB_TAG}"
 
     echo "Building Docker image ${DOCKER_IMAGE} from official Metabase release ${MB_TAG}"
 
     # download the official version of Metabase which matches our tag
-    curl -f -o ${BASEDIR}/metabase.jar http://downloads.metabase.com/${MB_TAG}/metabase.jar
+    # http://downloads.metabase.com/${MB_TAG}/metabase.jar
+    curl -f -o ${BASEDIR}/metabase.jar https://s3.amazonaws.com/goldbely-production/metabase/latest/metabase.jar
 
     if [[ $? -ne 0 ]]; then
         echo "Download failed!"
@@ -51,7 +53,7 @@ if [ "$BUILD_TYPE" == "release" ]; then
     fi
 else
     DOCKERHUB_REPOSITORY=metabase-head
-    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:${MB_TAG}"
+    DOCKER_IMAGE="${DOCKERHUB_REPOSITORY}:${MB_TAG}"
 
     echo "Building Docker image ${DOCKER_IMAGE} from local source"
 
@@ -76,24 +78,26 @@ docker build -t ${DOCKER_IMAGE} $BASEDIR
 
 
 if [ "$PUBLISH" == "YES" ]; then
-    echo "Publishing image ${DOCKER_IMAGE} to Dockerhub"
+    echo "Publishing image ${DOCKER_IMAGE} to AWS ECR"
 
     # make sure that we are logged into dockerhub
-    docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
+    # docker login --username="${DOCKERHUB_USERNAME}" --password="${DOCKERHUB_PASSWORD}"
 
     # push the built image to dockerhub
-    docker push ${DOCKER_IMAGE}
+    # docker push ${AWS_ECR_URL}/${DOCKER_IMAGE}:${MB_TAG}
 
     # TODO: quick check against dockerhub to see that our new image made it
 
     if [ "$LATEST" == "YES" ]; then
         # tag our recent versioned image as "latest"
-        docker tag -f ${DOCKER_IMAGE} ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+        docker tag ${DOCKER_IMAGE} ${AWS_ECR_URL}/${DOCKERHUB_REPOSITORY}:latest
 
         # then push it as well
-        docker push ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+        docker push ${AWS_ECR_URL}/${DOCKERHUB_REPOSITORY}:latest
 
         # TODO: validate push succeeded
+    else
+        docker push ${AWS_ECR_URL}/${DOCKER_IMAGE}
     fi
 fi
 
