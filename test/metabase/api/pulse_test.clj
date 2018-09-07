@@ -917,3 +917,23 @@
             ;; Don't update the pulse, but test the pulse with the updated recipients
             {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
              :emails   (et/regex-email-bodies #"A Pulse")}))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         GET /api/pulse/form_input                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Check that Slack channels come back when configured
+(expect
+  [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
+  (tu/with-temporary-setting-values [slack-token "something"]
+    (with-redefs [metabase.integrations.slack/channels-list (constantly [{:name "foo"}])
+                  metabase.integrations.slack/users-list (constantly [{:name "bar"}])]
+      (-> ((user->client :rasta) :get 200 "pulse/form_input")
+          (get-in [:channels :slack :fields])))))
+
+;; When slack is not configured, `form_input` returns just the #genreal slack channel
+(expect
+  [{:name "channel", :type "select", :displayName "Post to", :options ["#general"], :required true}]
+  (tu/with-temporary-setting-values [slack-token nil]
+    (-> ((user->client :rasta) :get 200 "pulse/form_input")
+        (get-in [:channels :slack :fields]))))
