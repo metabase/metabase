@@ -15,6 +15,8 @@ import ChartSettingRange from "metabase/visualizations/components/settings/Chart
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
+const MAX_WIDTH = 500;
+
 const OUTER_RADIUS = 45; // within 100px SVG element
 const INNER_RADIUS_RATIO = 3.7 / 5;
 const INNER_RADIUS = OUTER_RADIUS * INNER_RADIUS_RATIO;
@@ -155,17 +157,11 @@ export default class Gauge extends Component {
 
     let svgWidth, svgHeight;
     if (containerAspectRadio < svgAspectRatio) {
-      svgHeight = height;
-      svgWidth = height / svgAspectRatio;
+      svgWidth = Math.min(MAX_WIDTH, height / svgAspectRatio);
     } else {
-      svgWidth = width;
-      svgHeight = width / svgAspectRatio;
+      svgWidth = Math.min(MAX_WIDTH, width);
     }
-
-    if (svgWidth > 500) {
-      svgHeight *= 500 / svgWidth;
-      svgWidth = 500;
-    }
+    svgHeight = svgWidth * svgAspectRatio;
 
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
