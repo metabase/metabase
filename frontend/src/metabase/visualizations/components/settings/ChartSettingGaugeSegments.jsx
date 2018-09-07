@@ -1,8 +1,9 @@
 import React from "react";
 
 import { t } from "c-3po";
+import _ from "underscore";
 
-import { normal } from "metabase/lib/colors";
+import colors, { normal } from "metabase/lib/colors";
 
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/components/Button";
@@ -29,11 +30,11 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
           {segments.map((segment, index) => [
             <tr>
               <td>
-                {" "}
                 <ColorPicker
                   value={segment.color}
                   onChange={color => onChangeProperty(index, "color", color)}
                   padding={2}
+                  colors={getColorPalette()}
                 />
               </td>
               <td>
@@ -87,21 +88,40 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
       <Button
         borderless
         icon="add"
-        onClick={() =>
-          onChange(
-            segments.concat({
-              min: segments[segments.length - 1].max,
-              max: segments[segments.length - 1].max * 2,
-              color: normal.gray,
-              label: "",
-            }),
-          )
-        }
+        onClick={() => onChange(segments.concat(newSegment(segments)))}
       >
         {t`Add a range`}
       </Button>
     </div>
   );
 };
+
+function getColorPalette() {
+  return [
+    colors.error,
+    colors.warning,
+    colors.success,
+    ...Object.values(normal).slice(0, 9),
+  ];
+}
+
+function newSegment(segments) {
+  const palette = getColorPalette();
+  const lastSegment = segments[segments.length - 1];
+  const lastColorIndex = lastSegment
+    ? _.findIndex(palette, color => color === lastSegment.color)
+    : -1;
+  const nextColor =
+    lastColorIndex >= 0
+      ? palette[lastColorIndex + 1 % palette.length]
+      : palette[0];
+
+  return {
+    min: lastSegment ? lastSegment.max : 0,
+    max: lastSegment ? lastSegment.max * 2 : 1,
+    color: nextColor,
+    label: "",
+  };
+}
 
 export default ChartSettingGaugeSegments;

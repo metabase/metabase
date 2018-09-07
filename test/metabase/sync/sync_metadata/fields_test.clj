@@ -153,26 +153,34 @@
   (db/select-one-field :fk_target_field_id Field, :id (data/id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [{:total-fks 3, :updated-fks 0, :total-failed 0}
-         {:special_type :type/FK, :fk_target_field_id true}
-         {:special_type nil,      :fk_target_field_id false}
-         {:total-fks 3, :updated-fks 1, :total-failed 0}
-         {:special_type :type/FK, :fk_target_field_id true}]
+(expect (concat
+         (repeat 2 {:total-fks 3, :updated-fks 0, :total-failed 0})
+         [{:special_type :type/FK, :fk_target_field_id true}
+          {:special_type nil,      :fk_target_field_id false}]
+         (repeat 2 {:total-fks 3, :updated-fks 1, :total-failed 0})
+         [{:special_type :type/FK, :fk_target_field_id true}])
   (let [field-id (data/id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
                                                          :id field-id)
-                                                       (update :fk_target_field_id #(db/exists? Field :id %)))))]
+                                                       (update :fk_target_field_id #(db/exists? Field :id %)))))
+        {before-step-info :step-info,
+         before-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))
+        before-special-type-exists? (get-special-type-and-fk-exists?)
+        _ (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
+        after-special-type-exists? (get-special-type-and-fk-exists?)
+        {after-step-info :step-info,
+         after-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))]
     [
-     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     (sut/only-step-keys before-step-info)
+     (:task_details before-task-history)
      ;; FK should exist to start with
-     (get-special-type-and-fk-exists?)
+     before-special-type-exists?
      ;; Clear out FK / special_type
-     (do (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
-         (get-special-type-and-fk-exists?))
-
+     after-special-type-exists?
      ;; Run sync-table and they should be set again
-     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     (sut/only-step-keys after-step-info)
+     (:task_details after-task-history)
      (get-special-type-and-fk-exists?)]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
