@@ -203,6 +203,7 @@ const SortableParameterHandle = SortableHandle(() => (
       color: colors["border"],
       // width should match the left padding of the ParameterWidget container class so that it's centered
       width: "1em",
+      marginLeft: "1px",
     }}
   >
     <Icon name="grabber2" size={12} />
