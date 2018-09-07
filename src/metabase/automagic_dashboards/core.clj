@@ -537,15 +537,15 @@
                         (max-key :score a b)))
          definitions))
 
-(defn- instantate-visualization
-  [[k v] dimensions metrics]
+(defn- instantate-visualization-settings
+  [v dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
-    [k (-> v
-           (u/update-when :map.latitude_column dimension->name)
-           (u/update-when :map.longitude_column dimension->name)
-           (u/update-when :graph.metrics metric->name)
-           (u/update-when :graph.dimensions dimension->name))]))
+    (-> v
+        (u/update-when :map.latitude_column dimension->name)
+        (u/update-when :map.longitude_column dimension->name)
+        (u/update-when :graph.metrics metric->name)
+        (u/update-when :graph.dimensions dimension->name))))
 
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
@@ -563,7 +563,10 @@
                new-form))
            form))
        x)
-      (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (u/update-when :visualization-settings #(instantate-visualization-settings
+                                               %
+                                               bindings
+                                               (:metrics context)))))
 
 (defn- valid-breakout-dimension?
   [{:keys [base_type engine fingerprint aggregation]}]
@@ -584,6 +587,24 @@
          collect-dimensions
          (map filters/field-reference->id)
          set)))
+
+(defn- expand-card-macros
+  [card context bindings]
+  (case (:visualization card)
+    "more" (assoc card
+             :visualization          "text"
+             :visualization-settings {:dashcard.background false
+                                      :text.align_vertical :top}
+             :text                   (format "[%s](%s)"
+                                             (:title card)
+                                             (-> card
+                                                 :dimensions
+                                                 first first first
+                                                 bindings
+                                                 ->root
+                                                 :url))
+             :height                 1)
+    card))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
@@ -616,19 +637,19 @@
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
-                (let [query (if query
+                (let [query (cond
+                              query
                               (build-query context bindings query)
-                              (build-query context bindings
-                                           filters
-                                           metrics
-                                           dimensions
-                                           limit
-                                           order_by))]
+
+                              (-> card :visualization (not= "more"))
+                              (build-query context bindings filters metrics dimensions limit order_by))
+                      bindings (->> metrics
+                                    (map :name)
+                                    (zipmap (:metrics card))
+                                    (merge bindings))]
                   (-> card
-                      (instantiate-metadata context (->> metrics
-                                                         (map :name)
-                                                         (zipmap (:metrics card))
-                                                         (merge bindings)))
+                      (expand-card-macros context bindings)
+                      (instantiate-metadata context bindings)
                       (assoc :dataset_query query
                              :metrics       (for [metric metrics]
                                               {:name ((some-fn :name (comp metric-name :metric)) metric)

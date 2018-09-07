@@ -78,12 +78,11 @@
   Colors are then determined by using the hashs of color keys to index into the vector
   of available colors."
   [{:keys [visualization dataset_query]}]
-  (let [display     (first visualization)
-        breakout    (-> dataset_query :query :breakout)
+  (let [breakout    (-> dataset_query :query :breakout)
         aggregation (-> dataset_query :query :aggregation)]
-    (when (and (#{"line" "row" "bar" "scatter" "area"} display)
+    (when (and (#{"line" "row" "bar" "scatter" "area"} visualization)
                (= (count breakout) 1))
-      (let [color-keys (if (and (#{"bar" "row"} display)
+      (let [color-keys (if (and (#{"bar" "row"} visualization)
                                 (some->> aggregation
                                          flatten
                                          first
@@ -96,32 +95,30 @@
         {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
-  [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [[display visualization-settings] visualization]
-    {:display display
-     :visualization_settings (-> visualization-settings
-                                 (assoc :graph.series_labels (map :name metrics)
-                                        :graph.metrics       (map :op metrics)
-                                        :graph.dimensions    dimensions)
-                                 (merge (colorize card))
-                                 (cond->
-                                     series_labels (assoc :graph.series_labels series_labels)
+  [{:keys [metrics x_label y_label series_labels visualization-settings dimensions] :as card}]
+  (-> visualization-settings
+      (assoc :graph.series_labels (map :name metrics)
+             :graph.metrics       (map :op metrics)
+             :graph.dimensions    dimensions)
+      (merge (colorize card))
+      (cond->
+          series_labels (assoc :graph.series_labels series_labels)
 
-                                     x_label       (assoc :graph.x_axis.title_text x_label)
+          x_label       (assoc :graph.x_axis.title_text x_label)
 
-                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
+          y_label       (assoc :graph.y_axis.title_text y_label))))
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height]
-              :as card} [x y]]
+  [dashboard {:keys [title description dataset_query width height visualization] :as card} [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
-                  :dataset_query dataset_query
-                  :description   description
-                  :name          title
-                  :collection_id nil
-                  :id            (gensym)}
-                 (merge (visualization-settings card))
+                  :dataset_query          dataset_query
+                  :description            description
+                  :name                   title
+                  :collection_id          nil
+                  :id                     (gensym)
+                  :display                visualization
+                  :visualization_settings (visualization-settings card)}
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
                                            :row                    x

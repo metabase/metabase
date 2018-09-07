@@ -77,8 +77,6 @@
 
 (def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
-
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
                                      (trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
@@ -86,23 +84,24 @@
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
 
 (def ^:private Card
-  {Identifier {(s/required-key :title)         s/Str
-               (s/required-key :score)         Score
-               (s/optional-key :visualization) Visualization
-               (s/optional-key :text)          s/Str
-               (s/optional-key :dimensions)    [CardDimension]
-               (s/optional-key :filters)       [s/Str]
-               (s/optional-key :metrics)       [s/Str]
-               (s/optional-key :limit)         su/IntGreaterThanZero
-               (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   s/Str
-               (s/optional-key :query)         s/Str
-               (s/optional-key :width)         Width
-               (s/optional-key :height)        Height
-               (s/optional-key :group)         s/Str
-               (s/optional-key :y_label)       s/Str
-               (s/optional-key :x_label)       s/Str
-               (s/optional-key :series_labels) [s/Str]}})
+  {Identifier {(s/required-key :title)                  s/Str
+               (s/required-key :score)                  Score
+               (s/optional-key :visualization)          s/Str
+               (s/optional-key :visualization-settings) su/Map
+               (s/optional-key :text)                   s/Str
+               (s/optional-key :dimensions)             [CardDimension]
+               (s/optional-key :filters)                [s/Str]
+               (s/optional-key :metrics)                [s/Str]
+               (s/optional-key :limit)                  su/IntGreaterThanZero
+               (s/optional-key :order_by)               [OrderByPair]
+               (s/optional-key :description)            s/Str
+               (s/optional-key :query)                  s/Str
+               (s/optional-key :width)                  Width
+               (s/optional-key :height)                 Height
+               (s/optional-key :group)                  s/Str
+               (s/optional-key :y_label)                s/Str
+               (s/optional-key :x_label)                s/Str
+               (s/optional-key :series_labels)          [s/Str]}})
 
 (def ^:private Groups
   {Identifier {(s/required-key :title)            s/Str
@@ -242,19 +241,23 @@
                       (if (string? x)
                         {x "ascending"}
                         x))
-    Visualization   (fn [x]
-                      (if (string? x)
-                        [x {}]
-                        (first x)))
     Metric          (comp (with-defaults {:score max-score})
                           (shorthand-definition :metric))
     Dimension       (comp (with-defaults {:score max-score})
                           (shorthand-definition :field_type))
     Filter          (comp (with-defaults {:score max-score})
                           (shorthand-definition :filter))
-    Card            (with-defaults {:score  max-score
-                                    :width  populate/default-card-width
-                                    :height populate/default-card-height})
+    Card            (comp (with-defaults {:score  max-score
+                                          :width  populate/default-card-width
+                                          :height populate/default-card-height})
+                          (fn [card]
+                            (let [[identifier {:keys [visualization] :as card}] (first card)
+                                  [visualization visualization-settings] (if (string? visualization)
+                                                                           [visualization {}]
+                                                                           (first visualization))]
+                              {identifier (assoc card
+                                            :visualization          visualization
+                                            :visualization-settings visualization-settings)})))
     [CardDimension] ensure-seq
     CardDimension   (fn [x]
                       (if (string? x)
