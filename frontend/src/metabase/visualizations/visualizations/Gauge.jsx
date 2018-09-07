@@ -8,6 +8,7 @@ import cx from "classnames";
 
 import colors from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
+import { isNumeric } from "metabase/lib/schema_metadata";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import ChartSettingRange from "metabase/visualizations/components/settings/ChartSettingRange";
@@ -51,14 +52,16 @@ export default class Gauge extends Component {
   static identifier = "gauge";
   static iconName = "gauge";
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = { width: 4, height: 4 };
 
   static isSensible(cols, rows) {
     return rows.length === 1 && cols.length === 1;
   }
 
   static checkRenderable([{ data: { cols, rows } }]) {
-    // scalar can always be rendered, nothing needed here
+    if (!isNumeric(cols[0])) {
+      throw new Error(t`Gauge visualization requires a number.`);
+    }
   }
 
   state = {
@@ -74,7 +77,9 @@ export default class Gauge extends Component {
           ...vizSettings["gauge.segments"].map(s => s.max),
           ...vizSettings["gauge.segments"].map(s => s.min),
         ];
-        return [Math.min(...values), Math.max(...values)];
+        return values.length > 0
+          ? [Math.min(...values), Math.max(...values)]
+          : [0, 1];
       },
       readDependencies: ["gauge.segments"],
       widget: ChartSettingRange,
@@ -82,11 +87,19 @@ export default class Gauge extends Component {
     "gauge.segments": {
       section: "Display",
       title: t`Colored ranges`,
-      default: [
-        { min: 20, max: 30, color: colors["error"], label: "Inefficient" },
-        { min: 40, max: 75, color: colors["success"], label: "Most efficient" },
-      ],
+      getDefault(series) {
+        let value = 100;
+        try {
+          value = series[0].data.rows[0][0];
+        } catch (e) {}
+        return [
+          { min: 0, max: value / 2, color: colors["error"], label: "" },
+          { min: value / 2, max: value, color: colors["warning"], label: "" },
+          { min: value, max: value * 2, color: colors["success"], label: "" },
+        ];
+      },
       widget: ChartSettingGaugeSegments,
+      persistDefault: true,
     },
   };
 
@@ -147,6 +160,11 @@ export default class Gauge extends Component {
     } else {
       svgWidth = width;
       svgHeight = width / svgAspectRatio;
+    }
+
+    if (svgWidth > 500) {
+      svgHeight *= 500 / svgWidth;
+      svgWidth = 500;
     }
 
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
@@ -214,6 +232,8 @@ export default class Gauge extends Component {
                   start={angle(segment.min)}
                   end={angle(segment.max)}
                   fill={segment.color}
+                  segment={segment}
+                  onHoverChange={this.props.onHoverChange}
                 />
               ))}
               {/* NEEDLE */}
@@ -263,7 +283,7 @@ export default class Gauge extends Component {
   }
 }
 
-const GaugeArc = ({ start, end, fill }) => {
+const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
   const arc = d3.svg
     .arc()
     .outerRadius(OUTER_RADIUS)
@@ -275,6 +295,21 @@ const GaugeArc = ({ start, end, fill }) => {
         endAngle: end,
       })}
       fill={fill}
+      onMouseMove={
+        onHoverChange && segment.label
+          ? e =>
+              onHoverChange({
+                data: [
+                  {
+                    key: segment.label,
+                    value: `${segment.min} - ${segment.max}`,
+                  },
+                ],
+                event: e.nativeEvent,
+              })
+          : null
+      }
+      onMouseLeave={onHoverChange ? () => onHoverChange(null) : null}
     />
   );
 };
