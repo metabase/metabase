@@ -60,13 +60,15 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 />
               </td>
               <td>
-                <Icon
-                  name="close"
-                  className="cursor-pointer text-grey-2 text-grey-4-hover ml2"
-                  onClick={() =>
-                    onChange(segments.filter((v, i) => i !== index))
-                  }
-                />
+                {segments.length > 1 && (
+                  <Icon
+                    name="close"
+                    className="cursor-pointer text-grey-2 text-grey-4-hover ml2"
+                    onClick={() =>
+                      onChange(segments.filter((v, i) => i !== index))
+                    }
+                  />
+                )}
               </td>
             </tr>,
             <tr>
