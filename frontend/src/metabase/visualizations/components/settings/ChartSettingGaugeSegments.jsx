@@ -33,6 +33,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <ColorPicker
                   value={segment.color}
                   onChange={color => onChangeProperty(index, "color", color)}
+                  triggerSize={28}
                   padding={2}
                   colors={getColorPalette()}
                 />
