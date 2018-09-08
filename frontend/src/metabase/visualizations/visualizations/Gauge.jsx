@@ -16,6 +16,7 @@ import ChartSettingRange from "metabase/visualizations/components/settings/Chart
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 const MAX_WIDTH = 500;
+const PADDING_BOTTOM = 10;
 
 const OUTER_RADIUS = 45; // within 100px SVG element
 const INNER_RADIUS_RATIO = 3.7 / 5;
@@ -34,12 +35,14 @@ const ARROW_FILL_COLOR = colors["text-medium"];
 const ARROW_STROKE_COLOR = "white";
 
 // in ems, but within the scaled 100px SVG element
-const FONT_SIZE_SEGMENT_LABEL = 0.15;
+const FONT_SIZE_SEGMENT_LABEL = 0.25;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
 const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
 // hide labels if SVG width is smaller than this
-const MIN_WIDTH_LABEL_THRESHOLD = 400;
+const MIN_WIDTH_LABEL_THRESHOLD = 250;
+
+const LABEL_OFFSET_PERCENT = 1.025;
 
 // total degrees of the arc (180 = semicircle, etc)
 const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
@@ -144,9 +147,10 @@ export default class Gauge extends Component {
       series: [{ data: { rows, cols } }],
       settings,
       className,
-      width,
-      height,
     } = this.props;
+
+    const width = this.props.width;
+    const height = this.props.height - PADDING_BOTTOM;
 
     const viewBoxHeight =
       (ARC_DEGREES > 180 ? 50 : 0) + Math.sin(radians(ARC_DEGREES / 2)) * 50;
@@ -202,19 +206,31 @@ export default class Gauge extends Component {
         value: segment.min + (segment.max - segment.min) / 2,
       }));
 
+    // expand the width to fill available space so that labels don't overflow as often
+    const expandWidthFactor = width / svgWidth;
+
     return (
       <div className={cx(className, "relative")}>
         <div
           className="absolute overflow-hidden"
           style={{
-            width: svgWidth,
+            width: svgWidth * expandWidthFactor,
             height: svgHeight,
             top: (height - svgHeight) / 2,
-            left: (width - svgWidth) / 2,
+            left:
+              (width - svgWidth) / 2 -
+              // shift to the left the
+              (svgWidth * expandWidthFactor - svgWidth) / 2,
           }}
         >
-          <svg viewBox={`0 0 100 ${viewBoxHeight}`}>
-            <g transform={`translate(50,50)`}>
+          <svg
+            viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
+          >
+            <g
+              transform={`translate(${viewBoxWidth *
+                expandWidthFactor /
+                2},50)`}
+            >
               {/* BACKGROUND ARC */}
               <GaugeArc
                 start={angle(range[0])}
@@ -238,7 +254,10 @@ export default class Gauge extends Component {
               {showLabels &&
                 numberLabels.map((value, index) => (
                   <GaugeSegmentLabel
-                    position={valuePosition(value, OUTER_RADIUS * 1.01)}
+                    position={valuePosition(
+                      value,
+                      OUTER_RADIUS * LABEL_OFFSET_PERCENT,
+                    )}
                   >
                     {formatValue(value, { column })}
                   </GaugeSegmentLabel>
@@ -246,14 +265,19 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <GaugeSegmentLabel
-                    position={valuePosition(value, OUTER_RADIUS * 1.01)}
-                    style={{
-                      fill: SEGMENT_LABEL_COLOR,
-                    }}
-                  >
-                    {label}
-                  </GaugeSegmentLabel>
+                  <HideIfOverlowingSVG>
+                    <GaugeSegmentLabel
+                      position={valuePosition(
+                        value,
+                        OUTER_RADIUS * LABEL_OFFSET_PERCENT,
+                      )}
+                      style={{
+                        fill: SEGMENT_LABEL_COLOR,
+                      }}
+                    >
+                      {label}
+                    </GaugeSegmentLabel>
+                  </HideIfOverlowingSVG>
                 ))}
               {/* CENTER LABEL */}
               {/* NOTE: can't be a component because ref doesn't work? */}
@@ -340,3 +364,36 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     {children}
   </text>
 );
+
+class HideIfOverlowingSVG extends React.Component {
+  componentDidMount() {
+    this._hideIfClipped();
+  }
+  componentDidUpdate() {
+    this._hideIfClipped();
+  }
+  _hideIfClipped() {
+    const element = ReactDOM.findDOMNode(this);
+    if (element) {
+      let svg = element;
+      while (svg.nodeName.toLowerCase() !== "svg") {
+        svg = svg.parentNode;
+      }
+      const svgRect = svg.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      if (
+        elementRect.left >= svgRect.left &&
+        elementRect.right <= svgRect.right &&
+        elementRect.top >= svgRect.top &&
+        elementRect.bottom <= svgRect.bottom
+      ) {
+        element.classList.remove("hidden");
+      } else {
+        element.classList.add("hidden");
+      }
+    }
+  }
+  render() {
+    return this.props.children;
+  }
+}
