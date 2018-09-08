@@ -16,7 +16,7 @@ import {
   getEngineNativeRequiresTable,
 } from "metabase/lib/engine";
 
-import { chain, assoc, getIn, assocIn } from "icepick";
+import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 
 import type {
@@ -156,6 +156,24 @@ export default class NativeQuery extends AtomicQuery {
     return new NativeQuery(
       this._originalQuestion,
       assocIn(this._datasetQuery, ["native", "collection"], newCollection),
+    );
+  }
+
+  setParameterIndex(id: string, newIndex: number) {
+    // NOTE: currently all NativeQuery parameters are implicitly generated from
+    // template tags, and the order is determined by the key order
+    return new NativeQuery(
+      this._originalQuestion,
+      updateIn(
+        this._datasetQuery,
+        ["native", "template_tags"],
+        templateTags => {
+          const entries = Array.from(Object.entries(templateTags));
+          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
+          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
+          return _.object(entries);
+        },
+      ),
     );
   }
 
