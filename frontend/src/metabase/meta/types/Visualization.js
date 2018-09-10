@@ -81,6 +81,9 @@ export type VisualizationProps = {
     height: number,
   },
 
+  width: number,
+  height: number,
+
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,

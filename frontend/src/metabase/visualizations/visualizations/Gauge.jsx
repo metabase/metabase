@@ -75,6 +75,8 @@ export default class Gauge extends Component {
     mounted: false,
   };
 
+  _label: ?HTMLElement;
+
   static settings = {
     "gauge.range": {
       section: "Display",
@@ -121,7 +123,7 @@ export default class Gauge extends Component {
 
   _updateLabelSize() {
     // TODO: extract this into a component that resizes SVG <text> element to fit bounds
-    const label = ReactDOM.findDOMNode(this._label);
+    const label = this._label && ReactDOM.findDOMNode(this._label);
     if (label) {
       const { width: currentWidth } = label.getBBox();
       // maxWidth currently 95% of inner diameter, could be more intelligent based on text aspect ratio

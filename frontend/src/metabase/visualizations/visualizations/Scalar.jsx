@@ -106,7 +106,6 @@ export default class Scalar extends Component {
     let {
       series: [{ card, data: { cols, rows } }],
       className,
-      style,
       actionButtons,
       gridSize,
       settings,
@@ -198,7 +197,6 @@ export default class Scalar extends Component {
           styles.Scalar,
           styles[isSmall ? "small" : "large"],
         )}
-        style={style}
       >
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
