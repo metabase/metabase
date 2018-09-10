@@ -226,6 +226,24 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+
+  be-tests-clickhouse:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+    - image: circleci/clojure:lein-2.8.1-node-browsers
+    - image: yandex/clickhouse-server:latest
+    steps:
+    - attach_workspace:
+        at: /home/circleci/
+    - restore_cache:
+        <<: *restore-be-deps-cache
+    - run:
+        name: Run backend unit tests (Clickhouse)
+        command: >
+          /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh clickhouse ||
+          lein with-profile +ci test
+        no_output_timeout: 5m
+
   be-tests-vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -497,7 +515,9 @@ workflows:
             - be-tests
       - be-tests-sparksql:
           requires:
-            - be-tests
+      - be-tests-clickhouse:
+          requires:
+          - be-tests
       - be-tests-mongo:
           requires:
             - be-tests
