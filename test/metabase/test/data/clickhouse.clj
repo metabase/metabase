@@ -16,7 +16,8 @@
    :type/Float      "Float64"
    :type/Integer    "Int32"
    :type/Text       "String"
-   :type/Time       "DateTime"})
+   :type/Time       "DateTime"
+   :type/UUID       "UUID"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host "localhost"
