@@ -99,19 +99,19 @@ export class GroupingManager {
     ).resArr;
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
     if (isPivoted) {
-      const pivotColumnNumber = columnsIndexesForGrouping.length;
-      const columns = Set.of(
-        ...Array.from(
-          [].concat(...this.rows.map(p => Object.getOwnPropertyNames(p.piv))),
-        ),
-      );
-      const hasUndef = columns.delete("undefined");
-      const pivotedColumns = orderBy(
+      const mainRes = rp(mainKey);
+      const pivotIndex = mainRes.columns.indexOf(summaryTableSettings.columnsSource[0]);
+      const columns = mainRes.rows.reduce((acc, elem) => acc.add(elem[pivotIndex]), new Set());
+
+      const hasUndef = summaryTableSettings.columnNameToMetadata[summaryTableSettings.columnsSource[0]].showTotals;
+
+      let pivotedColumns = orderBy(
         [...columns],
         p => p,
         getAscDesc(summaryTableSettings.columnsSource[0]) ? "asc" : "desc",
       );
-      if (hasUndef) pivotedColumns.push(undefined);
+
+      if (hasUndef) pivotedColumns= [...pivotedColumns, undefined];
 
       const tmp = getAvailableColumnIndexes(summaryTableSettings, rawCols);
       const colsTmp = tmp
@@ -131,7 +131,9 @@ export class GroupingManager {
         getValue: getValueByIndex(i),
         parentName: ["", 1],
       }));
-      const pivotColumn = colsTmp[grColumnsLength + 1];
+
+
+      const pivotColumn = colsTmp[grColumnsLength];
       const values = colsTmp.slice(grColumnsLength + 1);
       const tt = pivotedColumns
         .map(k => [getPivotValue(k, grColumnsLength + 1), k])
@@ -160,8 +162,10 @@ export class GroupingManager {
         column,
         columnSpan: 1,
       }));
+
+
       let pivotedHeaders = buildHeader(
-        [{ column: cols[pivotColumnNumber - 1], values: pivotedColumns }],
+        [{ column: pivotColumn, values: pivotedColumns }],
         values,
       );
 
@@ -433,12 +437,12 @@ const pivotRows = (rows, cmp) => {
     return acc;
   }, {});
   const functionf = v => createUberRows(pivotColumnNumber, v);
+
   const grouped = [].concat(
     ...Object.getOwnPropertyNames(ttttttttttt)
       .map(start => rowsOrdered.slice(start, ttttttttttt[start] + 1))
       .map(functionf),
   );
-
   return grouped;
 };
 

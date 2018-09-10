@@ -114,6 +114,7 @@ export default class TableSimpleSummary extends Component {
         rowIndexes.reverse();
       }
     }
+    const groupingColumnsLen = columnsHeaders[0].findIndex(p => p);
 
     return (
       <div className={cx(this.props.className, "relative flex flex-column")}>
@@ -164,7 +165,7 @@ export default class TableSimpleSummary extends Component {
                               }}
                             />
                             <Ellipsified>
-                              {col.displayText|| col.value && formatValue(col.value, {
+                              {col.displayText|| (col.value || col.value === 0) && formatValue(col.value, {
                                 column: col.column,
                                 jsx: true,
                                 rich: true,
@@ -174,6 +175,8 @@ export default class TableSimpleSummary extends Component {
                         </th>
                       );
                     }
+                    else if(colIndex < groupingColumnsLen)
+                      return <th/>
                   })}
                 </tr>)
               }

@@ -445,7 +445,7 @@ export default class TableInteractiveSummary extends Component {
   }: CellRendererProps) => {
     const { sort, onVisualizationClick, visualizationIsClickable } = this.props;
 
-    let columnTitle = displayText || (value
+    let columnTitle = displayText || (value || value === 0
       ? formatValue(value, {
           column: column,
           type: "cell",
