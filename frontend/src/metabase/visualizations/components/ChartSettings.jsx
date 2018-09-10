@@ -174,9 +174,10 @@ class ChartSettings extends Component {
                 <Visualization
                   className="spread"
                   rawSeries={series}
-                  isEditing
                   showTitle
+                  isEditing
                   isDashboard
+                  isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}
                   onUpdateWarnings={warnings => this.setState({ warnings })}

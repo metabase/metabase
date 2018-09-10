@@ -150,6 +150,7 @@ export default class Gauge extends Component {
       series: [{ data: { rows, cols } }],
       settings,
       className,
+      isSettings,
     } = this.props;
 
     const width = this.props.width;
@@ -252,7 +253,10 @@ export default class Gauge extends Component {
                 />
               ))}
               {/* NEEDLE */}
-              <GaugeNeedle angle={angle(this.state.mounted ? value : 0)} />
+              <GaugeNeedle
+                angle={angle(this.state.mounted ? value : 0)}
+                isAnimated={!isSettings}
+              />
               {/* NUMBER LABELS */}
               {showLabels &&
                 numberLabels.map((value, index) => (
@@ -337,13 +341,13 @@ const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
   );
 };
 
-const GaugeNeedle = ({ angle }) => (
+const GaugeNeedle = ({ angle, isAnimated = true }) => (
   <path
     d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
     transform={`translate(0,-${INNER_RADIUS}) rotate(${degrees(
       angle,
     )}, 0, ${INNER_RADIUS})`}
-    style={{ transition: "transform 1.5s ease-in-out" }}
+    style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
     stroke={ARROW_STROKE_COLOR}
     strokeWidth={ARROW_STROKE_THICKNESS}
     fill={ARROW_FILL_COLOR}

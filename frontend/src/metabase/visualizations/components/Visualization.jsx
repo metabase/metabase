@@ -57,6 +57,7 @@ type Props = {
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isSettings: boolean,
 
   actionButtons: Element<any>,
 
@@ -136,6 +137,7 @@ export default class Visualization extends Component {
     showTitle: false,
     isDashboard: false,
     isEditing: false,
+    isSettings: false,
     onUpdateVisualizationSettings: (...args) =>
       console.warn("onUpdateVisualizationSettings", args),
   };
