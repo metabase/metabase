@@ -243,6 +243,7 @@ export default class Dashboard extends Component {
           editingParameter={editingParameter}
           setEditingParameter={this.props.setEditingParameter}
           setParameterName={this.props.setParameterName}
+          setParameterIndex={this.props.setParameterIndex}
           setParameterDefaultValue={this.props.setParameterDefaultValue}
           removeParameter={this.props.removeParameter}
           setParameterValue={this.props.setParameterValue}
