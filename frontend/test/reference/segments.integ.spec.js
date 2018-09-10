@@ -5,6 +5,7 @@ import {
 
 import React from "react";
 import { mount } from "enzyme";
+import { assocIn } from "icepick";
 
 import { CardApi, SegmentApi } from "metabase/services";
 
@@ -23,6 +24,8 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
+// NOTE: database/table_id/source_table are hard-coded, this might be a problem at some point
 
 describe("The Reference Section", () => {
   // Test data
@@ -154,7 +157,12 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        let card = await CardApi.create(segmentCardDef);
+        const cardDef = assocIn(
+          segmentCardDef,
+          ["dataset_query", "query", "filter", 1],
+          segmentIds[0],
+        );
+        let card = await CardApi.create(cardDef);
 
         expect(card.name).toBe(segmentCardDef.name);
 

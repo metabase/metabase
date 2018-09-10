@@ -4,6 +4,7 @@ import { t } from "c-3po";
 import d3 from "d3";
 
 import { rangeForValue } from "metabase/lib/dataset";
+import colors from "metabase/lib/colors";
 
 export default class LeafletGridHeatMap extends LeafletMap {
   componentDidMount() {
@@ -29,7 +30,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
         .linear()
         .domain([min, max])
         .interpolate(d3.interpolateHcl)
-        .range([d3.rgb("#00FF00"), d3.rgb("#FF0000")]);
+        .range([d3.rgb(colors["success"]), d3.rgb(colors["error"])]);
 
       let gridSquares = gridLayer.getLayers();
       let totalSquares = Math.max(points.length, gridSquares.length);

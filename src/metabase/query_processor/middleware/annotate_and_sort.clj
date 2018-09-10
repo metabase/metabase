@@ -10,7 +10,8 @@
             [metabase.models.humanization :as humanization]
             [metabase.query-processor
              [annotate :as annotate]
-             [util :as qputil]]))
+             [util :as qputil]]
+            [metabase.util.date :as du]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                NATIVE QUERY ANNOTATION                                                 |
@@ -19,19 +20,18 @@
 (defn- infer-column-types
   "Infer the types of columns by looking at the first value for each in the results, and add the relevant information in `:cols`.
    This is used for native queries, which don't have the type information from the original `Field` objects used in the query, which is added to the results by `annotate`."
-  [query {:keys [columns rows], :as results}]
+  [{:keys [columns rows], :as results}]
   (assoc results
     :columns (mapv name columns)
     :cols    (vec (for [i    (range (count columns))
                         :let [col (nth columns i)
                               base-type (driver/values->base-type (for [row rows]
-                                                                    (nth row i)))]]
+                                                                   (nth row i)))]]
                     (merge {:name         (name col)
                             :display_name (humanization/name->human-readable-name (name col))
-                            :base_type    base-type}
+                            :base_type    (or base-type :type/*)}
                            (when (isa? base-type :type/DateTime)
-                             {:timezone (qputil/query-timezone query)}))))))
-
+                             {:timezone (.getID du/*report-timezone*)}))))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   GENERAL MIDDLEWARE                                                   |
@@ -44,6 +44,6 @@
     (let [results (qp query)]
       (-> (if-not (or (qputil/mbql-query? query)
                       (:annotate? results))
-            (infer-column-types query results)
+            (infer-column-types results)
             (annotate/annotate-and-sort query results))
           (dissoc :annotate?)))))

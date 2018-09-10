@@ -17,7 +17,7 @@ const ChartSettingFieldPicker = ({ value, options, onChange, onRemove }) => (
     />
     <Icon
       name="close"
-      className={cx("ml1 text-grey-4 text-brand-hover cursor-pointer", {
+      className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
         "disabled hidden": !onRemove,
       })}
       width={12}

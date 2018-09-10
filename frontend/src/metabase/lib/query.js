@@ -205,7 +205,9 @@ const Query = {
       delete query.limit;
     }
 
-    if (query.expressions) delete query.expressions[""]; // delete any empty expressions
+    if (query.expressions) {
+      delete query.expressions[""];
+    } // delete any empty expressions
 
     return query;
   },
@@ -315,11 +317,15 @@ const Query = {
 
   // remove an expression with NAME. Returns scrubbed QUERY with all references to expression removed.
   removeExpression(query, name) {
-    if (!query.expressions) return query;
+    if (!query.expressions) {
+      return query;
+    }
 
     delete query.expressions[name];
 
-    if (_.isEmpty(query.expressions)) delete query.expressions;
+    if (_.isEmpty(query.expressions)) {
+      delete query.expressions;
+    }
 
     // ok, now "scrub" the query to remove any references to the expression
     function isExpressionReference(obj) {

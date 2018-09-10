@@ -69,7 +69,7 @@ export default class Text extends Component {
       default: "",
     },
     "text.align_vertical": {
-      section: "Display",
+      section: t`Display`,
       title: t`Vertical Alignment`,
       widget: "select",
       props: {
@@ -82,7 +82,7 @@ export default class Text extends Component {
       default: "top",
     },
     "text.align_horizontal": {
-      section: "Display",
+      section: t`Display`,
       title: t`Horizontal Alignment`,
       widget: "select",
       props: {
@@ -95,7 +95,7 @@ export default class Text extends Component {
       default: "left",
     },
     "dashcard.background": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show background`,
       dashboard: true,
       widget: "toggle",
@@ -160,7 +160,7 @@ export default class Text extends Component {
           ) : (
             <textarea
               className={cx(
-                "full flex-full flex flex-column bg-grey-0 bordered drag-disabled",
+                "full flex-full flex flex-column bg-light bordered drag-disabled",
                 styles["text-card-textarea"],
               )}
               name="text"
@@ -212,7 +212,7 @@ const TextActionButtons = ({
         <a
           data-metabase-event={"Dashboard;Text;edit"}
           className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": isShowingRenderedOutput,
+            "text-light text-medium-hover": isShowingRenderedOutput,
             "text-brand": !isShowingRenderedOutput,
           })}
           onClick={onEdit}
@@ -232,7 +232,7 @@ const TextActionButtons = ({
         <a
           data-metabase-event={"Dashboard;Text;preview"}
           className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": !isShowingRenderedOutput,
+            "text-light text-medium-hover": !isShowingRenderedOutput,
             "text-brand": isShowingRenderedOutput,
           })}
           onClick={onPreview}

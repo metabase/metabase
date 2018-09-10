@@ -76,7 +76,7 @@ export default class FieldName extends Component {
         parts.push(<span key="field">{t`Unknown Field`}</span>);
       }
     } else {
-      parts.push(<span key="field" className={"text-grey-2"}>{t`field`}</span>);
+      parts.push(<span key="field" className={"text-light"}>{t`field`}</span>);
     }
 
     const content = (

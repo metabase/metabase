@@ -6,7 +6,8 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -14,26 +15,28 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.events.activity-feed :refer [activity-feed-topics]]
             [metabase.models
-             [activity :refer [Activity]]
              [card :refer [Card]]
-             [dashboard-card :refer [DashboardCard]]
+             [collection :as collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
              [database :refer [Database virtual-id]]
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [pulse :refer [Pulse]]
              [query-execution :as query-execution :refer [QueryExecution]]
              [setting :as setting :refer [Setting]]
-             [table :as table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.date :as du]
+            [puppetlabs.i18n.core :refer [trs]]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]]
+            [metabase.models.permissions-group :as group])
+  (:import java.util.UUID))
 
 ;;; # Migration Helpers
 
@@ -70,73 +73,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   MIGRATIONS                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
-;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
-;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-mongodb-databases-ssl-false
-  (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
-    (db/update! Database id, :details (assoc details :ssl false))))
-
-
-;; Set default values for :schema in existing tables now that we've added the column
-;; That way sync won't get confused next time around
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-default-schemas
-  (doseq [[engine default-schema] [["postgres" "public"]
-                                   ["h2"       "PUBLIC"]]]
-    (when-let [db-ids (db/select-ids Database :engine engine)]
-      (db/update-where! Table {:schema nil
-                               :db_id  [:in db-ids]}
-        :schema default-schema))))
-
-
-;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
-(defmigration ^{:author "agilliland", :added "0.13.0"} set-admin-email
-  (when-not (setting/get :admin-email)
-    (when-let [email (db/select-one-field :email 'User
-                       :is_superuser true
-                       :is_active    true)]
-      (setting/set! :admin-email email))))
-
-
-;; Remove old `database-sync` activity feed entries
-(defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
-  (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/simple-delete! Activity :topic "database-sync")))
-
-
-;; Migrate dashboards to the new grid
-;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
-(defmigration ^{:author "agilliland",:added "0.16.0"} update-dashboards-to-new-grid
-  (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
-    (db/update! DashboardCard id
-      :row   (when row (* row 4))
-      :col   (when col (* col 3))
-      :sizeX (when sizeX (* sizeX 3))
-      :sizeY (when sizeY (* sizeY 4)))))
-
-
-;; migrate data to new visibility_type column on field
-(defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/count Field :visibility_type "unset"))
-    ;; start by marking all inactive fields as :retired
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          false}
-      :visibility_type "retired")
-    ;; if field is active but preview_display = false then it becomes :details-only
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true
-                             :preview_display false}
-      :visibility_type "details-only")
-    ;; everything else should end up as a :normal field
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true}
-      :visibility_type "normal")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -367,3 +303,78 @@
                            :special_type     (mdb/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
+
+;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
+;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
+;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
+;; directive (although this was already the default). Since we're now defaulting to standard SQL, we'll need to go in
+;; and add a `#legacySQL` directive to all existing BigQuery SQL queries that don't have a directive, so they'll
+;; continue to run as legacy SQL.
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-legacy-sql-directive-to-bigquery-sql-cards
+  ;; For each BigQuery database...
+  (doseq [database-id (db/select-ids Database :engine "bigquery")]
+    ;; For each Card belonging to that BigQuery database...
+    (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
+      ;; If the Card isn't native, ignore it
+      (when (= (:type query) "native")
+        (let [sql (get-in query [:native :query])]
+          ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+          (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+            ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+            ;; #legacySQL directive...
+            (let [updated-sql (str "#legacySQL\n" sql)]
+              ;; and save the updated dataset_query map
+              (db/update! Card (u/get-id card-id)
+                :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
+
+;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
+;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
+;; disable passwords for Google authenticated users
+(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
+  (db/transaction
+    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
+      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+
+
+;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
+;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
+;; Else" area where they can currently be saved).
+;;
+;; Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
+;; when users upgrade their instance to 0.30 from a previous version.
+;;
+;; The user feedback we've received points to a UX that would do the following:
+;;
+;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+;;
+;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
+;;    questions."
+;;
+;; 3. The permissions settings for these new collections should be set to No Access for all user groups except
+;;    Administrators.
+;;
+;; 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
+;;    new collections.
+;;
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+    ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
+    ;; perms, and we don't want to put extra entries in there that confuse things
+    (doseq [group-id non-admin-group-ids]
+      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
+    ;; 2. Create the new collections.
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
+            :when                       (db/exists? model :collection_id nil)
+            :let                        [new-collection (db/insert! Collection
+                                                          :name  new-collection-name
+                                                          :color "#509ee3")]] ; MB brand color
+      ;; 3. make sure the non-admin groups don't have any perms for this Collection.
+      (doseq [group-id non-admin-group-ids]
+        (perms/revoke-collection-permissions! group-id new-collection))
+      ;; 4. move everything not in this Collection to a new Collection
+      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+                     (name model) new-collection-name (u/get-id new-collection)))
+      (db/update-where! model {:collection_id nil}
+        :collection_id (u/get-id new-collection)))))

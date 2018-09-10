@@ -5,6 +5,8 @@ import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
 import FormPasswordWidget from "./widgets/FormPasswordWidget";
 import FormColorWidget from "./widgets/FormColorWidget";
 import FormSelectWidget from "./widgets/FormSelectWidget";
+import FormCollectionWidget from "./widgets/FormCollectionWidget";
+import FormHiddenWidget from "./widgets/FormHiddenWidget";
 
 const WIDGETS = {
   input: FormInputWidget,
@@ -12,6 +14,8 @@ const WIDGETS = {
   color: FormColorWidget,
   password: FormPasswordWidget,
   select: FormSelectWidget,
+  collection: FormCollectionWidget,
+  hidden: FormHiddenWidget,
 };
 
 const FormWidget = ({ type, ...props }) => {

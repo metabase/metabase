@@ -68,6 +68,10 @@
   :in  encrypted-json-in
   :out (comp cached-encrypted-json-out u/jdbc-clob->str))
 
+(models/add-type! :encrypted-text
+  :in  encryption/maybe-encrypt
+  :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
+
 (defn compress
   "Compress OBJ, returning a byte array."
   [obj]

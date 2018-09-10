@@ -40,7 +40,7 @@
   [{:id (test-users/user->id :crowberto), :email "crowberto@metabase.com", :first_name "Crowberto", :last_name "Corv",   :common_name "Crowberto Corv"}
    {:id (test-users/user->id :lucky),     :email "lucky@metabase.com",     :first_name "Lucky",     :last_name "Pigeon", :common_name "Lucky Pigeon"}
    {:id (test-users/user->id :rasta),     :email "rasta@metabase.com",     :first_name "Rasta",     :last_name "Toucan", :common_name "Rasta Toucan"}]
-  (do
+  (tu/with-non-admin-groups-no-root-collection-perms
     ;; Delete all the other random Users we've created so far
     (test-users/delete-temp-users!)
     ;; Make sure personal Collections have been created
@@ -322,6 +322,28 @@
   ((test-users/user->client :crowberto) :put 404 (str "user/" (test-users/user->id :trashbird))
    {:email "toucan@metabase.com"}))
 
+;; Google auth users shouldn't be able to change their own password as we get that from Google
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp User [user {:email       "anemail@metabase.com"
+                            :password    "def123"
+                            :google_auth true}]
+    (let [creds {:username "anemail@metabase.com"
+                 :password "def123"}]
+      (http/client creds :put 403 (format "user/%d" (u/get-id user))
+                   {:email "adifferentemail@metabase.com"}))))
+
+;; Similar to Google auth accounts, we should not allow LDAP users to change their own email address as we get that
+;; from the LDAP server
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp User [user {:email       "anemail@metabase.com"
+                            :password    "def123"
+                            :ldap_auth true}]
+    (let [creds {:username "anemail@metabase.com"
+                 :password "def123"}]
+      (http/client creds :put 403 (format "user/%d" (u/get-id user))
+                   {:email "adifferentemail@metabase.com"}))))
 
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password (superuser and non-superuser)

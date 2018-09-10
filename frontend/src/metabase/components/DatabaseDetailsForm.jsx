@@ -127,8 +127,12 @@ export default class DatabaseDetailsForm extends Component {
     for (let field of engines[engine]["details-fields"]) {
       let val = details[field.name] === "" ? null : details[field.name];
 
-      if (val && field.type === "integer") val = parseInt(val);
-      if (val == null && field.default) val = field.default;
+      if (val && field.type === "integer") {
+        val = parseInt(val);
+      }
+      if (val == null && field.default) {
+        val = field.default;
+      }
 
       request.details[field.name] = val;
     }

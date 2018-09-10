@@ -32,7 +32,10 @@ export default class SaveQuestionModal extends Component {
               )
             : "",
         description: props.card.description || "",
-        collection_id: props.card.collection_id || null,
+        collection_id:
+          props.card.collection_id === undefined
+            ? props.initialCollectionId
+            : props.card.collection_id,
         saveType: props.originalCard ? "overwrite" : "create",
       },
     };
@@ -174,7 +177,7 @@ export default class SaveQuestionModal extends Component {
               },
               { name: t`Save as new question`, value: "create" },
             ]}
-            isVertical
+            vertical
           />
         </FormField>
       );
@@ -198,7 +201,7 @@ export default class SaveQuestionModal extends Component {
         ]}
         onClose={this.props.onClose}
       >
-        <form className="Form-inputs" onSubmit={this.formSubmitted}>
+        <form onSubmit={this.formSubmitted}>
           {saveOrUpdate}
           <CSSTransitionGroup
             transitionName="saveQuestionModalFields"

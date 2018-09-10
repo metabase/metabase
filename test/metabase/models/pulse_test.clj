@@ -223,15 +223,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-pulse-in-collection [f]
-  (tt/with-temp* [Collection [collection]
-                  Pulse      [pulse  {:collection_id (u/get-id collection)}]
-                  Database   [db    {:engine :h2}]
-                  Table      [table {:db_id (u/get-id db)}]
-                  Card       [card  {:dataset_query {:database (u/get-id db)
-                                                     :type     :query
-                                                     :query    {:source-table (u/get-id table)}}}]
-                  PulseCard  [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
-    (f db collection pulse card)))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection]
+                    Pulse      [pulse  {:collection_id (u/get-id collection)}]
+                    Database   [db    {:engine :h2}]
+                    Table      [table {:db_id (u/get-id db)}]
+                    Card       [card  {:dataset_query {:database (u/get-id db)
+                                                       :type     :query
+                                                       :query    {:source-table (u/get-id table)}}}]
+                    PulseCard  [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
+      (f db collection pulse card))))
 
 (defmacro with-pulse-in-collection
   "Execute `body` with a temporary Pulse, in a Colleciton, containing a single Card."

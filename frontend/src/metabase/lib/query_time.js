@@ -119,7 +119,9 @@ export function generateTimeIntervalDescription(n, unit) {
     }
   }
 
-  if (!unit && n === 0) return "Today"; // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
+  if (!unit && n === 0) {
+    return "Today";
+  } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
 
   unit = inflection.capitalize(unit);
   if (typeof n === "string") {
@@ -227,13 +229,23 @@ export function parseFieldTarget(field) {
 }
 
 export function parseFieldTargetId(field) {
-  if (Number.isInteger(field)) return field;
+  if (Number.isInteger(field)) {
+    return field;
+  }
 
   if (Array.isArray(field)) {
-    if (mbqlEq(field[0], "field-id")) return field[1];
-    if (mbqlEq(field[0], "fk->")) return field[1];
-    if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
-    if (mbqlEq(field[0], "field-literal")) return field;
+    if (mbqlEq(field[0], "field-id")) {
+      return field[1];
+    }
+    if (mbqlEq(field[0], "fk->")) {
+      return field[1];
+    }
+    if (mbqlEq(field[0], "datetime-field")) {
+      return parseFieldTargetId(field[1]);
+    }
+    if (mbqlEq(field[0], "field-literal")) {
+      return field;
+    }
   }
 
   console.warn("Unknown field format", field);

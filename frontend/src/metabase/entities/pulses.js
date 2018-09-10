@@ -1,26 +1,39 @@
-import React from "react";
-
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
-import { canonicalCollectionId } from "metabase/entities/collections";
-
-import CollectionSelect from "metabase/containers/CollectionSelect";
+import {
+  canonicalCollectionId,
+  getCollectionType,
+} from "metabase/entities/collections";
 
 const Pulses = createEntity({
   name: "pulses",
   path: "/api/pulse",
 
   objectActions: {
-    // FIXME: not implemented in backend
-    // setArchived: ({ id }, archived) => Pulses.actions.update({ id, archived }),
+    setArchived: ({ id }, archived, opts) =>
+      Pulses.actions.update(
+        { id },
+        { archived },
+        undo(opts, "pulse", archived ? "archived" : "unarchived"),
+      ),
 
     setCollection: ({ id }, collection, opts) =>
       Pulses.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "pulse", "moved"),
+      ),
+
+    setPinned: ({ id }, pinned, opts) =>
+      Pulses.actions.update(
+        { id },
+        {
+          collection_position:
+            typeof pinned === "number" ? pinned : pinned ? 1 : null,
+        },
+        opts,
       ),
   },
 
@@ -37,10 +50,14 @@ const Pulses = createEntity({
       {
         name: "collection_id",
         title: "Collection",
-        // eslint-disable-next-line react/display-name
-        type: ({ field }) => <CollectionSelect {...field} />,
+        type: "collection",
       },
     ],
+  },
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.collection_id, getState());
+    return type && `collection=${type}`;
   },
 });
 

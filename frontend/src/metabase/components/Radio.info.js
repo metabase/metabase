@@ -14,6 +14,7 @@ const PROPS = {
 
 export const examples = {
   default: <Radio {...PROPS} />,
+  underlined: <Radio {...PROPS} underlined />,
   "show buttons": <Radio {...PROPS} showButtons />,
-  vertical: <Radio {...PROPS} isVertical />,
+  vertical: <Radio {...PROPS} vertical />,
 };

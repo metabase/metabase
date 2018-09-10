@@ -201,7 +201,7 @@ export default class AggregationPopover extends Component {
         tableMetadata.metrics &&
         tableMetadata.metrics.filter(
           mtrc =>
-            mtrc.archived === false ||
+            !mtrc.archived ||
             (selectedAggregation && selectedAggregation.id === mtrc.id),
         );
       if (metrics && metrics.length > 0) {
@@ -234,7 +234,7 @@ export default class AggregationPopover extends Component {
     if (editingAggregation) {
       return (
         <div style={{ width: editingAggregation ? 500 : 300 }}>
-          <div className="text-grey-3 p1 py2 border-bottom flex align-center">
+          <div className="text-medium p1 py2 border-bottom flex align-center">
             <a
               className="cursor-pointer flex align-center"
               onClick={this.onClearAggregation}
@@ -306,7 +306,7 @@ export default class AggregationPopover extends Component {
         <div style={{ minWidth: 300 }}>
           <div
             ref={_ => (this._header = _)}
-            className="text-grey-3 p1 py2 border-bottom flex align-center"
+            className="text-medium p1 py2 border-bottom flex align-center"
           >
             <a
               className="cursor-pointer flex align-center"
@@ -339,7 +339,7 @@ export default class AggregationPopover extends Component {
           renderSectionIcon={s => <Icon name={s.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
           getItemClasses={item =>
-            item.metric && item.metric.archived ? "text-grey-3" : null
+            item.metric && item.metric.archived ? "text-medium" : null
           }
           onChangeSection={index => {
             if (index === customExpressionIndex) {

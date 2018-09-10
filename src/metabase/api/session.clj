@@ -33,7 +33,8 @@
     (db/insert! Session
       :id      <>
       :user_id (:id user))
-    (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
+    (events/publish-event! :user-login
+      {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
 ;;; ## API Endpoints
 
@@ -53,7 +54,8 @@
     (try
       (when-let [user-info (ldap/find-user username)]
         (when-not (ldap/verify-password user-info password)
-          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly outdated password
+          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
+          ;; outdated password
           (throw (ex-info password-fail-message
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
@@ -114,7 +116,8 @@
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
+  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth]
+                                                        :email email, :is_active true)]
     (let [reset-token        (user/set-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email! email google-auth? server-name password-reset-url)
@@ -130,7 +133,8 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token]
+      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered
+                                                                                 :reset_token]
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
@@ -206,8 +210,9 @@
   (when-not (autocreate-user-allowed-for-email? email)
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
     ;; to this situation
-    (throw (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
-             {:status-code 428}))))
+    (throw
+     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
+       {:status-code 428}))))
 
 (s/defn ^:private google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]

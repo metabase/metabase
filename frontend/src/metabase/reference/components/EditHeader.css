@@ -1,5 +1,5 @@
 :root {
-  --edit-header-color: #6cafed;
+  --edit-header-color: var(--color-brand);
 }
 
 :local(.editHeader) {

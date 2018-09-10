@@ -116,7 +116,7 @@ export default class FieldList extends Component {
         {item.segment && this.renderSegmentTooltip(item.segment)}
         {item.dimension &&
           item.dimension.tag && (
-            <span className="h5 text-grey-2 px1">{item.dimension.tag}</span>
+            <span className="h5 text-light px1">{item.dimension.tag}</span>
           )}
         {enableSubDimensions &&
         item.dimension &&

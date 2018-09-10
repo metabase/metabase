@@ -314,7 +314,7 @@ describe("parameters", () => {
       app = mount(store.getAppContainer());
 
       await store.waitForActions([FETCH_DASHBOARD]);
-      expect(app.find(".DashboardHeader .Entity h2").text()).toEqual(
+      expect(app.find(".DashboardHeader .Entity .h2").text()).toEqual(
         "Test Dashboard",
       );
 

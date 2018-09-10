@@ -42,7 +42,7 @@ export default class ModalContent extends Component {
       >
         {onClose && (
           <Icon
-            className="text-grey-2 text-grey-4-hover cursor-pointer absolute m2 p2 top right"
+            className="text-light text-medium-hover cursor-pointer absolute m2 p2 top right"
             name="close"
             size={fullPageModal ? 24 : 16}
             onClick={onClose}

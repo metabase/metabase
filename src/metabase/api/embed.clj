@@ -324,7 +324,8 @@
     (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 
-(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+
+(defn- card-for-signed-token
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -334,7 +335,8 @@
       :params   <parameters>}
 
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
-  [token dashcard-id card-id & query-params]
+  {:style/indent 1}
+  [token dashcard-id card-id query-params]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -346,6 +348,10 @@
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params)))
 
+(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`"
+  [token dashcard-id card-id & query-params]
+  (card-for-signed-token token dashcard-id card-id query-params ))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -416,5 +422,13 @@
     (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
+
+(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format",
+                      :export-format dataset-api/export-format-regex]
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`
+   return the data in one of the export formats"
+  [token export-format dashcard-id card-id & query-params]
+  {export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format (card-for-signed-token token dashcard-id card-id query-params )))
 
 (api/define-routes)

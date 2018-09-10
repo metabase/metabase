@@ -7,6 +7,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
+            [honeysql.types :as htypes]
             [medley.core :as m]
             [metabase
              [public-settings :as public-settings]
@@ -188,7 +189,7 @@
   [400 (tru "Invalid Request.")])
 
 (defn check-400
-  "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-400))
 
@@ -203,7 +204,7 @@
   [404 (tru "Not found.")])
 
 (defn check-404
-  "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-404))
 
@@ -219,7 +220,7 @@
   [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
-  "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-403))
 (defmacro let-403
@@ -239,7 +240,7 @@
   [500 (tru "Internal server error.")])
 
 (defn check-500
-  "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."
+  "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg generic-500))
 
@@ -496,6 +497,11 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
+(defn with-current-user-info
+  "Associates the login-attributes of the current users to `m`"
+  [m]
+  (assoc m :user @*current-user*))
+
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
@@ -511,3 +517,77 @@
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
               (get object-updates k)))))
+
+;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
+
+(s/defn reconcile-position-for-collection!
+  "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
+  for fixing card/dashboard/pulse changes that impact other instances in the collection"
+  [collection-id :- (s/maybe su/IntGreaterThanZero)
+   old-position :- (s/maybe su/IntGreaterThanZero)
+   new-position :- (s/maybe su/IntGreaterThanZero)]
+  (let [update-fn! (fn [plus-or-minus position-update-clause]
+                     (doseq [model '[Card Dashboard Pulse]]
+                       (db/update-where! model {:collection_id       collection-id
+                                                :collection_position position-update-clause}
+                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+    (when (not= new-position old-position)
+      (cond
+        (and (nil? new-position)
+             old-position)
+        (update-fn! :-  [:> old-position])
+
+        (and new-position (nil? old-position))
+        (update-fn! :+ [:>= new-position])
+
+        (> new-position old-position)
+        (update-fn! :- [:between old-position new-position])
+
+        (< new-position old-position)
+        (update-fn! :+ [:between new-position old-position])))))
+
+(def ^:private ModelWithPosition
+  "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
+  {:collection_id       (s/maybe su/IntGreaterThanZero)
+   :collection_position (s/maybe su/IntGreaterThanZero)
+   s/Any                s/Any})
+
+(def ^:private ModelWithOptionalPosition
+  "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
+  present, they didn't change. If they are present, they might have changed and we need to compare."
+  {(s/optional-key :collection_id)       (s/maybe su/IntGreaterThanZero)
+   (s/optional-key :collection_position) (s/maybe su/IntGreaterThanZero)
+   s/Any                                 s/Any})
+
+(s/defn maybe-reconcile-collection-position!
+  "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
+  impact to the collection position of that model instance. If so, executes updates to fix the collection position
+  that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
+  updating an existing instance, but creating a new one)."
+  ([new-model-data :- ModelWithPosition]
+   (maybe-reconcile-collection-position! nil new-model-data))
+  ([{old-collection-id :collection_id, old-position :collection_position, :as before-update} :- (s/maybe ModelWithPosition)
+    {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
+   (let [updated-collection? (and (contains? model-updates :collection_id)
+                                  (not= old-collection-id new-collection-id))
+         updated-position?   (and (contains? model-updates :collection_position)
+                                  (not= old-position new-position))]
+     (cond
+       ;; If the collection hasn't changed, but we have a new collection position, we might need to reconcile
+       (and (not updated-collection?) updated-position?)
+       (reconcile-position-for-collection! old-collection-id old-position new-position)
+
+       ;; If we have a new collection id, but no new position, reconcile the old collection, then update the new
+       ;; collection with the existing position
+       (and updated-collection? (not updated-position?))
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil old-position))
+
+       ;; We have a new collection id AND and new collection position
+       ;; Update the old collection using the old position
+       ;; Update the new collection using the new position
+       (and updated-collection? updated-position?)
+       (do
+         (reconcile-position-for-collection! old-collection-id old-position nil)
+         (reconcile-position-for-collection! new-collection-id nil new-position))))))

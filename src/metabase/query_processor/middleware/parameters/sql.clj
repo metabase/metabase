@@ -7,8 +7,8 @@
             [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.models.field :as field :refer [Field]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
@@ -21,7 +21,7 @@
            honeysql.types.SqlCall
            java.text.NumberFormat
            java.util.regex.Pattern
-           java.util.TimeZone
+           java.util.UUID
            metabase.models.field.FieldInstance))
 
 ;; The Basics:
@@ -68,6 +68,9 @@
 (defn- no-value? [x]
   (instance? NoValue x))
 
+(def ^:private ParamType
+  (s/enum "number" "dimension" "text" "date"))
+
 ;; various schemas are used to check that various functions return things in expected formats
 
 ;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a
@@ -80,7 +83,7 @@
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
    :name                         su/NonBlankString
    :display_name                 su/NonBlankString
-   :type                         (s/enum "number" "dimension" "text" "date")
+   :type                         ParamType
    (s/optional-key :dimension)   [s/Any]
    (s/optional-key :widget_type) su/NonBlankString ; type of the [default] value if `:type` itself is `dimension`
    (s/optional-key :required)    s/Bool
@@ -171,8 +174,10 @@
   Filter\" in the Native Query Editor."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (when-let [dimension (:dimension tag)]
-    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id], :id (dimension->field-id dimension))
-                                (throw (Exception. (str "Can't find field with ID: " (dimension->field-id dimension)))))
+    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id :base_type],
+                                  :id (dimension->field-id dimension))
+                                (throw (Exception. (str (tru "Can't find field with ID: {0}"
+                                                             (dimension->field-id dimension))))))
                      :param (or
                              ;; look in the sequence of params we were passed to see if there's anything that matches
                              (param-with-target params ["dimension" ["template-tag" (:name tag)]])
@@ -193,7 +198,7 @@
   [{:keys [default display_name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (format "'%s' is a required param." display_name))))))
+        (throw (Exception. (str (tru "''{0}'' is a required param." display_name)))))))
 
 
 ;;; Parsing Values
@@ -228,18 +233,47 @@
         ;; otherwise just return the single number
         (first parts)))))
 
-(s/defn ^:private parse-value-for-type :- ParamValue
-  [param-type value]
+(s/defn ^:private parse-value-for-field-base-type :- s/Any
+  "Do special parsing for value for a (presumably textual) FieldFilter 'dimension' param (i.e., attempt to parse it as
+  appropriate based on the base-type of the Field associated with it). These are special cases for handling types that
+  do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
+  [base-type :- su/FieldType, value]
   (cond
-    (no-value? value)                                value
-    (= param-type "number")                          (value->number value)
-    (= param-type "date")                            (map->Date {:s value})
+    (isa? base-type :type/UUID) (UUID/fromString value)
+    :else                       value))
+
+(s/defn ^:private parse-value-for-type :- ParamValue
+  "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
+  created, `value` here might be a raw value or a map including information about the Field it references as well as a
+  value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
+  additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
+  base type Fields as UUIDs."
+  [param-type :- ParamType, value]
+  (cond
+    (no-value? value)
+    value
+
+    (= param-type "number")
+    (value->number value)
+
+    (= param-type "date")
+    (map->Date {:s value})
+
     (and (= param-type "dimension")
-         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] value->number)
-    (sequential? value)                              (map->MultipleValues
-                                                      {:values (for [v value]
-                                                                 (parse-value-for-type param-type v))})
-    :else                                            value))
+         (= (get-in value [:param :type]) "number"))
+    (update-in value [:param :value] value->number)
+
+    (sequential? value)
+    (map->MultipleValues {:values (for [v value]
+                                    (parse-value-for-type param-type v))})
+
+    (and (= param-type "dimension")
+         (get-in value [:field :base_type])
+         (string? (get-in value [:param :value])))
+    (update-in value [:param :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+
+    :else
+    value))
 
 (s/defn ^:private value-for-tag :- ParamValue
   "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS
@@ -352,12 +386,12 @@
 
 (defn- create-replacement-snippet [nil-or-obj]
   (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* nil-or-obj)]
-    {:replacement-snippet sql-string
+    {:replacement-snippet     sql-string
      :prepared-statement-args param-values}))
 
 (defn- prepared-ts-subs [operator date-str]
   (let [{:keys [sql-string param-values]} (sql/->prepared-substitution *driver* (du/->Timestamp date-str))]
-    {:replacement-snippet (str operator " " sql-string)
+    {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
 (extend-protocol ISQLParamSubstituion
@@ -367,6 +401,7 @@
   Boolean (->replacement-snippet-info [this] (create-replacement-snippet this))
   Keyword (->replacement-snippet-info [this] (create-replacement-snippet this))
   SqlCall (->replacement-snippet-info [this] (create-replacement-snippet this))
+  UUID    (->replacement-snippet-info [this] {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
   NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
 
   CommaSeparatedNumbers

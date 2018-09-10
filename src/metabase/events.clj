@@ -55,6 +55,7 @@
 
 (defn publish-event!
   "Publish an item into the events stream. Returns the published item to allow for chaining."
+  {:style/indent 1}
   [topic event-item]
   {:pre [(keyword topic)]}
   (async/go (async/>! events-channel {:topic (keyword topic), :item event-item}))

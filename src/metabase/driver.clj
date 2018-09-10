@@ -54,6 +54,53 @@
    :username-incorrect                 (tru "Looks like your username is incorrect.")
    :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
 
+(def default-host-details
+  "Map of the db host details field, useful for `details-fields` implementations"
+  {:name         "host"
+   :display-name (tru "Host")
+   :default      "localhost"})
+
+(def default-port-details
+  "Map of the db port details field, useful for `details-fields` implementations. Implementations should assoc a
+  `:default` key."
+  {:name         "port"
+   :display-name (tru "Port")
+   :type         :integer})
+
+(def default-user-details
+  "Map of the db user details field, useful for `details-fields` implementations"
+  {:name         "user"
+   :display-name (tru "Database username")
+   :placeholder  (tru "What username do you use to login to the database?")
+   :required     true})
+
+(def default-password-details
+  "Map of the db password details field, useful for `details-fields` implementations"
+  {:name         "password"
+   :display-name (tru "Database password")
+   :type         :password
+   :placeholder  "*******"})
+
+(def default-dbname-details
+  "Map of the db name details field, useful for `details-fields` implementations"
+  {:name         "dbname"
+   :display-name (tru "Database name")
+   :placeholder  (tru "birds_of_the_world")
+   :required     true})
+
+(def default-ssl-details
+  "Map of the db ssl details field, useful for `details-fields` implementations"
+  {:name         "ssl"
+   :display-name (tru "Use a secure connection (SSL)?")
+   :type         :boolean
+   :default      false})
+
+(def default-additional-options-details
+  "Map of the db `additional-options` details field, useful for `details-fields` implementations. Should assoc a
+  `:placeholder` key"
+  {:name         "additional-options"
+   :display-name (tru "Additional JDBC connection string options")})
+
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
    `IDriverDefaultsMixin`. Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on
@@ -392,7 +439,8 @@
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
-             [org.postgresql.util.PGobject   :type/*]])
+             [org.postgresql.util.PGobject   :type/*]
+             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
@@ -401,7 +449,7 @@
   [values]
   (->> values
        (take 100)                                   ; take up to 100 values
-       (filter (complement nil?))                   ; filter out `nil` values
+       (remove nil?)                                ; filter out `nil` values
        (group-by (comp class->base-type class))     ; now group by their base-type
        (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
        ffirst))                                     ; take the base-type from the first pair
@@ -484,10 +532,12 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

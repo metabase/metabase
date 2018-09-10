@@ -16,7 +16,6 @@ import {
 
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
 
-import CheckBox from "metabase/components/CheckBox";
 import RunButton from "metabase/query_builder/components/RunButton";
 
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
@@ -65,17 +64,14 @@ describe("QueryBuilder", () => {
       const doneButton = settingsModal.find(".Button--primary");
       expect(doneButton.length).toBe(1);
 
-      const fieldsToIncludeCheckboxes = settingsModal.find(CheckBox);
-      expect(fieldsToIncludeCheckboxes.length).toBe(7);
+      const fieldsToIncludeRemoveButtons = settingsModal.find(".Icon-close");
+      expect(fieldsToIncludeRemoveButtons.length).toBe(6);
 
       click(
-        fieldsToIncludeCheckboxes.filterWhere(
-          checkbox =>
-            checkbox
-              .parent()
-              .find("span")
-              .text() === "Created At",
-        ),
+        settingsModal
+          .find("ColumnItem")
+          .findWhere(x => x.text() === "Created At")
+          .find(".Icon-close"),
       );
 
       expect(table.find('div[children="Created At"]').length).toBe(0);

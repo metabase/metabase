@@ -37,13 +37,13 @@ Click the `Configure` button in the LDAP section of the Authentication page, and
 
 Click the toggle at the top of the form to enable LDAP, then fill in the form with the information about your LDAP server.
 
-Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute) and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form. 
+Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute) and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
 ![Attributes](./images/ldap-attributes.png)
 
-If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server. 
+If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
 
 ---
 
-## Next: Creating a Getting Started Guide
-Learn how to easily [make a Getting Started Guide](11-getting-started-guide.md) for your team.
+## Next: sharing things with public links
+Learn how to create a [publicly accessible link](12-public-links.md) to one of your dashboards or questions.

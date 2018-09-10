@@ -167,7 +167,7 @@ export default class PublicQuestion extends Component {
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-grey-4-hover"
+        className="m1 text-medium-hover"
         uuid={uuid}
         token={token}
         result={result}

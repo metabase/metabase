@@ -271,4 +271,4 @@ export type Expression = [
 export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
-export type FieldsClause = Field[];
+export type FieldsClause = ConcreteField[];

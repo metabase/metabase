@@ -52,6 +52,7 @@
              [session :refer [Session]]
              [setting :refer [Setting]]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]
              [view-log :refer [ViewLog]]]))
 
@@ -93,6 +94,7 @@
    CollectionRevision
    DashboardFavorite
    Dimension
+   TaskHistory
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

@@ -7,7 +7,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.druid.query-processor :as qp]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util.ssh :as ssh]
+            [puppetlabs.i18n.core :refer [tru]]))
 
 ;;; ### Request helper fns
 
@@ -151,13 +152,10 @@
           :describe-database (u/drop-first-arg describe-database)
           :describe-table    (u/drop-first-arg describe-table)
           :details-fields    (constantly (ssh/with-tunnel-config
-                                           [{:name         "host"
-                                             :display-name "Host"
-                                             :default      "http://localhost"}
-                                            {:name         "port"
-                                             :display-name "Broker node port"
-                                             :type         :integer
-                                             :default      8082}]))
+                                           [(assoc driver/default-host-details :default "http://localhost")
+                                            (assoc driver/default-port-details
+                                              :display-name (tru "Broker node port")
+                                              :default      8082)]))
           :execute-query     (fn [_ query] (qp/execute-query do-query-with-cancellation query))
           :features          (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
           :mbql->native      (u/drop-first-arg qp/mbql->native)}))

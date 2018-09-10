@@ -21,7 +21,7 @@ export default class Activity extends Component {
       "bg-error",
       "bg-green",
       "bg-gold",
-      "bg-grey-2",
+      "bg-medium",
     ];
   }
 
@@ -225,13 +225,6 @@ export default class Activity extends Component {
         }
         break;
       case "database-sync":
-        // NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
-        //       capture the name/description/engine of a Database properly in the details and so it was
-        //       possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
-        const oldName =
-          item.database && "name" in item.database
-            ? item.database.name
-            : t`Unknown`;
         if (item.details.name) {
           description.summary = (
             <span>
@@ -243,7 +236,13 @@ export default class Activity extends Component {
           description.summary = (
             <span>
               {t`received the latest data from`}{" "}
-              <span className="text-dark">{oldName}</span>
+              <span className="text-dark">
+                {/* NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
+                  * capture the name/description/engine of a Database properly in the details and so it was
+                  * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
+                  */}
+                {(item.database && item.database.name) || t`Unknown`}
+              </span>
             </span>
           );
         }
@@ -529,7 +528,7 @@ export default class Activity extends Component {
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}
                   </div>
-                  <div className="text-normal text-grey-2">
+                  <div className="text-normal text-light">
                     {t`Save a question and get this baby going!`}
                   </div>
                 </div>

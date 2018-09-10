@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import _ from "underscore";
 import { t } from "c-3po";
 
 import { Flex, Box } from "grid-styled";
@@ -9,7 +8,6 @@ import Subhead from "metabase/components/Subhead";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
-import CollectionListLoader from "metabase/containers/CollectionListLoader";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 
 class CollectionMoveModal extends React.Component {
@@ -24,10 +22,7 @@ class CollectionMoveModal extends React.Component {
       //  null = root collection
       //  number = non-root collection id
       //
-      selectedCollection:
-        props.initialCollectionId === undefined
-          ? undefined
-          : { id: props.initialCollectionId },
+      selectedCollectionId: props.initialCollectionId,
       // whether the move action has started
       // TODO: use this loading and error state in the UI
       moving: false,
@@ -43,7 +38,7 @@ class CollectionMoveModal extends React.Component {
   };
 
   render() {
-    const { selectedCollection } = this.state;
+    const { selectedCollectionId } = this.state;
 
     return (
       <Box p={3}>
@@ -55,29 +50,24 @@ class CollectionMoveModal extends React.Component {
             onClick={() => this.props.onClose()}
           />
         </Flex>
-        <CollectionListLoader>
-          {({ collections, loading, error }) => (
-            <CollectionPicker
-              value={selectedCollection && selectedCollection.id}
-              onChange={id =>
-                this.setState({
-                  selectedCollection:
-                    id == null ? null : _.find(collections, { id }),
-                })
-              }
-              collections={collections}
-            />
-          )}
-        </CollectionListLoader>
+        <CollectionPicker
+          value={selectedCollectionId}
+          onChange={selectedCollectionId =>
+            this.setState({ selectedCollectionId })
+          }
+        />
         <Flex mt={2}>
           <Button
             primary
             className="ml-auto"
-            disabled={selectedCollection === undefined}
+            disabled={
+              selectedCollectionId === undefined ||
+              selectedCollectionId === this.props.initialCollectionId
+            }
             onClick={() => {
               try {
                 this.setState({ moving: true });
-                this.props.onMove(selectedCollection);
+                this.props.onMove({ id: selectedCollectionId });
               } catch (e) {
                 this.setState({ error: e });
               } finally {

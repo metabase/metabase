@@ -183,15 +183,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-dash-in-collection [f]
-  (tt/with-temp* [Collection    [collection]
-                  Dashboard     [dash  {:collection_id (u/get-id collection)}]
-                  Database      [db    {:engine :h2}]
-                  Table         [table {:db_id (u/get-id db)}]
-                  Card          [card  {:dataset_query {:database (u/get-id db)
-                                                        :type     :query
-                                                        :query    {:source-table (u/get-id table)}}}]
-                  DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
-    (f db collection dash)))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection    [collection]
+                    Dashboard     [dash  {:collection_id (u/get-id collection)}]
+                    Database      [db    {:engine :h2}]
+                    Table         [table {:db_id (u/get-id db)}]
+                    Card          [card  {:dataset_query {:database (u/get-id db)
+                                                          :type     :query
+                                                          :query    {:source-table (u/get-id table)}}}]
+                    DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
+      (f db collection dash))))
 
 (defmacro with-dash-in-collection
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
@@ -229,14 +230,16 @@
 
 ;; test that we save a transient dashboard
 (expect
-  8
   (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
     (binding [api/*current-user-id*              (users/user->id :rasta)
               api/*current-user-permissions-set* (-> :rasta
                                                      users/user->id
                                                      user/permissions-set
                                                      atom)]
-      (->> (magic/automagic-analysis (Table (id :venues)) {})
-           save-transient-dashboard!
-           :id
-           (db/count 'DashboardCard :dashboard_id)))))
+      (let [dashboard (magic/automagic-analysis (Table (id :venues)) {})
+            rastas-personal-collection (db/select-one-field :id 'Collection
+                                         :personal_owner_id api/*current-user-id*)]
+        (->> (save-transient-dashboard! dashboard rastas-personal-collection)
+             :id
+             (db/count 'DashboardCard :dashboard_id)
+             (= (-> dashboard :ordered_cards count)))))))

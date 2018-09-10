@@ -1,6 +1,7 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [hiccup.core :refer [html]]
             [metabase
              [email :as email]
@@ -20,19 +21,20 @@
             [metabase.util
              [schema :as su]
              [urls :as urls]]
+            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]])
   (:import java.io.ByteArrayInputStream))
 
 (api/defendpoint GET "/"
-  "Fetch all `Pulses`"
-  []
-  (for [pulse (pulse/retrieve-pulses)
-        :let  [can-read?  (mi/can-read? pulse)
-               can-write? (mi/can-write? pulse)]
-        :when (or can-read?
-                  can-write?)]
-    (assoc pulse :read_only (not can-write?))))
+  "Fetch all Pulses"
+  [archived]
+  {archived (s/maybe su/BooleanString)}
+  (as-> (pulse/retrieve-pulses {:archived? (Boolean/parseBoolean archived)}) <>
+    (filter mi/can-read? <>)
+    (hydrate <> :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -46,7 +48,7 @@
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position]} :body}]
   {name                su/NonBlankString
-   cards               (su/non-empty [pulse/CardRef])
+   cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -55,45 +57,57 @@
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
   (collection/check-write-perms-for-collection collection_id)
-  ;; ok, now create the Pulse
-  (api/check-500
-   (pulse/create-pulse! (map pulse/card->ref cards) channels
-     {:name                name
-      :creator_id          api/*current-user-id*
-      :skip_if_empty       skip_if_empty
-      :collection_id       collection_id
-      :collection_position collection_position})))
+  (let [pulse-data {:name                name
+                    :creator_id          api/*current-user-id*
+                    :skip_if_empty       skip_if_empty
+                    :collection_id       collection_id
+                    :collection_position collection_position}]
+    (db/transaction
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! pulse-data)
+      ;; ok, now create the Pulse
+      (api/check-500
+       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
 
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (api/read-check (pulse/retrieve-pulse id)))
-
+  (-> (api/read-check (pulse/retrieve-pulse id))
+      (hydrate :can_write)))
 
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
-  [id :as {{:keys [name cards channels skip_if_empty collection_id], :as pulse-updates} :body}]
+  [id :as {{:keys [name cards channels skip_if_empty collection_id archived], :as pulse-updates} :body}]
   {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CardRef]))
+   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
    channels      (s/maybe (su/non-empty [su/Map]))
    skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)}
+   collection_id (s/maybe su/IntGreaterThanZero)
+   archived      (s/maybe s/Bool)}
   ;; do various perms checks
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
-    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates))
-  ;; ok, now update the Pulse
-  (pulse/update-pulse!
-   (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position])
-     :id id))
+    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+
+    (db/transaction
+      ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+      ;; depending on what changed.
+      (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+      ;; ok, now update the Pulse
+      (pulse/update-pulse!
+       (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                          :archived])
+         :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
 
 (api/defendpoint DELETE "/:id"
-  "Delete a `Pulse`."
+  "Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instead.)"
   [id]
+  (log/warn (tru "DELETE /api/pulse/:id is deprecated. Instead, change its `archived` value via PUT /api/pulse/:id."))
   (api/let-404 [pulse (Pulse id)]
     (api/write-check Pulse id)
     (db/delete! Pulse :id id)
@@ -102,7 +116,7 @@
 
 
 (api/defendpoint GET "/form_input"
-  "Provides relevant configuration information and user choices for creating/updating `Pulses`."
+  "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
@@ -126,7 +140,7 @@
                                                                :card-id     (u/get-id card)}))
 
 (api/defendpoint GET "/preview_card/:id"
-  "Get HTML rendering of a `Card` with ID."
+  "Get HTML rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
@@ -139,7 +153,7 @@
                   (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
-  "Get JSON object containing HTML rendering of a `Card` with ID and other information."
+  "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
@@ -156,7 +170,7 @@
      :col_count       (count (:cols (:data result)))}))
 
 (api/defendpoint GET "/preview_card_png/:id"
-  "Get PNG rendering of a `Card` with ID."
+  "Get PNG rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
@@ -166,13 +180,16 @@
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
-  {name          su/NonBlankString
-   cards         (su/non-empty [pulse/CardRef])
-   channels      (su/non-empty [su/Map])
-   skip_if_empty s/Bool}
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position] :as body} :body}]
+  {name                su/NonBlankString
+   cards               (su/non-empty [pulse/CoercibleToCardRef])
+   channels            (su/non-empty [su/Map])
+   skip_if_empty       (s/maybe s/Bool)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
   {:ok true})
+
 
 (api/define-routes)

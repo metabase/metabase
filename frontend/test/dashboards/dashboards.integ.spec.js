@@ -14,7 +14,6 @@ import { DashboardApi } from "metabase/services";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
 import Dashboard from "metabase/dashboard/components/Dashboard";
-import ListFilterWidget from "metabase/components/ListFilterWidget";
 import ArchivedItem from "metabase/components/ArchivedItem";
 
 /*
@@ -121,7 +120,6 @@ xdescribe("dashboards list", () => {
         .find(".Icon-staroutline"),
     );
     await store.waitForActions([Dashboards.actionTypes.UPDATE]);
-    click(app.find(ListFilterWidget));
 
     click(app.find(".TestPopover").find('h4[children="Favorites"]'));
 

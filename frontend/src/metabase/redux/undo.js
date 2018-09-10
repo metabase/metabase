@@ -41,48 +41,47 @@ export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
 });
 
 export default function(state = [], { type, payload, error }) {
-  switch (type) {
-    case ADD_UNDO:
-      if (error) {
-        console.warn("ADD_UNDO", payload);
-        return state;
-      }
+  if (type === ADD_UNDO) {
+    if (error) {
+      console.warn("ADD_UNDO", payload);
+      return state;
+    }
 
-      const undo = {
-        ...payload,
-        // normalize "action" to "actions"
-        actions: payload.action ? [payload.action] : payload.actions || [],
-        action: null,
-        // default "count"
-        count: payload.count || 1,
-      };
+    const undo = {
+      ...payload,
+      // normalize "action" to "actions"
+      actions: payload.action ? [payload.action] : payload.actions || [],
+      action: null,
+      // default "count"
+      count: payload.count || 1,
+    };
 
-      let previous = state[state.length - 1];
-      // if last undo was same verb then merge them
-      if (previous && undo.verb != null && undo.verb === previous.verb) {
-        return state.slice(0, -1).concat({
-          // use new undo so the timeout is extended
-          ...undo,
+    let previous = state[state.length - 1];
+    // if last undo was same verb then merge them
+    if (previous && undo.verb != null && undo.verb === previous.verb) {
+      return state.slice(0, -1).concat({
+        // use new undo so the timeout is extended
+        ...undo,
 
-          // merge the verb, count, and subject appropriately
-          verb: previous.verb,
-          count: previous.count + undo.count,
-          subject: previous.subject === undo.subject ? undo.subject : "item",
+        // merge the verb, count, and subject appropriately
+        verb: previous.verb,
+        count: previous.count + undo.count,
+        subject: previous.subject === undo.subject ? undo.subject : "item",
 
-          // merge items
-          actions: [...previous.actions, ...payload.actions],
+        // merge items
+        actions: [...previous.actions, ...payload.actions],
 
-          _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
-        });
-      } else {
-        return state.concat(undo);
-      }
-    case DISMISS_UNDO:
-      if (error) {
-        console.warn("DISMISS_UNDO", payload);
-        return state;
-      }
-      return state.filter(undo => undo.id !== payload);
+        _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
+      });
+    } else {
+      return state.concat(undo);
+    }
+  } else if (type === DISMISS_UNDO) {
+    if (error) {
+      console.warn("DISMISS_UNDO", payload);
+      return state;
+    }
+    return state.filter(undo => undo.id !== payload);
   }
   return state;
 }

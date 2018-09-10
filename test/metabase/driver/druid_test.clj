@@ -24,11 +24,11 @@
 ;;; table-rows-sample
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T07:00:00.000Z"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T07:00:00.000Z"]
-   ["100"  "PizzaHacker"                 "2014-07-26T07:00:00.000Z"]
-   ["1000" "Tito's Tacos"                "2014-06-03T07:00:00.000Z"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T07:00:00.000Z"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T07:00:00.000Z"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T07:00:00.000Z"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T07:00:00.000Z"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
   (->> (driver/table-rows-sample (Table (data/id :checkins))
                                  [(Field (data/id :checkins :id))
                                   (Field (data/id :checkins :venue_name))])
@@ -37,11 +37,11 @@
 
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T00:00:00.000-07:00"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T00:00:00.000-07:00"]
-   ["100"  "PizzaHacker"                 "2014-07-26T00:00:00.000-07:00"]
-   ["1000" "Tito's Tacos"                "2014-06-03T00:00:00.000-07:00"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T00:00:00.000-07:00"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T00:00:00.000-07:00"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T00:00:00.000-07:00"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T00:00:00.000-07:00"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T00:00:00.000-07:00"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
@@ -51,11 +51,11 @@
 
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T02:00:00.000-05:00"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T02:00:00.000-05:00"]
-   ["100"  "PizzaHacker"                 "2014-07-26T02:00:00.000-05:00"]
-   ["1000" "Tito's Tacos"                "2014-06-03T02:00:00.000-05:00"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T02:00:00.000-05:00"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T02:00:00.000-05:00"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T02:00:00.000-05:00"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T02:00:00.000-05:00"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))

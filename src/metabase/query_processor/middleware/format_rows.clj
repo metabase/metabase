@@ -5,8 +5,8 @@
             [metabase.util :as u]
             [metabase.util.date :as du]))
 
-(defn- format-rows* [query rows]
-  (let [timezone (qputil/query-timezone query)]
+(defn- format-rows* [{:keys [report-timezone]} rows]
+  (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
     (for [row rows]
       (for [v row]
         ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
@@ -24,9 +24,9 @@
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
   [qp]
-  (fn [{:keys [middleware] :as query}]
+  (fn [{:keys [settings middleware] :as query}]
     (let [results (qp query)]
       (if-not (and (:rows results)
                    (:format-rows? middleware true))
         results
-        (update results :rows (partial format-rows* query))))))
+        (update results :rows (partial format-rows* settings))))))

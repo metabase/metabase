@@ -26,8 +26,6 @@ import * as Urls from "metabase/lib/urls";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import Popover from "metabase/components/Popover";
 
-import Collections from "metabase/entities/collections";
-
 const timeBreakoutQuestion = Question.create({
   databaseId: 1,
   tableId: 1,
@@ -77,8 +75,6 @@ describe("Query Builder visualization logic", () => {
         .first()
         .find("a"),
     );
-
-    await store.waitForActions([Collections.actions.fetchList]);
 
     setInputValue(
       app.find(SaveQuestionModal).find("input[name='name']"),

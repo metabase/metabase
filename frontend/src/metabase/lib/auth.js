@@ -6,7 +6,9 @@ export function clearGoogleAuthCredentials() {
     typeof gapi !== "undefined" && gapi && gapi.auth2
       ? gapi.auth2.getAuthInstance()
       : undefined;
-  if (!googleAuth) return;
+  if (!googleAuth) {
+    return;
+  }
 
   try {
     googleAuth.signOut().then(function() {

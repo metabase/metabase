@@ -46,10 +46,14 @@ export default class LdapGroupMappingsWidget extends React.Component {
     };
   }
 
-  _showEditModal = (e: Event) => {
+  _showEditModal = async (e: Event) => {
     e.preventDefault();
+    // just load the setting again to make sure it's up to date
+    const setting = _.findWhere(await SettingsApi.list(), {
+      key: "ldap-group-mappings",
+    });
     this.setState({
-      mappings: this.props.settingValues["ldap-group-mappings"] || {},
+      mappings: (setting && setting.value) || {},
       showEditModal: true,
     });
     PermissionsApi.groups().then(groups => this.setState({ groups }));
@@ -278,10 +282,10 @@ class MappingGroupSelect extends React.Component {
         ref="popover"
         triggerElement={
           <div className="flex align-center">
-            <span className="mr1 text-grey-4">
+            <span className="mr1 text-medium">
               <GroupSummary groups={groups} selectedGroups={selected} />
             </span>
-            <Icon className="text-grey-2" name="chevrondown" size={10} />
+            <Icon className="text-light" name="chevrondown" size={10} />
           </div>
         }
         triggerClasses="AdminSelectBorderless py1"

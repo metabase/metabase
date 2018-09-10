@@ -184,6 +184,13 @@
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true}))
 
+(defn root-collection-with-ui-details
+  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  []
+  (assoc root-collection
+    :name (tru "Our analytics")
+    :id   "root"))
+
 (defn- is-root-collection? [x]
   (instance? RootCollection x))
 
@@ -273,7 +280,7 @@
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [CollectionInstance]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -282,11 +289,11 @@
 
   The ancestors of D are:
 
-    A > B > C
+    [Root] > A > B > C
 
   If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
 
-    A > C
+    [Root] > A > C
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
@@ -294,7 +301,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     []
-    (filter i/can-read? (ancestors collection))))
+    (filter i/can-read? (cons (root-collection-with-ui-details) (ancestors collection)))))
+
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the immediate parent `collection` id, if set."
+  {:hydrate :parent_id}
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
+  (if location (location-path->parent-id location)))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -497,11 +510,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
-          :archived true))
-      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+          :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -512,7 +524,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))
@@ -621,9 +633,9 @@
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection!")
+     (ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -1002,7 +1014,12 @@
   {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
+    ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/get-id users))])]
+      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
+      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
+      ;; as a side-effect. This will ensure this property never comes back as `nil`
       (for [user users]
-        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))
+        (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
+                                                (user->personal-collection-id (u/get-id user))))))))

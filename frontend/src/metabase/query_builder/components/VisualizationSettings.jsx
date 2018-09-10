@@ -17,7 +17,7 @@ export default class VisualizationSettings extends React.Component {
   }
 
   static propTypes = {
-    card: PropTypes.object.isRequired,
+    question: PropTypes.object.isRequired,
     result: PropTypes.object,
     setDisplayFn: PropTypes.func.isRequired,
     onUpdateVisualizationSettings: PropTypes.func.isRequired,
@@ -31,9 +31,9 @@ export default class VisualizationSettings extends React.Component {
   };
 
   renderChartTypePicker() {
-    let { result, card } = this.props;
+    let { result, question } = this.props;
     let { CardVisualization } = getVisualizationRaw([
-      { card, data: result.data },
+      { card: question.card(), data: result.data },
     ]);
 
     let triggerElement = (
@@ -68,7 +68,7 @@ export default class VisualizationSettings extends React.Component {
                 className={cx(
                   "p2 flex align-center cursor-pointer bg-brand-hover text-white-hover",
                   {
-                    "ChartType--selected": vizType === card.display,
+                    "ChartType--selected": vizType === question.display(),
                     "ChartType--notSensible": !(
                       result &&
                       result.data &&
@@ -111,7 +111,14 @@ export default class VisualizationSettings extends React.Component {
             ref="popover"
           >
             <ChartSettings
-              series={[{ card: this.props.card, data: this.props.result.data }]}
+              question={this.props.question}
+              addField={this.props.addField}
+              series={[
+                {
+                  card: this.props.question.card(),
+                  data: this.props.result.data,
+                },
+              ]}
               onChange={this.props.onReplaceAllVisualizationSettings}
             />
           </ModalWithTrigger>

@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.add-dimension-projections
   "Middleware for adding remapping and other dimension related projections"
-  (:require [metabase.query-processor.interface :as i]))
+  (:require [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]))
 
 (defn- create-remapped-col [col-name remapped-from]
   {:description     nil
@@ -97,11 +99,13 @@
   "Function that will include FK references needed for external remappings. This will then flow through to the resolver
   to get the new tables included in the join."
   [query]
-  (let [remap-col-pairs (create-remap-col-pairs (get-in query [:query :fields]))]
+  (let [remap-col-pairs (create-remap-col-pairs (qputil/get-in-query query [:fields]))]
     (if (seq remap-col-pairs)
-      (-> query
-          (update-in [:query :order-by] #(update-remapped-order-by (into {} remap-col-pairs) %))
-          (update-in [:query :fields] concat (map second remap-col-pairs)))
+      (let [order-by (qputil/get-in-query query [:order-by])
+            fields   (qputil/get-in-query query [:fields])]
+        (-> query
+            (qputil/assoc-in-query [:order-by] (update-remapped-order-by (into {} remap-col-pairs) order-by))
+            (qputil/assoc-in-query [:fields] (concat fields (map second remap-col-pairs)))))
       query)))
 
 (defn- remap-results

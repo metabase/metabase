@@ -8,7 +8,6 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
@@ -44,7 +43,9 @@
       form
       (:filter (db/select-one-field :definition Segment :id (u/get-id (second form)))))))
 
-(defn- segment-parse-filter [form]
+(defn segment-parse-filter
+  "Expand segment macro into its definition."
+  [form]
   (when (non-empty-clause? form)
     (if (is-clause? #{:and :or :not} form)
       ;; for forms that start with AND/OR/NOT recursively parse the subclauses and put them nicely back into their
@@ -69,7 +70,7 @@
 ;;; |                                                    METRICS                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ga-metric?
+(defn ga-metric?
   "Is this metric clause not a Metabase Metric, but rather a GA one? E.g. something like [metric ga:users]. We want to
    ignore those because they're not the same thing at all as MB Metrics and don't correspond to objects in our
    application DB."
@@ -105,24 +106,22 @@
     (maybe-unnest-ag-clause ag-clause)))
 
 (defn- expand-metrics-in-ag-clause [query-dict filter-clauses-atom]
-  (walk/postwalk
-   (fn [form]
-     (if-not (metric? form)
-       form
-       (expand-metric form filter-clauses-atom)))
-   query-dict))
+  (qputil/postwalk-pred metric?
+                        #(expand-metric % filter-clauses-atom)
+                        query-dict))
 
 (defn merge-filter-clauses
   "Merge filter clauses."
   ([] [])
   ([clause] clause)
-  ([base-clause additional-clauses]
-   (cond
-     (and (seq base-clause)
-          (seq additional-clauses)) [:and base-clause additional-clauses]
-     (seq base-clause)              base-clause
-     (seq additional-clauses)       additional-clauses
-     :else                          [])))
+  ([base-clause & additional-clauses]
+   (let [additional-clauses (filter seq additional-clauses)]
+     (cond
+       (and (seq base-clause)
+            (seq additional-clauses)) (apply vector :and base-clause additional-clauses)
+       (seq base-clause)              base-clause
+       (seq additional-clauses)       (apply merge-filter-clauses additional-clauses)
+       :else                          []))))
 
 (defn- add-metrics-filter-clauses
   "Add any FILTER-CLAUSES to the QUERY-DICT. If query has existing filter clauses, the new ones are

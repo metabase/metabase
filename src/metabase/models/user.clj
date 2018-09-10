@@ -191,7 +191,10 @@
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will recieve an email right away."
   [new-user :- NewUser]
-  (insert-new-user! (assoc new-user :ldap_auth true)))
+  (insert-new-user! (-> new-user
+                        ;; We should not store LDAP passwords
+                        (dissoc :password)
+                        (assoc :ldap_auth true))))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."

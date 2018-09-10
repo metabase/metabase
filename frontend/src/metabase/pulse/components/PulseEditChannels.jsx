@@ -31,10 +31,7 @@ const CHANNEL_NOUN_PLURAL = {
 };
 
 export default class PulseEditChannels extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-  }
+  state = {};
 
   static propTypes = {
     pulse: PropTypes.object.isRequired,
@@ -42,7 +39,7 @@ export default class PulseEditChannels extends Component {
     pulseIsValid: PropTypes.bool.isRequired,
     formInput: PropTypes.object.isRequired,
     user: PropTypes.object.isRequired,
-    userList: PropTypes.array.isRequired,
+    users: PropTypes.array.isRequired,
     setPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func,
     cardPreviews: PropTypes.object,
@@ -199,7 +196,7 @@ export default class PulseEditChannels extends Component {
               autoFocus={!!this.props.pulse.name}
               recipients={channel.recipients}
               recipientTypes={channelSpec.recipients}
-              users={this.props.userList}
+              users={this.props.users}
               onRecipientsChange={recipients =>
                 this.onChannelPropertyChange(index, "recipients", recipients)
               }
@@ -263,7 +260,7 @@ export default class PulseEditChannels extends Component {
         <div className="flex align-center p3 border-row-divider">
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
-              className="mr1 text-grey-2"
+              className="mr1 text-light"
               name={CHANNEL_ICONS[channelSpec.type]}
               size={28}
             />
@@ -276,7 +273,7 @@ export default class PulseEditChannels extends Component {
           />
         </div>
         {channels.length > 0 && channelSpec.configured ? (
-          <ul className="bg-grey-0 px3">{channels}</ul>
+          <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
           <div className="p4 text-centered">
             <h3 className="mb2">{t`${
@@ -297,7 +294,7 @@ export default class PulseEditChannels extends Component {
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
-      <ul className="bordered rounded">
+      <ul className="bordered rounded bg-white">
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}

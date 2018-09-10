@@ -67,7 +67,6 @@ import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
-import Collections from "metabase/entities/collections";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
@@ -223,7 +222,6 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),
@@ -331,10 +329,11 @@ describe("public/embedded", () => {
       }
 
       it("should allow seeing an embedded question", async () => {
-        if (!embedUrl)
+        if (!embedUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce an embed url.",
           );
+        }
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedQuestionTests(
           embedUrlTestStore,
@@ -344,10 +343,11 @@ describe("public/embedded", () => {
       });
 
       it("should allow seeing a public question", async () => {
-        if (!publicUrl)
+        if (!publicUrl) {
           throw new Error(
             "This test fails because previous tests didn't produce a public url.",
           );
+        }
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedQuestionTests(
           publicUrlTestStore,
@@ -567,20 +567,22 @@ describe("public/embedded", () => {
       }
 
       it("should handle parameters in public Dashboards correctly", async () => {
-        if (!publicDashUrl)
+        if (!publicDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a public Dashboard URL.",
           );
+        }
 
         const publicUrlTestStore = await createTestStore({ publicApp: true });
         await runSharedDashboardTests(publicUrlTestStore, publicDashUrl);
       });
 
       it("should handle parameters in embedded Dashboards correctly", async () => {
-        if (!embedDashUrl)
+        if (!embedDashUrl) {
           throw new Error(
             "This test fails because test setup code didn't produce a embedded Dashboard URL.",
           );
+        }
 
         const embedUrlTestStore = await createTestStore({ embedApp: true });
         await runSharedDashboardTests(embedUrlTestStore, embedDashUrl);

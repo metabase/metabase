@@ -635,12 +635,24 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeExpression, arguments);
   }
 
-  // FIELD OPTIONS
+  // FIELDS
+  /**
+   * Returns dimension options that can appear in the `fields` clause
+   */
+  fieldsOptions(dimensionFilter = () => true): DimensionOptions {
+    if (this.isBareRows() && this.breakouts().length === 0) {
+      return this.dimensionOptions(dimensionFilter);
+    }
+    // TODO: allow adding fields connected by broken out PKs?
+    return { count: 0, dimensions: [], fks: [] };
+  }
+
+  // DIMENSION OPTIONS
 
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
-  fieldOptions(fieldFilter = () => true): DimensionOptions {
-    const fieldOptions = {
+  dimensionOptions(dimensionFilter = () => true): DimensionOptions {
+    const dimensionOptions = {
       count: 0,
       fks: [],
       dimensions: [],
@@ -648,11 +660,6 @@ export default class StructuredQuery extends AtomicQuery {
 
     const table = this.tableMetadata();
     if (table) {
-      const dimensionFilter = dimension => {
-        const field = dimension.field && dimension.field();
-        return !field || (field.isDimension() && fieldFilter(field));
-      };
-
       const dimensionIsFKReference = dimension =>
         dimension.field && dimension.field() && dimension.field().isFK();
 
@@ -660,8 +667,8 @@ export default class StructuredQuery extends AtomicQuery {
       // .filter(d => !dimensionIsFKReference(d));
 
       for (const dimension of filteredNonFKDimensions) {
-        fieldOptions.count++;
-        fieldOptions.dimensions.push(dimension);
+        dimensionOptions.count++;
+        dimensionOptions.dimensions.push(dimension);
       }
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
@@ -671,8 +678,8 @@ export default class StructuredQuery extends AtomicQuery {
           .filter(dimensionFilter);
 
         if (fkDimensions.length > 0) {
-          fieldOptions.count += fkDimensions.length;
-          fieldOptions.fks.push({
+          dimensionOptions.count += fkDimensions.length;
+          dimensionOptions.fks.push({
             field: dimension.field(),
             dimension: dimension,
             dimensions: fkDimensions,
@@ -681,7 +688,17 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    return fieldOptions;
+    return dimensionOptions;
+  }
+
+  // FIELD OPTIONS
+
+  fieldOptions(fieldFilter = () => true) {
+    const dimensionFilter = dimension => {
+      const field = dimension.field && dimension.field();
+      return !field || (field.isDimension() && fieldFilter(field));
+    };
+    return this.dimensionOptions(dimensionFilter);
   }
 
   // DIMENSIONS

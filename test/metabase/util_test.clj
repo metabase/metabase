@@ -185,3 +185,19 @@
 (expect nil (index-of pos? [-1 0 -2 -3]))
 (expect nil (index-of pos? nil))
 (expect nil (index-of pos? []))
+
+
+;; is-java-9-or-higher?
+(expect
+  false
+  (is-java-9-or-higher? "1.8.0_141"))
+
+(expect
+  (is-java-9-or-higher? "1.9.0_141"))
+
+(expect
+ (is-java-9-or-higher? "10.0.1"))
+
+;; make sure we can parse wacky version strings like `9-internal`: See #8282
+(expect
+  (is-java-9-or-higher? "9-internal"))

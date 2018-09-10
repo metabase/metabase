@@ -15,8 +15,7 @@
             [metabase.util
              [ui-logic :as ui]
              [urls :as urls]]
-            [metabase.util.urls :as urls]
-            [puppetlabs.i18n.core :refer [tru]]
+            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.TimeZone
@@ -212,7 +211,12 @@
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
-    (send-notification! notification)))
+    ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
+    ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
+    (try
+      (send-notification! notification)
+      (catch Throwable e
+        (log/error e (trs "Error sending notification!"))))))
 
 (defn- pulse->notifications [{:keys [cards channel-ids], :as pulse}]
   (let [results     (for [card  cards

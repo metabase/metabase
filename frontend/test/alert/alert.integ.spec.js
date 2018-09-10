@@ -44,7 +44,7 @@ import {
 import MetabaseCookies from "metabase/lib/cookies";
 import Radio from "metabase/components/Radio";
 import { getQuestionAlerts } from "metabase/query_builder/selectors";
-import { FETCH_PULSE_FORM_INPUT, FETCH_USERS } from "metabase/pulse/actions";
+import { FETCH_PULSE_FORM_INPUT } from "metabase/pulse/actions";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import { getDefaultAlert } from "metabase-lib/lib/Alert";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -52,6 +52,8 @@ import {
   AlertListItem,
   AlertListPopoverContent,
 } from "metabase/query_builder/components/AlertListPopoverContent";
+
+import Users from "metabase/entities/users";
 
 async function removeAllCreatedAlerts() {
   useSharedAdminLogin();
@@ -482,7 +484,10 @@ describe("Alerts", () => {
         const editingScreen = app.find(UpdateAlertModalContent);
         expect(editingScreen.length).toBe(1);
 
-        await store.waitForActions([FETCH_USERS, FETCH_PULSE_FORM_INPUT]);
+        await store.waitForActions([
+          Users.actionTypes.FETCH_LIST,
+          FETCH_PULSE_FORM_INPUT,
+        ]);
 
         const toggles = editingScreen.find(AlertSettingToggle);
         const aboveGoalToggle = toggles.at(0);

@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "c-3po";
 
 import * as Urls from "metabase/lib/urls";
+import colors from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
@@ -12,18 +12,25 @@ import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
+import {
+  ROOT_COLLECTION,
+  PERSONAL_COLLECTIONS,
+} from "metabase/entities/collections";
+
 const UserListLoader = ({ children, ...props }) => (
   <EntityListLoader entityType="users" children={children} {...props} />
 );
 
 const UserCollectionList = () => (
   <Box px={4}>
-    <BrowserCrumbs
-      crumbs={[
-        { title: t`Saved items`, to: Urls.collection() },
-        { title: t`Everyone else’s personal collections` },
-      ]}
-    />
+    <Box py={2}>
+      <BrowserCrumbs
+        crumbs={[
+          { title: ROOT_COLLECTION.name, to: Urls.collection() },
+          { title: PERSONAL_COLLECTIONS.name },
+        ]}
+      />
+    </Box>
     <UserListLoader>
       {({ list }) => {
         return (
@@ -43,10 +50,10 @@ const UserCollectionList = () => (
                             <Icon
                               name="person"
                               mr={1}
-                              color="#93B3C9"
-                              size={22}
+                              color={colors["text-medium"]}
+                              size={18}
                             />
-                            <h2>{user.common_name}</h2>
+                            <h3>{user.common_name}</h3>
                           </Flex>
                         </Card>
                       </Link>

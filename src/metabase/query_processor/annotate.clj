@@ -22,6 +22,7 @@
              [interface :as i]
              [sort :as sort]
              [util :as qputil]]
+            [metabase.util.date :as du]
             [toucan.db :as db])
   (:import [metabase.query_processor.interface Expression ExpressionRef]))
 
@@ -198,9 +199,8 @@
   "Return a set of bare-bones metadata for a Field named K when all else fails.
    Scan the INITIAL-VALUES of K in an attempt to determine the `base-type`."
   [k & [initial-values]]
-  {:base-type          (if (seq initial-values)
-                         (driver/values->base-type initial-values)
-                         :type/*)
+  {:base-type          (or (driver/values->base-type initial-values)
+                           :type/*)
    :preview-display    true
    :special-type       nil
    :field-name         k
@@ -298,8 +298,8 @@
                           :remapped-from      :remapped_from})
         (dissoc :position :clause-position :parent :parent-id :table-name :database-type))))
 
-(defn- maybe-add-timezone-info [query]
-  (let [timezone-str (qputil/query-timezone query)]
+(defn- maybe-add-timezone-info []
+  (let [timezone-str (.getID du/*report-timezone*)]
     (fn [field]
       (if (qputil/datetime-field? field)
         (assoc field :timezone timezone-str)
@@ -346,7 +346,7 @@
 (defn- resolve-sort-and-format-columns
   "Collect the Fields referenced in INNER-QUERY, sort them according to the rules at the top of this page, format them
   as expected by the frontend, and return the results."
-  [{inner-query :query :as query} result-keys initial-rows]
+  [inner-query result-keys initial-rows]
   {:pre [(sequential? result-keys)]}
   (when (seq result-keys)
     (let [result-keys-set (set result-keys)
@@ -368,11 +368,18 @@
            ;; remove any duplicate entires
            (m/distinct-by :field-name)
            ;; Add in timezone info to datetime columns
-           (map (maybe-add-timezone-info query))
+           (map (maybe-add-timezone-info))
            ;; convert them to the format expected by the frontend
            (map convert-field-to-expected-format)
            ;; add FK info
            add-extra-info-to-fk-fields))))
+
+(defn- pre-sort-index->post-sort-index
+  "Return a  mapping of how columns should be sorted:
+   [2 1 0] means the 1st column should be 3rd, 2nd remain 2nd, and 3rd should come 1st."
+  [unsorted-columns sorted-columns]
+  (let [column-index (zipmap unsorted-columns (range))]
+    (map column-index sorted-columns)))
 
 (defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:
@@ -381,13 +388,17 @@
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols` expected by the
       frontend."
   [query {:keys [columns rows], :as results}]
-  (let [row-maps (for [row rows]
-                   (zipmap columns row))
-        cols    (resolve-sort-and-format-columns query (distinct columns) (take 10 row-maps))
-        columns (mapv :name cols)]
+  (let [cols           (resolve-sort-and-format-columns (:query query)
+                                                        (distinct columns)
+                                                        (for [row (take 10 rows)]
+                                                          (zipmap columns row)))
+        sorted-columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]
                       (update col :name name)))
-      :columns (mapv name columns)
-      :rows    (for [row row-maps]
-                 (mapv row columns)))))
+      :columns (mapv name sorted-columns)
+      :rows    (if (not= columns sorted-columns)
+                 (let [sorted-column-ordering (pre-sort-index->post-sort-index columns sorted-columns)]
+                   (for [row rows]
+                     (mapv (partial nth (vec row)) sorted-column-ordering)))
+                 rows))))

@@ -18,6 +18,7 @@ type Props = {
   items: Array<EntityMenuOption>,
   triggerIcon: string,
   className?: string,
+  tooltip?: string,
 };
 
 class EntityMenu extends Component {
@@ -30,7 +31,9 @@ class EntityMenu extends Component {
   };
 
   toggleMenu = () => {
-    if (this.state.freezeMenu) return;
+    if (this.state.freezeMenu) {
+      return;
+    }
 
     const open = !this.state.open;
     this.setState({ open, menuItemContent: null });
@@ -45,7 +48,7 @@ class EntityMenu extends Component {
   };
 
   render() {
-    const { items, triggerIcon, className } = this.props;
+    const { items, triggerIcon, className, tooltip } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <div className={cx("relative", className)}>
@@ -53,6 +56,7 @@ class EntityMenu extends Component {
           icon={triggerIcon}
           onClick={this.toggleMenu}
           open={open}
+          tooltip={tooltip}
         />
         <Popover
           isOpen={open}
@@ -111,6 +115,7 @@ class EntityMenu extends Component {
                               <EntityMenuItem
                                 icon={item.icon}
                                 title={item.title}
+                                externalLink={item.externalLink}
                                 action={
                                   item.action &&
                                   (() => {
@@ -118,7 +123,9 @@ class EntityMenu extends Component {
                                     this.toggleMenu();
                                   })
                                 }
+                                event={item.event && item.event}
                                 link={item.link}
+                                onClose={() => this.toggleMenu()}
                               />
                             </li>
                           );

@@ -23,14 +23,11 @@ dimensions:
 - JoinDate:
     field_type: Date
     score: 30
-- Source:
-    field_type: Source
 - GenericNumber:
     field_type: GenericTable.Number
     score: 80
 - Source:
     field_type: GenericTable.Source
-    score: 100
 - GenericCategoryMedium:
     field_type: GenericTable.Category
     score: 75
@@ -54,9 +51,9 @@ groups:
 - Overview:
     title: Overview
 - Geographical:
-    title: Where these [[this]] are
+    title: Where these [[this.short-name]] are
 - General:
-    title: How these [[this]] are distributed
+    title: How these [[this.short-name]] are distributed
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium
@@ -66,7 +63,7 @@ dashboard_filters:
 cards:
 # Overview
   - Rowcount:
-      title: Total [[this]]
+      title: Total [[this.short-name]]
       visualization: scalar
       metrics: Count
       score: 100
@@ -74,7 +71,7 @@ cards:
       width: 5
       height: 3
   - RowcountLast30Days:
-      title: New [[this]] in the last 30 days
+      title: New [[this.short-name]] in the last 30 days
       visualization: scalar
       metrics: Count
       score: 100
@@ -84,8 +81,7 @@ cards:
       height: 3
   - NewUsersByMonth:
       visualization: line
-      title: New [[this]] per month
-      description: The number of new [[this]] each month
+      title: New [[this.short-name]] per month
       dimensions: JoinDate
       metrics: Count
       score: 100
@@ -94,7 +90,7 @@ cards:
       height: 7
 # Geographical
   - CountByCountry:
-      title: Number of [[this]] per country
+      title: Per country
       metrics: Count
       dimensions: Country
       score: 90
@@ -104,7 +100,7 @@ cards:
           map.region: world_countries
       group: Geographical
   - CountByState:
-      title: "[[this]] per state"
+      title: "Per state"
       metrics: Count
       dimensions: State
       score: 90
@@ -115,7 +111,7 @@ cards:
           map.region: us_states
       group: Geographical
   - CountByCoords:
-      title: "[[this]] by coordinates"
+      title: "By coordinates"
       metrics: Count
       dimensions:
         - Long
@@ -135,7 +131,7 @@ cards:
       score: 90
       group: General
   - CountByCategoryMedium:
-      title: "[[this]] per [[GenericCategoryMedium]]"
+      title: "Per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
       visualization: row
@@ -144,8 +140,18 @@ cards:
       group: General
       order_by:
         - Count: descending
+  - CountBySource:
+      title: "Per [[Source]]"
+      dimensions: Source
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
   - CountByCategoryLarge:
-      title: "[[this]] per [[GenericCategoryLarge]]"
+      title: "Per [[GenericCategoryLarge]]"
       dimensions: GenericCategoryLarge
       metrics: Count
       visualization: table

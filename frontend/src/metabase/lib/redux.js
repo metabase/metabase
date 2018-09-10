@@ -8,6 +8,9 @@ import { setRequestState, clearRequestState } from "metabase/redux/requests";
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
+import { createSelectorCreator } from "reselect";
+import memoize from "lodash.memoize";
+
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, actionThunkCreator) {
@@ -192,3 +195,8 @@ export const formDomOnlyProps = ({
   defaultValue,
   ...domProps
 }) => domProps;
+
+export const createMemoizedSelector = createSelectorCreator(
+  memoize,
+  (...args) => JSON.stringify(args),
+);

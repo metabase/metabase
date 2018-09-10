@@ -227,6 +227,7 @@ export default class DashboardGrid extends Component {
           this.props.navigateToNewCardFromDashboard
         }
         metadata={this.props.metadata}
+        dashboard={this.props.dashboard}
       />
     );
   }

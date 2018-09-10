@@ -15,9 +15,10 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [trs]])
+            [puppetlabs.i18n.core :refer [trs tru]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))
@@ -32,9 +33,13 @@
 
 (def ^:private source-table-alias "t1")
 
+(defn- find-source-table [query]
+  (first (qputil/postwalk-collect #(instance? (type Table) %)
+                                  identity
+                                  query)))
+
 (defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
-  (let [source-table (or (get-in sqlqp/*query* [:query :source-table])
-                         (get-in sqlqp/*query* [:query :source-query :source-table]))]
+  (let [source-table (find-source-table sqlqp/*query*)]
     (if (and (= schema-name (:schema source-table))
              (= table-name (:name source-table)))
       (-> (assoc field :schema-name nil)
@@ -49,7 +54,7 @@
 
 (defmethod  sqlqp/->honeysql [SparkSQLDriver Field]
   [driver field-before-aliasing]
-  (let [{:keys [schema-name table-name special-type field-name]} (resolve-table-alias field-before-aliasing)
+  (let [{:keys [schema-name table-name special-type field-name] :as foo} (resolve-table-alias field-before-aliasing)
         field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
@@ -163,26 +168,14 @@
           :describe-database  describe-database
           :describe-table     describe-table
           :describe-table-fks (constantly #{})
-          :details-fields     (constantly [{:name         "host"
-                                            :display-name "Host"
-                                            :default      "localhost"}
-                                           {:name         "port"
-                                            :display-name "Port"
-                                            :type         :integer
-                                            :default      10000}
-                                           {:name         "dbname"
-                                            :display-name "Database name"
-                                            :placeholder  "default"}
-                                           {:name         "user"
-                                            :display-name "Database username"
-                                            :placeholder  "What username do you use to login to the database?"}
-                                           {:name         "password"
-                                            :display-name "Database password"
-                                            :type         :password
-                                            :placeholder  "*******"}
-                                           {:name         "jdbc-flags"
-                                            :display-name "Additional JDBC settings, appended to the connection string"
-                                            :placeholder  ";transportMode=http"}])
+          :details-fields     (constantly [driver/default-host-details
+                                           (assoc driver/default-port-details :default 10000)
+                                           (assoc driver/default-dbname-details :placeholder (tru "default"))
+                                           driver/default-user-details
+                                           driver/default-password-details
+                                           (assoc driver/default-additional-options-details
+                                             :name        "jdbc-flags"
+                                             :placeholder ";transportMode=http")])
           :execute-query      execute-query
           :features           (constantly (set/union #{:basic-aggregations
                                                        :binning

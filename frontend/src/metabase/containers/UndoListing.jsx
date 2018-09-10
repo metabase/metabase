@@ -34,9 +34,9 @@ const DefaultMessage = ({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
 }) => (
   <div>
-    {count > 1
-      ? t`${capitalize(verb)} ${count} ${inflect(subject, count)}`
-      : t`${capitalize(verb)} ${subject}`}
+    {count > 1 // TODO: figure out how to i18n this?
+      ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
+      : `${capitalize(verb)} ${subject}`}
   </div>
 );
 DefaultMessage.propTypes = {
@@ -59,6 +59,11 @@ export default class UndoListing extends Component {
         {undos.map(undo => (
           <Card key={undo._domId} dark p={2} mt={1}>
             <Flex align="center">
+              <Icon
+                name={(undo.icon && undo.icon) || "check"}
+                color="white"
+                mr={1}
+              />
               {typeof undo.message === "function" ? (
                 undo.message(undo)
               ) : undo.message ? (
@@ -72,6 +77,7 @@ export default class UndoListing extends Component {
                   <Link
                     ml={1}
                     onClick={() => performUndo(undo.id)}
+                    className="link text-bold"
                   >{t`Undo`}</Link>
                 )}
               <Icon

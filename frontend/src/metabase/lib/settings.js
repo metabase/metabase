@@ -67,7 +67,9 @@ const MetabaseSettings = {
     let versionInfo = _.findWhere(settings, { key: "version-info" }),
       currentVersion = MetabaseSettings.get("version").tag;
 
-    if (versionInfo) versionInfo = versionInfo.value;
+    if (versionInfo) {
+      versionInfo = versionInfo.value;
+    }
 
     return (
       versionInfo &&
@@ -78,7 +80,11 @@ const MetabaseSettings = {
     );
   },
 
-  passwordComplexity: function(capitalize) {
+  // returns a map that looks like {total: 6, digit: 1}
+  passwordComplexityRequirements: () => mb_settings.password_complexity,
+
+  // returns a description of password complexity requirements rather than the actual map of requirements
+  passwordComplexityDescription: function(capitalize) {
     const complexity = this.get("password_complexity");
 
     const clauseDescription = function(clause) {

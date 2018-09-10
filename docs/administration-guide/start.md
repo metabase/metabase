@@ -14,7 +14,6 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Configuring settings](08-configuration-settings.md)
 * [Setting up Slack integration](09-setting-up-slack.md)
 * [Authenticating with Google Sign-In or LDAP](10-single-sign-on.md)
-* [Creating a Getting Started Guide for your team](11-getting-started-guide.md)
 * [Sharing dashboards and questions with public links](12-public-links.md)
 * [Embedding Metabase in other Applications](13-embedding.md)
 * [Caching query results](14-caching.md)

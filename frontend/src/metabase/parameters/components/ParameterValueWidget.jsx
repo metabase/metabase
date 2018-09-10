@@ -168,7 +168,9 @@ export default class ParameterValueWidget extends Component {
     };
 
     const getWidgetStatusIcon = () => {
-      if (isFullscreen) return null;
+      if (isFullscreen) {
+        return null;
+      }
 
       if (hasValue && !noReset) {
         return (

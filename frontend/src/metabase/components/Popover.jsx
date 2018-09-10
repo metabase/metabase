@@ -108,9 +108,10 @@ export default class Popover extends Component {
         if (this._popoverElement.parentNode) {
           this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
-        clearInterval(this._timer);
-        delete this._popoverElement, this._timer;
+        delete this._popoverElement;
       }, POPOVER_TRANSITION_LEAVE);
+      clearInterval(this._timer);
+      delete this._timer;
     }
   }
 
@@ -147,7 +148,9 @@ export default class Popover extends Component {
         >
           {typeof this.props.children === "function"
             ? this.props.children(childProps)
-            : React.Children.count(this.props.children) === 1
+            : React.Children.count(this.props.children) === 1 &&
+              // NOTE: workaround for https://github.com/facebook/react/issues/12136
+              !Array.isArray(this.props.children)
               ? React.cloneElement(
                   React.Children.only(this.props.children),
                   childProps,

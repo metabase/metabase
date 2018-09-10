@@ -1,13 +1,17 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
-  (:require [metabase.query-processor-test :refer :all]
+  (:require [metabase
+             [query-processor :as qp]
+             [query-processor-test :refer :all]]
+            [metabase.models.dimension :refer [Dimension]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dimension-projections]
              [expand :as ql]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [toucan.db :as db]))
 
 (qp-expect-with-all-engines
   {:rows  [["20th Century Cafe" 12 "Café Sweets"]
@@ -79,3 +83,21 @@
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
          :data)))
+
+;; Test that we can remap inside an MBQL nested query
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys :nested-queries)
+  ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
+  (data/with-data
+    (fn []
+      [(db/insert! Dimension {:field_id (data/id :checkins :venue_id)
+                              :name "venue-remapping"
+                              :type :external
+                              :human_readable_field_id (data/id :venues :name)})])
+    (->> (qp/process-query
+           {:database (data/id)
+            :type :query
+            :query {:source-query {:source-table (data/id :checkins)}
+                    :order-by [[(data/id :checkins :date) :ascending]]
+                    :limit 5}})
+         rows
+         (map last))))

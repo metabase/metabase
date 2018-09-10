@@ -83,7 +83,6 @@
       [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
       [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
-
 ;; Check that we can load a Postgres Database with a :type/UUID
 (expect-with-engine :postgres
   [{:name "id",      :base_type :type/Integer}
@@ -108,6 +107,21 @@
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
           (data/run-query users
             (ql/filter (ql/= $user_id nil))))))
+
+;; Check that we can filter by a UUID for SQL Field filters (#7955)
+(expect-with-engine :postgres
+  [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
+  (data/dataset metabase.driver.postgres-test/with-uuid
+    (rows (qp/process-query {:database   (data/id)
+                             :type       :native
+                             :native     {:query         "SELECT * FROM users WHERE {{user}}"
+                                          :template_tags {:user {:name         "user"
+                                                                 :display_name "User ID"
+                                                                 :type         "dimension"
+                                                                 :dimension    ["field-id" (data/id :users :user_id)]}}}
+                             :parameters [{:type   "text"
+                                           :target ["dimension" ["template-tag" "user"]]
+                                           :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]}))))
 
 
 ;; Make sure that Tables / Fields with dots in their names get escaped properly

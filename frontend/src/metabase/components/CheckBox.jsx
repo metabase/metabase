@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 
-import { normal as defaultColors } from "metabase/lib/colors";
+import colors, { normal as defaultColors } from "metabase/lib/colors";
 
 export default class CheckBox extends Component {
   static propTypes = {
@@ -36,7 +36,7 @@ export default class CheckBox extends Component {
     const { checked, indeterminate, color, padding, size, noIcon } = this.props;
 
     const checkedColor = defaultColors[color];
-    const uncheckedColor = "#ddd";
+    const uncheckedColor = colors["text-light"];
 
     const checkboxStyle = {
       width: size,

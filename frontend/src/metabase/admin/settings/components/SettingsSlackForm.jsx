@@ -59,7 +59,9 @@ export default class SettingsSlackForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement([validationType, validationMessage], value, element) {
-    if (MetabaseUtils.isEmpty(value)) return;
+    if (MetabaseUtils.isEmpty(value)) {
+      return;
+    }
 
     switch (validationType) {
       case "email":
@@ -93,7 +95,9 @@ export default class SettingsSlackForm extends Component {
             formData[element.key],
             element,
           );
-          if (validationErrors[element.key]) valid = false;
+          if (validationErrors[element.key]) {
+            valid = false;
+          }
         }, this);
       }
     }, this);
@@ -235,7 +239,7 @@ export default class SettingsSlackForm extends Component {
             />
             Slack
           </h1>
-          <h3 className="text-grey-1">{t`Answers sent right to your Slack #channels`}</h3>
+          <h3 className="text-light">{t`Answers sent right to your Slack #channels`}</h3>
 
           <div className="pt3">
             <a

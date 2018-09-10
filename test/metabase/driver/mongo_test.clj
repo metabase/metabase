@@ -2,6 +2,7 @@
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
             [medley.core :as m]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -121,6 +122,24 @@
               :base-type     :type/Integer
               :pk?           true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
+
+;; Make sure that all-NULL columns work and are synced correctly (#6875)
+(i/def-database-definition ^:private all-null-columns
+  [["bird_species"
+     [{:field-name "name", :base-type :type/Text}
+      {:field-name "favorite_snack", :base-type :type/Text}]
+     [["House Finch" nil]
+      ["Mourning Dove" nil]]]])
+
+(datasets/expect-with-engine :mongo
+  [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
+   {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
+   {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
+  (data/dataset metabase.driver.mongo-test/all-null-columns
+    (map (partial into {})
+         (db/select [Field :name :database_type :base_type :special_type]
+           :table_id (data/id :bird_species)
+           {:order-by [:name]}))))
 
 
 ;;; table-rows-sample
@@ -249,3 +268,12 @@
 (expect
   nil
   (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
+
+
+;; make sure x-rays don't use features that the driver doesn't support
+(datasets/expect-with-engine :mongo
+  true
+  (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
+       :ordered_cards
+       (mapcat (comp :breakout :query :dataset_query :card))
+       (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))

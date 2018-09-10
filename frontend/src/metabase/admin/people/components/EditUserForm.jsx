@@ -47,7 +47,9 @@ export default class EditUserForm extends Component {
     let isValid = true;
 
     ["firstName", "lastName", "email"].forEach(fieldName => {
-      if (MetabaseUtils.isEmpty(this.state[fieldName])) isValid = false;
+      if (MetabaseUtils.isEmpty(this.state[fieldName])) {
+        isValid = false;
+      }
     });
 
     if (isValid !== valid) {

@@ -1,34 +1,33 @@
 /* @flow weak */
 
 import React from "react";
-
+import { Box, Flex } from "grid-styled";
+import { t } from "c-3po";
 import { connect } from "react-redux";
-import { Link } from "react-router";
 
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
+import DashboardData from "metabase/dashboard/hoc/DashboardData";
+
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
+import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
-
-import cxs from "cxs";
-import { t } from "c-3po";
-import _ from "underscore";
+import Link from "metabase/components/Link";
+import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import Parameters from "metabase/parameters/components/Parameters";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { DashboardApi } from "metabase/services";
+import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import MetabaseAnalytics from "metabase/lib/analytics";
-
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
+import colors from "metabase/lib/colors";
 
 import { dissoc } from "icepick";
 
@@ -36,12 +35,15 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
   `/auto/dashboard/${splat}${hash.replace(/^#?/, "?")}`;
 
 const mapStateToProps = (state, props) => ({
-  isAdmin: getUserIsAdmin(state),
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
 });
 
-@connect(mapStateToProps)
+const mapDispatchToProps = {
+  saveDashboard: Dashboards.actions.save,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -58,12 +60,13 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast } = this.props;
+    const { dashboard, triggerToast, saveDashboard } = this.props;
     // remove the transient id before trying to save
-    const newDashboard = await DashboardApi.save(dissoc(dashboard, "id"));
+    const { payload: newDashboard } = await saveDashboard(
+      dissoc(dashboard, "id"),
+    );
     triggerToast(
       <div className="flex align-center">
-        <Icon name="dashboard" size={22} className="mr2" color="#93A1AB" />
         {t`Your dashboard was saved`}
         <Link
           className="link text-bold ml1"
@@ -72,11 +75,19 @@ class AutomaticDashboardApp extends React.Component {
           {t`See it`}
         </Link>
       </div>,
+      { icon: "dashboard" },
     );
 
     this.setState({ savedDashboardId: newDashboard.id });
     MetabaseAnalytics.trackEvent("AutoDashboard", "Save");
   };
+
+  componentWillReceiveProps(nextProps) {
+    // clear savedDashboardId if changing to a different dashboard
+    if (this.props.location.pathname !== nextProps.location.pathname) {
+      this.setState({ savedDashboardId: null });
+    }
+  }
 
   render() {
     const {
@@ -85,13 +96,13 @@ class AutomaticDashboardApp extends React.Component {
       parameterValues,
       setParameterValue,
       location,
-      isAdmin,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;
     const related = dashboard && dashboard.related;
-    const hasSidebar = _.any(related || {}, list => list.length > 0);
+
+    const hasSidebar = related && Object.keys(related).length > 0;
 
     return (
       <div className="relative">
@@ -111,7 +122,7 @@ class AutomaticDashboardApp extends React.Component {
               </div>
               {savedDashboardId != null ? (
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : isAdmin ? (
+              ) : (
                 <ActionButton
                   className="ml-auto"
                   success
@@ -120,7 +131,7 @@ class AutomaticDashboardApp extends React.Component {
                 >
                   {t`Save this`}
                 </ActionButton>
-              ) : null}
+              )}
             </div>
           </div>
 
@@ -174,7 +185,7 @@ const TransientTitle = ({ dashboard }) =>
   ) : null;
 
 const TransientFilters = ({ filter, metadata }) => (
-  <div className="mt1 flex align-center text-grey-4 text-bold">
+  <div className="mt1 flex align-center text-medium text-bold">
     {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />
@@ -200,55 +211,84 @@ const getIconForFilter = (filter, metadata) => {
   }
 };
 
-const suggestionClasses = cxs({
-  ":hover h3": {
-    color: "#509ee3",
+const RELATED_CONTENT = {
+  compare: {
+    title: t`Compare`,
+    icon: "compare",
   },
-  ":hover .Icon": {
-    color: "#F9D45C",
+  "zoom-in": {
+    title: t`Zoom in`,
+    icon: "zoom-in",
   },
-});
+  "zoom-out": {
+    title: t`Zoom out`,
+    icon: "zoom-out",
+  },
+  related: {
+    title: t`Related`,
+    icon: "connections",
+  },
+};
 
 const SuggestionsList = ({ suggestions, section }) => (
-  <ol className="px2">
-    {suggestions.map((s, i) => (
-      <li key={i} className={suggestionClasses}>
-        <Link
-          to={s.url}
-          className="bordered rounded bg-white shadowed mb2 p2 flex no-decoration"
-          onClick={() =>
-            MetabaseAnalytics.trackEvent(
-              "AutoDashboard",
-              "ClickRelated",
-              section,
-            )
-          }
-        >
-          <div
-            className="bg-slate-extra-light rounded flex align-center justify-center text-slate mr1 flex-no-shrink"
-            style={{ width: 48, height: 48 }}
-          >
-            <Icon name="bolt" className="Icon text-grey-1" size={22} />
-          </div>
-          <div>
-            <h3 className="m0 mb1 ml1">{s.title}</h3>
-            <p className="text-grey-4 ml1 mt0 mb0">{s.description}</p>
-          </div>
-        </Link>
+  <Box is="ol" my={1}>
+    {Object.keys(suggestions).map((s, i) => (
+      <li key={i} className="my2">
+        <SuggetsionSectionHeading>
+          {RELATED_CONTENT[s].title}
+        </SuggetsionSectionHeading>
+        {suggestions[s].length > 0 &&
+          suggestions[s].map((item, itemIndex) => (
+            <Link
+              hover={{ color: colors["brand"] }}
+              key={itemIndex}
+              to={item.url}
+              className="block hover-parent hover--visibility"
+              data-metabase-event={`Auto Dashboard;Click Related;${s}`}
+              mb={1}
+            >
+              <Card p={2} hoverable>
+                <Flex align="center">
+                  <Icon
+                    name={RELATED_CONTENT[s].icon}
+                    color={colors["accent4"]}
+                    mr={1}
+                    size={22}
+                  />
+                  <h4>{item.title}</h4>
+                  <Box ml="auto" className="hover-child">
+                    <Tooltip tooltip={item.description}>
+                      <Icon name="question" color={colors["bg-dark"]} />
+                    </Tooltip>
+                  </Box>
+                </Flex>
+              </Card>
+            </Link>
+          ))}
       </li>
     ))}
-  </ol>
+  </Box>
 );
 
+const SuggetsionSectionHeading = ({ children }) => (
+  <h5
+    style={{
+      fontWeight: 900,
+      textTransform: "uppercase",
+      color: colors["text-medium"],
+    }}
+    className="mb1"
+  >
+    {children}
+  </h5>
+);
 const SuggestionsSidebar = ({ related }) => (
-  <div className="flex flex-column bg-slate-almost-extra-light full-height">
-    <div className="py2 text-centered my3">
-      <h3 className="text-grey-3">More X-rays</h3>
-    </div>
-    {Object.entries(related).map(([section, suggestions]) => (
-      <SuggestionsList section={section} suggestions={suggestions} />
-    ))}
-  </div>
+  <Flex flexDirection="column" py={2} px={3}>
+    <Box is="h2" py={1}>
+      {t`More X-rays`}
+    </Box>
+    <SuggestionsList suggestions={related} />
+  </Flex>
 );
 
 export default AutomaticDashboardApp;

@@ -120,10 +120,13 @@
   [export-format query]
   {query         su/JSONString
    export-format ExportFormat}
-  (let [query (json/parse-string query keyword)]
-    (api/read-check Database (:database query))
+  (let [{:keys [database] :as query} (json/parse-string query keyword)]
+    (when-not (= database database/virtual-id)
+      (api/read-check Database database))
     (as-format export-format
-      (qp/process-query-and-save-execution! (dissoc query :constraints)
+      (qp/process-query-and-save-execution! (-> query
+                                                (dissoc :constraints)
+                                                (assoc-in [:middleware :skip-results-metadata?] true))
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 

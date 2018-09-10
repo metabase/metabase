@@ -72,7 +72,7 @@ export default class Revision extends Component {
           />
         </div>
         <div className="flex-full mt1 mb4">
-          <div className="flex mb1 text-grey-4">
+          <div className="flex mb1 text-medium">
             <span className="">
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>

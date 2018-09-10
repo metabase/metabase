@@ -127,49 +127,44 @@ export class NewQueryOptions extends Component {
     }
 
     return (
-      <div className="full-height flex">
-        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim  px4 mt4 mb2 align-center">
-          <div
-            className="flex align-center justify-center"
-            style={{ minHeight: "100%" }}
-          >
-            <ol className="Grid Grid--guttersXl Grid--full sm-Grid--normal">
-              {showMetricOption && (
-                <li className="Grid-cell">
-                  <NewQueryOption
-                    image="app/img/questions_illustration"
-                    title={t`Metrics`}
-                    description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
-                    to={metricSearchUrl}
-                  />
-                </li>
-              )}
+      <div className="full-height flex align-center justify-center">
+        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim ">
+          <ol className="Grid Grid--guttersXl Grid--full sm-Grid--normal">
+            {showMetricOption && (
               <li className="Grid-cell">
-                {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
                 <NewQueryOption
-                  image="app/img/query_builder_illustration"
-                  title={
-                    showCustomInsteadOfNewQuestionText
-                      ? t`Custom`
-                      : t`New question`
-                  }
-                  description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
-                  width={180}
-                  to={this.getGuiQueryUrl}
+                  image="app/img/questions_illustration"
+                  title={t`Metrics`}
+                  description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
+                  to={metricSearchUrl}
                 />
               </li>
-              {showSQLOption && (
-                <li className="Grid-cell">
-                  <NewQueryOption
-                    image="app/img/sql_illustration"
-                    title={t`Native query`}
-                    description={t`For more complicated questions, you can write your own SQL or native query.`}
-                    to={this.getNativeQueryUrl}
-                  />
-                </li>
-              )}
-            </ol>
-          </div>
+            )}
+            <li className="Grid-cell">
+              {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+              <NewQueryOption
+                image="app/img/query_builder_illustration"
+                title={
+                  showCustomInsteadOfNewQuestionText
+                    ? t`Custom`
+                    : t`New question`
+                }
+                description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
+                width={180}
+                to={this.getGuiQueryUrl}
+              />
+            </li>
+            {showSQLOption && (
+              <li className="Grid-cell">
+                <NewQueryOption
+                  image="app/img/sql_illustration"
+                  title={t`Native query`}
+                  description={t`For more complicated questions, you can write your own SQL or native query.`}
+                  to={this.getNativeQueryUrl}
+                />
+              </li>
+            )}
+          </ol>
         </div>
       </div>
     );

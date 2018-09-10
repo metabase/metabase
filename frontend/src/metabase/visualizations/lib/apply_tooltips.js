@@ -107,8 +107,12 @@ function applyChartTooltips(
               data = rawCols.map((col, i) => {
                 // if this was one of the original x/y columns keep the original object because it
                 // may have the `isNormalized` tweak above.
-                if (col === data[0].col) return data[0];
-                if (col === data[1].col) return data[1];
+                if (col === data[0].col) {
+                  return data[0];
+                }
+                if (col === data[1].col) {
+                  return data[1];
+                }
                 // otherwise just create a new object for any other columns.
                 return {
                   key: getFriendlyName(col),

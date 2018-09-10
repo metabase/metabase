@@ -9,63 +9,156 @@ import { Box, Flex } from "grid-styled";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
+import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
+import ItemTypeFilterBar, {
+  FILTERS,
+} from "metabase/components/ItemTypeFilterBar";
 
-import { entityTypeForModel } from "metabase/schema";
+const PAGE_PADDING = [1, 2, 4];
 
 export default class SearchApp extends React.Component {
   render() {
+    const { location } = this.props;
     return (
-      <Box mx={4}>
-        <Flex align="center" mb={2} py={3}>
-          <Subhead>{jt`Results for "${this.props.location.query.q}"`}</Subhead>
-        </Flex>
-        <Box w={2 / 3}>
+      <Box mx={PAGE_PADDING}>
+        {location.query.q && (
+          <Flex align="center" mb={2} py={[2, 3]}>
+            <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+          </Flex>
+        )}
+        <Box w={[1, 2 / 3]}>
+          <ItemTypeFilterBar
+            analyticsContext={`Search Results`}
+            filters={FILTERS.concat({
+              name: t`Collections`,
+              filter: "collection",
+              icon: "all",
+            })}
+          />
           <EntityListLoader
             entityType="search"
-            entityQuery={this.props.location.query}
+            entityQuery={location.query}
             wrapped
           >
             {({ list }) => {
               if (list.length === 0) {
                 return (
-                  <Flex align="center" justify="center" my={4} py={4}>
-                    <Box>
-                      <img src="../app/assets/img/no_results.svg" />
-                    </Box>
-                    <Box mt={4}>
-                      <Subhead>{t`It's quiet around here...`}</Subhead>
-                      <Text
-                      >{t`Metabase couldn't find any results for this.`}</Text>
-                    </Box>
-                  </Flex>
+                  <Card>
+                    <EmptyState
+                      title={t`No results`}
+                      message={t`Metabase couldn't find any results for your search.`}
+                      illustrationElement={
+                        <img src="../app/assets/img/no_results.svg" />
+                      }
+                    />
+                  </Card>
                 );
               }
+
+              const types = _.chain(
+                location.query.type
+                  ? list.filter(l => l.model === location.query.type)
+                  : list,
+              )
+                .groupBy("model")
+                .value();
+
               return (
                 <Box>
-                  {_.chain(list)
-                    .groupBy("model")
-                    .pairs()
-                    .value()
-                    .map(([model, items]) => (
-                      <Box mt={2} mb={3}>
-                        <div className="text-uppercase text-grey-4 text-small text-bold my1">
-                          {entityTypeForModel(model)}
-                        </div>
-                        <Card>
-                          {items.map(item => (
-                            <Link to={item.getUrl()}>
-                              <EntityItem
-                                name={item.getName()}
-                                iconName={item.getIcon()}
-                                iconColor={item.getColor()}
-                              />
-                            </Link>
-                          ))}
-                        </Card>
-                      </Box>
-                    ))}
+                  {types.dashboard && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-medium text-small text-bold my1">
+                        {t`Dashboards`}
+                      </div>
+                      <Card>
+                        {types.dashboard.map(item => (
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Dashboard"
+                          >
+                            <EntityItem
+                              variant="list"
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.collection && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-medium text-small text-bold my1">
+                        {t`Collections`}
+                      </div>
+                      <Card>
+                        {types.collection.map(item => (
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Collection"
+                          >
+                            <EntityItem
+                              variant="list"
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.card && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-medium text-small text-bold my1">
+                        {t`Questions`}
+                      </div>
+                      <Card>
+                        {types.card.map(item => (
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Question"
+                          >
+                            <EntityItem
+                              variant="list"
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
+                  {types.pulse && (
+                    <Box mt={2} mb={3}>
+                      <div className="text-uppercase text-medium text-small text-bold my1">
+                        {t`Pulse`}
+                      </div>
+                      <Card>
+                        {types.pulse.map(item => (
+                          <Link
+                            to={item.getUrl()}
+                            key={item.id}
+                            data-metabase-event="Search Results;Item Click;Pulse"
+                          >
+                            <EntityItem
+                              variant="list"
+                              name={item.getName()}
+                              iconName={item.getIcon()}
+                              iconColor={item.getColor()}
+                            />
+                          </Link>
+                        ))}
+                      </Card>
+                    </Box>
+                  )}
                 </Box>
               );
             }}
