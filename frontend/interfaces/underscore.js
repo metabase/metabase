@@ -47,7 +47,10 @@ declare module "underscore" {
 
   declare function object<T>(a: Array<[string, T]>): { [key: string]: T };
 
-  declare function every<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
+  declare function every<T>(
+    a: Array<T> | { [key: string]: T },
+    pred: (val: T) => boolean,
+  ): boolean;
   declare function some<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
   declare function all<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
   declare function any<T>(a: Array<T>, pred: (val: T) => boolean): boolean;

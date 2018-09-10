@@ -8,3 +8,7 @@ export const getIsApplicationEmbeddingEnabled = state =>
 export const getSiteUrl = state => state.settings.values["site-url"];
 export const getEmbeddingSecretKey = state =>
   state.settings.values["embedding-secret-key"];
+
+const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";
+
+export const getLogoUrl = state => DEFAULT_LOGO_URL;

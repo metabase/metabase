@@ -5,9 +5,9 @@ import { t } from "c-3po";
 import cx from "classnames";
 
 import PulseCardPreview from "./PulseCardPreview.jsx";
-
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
+// import Query from "metabase/lib/query";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import colors from "metabase/lib/colors";
@@ -195,6 +195,25 @@ export default class PulseEditCards extends Component {
                       className="flex-full"
                       // TODO: reimplement CardPicker's warnings for unsuitable cards
                       // attachmentsEnabled={this.props.attachmentsEnabled}
+                      // checkCard={card => {
+                      //   const { attachmentsEnabled } = this.props;
+                      //   try {
+                      //     if (
+                      //       !attachmentsEnabled &&
+                      //       Query.isBareRows(card.dataset_query.query)
+                      //     ) {
+                      //       return t`Raw data cannot be included in pulses`;
+                      //     }
+                      //   } catch (e) {}
+                      //   if (
+                      //     !attachmentsEnabled &&
+                      //     (card.display === "pin_map" ||
+                      //       card.display === "state" ||
+                      //       card.display === "country")
+                      //   ) {
+                      //     return t`Maps cannot be included in pulses`;
+                      //   }
+                      // }}
                     />
                   )}
                 </div>

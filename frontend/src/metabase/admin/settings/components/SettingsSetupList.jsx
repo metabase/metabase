@@ -1,7 +1,9 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
+
 import Icon from "metabase/components/Icon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
 import { SetupApi } from "metabase/services";
 import { t } from "c-3po";
 import colors from "metabase/lib/colors";

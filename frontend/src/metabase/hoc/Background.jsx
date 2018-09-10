@@ -17,3 +17,30 @@ export const withBackground = className => ComposedComponent => {
     }
   };
 };
+
+import { connect } from "react-redux";
+
+export const withLogoBackground = ComposedComponent => {
+  const mapStateToProps = (state, props) => ({
+    bgClassName: "bg-white",
+  });
+  return connect(mapStateToProps)(
+    class extends Component {
+      static displayName = "BackgroundApplicator";
+
+      componentWillMount() {
+        document.body.classList.add(this.props.bgClassName);
+      }
+
+      componentWillUnmount() {
+        document.body.classList.remove(this.props.bgClassName);
+      }
+
+      render() {
+        // eslint-disable-next-line no-unused-vars
+        const { bgClassName, ...props } = this.props;
+        return <ComposedComponent {...props} />;
+      }
+    },
+  );
+};

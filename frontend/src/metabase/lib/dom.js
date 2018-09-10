@@ -196,9 +196,14 @@ let STYLE_SHEET = (function() {
 
 export function addCSSRule(selector, rules, index = 0) {
   if ("insertRule" in STYLE_SHEET) {
-    STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    const ruleIndex = STYLE_SHEET.insertRule(
+      selector + "{" + rules + "}",
+      index,
+    );
+    return STYLE_SHEET.cssRules[ruleIndex];
   } else if ("addRule" in STYLE_SHEET) {
-    STYLE_SHEET.addRule(selector, rules, index);
+    const ruleIndex = STYLE_SHEET.addRule(selector, rules, index);
+    return STYLE_SHEET.rules[ruleIndex];
   }
 }
 
@@ -246,6 +251,31 @@ export function moveToFront(element) {
   if (element && element.parentNode) {
     element.parentNode.appendChild(element);
   }
+}
+
+export function removeAllChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+export function parseDataUri(url) {
+  const match =
+    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+  if (match) {
+    let [, mimeType, charset, base64, data] = match;
+    if (charset === "base64" && !base64) {
+      base64 = charset;
+      charset = undefined;
+    }
+    return {
+      mimeType,
+      charset,
+      data: base64 ? atob(data) : data,
+      base64: base64 ? data : btoa(data),
+    };
+  }
+  return null;
 }
 
 /**
