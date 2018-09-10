@@ -50,6 +50,8 @@ const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 const radians = degrees => degrees * Math.PI / 180;
 const degrees = radians => radians * 180 / Math.PI;
 
+const segmentIsValid = s => !isNaN(s.min) && !isNaN(s.max);
+
 export default class Gauge extends Component {
   props: VisualizationProps;
 
@@ -78,9 +80,10 @@ export default class Gauge extends Component {
       section: "Display",
       title: t`Gauge range`,
       getDefault(series, vizSettings) {
+        const segments = vizSettings["gauge.segments"].filter(segmentIsValid);
         const values = [
-          ...vizSettings["gauge.segments"].map(s => s.max),
-          ...vizSettings["gauge.segments"].map(s => s.min),
+          ...segments.map(s => s.max),
+          ...segments.map(s => s.min),
         ];
         return values.length > 0
           ? [Math.min(...values), Math.max(...values)]
@@ -170,7 +173,7 @@ export default class Gauge extends Component {
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
     const range = settings["gauge.range"];
-    const segments = settings["gauge.segments"];
+    const segments = settings["gauge.segments"].filter(segmentIsValid);
 
     // value to angle in radians, clamped
     const angle = d3.scale
