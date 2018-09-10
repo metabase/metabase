@@ -111,6 +111,7 @@
 
 
 (defrecord ClickHouseDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "ClickHouse"))
 
@@ -157,4 +158,7 @@
           :stddev-fn                 (constantly :stddevPop)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :clickhouse (ClickHouseDriver.))
+(defn -init-driver
+  "Register the PostgreSQL driver"
+  []
+  (driver/register-driver! :clickhouse (ClickHouseDriver.)))
