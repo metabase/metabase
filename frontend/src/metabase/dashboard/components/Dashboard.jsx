@@ -88,6 +88,7 @@ type Props = {
     parameterId: ParameterId,
     defaultValue: string,
   ) => void,
+  setParameterIndex: (parameterId: ParameterId, index: number) => void,
 
   editingParameter: ?Parameter,
 
