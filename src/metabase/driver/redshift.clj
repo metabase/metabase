@@ -12,8 +12,8 @@
              [postgres :as postgres]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [puppetlabs.i18n.core :refer [tru]]))
+             [i18n :refer [tru]]
+             [ssh :as ssh]]))
 
 (defn- connection-details->spec
   "Create a database specification for a redshift database. Opts should include

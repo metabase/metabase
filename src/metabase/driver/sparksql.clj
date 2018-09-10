@@ -17,8 +17,9 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [trs tru]])
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs tru]]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))

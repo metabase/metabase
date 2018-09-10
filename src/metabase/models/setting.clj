@@ -44,8 +44,8 @@
              [util :as u]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [trs tru]]
+             [honeysql-extensions :as hx]
+             [i18n :as ui18n :refer [trs tru]]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -75,7 +75,7 @@
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
-   :description s/Str            ; used for docstring and is user-facing in the admin panel
+   :description s/Any            ; description is validated via the macro, not schema
    :default     s/Any
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
@@ -147,7 +147,8 @@
           (db/simple-insert! Setting :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
             ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
-            (log/error (tru "Error inserting a new Setting:") (with-out-str (jdbc/print-sql-exception-chain e)))))))
+            (log/error (trs "Error inserting a new Setting: {0}"
+                            (with-out-str (jdbc/print-sql-exception-chain e))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! cache assoc settings-last-updated-key (db/select-one-field :value Setting :key settings-last-updated-key)))
@@ -176,7 +177,7 @@
                           [:> :value last-known-update]]})
         (when <>
           (log/info (u/format-color 'red
-                        (trs "Settings have been changed on another instance, and will be reloaded here.")))))))))
+                        (str (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
 (def ^:private cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
@@ -459,7 +460,7 @@
   "Register a new Setting with a map of `SettingDefinition` attributes.
    This is used internally be `defsetting`; you shouldn't need to use it yourself."
   [{setting-name :name, setting-type :type, default :default, :as setting}]
-  (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
+  (u/prog1 (let [setting-type         (s/validate Type (or setting-type :string))]
              (merge {:name        setting-name
                      :description nil
                      :type        setting-type
@@ -518,6 +519,33 @@
      ;; :refer-clojure :exclude doesn't seem to work in this case
      (metabase.models.setting/set! setting new-value))))
 
+(defn- expr-of-sym? [symbols expr]
+  (when-let [first-sym (and (coll? expr)
+                            (first expr))]
+    (some #(= first-sym %) symbols)))
+
+(defn- valid-trs-or-tru? [desc]
+  (expr-of-sym? ['trs 'tru `trs `tru] desc))
+
+(defn- valid-str-of-trs-or-tru? [maybe-str-expr]
+  (when (expr-of-sym? ['str `str] maybe-str-expr)
+    ;; When there are several i18n'd sentences, there will probably be a surrounding `str` invocation and a space in
+    ;; between the sentences, remove those to validate the i18n clauses
+    (let [exprs-without-strs (remove (every-pred string? str/blank?) (rest maybe-str-expr))]
+      ;; We should have at lease 1 i18n clause, so ensure `exprs-without-strs` is not empty
+      (and (seq exprs-without-strs)
+           (every? valid-trs-or-tru? exprs-without-strs)))))
+
+(defn- validate-description
+  "Validates the description expression `desc-expr`, ensuring it contains an i18n form, or a string consisting of 1 or more i18n forms"
+  [desc]
+  (when-not (or (valid-trs-or-tru? desc)
+                (valid-str-of-trs-or-tru? desc))
+    (throw (IllegalArgumentException.
+            (str (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
+                      (pr-str desc))))))
+  desc)
+
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
@@ -549,9 +577,12 @@
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}
-  `(let [setting# (register-setting! (assoc ~options
+  `(let [desc# ~(if (:internal? options)
+                  description
+                  (validate-description description))
+         setting# (register-setting! (assoc ~options
                                        :name ~(keyword setting-symb)
-                                       :description ~description))]
+                                       :description desc#))]
      (-> (def ~setting-symb (setting-fn setting#))
          (alter-meta! merge (metadata-for-setting-fn setting#)))))
 
@@ -586,7 +617,7 @@
                        v)
      :is_env_setting (boolean env-value)
      :env_name       (env-var-name setting)
-     :description    (:description setting)
+     :description    (str (:description setting))
      :default        (or (when env-value
                            (format "Using $%s" (env-var-name setting)))
                          (:default setting))}))
