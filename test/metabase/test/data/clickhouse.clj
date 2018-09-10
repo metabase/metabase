@@ -2,10 +2,11 @@
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
             metabase.driver.clickhouse
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.test.data
+                         [generic-sql :as generic]
+                         [interface :as i]]
             [metabase.util :as u])
-  (import metabase.driver.clickhouse.ClickHouseDriver))
+  (:import metabase.driver.clickhouse.ClickHouseDriver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "Int64"
@@ -16,7 +17,8 @@
    :type/Float      "Float64"
    :type/Integer    "Int32"
    :type/Text       "String"
-   :type/Time       "DateTime"})
+   :type/Time       "DateTime"
+   :type/UUID       "UUID"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host "localhost"
@@ -51,7 +53,7 @@
   ([_ db-name table-name field-name] [field-name]))
 
 (u/strict-extend ClickHouseDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:add-fk-sql                (constantly nil)
           :create-table-sql          create-table-sql
@@ -62,8 +64,9 @@
           :pk-field-name             (constantly nil)
           :pk-sql-type               (constantly "UInt64")
           :qualified-name-components qualified-name-components})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
+
          {:database->connection-details       (u/drop-first-arg database->connection-details)
           :engine                             (constantly :clickhouse)
           :has-questionable-timezone-support? (constantly false)}))

@@ -27,7 +27,8 @@
    :UInt8       :type/Integer
    :UInt16      :type/Integer
    :UInt32      :type/BigInteger
-   :UInt64      :type/BigInteger})
+   :UInt64      :type/BigInteger
+   :UUID        :type/UUID})
 
 (defn- connection-details->spec [details]
   (-> details
@@ -110,6 +111,7 @@
 
 
 (defrecord ClickHouseDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "ClickHouse"))
 
@@ -151,9 +153,12 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"system"})
-          :quote-style               (constantly :mysql)
+          :quote-style               (constantly :postgres)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :stddev-fn                 (constantly :stddevPop)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-(driver/register-driver! :clickhouse (ClickHouseDriver.))
+(defn -init-driver
+  "Register the Clickhouse driver"
+  []
+  (driver/register-driver! :clickhouse (ClickHouseDriver.)))

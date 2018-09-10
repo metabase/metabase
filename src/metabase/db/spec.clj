@@ -29,19 +29,6 @@
     :OpenSourceSubProtocolOverride true}
    (dissoc opts :host :port :db)))
 
-(defn clickhouse
-  "Create a database specification for a clichouse database. Opts should include
-   keys for :db, :user and :password.
-   You can also optionally set host and port."
-  [{:keys [host port db]
-    :or {host "localhost", port 8123, db "default"}
-    :as opts}]
-  (merge {:classname "ru.yandex.clickhouse.ClickHouseDriver" ; must be in classpath
-          :subprotocol "clickhouse"
-          ; :subname (str "//" host ":" port "/" db)}
-          :subname (str "//" host ":" port)}
-         (dissoc opts :host :port :db)))
-
 (defn mysql
   "Create a Clojure JDBC database specification for a MySQL or MariaDB database."
   [{:keys [host port db]
