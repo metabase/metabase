@@ -38,6 +38,7 @@ type Props = {
     parameterId: ParameterId,
     defaultValue: string,
   ) => void,
+  setParameterIndex?: (parameterId: ParameterId, index: number) => void,
   removeParameter?: (parameterId: ParameterId) => void,
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
@@ -100,9 +101,17 @@ export default class Parameters extends Component {
     }
   }
 
-  handleSortEnd = ({ oldIndex, newIndex }) => {
+  handleSortEnd = ({
+    oldIndex,
+    newIndex,
+  }: {
+    oldIndex: number,
+    newIndex: number,
+  }) => {
     const { parameters, setParameterIndex } = this.props;
-    setParameterIndex(parameters[oldIndex].id, newIndex);
+    if (setParameterIndex) {
+      setParameterIndex(parameters[oldIndex].id, newIndex);
+    }
   };
 
   render() {
@@ -189,7 +198,6 @@ import {
   SortableContainer,
   SortableElement,
   SortableHandle,
-  arrayMove,
 } from "react-sortable-hoc";
 
 const StaticParameterWidgetList = ({ children, ...props }) => {
