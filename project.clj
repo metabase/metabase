@@ -102,7 +102,7 @@
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]
-                 [ru.yandex.clickhouse/clickhouse-jdbc "0.1.14"       ; ClickHouse JDBC driver
+                 [ru.yandex.clickhouse/clickhouse-jdbc "0.1.41"       ; ClickHouse JDBC driver
                   :exclusions [org.slf4j/slf4j-api]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
