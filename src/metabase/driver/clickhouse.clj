@@ -27,7 +27,8 @@
    :UInt8       :type/Integer
    :UInt16      :type/Integer
    :UInt32      :type/BigInteger
-   :UInt64      :type/BigInteger})
+   :UInt64      :type/BigInteger
+   :UUID        :type/UUID})
 
 (defn- connection-details->spec [details]
   (-> details
