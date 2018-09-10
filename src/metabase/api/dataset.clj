@@ -14,8 +14,8 @@
             [metabase.util
              [date :as du]
              [export :as ex]
+             [i18n :refer [trs tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------

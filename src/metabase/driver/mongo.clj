@@ -15,7 +15,7 @@
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.mongodb.DB))

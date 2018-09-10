@@ -24,8 +24,8 @@
              [params :as params]]
             [metabase.util
              [embed :as embed]
+             [i18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]

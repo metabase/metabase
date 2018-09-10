@@ -12,8 +12,9 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.infer-spaces :refer [infer-spaces]]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [infer-spaces :refer [infer-spaces]]]
             [toucan.db :as db]))
 
 (def ^:private ^:const acronyms

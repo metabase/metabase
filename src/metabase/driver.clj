@@ -23,8 +23,9 @@
              [database :refer [Database]]
              [setting :refer [defsetting]]]
             [metabase.sync.interface :as si]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs tru]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword

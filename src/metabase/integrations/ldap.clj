@@ -8,7 +8,7 @@
              [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db])
   (:import [com.unboundid.ldap.sdk LDAPConnectionPool LDAPException]))
 
