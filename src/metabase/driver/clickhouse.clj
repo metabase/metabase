@@ -153,12 +153,12 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"system"})
-          :quote-style               (constantly :mysql)
+          :quote-style               (constantly :postgres)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :stddev-fn                 (constantly :stddevPop)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (defn -init-driver
-  "Register the PostgreSQL driver"
+  "Register the Clickhouse driver"
   []
   (driver/register-driver! :clickhouse (ClickHouseDriver.)))
