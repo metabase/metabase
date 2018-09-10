@@ -135,24 +135,7 @@ export class GroupingManager {
 
       const pivotColumn = colsTmp[grColumnsLength];
       const values = colsTmp.slice(grColumnsLength + 1);
-      const tt = pivotedColumns
-        .map(k => [getPivotValue(k, grColumnsLength + 1), k])
-        .map(([getValue, k]) =>
-          values
-            .map((col, i) => ({
-              ...col,
-              getValue: getValue(i),
-              parentName:
-                i === 0
-                  ? [
-                      k ? k : "Grand totals",
-                      values.length,
-                      k ? colsTmp[grColumnsLength] : undefined,
-                    ]
-                  : undefined,
-            }))
-            .filter(col => k !== undefined || canTotalize(col.base_type)),
-        );
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined, pivotedDimension: k ? {value: k, column: rawCols.find(c => c.name===summaryTableSettings.columnsSource[0])} : undefined})).filter(col => k !== undefined || canTotalize(col.base_type)));
       this.probeCols = grCols.concat(tt[0]);
       this.valueColsLen = (tt[0] || []).length;
       cols = grCols.concat(...tt);

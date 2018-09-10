@@ -379,10 +379,10 @@ export default class TableInteractiveSummary extends Component {
       };
 
     const clicked = getTableCellClickedObjectForSummary(
-      this.props.data,
-      rowIndex,
-      columnIndex,
-      false,
+      this.props.data.cols,
+      column,
+      row,
+      value,
     );
 
     const isClickable =
