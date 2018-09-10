@@ -101,7 +101,9 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
-                  :exclusions [honeysql]]]
+                  :exclusions [honeysql]]
+                 [ru.yandex.clickhouse/clickhouse-jdbc "0.1.14"       ; ClickHouse JDBC driver
+                  :exclusions [org.slf4j/slf4j-api]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
