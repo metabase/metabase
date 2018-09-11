@@ -26,7 +26,10 @@ function scalarSettingsToFormatOptions(settings) {
     maximumFractionDigits: parseFloat(settings["scalar.decimals"]),
   };
   // remove null options to allow for defaults
-  return _.pick(formatOptions, v => v != null && v !== "" && !isNaN(v));
+  return _.pick(
+    formatOptions,
+    v => v != null && v !== "" && (typeof v !== "number" || !isNaN(v)),
+  );
 }
 
 export default class Scalar extends Component {
