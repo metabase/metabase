@@ -42,10 +42,14 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <input
                   type="number"
                   className="input full"
-                  value={segment.min}
-                  onChange={e =>
-                    onChangeProperty(index, "min", parseFloat(e.target.value))
-                  }
+                  // NOTE: uncontrolled input to support partially input negative numbers
+                  defaultValue={segment.min}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value)) {
+                      onChangeProperty(index, "min", value);
+                    }
+                  }}
                   placeholder={t`Min`}
                 />
               </td>
@@ -53,10 +57,14 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <input
                   type="number"
                   className="input full"
-                  value={segment.max}
-                  onChange={e =>
-                    onChangeProperty(index, "max", parseFloat(e.target.value))
-                  }
+                  // NOTE: uncontrolled input to support partially input negative numbers
+                  defaultValue={segment.max}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value)) {
+                      onChangeProperty(index, "max", value);
+                    }
+                  }}
                   placeholder={t`Max`}
                 />
               </td>
@@ -101,10 +109,11 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
-    colors.error,
-    colors.warning,
-    colors.success,
+    colors["error"],
+    colors["warning"],
+    colors["success"],
     ...Object.values(normal).slice(0, 9),
+    colors["bg-medium"],
   ];
 }
 

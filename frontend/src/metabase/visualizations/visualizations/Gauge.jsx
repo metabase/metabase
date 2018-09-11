@@ -11,7 +11,6 @@ import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
-import ChartSettingRange from "metabase/visualizations/components/settings/ChartSettingRange";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -79,8 +78,7 @@ export default class Gauge extends Component {
 
   static settings = {
     "gauge.range": {
-      section: "Display",
-      title: t`Gauge range`,
+      // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
         const segments = vizSettings["gauge.segments"].filter(segmentIsValid);
         const values = [
@@ -92,11 +90,10 @@ export default class Gauge extends Component {
           : [0, 1];
       },
       readDependencies: ["gauge.segments"],
-      widget: ChartSettingRange,
     },
     "gauge.segments": {
       section: "Display",
-      title: t`Colored ranges`,
+      title: t`Gauge ranges`,
       getDefault(series) {
         let value = 100;
         try {
