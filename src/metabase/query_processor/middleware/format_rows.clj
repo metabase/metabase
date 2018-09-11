@@ -1,9 +1,7 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]
-            [metabase.util.date :as du]))
+  (:require [metabase.util.date :as du]))
 
 (defn- format-rows* [{:keys [report-timezone]} rows]
   (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
