@@ -103,16 +103,19 @@ class BrowserSelect extends Component {
       selectedNames = [placeholder];
     }
 
-    const { inputValue } = this.state;
+    let { inputValue } = this.state;
     let filter = () => true;
     if (searchProp && inputValue) {
       filter = child => {
         let childValue = String(child.props[searchProp] || "");
         if (!inputValue) {
           return false;
-        } else if (searchCaseInsensitive) {
-          return childValue.toLowerCase().startsWith(inputValue.toLowerCase());
-        } else if (searchFuzzy) {
+        }
+        if (searchCaseInsensitive) {
+          childValue = childValue.toLowerCase();
+          inputValue = inputValue.toLowerCase();
+        }
+        if (searchFuzzy) {
           return childValue.indexOf(inputValue) >= 0;
         } else {
           return childValue.startsWith(inputValue);
