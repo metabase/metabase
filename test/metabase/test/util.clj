@@ -4,6 +4,7 @@
             [clj-time
              [coerce :as tcoerce]
              [core :as time]]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -116,8 +117,8 @@
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
                            :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
-                         #(str/ends-with? % "_id")
-                         #(str/ends-with? % "_at")))
+                         #(s/ends-with? % "_id")
+                         #(s/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
