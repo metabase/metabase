@@ -3,7 +3,8 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.query-processor.interface :as qp.i]
+  (:require [clojure.string :as str]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -61,27 +62,26 @@
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
   (let [result-metadata (for [col (:cols results)]
-                          (-> col
-                              stored-column-metadata->result-column-metadata
-                              (maybe-infer-special-type col)))]
+                          ;; Rarely certain queries will return columns with no names. For example
+                          ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name.
+                          ;; Since we can't use those as field literals in subsequent queries,
+                          ;; filter them out.
+                          (when-not (str/blank? (:name col))
+                            (-> col
+                                stored-column-metadata->result-column-metadata
+                                (maybe-infer-special-type col))))]
     (transduce identity
                (redux/post-complete
                 (apply f/col-wise (for [metadata result-metadata]
-                                    (if (and (seq (:name metadata))
+                                    (if (and metadata
                                              (nil? (:fingerprint metadata)))
                                       (f/fingerprinter metadata)
                                       (f/constant-fingerprinter (:fingerprint metadata)))))
                 (fn [fingerprints]
-                  ;; Rarely certain queries will return columns with no names. For example
-                  ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
-                  ;; can't use those as field literals in subsequent queries just filter them out
                   (->> (map (fn [fingerprint metadata]
-                              (cond
-                                (instance? Throwable fingerprint)
+                              (if (instance? Throwable fingerprint)
                                 metadata
-
-                                (not-empty (:name metadata))
-                                (assoc metadata :fingerprint fingerprint)))
+                                (some-> metadata (assoc :fingerprint fingerprint))))
                             fingerprints
                             result-metadata)
                        (remove nil?))))

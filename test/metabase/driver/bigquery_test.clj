@@ -1,12 +1,15 @@
 (ns metabase.driver.bigquery-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as time]
+            [expectations :refer :all]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qptest]]
+             [query-processor-test :as qptest]
+             [util :as u]]
             [metabase.driver.bigquery :as bigquery]
             [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
@@ -14,7 +17,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]))
+            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [toucan.util.test :as tt]))
 
 (def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
@@ -168,3 +172,38 @@
 (expect
   ["SELECT `dataset.table`"]
   (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
+
+(defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
+  (-> (qp/process-query
+        {:native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)
+                    :type  :native}
+         :database (u/get-id db-or-db-id)})
+      :data
+      :rows
+      ffirst))
+
+;; This query tests out the timezone handling of parsed dates. For this test a UTC date is returned, we should
+;; read/return it as UTC
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000Z"
+  (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
+
+;; This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery is already
+;; in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that the correct date is
+;; compared
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000-05:00"
+  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (Database (data/id)))
+                                             :use-jvm-timezone true)}]]
+      (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
+
+;; Similar to the above test, but covers a positive offset
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000+07:00"
+  (tu/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (Database (data/id)))
+                                             :use-jvm-timezone true)}]]
+      (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
