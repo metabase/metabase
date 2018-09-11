@@ -57,6 +57,7 @@ type Props = {
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isSettings: boolean,
 
   actionButtons: Element<any>,
 
@@ -109,7 +110,8 @@ type State = {
   yAxisSplit: ?(number[][]),
 };
 
-@ExplicitSize
+// NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
+@ExplicitSize("CardVisualization")
 export default class Visualization extends Component {
   state: State;
   props: Props;
@@ -135,6 +137,7 @@ export default class Visualization extends Component {
     showTitle: false,
     isDashboard: false,
     isEditing: false,
+    isSettings: false,
     onUpdateVisualizationSettings: (...args) =>
       console.warn("onUpdateVisualizationSettings", args),
   };
@@ -497,7 +500,8 @@ export default class Visualization extends Component {
           // $FlowFixMe
           <CardVisualization
             {...this.props}
-            className="flex-full"
+            // NOTE: CardVisualization class used to target ExplicitSize HOC
+            className="CardVisualization flex-full"
             series={series}
             settings={settings}
             // $FlowFixMe
