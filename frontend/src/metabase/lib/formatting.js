@@ -52,6 +52,7 @@ export type FormattingOptions = {
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
+  maximumFractionDigits: 2,
   useGrouping: true,
 };
 
@@ -96,6 +97,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     try {
       return number.toLocaleString(options.locale, options);
     } catch (e) {
+      console.warn("Error calling toLocaleString", e);
       return String(number);
     }
   }

@@ -11,22 +11,22 @@ import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
 import cx from "classnames";
+import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 function scalarSettingsToFormatOptions(settings) {
-  const decimals = parseFloat(settings["scalar.decimals"]);
-  const scale = parseFloat(settings["scalar.scale"]);
-  return {
-    column: column,
+  const formatOptions = {
     suffix: settings["scalar.suffix"],
     prefix: settings["scalar.prefix"],
-    scale: isNaN(scale) ? null : scale,
+    scale: parseFloat(settings["scalar.scale"]),
     locale: settings["scalar.locale"],
     useGrouping: !!settings["scalar.locale"],
-    minimumFractionDigits: isNaN(decimals) ? null : decimals,
-    maximumFractionDigits: isNaN(decimals) ? null : decimals,
+    minimumFractionDigits: parseFloat(settings["scalar.decimals"]),
+    maximumFractionDigits: parseFloat(settings["scalar.decimals"]),
   };
+  // remove null options to allow for defaults
+  return _.pick(formatOptions, v => v != null && v !== "" && !isNaN(v));
 }
 
 export default class Scalar extends Component {
@@ -133,7 +133,10 @@ export default class Scalar extends Component {
     const value = rows[0] && rows[0][0];
     const column = cols[0];
 
-    const formatOptions = scalarSettingsToFormatOptions(settings);
+    const formatOptions = {
+      column,
+      ...scalarSettingsToFormatOptions(settings),
+    };
 
     const fullScalarValue = formatValue(value, formatOptions);
     const compactScalarValue = isSmall
