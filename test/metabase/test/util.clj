@@ -1,7 +1,9 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -29,6 +31,7 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.util :as qputil]
@@ -113,7 +116,8 @@
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
                            :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
-                         #(.endsWith (name %) "_id")))
+                         #(str/ends-with? % "_id")
+                         #(str/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -226,6 +230,17 @@
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class TaskHistory)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_]
+                         (let [started (time/now)
+                               ended   (time/plus started (time/millis 10))]
+                           {:db_id      (data/id)
+                            :task       (random-name)
+                            :started_at (du/->Timestamp started)
+                            :ended_at   (du/->Timestamp ended)
+                            :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
   test/WithTempDefaults

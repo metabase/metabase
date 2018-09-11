@@ -22,11 +22,11 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [puppetlabs.i18n.core :refer [tru]])
+             [i18n :refer [tru]]
+             [ssh :as ssh]])
   (:import java.sql.Time
            java.util.Date
-           [metabase.query_processor.interface TimeValue]))
+           metabase.query_processor.interface.TimeValue))
 
 (defrecord PrestoDriver []
   :load-ns true

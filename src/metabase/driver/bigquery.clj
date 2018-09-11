@@ -27,14 +27,13 @@
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [tru]]
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
            java.sql.Time
            [java.util Collections Date]

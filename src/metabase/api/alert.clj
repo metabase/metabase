@@ -14,8 +14,9 @@
              [card :refer [Card]]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]

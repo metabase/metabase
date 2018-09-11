@@ -5,7 +5,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
 ;; always validate all schemas in s/defn function declarations. See
@@ -117,6 +117,12 @@
   (with-api-error-message
       (s/constrained s/Int (partial < 0) (tru "Integer greater than zero"))
     (tru "value must be an integer greater than zero.")))
+
+(def NonNegativeInt
+  "Schema representing an integer 0 or greater"
+  (with-api-error-message
+      (s/constrained s/Int (partial <= 0) (tru "Integer greater than or equal to zero"))
+    (tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
