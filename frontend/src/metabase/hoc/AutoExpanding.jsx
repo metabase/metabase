@@ -8,7 +8,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 // beyond their initial size we want to fix their size to be larger so it doesn't
 // jump around, etc
 export default ComposedComponent =>
-  @ExplicitSize
+  @ExplicitSize()
   class AutoExpanding extends React.Component {
     state = {
       expand: false,
