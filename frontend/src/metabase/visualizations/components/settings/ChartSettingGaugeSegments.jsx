@@ -8,6 +8,7 @@ import colors, { normal } from "metabase/lib/colors";
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
+import NumericInput from "metabase/components/NumericInput";
 
 const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
   const onChangeProperty = (index, property, value) =>
@@ -39,32 +40,20 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 />
               </td>
               <td>
-                <input
+                <NumericInput
                   type="number"
                   className="input full"
-                  // NOTE: uncontrolled input to support partially input negative numbers
-                  defaultValue={segment.min}
-                  onChange={e => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value)) {
-                      onChangeProperty(index, "min", value);
-                    }
-                  }}
+                  value={segment.min}
+                  onChange={value => onChangeProperty(index, "min", value)}
                   placeholder={t`Min`}
                 />
               </td>
               <td>
-                <input
+                <NumericInput
                   type="number"
                   className="input full"
-                  // NOTE: uncontrolled input to support partially input negative numbers
-                  defaultValue={segment.max}
-                  onChange={e => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value)) {
-                      onChangeProperty(index, "max", value);
-                    }
-                  }}
+                  value={segment.max}
+                  onChange={value => onChangeProperty(index, "max", value)}
                   placeholder={t`Max`}
                 />
               </td>
