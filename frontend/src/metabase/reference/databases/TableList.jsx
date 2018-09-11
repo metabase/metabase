@@ -1,9 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { t } from "c-3po";
 import { isQueryable } from "metabase/lib/table";
+
+import _ from "underscore";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -12,35 +13,13 @@ import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
-
-import {
-  getDatabase,
-  getTablesByDatabase,
-  getHasSingleSchema,
-  getError,
-  getLoading,
-} from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = {
   message: t`Tables in this database will appear here as they're added`,
   icon: "table2",
-};
-
-const mapStateToProps = (state, props) => ({
-  database: getDatabase(state, props),
-  entities: getTablesByDatabase(state, props),
-  hasSingleSchema: getHasSingleSchema(state, props),
-  loading: getLoading(state, props),
-  loadingError: getError(state, props),
-});
-
-const mapDispatchToProps = {
-  ...metadataActions,
 };
 
 const createListItem = (entity, index) => (
@@ -65,7 +44,8 @@ export const separateTablesBySchema = (
   createSchemaSeparator,
   createListItem,
 ) =>
-  Object.values(tables)
+  tables
+    .slice()
     .sort(
       (table1, table2) =>
         table1.schema > table2.schema
@@ -84,26 +64,14 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
 export default class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
-    entities: PropTypes.object.isRequired,
     database: PropTypes.object.isRequired,
-    hasSingleSchema: PropTypes.bool,
-    loading: PropTypes.bool,
-    loadingError: PropTypes.object,
   };
 
   render() {
-    const {
-      entities,
-      style,
-      database,
-      hasSingleSchema,
-      loadingError,
-      loading,
-    } = this.props;
+    const { style, database } = this.props;
 
     return (
       <div style={style} className="full">
@@ -112,21 +80,24 @@ export default class TableList extends Component {
           type="tables"
           headerIcon="database"
         />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
+        <EntityListLoader
+          entityType="tables"
+          entityQuery={{ dbId: this.props.databaseId }}
         >
-          {() =>
-            Object.keys(entities).length > 0 ? (
+          {({ tables }) =>
+            tables.length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
-                  {!hasSingleSchema
+                  {!_.chain(tables)
+                    .map(t => t.schema)
+                    .uniq()
+                    .value().length > 1
                     ? separateTablesBySchema(
-                        entities,
+                        tables.filter(isQueryable),
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : Object.values(entities)
+                    : tables
                         .filter(isQueryable)
                         .map(
                           (entity, index) =>
@@ -143,7 +114,7 @@ export default class TableList extends Component {
               </div>
             )
           }
-        </LoadingAndErrorWrapper>
+        </EntityListLoader>
       </div>
     );
   }
