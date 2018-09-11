@@ -36,14 +36,23 @@ export type FormattingOptions = {
   rich?: boolean,
   // number options:
   compact?: boolean,
-  round?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
   noRange?: boolean,
+  // TODO: docoument these:
+  prefix?: string,
+  suffix?: string,
+  scale?: number,
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
+  scale?: number,
+  locale?: string,
+  minimumFractionDigits?: number,
+  maximumFractionDigits?: number,
+  useGrouping?: boolean,
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
-  round: true,
+  useGrouping: true,
 };
 
 const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
@@ -63,6 +72,11 @@ const RANGE_SEPARATOR = ` – `;
 
 export function formatNumber(number: number, options: FormattingOptions = {}) {
   options = { ...DEFAULT_NUMBER_OPTIONS, ...options };
+
+  if (typeof options.scale === "number" && !isNaN(options.scale)) {
+    number = options.scale * number;
+  }
+
   if (options.compact) {
     if (number === 0) {
       // 0 => 0
@@ -78,18 +92,11 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       // 1000 => 1K
       return Humanize.compactInteger(number, 1);
     }
-  } else if (number > -1 && number < 1) {
-    // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
-    return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
   } else {
-    // anything else rounds to at most 2 decimal points, unless disabled
-    if (options.round) {
-      number = d3.round(number, 2);
-    }
-    if (isNumber(options.column)) {
-      return FIXED_NUMBER_FORMATTER(number);
-    } else {
-      return FIXED_NUMBER_FORMATTER_NO_COMMA(number);
+    try {
+      return number.toLocaleString(options.locale, options);
+    } catch (e) {
+      return String(number);
     }
   }
 }
@@ -327,6 +334,26 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
+  const { prefix = "", suffix = "", jsx } = options;
+  const formatted = formatValueRaw(value, options);
+  if (prefix || suffix) {
+    if (jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {prefix}
+          {formatted}
+          {suffix}
+        </span>
+      );
+    } else {
+      return `${prefix}${formatted}${suffix}`;
+    }
+  } else {
+    return formatted;
+  }
+}
+
+export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   let column = options.column;
 
   options = {
@@ -367,13 +394,19 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     return parseTimestamp(value, column && column.unit).format("LLLL");
   } else if (typeof value === "string") {
     return formatStringFallback(value, options);
-  } else if (typeof value === "number") {
-    const formatter = isCoordinate(column) ? formatCoordinate : formatNumber;
+  } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, options.column);
     if (range && !options.noRange) {
-      return formatRange(range, formatter, options);
+      return formatRange(range, formatCoordinate, options);
     } else {
-      return formatter(value, options);
+      return formatCoordinate(value, options);
+    }
+  } else if (typeof value === "number" && isNumber(column)) {
+    const range = rangeForValue(value, options.column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatNumber, options);
+    } else {
+      return formatNumber(value, options);
     }
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
