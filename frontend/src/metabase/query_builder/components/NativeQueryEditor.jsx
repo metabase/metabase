@@ -278,7 +278,7 @@ export default class NativeQueryEditor extends Component {
     }
   };
 
-  setParameterIndex = (parameterId, parameterIndex) => {
+  setParameterIndex = (parameterId: ParameterId, parameterIndex: number) => {
     const { query, setDatasetQuery } = this.props;
     query
       .setParameterIndex(parameterId, parameterIndex)
