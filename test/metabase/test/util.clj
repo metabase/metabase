@@ -4,6 +4,7 @@
             [clj-time
              [coerce :as tcoerce]
              [core :as time]]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -114,10 +115,10 @@
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
-                (some-fn #{:id :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login}
-                         #(.endsWith (name %) "_id")
-                         #(.endsWith (name %) "_at")))
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
+                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                         #(s/ends-with? % "_id")
+                         #(s/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -534,7 +535,8 @@
       (DateTimeZone/setDefault dtz)
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
-      (f)
+      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
+        (f))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures

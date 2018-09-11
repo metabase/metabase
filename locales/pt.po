@@ -105,7 +105,7 @@ msgstr "Nunca, eu farei isto manualmente se precisar"
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:222
 #: frontend/src/metabase/components/ActionButton.jsx:52
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:429
 msgid "Saving..."
 msgstr "Salvando..."
 
@@ -131,9 +131,10 @@ msgstr "Esta ação não pode ser desfeita."
 msgid "If you're sure, please type"
 msgstr "Se tiver a certeza, por favor digite:"
 
+#. O comando para remover é DELETE, se traduzir este comando, o Metabase não irá habilitar a remoção de itens.
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "DELETE"
-msgstr "REMOVER"
+msgstr "DELETE"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "in this box:"
@@ -289,7 +290,7 @@ msgstr "Adicionar banco de dados"
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:468
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:375
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
 #: frontend/src/metabase/containers/EntitySearch.jsx:26
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:218
 #: frontend/src/metabase/entities/collections.js:86
@@ -355,6 +356,7 @@ msgstr "Se tiver certeza de que deseja remover este {0}, escreva uma explicaçã
 msgid "This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this {0}."
 msgstr "Isso será mostrado no resumo da atividade e em um email que ele será enviado para qualquer pessoa da sua equipe que tenha criado algo que eles usem isso {0}."
 
+#. I guess this translation is not accurate. In what context does it occur?
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:58
 msgid "Retire"
 msgstr "Retirar"
@@ -433,7 +435,7 @@ msgstr "Mostrar esquema original"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:45
 msgid "Data Type"
-msgstr "Tipo de dados"
+msgstr "Tipo de Dado"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema.jsx:46
 msgid "Additional Info"
@@ -523,7 +525,7 @@ msgid "Create metrics to add them to the View dropdown in the query builder"
 msgstr "Crie métricas para adicionar ao menu Visualizar no editor de consultas"
 
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:24
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:921
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:922
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:33
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:19
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:56
@@ -828,7 +830,7 @@ msgstr "Configuração"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:106
 msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "o Metabase pode ler os valores nesta tabela para ativar filtros caixas de seleção em painels e perguntas."
+msgstr "o Metabase pode ler os valores nesta tabela para ativar filtros caixas de seleção em painéis e perguntas."
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:111
 msgid "Re-scan this table"
@@ -2157,7 +2159,7 @@ msgstr "Desarquivar este {0}"
 #: frontend/src/metabase/components/BrowseApp.jsx:93
 #: frontend/src/metabase/components/BrowseApp.jsx:152
 #: frontend/src/metabase/components/BrowseApp.jsx:243
-#: frontend/src/metabase/containers/Overworld.jsx:217
+#: frontend/src/metabase/containers/Overworld.jsx:222
 msgid "Our data"
 msgstr "Nossos dados"
 
@@ -2167,7 +2169,7 @@ msgid "X-ray this table"
 msgstr "Aplique raio-X nesta tabela"
 
 #: frontend/src/metabase/components/BrowseApp.jsx:201
-#: frontend/src/metabase/containers/Overworld.jsx:244
+#: frontend/src/metabase/containers/Overworld.jsx:249
 msgid "Learn about this table"
 msgstr "Aprenda mais sobre essa tabela"
 
@@ -2329,51 +2331,51 @@ msgstr "Algumas instalações de banco de dados só podem ser acessadas conectan
 "Esta opção também fornece uma camada adicional de segurança quando não você tem uma VPN. \n"
 "Isso geralmente é mais lento que uma conexão direta."
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:247
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:274
 msgid "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr "Este é um grande banco de dados, então deixe-me escolher quando o Metabase sincronizar e digitalizar"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:276
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "Por padrão, o Metabase executa uma sincronização leve de hora em hora, e uma análise diária intensiva dos valores do campo.\n"
 "Se você tem um banco de dados grande, recomendamos ativá-lo e verificar quando e com que frequência as varreduras de valores de campo ocorrem."
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:265
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
 msgid "{0} to generate a Client ID and Client Secret for your project."
 msgstr "{0} para gerar um ID e uma chave secreta do cliente para seu projeto."
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:267
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:294
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:329
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:321
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:356
 msgid "Click here"
 msgstr "Clique aqui"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:270
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:297
 msgid "Choose \"Other\" as the application type. Name it whatever you'd like."
 msgstr "Escolhe \"Outro\" como tipo de aplicação. Nomeie-o como quiser"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:319
 msgid "{0} to get an auth code"
 msgstr "{0} para obter um código de autenticação"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:304
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:331
 msgid "with Google Drive permissions"
 msgstr "com permissões do Google Drive"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:324
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:351
 msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
 msgstr "Para usar o Metabase com esses dados, você deve ativar o acesso à API em Google Developers Console."
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:327
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:354
 msgid "{0} to go to the console if you haven't already done so."
 msgstr "{0} para ir ao console, se você ainda não fez isso."
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:376
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
 msgid "How would you like to refer to this database?"
 msgstr "Como você gostaria de chamar esse banco de dados?"
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:430
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:240
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:188
@@ -2523,7 +2525,7 @@ msgstr "Algo deu errado."
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:25
 msgid "We've run into an error. You can try refreshing the page, or just go back."
-msgstr "Encontratmos um erro. Você pode tentar atualizar a página, ou voltar."
+msgstr "Encontramos um erro. Você pode tentar atualizar a página, ou voltar."
 
 #: frontend/src/metabase/components/Header.jsx:97
 #: frontend/src/metabase/components/HeaderBar.jsx:45
@@ -2824,17 +2826,19 @@ msgstr "Não conte a ninguém, mas você é o meu favorito"
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "Assim que você conectar seus próprios dados, eu posso mostrar algumas explorações automáticas, chamadas raios-X. Aqui estão alguns exemplos com dados de exemplo."
 
-#: frontend/src/metabase/containers/Overworld.jsx:126
+#: frontend/src/metabase/containers/Overworld.jsx:131
+#: frontend/src/metabase/containers/Overworld.jsx:302
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr "Comece aqui"
 
+#: frontend/src/metabase/containers/Overworld.jsx:297
 #: frontend/src/metabase/entities/collections.js:140
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "Nossas análises"
 
-#: frontend/src/metabase/containers/Overworld.jsx:201
+#: frontend/src/metabase/containers/Overworld.jsx:206
 msgid "Browse all items"
 msgstr "Exibir todos os itens"
 
@@ -2980,7 +2984,7 @@ msgstr "Mover painel"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:313
 msgid "Edit dashboard"
-msgstr "Editar pontuação"
+msgstr "Editar painel"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:317
 msgid "Edit Dashboard Layout"
@@ -3824,6 +3828,8 @@ msgstr "Soma de ..."
 msgid "Sum of all the values of a column."
 msgstr "Soma de todos os valores de uma coluna."
 
+#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em 
+#. "Média de... de" mas vou deixar a tradução assim por enquanto
 #: frontend/src/metabase/lib/schema_metadata.js:465
 msgid "Average of ..."
 msgstr "Média de ..."
@@ -4891,7 +4897,7 @@ msgstr "Envie e-mails de alerta para:"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:670
 msgid "{0} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has {1}."
-msgstr "{0} Alertas baseados em metas ainda não são compatíveis com gráficos com mais de uma linha, portanto, esse alerta será enviado desde que o gráfico tem {1}."
+msgstr "{0} Alertas baseados em metas ainda não são compatíveis com gráficos com mais de uma linha, portanto, esse alerta será enviado desde que o gráfico tenha {1}."
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:673
 msgid "results"
@@ -4928,28 +4934,28 @@ msgstr "Selecione..."
 msgid "Select a table"
 msgstr "Selecione uma tabela"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:784
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:785
 msgid "No tables found in this database."
 msgstr "Nenhuma tabela foi encontrada neste banco de dados."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:821
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:822
 msgid "Is a question missing?"
 msgstr "Uma pergunta está faltando?"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:825
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:826
 msgid "Learn more about nested queries"
 msgstr "Saiba mais sobre consultas aninhadas"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:859
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:860
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:30
 msgid "Fields"
 msgstr "Campos"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:937
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:938
 msgid "No segments were found."
 msgstr "Nenhum segmento foi encontrado"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:960
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:961
 msgid "Find a segment"
 msgstr "Encontre um segmento"
 
@@ -6486,7 +6492,7 @@ msgstr "Isso geralmente leva cerca de {0}."
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:484
 msgid "(This is a bit long for a dashboard)"
-msgstr "(É um pouco demorado para um painel)"
+msgstr "(Isso é um pouco demorado para um painel)"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:488
 msgid "This is usually pretty fast but seems to be taking awhile right now."
@@ -8941,11 +8947,11 @@ msgstr "A página que você pediu não pode ser encontrada."
 msgid "Select a {0}"
 msgstr "Selecione um {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:183
+#: frontend/src/metabase/containers/Overworld.jsx:188
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Salvar painéis, questões e coleções em \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:186
+#: frontend/src/metabase/containers/Overworld.jsx:191
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Acessar painéis, questões e coleções em \"{0}\""
 
@@ -9245,7 +9251,7 @@ msgstr "Eixos"
 msgid "Formatting"
 msgstr "Formatação"
 
-#: frontend/src/metabase/containers/Overworld.jsx:102
+#: frontend/src/metabase/containers/Overworld.jsx:105
 msgid "Try these x-rays based on your data."
 msgstr "Experimente esses Raios-X que criei com seus dados."
 
@@ -9264,7 +9270,7 @@ msgstr "Só um aviso rápido:"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:59
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
-msgstr "sem o conjunto de dados de exemplo, o tutorial do editor de consultas não irá funcionar. Você pode sempre restaurar o conjunto de dados de exemplo mas qualquer pergunta que você tenha salvado usando esses dados será perdida. "
+msgstr "{0} sem o conjunto de dados de exemplo, o tutorial do editor de consultas não irá funcionar. Você pode sempre restaurar o conjunto de dados de exemplo mas qualquer pergunta que você tenha salvado usando esses dados será perdida."
 
 #. Fala Maurício, provavelmente foi detalhe, mas ajustei esse e mais um campo. Se precisar de ajuda, só falar! Parabéns pelo trabalho!!!
 #: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:27
@@ -9274,4 +9280,29 @@ msgstr "Raio-X"
 #: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:27
 msgid "Compare to the rest"
 msgstr "Comparar ao restante"
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:247
+msgid "Use the Java Virtual Machine (JVM) timezone"
+msgstr "Usar o fuso horário da Maquina Virtual Java (JVM)"
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+msgid "We suggest you leave this off unless you're doing manual timezone casting in\n"
+"many or most of your queries with this data."
+msgstr "Nós sugerimos que você deixe desativado exceto quando você estiver fazendo conversões de fuso horário em várias ou na maioria de suas consultas com esses dados."
+
+#: frontend/src/metabase/containers/Overworld.jsx:313
+msgid "Your team's most important dashboards go here"
+msgstr "Os painéis mais importantes do seu time vão aqui"
+
+#: frontend/src/metabase/containers/Overworld.jsx:314
+msgid "Pin dashboards in {0} to have them appear in this space for everyone"
+msgstr "Fixe painéis em {0} para eles aparecerem neste espaço para todos"
+
+#: src/metabase/db.clj
+msgid "Unable to release the Liquibase lock after a migration failure"
+msgstr "Não foi possível liberar a trava no Liquibase depois de uma falha de migração"
+
+#: src/metabase/driver/bigquery.clj
+msgid "Use JVM Time Zone"
+msgstr "Use o fuso horário da JVM"
 
