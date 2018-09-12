@@ -3,14 +3,18 @@
   (:require [metabase
              [query-processor :as qp]
              [query-processor-test :refer :all]]
-            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models
+             [dimension :refer [Dimension]]
+             [field :refer [Field]]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dimension-projections]
              [expand :as ql]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]]
             [toucan.db :as db]))
 
 (qp-expect-with-all-engines
@@ -131,3 +135,43 @@
                     :limit 5}})
          rows
          (map last))))
+
+;; Test a remapping with conflicting names, in the case below there are two name fields, one from Venues and the other
+;; from Categories
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys :nested-queries)
+  ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
+  (data/with-data
+    (data/create-venue-category-fk-remapping "Foo")
+    (->> (qp/process-query
+           {:database (data/id)
+            :type :query
+            :query {:source-table (data/id :venues)
+                    :order-by [[(data/id :venues :name) :ascending]]
+                    :limit 4}})
+         rows
+         (map second))))
+
+;; Test out a self referencing column. This has a users table like the one that is in `test-data`, but also includes a
+;; `created_by` column which references the PK column in that same table. This tests that remapping table aliases are
+;; handled correctly
+;;
+;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
+;; this is https://github.com/metabase/metabase/issues/8510
+(datasets/expect-with-engines (disj (non-timeseries-engines-with-feature :foreign-keys) :redshift :oracle)
+  ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
+  (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
+    (data/with-data
+      (fn []
+        [(db/insert! Dimension {:field_id (data/id :users :created_by)
+                                :name "created-by-mapping"
+                                :type :external
+                                :human_readable_field_id (data/id :users :name)})])
+
+      (db/update! 'Field (data/id :users :created_by)
+        {:fk_target_field_id (data/id :users :id)})
+
+      (->> (data/run-query users
+             (ql/order-by (ql/asc $name))
+             (ql/limit 4))
+           rows
+           (map last)))))
