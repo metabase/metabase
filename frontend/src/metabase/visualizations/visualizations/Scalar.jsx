@@ -10,6 +10,8 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
+import { COLUMN_SETTINGS } from "metabase/visualizations/lib/settings/column";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -116,6 +118,7 @@ export default class Scalar extends Component {
       title: t`Multiply by a number`,
       widget: "number",
     },
+    ...COLUMN_SETTINGS,
   };
 
   render() {
@@ -137,7 +140,7 @@ export default class Scalar extends Component {
     const column = cols[0];
 
     const formatOptions = {
-      column,
+      ...settings.column(column),
       ...scalarSettingsToFormatOptions(settings),
     };
 

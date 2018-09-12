@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import { getVisualizationRaw } from "metabase/visualizations";
 import { t } from "c-3po";
 import {
@@ -20,6 +22,45 @@ import ChartSettingFieldPicker from "metabase/visualizations/components/settings
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
+
+type SettingId = string;
+
+type Settings = {
+  [key: string]: any,
+};
+
+type SettingDef = {
+  id: SettingId,
+  value: any,
+  title?: string,
+  props?: { [key: string]: any },
+  default?: any,
+  getTitle?: (object: any, settings: Settings) => ?string,
+  getHidden?: (object: any, settings: Settings) => boolean,
+  getDisabled?: (object: any, settings: Settings) => boolean,
+  getProps?: (
+    object: any,
+    settings: Settings,
+    onChange: Function,
+  ) => { [key: string]: any },
+  getDefault?: (object: any, settings: Settings) => any,
+  getValue?: (object: any, settings: Settings) => any,
+  isValid?: (object: any, settings: Settings) => boolean,
+  widget?: string | React$Component<any, any, any>,
+  writeDependencies?: SettingId[],
+  readDependencies?: SettingId[],
+};
+
+type WidgetDef = {
+  id: SettingId,
+  value: any,
+  title: ?string,
+  hidden: boolean,
+  disabled: boolean,
+  props: { [key: string]: any },
+  widget?: React$Component<any, any, any>,
+  onChange: (value: any) => void,
+};
 
 const WIDGETS = {
   input: ChartSettingInput,
@@ -229,7 +270,7 @@ function getSettingWidget(settingDef, vizSettings, series, onChangeSettings) {
   };
 }
 
-export function getSettingsWidgets(
+export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,

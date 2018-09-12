@@ -205,7 +205,7 @@ export default class TableSimple extends Component {
                             {cell == null
                               ? "-"
                               : formatValue(cell, {
-                                  column: cols[columnIndex],
+                                  ...settings.column(cols[columnIndex]),
                                   jsx: true,
                                   rich: true,
                                 })}
