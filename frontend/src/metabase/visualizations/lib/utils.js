@@ -302,3 +302,58 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
     };
   }
 }
+
+export function getDefaultDimensionAndMetric([{ data }]) {
+  const type = data && getChartTypeFromData(data.cols, data.rows, false);
+  if (type === DIMENSION_METRIC) {
+    return {
+      dimension: data.cols[0].name,
+      metric: data.cols[1].name,
+    };
+  } else if (type === DIMENSION_DIMENSION_METRIC) {
+    return {
+      dimension: null,
+      metric: data.cols[2].name,
+    };
+  } else {
+    return {
+      dimension: null,
+      metric: null,
+    };
+  }
+}
+
+export function getOptionFromColumn(col) {
+  return {
+    name: getFriendlyName(col),
+    value: col.name,
+  };
+}
+
+export function metricSetting(id) {
+  return fieldSetting(
+    id,
+    isMetric,
+    series => getDefaultDimensionAndMetric(series).metric,
+  );
+}
+
+export function dimensionSetting(id) {
+  return fieldSetting(
+    id,
+    isDimension,
+    series => getDefaultDimensionAndMetric(series).dimension,
+  );
+}
+
+export function fieldSetting(id, filter, getDefault) {
+  return {
+    widget: "select",
+    isValid: ([{ card, data }], vizSettings) =>
+      columnsAreValid(card.visualization_settings[id], data, filter),
+    getDefault: getDefault,
+    getProps: ([{ card, data: { cols } }]) => ({
+      options: cols.filter(filter).map(getOptionFromColumn),
+    }),
+  };
+}

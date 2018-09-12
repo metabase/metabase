@@ -7,7 +7,7 @@ import {
   isDate,
 } from "metabase/lib/schema_metadata";
 import { t } from "c-3po";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings";
+import { getOptionFromColumn } from "metabase/visualizations/lib/utils";
 import {
   columnsAreValid,
   getCardColors,

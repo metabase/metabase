@@ -9,11 +9,11 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
+import { getSettings } from "metabase/visualizations/lib/settings";
 import {
-  getSettings,
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/utils";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
