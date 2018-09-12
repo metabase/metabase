@@ -11,7 +11,7 @@ import Radio from "metabase/components/Radio";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,

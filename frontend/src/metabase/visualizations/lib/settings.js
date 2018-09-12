@@ -1,16 +1,4 @@
-/* @flow weak */
-
-import { getVisualizationRaw } from "metabase/visualizations";
-import { t } from "c-3po";
-import {
-  columnsAreValid,
-  getChartTypeFromData,
-  DIMENSION_DIMENSION_METRIC,
-  DIMENSION_METRIC,
-  getFriendlyName,
-} from "./utils";
-
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+/* @flow */
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup.jsx";
@@ -25,11 +13,15 @@ import ChartSettingColorsPicker from "metabase/visualizations/components/setting
 
 type SettingId = string;
 
-type Settings = {
-  [key: string]: any,
+export type Settings = {
+  [id: SettingId]: any,
 };
 
-type SettingDef = {
+export type SettingDefs = {
+  [id: SettingId]: SettingDef,
+};
+
+export type SettingDef = {
   id: SettingId,
   value: any,
   title?: string,
@@ -51,13 +43,14 @@ type SettingDef = {
   readDependencies?: SettingId[],
 };
 
-type WidgetDef = {
+export type WidgetDef = {
   id: SettingId,
   value: any,
   title: ?string,
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
+  // $FlowFixMe
   widget?: React$Component<any, any, any>,
   onChange: (value: any) => void,
 };
@@ -75,136 +68,115 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-const COMMON_SETTINGS = {
-  "card.title": {
-    title: t`Title`,
-    widget: "input",
-    getDefault: series => (series.length === 1 ? series[0].card.name : null),
-    dashboard: true,
-    useRawSeries: true,
-  },
-  "card.description": {
-    title: t`Description`,
-    widget: "input",
-    getDefault: series =>
-      series.length === 1 ? series[0].card.description : null,
-    dashboard: true,
-    useRawSeries: true,
-  },
-};
+export function getComputedSettings(
+  settingsDefs: SettingDefs,
+  object: any,
+  storedSettings: Settings,
+) {
+  const computedSettings = {};
+  for (let id in settingsDefs) {
+    getComputedSetting(
+      computedSettings,
+      settingsDefs,
+      id,
+      object,
+      storedSettings,
+    );
+  }
+  return computedSettings;
+}
 
-function getSetting(settingDefs, id, vizSettings, series) {
-  if (id in vizSettings) {
+export function getComputedSetting(
+  computedSettings: Settings, // MUTATED!
+  settingDefs: SettingDefs,
+  id: SettingId,
+  object: any,
+  storedSettings: Settings,
+): any {
+  if (id in computedSettings) {
     return;
   }
 
   const settingDef = settingDefs[id] || {};
-  const [{ card }] = series;
-  const visualization_settings = card.visualization_settings || {};
 
   for (let dependentId of settingDef.readDependencies || []) {
-    getSetting(settingDefs, dependentId, vizSettings, series);
+    getComputedSetting(
+      computedSettings,
+      settingDefs,
+      dependentId,
+      storedSettings,
+      object,
+    );
   }
 
-  if (settingDef.useRawSeries && series._raw) {
-    series = series._raw;
+  if (settingDef.useRawSeries && object._raw) {
+    object = object._raw;
   }
 
   try {
     if (settingDef.getValue) {
-      return (vizSettings[id] = settingDef.getValue(series, vizSettings));
+      return (computedSettings[id] = settingDef.getValue(
+        object,
+        computedSettings,
+      ));
     }
 
-    if (visualization_settings[id] !== undefined) {
-      if (!settingDef.isValid || settingDef.isValid(series, vizSettings)) {
-        return (vizSettings[id] = visualization_settings[id]);
+    if (storedSettings[id] !== undefined) {
+      if (!settingDef.isValid || settingDef.isValid(object, computedSettings)) {
+        return (computedSettings[id] = storedSettings[id]);
       }
     }
 
     if (settingDef.getDefault) {
-      const defaultValue = settingDef.getDefault(series, vizSettings);
+      const defaultValue = settingDef.getDefault(object, computedSettings);
 
-      return (vizSettings[id] = defaultValue);
+      return (computedSettings[id] = defaultValue);
     }
 
     if ("default" in settingDef) {
-      return (vizSettings[id] = settingDef.default);
+      return (computedSettings[id] = settingDef.default);
     }
   } catch (e) {
     console.warn("Error getting setting", id, e);
   }
-  return (vizSettings[id] = undefined);
+  return (computedSettings[id] = undefined);
 }
 
-function getSettingDefintionsForSeries(series) {
-  const { CardVisualization } = getVisualizationRaw(series);
-  const definitions = {
-    ...COMMON_SETTINGS,
-    ...(CardVisualization.settings || {}),
-  };
-  for (const id in definitions) {
-    definitions[id].id = id;
-  }
-  return definitions;
-}
-
-export function getPersistableDefaultSettings(series) {
-  // A complete set of settings (not only defaults) is loaded because
-  // some persistable default settings need other settings as dependency for calculating the default value
-  const completeSettings = getSettings(series);
-
-  let persistableDefaultSettings = {};
-  let settingsDefs = getSettingDefintionsForSeries(series);
-
-  for (let id in settingsDefs) {
-    const settingDef = settingsDefs[id];
-    if (settingDef.persistDefault) {
-      persistableDefaultSettings[id] = completeSettings[id];
-    }
-  }
-
-  return persistableDefaultSettings;
-}
-
-export function getSettings(series) {
-  let vizSettings = {};
-  let settingsDefs = getSettingDefintionsForSeries(series);
-  for (let id in settingsDefs) {
-    getSetting(settingsDefs, id, vizSettings, series);
-  }
-  return vizSettings;
-}
-
-function getSettingWidget(settingDef, vizSettings, series, onChangeSettings) {
+export function getSettingWidget(
+  settingDef: SettingDef,
+  settings: Settings,
+  object: any,
+  onChangeSettings: (settings: Settings) => void,
+): WidgetDef {
   const id = settingDef.id;
-  const value = vizSettings[id];
+  const value = settings[id];
   const onChange = value => {
     const newSettings = { [id]: value };
     for (const id of settingDef.writeDependencies || []) {
-      newSettings[id] = vizSettings[id];
+      newSettings[id] = settings[id];
     }
     onChangeSettings(newSettings);
   };
-  if (settingDef.useRawSeries && series._raw) {
-    series = series._raw;
+  if (settingDef.useRawSeries && object._raw) {
+    object = object._raw;
   }
   return {
     ...settingDef,
     id: id,
     value: value,
     title: settingDef.getTitle
-      ? settingDef.getTitle(series, vizSettings)
+      ? settingDef.getTitle(object, settings)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(series, vizSettings)
+      ? settingDef.getHidden(object, settings)
       : false,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(series, vizSettings)
+      ? settingDef.getDisabled(object, settings)
       : false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(series, vizSettings, onChange)
+        ? settingDef.getProps(object, settings, onChange)
         : {}),
     },
     widget:
@@ -215,20 +187,30 @@ function getSettingWidget(settingDef, vizSettings, series, onChangeSettings) {
   };
 }
 
-export function getSettingsWidgetsForSeries(
-  series,
-  onChangeSettings,
-  isDashboard = false,
+export function getSettingsWidgets(
+  settingDefs: SettingDefs,
+  settings: Settings,
+  object: any,
+  onChangeSettings: (settings: Settings) => void,
 ) {
-  const vizSettings = getSettings(series);
-  return Object.values(getSettingDefintionsForSeries(series))
+  return Object.values(settingDefs)
     .map(settingDef =>
-      getSettingWidget(settingDef, vizSettings, series, onChangeSettings),
+      // $FlowFixMe: doesn't understand settingDef is a SettingDef
+      getSettingWidget(settingDef, settings, object, onChangeSettings),
     )
-    .filter(
-      widget =>
-        widget.widget &&
-        !widget.hidden &&
-        (widget.dashboard === undefined || widget.dashboard === isDashboard),
-    );
+    .filter(widget => widget.widget && !widget.hidden);
+}
+
+export function getPersistableDefaultSettings(
+  settingsDefs: SettingDefs,
+  completeSettings: Settings,
+): Settings {
+  let persistableDefaultSettings = {};
+  for (let id in settingsDefs) {
+    const settingDef = settingsDefs[id];
+    if (settingDef.persistDefault) {
+      persistableDefaultSettings[id] = completeSettings[id];
+    }
+  }
+  return persistableDefaultSettings;
 }

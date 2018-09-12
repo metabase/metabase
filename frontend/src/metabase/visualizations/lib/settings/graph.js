@@ -7,13 +7,13 @@ import {
   isDate,
 } from "metabase/lib/schema_metadata";
 import { t } from "c-3po";
-import { getOptionFromColumn } from "metabase/visualizations/lib/utils";
 import {
   columnsAreValid,
   getCardColors,
   getFriendlyName,
   getChartTypeFromData,
   getColumnCardinality,
+  getOptionFromColumn,
   DIMENSION_DIMENSION_METRIC,
   DIMENSION_METRIC,
   DIMENSION_METRIC_METRIC,

@@ -1,7 +1,7 @@
 // NOTE: need to load visualizations first for getSettings to work
 import "metabase/visualizations/index";
 
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { DateTimeColumn, NumberColumn } from "../__support__/visualizations";
 

@@ -9,7 +9,7 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   metricSetting,
   dimensionSetting,
@@ -95,7 +95,7 @@ export default class Funnel extends Component {
   static transformSeries(series) {
     let [{ card, data: { rows, cols } }] = series;
 
-    const settings = getSettings(series);
+    const settings = getComputedSettingsForSeries(series);
 
     const dimensionIndex = _.findIndex(
       cols,

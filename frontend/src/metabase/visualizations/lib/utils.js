@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import React from "react";
 import _ from "underscore";
 import d3 from "d3";
 import { t } from "c-3po";
