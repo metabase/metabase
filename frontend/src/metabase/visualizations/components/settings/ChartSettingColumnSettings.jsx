@@ -7,7 +7,7 @@ import {
 } from "metabase/lib/dataset";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
-// import { getColumnSettingsWidgets } from "metabase/visualizations/lib/settings";
+import { getSettingsWidgetsForColumm } from "metabase/visualizations/lib/settings/column";
 
 import Icon from "metabase/components/Icon";
 
@@ -21,13 +21,30 @@ export default class ChartSettingColumnSettings extends React.Component {
   state = {
     editingColumn: null,
   };
+
+  handleChange = newSettings => {
+    const { onChange } = this.props;
+    const { editingColumn } = this.state;
+
+    const columnKey = keyForColumn(editingColumn);
+    const columnsSettings = this.props.value || {};
+    const columnSettings = columnsSettings[columnKey] || {};
+    onChange({
+      ...columnsSettings,
+      [columnKey]: {
+        ...columnSettings,
+        ...newSettings,
+      },
+    });
+  };
+
   render() {
-    const { columns, onChange } = this.props;
+    const { columns } = this.props;
     const { editingColumn } = this.state;
 
     if (editingColumn) {
-      const columnsSettings = this.props.value || {};
       const columnKey = keyForColumn(editingColumn);
+      const columnsSettings = this.props.value || {};
       const columnSettings = columnsSettings[columnKey] || {};
       return (
         <div>
@@ -40,18 +57,17 @@ export default class ChartSettingColumnSettings extends React.Component {
               {displayNameForColumn(editingColumn)}
             </span>
           </div>
-          {/* {getColumnSettingsWidgets().map(widget => (
+          {getSettingsWidgetsForColumm(
+            editingColumn,
+            columnSettings,
+            this.handleChange,
+          ).map(widget => (
             <ChartSettingsWidget key={`${widget.id}`} {...widget} />
-          ))} */}
-          {/* FOR DEV PURPOSES */}
+          ))}
+          <div>DEBUG:</div>
           <textarea
             value={JSON.stringify(columnSettings)}
-            onChange={e => {
-              onChange({
-                ...columnsSettings,
-                [columnKey]: JSON.parse(e.target.value),
-              });
-            }}
+            onChange={e => this.handleChange(JSON.parse(e.target.value))}
           />
         </div>
       );

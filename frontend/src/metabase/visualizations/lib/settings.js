@@ -14,11 +14,11 @@ import ChartSettingColorsPicker from "metabase/visualizations/components/setting
 type SettingId = string;
 
 export type Settings = {
-  [id: SettingId]: any,
+  [settingId: SettingId]: any,
 };
 
 export type SettingDefs = {
-  [id: SettingId]: SettingDef,
+  [settingId: SettingId]: SettingDef,
 };
 
 export type SettingDef = {
@@ -74,11 +74,11 @@ export function getComputedSettings(
   storedSettings: Settings,
 ) {
   const computedSettings = {};
-  for (let id in settingsDefs) {
+  for (let settingId in settingsDefs) {
     getComputedSetting(
       computedSettings,
       settingsDefs,
-      id,
+      settingId,
       object,
       storedSettings,
     );
@@ -86,18 +86,18 @@ export function getComputedSettings(
   return computedSettings;
 }
 
-export function getComputedSetting(
+function getComputedSetting(
   computedSettings: Settings, // MUTATED!
   settingDefs: SettingDefs,
-  id: SettingId,
+  settingId: SettingId,
   object: any,
   storedSettings: Settings,
 ): any {
-  if (id in computedSettings) {
+  if (settingId in computedSettings) {
     return;
   }
 
-  const settingDef = settingDefs[id] || {};
+  const settingDef = settingDefs[settingId] || {};
 
   for (let dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
@@ -115,45 +115,46 @@ export function getComputedSetting(
 
   try {
     if (settingDef.getValue) {
-      return (computedSettings[id] = settingDef.getValue(
+      return (computedSettings[settingId] = settingDef.getValue(
         object,
         computedSettings,
       ));
     }
 
-    if (storedSettings[id] !== undefined) {
+    if (storedSettings[settingId] !== undefined) {
       if (!settingDef.isValid || settingDef.isValid(object, computedSettings)) {
-        return (computedSettings[id] = storedSettings[id]);
+        return (computedSettings[settingId] = storedSettings[settingId]);
       }
     }
 
     if (settingDef.getDefault) {
       const defaultValue = settingDef.getDefault(object, computedSettings);
 
-      return (computedSettings[id] = defaultValue);
+      return (computedSettings[settingId] = defaultValue);
     }
 
     if ("default" in settingDef) {
-      return (computedSettings[id] = settingDef.default);
+      return (computedSettings[settingId] = settingDef.default);
     }
   } catch (e) {
-    console.warn("Error getting setting", id, e);
+    console.warn("Error getting setting", settingId, e);
   }
-  return (computedSettings[id] = undefined);
+  return (computedSettings[settingId] = undefined);
 }
 
-export function getSettingWidget(
-  settingDef: SettingDef,
+function getSettingWidget(
+  settingDefs: SettingDefs,
+  settingId: SettingId,
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
 ): WidgetDef {
-  const id = settingDef.id;
-  const value = settings[id];
+  const settingDef = settingDefs[settingId];
+  const value = settings[settingId];
   const onChange = value => {
-    const newSettings = { [id]: value };
-    for (const id of settingDef.writeDependencies || []) {
-      newSettings[id] = settings[id];
+    const newSettings = { [settingId]: value };
+    for (const settingId of settingDef.writeDependencies || []) {
+      newSettings[settingId] = settings[settingId];
     }
     onChangeSettings(newSettings);
   };
@@ -162,7 +163,7 @@ export function getSettingWidget(
   }
   return {
     ...settingDef,
-    id: id,
+    id: settingId,
     value: value,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, settings)
@@ -193,10 +194,16 @@ export function getSettingsWidgets(
   object: any,
   onChangeSettings: (settings: Settings) => void,
 ) {
-  return Object.values(settingDefs)
-    .map(settingDef =>
+  return Object.keys(settingDefs)
+    .map(settingId =>
       // $FlowFixMe: doesn't understand settingDef is a SettingDef
-      getSettingWidget(settingDef, settings, object, onChangeSettings),
+      getSettingWidget(
+        settingDefs,
+        settingId,
+        settings,
+        object,
+        onChangeSettings,
+      ),
     )
     .filter(widget => widget.widget && !widget.hidden);
 }
@@ -206,10 +213,10 @@ export function getPersistableDefaultSettings(
   completeSettings: Settings,
 ): Settings {
   let persistableDefaultSettings = {};
-  for (let id in settingsDefs) {
-    const settingDef = settingsDefs[id];
+  for (let settingId in settingsDefs) {
+    const settingDef = settingsDefs[settingId];
     if (settingDef.persistDefault) {
-      persistableDefaultSettings[id] = completeSettings[id];
+      persistableDefaultSettings[settingId] = completeSettings[settingId];
     }
   }
   return persistableDefaultSettings;
