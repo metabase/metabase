@@ -5,12 +5,10 @@ import {
   getChartTypeFromData,
   DIMENSION_DIMENSION_METRIC,
   DIMENSION_METRIC,
-  DIMENSION_METRIC_METRIC,
-  getColumnCardinality,
   getFriendlyName,
 } from "./utils";
 
-import { isDate, isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup.jsx";
@@ -35,66 +33,6 @@ const WIDGETS = {
   color: ChartSettingColorPicker,
   colors: ChartSettingColorsPicker,
 };
-
-export function getDefaultColumns(series) {
-  if (series[0].card.display === "scatter") {
-    return getDefaultScatterColumns(series);
-  } else {
-    return getDefaultLineAreaBarColumns(series);
-  }
-}
-
-function getDefaultScatterColumns([{ data: { cols, rows } }]) {
-  let dimensions = cols.filter(isDimension);
-  let metrics = cols.filter(isMetric);
-  if (dimensions.length === 2 && metrics.length < 2) {
-    return {
-      dimensions: [dimensions[0].name],
-      metrics: [dimensions[1].name],
-      bubble: metrics.length === 1 ? metrics[0].name : null,
-    };
-  } else {
-    return {
-      dimensions: [null],
-      metrics: [null],
-      bubble: null,
-    };
-  }
-}
-
-function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
-  let type = getChartTypeFromData(cols, rows, false);
-  if (type === DIMENSION_DIMENSION_METRIC) {
-    let dimensions = [cols[0], cols[1]];
-    if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
-      // if the series dimension is a date but the axis dimension is not then swap them
-      dimensions.reverse();
-    } else if (
-      getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)
-    ) {
-      // if the series dimension is higher cardinality than the axis dimension then swap them
-      dimensions.reverse();
-    }
-    return {
-      dimensions: dimensions.map(col => col.name),
-      metrics: [cols[2].name],
-    };
-  } else if (type === DIMENSION_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: [cols[1].name],
-    };
-  } else if (type === DIMENSION_METRIC_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: cols.slice(1).map(col => col.name),
-    };
-  }
-  return {
-    dimensions: [null],
-    metrics: [null],
-  };
-}
 
 export function getDefaultDimensionAndMetric([{ data }]) {
   const type = data && getChartTypeFromData(data.cols, data.rows, false);
