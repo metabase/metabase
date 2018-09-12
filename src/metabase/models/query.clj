@@ -67,16 +67,13 @@
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
    other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
    normal queries."
-  [outer-query]
-  (let [database-id  (qputil/get-normalized outer-query :database)
-        query-type   (qputil/get-normalized outer-query :type)
-        source-table (qputil/get-in-normalized outer-query [:query :source-table])]
-    (cond
-      (native-query? query-type) {:database-id database-id, :table-id nil}
-      (integer? source-table)    {:database-id database-id, :table-id source-table}
-      (string? source-table)     (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                                   (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
-                                     :id (Integer/parseInt card-id))))))
+  [{database-id :database, query-type :type, {:keys [source-table]} :query}]
+  (cond
+    (native-query? query-type) {:database-id database-id, :table-id nil}
+    (integer? source-table)    {:database-id database-id, :table-id source-table}
+    (string? source-table)     (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
+                                 (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
+                                   :id (Integer/parseInt card-id)))))
 
 (defn adhoc-query
   "Wrap query map into a Query object (mostly to fascilitate type dispatch)."

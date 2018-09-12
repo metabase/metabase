@@ -165,7 +165,7 @@ export default class Table extends Component {
   render() {
     const { card, isDashboard, settings } = this.props;
     const { data } = this.state;
-    const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
+    const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;

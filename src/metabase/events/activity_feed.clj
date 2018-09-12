@@ -10,7 +10,6 @@
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [table :as table]]
-            [metabase.query-processor.util :as qputil]
             [toucan.db :as db]))
 
 (def activity-feed-topics
@@ -44,10 +43,10 @@
 
 (defn- inner-query->source-table-id
   "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
-  [inner-query]
-  (or (when-let [source-table (qputil/get-normalized inner-query :source-table)]
+  [{:keys [source-table source-query]}]
+  (or (when source-table
         (u/get-id source-table))
-      (when-let [source-query (qputil/get-normalized inner-query :source-query)]
+      (when source-query
         (recur source-query))))
 
 (defn- process-card-activity! [topic object]

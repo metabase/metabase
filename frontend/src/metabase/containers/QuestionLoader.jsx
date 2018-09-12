@@ -41,7 +41,7 @@ type Props = {
  *          to={
  *            question.query()
  *                    .addFilter([
- *                      "SEGMENT",
+ *                      "segment",
  *                      question.query().filterSegmentOptions()[0]
  *                    ])
  *                    .question()

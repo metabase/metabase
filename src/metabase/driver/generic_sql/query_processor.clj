@@ -29,7 +29,7 @@
 
 (def ^:private ^:dynamic *nested-query-level*
   "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
-  find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  find referenced aggregations (otherwise something like [:aggregation 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
 
@@ -57,7 +57,7 @@
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defn- aggregation-at-index
-  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregate-field 0]).
+  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations."
   ([index]
    (aggregation-at-index index (:query *query*) *nested-query-level*))

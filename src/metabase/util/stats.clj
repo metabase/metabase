@@ -170,7 +170,7 @@
   {:groups (db/count PermissionsGroup)})
 
 (defn- card-has-params? [card]
-  (boolean (get-in card [:dataset_query :native :template_tags])))
+  (boolean (get-in card [:dataset_query :native :template-tags])))
 
 (defn- question-metrics
   "Get metrics based on questions

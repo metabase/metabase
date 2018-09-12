@@ -553,7 +553,7 @@
   {:name          "Foo"
    :dataset_query {:database (data/id)
                    :type     :query
-                   :query    {:source_table (data/id :checkins)
+                   :query    {:source-table (data/id :checkins)
                               :aggregation  [["count"]]
                               :breakout     [["datetime-field" (data/id :checkins :date) "hour"]]}}})
 

@@ -270,8 +270,7 @@
   (let [output-name (or custom-name output-name)]
     (if-not (isa? query-type ::ag-query)
       query-context
-      (let [ag-type (when-not (= ag-type :rows) ag-type)
-            [projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field)]
+      (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field)]
         (-> query-context
             (update :projections #(vec (concat % projections)))
             (update :query #(merge-with concat % ag-clauses)))))))
@@ -785,7 +784,7 @@
                     0 :none
                     1 :one
                       :many)
-        agg?      (boolean (and ag-type (not= ag-type :rows)))
+        agg?      (boolean ag-type)
         ts?       (and (instance? DateTimeField (first breakout-fields))            ; Checks whether the query is a timeseries
                        (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
                        (nil? limit))]                                               ; (excludes queries with LIMIT)

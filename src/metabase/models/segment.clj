@@ -1,4 +1,6 @@
 (ns metabase.models.segment
+  "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
+  replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require [medley.core :as m]
             [metabase
              [events :as events]
@@ -21,7 +23,7 @@
 (u/strict-extend (class Segment)
   models/IModel
   (merge models/IModelDefaults
-         {:types          (constantly {:definition :json, :description :clob})
+         {:types          (constantly {:definition :metric-segment-definition, :description :clob})
           :properties     (constantly {:timestamped? true})
           :hydration-keys (constantly [:segment])})
   i/IObjectPermissions
@@ -108,7 +110,9 @@
 (defn update-segment!
   "Update an existing `Segment`.
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message], :as body} user-id]
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]
+    :as   body}
+   user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)

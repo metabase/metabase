@@ -1,25 +1,10 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [expectations :refer :all]
-            [metabase
+  (:require [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
-
-;; Test the expansion of the expressions clause
-(expect
-  {:expressions {:my-cool-new-field (qpi/map->Expression {:operator :*
-                                                          :args     [{:field-id         10,  :fk-field-id        nil,
-                                                                      :datetime-unit    nil, :remapped-from      nil,
-                                                                      :remapped-to      nil, :field-display-name nil
-                                                                      :binning-strategy nil, :binning-param      nil}
-                                                                     20.0]})}}; 20 should be converted to a FLOAT
-
-  (ql/expressions {} {:my-cool-new-field (ql/* (ql/field-id 10) 20)}))
-
 
 ;; Do a basic query including an expression
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -29,10 +14,10 @@
    [4 "Wurstküche"                   29 33.9997 -118.465 2 4.0]
    [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 4.0]]
   (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float]
-    (rows (data/run-query venues
-            (ql/expressions {:my-cool-new-field (ql/+ $price 2)})
-            (ql/limit 5)
-            (ql/order-by (ql/asc $id))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:my-cool-new-field [:+ $price 2]}
+             :limit       5
+             :order-by    [[:asc $id]]}))))
 
 ;; Make sure FLOATING POINT division is done
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -40,10 +25,10 @@
    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
    [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
   (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float]
-    (rows (data/run-query venues
-            (ql/expressions {:my-cool-new-field (ql// $price 2)})
-            (ql/limit 3)
-            (ql/order-by (ql/asc $id))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:my-cool-new-field [:/ $price 2]}
+             :limit       3
+             :order-by    [[:asc $id]]}))))
 
 ;; Can we do NESTED EXPRESSIONS ?
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -51,10 +36,10 @@
    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0]
    [3 "The Apple Pan"         11 34.0406 -118.428 2 2.0]]
   (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float]
-    (rows (data/run-query venues
-            (ql/expressions {:wow (ql/- (ql/* $price 2) (ql/+ $price 0))})
-            (ql/limit 3)
-            (ql/order-by (ql/asc $id))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:wow [:- [:* $price 2] [:+ $price 0]]}
+             :limit       3
+             :order-by    [[:asc $id]]}))))
 
 ;; Can we have MULTIPLE EXPRESSIONS?
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -62,21 +47,21 @@
    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0 3.0]
    [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0 3.0]]
   (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float float]
-    (rows (data/run-query venues
-            (ql/expressions {:x (ql/- $price 1)
-                             :y (ql/+ $price 1)})
-            (ql/limit 3)
-            (ql/order-by (ql/asc $id))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:x [:- $price 1]
+                           :y [:+ $price 1]}
+             :limit       3
+             :order-by    [[:asc $id]]}))))
 
 ;; Can we refer to expressions inside a FIELDS clause?
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
   [[4] [4] [5]]
   (format-rows-by [int]
-    (rows (data/run-query venues
-            (ql/expressions {:x (ql/+ $price $id)})
-            (ql/fields (ql/expression :x))
-            (ql/limit 3)
-            (ql/order-by (ql/asc $id))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:x [:+ $price $id]}
+             :fields      [[:expression :x]]
+             :limit       3
+             :order-by    [[:asc $id]]}))))
 
 ;; Can we refer to expressions inside an ORDER BY clause?
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -84,19 +69,19 @@
    [99  "Golden Road Brewing" 10 34.1505 -118.274 2 101.0]
    [98  "Lucky Baldwin's Pub"  7 34.1454 -118.149 2 100.0]]
   (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float]
-    (rows (data/run-query venues
-            (ql/expressions {:x (ql/+ $price $id)})
-            (ql/limit 3)
-            (ql/order-by (ql/desc (ql/expression :x)))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:x [:+ $price $id]}
+             :limit       3
+             :order-by    [[:desc [:expression :x]]]}))))
 
 ;; Can we AGGREGATE + BREAKOUT by an EXPRESSION?
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
   [[2 22] [4 59] [6 13] [8 6]]
   (format-rows-by [int int]
-    (rows (data/run-query venues
-            (ql/expressions {:x (ql/* $price 2.0)})
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/expression :x))))))
+    (rows (data/run-mbql-query venues
+            {:expressions {:x [:* $price 2.0]}
+             :aggregation [[:count]]
+             :breakout    [[:expression :x]]}))))
 
 ;; Custom aggregation expressions should include their type
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
@@ -105,7 +90,7 @@
           {:name (data/format-name "category_id") :base_type :type/Decimal}
           {:name (data/format-name "category_id") :base_type :type/Integer}))
   (set (map #(select-keys % [:name :base_type])
-            (-> (data/run-query venues
-                  (ql/aggregation (ql/named (ql/sum (ql/* $price -1)) "x"))
-                  (ql/breakout $category_id))
+            (-> (data/run-mbql-query venues
+                  {:aggregation [:named [:sum [:* $price -1]] "x"]
+                   :breakout    [$category_id]})
                 (get-in [:data :cols])))))

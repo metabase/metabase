@@ -13,7 +13,6 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -75,7 +74,7 @@
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    {:source_table (data/id :checkins)
+                       :query    {:source-table (data/id :checkins)
                                   :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
@@ -89,50 +88,53 @@
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
     (aggregation-names (#'bigquery/pre-alias-aggregations query-map))))
 
-(defn- agg-query-map [aggregations]
-  (-> {}
-      (ql/source-table 1)
-      (ql/aggregation aggregations)))
+(defn- expanded-query-with-aggregations [aggregations]
+  (-> (qp/expand {:database (data/id)
+                  :type     :query
+                  :query    {:source-table (data/id :venues)
+                             :aggregation  aggregations}})
+      :query))
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
-                                           (ql/count (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/avg (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/min (ql/field-id 2))])))
+  (pre-alias-aggregations'
+   (expanded-query-with-aggregations
+    [[:sum [:field-id (data/id :venues :id)]]
+     [:count [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:avg [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:min [:field-id (data/id :venues :id)]]])))
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
-                                           (ql/count (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/avg (ql/field-id 2))
-                                           (assoc (ql/sum (ql/field-id 2)) :custom-name "sum_2")
-                                           (ql/min (ql/field-id 2))])))
+  (pre-alias-aggregations'
+   (expanded-query-with-aggregations [[:sum [:field-id (data/id :venues :id)]]
+                                      [:count [:field-id (data/id :venues :id)]]
+                                      [:sum [:field-id (data/id :venues :id)]]
+                                      [:avg [:field-id (data/id :venues :id)]]
+                                      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
+                                      [:min [:field-id (data/id :venues :id)]]])))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    (-> {}
-                                     (ql/source-table (data/id :checkins))
-                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+                       :query    {:source-table (data/id :checkins)
+                                  :aggregation [[:sum [:field-id (data/id :checkins :user_id)]]
+                                                [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    (-> {}
-                                     (ql/source-table (data/id :checkins))
-                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+                       :query    {:source-table (data/id :checkins)
+                                  :aggregation  [[:sum [:field-id (data/id :checkins :user_id)]]
+                                                 [:sum [:field-id (data/id :checkins :user_id)]]
+                                                 [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
 (expect-with-engine :bigquery
   "UTC"

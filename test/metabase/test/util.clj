@@ -5,6 +5,7 @@
              [coerce :as tcoerce]
              [core :as time]]
             [clojure.string :as s]
+            [clj-time.core :as time]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -34,7 +35,6 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
@@ -48,6 +48,7 @@
            org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -594,8 +595,8 @@
           pause-query                (promise)
           before-query-called-cancel (realized? called-cancel?)
           before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-query checkins
-                                              (ql/aggregation (ql/count))))
+          query-thunk                (fn [] (data/run-mbql-query checkins
+                                              {:aggregation [[:count]]}))
           ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
           ;; which should cause an interrupt
           query-future               (f query-thunk called-query? called-cancel? pause-query)]

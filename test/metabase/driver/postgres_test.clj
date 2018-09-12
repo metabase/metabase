@@ -18,7 +18,6 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test
              [data :as data]
@@ -88,7 +87,7 @@
   [{:name "id",      :base_type :type/Integer}
    {:name "user_id", :base_type :type/UUID}]
   (->> (data/dataset metabase.driver.postgres-test/with-uuid
-         (data/run-query users))
+         (data/run-mbql-query users))
        :data
        :cols
        (mapv (u/rpartial select-keys [:name :base_type]))))
@@ -98,15 +97,15 @@
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
-          (data/run-query users
-            (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))))
+          (data/run-mbql-query users
+            {:filter [:= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"]}))))
 
 ;; check that a nil value for a UUID field doesn't barf (#2152)
 (expect-with-engine :postgres
   []
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
-          (data/run-query users
-            (ql/filter (ql/= $user_id nil))))))
+          (data/run-mbql-query users
+            {:filter [:= $user_id nil]}))))
 
 ;; Check that we can filter by a UUID for SQL Field filters (#7955)
 (expect-with-engine :postgres
@@ -115,7 +114,7 @@
     (rows (qp/process-query {:database   (data/id)
                              :type       :native
                              :native     {:query         "SELECT * FROM users WHERE {{user}}"
-                                          :template_tags {:user {:name         "user"
+                                          :template-tags {:user {:name         "user"
                                                                  :display_name "User ID"
                                                                  :type         "dimension"
                                                                  :dimension    ["field-id" (data/id :users :user_id)]}}}
@@ -138,7 +137,7 @@
              [2 "four_loko"]
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
-        (data/run-query objects.stuff))
+        (data/run-mbql-query objects.stuff))
       :data (dissoc :cols :native_form :results_metadata)))
 
 
@@ -157,8 +156,8 @@
   {:columns ["name" "name_2"]
    :rows    [["Cam" "Rasta"]]}
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
-        (data/run-query people
-          (ql/fields $name $bird_id->birds.name)))
+        (data/run-mbql-query people
+          {:fields [$name $bird_id->birds.name]}))
       :data (dissoc :cols :native_form :results_metadata)))
 
 
@@ -174,9 +173,9 @@
 (expect-with-engine :postgres
   [[1]]
   (rows (data/dataset metabase.driver.postgres-test/ip-addresses
-          (data/run-query addresses
-            (ql/aggregation (ql/count))
-            (ql/filter (ql/= $ip "192.168.1.1"))))))
+          (data/run-mbql-query addresses
+            {:aggregation [[:count]]
+             :filter      [:= $ip "192.168.1.1"]}))))
 
 
 ;;; Util Fns

@@ -26,7 +26,8 @@
             [metabase.util.date :as date]
             [puppetlabs.i18n.core :as i18n :refer [tru]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.util :as u]))
 
 ;;; ------------------- `->reference` -------------------
 
@@ -101,11 +102,11 @@
            (every? test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Metric [{metric-id :id} {:table_id (data/id :venues)
-                                           :definition {:query {:aggregation ["count"]}}}]]
+  (tt/with-temp* [Metric [metric {:table_id (data/id :venues)
+                                  :definition {:aggregation [[:count]]}}]]
     (with-rasta
       (with-dashboard-cleanup
-        (->> (Metric) (every? test-automagic-analysis))))))
+        (test-automagic-analysis metric)))))
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
@@ -113,7 +114,7 @@
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                                                 :source_table (data/id :venues)}
+                                                                 :source-table (data/id :venues)}
                                                          :type :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -128,7 +129,7 @@
                                          :collection_id collection-id
                                          :dataset_query {:query {:aggregation [[:count]]
                                                                  :breakout [[:field-id (data/id :venues :category_id)]]
-                                                                 :source_table (data/id :venues)}
+                                                                 :source-table (data/id :venues)}
                                                          :type :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -150,7 +151,7 @@
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:query    {:source_table (data/id :venues)}
+    (let [source-query {:query    {:source-table (data/id :venues)}
                         :type     :query
                         :database (data/id)}]
       (tt/with-temp* [Collection [{collection-id :id}]
@@ -161,7 +162,7 @@
                       Card [{card-id :id} {:table_id      (data/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
-                                                                      :source_table (str "card__" source-id)}
+                                                                      :source-table (str "card__" source-id)}
                                                            :type     :query
                                                            :database -1337}}]]
         (with-rasta
@@ -175,7 +176,7 @@
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source_table (data/id :venues)}
+                                                                    :source-table (data/id :venues)}
                                                          :type     :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -196,7 +197,7 @@
                       Card [{card-id :id} {:table_id      nil
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
-                                                                      :source_table (str "card__" source-id)}
+                                                                      :source-table (str "card__" source-id)}
                                                            :type     :query
                                                            :database -1337}}]]
         (with-rasta
@@ -211,7 +212,7 @@
                                          :collection_id collection-id
                                          :dataset_query {:query    {:aggregation  [[:count]]
                                                                     :breakout     [[:field-id (data/id :venues :category_id)]]
-                                                                    :source_table (data/id :venues)}
+                                                                    :source-table (data/id :venues)}
                                                          :type     :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -251,7 +252,7 @@
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source_table (data/id :venues)}
+                                                                    :source-table (data/id :venues)}
                                                          :type     :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -268,7 +269,7 @@
                     Card [{card-id :id} {:table_id      (data/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source_table (data/id :venues)}
+                                                                    :source-table (data/id :venues)}
                                                          :type     :query
                                                          :database (data/id)}}]]
       (with-rasta
@@ -283,7 +284,7 @@
   (with-rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                          :source_table (data/id :venues)}
+                                          :source-table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
         (test-automagic-analysis q)))))
@@ -293,7 +294,7 @@
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:field-id (data/id :venues :category_id)]]
-                                          :source_table (data/id :venues)}
+                                          :source-table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
         (test-automagic-analysis q)))))
@@ -303,7 +304,7 @@
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
                                           :breakout [[:fk-> (data/id :checkins) (data/id :venues :category_id)]]
-                                          :source_table (data/id :checkins)}
+                                          :source-table (data/id :checkins)}
                                   :type :query
                                   :database (data/id)})]
         (test-automagic-analysis q)))))
@@ -312,7 +313,7 @@
   (with-rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                          :source_table (data/id :venues)}
+                                          :source-table (data/id :venues)}
                                   :type :query
                                   :database (data/id)})]
         (test-automagic-analysis q [:= [:field-id (data/id :venues :category_id)] 2])))))
