@@ -348,6 +348,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         </span>
       );
     } else {
+      // $FlowFixMe: formatted will always be a string if jsx = false but flow doesn't know that
       return `${prefix}${formatted}${suffix}`;
     }
   } else {

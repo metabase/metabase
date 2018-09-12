@@ -60,7 +60,7 @@ export function fieldRefForColumn(column: Column): ?ConcreteField {
   }
 }
 
-export const keyForColumn = column => {
+export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
   return JSON.stringify(ref ? ["ref", ref] : ["name", column.name]);
 };
