@@ -35,66 +35,138 @@ export type FormattingOptions = {
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
   // number options:
-  comma?: boolean,
   compact?: boolean,
-  round?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
   noRange?: boolean,
-  decimalPlaces: number,
+  // TODO: docoument these:
+  prefix?: string,
+  suffix?: string,
+  scale?: number,
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
+  scale?: number,
+  locale?: string,
+  minimumFractionDigits?: number,
+  maximumFractionDigits?: number,
+  // use thousand separators, defualt to false if locale === null
+  useGrouping?: boolean,
+  // decimals sets both minimumFractionDigits and maximumFractionDigits
+  decimals?: number,
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
-  comma: true,
   compact: false,
-  round: true,
-  decimalPlaces: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true,
 };
+
+function getDefaultNumberOptions(options) {
+  const defaults = { ...DEFAULT_NUMBER_OPTIONS };
+
+  // decimals sets the exact number of digits after the decimal place
+  if (typeof options.decimals === "number" && !isNaN(options.decimals)) {
+    defaults.minimumFractionDigits = options.decimals;
+    defaults.maximumFractionDigits = options.decimals;
+  }
+
+  // previously we used locale === null to signify that we should turn off thousand separators
+  if (options.locale === null) {
+    defaults.useGrouping = false;
+  }
+
+  return defaults;
+}
 
 const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
-const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
 const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
 
-const getMonthFormat = options => (options.compact ? "MMM" : "MMMM");
-const getDayFormat = options => (options.compact ? "ddd" : "dddd");
+const getMonthFormat = options =>
+  options.compact || options.date_abbreviate ? "MMM" : "MMMM";
+const getDayFormat = options =>
+  options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
 
+export function numberFormatterForOptions(options: FormattingOptions) {
+  options = { ...getDefaultNumberOptions(options), ...options };
+  // if we don't provide a locale much of the formatting doens't work
+  return new Intl.NumberFormat(options.locale || "en", {
+    style: options.number_style,
+    currency: options.currency,
+    currencyDisplay: options.currency_style,
+    useGrouping: options.useGrouping,
+    // minimumIntegerDigits: options.minimumIntegerDigits,
+    minimumFractionDigits: options.minimumFractionDigits,
+    maximumFractionDigits: options.maximumFractionDigits,
+    // minimumSignificantDigits: options.minimumSignificantDigits,
+    // maximumSignificantDigits: options.maximumSignificantDigits,
+  });
+}
+
 export function formatNumber(number: number, options: FormattingOptions = {}) {
-  options = { ...DEFAULT_NUMBER_OPTIONS, ...options };
+  options = { ...getDefaultNumberOptions(options), ...options };
+
+  if (typeof options.scale === "number" && !isNaN(options.scale)) {
+    number = options.scale * number;
+  }
+
   if (options.compact) {
-    if (number === 0) {
-      // 0 => 0
-      return "0";
-    } else if (number >= -0.01 && number <= 0.01) {
-      // 0.01 => ~0
-      return "~ 0";
-    } else if (number > -1 && number < 1) {
-      // 0.1 => 0.1
-      return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
-    } else {
-      // 1 => 1
-      // 1000 => 1K
-      return Humanize.compactInteger(number, 1);
-    }
-  } else if (number > -1 && number < 1) {
-    // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
-    return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
+    return formatNumberCompact(number);
+  } else if (options.number_style === "scientific") {
+    return formatNumberScientific(number, options);
   } else {
-    // anything else rounds to at most 2 decimal points, unless disabled
-    if (options.round) {
-      number = d3.round(number, options.decimalPlaces);
+    try {
+      // NOTE: options._numberFormatter allows you to provide a predefined
+      // Intl.NumberFormat object for increased performance
+      const nf = options._numberFormatter || numberFormatterForOptions(options);
+      return nf.format(number);
+    } catch (e) {
+      console.warn("Error formatting number", e);
+      // fall back to old, less capable formatter
+      // NOTE: does not handle things like currency, percent
+      return FIXED_NUMBER_FORMATTER(
+        d3.round(number, options.maximumFractionDigits),
+      );
     }
-    if (options.comma) {
-      return FIXED_NUMBER_FORMATTER(number);
-    } else {
-      return FIXED_NUMBER_FORMATTER_NO_COMMA(number);
-    }
+  }
+}
+
+function formatNumberScientific(value: number, options: FormattingOptions) {
+  if (options.maximumFractionDigits) {
+    value = d3.round(value, options.maximumFractionDigits);
+  }
+  const exp = value.toExponential(options.minimumFractionDigits);
+  if (options.jsx) {
+    const [m, n] = exp.split("e");
+    return (
+      <span>
+        {m}×10<sup>{n.replace(/^\+/, "")}</sup>
+      </span>
+    );
+  } else {
+    return exp;
+  }
+}
+
+function formatNumberCompact(value: number) {
+  if (value === 0) {
+    // 0 => 0
+    return "0";
+  } else if (value >= -0.01 && value <= 0.01) {
+    // 0.01 => ~0
+    return "~ 0";
+  } else if (value > -1 && value < 1) {
+    // 0.1 => 0.1
+    return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
+  } else {
+    // 1 => 1
+    // 1000 => 1K
+    return Humanize.compactInteger(value, 1);
   }
 }
 
@@ -158,7 +230,7 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 /** This formats a time with unit as a date range */
-export function formatTimeRangeWithUnit(
+export function formatDateTimeRangeWithUnit(
   value: Value,
   unit: DatetimeUnit,
   options: FormattingOptions = {},
@@ -209,7 +281,37 @@ function formatWeek(m: Moment, options: FormattingOptions = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
-export function formatTimeWithUnit(
+function formatDateTime(value, options) {
+  let m = parseTimestamp(value, options.column && options.column.unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  if (options.date_format) {
+    const format = [];
+    if (options.date_abbreviate) {
+      format.push(
+        options.date_format
+          .replace(/\bMMMM\b/g, getMonthFormat(options))
+          .replace(/\bdddd\b/g, getDayFormat(options)),
+      );
+    } else {
+      format.push(options.date_format);
+    }
+    if (options.time_format && options.time_enabled !== false) {
+      format.push(options.time_format);
+    }
+    return m.format(format.join(" "));
+  } else {
+    if (options.show_time === false) {
+      return m.format(options.date_abbreviate ? "ll" : "LL");
+    } else {
+      return m.format(options.date_abbreviate ? "llll" : "LLLL");
+    }
+  }
+}
+
+export function formatDateTimeWithUnit(
   value: Value,
   unit: DatetimeUnit,
   options: FormattingOptions = {},
@@ -217,6 +319,11 @@ export function formatTimeWithUnit(
   let m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
+  }
+
+  // only use custom formats for unbucketed dates for now
+  if (options.date_format) {
+    formatDateTime(value, options);
   }
 
   switch (unit) {
@@ -231,10 +338,10 @@ export function formatTimeWithUnit(
     case "week": // 1st - 2015
       if (options.type === "tooltip" && !options.noRange) {
         // tooltip show range like "January 1 - 7, 2017"
-        return formatTimeRangeWithUnit(value, unit, options);
+        return formatDateTimeRangeWithUnit(value, unit, options);
       } else if (options.type === "cell" && !options.noRange) {
         // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
-        return formatTimeRangeWithUnit(value, unit, options);
+        return formatDateTimeRangeWithUnit(value, unit, options);
       } else if (options.type === "axis") {
         // axis ticks show start of the week as "Jan 1"
         return m
@@ -277,11 +384,11 @@ export function formatTimeWithUnit(
     case "quarter-of-year": // January
       return m.format("[Q]Q");
     default:
-      return m.format("LLLL");
+      return formatDateTime(value, options);
   }
 }
 
-export function formatTimeValue(value: Value) {
+export function formatTime(value: Value) {
   let m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
@@ -331,12 +438,32 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
+  const { prefix = "", suffix = "", jsx } = options;
+  const formatted = formatValueRaw(value, options);
+  if (prefix || suffix) {
+    if (jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {prefix}
+          {formatted}
+          {suffix}
+        </span>
+      );
+    } else {
+      // $FlowFixMe: formatted will always be a string if jsx = false but flow doesn't know that
+      return `${prefix}${formatted}${suffix}`;
+    }
+  } else {
+    return formatted;
+  }
+}
+
+export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   let column = options.column;
 
   options = {
     jsx: false,
     remap: true,
-    comma: isNumber(column),
     ...options,
   };
 
@@ -360,25 +487,31 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   } else if (column && isa(column.special_type, TYPE.Email)) {
     return formatEmail(value, options);
   } else if (column && isa(column.base_type, TYPE.Time)) {
-    return formatTimeValue(value);
+    return formatTime(value);
   } else if (column && column.unit != null) {
-    return formatTimeWithUnit(value, column.unit, options);
+    return formatDateTimeWithUnit(value, column.unit, options);
   } else if (
     isDate(column) ||
     moment.isDate(value) ||
     moment.isMoment(value) ||
     moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
-    return parseTimestamp(value, column && column.unit).format("LLLL");
+    return formatDateTime(value, options);
   } else if (typeof value === "string") {
     return formatStringFallback(value, options);
-  } else if (typeof value === "number") {
-    const formatter = isCoordinate(column) ? formatCoordinate : formatNumber;
+  } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, options.column);
     if (range && !options.noRange) {
-      return formatRange(range, formatter, options);
+      return formatRange(range, formatCoordinate, options);
     } else {
-      return formatter(value, options);
+      return formatCoordinate(value, options);
+    }
+  } else if (typeof value === "number" && isNumber(column)) {
+    const range = rangeForValue(value, options.column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatNumber, options);
+    } else {
+      return formatNumber(value, options);
     }
   } else if (typeof value === "object") {
     // no extra whitespace for table cells

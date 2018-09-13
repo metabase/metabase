@@ -62,7 +62,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
+import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
@@ -1252,7 +1252,9 @@ export const getDisplayTypeForCard = (card, queryResults) => {
   // try a little logic to pick a smart display for the data
   // TODO: less hard-coded rules for picking chart type
   const isScalarVisualization =
-    card.display === "scalar" || card.display === "progress";
+    card.display === "scalar" ||
+    card.display === "progress" ||
+    card.display === "gauge";
   if (
     !isScalarVisualization &&
     queryResult.data.rows &&
@@ -1297,7 +1299,7 @@ const getQuestionWithDefaultVisualizationSettings = (question, series) => {
   const oldVizSettings = question.visualizationSettings();
   const newVizSettings = {
     ...oldVizSettings,
-    ...getPersistableDefaultSettings(series),
+    ...getPersistableDefaultSettingsForSeries(series),
   };
 
   // Don't update the question unnecessarily

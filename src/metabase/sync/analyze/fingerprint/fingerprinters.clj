@@ -7,8 +7,9 @@
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
            org.joda.time.DateTime))
@@ -123,7 +124,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
+         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))

@@ -19,7 +19,7 @@
             [metabase.sync.field-values :as sync-field-values]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -156,13 +156,13 @@
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= day-str (:name %))))
+  (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
   (and driver (contains? (driver/features driver) :binning)))

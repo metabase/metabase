@@ -8,11 +8,11 @@ import ChartTooltip from "../components/ChartTooltip.jsx";
 import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
+  getFriendlyName,
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/utils";
 
 import { formatValue } from "metabase/lib/formatting";
 

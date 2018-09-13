@@ -31,6 +31,7 @@
             [metabase.util :as u]
             [metabase.util
              [embed :as eu]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -253,7 +254,7 @@
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)
-     [400 "Embedding is not enabled for this object."])))
+     [400 (tru "Embedding is not enabled for this object.")])))
 
 (def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
   (partial check-embedding-enabled-for-object Dashboard))

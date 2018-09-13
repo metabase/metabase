@@ -22,8 +22,8 @@
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
-            [metabase.util.i18n :refer [set-locale]]
-            [puppetlabs.i18n.core :refer [locale-negotiator trs]]
+            [metabase.util.i18n :refer [set-locale trs]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]

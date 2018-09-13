@@ -9,41 +9,14 @@ import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-
-const Widget = ({
-  title,
-  hidden,
-  disabled,
-  widget,
-  value,
-  onChange,
-  props,
-  // NOTE: special props to support adding additional fields
-  question,
-  addField,
-}) => {
-  const W = widget;
-  return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
-      {title && <h4 className="mb1">{title}</h4>}
-      {W && (
-        <W
-          value={value}
-          onChange={onChange}
-          question={question}
-          addField={addField}
-          {...props}
-        />
-      )}
-    </div>
-  );
-};
 
 class ChartSettings extends Component {
   constructor(props) {
@@ -115,7 +88,7 @@ class ChartSettings extends Component {
     const { series } = this.state;
 
     const tabs = {};
-    for (const widget of getSettingsWidgets(
+    for (const widget of getSettingsWidgetsForSeries(
       series,
       this.handleChangeSettings,
       isDashboard,
@@ -154,11 +127,12 @@ class ChartSettings extends Component {
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
               {widgets &&
                 widgets.map(widget => (
-                  <Widget
+                  <ChartSettingsWidget
                     key={`${widget.id}`}
+                    {...widget}
+                    // NOTE: special props to support adding additional fields
                     question={question}
                     addField={addField}
-                    {...widget}
                   />
                 ))}
             </div>
@@ -174,9 +148,10 @@ class ChartSettings extends Component {
                 <Visualization
                   className="spread"
                   rawSeries={series}
-                  isEditing
                   showTitle
+                  isEditing
                   isDashboard
+                  isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}
                   onUpdateWarnings={warnings => this.setState({ warnings })}

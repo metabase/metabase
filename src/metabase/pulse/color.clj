@@ -2,7 +2,7 @@
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require [cheshire.core :as json]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import java.io.InputStream
            [javax.script Invocable ScriptEngine ScriptEngineManager]

@@ -15,13 +15,12 @@ import {
   isCountry,
 } from "metabase/lib/schema_metadata";
 import {
+  isSameSeries,
   metricSetting,
   dimensionSetting,
   fieldSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
-
-import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
 

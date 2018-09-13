@@ -30,8 +30,9 @@
              [setting :as setting :refer [Setting]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [toucan
              [db :as db]
              [models :as models]]
@@ -363,9 +364,9 @@
     (doseq [group-id non-admin-group-ids]
       (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
-                                         Pulse     (trs "Migrated Pulses")
-                                         Card      (trs "Migrated Questions")}
+    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
+                                         Pulse     (str (trs "Migrated Pulses"))
+                                         Card      (str (trs "Migrated Questions"))}
             :when                       (db/exists? model :collection_id nil)
             :let                        [new-collection (db/insert! Collection
                                                           :name  new-collection-name

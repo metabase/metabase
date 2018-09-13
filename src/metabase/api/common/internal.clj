@@ -6,8 +6,9 @@
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -111,7 +112,7 @@
   [^String value]
   (try (Integer/parseInt value)
        (catch NumberFormatException _
-         (throw (ex-info (format "Not a valid integer: '%s'" value) {:status-code 400})))))
+         (throw (ui18n/ex-info (tru "Not a valid integer: ''{0}''" value) {:status-code 400})))))
 
 (def ^:dynamic *auto-parse-types*
   "Map of `param-type` -> map with the following keys:
@@ -218,7 +219,7 @@
   [field-name value schema]
   (try (s/validate schema value)
        (catch Throwable e
-         (throw (ex-info (tru "Invalid field: {0}" field-name)
+         (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
                   {:status-code 400
                    :errors      {(keyword field-name) (or (su/api-error-message schema)
                                                           (:message (ex-data e))

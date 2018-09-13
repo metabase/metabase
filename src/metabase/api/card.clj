@@ -33,8 +33,9 @@
              [cache :as cache]
              [results-metadata :as results-metadata]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]

@@ -9,11 +9,11 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
-  getSettings,
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/utils";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
@@ -95,7 +95,7 @@ export default class Funnel extends Component {
   static transformSeries(series) {
     let [{ card, data: { rows, cols } }] = series;
 
-    const settings = getSettings(series);
+    const settings = getComputedSettingsForSeries(series);
 
     const dimensionIndex = _.findIndex(
       cols,

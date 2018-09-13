@@ -13,8 +13,8 @@
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
@@ -497,8 +497,8 @@
         [prefix & segmented-strings] (str/split s begin-pattern)]
     (when-let [^String msg (and (seq segmented-strings)
                                 (not-every? #(str/index-of % delimited-end) segmented-strings)
-                                (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
-                                     delimited-begin delimited-end s))]
+                                (str (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
+                                          delimited-begin delimited-end s)))]
       (throw (IllegalArgumentException. msg)))
     {:prefix            prefix
      :delimited-strings (for [segmented-string segmented-strings
@@ -535,8 +535,8 @@
   [s param-key->value]
   (let [results (parse-params s param-key->value)]
     (if-let [{:keys [param-key]} (m/find-first no-value-param? results)]
-      (throw (ex-info (tru "Unable to substitute ''{0}'': param not specified.\nFound: {1}"
-                           (name param-key) (pr-str (map name (keys param-key->value))))
+      (throw (ui18n/ex-info (tru "Unable to substitute ''{0}'': param not specified.\nFound: {1}"
+                                 (name param-key) (pr-str (map name (keys param-key->value))))
                {:status-code 400}))
       results)))
 

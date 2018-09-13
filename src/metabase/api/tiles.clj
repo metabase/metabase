@@ -7,8 +7,9 @@
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]])
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
