@@ -187,7 +187,7 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 /** This formats a time with unit as a date range */
-export function formatTimeRangeWithUnit(
+export function formatDateTimeRangeWithUnit(
   value: Value,
   unit: DatetimeUnit,
   options: FormattingOptions = {},
@@ -238,17 +238,12 @@ function formatWeek(m: Moment, options: FormattingOptions = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
-export function formatTimeWithUnit(
-  value: Value,
-  unit: DatetimeUnit,
-  options: FormattingOptions = {},
-) {
-  let m = parseTimestamp(value, unit);
+function formatDateTime(value, options) {
+  let m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
 
-  // only use custom formats for unbucketed dates for now
   if (options.date_format) {
     const format = [];
     if (options.date_abbreviate) {
@@ -264,6 +259,28 @@ export function formatTimeWithUnit(
       format.push(options.time_format);
     }
     return m.format(format.join(" "));
+  } else {
+    if (options.show_time === false) {
+      return m.format(options.date_abbreviate ? "ll" : "LL");
+    } else {
+      return m.format(options.date_abbreviate ? "llll" : "LLLL");
+    }
+  }
+}
+
+export function formatDateTimeWithUnit(
+  value: Value,
+  unit: DatetimeUnit,
+  options: FormattingOptions = {},
+) {
+  let m = parseTimestamp(value, unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  // only use custom formats for unbucketed dates for now
+  if (options.date_format) {
+    formatDateTime(value, options);
   }
 
   switch (unit) {
@@ -278,10 +295,10 @@ export function formatTimeWithUnit(
     case "week": // 1st - 2015
       if (options.type === "tooltip" && !options.noRange) {
         // tooltip show range like "January 1 - 7, 2017"
-        return formatTimeRangeWithUnit(value, unit, options);
+        return formatDateTimeRangeWithUnit(value, unit, options);
       } else if (options.type === "cell" && !options.noRange) {
         // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
-        return formatTimeRangeWithUnit(value, unit, options);
+        return formatDateTimeRangeWithUnit(value, unit, options);
       } else if (options.type === "axis") {
         // axis ticks show start of the week as "Jan 1"
         return m
@@ -324,15 +341,11 @@ export function formatTimeWithUnit(
     case "quarter-of-year": // January
       return m.format("[Q]Q");
     default:
-      if (options.show_time === false) {
-        return m.format(options.date_abbreviate ? "ll" : "LL");
-      } else {
-        return m.format(options.date_abbreviate ? "llll" : "LLLL");
-      }
+      return formatDateTime(value, options);
   }
 }
 
-export function formatTimeValue(value: Value) {
+export function formatTime(value: Value) {
   let m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
@@ -431,16 +444,16 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   } else if (column && isa(column.special_type, TYPE.Email)) {
     return formatEmail(value, options);
   } else if (column && isa(column.base_type, TYPE.Time)) {
-    return formatTimeValue(value);
+    return formatTime(value);
   } else if (column && column.unit != null) {
-    return formatTimeWithUnit(value, column.unit, options);
+    return formatDateTimeWithUnit(value, column.unit, options);
   } else if (
     isDate(column) ||
     moment.isDate(value) ||
     moment.isMoment(value) ||
     moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
-    return parseTimestamp(value, column && column.unit).format("LLLL");
+    return formatDateTime(value, options);
   } else if (typeof value === "string") {
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
