@@ -50,6 +50,8 @@ export function isColumnRightAligned(column: Column) {
   return isNumber(column) || isCoordinate(column);
 }
 
+
+
 export function getTableCellClickedObjectForSummary(
   cols,
   column,
@@ -65,29 +67,6 @@ export function getTableCellClickedObjectForSummary(
     if(column.pivotedDimension)
       dimensions.push(column.pivotedDimension);
     return {
-<<<<<<< HEAD
-      //      value: "",
-      //      column,
-      dimensions: cols
-        .filter((column, index) => index < row.isTotalColumnIndex)
-        .map((column, index) => ({ value: row[index], column }))
-        .filter(dimension => dimension.column.source === "breakout"),
-      isTotalColumnIndex: row.isTotalColumnIndex,
-    };
-  } else if (column.source === "aggregation") {
-    //    console.log("[debug] getTableCellClickedObject:  aggregation >  isTotal: ",isTotal,"  value: ",value,"  column:",column);
-    return {
-      value,
-      column,
-      dimensions: cols
-        .map((column, index) => ({ value: row[index], column }))
-        .filter(dimension => dimension.column.source === "breakout"),
-      isTotalColumnIndex: row.isTotalColumnIndex,
-    };
-  } else {
-    //    console.log("[debug] getTableCellClickedObject:  default >  value: "+value+"  column:"+column);
-    return { value, column, isTotalColumnIndex: row.isTotalColumnIndex };
-=======
       dimensions,
     };
   } else if (column.source === "aggregation") {
@@ -106,6 +85,5 @@ export function getTableCellClickedObjectForSummary(
     };
   } else {
     return { value, column };
->>>>>>> 36a3b5ae08ca7e28c4832c3c72ac3d84980cff77
   }
 }
