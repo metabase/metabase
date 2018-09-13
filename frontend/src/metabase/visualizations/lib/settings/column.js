@@ -1,4 +1,5 @@
 import { t } from "c-3po";
+import _ from "underscore";
 
 import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
 
@@ -168,13 +169,12 @@ export const NUMBER_COLUMN_SETTINGS = {
 };
 
 const COMMON_COLUMN_SETTINGS = {
-  prefix: {
-    title: t`Add a prefix`,
+  markdown_template: {
+    title: t`Markdown template`,
     widget: "input",
-  },
-  suffix: {
-    title: t`Add a suffix`,
-    widget: "input",
+    props: {
+      placeholder: "{{value}}",
+    },
   },
 };
 
@@ -190,7 +190,13 @@ export function getSettingDefintionsForColumn(column) {
 
 export function getComputedSettingsForColumn(column, storedSettings) {
   const settingsDefs = getSettingDefintionsForColumn(column);
-  return getComputedSettings(settingsDefs, column, storedSettings);
+  const computedSettings = getComputedSettings(
+    settingsDefs,
+    column,
+    storedSettings,
+  );
+  // remove undefined settings since they override other settings when merging object
+  return _.pick(computedSettings, value => value !== undefined);
 }
 
 export function getSettingsWidgetsForColumm(

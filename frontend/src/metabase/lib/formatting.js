@@ -7,6 +7,9 @@ import Humanize from "humanize-plus";
 import React from "react";
 import { ngettext, msgid } from "c-3po";
 
+import Mustache from "mustache";
+import ReactMarkdown from "react-markdown";
+
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 
 import {
@@ -437,21 +440,29 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   return value;
 }
 
+const MARKDOWN_RENDERERS = {
+  // eslint-disable-next-line react/display-name
+  link: ({ href, children }) => (
+    <ExternalLink href={href}>{children}</ExternalLink>
+  ),
+};
+
 export function formatValue(value: Value, options: FormattingOptions = {}) {
-  const { prefix = "", suffix = "", jsx } = options;
   const formatted = formatValueRaw(value, options);
-  if (prefix || suffix) {
-    if (jsx && typeof formatted !== "string") {
-      return (
-        <span>
-          {prefix}
-          {formatted}
-          {suffix}
-        </span>
-      );
+  if (options.markdown_template) {
+    if (options.jsx) {
+      // inject the formatted value as "value" and the unformatted value as "raw"
+      const markdown = Mustache.render(options.markdown_template, {
+        value: formatted,
+        raw: value,
+      });
+      return <ReactMarkdown source={markdown} renderers={MARKDOWN_RENDERERS} />;
     } else {
-      // $FlowFixMe: formatted will always be a string if jsx = false but flow doesn't know that
-      return `${prefix}${formatted}${suffix}`;
+      // FIXME: render and get the innerText?
+      console.warn(
+        "formatValue: options.markdown_template not supported when options.jsx = false",
+      );
+      return formatted;
     }
   } else {
     return formatted;
