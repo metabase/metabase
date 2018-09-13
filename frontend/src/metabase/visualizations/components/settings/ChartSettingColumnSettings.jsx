@@ -47,7 +47,7 @@ export default class ChartSettingColumnSettings extends React.Component {
   };
 
   render() {
-    const { columns } = this.props;
+    const { series, columns } = this.props;
     const { editingColumn } = this.state;
 
     if (editingColumn) {
@@ -69,6 +69,7 @@ export default class ChartSettingColumnSettings extends React.Component {
             </div>
           )}
           {getSettingsWidgetsForColumn(
+            series,
             editingColumn,
             columnSettings,
             this.handleChange,

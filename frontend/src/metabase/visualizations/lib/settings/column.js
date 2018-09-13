@@ -5,6 +5,7 @@ import ChartSettingColumnSettings from "metabase/visualizations/components/setti
 
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { getVisualizationRaw } from "metabase/visualizations";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
 
@@ -13,7 +14,6 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
-  getAdditionalSettingsForColumn = () => [],
   ...def
 } = {}) {
   return {
@@ -25,7 +25,6 @@ export function columnSettings({
         series,
         settings,
         columns: getColumns(series, settings),
-        getAdditionalSettingsForColumn,
       }),
       useRawSeries: true,
       ...def,
@@ -40,6 +39,7 @@ export function columnSettings({
           if (!cache.has(key)) {
             cache.set(key, {
               ...getComputedSettingsForColumn(
+                series,
                 column,
                 settings["column_settings"][key] || {},
               ),
@@ -107,10 +107,6 @@ export const DATE_COLUMN_SETTINGS = {
 };
 
 export const NUMBER_COLUMN_SETTINGS = {
-  show_mini_bar: {
-    title: t`Show a mini bar chart`,
-    widget: "toggle",
-  },
   number_style: {
     title: t`Style`,
     widget: "radio",
@@ -195,18 +191,37 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(column) {
+export function getSettingDefintionsForColumn(series, column) {
+  console.log("series", series);
+  const { CardVisualization } = getVisualizationRaw(series);
+  const extraColumnSettings =
+    typeof CardVisualization.columnSettings === "function"
+      ? CardVisualization.columnSettings(column)
+      : CardVisualization.columnSettings || {};
+  console.log("extraColumnSettings", extraColumnSettings);
+
   if (isDate(column)) {
-    return { ...DATE_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...DATE_COLUMN_SETTINGS,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   } else if (isNumber(column)) {
-    return { ...NUMBER_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...NUMBER_COLUMN_SETTINGS,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   } else {
-    return { ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   }
 }
 
-export function getComputedSettingsForColumn(column, storedSettings) {
-  const settingsDefs = getSettingDefintionsForColumn(column);
+export function getComputedSettingsForColumn(series, column, storedSettings) {
+  const settingsDefs = getSettingDefintionsForColumn(series, column);
   const computedSettings = getComputedSettings(
     settingsDefs,
     column,
@@ -217,12 +232,17 @@ export function getComputedSettingsForColumn(column, storedSettings) {
 }
 
 export function getSettingsWidgetsForColumn(
+  series,
   column,
   storedSettings,
   onChangeSettings,
 ) {
-  const settingsDefs = getSettingDefintionsForColumn(column);
-  const computedSettings = getComputedSettingsForColumn(column, storedSettings);
+  const settingsDefs = getSettingDefintionsForColumn(series, column);
+  const computedSettings = getComputedSettingsForColumn(
+    series,
+    column,
+    storedSettings,
+  );
   const widgets = getSettingsWidgets(
     settingsDefs,
     computedSettings,

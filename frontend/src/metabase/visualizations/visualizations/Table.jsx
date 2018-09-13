@@ -9,7 +9,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 
 import Query from "metabase/lib/query";
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { isMetric, isDimension, isNumber } from "metabase/lib/schema_metadata";
 import { columnsAreValid } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
 import ChartSettingsTableFormatting, {
@@ -110,6 +110,16 @@ export default class Table extends Component {
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
   };
+
+  static columnSettings = column =>
+    isNumber(column)
+      ? {
+          show_mini_bar: {
+            title: t`Show a mini bar chart`,
+            widget: "toggle",
+          },
+        }
+      : {};
 
   constructor(props: Props) {
     super(props);
