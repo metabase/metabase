@@ -47,7 +47,10 @@ export type FormattingOptions = {
   locale?: string,
   minimumFractionDigits?: number,
   maximumFractionDigits?: number,
+  // use thousand separators, defualt to false if locale === null
   useGrouping?: boolean,
+  // decimals sets both minimumFractionDigits and maximumFractionDigits
+  decimals?: number,
 };
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
@@ -56,23 +59,41 @@ const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   useGrouping: true,
 };
 
+function getDefaultNumberOptions(options) {
+  const defaults = { ...DEFAULT_NUMBER_OPTIONS };
+
+  // decimals sets the exact number of digits after the decimal place
+  if (typeof options.decimals === "number" && !isNaN(options.decimals)) {
+    defaults.minimumFractionDigits = options.decimals;
+    defaults.maximumFractionDigits = options.decimals;
+  }
+
+  // previously we used locale === null to signify that we should turn off thousand separators
+  if (options.locale === null) {
+    defaults.useGrouping = false;
+  }
+
+  return defaults;
+}
+
 const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
-const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
 const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
 
-const getMonthFormat = options => (options.compact ? "MMM" : "MMMM");
-const getDayFormat = options => (options.compact ? "ddd" : "dddd");
+const getMonthFormat = options =>
+  options.compact || options.date_abbreviate ? "MMM" : "MMMM";
+const getDayFormat = options =>
+  options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
 
 export function formatNumber(number: number, options: FormattingOptions = {}) {
-  options = { ...DEFAULT_NUMBER_OPTIONS, ...options };
+  options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = options.scale * number;
@@ -98,7 +119,10 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       return number.toLocaleString(options.locale, options);
     } catch (e) {
       console.warn("Error calling toLocaleString", e);
-      return String(number);
+      // fall back to old, less capable formatter
+      return FIXED_NUMBER_FORMATTER(
+        d3.round(number, options.maximumFractionDigits),
+      );
     }
   }
 }
@@ -224,6 +248,24 @@ export function formatTimeWithUnit(
     return String(value);
   }
 
+  // only use custom formats for unbucketed dates for now
+  if (options.date_format) {
+    const format = [];
+    if (options.date_abbreviate) {
+      format.push(
+        options.date_format
+          .replace(/\bMMMM\b/g, getMonthFormat(options))
+          .replace(/\bdddd\b/g, getDayFormat(options)),
+      );
+    } else {
+      format.push(options.date_format);
+    }
+    if (options.time_format && options.time_enabled !== false) {
+      format.push(options.time_format);
+    }
+    return m.format(format.join(" "));
+  }
+
   switch (unit) {
     case "hour": // 12 AM - January 1, 2015
       return formatMajorMinor(
@@ -282,7 +324,11 @@ export function formatTimeWithUnit(
     case "quarter-of-year": // January
       return m.format("[Q]Q");
     default:
-      return m.format("LLLL");
+      if (options.show_time === false) {
+        return m.format(options.date_abbreviate ? "ll" : "LL");
+      } else {
+        return m.format(options.date_abbreviate ? "llll" : "LLLL");
+      }
   }
 }
 

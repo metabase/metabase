@@ -1,18 +1,10 @@
-import React from "react";
-
-import { getComputedSettings, getSettingsWidgets } from "../settings";
-
-import {
-  fieldRefForColumn,
-  findColumnForColumnSetting,
-  keyForColumn,
-} from "metabase/lib/dataset";
-
 import { t } from "c-3po";
 
 import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
 
+import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 export const COLUMN_SETTINGS = {
   column_settings: {
@@ -29,15 +21,15 @@ export const COLUMN_SETTINGS = {
   // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
   column: {
     getDefault(series, vizSettings) {
-      const columnSettings = vizSettings["column_settings"];
+      const columnsSettings = vizSettings["column_settings"];
       const cache = new Map();
       return column => {
         const key = keyForColumn(column);
         if (!cache.has(key)) {
-          const columnSettingsWithColumn = columnSettings[key]
-            ? { column, ...columnSettings[key] }
-            : { column };
-          cache.set(key, columnSettingsWithColumn);
+          cache.set(key, {
+            ...getComputedSettingsForColumn(column, columnsSettings[key] || {}),
+            column,
+          });
         }
         return cache.get(key);
       };
@@ -46,44 +38,62 @@ export const COLUMN_SETTINGS = {
   },
 };
 
+import moment from "moment";
+
+const EXAMPLE_DATE = moment("2018-01-07 17:24");
+
+function dateTimeFormatOption(format, description) {
+  return {
+    name:
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    value: format,
+  };
+}
+
 export const DATE_COLUMN_SETTINGS = {
-  date_style: {
+  date_format: {
     title: t`Date style`,
     widget: "radio",
-    getProps: (column, settings) => ({
+    default: "dddd, MMMM D, YYYY",
+    props: {
       options: [
-        { name: t`1/7/18 (month, day, year)`, value: null },
-        { name: t`7/1/18 (day, month, year)`, value: null },
+        dateTimeFormatOption("M/D/YYYY", "month, day, year"),
+        dateTimeFormatOption("D/M/YYYY", "day, month, year"),
+        dateTimeFormatOption("YYYY/M/D", "year, month, day"),
+        dateTimeFormatOption("MMMM D, YYYY"),
+        dateTimeFormatOption("D MMMM YYYY"),
+        dateTimeFormatOption("dddd, MMMM D, YYYY"),
       ],
-    }),
+    },
   },
   date_abbreviate: {
     title: t`Abbreviate names of days and months`,
     widget: "toggle",
     default: false,
   },
-  show_time: {
+  time_enabled: {
     title: t`Show the time`,
     widget: "toggle",
     default: true,
   },
-  time_style: {
-    title: t`Date style`,
+  time_format: {
+    title: t`Time style`,
     widget: "radio",
-    getProps: (column, settings) => ({
+    default: "h:mm A",
+    props: {
       options: [
-        { name: t`5:24 PM (12-hour clock)`, value: null },
-        { name: t`17:24 PM (24-hour clock)`, value: null },
+        dateTimeFormatOption("h:mm A", "12-hour clock"),
+        dateTimeFormatOption("k:mm", "24-hour clock"),
       ],
-    }),
-    getHidden: (column, settings) => !!settings["show_time"],
+    },
+    getHidden: (column, settings) => !settings["time_enabled"],
   },
 };
 
 export const NUMBER_COLUMN_SETTINGS = {
   locale: {
     title: t`Separator style`,
-    widget: "select",
+    widget: "radio",
     props: {
       options: [
         { name: "100000.00", value: null },
@@ -98,6 +108,13 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Number of decimal places`,
     widget: "number",
   },
+  scale: {
+    title: t`Multiply by a number`,
+    widget: "number",
+  },
+};
+
+const COMMON_COLUMN_SETTINGS = {
   prefix: {
     title: t`Add a prefix`,
     widget: "input",
@@ -106,19 +123,15 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Add a suffix`,
     widget: "input",
   },
-  scale: {
-    title: t`Multiply by a number`,
-    widget: "number",
-  },
 };
 
 export function getSettingDefintionsForColumn(column) {
   if (isDate(column)) {
-    return DATE_COLUMN_SETTINGS;
+    return { ...DATE_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
   } else if (isNumber(column)) {
-    return NUMBER_COLUMN_SETTINGS;
+    return { ...NUMBER_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
   } else {
-    return {};
+    return { ...COMMON_COLUMN_SETTINGS };
   }
 }
 

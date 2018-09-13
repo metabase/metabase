@@ -17,21 +17,13 @@ import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-function scalarSettingsToFormatOptions(settings) {
-  const formatOptions = {
-    suffix: settings["scalar.suffix"],
-    prefix: settings["scalar.prefix"],
-    scale: parseFloat(settings["scalar.scale"]),
-    locale: settings["scalar.locale"],
-    useGrouping: !!settings["scalar.locale"],
-    minimumFractionDigits: parseFloat(settings["scalar.decimals"]),
-    maximumFractionDigits: parseFloat(settings["scalar.decimals"]),
-  };
-  // remove null options to allow for defaults
-  return _.pick(
-    formatOptions,
-    v => v != null && v !== "" && (typeof v !== "number" || !isNaN(v)),
-  );
+function getLegacyScalarSettings(settings) {
+  return _.chain(settings)
+    .pairs()
+    .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
+    .map(([key, value]) => [key.replace(/^scalar\./, ""), value])
+    .object()
+    .value();
 }
 
 export default class Scalar extends Component {
@@ -89,36 +81,37 @@ export default class Scalar extends Component {
   }
 
   static settings = {
+    ...COLUMN_SETTINGS,
+    // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
-      title: t`Separator style`,
-      widget: "select",
-      props: {
-        options: [
-          { name: "100000.00", value: null },
-          { name: "100,000.00", value: "en" },
-          { name: "100 000,00", value: "fr" },
-          { name: "100.000,00", value: "de" },
-        ],
-      },
-      default: "en",
+      // title: t`Separator style`,
+      // widget: "select",
+      // props: {
+      //   options: [
+      //     { name: "100000.00", value: null },
+      //     { name: "100,000.00", value: "en" },
+      //     { name: "100 000,00", value: "fr" },
+      //     { name: "100.000,00", value: "de" },
+      //   ],
+      // },
+      // default: "en",
     },
     "scalar.decimals": {
-      title: t`Number of decimal places`,
-      widget: "number",
+      // title: t`Number of decimal places`,
+      // widget: "number",
     },
     "scalar.prefix": {
-      title: t`Add a prefix`,
-      widget: "input",
+      // title: t`Add a prefix`,
+      // widget: "input",
     },
     "scalar.suffix": {
-      title: t`Add a suffix`,
-      widget: "input",
+      // title: t`Add a suffix`,
+      // widget: "input",
     },
     "scalar.scale": {
-      title: t`Multiply by a number`,
-      widget: "number",
+      // title: t`Multiply by a number`,
+      // widget: "number",
     },
-    ...COLUMN_SETTINGS,
   };
 
   render() {
@@ -140,8 +133,8 @@ export default class Scalar extends Component {
     const column = cols[0];
 
     const formatOptions = {
+      ...getLegacyScalarSettings(settings),
       ...settings.column(column),
-      ...scalarSettingsToFormatOptions(settings),
     };
 
     const fullScalarValue = formatValue(value, formatOptions);
