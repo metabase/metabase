@@ -414,7 +414,7 @@ export default class TableInteractiveSummary extends Component {
     );
   };
 
-  tableLowerHeaderRenderer = ({
+  tableHeaderRenderer = ({
     key,
     style,
     columnIndex,
@@ -438,6 +438,7 @@ export default class TableInteractiveSummary extends Component {
     columnSpan,
     displayText
   }: CellRendererProps) => {
+    columnSpan = columnSpan || 1;
     const { sort, onVisualizationClick, visualizationIsClickable } = this.props;
 
     let columnTitle = displayText || (value || value === 0
@@ -449,8 +450,6 @@ export default class TableInteractiveSummary extends Component {
         })
       : column && formatColumn(column));
 
-    if(columnSpan && columnSpan !== 1)
-      style = {...style, width : style.width * columnSpan};
     /*
         if (isPivoted) {
           // if it's a pivot table, the first column is
@@ -516,11 +515,11 @@ export default class TableInteractiveSummary extends Component {
         <Draggable
           axis="x"
           bounds={{ left: RESIZE_HANDLE_WIDTH }}
-          position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+          position={{ x: style.width, y: 0 }}
           onStop={(e, { x }) => {
             // prevent onVisualizationClick from being fired
             e.stopPropagation();
-            this.onColumnResize(columnIndex, x);
+            this.onColumnResize(columnIndex + columnSpan -1, x);
           }}
         >
           <div
@@ -561,6 +560,9 @@ export default class TableInteractiveSummary extends Component {
     }
 
     const headerHeight = HEADER_HEIGHT * columnsHeaders.length;
+
+
+    const groupsForRows = columnsHeaders.map(createArgsForIndexGenerator );
 
     return (
       <ScrollSync>
@@ -604,9 +606,10 @@ export default class TableInteractiveSummary extends Component {
               }
               cellRenderer={props =>
                 props.columnIndex < cols.length
-                  ? this.tableLowerHeaderRenderer(props)
+                  ? this.tableHeaderRenderer(props)
                   : null
               }
+              cellRangeRenderer={buildCellRangeRenderer(buildIndexGenerator({groupsForRows}))}
               onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
               scrollLeft={scrollLeft}
               tabIndex={null}
@@ -646,6 +649,19 @@ export default class TableInteractiveSummary extends Component {
     );
   }
 }
+
+
+const createArgsForIndexGenerator = (cells) => cells.reduce(({acc, shouldIgnoreNulls}, cell, index) =>
+{
+  if(cell){
+    const span = cell.columnSpan || 1;
+    return {acc : set(acc, index, index + span -1), shouldIgnoreNulls : true};
+  }
+  if(shouldIgnoreNulls)
+    return {acc, shouldIgnoreNulls};
+
+  return {acc:set(acc, index, index)};
+} , {acc:{}} ).acc;
 
 const computeWidths = (
   acc: Number[],
