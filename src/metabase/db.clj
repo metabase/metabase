@@ -251,6 +251,21 @@
       (catch Exception e
         (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
 
+(defn- print-migrations-and-quit-if-needed!
+  "If we are not doing auto migrations and there are unrun migrations then print out migration SQL for user to
+  run manually. Then throw an exception to short circuit the setup process and make it clear we can't proceed."
+  [liquibase]
+  (when (has-unrun-migrations? liquibase)
+    println (
+    (let [sql (migrations-sql liquibase)]
+      (log/info (str "Database Upgrade Required\n\n"
+                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                     "Please execute the following sql commands on your database before proceeding.\n\n"
+                     sql
+                     "\n\n"
+                     "Once your database is updated try running the application again.\n"))
+      (throw (java.lang.Exception. "Database requires manual upgrade."))))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
   migrate up`):
@@ -285,7 +300,7 @@
            :up            (migrate-up-if-needed! conn liquibase)
            :force         (force-migrate-up-if-needed! conn liquibase)
            :down-one      (.rollback liquibase 1 "")
-           :print         (println (migrations-sql liquibase))
+           :print         (print-migrations-and-quit-if-needed! liquibase)
            :release-locks (.forceReleaseLocks liquibase))
          ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
          (jdbc/db-unset-rollback-only! conn)
@@ -297,6 +312,9 @@
            ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
            ;; better safe than sorry
            (.rollback (jdbc/get-connection conn))
+           (throw e))
+         ;; If there is migrations to execute then print them
+         (catch Exception e
            (throw e))
          ;; If for any reason any part of the migrations fail then rollback all changes
          (catch Throwable e
@@ -398,19 +416,6 @@
   entries for the \"magic\" groups and permissions entries. "
   false)
 
-(defn- print-migrations-and-quit!
-  "If we are not doing auto migrations then print out migration SQL for user to run manually.
-   Then throw an exception to short circuit the setup process and make it clear we can't proceed."
-  [db-details]
-  (let [sql (migrate! db-details :print)]
-    (log/info (str "Database Upgrade Required\n\n"
-                   "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                   "Please execute the following sql commands on your database before proceeding.\n\n"
-                   sql
-                   "\n\n"
-                   "Once your database is updated try running the application again.\n"))
-    (throw (java.lang.Exception. "Database requires manual upgrade."))))
-
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [auto-migrate? db-details]
@@ -430,7 +435,7 @@
     ;; first place, and launch normally.
     (u/auto-retry 1
       (migrate! db-details :up))
-    (print-migrations-and-quit! db-details))
+    (migrate! db-details :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!
