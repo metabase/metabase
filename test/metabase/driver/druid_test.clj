@@ -128,10 +128,8 @@
 
 (defmacro ^:private druid-query {:style/indent 0} [& body]
   `(tqpt/with-flattened-dbdef
-     (qp/process-query {:database (data/id)
-                        :type     :query
-                        :query    (data/mbql-query ~'checkins
-                                    ~@body)})))
+     (qp/process-query (data/mbql-query ~'checkins
+                         ~@body))))
 
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(rows (druid-query ~@body)))

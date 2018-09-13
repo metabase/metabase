@@ -826,7 +826,7 @@
   (first-row
     (data/run-mbql-query checkins
       {:aggregation [[:count]]
-       :filter      [:not (:not [:contains $venue_name "BBQ"])]})))
+       :filter      [:not [:not [:contains $venue_name "BBQ"]]]})))
 
 ;;; not nested inside and/or
 (expect-with-timeseries-dbs
