@@ -1,4 +1,5 @@
 import { t } from "c-3po";
+import _ from "underscore";
 
 import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
 
@@ -7,37 +8,49 @@ import { isDate, isNumber } from "metabase/lib/schema_metadata";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
 
-export const COLUMN_SETTINGS = {
-  column_settings: {
-    section: t`Formatting`,
-    widget: ChartSettingColumnSettings,
-    getDefault: () => ({}),
-    getProps: (series, vizSettings) => ({
-      series,
-      settings: vizSettings,
-      columns: [].concat(...series.map(s => s.data.cols)),
-    }),
-    useRawSeries: true,
-  },
-  // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
-  column: {
-    getDefault(series, vizSettings) {
-      const columnsSettings = vizSettings["column_settings"];
-      const cache = new Map();
-      return column => {
-        const key = keyForColumn(column);
-        if (!cache.has(key)) {
-          cache.set(key, {
-            ...getComputedSettingsForColumn(column, columnsSettings[key] || {}),
-            column,
-          });
-        }
-        return cache.get(key);
-      };
+const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
+  [].concat(...series.map(s => s.data.cols));
+
+export function columnSettings({
+  getColumns = DEFAULT_GET_COLUMNS,
+  ...def
+} = {}) {
+  return {
+    column_settings: {
+      section: t`Formatting`,
+      widget: ChartSettingColumnSettings,
+      getDefault: () => ({}),
+      getProps: (series, settings) => ({
+        series,
+        settings,
+        columns: getColumns(series, settings),
+      }),
+      useRawSeries: true,
+      ...def,
     },
-    readDependencies: ["column_settings"],
-  },
-};
+    // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
+    column: {
+      getDefault(series, settings) {
+        const columnsSettings = settings["column_settings"];
+        const cache = new Map();
+        return column => {
+          const key = keyForColumn(column);
+          if (!cache.has(key)) {
+            cache.set(key, {
+              ...getComputedSettingsForColumn(
+                column,
+                columnsSettings[key] || {},
+              ),
+              column,
+            });
+          }
+          return cache.get(key);
+        };
+      },
+      readDependencies: ["column_settings"],
+    },
+  };
+}
 
 import moment from "moment";
 
@@ -152,6 +165,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   scale: {
     title: t`Multiply by a number`,
     widget: "number",
+    props: {
+      placeholder: "1",
+    },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
@@ -168,13 +184,12 @@ export const NUMBER_COLUMN_SETTINGS = {
 };
 
 const COMMON_COLUMN_SETTINGS = {
-  prefix: {
-    title: t`Add a prefix`,
+  markdown_template: {
+    title: t`Markdown template`,
     widget: "input",
-  },
-  suffix: {
-    title: t`Add a suffix`,
-    widget: "input",
+    props: {
+      placeholder: "{{value}}",
+    },
   },
 };
 
@@ -190,7 +205,13 @@ export function getSettingDefintionsForColumn(column) {
 
 export function getComputedSettingsForColumn(column, storedSettings) {
   const settingsDefs = getSettingDefintionsForColumn(column);
-  return getComputedSettings(settingsDefs, column, storedSettings);
+  const computedSettings = getComputedSettings(
+    settingsDefs,
+    column,
+    storedSettings,
+  );
+  // remove undefined settings since they override other settings when merging object
+  return _.pick(computedSettings, value => value !== undefined);
 }
 
 export function getSettingsWidgetsForColumm(

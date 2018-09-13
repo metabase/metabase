@@ -13,11 +13,11 @@ import {
   getFriendlyName,
   getChartTypeFromData,
   getColumnCardinality,
-  getOptionFromColumn,
   DIMENSION_DIMENSION_METRIC,
   DIMENSION_METRIC,
   DIMENSION_METRIC_METRIC,
 } from "metabase/visualizations/lib/utils";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
