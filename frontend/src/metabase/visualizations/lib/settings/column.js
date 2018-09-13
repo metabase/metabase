@@ -5,6 +5,7 @@ import ChartSettingColumnSettings from "metabase/visualizations/components/setti
 
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { getVisualizationRaw } from "metabase/visualizations";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
 
@@ -19,7 +20,7 @@ export function columnSettings({
     column_settings: {
       section: t`Formatting`,
       widget: ChartSettingColumnSettings,
-      getDefault: () => ({}),
+      default: {},
       getProps: (series, settings) => ({
         series,
         settings,
@@ -29,17 +30,18 @@ export function columnSettings({
       ...def,
     },
     // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
+    // e.x. formatValue(data.rows[0][0], settings.column(data.cols[0]))
     column: {
       getDefault(series, settings) {
-        const columnsSettings = settings["column_settings"];
         const cache = new Map();
         return column => {
           const key = keyForColumn(column);
           if (!cache.has(key)) {
             cache.set(key, {
               ...getComputedSettingsForColumn(
+                series,
                 column,
-                columnsSettings[key] || {},
+                settings["column_settings"][key] || {},
               ),
               column,
             });
@@ -105,10 +107,6 @@ export const DATE_COLUMN_SETTINGS = {
 };
 
 export const NUMBER_COLUMN_SETTINGS = {
-  show_mini_bar: {
-    title: t`Show a mini bar chart`,
-    widget: "toggle",
-  },
   number_style: {
     title: t`Style`,
     widget: "radio",
@@ -193,18 +191,37 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(column) {
+export function getSettingDefintionsForColumn(series, column) {
+  console.log("series", series);
+  const { CardVisualization } = getVisualizationRaw(series);
+  const extraColumnSettings =
+    typeof CardVisualization.columnSettings === "function"
+      ? CardVisualization.columnSettings(column)
+      : CardVisualization.columnSettings || {};
+  console.log("extraColumnSettings", extraColumnSettings);
+
   if (isDate(column)) {
-    return { ...DATE_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...DATE_COLUMN_SETTINGS,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   } else if (isNumber(column)) {
-    return { ...NUMBER_COLUMN_SETTINGS, ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...NUMBER_COLUMN_SETTINGS,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   } else {
-    return { ...COMMON_COLUMN_SETTINGS };
+    return {
+      ...extraColumnSettings,
+      ...COMMON_COLUMN_SETTINGS,
+    };
   }
 }
 
-export function getComputedSettingsForColumn(column, storedSettings) {
-  const settingsDefs = getSettingDefintionsForColumn(column);
+export function getComputedSettingsForColumn(series, column, storedSettings) {
+  const settingsDefs = getSettingDefintionsForColumn(series, column);
   const computedSettings = getComputedSettings(
     settingsDefs,
     column,
@@ -214,13 +231,18 @@ export function getComputedSettingsForColumn(column, storedSettings) {
   return _.pick(computedSettings, value => value !== undefined);
 }
 
-export function getSettingsWidgetsForColumm(
+export function getSettingsWidgetsForColumn(
+  series,
   column,
   storedSettings,
   onChangeSettings,
 ) {
-  const settingsDefs = getSettingDefintionsForColumn(column);
-  const computedSettings = getComputedSettingsForColumn(column, storedSettings);
+  const settingsDefs = getSettingDefintionsForColumn(series, column);
+  const computedSettings = getComputedSettingsForColumn(
+    series,
+    column,
+    storedSettings,
+  );
   const widgets = getSettingsWidgets(
     settingsDefs,
     computedSettings,

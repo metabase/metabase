@@ -3,7 +3,7 @@ import React from "react";
 import { keyForColumn } from "metabase/lib/dataset";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
-import { getSettingsWidgetsForColumm } from "metabase/visualizations/lib/settings/column";
+import { getSettingsWidgetsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import Icon from "metabase/components/Icon";
 
@@ -47,7 +47,7 @@ export default class ChartSettingColumnSettings extends React.Component {
   };
 
   render() {
-    const { columns } = this.props;
+    const { series, columns } = this.props;
     const { editingColumn } = this.state;
 
     if (editingColumn) {
@@ -68,7 +68,8 @@ export default class ChartSettingColumnSettings extends React.Component {
               </span>
             </div>
           )}
-          {getSettingsWidgetsForColumm(
+          {getSettingsWidgetsForColumn(
+            series,
             editingColumn,
             columnSettings,
             this.handleChange,

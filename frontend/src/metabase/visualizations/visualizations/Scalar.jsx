@@ -90,7 +90,7 @@ export default class Scalar extends Component {
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      title: t`Field to display`,
+      title: t`Field to show`,
       getDefault: ([{ data: { cols } }]) => cols[0].name,
       getHidden: ([{ data: { cols } }]) => cols.length < 2,
     }),
