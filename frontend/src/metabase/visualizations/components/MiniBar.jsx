@@ -75,18 +75,17 @@ const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
           }}
         />
         {/* CENTER LINE */}
-        {/* NOTE: disabled for now, difficult to get line to fill cell height */}
-        {/* {hasNegative && (
+        {hasNegative && (
           <div
             style={{
               position: "absolute",
               left: "50%",
-              top: cellHeight ? -(cellHeight - BAR_HEIGHT) / 2 - 1 : 0,
-              bottom: cellHeight ? -(cellHeight - BAR_HEIGHT) / 2 - 1 : 0,
-              borderLeft: `1px solid ${CELL_BORDER_COLOR}`,
+              top: 0,
+              bottom: 0,
+              borderLeft: `1px solid white`,
             }}
           />
-        )} */}
+        )}
       </div>
     </div>
   );
