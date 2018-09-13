@@ -13,25 +13,27 @@ const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
+  getAdditionalSettingsForColumn = () => [],
   ...def
 } = {}) {
   return {
     column_settings: {
       section: t`Formatting`,
       widget: ChartSettingColumnSettings,
-      getDefault: () => ({}),
+      default: {},
       getProps: (series, settings) => ({
         series,
         settings,
         columns: getColumns(series, settings),
+        getAdditionalSettingsForColumn,
       }),
       useRawSeries: true,
       ...def,
     },
     // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
+    // e.x. formatValue(data.rows[0][0], settings.column(data.cols[0]))
     column: {
       getDefault(series, settings) {
-        const columnsSettings = settings["column_settings"];
         const cache = new Map();
         return column => {
           const key = keyForColumn(column);
@@ -39,7 +41,7 @@ export function columnSettings({
             cache.set(key, {
               ...getComputedSettingsForColumn(
                 column,
-                columnsSettings[key] || {},
+                settings["column_settings"][key] || {},
               ),
               column,
             });
@@ -214,7 +216,7 @@ export function getComputedSettingsForColumn(column, storedSettings) {
   return _.pick(computedSettings, value => value !== undefined);
 }
 
-export function getSettingsWidgetsForColumm(
+export function getSettingsWidgetsForColumn(
   column,
   storedSettings,
   onChangeSettings,
