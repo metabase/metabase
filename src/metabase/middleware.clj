@@ -28,15 +28,6 @@
   [{:keys [^String uri]}]
   (str/starts-with? uri "/api"))
 
-(defn- index?
-  "Is this ring request one that will serve `index.html` or `init.html`?"
-  [{:keys [uri]}]
-  (or (zero? (count uri))
-      (not (or (re-matches #"^/app/.*$" uri)
-               (re-matches #"^/api/.*$" uri)
-               (re-matches #"^/public/.*$" uri)
-               (re-matches #"^/favicon.ico$" uri)))))
-
 (defn- public?
   "Is this ring request one that will serve `public.html`?"
   [{:keys [uri]}]
