@@ -18,6 +18,18 @@ export default class ChartSettingColumnSettings extends React.Component {
     };
   }
 
+  componentWillReceiveProps(nextProps) {
+    // reset editingColumn if there's only one column
+    if (
+      nextProps.columns.length === 1 &&
+      this.state.editingColumn !== nextProps.columns[0]
+    ) {
+      this.setState({
+        editingColumn: nextProps.columns[0],
+      });
+    }
+  }
+
   handleChange = newSettings => {
     const { onChange } = this.props;
     const { editingColumn } = this.state;

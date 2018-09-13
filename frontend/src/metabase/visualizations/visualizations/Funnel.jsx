@@ -13,7 +13,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import {
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/utils";
+} from "metabase/visualizations/lib/settings/utils";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
@@ -62,20 +62,18 @@ export default class Funnel extends Component {
   }
 
   static settings = {
-    "funnel.dimension": {
+    ...dimensionSetting("funnel.dimension", {
       section: t`Data`,
       title: t`Step`,
-      ...dimensionSetting("funnel.dimension"),
       dashboard: false,
       useRawSeries: true,
-    },
-    "funnel.metric": {
+    }),
+    ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("funnel.metric"),
       dashboard: false,
       useRawSeries: true,
-    },
+    }),
     "funnel.type": {
       title: t`Funnel type`,
       section: t`Display`,

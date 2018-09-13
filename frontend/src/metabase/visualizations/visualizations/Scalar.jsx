@@ -10,7 +10,8 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
-import { COLUMN_SETTINGS } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -88,7 +89,17 @@ export default class Scalar extends Component {
   }
 
   static settings = {
-    ...COLUMN_SETTINGS,
+    ...fieldSetting("scalar.field", {
+      title: t`Field to display`,
+      getDefault: ([{ data: { cols } }]) => cols[0].name,
+      getHidden: ([{ data: { cols } }]) => cols.length < 2,
+    }),
+    ...columnSettings({
+      getColumns: ([{ data: { cols } }], settings) => [
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+      ],
+      readDependencies: ["scalar.field"],
+    }),
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
@@ -121,6 +132,14 @@ export default class Scalar extends Component {
     },
   };
 
+  _getColumnIndex(cols, settings) {
+    const columnIndex = _.findIndex(
+      cols,
+      col => col.name === settings["scalar.field"],
+    );
+    return columnIndex < 0 ? 0 : columnIndex;
+  }
+
   render() {
     let {
       series: [{ card, data: { cols, rows } }],
@@ -136,8 +155,9 @@ export default class Scalar extends Component {
 
     let isSmall = gridSize && gridSize.width < 4;
 
-    const value = rows[0] && rows[0][0];
-    const column = cols[0];
+    const columnIndex = this._getColumnIndex(cols, settings);
+    const value = rows[0] && rows[0][columnIndex];
+    const column = cols[columnIndex];
 
     const formatOptions = {
       ...legacyScalarSettingsToFormatOptions(settings),

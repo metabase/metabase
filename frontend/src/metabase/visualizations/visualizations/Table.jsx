@@ -17,7 +17,7 @@ import ChartSettingsTableFormatting, {
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { COLUMN_SETTINGS } from "metabase/visualizations/lib/settings/column";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -57,7 +57,7 @@ export default class Table extends Component {
   }
 
   static settings = {
-    ...COLUMN_SETTINGS,
+    ...columnSettings(),
     "table.pivot": {
       section: t`Data`,
       title: t`Pivot the table`,
