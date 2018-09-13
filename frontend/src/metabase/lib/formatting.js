@@ -92,6 +92,22 @@ const getDayFormat = options =>
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
 
+export function numberFormatterForOptions(options: FormattingOptions) {
+  options = { ...getDefaultNumberOptions(options), ...options };
+  // if we don't provide a locale much of the formatting doens't work
+  return new Intl.NumberFormat(options.locale || "en", {
+    style: options.number_style,
+    currency: options.currency,
+    currencyDisplay: options.currency_style,
+    useGrouping: options.useGrouping,
+    // minimumIntegerDigits: options.minimumIntegerDigits,
+    minimumFractionDigits: options.minimumFractionDigits,
+    maximumFractionDigits: options.maximumFractionDigits,
+    // minimumSignificantDigits: options.minimumSignificantDigits,
+    // maximumSignificantDigits: options.maximumSignificantDigits,
+  });
+}
+
 export function formatNumber(number: number, options: FormattingOptions = {}) {
   options = { ...getDefaultNumberOptions(options), ...options };
 
@@ -100,30 +116,57 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 
   if (options.compact) {
-    if (number === 0) {
-      // 0 => 0
-      return "0";
-    } else if (number >= -0.01 && number <= 0.01) {
-      // 0.01 => ~0
-      return "~ 0";
-    } else if (number > -1 && number < 1) {
-      // 0.1 => 0.1
-      return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
-    } else {
-      // 1 => 1
-      // 1000 => 1K
-      return Humanize.compactInteger(number, 1);
-    }
+    return formatNumberCompact(number);
+  } else if (options.number_style === "scientific") {
+    return formatNumberScientific(number, options);
   } else {
     try {
-      return number.toLocaleString(options.locale, options);
+      // NOTE: options._numberFormatter allows you to provide a predefined
+      // Intl.NumberFormat object for increased performance
+      const nf = options._numberFormatter || numberFormatterForOptions(options);
+      return nf.format(number);
     } catch (e) {
-      console.warn("Error calling toLocaleString", e);
+      console.warn("Error formatting number", e);
       // fall back to old, less capable formatter
+      // NOTE: does not handle things like currency, percent
       return FIXED_NUMBER_FORMATTER(
         d3.round(number, options.maximumFractionDigits),
       );
     }
+  }
+}
+
+function formatNumberScientific(value: number, options: FormattingOptions) {
+  if (options.maximumFractionDigits) {
+    value = d3.round(value, options.maximumFractionDigits);
+  }
+  const exp = value.toExponential(options.minimumFractionDigits);
+  if (options.jsx) {
+    const [m, n] = exp.split("e");
+    return (
+      <span>
+        {m}×10<sup>{n.replace(/^\+/, "")}</sup>
+      </span>
+    );
+  } else {
+    return exp;
+  }
+}
+
+function formatNumberCompact(value: number) {
+  if (value === 0) {
+    // 0 => 0
+    return "0";
+  } else if (value >= -0.01 && value <= 0.01) {
+    // 0.01 => ~0
+    return "~ 0";
+  } else if (value > -1 && value < 1) {
+    // 0.1 => 0.1
+    return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
+  } else {
+    // 1 => 1
+    // 1000 => 1K
+    return Humanize.compactInteger(value, 1);
   }
 }
 

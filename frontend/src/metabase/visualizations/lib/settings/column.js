@@ -5,6 +5,7 @@ import ChartSettingColumnSettings from "metabase/visualizations/components/setti
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber } from "metabase/lib/schema_metadata";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
+import { numberFormatterForOptions } from "metabase/lib/formatting";
 
 export const COLUMN_SETTINGS = {
   column_settings: {
@@ -95,6 +96,42 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Show a mini bar chart`,
     widget: "toggle",
   },
+  number_style: {
+    title: t`Style`,
+    widget: "radio",
+    props: {
+      options: [
+        { name: "Normal", value: "decimal" },
+        { name: "Percent", value: "percent" },
+        { name: "Scientific", value: "scientific" },
+        { name: "Currency", value: "currency" },
+      ],
+    },
+    // TODO: default to currency for fields that are a currency type
+    default: "decimal",
+  },
+  currency: {
+    title: t`Currency`,
+    widget: "select",
+    props: {
+      options: [{ name: "USD", value: "USD" }, { name: "EUR", value: "EUR" }],
+    },
+    default: "USD",
+    getHidden: (column, settings) => settings["number_style"] !== "currency",
+  },
+  currency_style: {
+    title: t`Currency Style`,
+    widget: "radio",
+    props: {
+      options: [
+        { name: "Symbol ($)", value: "symbol" },
+        { name: "Code (USD)", value: "code" },
+        { name: "Name (US dollars)", value: "name" },
+      ],
+    },
+    default: "symbol",
+    getHidden: (column, settings) => settings["number_style"] !== "currency",
+  },
   locale: {
     title: t`Separator style`,
     widget: "radio",
@@ -115,6 +152,18 @@ export const NUMBER_COLUMN_SETTINGS = {
   scale: {
     title: t`Multiply by a number`,
     widget: "number",
+  },
+  // Optimization: build a single NumberFormat object that is used by formatting.js
+  _numberFormatter: {
+    getValue: (column, settings) => numberFormatterForOptions(settings),
+    // NOTE: make sure to include every setting that affects the number formatter here
+    readDependencies: [
+      "number_style",
+      "currency_style",
+      "currency",
+      "locale",
+      "decimals",
+    ],
   },
 };
 

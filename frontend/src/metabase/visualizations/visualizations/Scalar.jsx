@@ -135,6 +135,7 @@ export default class Scalar extends Component {
     const formatOptions = {
       ...getLegacyScalarSettings(settings),
       ...settings.column(column),
+      jsx: true,
     };
 
     const fullScalarValue = formatValue(value, formatOptions);
