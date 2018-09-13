@@ -1,12 +1,14 @@
 import React from "react";
 import { Flex } from "grid-styled";
 import { t, jt } from "c-3po";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber, formatValue } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+
+import { COLUMN_SETTINGS } from "metabase/visualizations/lib/settings/column";
 
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
@@ -16,23 +18,7 @@ export default class Smart extends React.Component {
   static minSize = { width: 3, height: 3 };
 
   static settings = {
-    "scalar.locale": {
-      title: t`Separator style`,
-      widget: "select",
-      props: {
-        options: [
-          { name: "100000.00", value: null },
-          { name: "100,000.00", value: "en" },
-          { name: "100 000,00", value: "fr" },
-          { name: "100.000,00", value: "de" },
-        ],
-      },
-      default: "en",
-    },
-    "scalar.decimals": {
-      title: t`Number of decimal places`,
-      widget: "number",
-    },
+    ...COLUMN_SETTINGS,
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
@@ -48,7 +34,12 @@ export default class Smart extends React.Component {
       this.props.rawSeries &&
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
-    const { isDashboard, card, settings } = this.props;
+    const {
+      isDashboard,
+      settings,
+      series: [{ card, data: { cols } }],
+    } = this.props;
+    const column = cols[1];
 
     let granularity;
     if (Card.isStructured(card)) {
@@ -77,10 +68,6 @@ export default class Smart extends React.Component {
       >{jt`past ${granularity}`}</span>
     );
 
-    const formatOptions = {
-      decimalPlaces: settings["scalar.decimals"],
-    };
-
     return (
       <Flex
         align="center"
@@ -91,7 +78,7 @@ export default class Smart extends React.Component {
         style={{ fontSize: isDashboard ? "1rem" : "2rem", flexWrap: "wrap" }}
       >
         <h1 style={{ fontSize: "2em", fontWeight: 900, lineHeight: 1 }}>
-          {formatNumber(insights["last-value"], formatOptions)}
+          {formatValue(insights["last-value"], settings.column(column))}
         </h1>
         <Flex align="center" mt={1} flexWrap="wrap">
           <h4
@@ -102,9 +89,9 @@ export default class Smart extends React.Component {
               fontSize: isDashboard ? "0.8em" : "0.68em",
             }}
           >
-            {jt`${changeDisplay} (${formatNumber(
+            {jt`${changeDisplay} (${formatValue(
               insights["previous-value"],
-              formatOptions,
+              settings.column(column),
             )} ${granularityDisplay})`}
           </h4>
         </Flex>
