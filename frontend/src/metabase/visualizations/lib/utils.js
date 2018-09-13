@@ -258,6 +258,16 @@ export function getColumnCardinality(cols, rows, index) {
   return cardinalityCache.get(col);
 }
 
+const extentCache = new WeakMap();
+
+export function getColumnExtent(cols, rows, index) {
+  const col = cols[index];
+  if (!extentCache.has(col)) {
+    extentCache.set(col, d3.extent(rows, row => row[index]));
+  }
+  return extentCache.get(col);
+}
+
 export function getChartTypeFromData(cols, rows, strict = true) {
   // this should take precendence for backwards compatibilty
   if (isDimensionMetricMetric(cols, strict)) {

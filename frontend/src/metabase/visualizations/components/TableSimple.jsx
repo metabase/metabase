@@ -3,18 +3,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+
 import styles from "./Table.css";
-import { t } from "c-3po";
+
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import MiniBar from "./MiniBar";
 
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
+import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -158,7 +162,7 @@ export default class TableSimple extends Component {
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {rows[rowIndex].map((cell, columnIndex) => {
+                    {rows[rowIndex].map((value, columnIndex) => {
                       const clicked = getTableCellClickedObject(
                         data,
                         rowIndex,
@@ -168,6 +172,7 @@ export default class TableSimple extends Component {
                       const isClickable =
                         onVisualizationClick &&
                         visualizationIsClickable(clicked);
+                      const columnSettings = settings.column(cols[columnIndex]);
                       return (
                         <td
                           key={columnIndex}
@@ -176,7 +181,7 @@ export default class TableSimple extends Component {
                             backgroundColor:
                               getCellBackgroundColor &&
                               getCellBackgroundColor(
-                                cell,
+                                value,
                                 rowIndex,
                                 cols[columnIndex].name,
                               ),
@@ -202,13 +207,25 @@ export default class TableSimple extends Component {
                                 : undefined
                             }
                           >
-                            {cell == null
-                              ? "-"
-                              : formatValue(cell, {
-                                  ...settings.column(cols[columnIndex]),
-                                  jsx: true,
-                                  rich: true,
-                                })}
+                            {value == null ? (
+                              "-"
+                            ) : columnSettings["show_mini_bar"] ? (
+                              <MiniBar
+                                value={value}
+                                options={columnSettings}
+                                extent={getColumnExtent(
+                                  cols,
+                                  rows,
+                                  columnIndex,
+                                )}
+                              />
+                            ) : (
+                              formatValue(value, {
+                                ...columnSettings,
+                                jsx: true,
+                                rich: true,
+                              })
+                            )}
                           </span>
                         </td>
                       );

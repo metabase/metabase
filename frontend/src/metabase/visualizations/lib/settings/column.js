@@ -91,6 +91,10 @@ export const DATE_COLUMN_SETTINGS = {
 };
 
 export const NUMBER_COLUMN_SETTINGS = {
+  show_mini_bar: {
+    title: t`Show a mini bar chart`,
+    widget: "toggle",
+  },
   locale: {
     title: t`Separator style`,
     widget: "radio",
