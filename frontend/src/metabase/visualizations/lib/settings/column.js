@@ -153,6 +153,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   scale: {
     title: t`Multiply by a number`,
     widget: "number",
+    props: {
+      placeholder: "1",
+    },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
