@@ -117,9 +117,7 @@ export default class SummaryTable extends Component {
 
       const aaaa = buildResultProvider(data, data.totalsData);
       const bbbb = getQueryPlan(summarySettings);
-      //todo: fix 30
       const groupingManager = new GroupingManager(
-        30,
         summarySettings,
         data.cols,
         aaaa,

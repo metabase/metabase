@@ -4,6 +4,7 @@ import flatMap from "lodash.flatmap";
 import unset from "lodash.unset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
+import range from "lodash.range";
 import type {
   AggregationKey,
   QueryPlan,
@@ -24,8 +25,8 @@ type ColumnAcc = {
 
 //todo: change class to function prepareSummaryData
 export class GroupingManager {
-  defaultRowHeight: Number;
-  columnIndexToFirstInGroupIndexes: {};
+  columnIndexToFirstInGroupIndexes: [];
+  totalsRows: [];
   rows: Row[];
   cols;
   probeRows: Row[];
@@ -34,13 +35,11 @@ export class GroupingManager {
   columnsHeaders: any[][] = [];
 
   constructor(
-    defaultRowHeight: Number,
     summaryTableSettings: SummaryTableSettings,
     rawCols,
     rp: ResultProvider,
     qp: QueryPlan,
   ) {
-    this.defaultRowHeight = defaultRowHeight;
 
     const isPivoted = summaryTableSettings.columnsSource.length > 0;
     const columnsIndexesForGrouping = [
@@ -123,7 +122,7 @@ export class GroupingManager {
           acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value);
           return acc;
         },
-        {},
+        [],
       );
       const grColumnsLength = (summaryTableSettings.groupsSources || []).length;
       const grCols = colsTmp.slice(0, grColumnsLength).map((col, i) => ({
@@ -172,7 +171,7 @@ export class GroupingManager {
           acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value);
           return acc;
         },
-        {},
+        [],
       );
       this.columnsHeaders = [
         cols.map((column, i) => ({ columnIndex: i, column, columnSpan: 1 })),
@@ -183,6 +182,12 @@ export class GroupingManager {
       ...cols.map(p => this.rows.find(row => p.getValue(row))).filter(p => p),
     ];
     this.cols = cols;
+
+    const lastGroupIndex = (summaryTableSettings.groupsSources || []).length -1;
+    const valuesRow = range(lastGroupIndex+1, this.cols.length).reduce((acc, val) => set(acc, val,val), {});
+
+    this.totalsRows = this.rows.reduce((acc, row, index) => Number.isInteger(row.isTotalColumnIndex) ?
+      set(acc, index, {[Math.max(row.isTotalColumnIndex-1, 0)]:lastGroupIndex,  __proto__: valuesRow}) : acc,[]);
   }
 
   isVisible = (
@@ -206,23 +211,13 @@ export class GroupingManager {
   mapStyle = (
     rowIndex: Number,
     columnIndex: Number,
-    visibleRowIndices: Range,
     cellStyle: {},
   ): {} => {
     let res = cellStyle;
     if (columnIndex in this.columnIndexToFirstInGroupIndexes) {
       if ("height" in cellStyle) {
-        const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
-        const ri = getFirstRowInGroupIndex(tmp, rowIndex);
-        const endIndex = tmp[ri];
-        // const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
-        const rowSpan = endIndex - ri + 1;
-        const top = cellStyle.top - this.defaultRowHeight * (rowIndex - ri);
-        const height = this.defaultRowHeight * rowSpan;
         res = {
           ...cellStyle,
-          top: top,
-          height: height,
           display: "block",
           "padding-top": ".25em",
         };

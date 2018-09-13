@@ -107,7 +107,7 @@ export default class TableSimpleSummary extends Component {
     let start = pageSize * page;
     let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
-    let rowIndexes = _.range(0, rows.length);
+    let rowIndexes =  _.range(0, rows.length);
     if (sortColumn != null) {
       rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
       if (sortDescending) {

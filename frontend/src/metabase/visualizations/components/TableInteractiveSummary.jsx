@@ -34,6 +34,7 @@ import type { Row, Column } from "metabase/meta/types/Dataset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
+import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_interactive_summary";
 
 type Props = VisualizationProps & {
   width: number,
@@ -195,7 +196,6 @@ export default class TableInteractiveSummary extends Component {
                 probeRow,
                 column,
                 columnIndex,
-                { start: 0, stop: rows.length },
                 "key: " + Math.random(),
                 0,
                 true,
@@ -296,14 +296,13 @@ export default class TableInteractiveSummary extends Component {
   }
 
   cellRenderer = (
-    { visibleRowIndices, visibleColumnIndices, aa }: CellRangeProps,
     { key, style, rowIndex, columnIndex }: CellRendererProps,
   ) => {
     const groupingManager = this.props.data;
 
-    if (!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
-      return null;
-    }
+    // if (!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
+    //   return null;
+    // }
     const { data, onVisualizationClick, visualizationIsClickable } = this.props;
     const { rows, cols } = data;
     const column = cols[columnIndex];
@@ -315,7 +314,6 @@ export default class TableInteractiveSummary extends Component {
       row,
       column,
       columnIndex,
-      visibleRowIndices,
       key,
       rowIndex,
       isGrandTotal,
@@ -329,7 +327,6 @@ export default class TableInteractiveSummary extends Component {
     row,
     column,
     columnIndex,
-    visibleRowIndices,
     key,
     rowIndex,
     isGrandTotal,
@@ -352,14 +349,12 @@ export default class TableInteractiveSummary extends Component {
 
     if (isGrandTotal && columnIndex === 0) formatedRes = "Grand totals";
 
-    let mappedStyle = {
-      ...groupingManager.mapStyle(
+    let mappedStyle = groupingManager.mapStyle(
         rowIndex,
         columnIndex,
-        visibleRowIndices,
         style,
-      ),
-    };
+      );
+
     if (isGrandTotal)
       mappedStyle = {
         ...mappedStyle,
@@ -558,7 +553,7 @@ export default class TableInteractiveSummary extends Component {
     const {
       width,
       height,
-      data: { cols, rows, columnsHeaders },
+      data: { cols, rows, columnsHeaders, columnIndexToFirstInGroupIndexes, totalsRows },
       className,
     } = this.props;
     if (!width || !height) {
@@ -639,13 +634,10 @@ export default class TableInteractiveSummary extends Component {
               scrollLeft={scrollLeft}
               tabIndex={null}
               overscanRowCount={20}
-              cellRenderer={() => {}}
-              cellRangeRenderer={rangeArgs =>
-                defaultCellRangeRenderer({
-                  ...rangeArgs,
-                  cellRenderer: renderArgs =>
-                    this.cellRenderer(rangeArgs, renderArgs),
-                })
+              cellRenderer={this.cellRenderer}
+              cellRangeRenderer={
+                buildCellRangeRenderer(buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: totalsRows}))
+
               }
             />
           </div>
@@ -679,3 +671,5 @@ const computeWidths = (
 
   return acc;
 };
+
+
