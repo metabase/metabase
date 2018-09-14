@@ -192,13 +192,11 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefintionsForColumn(series, column) {
-  console.log("series", series);
   const { CardVisualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof CardVisualization.columnSettings === "function"
       ? CardVisualization.columnSettings(column)
       : CardVisualization.columnSettings || {};
-  console.log("extraColumnSettings", extraColumnSettings);
 
   if (isDate(column)) {
     return {
