@@ -20,6 +20,10 @@ import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
+import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/table_interactive_summary";
+import orderBy from 'lodash.orderby';
+import set from 'lodash.set';
+
 
 type Props = VisualizationProps & {
   height: number,
@@ -77,15 +81,12 @@ export default class TableSimpleSummary extends Component {
           headerHeight
         ).getBoundingClientRect().height
       : 0;
-    let rowHeight =
-      (
-        ReactDOM.findDOMNode(this.refs.firstRow || this.refs.header) ||
-        headerHeight
-      ).getBoundingClientRect().height + 1;
+    let rowHeight = headerHeight/this.props.data.columnsHeaders.length;
     let pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
     );
+
     if (this.state.pageSize !== pageSize) {
       this.setState({ pageSize });
     }
@@ -98,7 +99,7 @@ export default class TableSimpleSummary extends Component {
       visualizationIsClickable,
       isPivoted,
     } = this.props;
-    const { rows, columnsHeaders, cols } = data;
+    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, totalsRows } = data;
 
     const groupingManager = data;
 
@@ -107,13 +108,23 @@ export default class TableSimpleSummary extends Component {
     let start = pageSize * page;
     let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
-    let rowIndexes =  _.range(0, rows.length);
-    if (sortColumn != null) {
-      rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
-      if (sortDescending) {
-        rowIndexes.reverse();
-      }
-    }
+    const indexGenerator = buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: totalsRows});
+    const indexes = indexGenerator({windowColumnStartIndex:0, windowColumnStopIndex: cols.length-1, windowRowStartIndex: start, windowRowStopIndex: end});
+    const trimmedIndexes = indexes.map(({columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex }) =>
+      ({columnStartIndex, columnStopIndex, rowStartIndex : Math.max(rowStartIndex, start), rowStopIndex : Math.min(rowStopIndex, end)})
+    );
+
+    const sortedIndexes = orderBy(trimmedIndexes, ['rowStartIndex', 'columnStartIndex']);
+
+    const groupedIndexes = sortedIndexes.reduce((acc, indexes) => set(acc, indexes.rowStartIndex, [...acc[indexes.rowStartIndex] || [], indexes] ) , [])
+
+    // let rowIndexes =  _.range(0, rows.length);
+    // if (sortColumn != null) {
+    //   rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
+    //   if (sortDescending) {
+    //     rowIndexes.reverse();
+    //   }
+    // }
     const groupingColumnsLen = columnsHeaders[0].findIndex(p => p);
 
     return (
@@ -126,7 +137,6 @@ export default class TableSimpleSummary extends Component {
             <table
               className={cx(
                 styles.Table,
-                styles.TableSimple,
                 "fullscreen-normal-text",
                 "fullscreen-night-text",
               )}
@@ -140,15 +150,17 @@ export default class TableSimpleSummary extends Component {
                         <th
                           key={`header-${rowIndex}-${colIndex}`}
                           className={cx(
+
                             "TableInteractive-headerCellData cellData text-brand-hover",
                             {
                               "TableInteractive-headerCellData--sorted":
                                 sortColumn === colIndex,
                               "text-right": isColumnRightAligned(
                                 isColumnRightAligned(col.column),
-                              ),
+                              )
                             },
                           )}
+                          style = {{ 'padding-left': colIndex === 0 && '2em'}}
                           colSpan={col.columnSpan}
                         >
                           <div className="relative">
@@ -176,46 +188,40 @@ export default class TableSimpleSummary extends Component {
                       );
                     }
                     else if(colIndex < groupingColumnsLen)
-                      return <th/>
+                      return <th key={`header-${colIndex}`}/>
                   })}
                 </tr>)
               }
               </thead>
               <tbody>
-                {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {cols.map((_, columnIndex) => {
-                      if (
-                        groupingManager.isVisible(rowIndex, columnIndex, {
-                          start,
-                          stop: end,
-                        })
-                      ) {
-                        const column = cols[columnIndex];
-                        const row = rows[rowIndex];
+                {groupedIndexes.map((row, i) =>
+                  (<tr key={`row-${i}`}>
+                    {row.map(arg => {
+
+                      const {columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex} =arg;
+                        const column = cols[columnStartIndex];
+                        const row = rows[rowStartIndex];
                         let cell = column.getValue(row);
                         const clicked = getTableCellClickedObject(
                           data,
-                          rowIndex,
-                          columnIndex,
+                          rowStartIndex,
+                          columnStartIndex,
                           isPivoted,
                         );
                         const isClickable =
                           onVisualizationClick &&
                           visualizationIsClickable(clicked);
-                        const rowSpan = groupingManager.getRowSpan(
-                          rowIndex,
-                          columnIndex,
-                          { start, stop: end },
-                        );
+                        const rowSpan = rowStopIndex - rowStartIndex +1;
+                        const colSpan = columnStopIndex - columnStartIndex +1;
+
                         const isGrandTotal = row.isTotalColumnIndex === 0;
-                        if (isGrandTotal && columnIndex === 0)
+                        if (isGrandTotal && columnStartIndex === 0)
                           cell = "Grand totals";
 
                         let mappedStyle = {
                           ...groupingManager.mapStyle(
-                            rowIndex,
-                            columnIndex,
+                            rowStartIndex,
+                            columnStartIndex,
                             { start, stop: end },
                             {},
                           ),
@@ -229,7 +235,7 @@ export default class TableSimpleSummary extends Component {
                           };
                         else if (
                           row.isTotalColumnIndex &&
-                          row.isTotalColumnIndex <= columnIndex + 1
+                          row.isTotalColumnIndex <= columnStartIndex + 1
                         )
                           mappedStyle = {
                             ...mappedStyle,
@@ -245,25 +251,29 @@ export default class TableSimpleSummary extends Component {
                         });
 
                         if (
-                          row.isTotalColumnIndex === columnIndex + 1 &&
+                          row.isTotalColumnIndex === columnStartIndex + 1 &&
                           typeof formatedRes === "string"
                         )
                           formatedRes = "Totals for " + formatedRes;
 
                         const res = (
                           <td
-                            key={rowIndex + "-" + columnIndex}
+                            ref={row.columnStopIndex === cols.length -1 && row.rowStopIndex === rows.length -1 ? "lastCell" : null}
                             style={{
                               ...mappedStyle,
                               whiteSpace: "nowrap",
                               verticalAlign: "top",
+                              'padding-left': columnStartIndex === 0 && '2em'
                             }}
                             className={cx("px1 border-bottom", {
                               "text-right": isColumnRightAligned(
-                                cols[columnIndex],
+                                cols[columnStartIndex],
                               ),
+
                             })}
                             rowSpan={rowSpan}
+                            colSpan={colSpan}
+                            key={createKey(arg)}
                           >
                             <span
                               className={cx({
@@ -272,11 +282,11 @@ export default class TableSimpleSummary extends Component {
                               onClick={
                                 isClickable
                                   ? e => {
-                                      onVisualizationClick({
-                                        ...clicked,
-                                        element: e.currentTarget,
-                                      });
-                                    }
+                                    onVisualizationClick({
+                                      ...clicked,
+                                      element: e.currentTarget,
+                                    });
+                                  }
                                   : undefined
                               }
                             >
@@ -285,10 +295,9 @@ export default class TableSimpleSummary extends Component {
                           </td>
                         );
                         return res;
-                      } else return <td style={{ display: "none" }} />;
-                    })}
-                  </tr>
-                ))}
+                      })}
+                  </tr>)
+                )}
               </tbody>
             </table>
           </div>

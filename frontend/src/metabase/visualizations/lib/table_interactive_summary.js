@@ -94,7 +94,7 @@ export const buildIndexGenerator = ({groupsForColumns = [], groupsForRows = []} 
         .map(arg => resizeCellInRow(arg, columnIndex, groupForRowGetter)));
 };
 
-const createKey = ({rowStartIndex, rowStopIndex, columnStartIndex, columnStopIndex}) =>
+export const createKey = ({rowStartIndex, rowStopIndex, columnStartIndex, columnStopIndex}) =>
   `${rowStartIndex}-${rowStopIndex}-${columnStartIndex}-${columnStopIndex}`;
 
 export const buildCellRangeRenderer = (indexGenerator) => (args) =>{
