@@ -158,7 +158,7 @@ function setAggregationClause(
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
   let breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    let sortId = Query.getFieldTargetId(sort[0]);
+    let sortId = Query.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }
