@@ -5,7 +5,8 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
+             [core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title
+                           encode-base64-json metric-name source-name]]
              [filters :as filters]
              [populate :as populate]]
             [metabase.mbql
@@ -160,7 +161,7 @@
 (defn- unroll-multiseries
   [card]
   (if (and (multiseries? card)
-           (-> card :display mbql.u/normalize-token (= :line)))
+           (-> card :display (= :line)))
     (for [[aggregation label] (map vector
                                    (get-in card [:dataset_query :query :aggregation])
                                    (series-labels card))]

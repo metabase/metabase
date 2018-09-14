@@ -210,8 +210,8 @@
                              flatten-filter-clause
                              (remove (comp in-refinement? collect-field-references)))]
     (if (seq existing-filters)
-      ;; for some reason existing-filters and refinement are more often than not non-normalized for reasons I don't
-      ;; understand.
+      ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
+      ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
       (apply mbql.u/combine-filter-clauses (map (partial normalize/normalize-fragment [:query :filter])
                                                 (cons refinement existing-filters)))
       refinement)))

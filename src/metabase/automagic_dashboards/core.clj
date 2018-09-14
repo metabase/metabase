@@ -221,11 +221,14 @@
   (nil? (get-in card-or-question [:dataset_query :query :aggregation])))
 
 (defn- table-id
-  "For some reason that's not really clear things like the 'Cards' used in this namespace don't have consistent Table ID
-  keys..."
-  [x]
-  (or (:table_id x)
-      (:table-id x)))
+  "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
+  or an ad-hoc query (referred to as a 'question' in this namespace) created with the
+  `metabase.models.query/adhoc-query` function, which has a `:table-id` property."
+  ;; TODO - probably better if we just changed `adhoc-query` to use the same keys as Cards (e.g. `:table_id`) so we
+  ;; didn't need this function, seems like something that would be too easy to forget
+  [card-or-question]
+  (or (:table_id card-or-question)
+      (:table-id card-or-question)))
 
 (defn- source
   [card]
@@ -508,12 +511,12 @@
                                         (-> context :source u/get-id)
                                         (->> context :source u/get-id (str "card__")))}
                  (seq filters)
-                 (assoc :filter (vec
-                                 (cons
-                                  :and
-                                  (map (comp (partial normalize/normalize-fragment [:query :filter])
-                                             :filter)
-                                       filters))))
+                 (assoc :filter (apply
+                                 vector
+                                 :and
+                                 (map (comp (partial normalize/normalize-fragment [:query :filter])
+                                            :filter)
+                                      filters)))
 
                  (seq dimensions)
                  (assoc :breakout dimensions)
@@ -538,8 +541,8 @@
        (every? (partial get dimensions))))
 
 (defn- resolve-overloading
-  "Find the overloaded definition with the highest `score` for which all
-   referenced dimensions have at least one matching field."
+  "Find the overloaded definition with the highest `score` for which all referenced dimensions have at least one
+  matching field."
   [{:keys [dimensions]} definitions]
   (apply merge-with (fn [a b]
                       (case (map (partial has-matches? dimensions) [a b])
@@ -1149,7 +1152,7 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in (-> root :entity) [:dataset_query :query :aggregation])]
+  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

@@ -31,7 +31,7 @@ describe("The Reference Section", () => {
     description: "I did it!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: [["count"]] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const anotherMetricDef = {
@@ -39,7 +39,7 @@ describe("The Reference Section", () => {
     description: "I did it again!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: [["count"]] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const metricCardDef = {
