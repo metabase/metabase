@@ -312,9 +312,6 @@
            ;; better safe than sorry
            (.rollback (jdbc/get-connection conn))
            (throw e))
-         ;; If there is migrations to execute then print them
-         (catch Exception e
-           (throw e))
          ;; If for any reason any part of the migrations fail then rollback all changes
          (catch Throwable e
            ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
