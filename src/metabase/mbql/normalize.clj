@@ -22,7 +22,7 @@
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation

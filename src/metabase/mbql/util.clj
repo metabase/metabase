@@ -49,14 +49,14 @@
     (clause-instances #{:+ :-} ...)"
   {:style/indent 1}
   [k-or-ks x]
-  (let [instances (transient [])]
+  (let [instances (atom [])]
     (walk/postwalk
      (fn [clause]
        (u/prog1 clause
          (when (is-clause? k-or-ks clause)
-           (conj! instances clause))))
+           (swap! instances conj clause))))
      x)
-    (seq (persistent! instances))))
+    (seq @instances)))
 
 (defn replace-clauses
   "Walk a query looking for clauses named by keyword or set of keywords `k-or-ks` and replace them the results of a call
