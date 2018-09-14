@@ -1,6 +1,8 @@
 import React from "react";
 import { Flex } from "grid-styled";
 import { t, jt } from "c-3po";
+import _ from "underscore";
+
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
@@ -8,7 +10,7 @@ import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
-import { COLUMN_SETTINGS } from "metabase/visualizations/lib/settings/column";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
@@ -18,7 +20,11 @@ export default class Smart extends React.Component {
   static minSize = { width: 3, height: 3 };
 
   static settings = {
-    ...COLUMN_SETTINGS,
+    ...columnSettings({
+      getColumns: ([{ data: { cols } }], settings) => [
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
+      ],
+    }),
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
