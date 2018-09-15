@@ -362,7 +362,7 @@
     {:database (data/id)
      :type     :query
      :query    {:source-query {:source-table (data/id :venues)}
-                :breakout     [:field-id [:field-literal "category_id" :type/Integer]]
+                :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
                 :limit        10}}))
 
 ;; Make sure we can filter by string fields

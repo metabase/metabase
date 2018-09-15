@@ -88,6 +88,9 @@
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - I think we actually should move this stuff into a `mbql.helpers` namespace so we can use the util functions
+;; above in the `schema.helpers` namespace instead of duplicating them
+
 (s/defn simplify-compound-filter :- mbql.s/Filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause."
