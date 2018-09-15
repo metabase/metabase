@@ -27,19 +27,19 @@
    0.0
    1.0]
   (tt/with-temp* [Card [{card-id-1 :id}
-                        {:dataset_query {:query {:source_table (data/id :venues)
+                        {:dataset_query {:query {:source-table (data/id :venues)
                                                  :aggregation [:sum [:field-id (data/id :venues :price)]]
                                                  :breakout [[:field-id (data/id :venues :category_id)]]}
                                          :type  :query
                                          :database (data/id)}}]
                   Card [{card-id-2 :id}
-                        {:dataset_query {:query {:source_table (data/id :venues)
+                        {:dataset_query {:query {:source-table (data/id :venues)
                                                  :aggregation [:sum [:field-id (data/id :venues :longitude)]]
                                                  :breakout [[:field-id (data/id :venues :category_id)]]}
                                          :type  :query
                                          :database (data/id)}}]
                   Card [{card-id-3 :id}
-                        {:dataset_query {:query {:source_table (data/id :venues)
+                        {:dataset_query {:query {:source-table (data/id :venues)
                                                  :aggregation [:sum [:field-id (data/id :venues :longitude)]]
                                                  :breakout [[:field-id (data/id :venues :latitude)]]}
                                          :type  :query
@@ -53,22 +53,22 @@
   [& body]
   `(tt/expect-with-temp [Collection [{~'collection-id :id}]
                          Metric     [{~'metric-id-a :id} {:table_id (data/id :venues)
-                                                          :definition {:source_table (data/id :venues)
+                                                          :definition {:source-table (data/id :venues)
                                                                        :aggregation [:sum [:field-id (data/id :venues :price)]]}}]
                          Metric     [{~'metric-id-b :id} {:table_id (data/id :venues)
-                                                          :definition {:source_table (data/id :venues)
+                                                          :definition {:source-table (data/id :venues)
                                                                        :aggregation [:count]}}]
                          Segment    [{~'segment-id-a :id} {:table_id (data/id :venues)
-                                                           :definition {:source_table (data/id :venues)
-                                                                        :filter [:not= [:field-id (data/id :venues :category_id)] nil]}}]
+                                                           :definition {:source-table (data/id :venues)
+                                                                        :filter [:!= [:field-id (data/id :venues :category_id)] nil]}}]
                          Segment    [{~'segment-id-b :id} {:table_id (data/id :venues)
-                                                           :definition {:source_table (data/id :venues)
-                                                                        :filter [:not= [:field-id (data/id :venues :name)] nil]}}]
+                                                           :definition {:source-table (data/id :venues)
+                                                                        :filter [:!= [:field-id (data/id :venues :name)] nil]}}]
                          Card       [{~'card-id-a :id :as ~'card-a}
                                      {:table_id (data/id :venues)
                                       :dataset_query {:type :query
                                                       :database (data/id)
-                                                      :query {:source_table (data/id :venues)
+                                                      :query {:source-table (data/id :venues)
                                                               :aggregation [:sum [:field-id (data/id :venues :price)]]
                                                               :breakout [[:field-id (data/id :venues :category_id)]]}}}]
                          Card       [{~'card-id-b :id :as ~'card-b}
@@ -76,14 +76,14 @@
                                       :collection_id ~'collection-id
                                       :dataset_query {:type :query
                                                       :database (data/id)
-                                                      :query {:source_table (data/id :venues)
+                                                      :query {:source-table (data/id :venues)
                                                               :aggregation [:sum [:field-id (data/id :venues :longitude)]]
                                                               :breakout [[:field-id (data/id :venues :category_id)]]}}}]
                          Card       [{~'card-id-c :id :as ~'card-c}
                                      {:table_id (data/id :venues)
                                       :dataset_query {:type :query
                                                       :database (data/id)
-                                                      :query {:source_table (data/id :venues)
+                                                      :query {:source-table (data/id :venues)
                                                               :aggregation [:sum [:field-id (data/id :venues :longitude)]]
                                                               :breakout [[:field-id (data/id :venues :name)]
                                                                          [:field-id (data/id :venues :latitude)]]}}}]]

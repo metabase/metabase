@@ -90,7 +90,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "aggregation"],
-      ["METRIC", metricId],
+      ["metric", metricId],
     );
   }
 
@@ -98,7 +98,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "filter"],
-      ["AND", ["SEGMENT", segmentId]],
+      ["and", ["segment", segmentId]],
     );
   }
 

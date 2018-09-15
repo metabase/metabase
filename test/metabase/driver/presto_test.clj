@@ -6,13 +6,10 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :as datasets :refer [expect-with-engine]]]
+            [metabase.test.data.datasets :as datasets]
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
 

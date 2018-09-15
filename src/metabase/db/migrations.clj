@@ -317,7 +317,7 @@
     ;; For each Card belonging to that BigQuery database...
     (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
       ;; If the Card isn't native, ignore it
-      (when (= (:type query) "native")
+      (when (= (keyword (:type query)) :native)
         (let [sql (get-in query [:native :query])]
           ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
           (when-not (re-find #"(?i)#(standard|legacy)sql" sql)

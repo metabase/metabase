@@ -1,11 +1,8 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   "Tests for the Query Processor cache."
   (:require [expectations :refer :all]
-            [metabase.query-processor.middleware.add-dimension-projections :refer :all :as add-dim-projections]
             [metabase.query-processor.interface :as i]
-            [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [metabase.query-processor.middleware.expand :as ql]))
+            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections :refer :all]))
 
 (def ^:private col-defaults
   {:description     nil

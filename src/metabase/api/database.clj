@@ -13,6 +13,7 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -21,7 +22,6 @@
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.sync
              [analyze :as analyze]
              [field-values :as sync-field-values]
@@ -97,14 +97,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (when (seq aggregations)
-    (some (fn [[ag-type]]
-            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
-          ;; over list of aggregations
-          (if-not (sequential? (first aggregations))
-            [aggregations]
-            aggregations))))
+  (seq (mbql.u/clause-instances #{:cum-count :cum-sum} aggregations)))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."

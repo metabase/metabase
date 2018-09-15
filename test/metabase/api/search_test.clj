@@ -1,6 +1,7 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]

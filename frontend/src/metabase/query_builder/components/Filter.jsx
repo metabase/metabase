@@ -116,7 +116,7 @@ export const SegmentFilter = ({
 };
 
 const Filter = ({ filter, ...props }: Props) =>
-  filter[0] === "SEGMENT" ? (
+  filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (
     <OperatorFilter filter={filter} {...props} />

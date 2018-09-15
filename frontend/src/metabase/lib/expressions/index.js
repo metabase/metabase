@@ -68,7 +68,7 @@ export function isMetric(expr) {
   return (
     Array.isArray(expr) &&
     expr.length === 2 &&
-    expr[0] === "METRIC" &&
+    expr[0] === "metric" &&
     typeof expr[1] === "number"
   );
 }

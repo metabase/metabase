@@ -2,17 +2,16 @@
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.automagic-dashboards.core :as magic]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows]]]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.driver.mongo :as mongo]
             [metabase.driver.mongo.query-processor :as mongo-qp]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -206,8 +205,8 @@
 (datasets/expect-with-engine :mongo
   [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
   (rows (data/dataset metabase.driver.mongo-test/with-bson-ids
-          (data/run-query birds
-            (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))
+          (data/run-mbql-query birds
+            {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
