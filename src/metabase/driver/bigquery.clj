@@ -178,34 +178,45 @@
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(defn- parse-timestamp-str [s]
-  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-  (or
-   (du/->Timestamp s time/utc)
-   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
-   ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
-   (du/->Timestamp (* (Double/parseDouble s) 1000))))
+(def ^:private ^:dynamic *bigquery-timezone*
+  "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
+  native query, but that change in timezone is not conveyed through the BigQuery API. In most situations
+  `*bigquery-timezone*` will just be UTC. If the user is always changing the timezone via native SQL function
+  invocation, they can set their JVM TZ to the correct timezone, mark `use-jvm-timezone` to `true` and that will bind
+  this dynamic var to the JVM TZ rather than UTC"
+  time/utc)
 
-(def ^:private bigquery-time-format (tformat/formatter "HH:mm:SS" time/utc))
+(defn- parse-timestamp-str [timezone]
+  (fn [s]
+    ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
+    (or
+     (du/->Timestamp s timezone)
+     ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
+     ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
+     (du/->Timestamp (* (Double/parseDouble s) 1000)))))
 
-(defn- parse-bigquery-time [time-string]
-  (->> time-string
-       (tformat/parse bigquery-time-format)
-       tcoerce/to-long
-       Time.))
+(defn- bigquery-time-format [timezone]
+  (tformat/formatter "HH:mm:SS" timezone))
 
-(defn- unparse-bigquery-time [coercible-to-dt]
+(defn- parse-bigquery-time [timezone]
+  (fn [time-string]
+    (->> time-string
+         (tformat/parse (bigquery-time-format timezone))
+         tcoerce/to-long
+         Time.)))
+
+(defn- unparse-bigquery-time [timezone coercible-to-dt]
   (->> coercible-to-dt
        tcoerce/to-date-time
-       (tformat/unparse bigquery-time-format)))
+       (tformat/unparse (bigquery-time-format timezone))))
 
 (def ^:private type->parser
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
-  {"BOOLEAN"   #(Boolean/parseBoolean %)
-   "FLOAT"     #(Double/parseDouble %)
-   "INTEGER"   #(Long/parseLong %)
-   "RECORD"    identity
-   "STRING"    identity
+  {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
+   "FLOAT"     (constantly #(Double/parseDouble %))
+   "INTEGER"   (constantly #(Long/parseLong %))
+   "RECORD"    (constantly identity)
+   "STRING"    (constantly identity)
    "DATE"      parse-timestamp-str
    "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str
@@ -225,8 +236,10 @@
        (post-process-native response (dec timeout-seconds)))
      ;; Otherwise the job *is* complete
      (let [^TableSchema schema (.getSchema response)
-           parsers             (for [^TableFieldSchema field (.getFields schema)]
-                                 (type->parser (.getType field)))
+           parsers             (doall
+                                (for [^TableFieldSchema field (.getFields schema)
+                                      :let [parser-fn (type->parser (.getType field))]]
+                                  (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
                                  (set/rename-keys column {:base-type :base_type}))]
        {:columns (map :name columns)
@@ -394,7 +407,7 @@
 (defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
   [driver {:keys [value]}]
   (->> value
-       unparse-bigquery-time
+       (unparse-bigquery-time *bigquery-timezone*)
        (sqlqp/->honeysql driver)
        hx/->time))
 
@@ -519,17 +532,24 @@
        :table-name table-name
        :mbql?      true})))
 
+(defn- effective-query-timezone [database]
+  (if-let [^java.util.TimeZone jvm-tz (and (get-in database [:details :use-jvm-timezone])
+                                           @du/jvm-timezone)]
+    (time/time-zone-for-id (.getID jvm-tz))
+    time/utc))
+
 (defn- execute-query [{database                                               :database
                        {sql :query, params :params, :keys [table-name mbql?]} :native
                        :as                                                    outer-query}]
-  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
-                                                                     sql))
-        results (process-native* database sql)
-        results (if mbql?
-                  (post-process-mbql table-name results)
-                  (update results :columns (partial map keyword)))]
-    (assoc results :annotate? mbql?)))
+  (binding [*bigquery-timezone* (effective-query-timezone database)]
+    (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                       (unprepare/unprepare (cons sql params))
+                                                                       sql))
+          results (process-native* database sql)
+          results (if mbql?
+                    (post-process-mbql table-name results)
+                    (update results :columns (partial map keyword)))]
+      (assoc results :annotate? mbql?))))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
@@ -579,8 +599,12 @@
                                                  {:name         "auth-code"
                                                   :display-name (tru "Auth Code")
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                                  :required     true}])
-          :execute-query            (u/drop-first-arg execute-query)
+                                                  :required     true}
+                                                 {:name         "use-jvm-timezone"
+                                                  :display-name (tru "Use JVM Time Zone")
+                                                  :default      "false"
+                                                  :type         :boolean}])
+          :execute-query            (u/drop-first-arg #'execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins
           ;; are still allowed, which puts us in a weird position, however; people can manually specifiy "foreign key"
           ;; relationships in admin and everything should work correctly. Since we can't infer any "FK" relationships

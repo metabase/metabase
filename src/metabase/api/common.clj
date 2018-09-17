@@ -437,12 +437,12 @@
                           (finally
                             (async/close! error-chan))))]
     (async/go-loop []
-      (let [[response-or-timeout c] (async/alts!! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
+      (let [[response-or-timeout c] (async/alts! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
         (if response-or-timeout
           ;; We have a response since it's non-nil, write the results and close, we're done
           (do
             ;; If output-chan is closed, it's already too late, nothing else we need to do
-            (async/>!! output-chan response-or-timeout)
+            (async/>! output-chan response-or-timeout)
             (async/close! output-chan))
           (do
             ;; We don't have a result yet, but enough time has passed, let's assume it's not an error
@@ -451,7 +451,7 @@
             ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
             ;; no-ops when reading JSON which this depends upon.
             (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
-            (if (async/>!! output-chan \newline)
+            (if (async/>! output-chan \newline)
               ;; Success put the channel, wait and see if we get the response next time
               (recur)
               ;; The channel is closed, client has given up, we should give up too

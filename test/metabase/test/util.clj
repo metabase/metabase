@@ -36,6 +36,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
   (:import com.mchange.v2.c3p0.PooledDataSource
@@ -111,7 +112,7 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login}
+                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
                          #(.endsWith (name %) "_id")))
     data))
   ([pred data]
@@ -518,7 +519,8 @@
       (DateTimeZone/setDefault dtz)
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
-      (f)
+      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
+        (f))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures
