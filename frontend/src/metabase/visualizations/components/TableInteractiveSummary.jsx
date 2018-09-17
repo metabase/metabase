@@ -164,7 +164,7 @@ export default class TableInteractiveSummary extends Component {
 
   _measure = () => {
     let {
-      data: { cols, rows, probeRows, probeCols, valueColsLen, columnsHeaders },
+      data: { cols, probeRows, probeCols, valueColsLen, columnsHeaders },
     } = this.props;
     //todo: benchmark it
     probeCols = cols;
@@ -185,14 +185,13 @@ export default class TableInteractiveSummary extends Component {
             {this.renderHeader({ style: {}, value, column, columnIndex: 0 })}
           </div>
         ))}
-        {probeCols.map((column, columnIndex) => (
-          <div
-            className="fake-column"
-            title={columnIndex + "-" + 1}
-            key={Math.random()}
-          >
-            {probeRows.map(probeRow =>
-              this.renderCell(
+        {probeCols.map((column, columnIndex) => probeRows.map(probeRow =>
+          (<div
+                className="fake-column"
+                title={columnIndex + "-" + (probeRow.colSpan || 1)}
+                key={Math.random()}
+              >
+              {this.renderCell(
                 probeRow,
                 column,
                 columnIndex,
@@ -200,9 +199,11 @@ export default class TableInteractiveSummary extends Component {
                 0,
                 true,
                 {},
-              ),
-            )}
-          </div>
+              )}
+
+              </div>)))
+                }
+
         ))}
       </div>,
       this._div,
@@ -221,11 +222,14 @@ export default class TableInteractiveSummary extends Component {
           },
         );
 
+        console.log(contentWidths, '***************');
+
         contentWidths = orderBy(contentWidths, [
           "columnSpan",
           "columnIndex",
         ]).reduce(computeWidths, []);
 
+        console.log(contentWidths, '--------------')
         const diff = cols.length - probeCols.length;
         if (diff > 0) {
           const toDuplicate = contentWidths.slice(
