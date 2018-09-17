@@ -51,7 +51,7 @@ function onRenderEnableDots(chart) {
 
   // if any settings are auto, determine the correct auto setting
   let enableDotsAuto;
-  const hasAuto = _.any(markerEnabledByIndex => markerEnabledByIndex == null);
+  const hasAuto = _.any(markerEnabledByIndex, enabled => enabled == null);
   if (hasAuto) {
     // get all enabled or auto dots
     const dots = [].concat(
@@ -59,7 +59,7 @@ function onRenderEnableDots(chart) {
         (markerEnabled, index) =>
           markerEnabled === false
             ? []
-            : chart.svg().select(`.sub._${index} .dc-tooltip .dot`)[0],
+            : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
       ),
     );
     if (dots.length > 500) {
