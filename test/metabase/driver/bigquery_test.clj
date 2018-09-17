@@ -177,9 +177,9 @@
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
-        {:native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)
-                    :type  :native}
-         :database (u/get-id db-or-db-id)})
+        {:database (u/get-id db-or-db-id)
+         :type     :native
+         :native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
       :data
       :rows
       ffirst))
