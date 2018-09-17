@@ -1,6 +1,5 @@
 (ns metabase.driver.bigquery
-  (:require [cheshire.core :as json]
-            [clj-time
+  (:require [clj-time
              [coerce :as tcoerce]
              [core :as time]
              [format :as tformat]]
@@ -446,16 +445,11 @@
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
-  ;; TODO - Making a DB call for each field to fetch its dataset is inefficient and makes me cry, but this method is
+  ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
   [{table-id :table_id, :as field}]
-  ;; manually write the query here to save us from having to do 2 seperate queries...
-  (let [[{:keys [details table-name]}] (db/query {:select    [[:database.details :details] [:table.name :table-name]]
-                                                  :from      [[:metabase_table :table]]
-                                                  :left-join [[:metabase_database :database]
-                                                              [:= :database.id :table.db_id]]
-                                                  :where     [:= :table.id (u/get-id table-id)]})
-        details (json/parse-string (u/jdbc-clob->str details) keyword)]
+  (let [{table-name :name, database-id :db_id} (db/select-one ['Table :name :db_id], :id (u/get-id table-id))
+        details                                (db/select-one-field :details 'Database, :id (u/get-id database-id))]
     (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
 
 (defn- field->breakout-identifier [driver field]
