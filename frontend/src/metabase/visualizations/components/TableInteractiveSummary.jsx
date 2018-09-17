@@ -222,14 +222,11 @@ export default class TableInteractiveSummary extends Component {
           },
         );
 
-        console.log(contentWidths, '***************');
-
         contentWidths = orderBy(contentWidths, [
           "columnSpan",
           "columnIndex",
         ]).reduce(computeWidths, []);
 
-        console.log(contentWidths, '--------------')
         const diff = cols.length - probeCols.length;
         if (diff > 0) {
           const toDuplicate = contentWidths.slice(
