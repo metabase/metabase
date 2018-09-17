@@ -1,6 +1,6 @@
 ## Authenticating with SAML
 
-**This is a paid feature of Metabase.** To find out more, visit the [Metabase Store](https://store.metabase.com/).
+**This feature is available in [Metabase Enterprise Edition](https://store.metabase.com).**
 
 Connecting Metabase to your SAML identity provider lets your team access Metabase with ease through SSO.
 
@@ -9,7 +9,7 @@ First, head over to the Settings section of the Admin Panel, then click on the A
 
 ![SAML form](images/saml-form.png)
 
-Click the toggle at the top of the form to enable SAML authentication, then fill in the form with the information about your identity provider.
+Click the toggle at the top of the form to enable SAML authentication, then fill in the form with the information about your identity provider. **Make sure to turn this on**, otherwise SAML-based authentication won't work, even if all of your settings are right.
 
 Here's a breakdown of each of the settings:
 
