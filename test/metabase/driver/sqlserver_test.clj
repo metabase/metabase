@@ -6,7 +6,7 @@
              [sqlserver :as sqlserver]]
             [metabase.test
              [data :as data]
-             [util :refer [obj->json->obj] :as tu]]
+             [util :as tu :refer [obj->json->obj]]]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]))
@@ -26,7 +26,7 @@
 (expect-with-engine :sqlserver
   [[1 a-gene]]
   (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
-        (data/run-query genetic-data))
+        (data/run-mbql-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
 ;;; Test that additional connection string options work (#5296)

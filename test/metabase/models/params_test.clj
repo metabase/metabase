@@ -75,7 +75,7 @@
                             {:database (data/id)
                              :type     :native
                              :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                        :template_tags {:name {:name         :name
+                                        :template-tags {:name {:name         :name
                                                                :display_name "Name"
                                                                :type         :dimension
                                                                :dimension    [:field-id (data/id :venues :id)]}}}}}]

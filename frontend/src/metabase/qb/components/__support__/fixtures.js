@@ -58,7 +58,7 @@ export const card = {
   dataset_query: {
     type: "query",
     query: {
-      source_table: 10,
+      "source-table": 10,
     },
   },
 };
@@ -77,7 +77,7 @@ export const savedCard = {
   dataset_query: {
     type: "query",
     query: {
-      source_table: 10,
+      "source-table": 10,
     },
   },
 };

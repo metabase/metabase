@@ -32,7 +32,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   type: "native",
   native: {
     query: "",
-    template_tags: {},
+    "template-tags": {},
   },
 };
 
@@ -141,7 +141,7 @@ export default class NativeQuery extends AtomicQuery {
       chain(this._datasetQuery)
         .assocIn(["native", "query"], newQueryText)
         .assocIn(
-          ["native", "template_tags"],
+          ["native", "template-tags"],
           this._getUpdatedTemplateTags(newQueryText),
         )
         .value(),
@@ -208,7 +208,7 @@ export default class NativeQuery extends AtomicQuery {
     return Object.values(this.templateTagsMap());
   }
   templateTagsMap(): TemplateTags {
-    return getIn(this.datasetQuery(), ["native", "template_tags"]) || {};
+    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {

@@ -117,7 +117,7 @@ describe("QueryBuilder", () => {
             database: 1,
             type: "query",
             query: {
-              source_table: 1,
+              "source-table": 1,
               breakout: [["binning-strategy", ["field-id", 6], "num-bins", 50]],
               aggregation: [["count"]],
             },
@@ -169,7 +169,7 @@ describe("QueryBuilder", () => {
             database: 1,
             type: "query",
             query: {
-              source_table: 1,
+              "source-table": 1,
               breakout: [["fk->", 7, 19]],
               aggregation: [["count"]],
             },
@@ -222,7 +222,7 @@ describe("QueryBuilder", () => {
             database: 1,
             type: "query",
             query: {
-              source_table: 1,
+              "source-table": 1,
               breakout: [["binning-strategy", ["fk->", 7, 14], "default"]],
               aggregation: [["count"]],
             },

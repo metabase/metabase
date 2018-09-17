@@ -455,7 +455,7 @@ export default class TableInteractive extends Component {
     // the column id is in `["field-id", fieldId]` format
     const isSorted =
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
-    const isAscending = sort && sort[0] && sort[0][1] === "ascending";
+    const isAscending = sort && sort[0] && sort[0][0] === "asc";
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */

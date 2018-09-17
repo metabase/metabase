@@ -47,7 +47,7 @@ export function isCardDirty(card, originalCard) {
   if (!card) {
     return false;
   } else if (!card.id) {
-    if (card.dataset_query.query && card.dataset_query.query.source_table) {
+    if (card.dataset_query.query && card.dataset_query.query["source-table"]) {
       return true;
     } else if (
       card.dataset_query.native &&

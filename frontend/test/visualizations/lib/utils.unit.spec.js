@@ -13,7 +13,7 @@ const baseQuery = {
   database: 1,
   type: "query",
   query: {
-    source_table: 2,
+    "source-table": 2,
     aggregation: [["count"]],
     breakout: [["field-id", 2]],
   },

@@ -23,11 +23,11 @@
 (expect
   {"Card that should get directive"
    {:database true
-    :type     "native"
+    :type     :native
     :native   {:query "#legacySQL\nSELECT * FROM [dataset.table];"}}
    "Card that already has directive"
    {:database true
-    :type     "native"
+    :type     :native
     :native   {:query "#standardSQL\nSELECT * FROM `dataset.table`;"}}}
   ;; Create a BigQuery database with 2 SQL Cards, one that already has a directive and one that doesn't.
   (tt/with-temp* [Database [database {:engine "bigquery"}]

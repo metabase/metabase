@@ -29,8 +29,8 @@ function getDefaultQuestionForTable(table) {
           database: table.db_id,
           type: "query",
           query: {
-            source_table: table.id,
-            aggregation: [["METRIC", "ga:users"], ["METRIC", "ga:pageviews"]],
+            "source-table": table.id,
+            aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
             breakout: [
               ["datetime-field", ["field-id", dateField.id], "as", "week"],
             ],
