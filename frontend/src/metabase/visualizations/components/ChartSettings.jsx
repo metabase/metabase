@@ -124,7 +124,7 @@ class ChartSettings extends Component {
         )}
         <div className="full-height relative">
           <div className="Grid spread">
-            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
               {widgets &&
                 widgets.map(widget => (
                   <ChartSettingsWidget

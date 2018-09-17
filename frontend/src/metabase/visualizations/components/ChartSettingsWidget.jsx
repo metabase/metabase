@@ -6,29 +6,35 @@ const ChartSettingsWidget = ({
   title,
   hidden,
   disabled,
-  widget,
+  widget: Widget,
   value,
   onChange,
   props,
+  // disables X padding for certain widgets so divider line extends to edge
+  noPadding,
   // NOTE: special props to support adding additional fields
   question,
   addField,
-}) => {
-  const W = widget;
-  return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
-      {title && <h4 className="mb1">{title}</h4>}
-      {W && (
-        <W
-          value={value}
-          onChange={onChange}
-          question={question}
-          addField={addField}
-          {...props}
-        />
-      )}
-    </div>
-  );
-};
+}) => (
+  <div
+    className={cx({
+      mb2: !hidden,
+      hide: hidden,
+      disable: disabled,
+      mx4: !noPadding,
+    })}
+  >
+    {title && <h4 className="mb1">{title}</h4>}
+    {Widget && (
+      <Widget
+        value={value}
+        onChange={onChange}
+        question={question}
+        addField={addField}
+        {...props}
+      />
+    )}
+  </div>
+);
 
 export default ChartSettingsWidget;

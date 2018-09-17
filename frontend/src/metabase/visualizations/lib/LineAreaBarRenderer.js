@@ -29,6 +29,8 @@ import { setupTooltips } from "./apply_tooltips";
 
 import fillMissingValuesInDatas from "./fill_data";
 
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+
 import {
   HACK_parseTimestamp,
   NULL_DIMENSION_WARNING,
@@ -253,9 +255,23 @@ function getYAxisSplit(
   datas,
   yExtents,
 ) {
+  const seriesAxis = series.map(single => settings.series(single)["axis"]);
+  const left = [];
+  const right = [];
+  const auto = [];
+  for (const [index, axis] of seriesAxis.entries()) {
+    if (axis === "left") {
+      left.push(index);
+    } else if (axis === "right") {
+      right.push(index);
+    } else {
+      auto.push(index);
+    }
+  }
+
   // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
   const hasDifferentYAxisColumns =
-    _.uniq(series.map(s => s.data.cols[1])).length > 1;
+    _.uniq(series.map(s => JSON.stringify(s.data.cols[1]))).length > 1;
   if (
     !isScalarSeries &&
     chartType !== "scatter" &&
@@ -263,9 +279,21 @@ function getYAxisSplit(
     hasDifferentYAxisColumns &&
     settings["graph.y_axis.auto_split"] !== false
   ) {
-    return computeSplit(yExtents);
+    // NOTE: this version computes the split after assigning fixed left/right
+    // which causes other series to move around when changing the setting
+    // return computeSplit(yExtents, left, right);
+
+    // NOTE: this version computes a split with all axis unassigned, then moves
+    // assigned ones to their correct axis
+    const [autoLeft, autoRight] = computeSplit(yExtents);
+    return [
+      _.uniq([...left, ...autoLeft.filter(index => !seriesAxis[index])]),
+      _.uniq([...right, ...autoRight.filter(index => !seriesAxis[index])]),
+    ];
+  } else {
+    // assign all auto to the left
+    return [[...left, ...auto], right];
   }
-  return [series.map((s, i) => i)];
 }
 
 function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
@@ -350,11 +378,15 @@ function getDcjsChart(cardType, parent) {
   }
 }
 
-function applyChartLineBarSettings(chart, settings, chartType) {
+function applyChartLineBarSettings(chart, settings, chartType, seriesSettings) {
   // LINE/AREA:
   // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
   if (chart.interpolate) {
-    chart.interpolate(settings["line.interpolate"] || DEFAULT_INTERPOLATION);
+    chart.interpolate(
+      seriesSettings["line.interpolate"] ||
+        settings["line.interpolate"] ||
+        DEFAULT_INTERPOLATION,
+    );
   }
 
   // AREA:
@@ -394,23 +426,25 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
 
 /// set the colors for a CHART based on the number of series and type of chart
 /// see http://dc-js.github.io/dc.js/docs/html/dc.colorMixin.html
-function setChartColor({ settings, chartType }, chart, groups, index) {
+function setChartColor({ series, settings, chartType }, chart, groups, index) {
   const group = groups[index];
-  const colors = settings["graph.colors"];
+  const colorsByKey = settings["series_settings.colors"] || {};
+  const key = keyForSingleSeries(series[index]);
+  const color = colorsByKey[key] || "black";
 
   // multiple series
   if (groups.length > 1 || chartType === "scatter") {
     // multiple stacks
     if (group.length > 1) {
       // compute shades of the assigned color
-      chart.ordinalColors(
-        colorShades(colors[index % colors.length], group.length),
-      );
+      chart.ordinalColors(colorShades(color, group.length));
     } else {
-      chart.colors(colors[index % colors.length]);
+      chart.colors(color);
     }
   } else {
-    chart.ordinalColors(colors);
+    chart.ordinalColors(
+      series.map(single => colorsByKey[keyForSingleSeries(single)]),
+    );
   }
 }
 
@@ -428,7 +462,10 @@ function getCharts(
   const { yAxisSplit } = yAxisProps;
 
   return groups.map((group, index) => {
-    const chart = getDcjsChart(chartType, parent);
+    const seriesSettings = settings.series(series[index]);
+    const seriesChartType = seriesSettings.display || chartType;
+
+    const chart = getDcjsChart(seriesChartType, parent);
 
     if (enableBrush(series, onChangeCardAndRun)) {
       initBrush(parent, chart, onBrushChange, onBrushEnd);
@@ -459,7 +496,7 @@ function getCharts(
       chart.stack(group[i]);
     }
 
-    applyChartLineBarSettings(chart, settings, chartType);
+    applyChartLineBarSettings(chart, settings, seriesChartType, seriesSettings);
 
     return chart;
   });
@@ -643,6 +680,7 @@ export default function lineAreaBar(
   initChart(parent, element);
 
   parent.settings = settings;
+  parent.series = props.series;
 
   const brushChangeFunctions = makeBrushChangeFunctions(props);
 

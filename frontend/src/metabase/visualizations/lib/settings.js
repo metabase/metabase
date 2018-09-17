@@ -6,6 +6,7 @@ import ChartSettingInputNumeric from "metabase/visualizations/components/setting
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
+import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup.jsx";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
@@ -62,6 +63,7 @@ const WIDGETS = {
   radio: ChartSettingRadio,
   select: ChartSettingSelect,
   toggle: ChartSettingToggle,
+  buttonGroup: ChartSettingButtonGroup,
   field: ChartSettingFieldPicker,
   fields: ChartSettingFieldsPicker,
   color: ChartSettingColorPicker,
@@ -72,6 +74,7 @@ export function getComputedSettings(
   settingsDefs: SettingDefs,
   object: any,
   storedSettings: Settings,
+  extra?: { [key: string]: any } = {},
 ) {
   const computedSettings = {};
   for (let settingId in settingsDefs) {
@@ -81,6 +84,7 @@ export function getComputedSettings(
       settingId,
       object,
       storedSettings,
+      extra,
     );
   }
   return computedSettings;
@@ -92,6 +96,7 @@ function getComputedSetting(
   settingId: SettingId,
   object: any,
   storedSettings: Settings,
+  extra?: { [key: string]: any } = {},
 ): any {
   if (settingId in computedSettings) {
     return;
@@ -104,8 +109,9 @@ function getComputedSetting(
       computedSettings,
       settingDefs,
       dependentId,
-      storedSettings,
       object,
+      storedSettings,
+      extra,
     );
   }
 
@@ -113,22 +119,25 @@ function getComputedSetting(
     object = object._raw;
   }
 
+  const settings = { ...storedSettings, ...computedSettings };
+
   try {
     if (settingDef.getValue) {
       return (computedSettings[settingId] = settingDef.getValue(
         object,
-        computedSettings,
+        settings,
+        extra,
       ));
     }
 
     if (storedSettings[settingId] !== undefined) {
-      if (!settingDef.isValid || settingDef.isValid(object, computedSettings)) {
+      if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
         return (computedSettings[settingId] = storedSettings[settingId]);
       }
     }
 
     if (settingDef.getDefault) {
-      const defaultValue = settingDef.getDefault(object, computedSettings);
+      const defaultValue = settingDef.getDefault(object, settings, extra);
 
       return (computedSettings[settingId] = defaultValue);
     }
@@ -148,6 +157,7 @@ function getSettingWidget(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
+  extra?: { [key: string]: any } = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
   const value = settings[settingId];
@@ -166,18 +176,18 @@ function getSettingWidget(
     id: settingId,
     value: value,
     title: settingDef.getTitle
-      ? settingDef.getTitle(object, settings)
+      ? settingDef.getTitle(object, settings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(object, settings)
+      ? settingDef.getHidden(object, settings, extra)
       : false,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(object, settings)
+      ? settingDef.getDisabled(object, settings, extra)
       : false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, settings, onChange)
+        ? settingDef.getProps(object, settings, onChange, extra)
         : {}),
     },
     widget:
@@ -193,6 +203,7 @@ export function getSettingsWidgets(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
+  extra?: { [key: string]: any } = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
@@ -203,6 +214,7 @@ export function getSettingsWidgets(
         settings,
         object,
         onChangeSettings,
+        extra,
       ),
     )
     .filter(widget => widget.widget && !widget.hidden);

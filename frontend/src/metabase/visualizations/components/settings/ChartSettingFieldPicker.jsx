@@ -5,8 +5,14 @@ import cx from "classnames";
 
 import ChartSettingSelect from "./ChartSettingSelect.jsx";
 
-const ChartSettingFieldPicker = ({ value, options, onChange, onRemove }) => (
-  <div className="flex align-center">
+const ChartSettingFieldPicker = ({
+  value,
+  options,
+  onChange,
+  onRemove,
+  className,
+}) => (
+  <div className={cx(className, "flex align-center")}>
     <ChartSettingSelect
       value={value}
       options={options}

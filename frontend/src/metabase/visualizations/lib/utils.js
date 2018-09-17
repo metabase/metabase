@@ -72,10 +72,10 @@ function generateSplits(list, left = [], right = []) {
   }
 }
 
-function cost(seriesExtents) {
+function axisCost(seriesExtents, favorUnsplit = true) {
   let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
   let axisRange = axisExtent[1] - axisExtent[0];
-  if (seriesExtents.length === 0) {
+  if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
     return 0;
@@ -92,19 +92,35 @@ function cost(seriesExtents) {
   }
 }
 
-export function computeSplit(extents) {
+export function computeSplit(extents, left = [], right = []) {
+  const unassigned = extents
+    .map((e, i) => i)
+    .filter(i => left.indexOf(i) < 0 && right.indexOf(i) < 0);
+
+  // if any are assigned to right we have decided to split so don't favor unsplit
+  const favorUnsplit = right.length > 0;
+
+  const cost = split =>
+    axisCost(split[0].map(i => extents[i]), favorUnsplit) +
+    axisCost(split[1].map(i => extents[i]), favorUnsplit);
+
+  const splits = generateSplits(unassigned, left, right);
+
   let best, bestCost;
-  let splits = generateSplits(extents.map((e, i) => i)).map(split => [
-    split,
-    cost(split[0].map(i => extents[i])) + cost(split[1].map(i => extents[i])),
-  ]);
-  for (let [split, splitCost] of splits) {
+  for (const split of splits) {
+    const splitCost = cost(split);
     if (!best || splitCost < bestCost) {
       best = split;
       bestCost = splitCost;
     }
   }
-  return best && best.sort((a, b) => a[0] - b[0]);
+
+  // don't sort if we provided an initial left/right
+  if (left.length > 0 || right.length > 0) {
+    return best;
+  } else {
+    return best && best.sort((a, b) => a[0] - b[0]);
+  }
 }
 
 const FRIENDLY_NAME_MAP = {

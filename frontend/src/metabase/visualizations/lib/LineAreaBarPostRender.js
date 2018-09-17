@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import d3 from "d3";
+import _ from "underscore";
 
 import colors from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
@@ -44,41 +45,60 @@ const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
 function onRenderEnableDots(chart) {
-  let enableDots;
-  const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-  if (chart.settings["line.marker_enabled"] != null) {
-    enableDots = !!chart.settings["line.marker_enabled"];
-  } else if (dots.length > 500) {
-    // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
-    enableDots = false;
-  } else {
-    const vertices = dots.map((e, index) => {
-      let rect = e.getBoundingClientRect();
-      return [rect.left, rect.top, index];
-    });
-    const overlappedIndex = {};
-    // essentially pairs of vertices closest to each other
-    for (let { source, target } of d3.geom.voronoi().links(vertices)) {
-      if (
-        Math.sqrt(
-          Math.pow(source[0] - target[0], 2) +
-            Math.pow(source[1] - target[1], 2),
-        ) < DOT_OVERLAP_DISTANCE
-      ) {
-        // if they overlap, mark both as overlapped
-        overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+  const markerEnabledByIndex = chart.series.map(
+    single => chart.settings.series(single)["line.marker_enabled"],
+  );
+
+  // if any settings are auto, determine the correct auto setting
+  let enableDotsAuto;
+  const hasAuto = _.any(markerEnabledByIndex => markerEnabledByIndex == null);
+  if (hasAuto) {
+    // get all enabled or auto dots
+    const dots = [].concat(
+      ...markerEnabledByIndex.map(
+        (markerEnabled, index) =>
+          markerEnabled === false
+            ? []
+            : chart.svg().select(`.sub._${index} .dc-tooltip .dot`)[0],
+      ),
+    );
+    if (dots.length > 500) {
+      // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+      enableDotsAuto = false;
+    } else {
+      const vertices = dots.map((e, index) => {
+        let rect = e.getBoundingClientRect();
+        return [rect.left, rect.top, index];
+      });
+      const overlappedIndex = {};
+      // essentially pairs of vertices closest to each other
+      for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+        if (
+          Math.sqrt(
+            Math.pow(source[0] - target[0], 2) +
+              Math.pow(source[1] - target[1], 2),
+          ) < DOT_OVERLAP_DISTANCE
+        ) {
+          // if they overlap, mark both as overlapped
+          overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+        }
       }
+      const total = vertices.length;
+      const overlapping = Object.keys(overlappedIndex).length;
+      enableDotsAuto =
+        overlapping < DOT_OVERLAP_COUNT_LIMIT ||
+        overlapping / total < DOT_OVERLAP_RATIO;
     }
-    const total = vertices.length;
-    const overlapping = Object.keys(overlappedIndex).length;
-    enableDots =
-      overlapping < DOT_OVERLAP_COUNT_LIMIT ||
-      overlapping / total < DOT_OVERLAP_RATIO;
   }
-  chart
-    .svg()
-    .classed("enable-dots", enableDots)
-    .classed("enable-dots-onhover", !enableDots);
+
+  for (const [index, markerEnabled] of markerEnabledByIndex.entries()) {
+    const enableDots = markerEnabled != null ? !!markerEnabled : enableDotsAuto;
+    chart
+      .svg()
+      .select(`.sub._${index}`)
+      .classed("enable-dots", enableDots)
+      .classed("enable-dots-onhover", !enableDots);
+  }
 }
 
 const VORONOI_TARGET_RADIUS = 25;

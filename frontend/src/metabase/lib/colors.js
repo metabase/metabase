@@ -56,6 +56,8 @@ export function syncColors() {
   syncDeprecatedColorFamilies();
 }
 
+export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
+
 function syncHarmony() {
   const harmonizer = new Harmonizer();
   const initialColors = [

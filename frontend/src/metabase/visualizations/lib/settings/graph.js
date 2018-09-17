@@ -17,6 +17,7 @@ import {
   DIMENSION_METRIC,
   DIMENSION_METRIC_METRIC,
 } from "metabase/visualizations/lib/utils";
+import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
@@ -31,17 +32,6 @@ const HISTOGRAM_DATE_EXTRACTS = new Set([
   // "day-of-year",
   // "week-of-year",
 ]);
-
-function getSeriesDefaultTitles(series, vizSettings) {
-  return series.map(s => s.card.name);
-}
-
-function getSeriesTitles(series, vizSettings) {
-  return (
-    vizSettings["graph.series_labels"] ||
-    getSeriesDefaultTitles(series, vizSettings)
-  );
-}
 
 export function getDefaultColumns(series) {
   if (series[0].card.display === "scatter") {
@@ -187,6 +177,7 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
+  ...seriesSetting(),
 };
 
 export const GRAPH_BUBBLE_SETTINGS = {
@@ -216,22 +207,22 @@ export const GRAPH_BUBBLE_SETTINGS = {
 
 export const LINE_SETTINGS = {
   "line.interpolate": {
-    section: t`Display`,
-    title: t`Style`,
-    widget: "select",
-    props: {
-      options: [
-        { name: t`Line`, value: "linear" },
-        { name: t`Curve`, value: "cardinal" },
-        { name: t`Step`, value: "step-after" },
-      ],
-    },
+    // section: t`Display`,
+    // title: t`Style`,
+    // widget: "select",
+    // props: {
+    //   options: [
+    //     { name: t`Line`, value: "linear" },
+    //     { name: t`Curve`, value: "cardinal" },
+    //     { name: t`Step`, value: "step-after" },
+    //   ],
+    // },
     getDefault: () => "linear",
   },
   "line.marker_enabled": {
-    section: t`Display`,
-    title: t`Show point markers on lines`,
-    widget: "toggle",
+    // section: t`Display`,
+    // title: t`Show point markers on lines`,
+    // widget: "toggle",
   },
 };
 
@@ -258,6 +249,22 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
+export const LINE_SETTINGS_2 = {
+  "line.missing": {
+    // section: t`Display`,
+    // title: t`Replace missing values with`,
+    // widget: "select",
+    default: "interpolate",
+    // getProps: (series, vizSettings) => ({
+    //   options: [
+    //     { name: t`Zero`, value: "zero" },
+    //     { name: t`Nothing`, value: "none" },
+    //     { name: t`Linear Interpolated`, value: "interpolate" },
+    //   ],
+    // }),
+  },
+};
+
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
@@ -275,40 +282,9 @@ export const GRAPH_GOAL_SETTINGS = {
   },
 };
 
-export const LINE_SETTINGS_2 = {
-  "line.missing": {
-    section: t`Display`,
-    title: t`Replace missing values with`,
-    widget: "select",
-    default: "interpolate",
-    getProps: (series, vizSettings) => ({
-      options: [
-        { name: t`Zero`, value: "zero" },
-        { name: t`Nothing`, value: "none" },
-        { name: t`Linear Interpolated`, value: "interpolate" },
-      ],
-    }),
-  },
-};
-
 export const GRAPH_COLORS_SETTINGS = {
-  "graph.colors": {
-    section: t`Display`,
-    getTitle: ([{ card: { display } }]) =>
-      capitalize(display === "scatter" ? "bubble" : display) + " colors",
-    widget: "colors",
-    readDependencies: [
-      "graph.dimensions",
-      "graph.metrics",
-      "graph.series_labels",
-    ],
-    getDefault: ([{ card }], vizSettings) => {
-      return getCardColors(card);
-    },
-    getProps: (series, vizSettings) => {
-      return { seriesTitles: getSeriesTitles(series, vizSettings) };
-    },
-  },
+  // DEPRECATED: replaced with "color" series setting
+  "graph.colors": {},
 };
 
 export const GRAPH_AXIS_SETTINGS = {
@@ -496,13 +472,6 @@ export const GRAPH_AXIS_SETTINGS = {
     getDefault: (series, vizSettings) =>
       series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null,
   },
-  "graph.series_labels": {
-    section: t`Labels`,
-    title: "Series labels",
-    widget: "inputGroup",
-    readDependencies: ["graph.dimensions", "graph.metrics"],
-    getHidden: series => series.length < 2,
-    getDefault: (series, vizSettings) =>
-      getSeriesDefaultTitles(series, vizSettings),
-  },
+  // DEPRECATED" replaced with "label" series setting
+  "graph.series_labels": {},
 };
