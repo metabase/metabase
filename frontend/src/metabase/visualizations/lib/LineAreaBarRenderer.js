@@ -792,5 +792,7 @@ export const areaRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "area" });
 export const barRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "bar" });
+export const comboRenderer = (element, props) =>
+  lineAreaBar(element, { ...props, chartType: "combo" });
 export const scatterRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "scatter" });

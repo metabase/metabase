@@ -132,7 +132,18 @@ export function seriesSetting({ readDependencies = [], ...def } = {}) {
       },
     },
     display: {
-      getDefault: (single, settings) => single.card.display,
+      getDefault: (single, settings, { series }) => {
+        if (single.card.display === "combo") {
+          const index = series.indexOf(single);
+          if (index === 0) {
+            return "line";
+          } else {
+            return "bar";
+          }
+        } else {
+          return single.card.display;
+        }
+      },
     },
     color: {
       getDefault: (single, settings, { settings: vizSettings }) =>
