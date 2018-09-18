@@ -378,7 +378,13 @@ function getDcjsChart(cardType, parent) {
   }
 }
 
-function applyChartLineBarSettings(chart, settings, chartType, seriesSettings) {
+function applyChartLineBarSettings(
+  chart,
+  settings,
+  chartType,
+  seriesSettings,
+  forceCenterBar,
+) {
   // LINE/AREA:
   // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
   if (chart.interpolate) {
@@ -398,7 +404,9 @@ function applyChartLineBarSettings(chart, settings, chartType, seriesSettings) {
   if (chart.barPadding) {
     chart
       .barPadding(BAR_PADDING_RATIO)
-      .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
+      .centerBar(
+        forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
+      );
   }
 }
 
@@ -461,6 +469,29 @@ function getCharts(
   const { settings, chartType, series, onChangeCardAndRun } = props;
   const { yAxisSplit } = yAxisProps;
 
+  const isHeterogenous =
+    _.uniq(series.map(single => settings.series(single).display)).length > 1;
+  const isHeterogenousOrdinal =
+    settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
+
+  if (isHeterogenousOrdinal) {
+    // HACK: ordinal + mix of line and bar results in uncentered points, shift by
+    // half the width
+    parent.on("renderlet.shift", () => {
+      // ordinal, so we can get the first two points to determine spacing
+      const scale = parent.x();
+      const values = scale.domain();
+      const spacing = scale(values[1]) - scale(values[0]);
+      parent
+        .svg()
+        // shift bar/line and dots
+        .selectAll(".stack, .dc-tooltip")
+        .each(function() {
+          this.style.transform = `translate(${spacing / 2}px, 0)`;
+        });
+    });
+  }
+
   return groups.map((group, index) => {
     const seriesSettings = settings.series(series[index]);
     const seriesChartType = seriesSettings.display || chartType;
@@ -498,7 +529,13 @@ function getCharts(
       chart.stack(group[i]);
     }
 
-    applyChartLineBarSettings(chart, settings, seriesChartType, seriesSettings);
+    applyChartLineBarSettings(
+      chart,
+      settings,
+      seriesChartType,
+      seriesSettings,
+      isHeterogenousOrdinal,
+    );
 
     return chart;
   });
@@ -640,7 +677,7 @@ export default function lineAreaBar(
   element: Element,
   props: LineAreaBarProps,
 ): DeregisterFunction {
-  const { onRender, chartType, isScalarSeries, settings } = props;
+  const { onRender, chartType, isScalarSeries, settings, series } = props;
 
   const warnings = {};
   const warn = id => {
@@ -712,7 +749,8 @@ export default function lineAreaBar(
   }
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
-  parent._rangeBandPadding(chartType === "bar" ? BAR_PADDING_RATIO : 1); //
+  const hasBar = _.any(series, s => settings.series(s).display === "bar");
+  parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
 
   applyXAxisSettings(parent, props.series, xAxisProps);
 
