@@ -5065,3 +5065,15 @@ databaseChangeLog:
             columnNames: id, author, filename
             constraintName: idx_databasechangelog_id_author_filename
             tableName: DATABASECHANGELOG
+# Drop the legacy QueryExecution table now that we don't need it anymore (moved from data migrations to here)
+  - changeSet:
+      id: 96
+      author: camsaul
+      comment: 'Added 0.23.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: query_queryexecution
+      changes:
+        - dropTable:
+            tableName: query_queryexecution

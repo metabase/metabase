@@ -203,11 +203,6 @@
 ;;; |                                           Migrating QueryExecutions                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; drop the legacy QueryExecution table now that we don't need it anymore
-(defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
-  ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
-  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
-
 ;; There's a window on in the 0.23.0 and 0.23.1 releases that the
 ;; site-url could be persisted without a protocol specified. Other
 ;; areas of the application expect that site-url will always include
