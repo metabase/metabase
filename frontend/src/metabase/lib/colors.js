@@ -4,6 +4,8 @@ import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
 
+import { deterministicAssign } from "./deterministic";
+
 type ColorName = string;
 type ColorString = string;
 type ColorFamily = { [name: ColorName]: ColorString };
@@ -139,3 +141,57 @@ export const darken = (color: ColorString, factor: number): ColorString =>
   Color(color)
     .darken(factor)
     .string();
+
+const PREFERRED_COLORS = {
+  [colors["success"]]: [
+    "success",
+    "valid",
+    "complete",
+    "completed",
+    "accepted",
+    "active",
+    "profit",
+  ],
+  [colors["error"]]: [
+    "fail",
+    "failure",
+    "failures",
+    "invalid",
+    "rejected",
+    "inactive",
+    "loss",
+    "cost",
+    "deleted",
+    "pending",
+  ],
+};
+
+const PREFERRED_COLORS_MAP = new Map();
+for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
+  for (const key of keys) {
+    PREFERRED_COLORS_MAP.set(key, color);
+  }
+}
+
+function getPreferredColor(key) {
+  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
+}
+
+// returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
+export function getColorsForValues(keys, existingAssignments = {}) {
+  const all = Object.values(harmony);
+  const primaryTier = all.slice(0, 8);
+  const secondaryTier = all.slice(8);
+  return deterministicAssign(
+    keys,
+    primaryTier,
+    existingAssignments,
+    getPreferredColor,
+    [secondaryTier],
+  );
+}
+
+// conviennce for a single color (only use for visualizations with a single color)
+export function getColorForValue(key) {
+  return getColorsForValues([key])[key];
+}

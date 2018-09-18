@@ -4,111 +4,10 @@ import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries.jsx";
 import { nestedSettings } from "./nested";
+import { getColorsForValues } from "metabase/lib/colors";
 
 export function keyForSingleSeries(single) {
   return String(single.card.name);
-}
-
-import colors, { harmony } from "metabase/lib/colors";
-
-function hashCode(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  }
-  return h;
-}
-
-// assigns values to keys using a best effort deterministic algorithm
-//  keys: keys that need to be assigned values
-//  values: all possible values to assign
-//  existing: optional existing assignments
-//  getPreferred: to get preferred assignments
-function deterministicAssign(keys, values, existing = {}, getPreferred) {
-  let unassigned = new Set(keys.slice().sort()); // sort the keys for extra determinism
-
-  let all = new Set(values);
-  let used = new Set();
-
-  const assignments = {};
-
-  const assign = (key, value) => {
-    assignments[key] = value;
-    unassigned.delete(key);
-    // if assignment is one of the values mark it as used
-    if (all.has(value)) {
-      used.add(value);
-    }
-  };
-
-  // add all exisisting assignments
-  for (const [key, value] of Object.entries(existing)) {
-    assign(key, value);
-  }
-
-  // attempt to get a "preferred" assignment, if desired
-  if (getPreferred) {
-    for (const key of unassigned) {
-      const value = getPreferred(key, values);
-      if (value !== undefined && !used.has(value)) {
-        assign(key, value);
-      }
-    }
-  }
-
-  // assign as many values as possible. if there are still any remaining, shift by one and try again
-  let iterations = 0;
-  while (unassigned.size > 0) {
-    if (all.size - used.size <= 0) {
-      // if all have been used reset available options
-      used = new Set();
-    }
-    for (const key of unassigned) {
-      const hash = Math.abs(hashCode(key)) + iterations;
-      const value = values[hash % values.length];
-      if (!used.has(value)) {
-        assign(key, value);
-      }
-    }
-    iterations++;
-  }
-
-  return assignments;
-}
-
-const PREFERRED_COLORS = {
-  [colors["success"]]: [
-    "success",
-    "valid",
-    "complete",
-    "completed",
-    "accepted",
-    "active",
-    "profit",
-  ],
-  [colors["error"]]: [
-    "fail",
-    "failure",
-    "failures",
-    "invalid",
-    "rejected",
-    "inactive",
-    "loss",
-    "cost",
-    "deleted",
-    "pending",
-  ],
-};
-
-const PREFERRED_COLORS_MAP = new Map();
-for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
-  for (const key of keys) {
-    PREFERRED_COLORS_MAP.set(key, color);
-  }
-}
-
-function getPreferredColor(key) {
-  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
 }
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
@@ -241,7 +140,7 @@ export function seriesSetting({
     [colorSettingId]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
-        const values = Object.values(harmony).slice(0, 8);
+
         const assignments = _.chain(keys)
           .map(key => [key, getIn(settings, [settingId, key, "color"])])
           .filter(([key, color]) => color != null)
@@ -257,12 +156,7 @@ export function seriesSetting({
           }
         }
 
-        return deterministicAssign(
-          keys,
-          values,
-          assignments,
-          getPreferredColor,
-        );
+        return getColorsForValues(keys, assignments);
       },
     },
   };
