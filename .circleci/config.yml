@@ -505,6 +505,8 @@ jobs:
   deploy-master:
     <<: *defaults
     steps:
+      - attach_workspace:
+          at: /home/circleci/
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
