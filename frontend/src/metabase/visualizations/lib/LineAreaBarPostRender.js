@@ -26,13 +26,39 @@ function onRenderRemoveClipPath(chart) {
   }
 }
 
-function onRenderMoveContentToTop(chart) {
-  for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
-    // move chart content on top of axis (z-index doesn't work on SVG):
-    elem.parentNode.appendChild(elem);
+function moveToTop(element) {
+  if (element) {
+    element.parentNode.appendChild(element);
   }
 }
 
+function onRenderMoveContentToTop(chart) {
+  for (let element of chart.selectAll(".sub, .chart-body")[0]) {
+    // move chart content on top of axis (z-index doesn't work on SVG):
+    moveToTop(element);
+  }
+}
+
+function onRenderReorderCharts(chart) {
+  const displayTypes = chart.series.map(
+    single => chart.settings.series(single).display,
+  );
+  const isHeterogenous = _.uniq(displayTypes).length > 0;
+  if (isHeterogenous) {
+    // move area charts first
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "area") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+    // move line charts second
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "line") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+  }
+}
 function onRenderSetDotStyle(chart) {
   for (let elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
@@ -310,6 +336,7 @@ function onRenderRotateAxis(chart) {
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
+  onRenderReorderCharts(chart);
   onRenderSetDotStyle(chart);
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
