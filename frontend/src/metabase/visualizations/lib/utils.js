@@ -131,7 +131,7 @@ const FRIENDLY_NAME_MAP = {
   stddev: t`Standard Deviation`,
 };
 
-export function getXValues(datas, chartType) {
+export function getXValues(datas) {
   let xValues = _.chain(datas)
     .map(data => _.pluck(data, "0"))
     .flatten(true)

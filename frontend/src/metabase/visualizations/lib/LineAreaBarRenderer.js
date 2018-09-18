@@ -133,7 +133,7 @@ function getXInterval({ settings, series }, xValues) {
 }
 
 function getXAxisProps(props, datas) {
-  const xValues = getXValues(datas, props.chartType);
+  const xValues = getXValues(datas);
 
   return {
     xValues,
@@ -486,7 +486,9 @@ function getCharts(
 
     if (chart.defined) {
       chart.defined(
-        settings["line.missing"] === "none" ? d => d.y != null : d => true,
+        seriesSettings["line.missing"] === "none"
+          ? d => d.y != null
+          : d => true,
       );
     }
 
@@ -650,6 +652,7 @@ export default function lineAreaBar(
   // force histogram to be ordinal axis with zero-filled missing points
   settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
   if (isHistogram(settings)) {
+    // FIXME: need to handle this on series settings now
     settings["line.missing"] = "zero";
     settings["graph.x_axis.scale"] = "ordinal";
   }
