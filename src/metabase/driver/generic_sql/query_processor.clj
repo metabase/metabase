@@ -25,6 +25,7 @@
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
             ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
 
+;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
   "The outer query currently being processed."
   nil)
@@ -288,7 +289,8 @@
   (let [source-table-id                                  (mbql.u/query->source-table-id *query*)
         {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
     [[table-or-query-expr (keyword join-alias)]
-     [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+     [:=
+      (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
       (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
 
 (defmethod ->honeysql [Object JoinTable]

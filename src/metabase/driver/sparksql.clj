@@ -15,7 +15,7 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.models.table :refer [Table]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -36,13 +36,8 @@
 
 (def ^:private source-table-alias "t1")
 
-(defn- find-source-table [query]
-  (first (qputil/postwalk-collect #(instance? (type Table) %)
-                                  identity
-                                  query)))
-
 (defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
-  (let [source-table (find-source-table sqlqp/*query*)]
+  (let [source-table (qp.store/table (mbql.u/query->source-table-id sqlqp/*query*))]
     (if (and (= schema-name (:schema source-table))
              (= table-name (:name source-table)))
       (-> (assoc field :schema-name nil)
