@@ -152,7 +152,7 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:resource-paths ["src/resource/AthenaJDBC42_2.0.2.jar"]
+  :profiles {:dev {:resource-paths ["src/resource/AthenaJDBC42_2.0.5.jar"]
                    :dependencies [[expectations "2.2.0-beta2"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
