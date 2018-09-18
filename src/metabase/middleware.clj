@@ -26,17 +26,7 @@
 (defn- api-call?
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]
-  (and (>= (count uri) 4)
-       (= (.substring uri 0 4) "/api")))
-
-(defn- index?
-  "Is this ring request one that will serve `index.html` or `init.html`?"
-  [{:keys [uri]}]
-  (or (zero? (count uri))
-      (not (or (re-matches #"^/app/.*$" uri)
-               (re-matches #"^/api/.*$" uri)
-               (re-matches #"^/public/.*$" uri)
-               (re-matches #"^/favicon.ico$" uri)))))
+  (str/starts-with? uri "/api"))
 
 (defn- public?
   "Is this ring request one that will serve `public.html`?"
@@ -47,6 +37,7 @@
   "Is this ring request one that will serve `public.html`?"
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
+
 
 ;;; ------------------------------------------- AUTH & SESSION MANAGEMENT --------------------------------------------
 
@@ -224,13 +215,8 @@
   (when-let [k (ssl-certificate-public-key)]
     {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
-(defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
-  (merge (cache-prevention-headers)
-         strict-transport-security-header
-         #_(public-key-pins-header)))
-
-(defn- html-page-security-headers [& {:keys [allow-iframes?]
-                                      :or   {allow-iframes? false}}]
+(defn- security-headers [& {:keys [allow-iframes?]
+                            :or   {allow-iframes? false}}]
   (merge
    (cache-prevention-headers)
    strict-transport-security-header
@@ -247,15 +233,28 @@
     "X-Content-Type-Options"            "nosniff"}))
 
 (defn add-security-headers
-  "Add HTTP headers to tell browsers not to cache API responses."
+  "Add HTTP security and cache-busting headers."
   [handler]
   (fn [request]
     (let [response (handler request)]
-      (update response :headers merge (cond
-                                        (api-call? request) (api-security-headers)
-                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
-                                        (embed? request)    (html-page-security-headers, :allow-iframes? true)
-                                        (index? request)    (html-page-security-headers))))))
+      ;; add security headers to all responses, but allow iframes on public & embed responses
+      (update response :headers merge (security-headers :allow-iframes? ((some-fn public? embed?) request))))))
+
+(defn add-content-type
+  "Add an appropriate Content-Type header to response if it doesn't already have one. Most responses should already
+  have one, so this is a fallback for ones that for one reason or another do not."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (update-in
+       response
+       [:headers "Content-Type"]
+       (fn [content-type]
+         (or content-type
+             (when (api-call? request)
+               (if (string? (:body response))
+                 "text/plain"
+                 "application/json; charset=utf-8"))))))))
 
 
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
@@ -411,8 +410,7 @@
                                                       (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                                  #"\s*\n\s*")}))))]
     {:status  (or status-code 500)
-     :headers (cond-> (html-page-security-headers)
-                (string? body) (assoc "Content-Type" "text/plain"))
+     :headers (security-headers)
      :body    body}))
 
 (defn catch-api-exceptions

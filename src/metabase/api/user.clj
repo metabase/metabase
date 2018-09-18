@@ -2,6 +2,7 @@
   "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [honeysql.helpers :as hh]
             [metabase.api
              [common :as api]
              [session :as session-api]]
@@ -34,10 +35,10 @@
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
                                        user/admin-or-self-visible-columns
                                        user/non-admin-or-self-visible-columns)))
-            (merge {:order-by [[:%lower.last_name :asc]
-                               [:%lower.first_name :asc]]}
-                   (when-not include_deactivated
-                     {:where [:= :is_active true]})))
+            (-> {}
+                (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                (hh/merge-where (when-not include_deactivated
+                                  [:= :is_active true]))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id)))
 
