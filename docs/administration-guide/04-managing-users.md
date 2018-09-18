@@ -1,6 +1,6 @@
 ## Managing User Accounts
 
-To start managing users, first go to the **Admin Panel** by clicking on the dropdown menu in the top right of Metabase and selecting Admin Panel.  
+To start managing users, first go to the **Admin Panel** by clicking on the dropdown menu in the top right of Metabase and selecting Admin Panel.
 
 ![Profile dropdown](images/ProfileDropdown.png)
 
@@ -31,5 +31,5 @@ To change a user’s role, just click on it to open a dropdown and make your sel
 
 ---
 
-## Next: setting data permissions
-Find out how to create user groups and define what data they can access in the [next section](05-setting-permissions.md).
+## Next: Single Sign-On
+Learn how to [configure Single Sign-On](10-single-sign-on.md) to let users sign in or sign up with just a click.

@@ -32,3 +32,8 @@ These settings allow Metabase to automatically get each user's email address and
 The settings that Metabase defaults to here might work for you out of the box, but you can override them if you know that your settings are different.
 
 Each of these input boxes needs a URI that points to the location of a SAML attribute.
+
+---
+
+## Next: Authenticating with JWT
+If SAML isn't your bag, you can also use a JSON web token based identify provider. [Learn how](18-authenticating-with-jwt.md).

@@ -56,3 +56,8 @@ If this user views any charts, dashboards, or even automated x-ray explorations 
 Another great thing about sandboxing is that this user can still use all of the easy and powerful exploration and charting features of Metabase to explore this sandboxed data. For example, they can create a chart like this one to see a breakdown of their orders by product type:
 
 ![Filtered pie chart](images/sandboxing/filtered-pie-chart.png)
+
+---
+
+## Next: sharing and embedding with public links
+Want to share certain dashboards or questions with the world? You can do that with [public links](12-public-links.md).

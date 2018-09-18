@@ -13,7 +13,6 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 **Curating your data:**
 * [Editing your database metadata](03-metadata-editing.md)
 * [Creating segments and metrics](07-segments-and-metrics.md)
-* [Creating a Getting Started Guide for your team](11-getting-started-guide.md)
 
 **Adding and managing users:**
 * [Managing user accounts](04-managing-users.md)

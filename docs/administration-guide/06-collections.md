@@ -31,5 +31,7 @@ You can archive collections similarly to how you can archive questions. Click th
 
 To restore a collection and its contents, click the `View Archive` icon in the top-right of the main Questions screen to see the archive, then hover over an item to reveal the `Unarchive` icon on the far right of the item. Questions within archived collections are not individually listed in the archive, so if you want to unarchive a specific question from an archived collection, you have to unarchive that whole collection.
 
-## Next: custom segments and metrics
-Learn how to define custom segments and commonly referenced metrics in the [next section](07-segments-and-metrics.md).
+---
+
+## Next: data sandboxing
+To set even more advanced data permissions based on user attributes, check out [data sandboxes](17-data-sandboxes.md).
