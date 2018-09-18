@@ -208,7 +208,6 @@ export function getSettingsWidgets(
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
-      // $FlowFixMe: doesn't understand settingDef is a SettingDef
       getSettingWidget(
         settingDefs,
         settingId,

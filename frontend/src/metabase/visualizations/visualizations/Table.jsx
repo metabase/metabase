@@ -130,7 +130,9 @@ export default class Table extends Component {
     }
     if (isString(column)) {
       let defaultValue = null;
-      const options = [{ name: t`Off`, value: null }];
+      const options: { name: string, value: null | string }[] = [
+        { name: t`Off`, value: null },
+      ];
       if (!column.special_type || isURL(column)) {
         defaultValue = "link";
         options.push({ name: t`Link`, value: "link" });

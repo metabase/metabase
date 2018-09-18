@@ -38,17 +38,19 @@ import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
 export type FormattingOptions = {
+  // GENERIC
   column?: Column | Field,
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
-  // number options:
   compact?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
   noRange?: boolean,
+  // NUMBER
   // TODO: docoument these:
+  number_style?: null | "decimal" | "percent" | "scientific" | "currency",
   prefix?: string,
   suffix?: string,
   scale?: number,
@@ -61,7 +63,20 @@ export type FormattingOptions = {
   useGrouping?: boolean,
   // decimals sets both minimumFractionDigits and maximumFractionDigits
   decimals?: number,
+  // STRING
+  view_as?: "link" | "email_link" | "image",
+  link_text?: string,
+  // DATE/TIME
+  // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
+  date_style?: string,
+  time_style?: string,
+  date_format?: string,
+  date_abbreviate?: boolean,
+  time_format?: string,
+  time_enabled?: null | "minutes" | "seconds" | "milliseconds",
 };
+
+type FormattedString = string | React$Element<any>;
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
@@ -105,6 +120,7 @@ const RANGE_SEPARATOR = ` – `;
 export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // if we don't provide a locale much of the formatting doens't work
+  // $FlowFixMe: doesn't know about Intl.NumberFormat
   return new Intl.NumberFormat(options.locale || "en", {
     style: options.number_style,
     currency: options.currency,
@@ -146,7 +162,10 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 }
 
-function formatNumberScientific(value: number, options: FormattingOptions) {
+function formatNumberScientific(
+  value: number,
+  options: FormattingOptions,
+): FormattedString {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }
@@ -207,12 +226,19 @@ export function formatCoordinate(
 
 export function formatRange(
   range: [number, number],
-  formatter: (value: number) => string,
+  formatter: (value: number) => any,
   options: FormattingOptions = {},
 ) {
-  return range
-    .map(value => formatter(value, options))
-    .join(` ${RANGE_SEPARATOR} `);
+  const [start, end] = range.map(value => formatter(value, options));
+  if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
+    return (
+      <span>
+        {start} {RANGE_SEPARATOR} {end}
+      </span>
+    );
+  } else {
+    return `${start} ${RANGE_SEPARATOR} ${start}`;
+  }
 }
 
 function formatMajorMinor(major, minor, options = {}) {
@@ -327,7 +353,7 @@ function formatDateTime(value, options) {
       options,
     );
   } else {
-    if (options.show_time === false) {
+    if (options.time_enabled === false) {
       return m.format(options.date_abbreviate ? "ll" : "LL");
     } else {
       return m.format(options.date_abbreviate ? "llll" : "LLLL");
@@ -486,6 +512,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         </span>
       );
     } else {
+      // $FlowFixMe: doesn't understand formatted is a string
       return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {

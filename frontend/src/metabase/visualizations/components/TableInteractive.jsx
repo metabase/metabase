@@ -160,7 +160,7 @@ export default class TableInteractive extends Component {
     }
   }
 
-  _getColumnSettings(props) {
+  _getColumnSettings(props: Props) {
     return props.data && props.data.cols.map(col => props.settings.column(col));
   }
 
