@@ -37,6 +37,12 @@ import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
+import type {
+  DateStyle,
+  TimeStyle,
+  TimeEnabled,
+} from "metabase/lib/formatting/date";
+
 export type FormattingOptions = {
   // GENERIC
   column?: Column | Field,
@@ -68,12 +74,12 @@ export type FormattingOptions = {
   link_text?: string,
   // DATE/TIME
   // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
-  date_style?: string,
-  time_style?: string,
-  date_format?: string,
+  date_style?: DateStyle,
   date_abbreviate?: boolean,
+  date_format?: string,
+  time_style?: TimeStyle,
+  time_enabled?: TimeEnabled,
   time_format?: string,
-  time_enabled?: null | "minutes" | "seconds" | "milliseconds",
 };
 
 type FormattedString = string | React$Element<any>;
