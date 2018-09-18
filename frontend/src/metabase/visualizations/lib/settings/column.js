@@ -4,7 +4,7 @@ import _ from "underscore";
 import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
 
 import { keyForColumn } from "metabase/lib/dataset";
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
@@ -125,6 +125,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Currency`,
     widget: "select",
     props: {
+      // FIXME: rest of these options
       options: [{ name: "USD", value: "USD" }, { name: "EUR", value: "EUR" }],
     },
     default: "USD",
@@ -212,7 +213,7 @@ export function getSettingDefintionsForColumn(series, column) {
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else if (isNumber(column)) {
+  } else if (isNumber(column) && !isCoordinate(column)) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
