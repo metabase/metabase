@@ -122,6 +122,7 @@
     results))
 
 (defn- run-query-with-cache [qp {cache-ttl :cache_ttl, :as query}]
+  ;; TODO - Query should already have a `info.hash`, shouldn't it?
   (let [query-hash (qputil/query-hash query)]
     (or (cached-results query-hash cache-ttl)
         (run-query-and-save-results-if-successful! query-hash qp query))))

@@ -274,6 +274,16 @@
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
 
+;; Does the QueryExecution context get normalized?
+(expect
+  {:context :json-download}
+  (#'normalize/normalize-tokens {:context "json-download"}))
+
+;; if `:context` is `nil` it's not our problem
+(expect
+  {:context nil}
+  (#'normalize/normalize-tokens {:context nil}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -588,6 +598,12 @@
    {:database 4
     :type     :query
     :query    {:source-query {:source-table 1, :aggregation :rows}}}))
+
+;; make sure canonicalization can handle aggregations with expressions where the Field normally goes
+(expect
+  {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}
+  (#'normalize/canonicalize
+   {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

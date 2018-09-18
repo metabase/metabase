@@ -8,7 +8,9 @@
             [metabase.query-processor.interface :as i]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
+            [metabase.util
+             [encryption :as encryption]
+             [i18n :refer [tru]]]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
@@ -65,6 +67,7 @@
           ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
           ;; rather than failing the entire query
           (catch Throwable e
-            (log/error "Error recording results metadata for query:" (.getMessage e) "\n"
+            (log/error (tru "Error recording results metadata for query:")
+                       (.getMessage e) "\n"
                        (u/pprint-to-str (u/filtered-stacktrace e)))
             results))))))
