@@ -65,16 +65,15 @@
       :else                                               field)))
 
 (defn- apply-join-tables
-  [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
-  (let [{source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
-    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-      (let [honeysql-form (h/merge-left-join honeysql-form
-                            [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                            [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
-                             (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
-        (if (seq more)
-          (recur honeysql-form more)
-          honeysql-form)))))
+  [honeysql-form {join-tables :join-tables}]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+    (let [honeysql-form (h/merge-left-join honeysql-form
+                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
+                          [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                           (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
 
 (defn- apply-page-using-row-number-for-offset
   "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
