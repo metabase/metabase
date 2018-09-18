@@ -14,7 +14,7 @@
 (defn- fetch-fields-for-souce-table-id [source-table-id]
   (map resolve/rename-mb-field-keys
        (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position
-                       :description :fingerprint]
+                       :description :fingerprint :settings]
              :table_id        source-table-id
              :active          true
              :visibility_type [:not-in ["sensitive" "retired"]]
