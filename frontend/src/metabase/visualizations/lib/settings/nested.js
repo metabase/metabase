@@ -1,3 +1,5 @@
+/* @flow */
+
 import _ from "underscore";
 import { t } from "c-3po";
 
@@ -5,8 +7,36 @@ import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
+import type {
+  SettingId,
+  SettingDef,
+  SettingDefs,
+  Settings,
+} from "metabase/visualizations/lib/settings";
+
+import type { Series } from "metabase/meta/types/Visualization";
+
+type Object = any;
+
+type NestedSettingDef = SettingDef & {
+  objectName: string,
+  getObjects: (series: Series, settings: Settings) => Object[],
+  getObjectKey: (object: Object) => string,
+  getSettingDefintionsForObject: (
+    series: Series,
+    object: Object,
+  ) => SettingDefs,
+  getObjectSettingsExtra?: (
+    series: Series,
+    settings: Settings,
+    object: Object,
+  ) => { [key: string]: any },
+  component: React$Component<any, any, any>,
+  id?: SettingId,
+};
+
 export function nestedSettings(
-  id,
+  id: SettingId,
   {
     objectName = "object",
     getObjects,
@@ -15,7 +45,7 @@ export function nestedSettings(
     getObjectSettingsExtra = () => ({}),
     component,
     ...def
-  } = {},
+  }: NestedSettingDef = {},
 ) {
   function getComputedSettingsForObject(series, object, storedSettings, extra) {
     const settingsDefs = getSettingDefintionsForObject(series, object);
@@ -82,7 +112,7 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings) => {
+      getProps: (series: Series, settings: Settings) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -102,9 +132,9 @@ export function nestedSettings(
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings) {
+      getDefault(series: Series, settings: Settings) {
         const cache = new Map();
-        return object => {
+        return (object: Object) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             cache.set(key, {

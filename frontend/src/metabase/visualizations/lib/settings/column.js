@@ -1,3 +1,5 @@
+/* @flow */
+
 import { t } from "c-3po";
 import moment from "moment";
 
@@ -15,13 +17,31 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
+import type { Settings, SettingDef } from "../settings";
+import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
+import type { DatetimeUnit } from "metabase/meta/types/Query";
+import type { Column } from "metabase/meta/types/Dataset";
+import type { Series } from "metabase/meta/types/Visualization";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+
+type ColumnSettings = Settings;
+
+type ColumnGetter = (
+  series: Series,
+  vizSettings: VisualizationSettings,
+) => Column[];
+
+const DEFAULT_GET_COLUMNS: ColumnGetter = (series, vizSettings) =>
   [].concat(...series.map(s => s.data.cols));
+
+type ColumnSettingDef = SettingDef & {
+  getColumns?: ColumnGetter,
+};
 
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
-} = {}) {
+}: ColumnSettingDef) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",
@@ -37,11 +57,11 @@ export function columnSettings({
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
-function getDateStyleOptionsForUnit(unit) {
+function getDateStyleOptionsForUnit(unit: ?DatetimeUnit) {
   const options = [
-    dateStyleOption("M/D/YY", unit, hasDay(unit) && "month, day, year"),
-    dateStyleOption("D/M/YY", unit, hasDay(unit) && "day, month, year"),
-    dateStyleOption("YYYY/M/D", unit, hasDay(unit) && "year, month, day"),
+    dateStyleOption("M/D/YY", unit, hasDay(unit) ? "month, day, year" : null),
+    dateStyleOption("D/M/YY", unit, hasDay(unit) ? "day, month, year" : null),
+    dateStyleOption("YYYY/M/D", unit, hasDay(unit) ? "year, month, day" : null),
     dateStyleOption("MMMM D, YYYY", unit),
     dateStyleOption("D MMMM, YYYY", unit),
     dateStyleOption("dddd, MMMM D, YYYY", unit),
@@ -58,7 +78,11 @@ function getDateStyleOptionsForUnit(unit) {
   });
 }
 
-function dateStyleOption(style, unit, description) {
+function dateStyleOption(
+  style: DateStyle,
+  unit: ?DatetimeUnit,
+  description?: ?string,
+) {
   const format = getDateFormatFromStyle(style, unit);
   return {
     name:
@@ -67,7 +91,7 @@ function dateStyleOption(style, unit, description) {
   };
 }
 
-function timeStyleOption(style, description) {
+function timeStyleOption(style: TimeStyle, description?: ?string) {
   const format = style;
   return {
     name:
@@ -81,16 +105,17 @@ export const DATE_COLUMN_SETTINGS = {
     title: t`Date style`,
     widget: "radio",
     default: DEFAULT_DATE_STYLE,
-    getProps: ({ unit }) => ({
+    getProps: ({ unit }: Column) => ({
       options: getDateStyleOptionsForUnit(unit),
     }),
-    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
+    getHidden: ({ unit }: Column) =>
+      getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_abbreviate: {
     title: t`Abbreviate names of days and months`,
     widget: "toggle",
     default: false,
-    getHidden: ({ unit }, settings) => {
+    getHidden: ({ unit }: Column, settings: ColumnSettings) => {
       const format = getDateFormatFromStyle(settings["date_style"], unit);
       return !format.match(/MMMM|dddd/);
     },
@@ -99,7 +124,7 @@ export const DATE_COLUMN_SETTINGS = {
   time_enabled: {
     title: t`Show the time`,
     widget: "buttonGroup",
-    getProps: ({ unit }, settings) => {
+    getProps: ({ unit }: Column, settings: ColumnSettings) => {
       const options = [
         { name: t`Off`, value: null },
         { name: t`Minutes`, value: "minutes" },
@@ -115,20 +140,21 @@ export const DATE_COLUMN_SETTINGS = {
       }
       return { options };
     },
-    getHidden: ({ unit }, settings) => !hasHour(unit),
-    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+    getHidden: ({ unit }: Column, settings: ColumnSettings) => !hasHour(unit),
+    getDefault: ({ unit }: Column) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
     title: t`Time style`,
     widget: "radio",
     default: "h:mm A",
-    getProps: (column, settings) => ({
+    getProps: (column: Column, settings: ColumnSettings) => ({
       options: [
         timeStyleOption("h:mm A", "12-hour clock"),
         timeStyleOption("k:mm", "24-hour clock"),
       ],
     }),
-    getHidden: (column, settings) => !settings["time_enabled"],
+    getHidden: (column: Column, settings: ColumnSettings) =>
+      !settings["time_enabled"],
     readDependencies: ["time_enabled"],
   },
 };
@@ -156,7 +182,8 @@ export const NUMBER_COLUMN_SETTINGS = {
       options: [{ name: "USD", value: "USD" }, { name: "EUR", value: "EUR" }],
     },
     default: "USD",
-    getHidden: (column, settings) => settings["number_style"] !== "currency",
+    getHidden: (column: Column, settings: ColumnSettings) =>
+      settings["number_style"] !== "currency",
   },
   currency_style: {
     title: t`Currency Style`,
@@ -169,7 +196,8 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: "symbol",
-    getHidden: (column, settings) => settings["number_style"] !== "currency",
+    getHidden: (column: Column, settings: ColumnSettings) =>
+      settings["number_style"] !== "currency",
   },
   locale: {
     title: t`Separator style`,
@@ -205,7 +233,8 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
+    getValue: (column: Column, settings: ColumnSettings) =>
+      numberFormatterForOptions(settings),
     // NOTE: make sure to include every setting that affects the number formatter here
     readDependencies: [
       "number_style",
@@ -227,7 +256,7 @@ const COMMON_COLUMN_SETTINGS = {
   // },
 };
 
-export function getSettingDefintionsForColumn(series, column) {
+export function getSettingDefintionsForColumn(series: Series, column: Column) {
   const { CardVisualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof CardVisualization.columnSettings === "function"

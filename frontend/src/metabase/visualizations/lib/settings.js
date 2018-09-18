@@ -12,7 +12,7 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 
-type SettingId = string;
+export type SettingId = string;
 
 export type Settings = {
   [settingId: SettingId]: any,
@@ -23,8 +23,8 @@ export type SettingDefs = {
 };
 
 export type SettingDef = {
-  id: SettingId,
-  value: any,
+  id?: SettingId,
+  value?: any,
   title?: string,
   props?: { [key: string]: any },
   default?: any,
