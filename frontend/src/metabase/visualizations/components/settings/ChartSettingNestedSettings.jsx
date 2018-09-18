@@ -2,6 +2,8 @@ import React from "react";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
 
+import _ from "underscore";
+
 const chartSettingNestedSettings = ({
   getObjectKey,
   getSettingsWidgetsForObject,
@@ -10,34 +12,45 @@ const chartSettingNestedSettings = ({
     constructor(props) {
       super(props);
       this.state = {
-        editingObject: props.objects.length === 1 ? props.objects[0] : null,
+        editingObjectKey:
+          props.initialKey ||
+          (props.objects.length === 1 ? getObjectKey(props.objects[0]) : null),
       };
     }
 
     componentWillReceiveProps(nextProps) {
-      // reset editingObject if there's only one object
+      // reset editingObjectKey if there's only one object
       if (
         nextProps.objects.length === 1 &&
-        this.state.editingObject !== nextProps.objects[0]
+        this.state.editingObjectKey !== getObjectKey(nextProps.objects[0])
       ) {
         this.setState({
-          editingObject: nextProps.objects[0],
+          editingObjectKey: getObjectKey(nextProps.objects[0]),
         });
       }
     }
 
     handleChangeEditingObject = editingObject => {
-      this.setState({ editingObject });
+      this.setState({
+        editingObjectKey: editingObject ? getObjectKey(editingObject) : null,
+      });
+      // special prop to notify ChartSettings it should unswap replaced widget
+      if (!editingObject && this.props.onEndEditing) {
+        this.props.onEndEditing();
+      }
     };
 
     handleChangeSettingsForEditingObject = newSettings => {
-      this.handleChangeSettingsForObject(this.state.editingObject, newSettings);
+      const { editingObjectKey } = this.state;
+      this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
     };
 
     handleChangeSettingsForObject = (object, newSettings) => {
-      const { onChange } = this.props;
+      this.handleChangeSettingsForObjectKey(getObjectKey(object), newSettings);
+    };
 
-      const objectKey = getObjectKey(object);
+    handleChangeSettingsForObjectKey = (objectKey, newSettings) => {
+      const { onChange } = this.props;
       const objectsSettings = this.props.value || {};
       const objectSettings = objectsSettings[objectKey] || {};
       onChange({
@@ -51,12 +64,15 @@ const chartSettingNestedSettings = ({
 
     render() {
       const { series, objects, extra } = this.props;
-      const { editingObject } = this.state;
+      const { editingObjectKey } = this.state;
       const objectsSettings = this.props.value || {};
 
+      const editingObject = _.find(
+        objects,
+        o => getObjectKey(o) === editingObjectKey,
+      );
       if (editingObject) {
-        const objectKey = getObjectKey(editingObject);
-        const objectSettings = objectsSettings[objectKey] || {};
+        const objectSettings = objectsSettings[editingObjectKey] || {};
         const objectSettingsWidgets = getSettingsWidgetsForObject(
           series,
           editingObject,

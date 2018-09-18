@@ -12,6 +12,7 @@ export function nestedSettings(
     getObjects,
     getObjectKey,
     getSettingDefintionsForObject,
+    getObjectSettingsExtra = () => ({}),
     component,
     ...def
   } = {},
@@ -98,7 +99,6 @@ export function nestedSettings(
         };
       },
       widget,
-      noPadding: true, // disables X padding so divider line extends to edge
       ...def,
     },
     [objectName]: {
@@ -114,6 +114,7 @@ export function nestedSettings(
                 settings[id][key] || {},
                 { series, settings },
               ),
+              ...getObjectSettingsExtra(series, settings, object),
             });
           }
           return cache.get(key);

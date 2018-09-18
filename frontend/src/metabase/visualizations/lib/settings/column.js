@@ -1,12 +1,12 @@
 import { t } from "c-3po";
-import _ from "underscore";
+import moment from "moment";
 
-import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
+import { nestedSettings } from "./nested";
+import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns.jsx";
 
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
@@ -16,45 +16,18 @@ export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
 } = {}) {
-  return {
-    column_settings: {
-      section: t`Formatting`,
-      widget: ChartSettingColumnSettings,
-      default: {},
-      getProps: (series, settings) => ({
-        series,
-        settings,
-        columns: getColumns(series, settings),
-      }),
-      useRawSeries: true,
-      ...def,
-    },
-    // HACK: adds a "column" function to settings to get column-level settings that should be passed to formatValue
-    // e.x. formatValue(data.rows[0][0], settings.column(data.cols[0]))
-    column: {
-      getDefault(series, settings) {
-        const cache = new Map();
-        return column => {
-          const key = keyForColumn(column);
-          if (!cache.has(key)) {
-            cache.set(key, {
-              ...getComputedSettingsForColumn(
-                series,
-                column,
-                settings["column_settings"][key] || {},
-              ),
-              column,
-            });
-          }
-          return cache.get(key);
-        };
-      },
-      readDependencies: ["column_settings"],
-    },
-  };
+  return nestedSettings("column_settings", {
+    section: t`Formatting`,
+    objectName: "column",
+    getObjects: getColumns,
+    getObjectKey: keyForColumn,
+    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getObjectSettingsExtra: (series, settings, object) => ({ column: object }),
+    component: ChartNestedSettingColumns,
+    useRawSeries: true,
+    ...def,
+  });
 }
-
-import moment from "moment";
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
@@ -225,36 +198,4 @@ export function getSettingDefintionsForColumn(series, column) {
       ...COMMON_COLUMN_SETTINGS,
     };
   }
-}
-
-export function getComputedSettingsForColumn(series, column, storedSettings) {
-  const settingsDefs = getSettingDefintionsForColumn(series, column);
-  const computedSettings = getComputedSettings(
-    settingsDefs,
-    column,
-    storedSettings,
-  );
-  // remove undefined settings since they override other settings when merging object
-  return _.pick(computedSettings, value => value !== undefined);
-}
-
-export function getSettingsWidgetsForColumn(
-  series,
-  column,
-  storedSettings,
-  onChangeSettings,
-) {
-  const settingsDefs = getSettingDefintionsForColumn(series, column);
-  const computedSettings = getComputedSettingsForColumn(
-    series,
-    column,
-    storedSettings,
-  );
-  const widgets = getSettingsWidgets(
-    settingsDefs,
-    computedSettings,
-    column,
-    onChangeSettings,
-  );
-  return widgets;
 }
