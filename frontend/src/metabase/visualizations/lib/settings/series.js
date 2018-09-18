@@ -113,7 +113,11 @@ function getPreferredColor(key) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export function seriesSetting({ readDependencies = [], ...def } = {}) {
+export function seriesSetting({
+  readDependencies = [],
+  noPadding,
+  ...def
+} = {}) {
   const settingId = "series_settings";
   const colorSettingId = `${settingId}.colors`;
 
@@ -230,6 +234,7 @@ export function seriesSetting({ readDependencies = [], ...def } = {}) {
       getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [colorSettingId, ...readDependencies],
+      noPadding: true,
       ...def,
     }),
     // colors must be computed as a whole rather than individually

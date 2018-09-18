@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { t } from "c-3po";
 
-import Icon from "metabase/components/Icon.jsx";
 import ColumnItem from "./ColumnItem";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
@@ -77,7 +76,7 @@ export default class ChartSettingOrderedColumns extends Component {
         originalId: "table.columns",
         replacementId: "column_settings",
         props: {
-          editingColumnKey: keyForColumn(column),
+          initialKey: keyForColumn(column),
         },
       });
     }
