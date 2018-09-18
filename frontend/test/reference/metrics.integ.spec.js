@@ -47,7 +47,6 @@ describe("The Reference Section", () => {
     display: "scalar",
     dataset_query: {
       database: 1,
-      table_id: 1,
       type: "query",
       query: { "source-table": 1, aggregation: [["metric", 1]] },
     },
