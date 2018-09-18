@@ -5,6 +5,7 @@
             [metabase.query-processor
              [interface :as i]
              [sort :as sort]
+             [store :as qp.store]
              [util :as qputil]]
             [metabase.query-processor.middleware.resolve :as resolve]
             [toucan
@@ -26,16 +27,17 @@
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
-  [{{source-table-id :id, :as source-table} :source-table, :as inner-query}]
-  ;; Sort the implicit FIELDS so the SQL (or other native query) that gets generated (mostly) approximates the 'magic' sorting
-  ;; we do on the results. This is done so when the outer query we generate is a `SELECT *` the order doesn't change
-  (for [field (sort/sort-fields inner-query (fetch-fields-for-souce-table-id source-table-id))
-        :let  [field (-> field
-                         resolve/convert-db-field
-                         (resolve/resolve-table {[nil source-table-id] source-table}))]]
-    (if (qputil/datetime-field? field)
-      (i/map->DateTimeField {:field field, :unit :default})
-      field)))
+  [{source-table-id :source-table, :as inner-query}]
+  (let [{source-table-id :id, :as source-table} (qp.store/table source-table-id)]
+    ;; Sort the implicit FIELDS so the SQL (or other native query) that gets generated (mostly) approximates the 'magic' sorting
+    ;; we do on the results. This is done so when the outer query we generate is a `SELECT *` the order doesn't change
+    (for [field (sort/sort-fields inner-query (fetch-fields-for-souce-table-id source-table-id))
+          :let  [field (-> field
+                           resolve/convert-db-field
+                           (resolve/resolve-table {[nil source-table-id] source-table}))]]
+      (if (qputil/datetime-field? field)
+        (i/map->DateTimeField {:field field, :unit :default})
+        field))))
 
 (defn- should-add-implicit-fields? [{:keys [fields breakout source-table], aggregations :aggregation}]
   (and source-table ; if query is using another query as its source then there will be no table to add nested fields for

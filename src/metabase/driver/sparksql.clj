@@ -16,7 +16,9 @@
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs tru]]])
@@ -63,15 +65,16 @@
       :else                                               field)))
 
 (defn- apply-join-tables
-  [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
+  (let [{source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
+    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
+      (let [honeysql-form (h/merge-left-join honeysql-form
+                            [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
+                            [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
+                             (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn- apply-page-using-row-number-for-offset
   "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
@@ -91,9 +94,9 @@
             (h/limit items))))))
 
 (defn- apply-source-table
-  [honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [table-name]}
-  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
+  [honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
+    (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------

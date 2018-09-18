@@ -5,6 +5,7 @@
              [events :as events]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [activity :as activity :refer [Activity]]
              [card :refer [Card]]
@@ -41,20 +42,12 @@
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
-(defn- inner-query->source-table-id
-  "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
-  [{:keys [source-table source-query]}]
-  (or (when source-table
-        (u/get-id source-table))
-      (when source-query
-        (recur source-query))))
-
 (defn- process-card-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description])
         query       (u/ignore-exceptions (qp/expand (:dataset_query object)))
         database-id (when-let [database (:database query)]
                       (u/get-id database))
-        table-id    (inner-query->source-table-id (:query query))]
+        table-id    (mbql.u/query->source-table-id query)]
     (activity/record-activity!
       :topic       topic
       :object      object
