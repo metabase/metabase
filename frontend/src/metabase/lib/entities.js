@@ -17,6 +17,8 @@ import { normalize, denormalize, schema } from "normalizr";
 import { getIn, dissocIn, merge } from "icepick";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
@@ -58,6 +60,9 @@ type EntityDefinition = {
   wrapEntity?: (object: EntityObject) => any,
   form?: any,
   actionShouldInvalidateLists?: (action: Action) => boolean,
+
+  // list of properties for this object which should be persisted
+  writableProperties?: string[],
 };
 
 type EntityObject = any;
@@ -136,6 +141,11 @@ export type Entity = {
 
   requestsReducer: Reducer,
   actionShouldInvalidateLists: (action: Action) => boolean,
+
+  writableProperties?: string[],
+  getAnalyticsMetadata?: () => any,
+
+  HACK_getObjectFromAction: (action: Action) => any,
 };
 
 export function createEntity(def: EntityDefinition): Entity {
@@ -169,12 +179,20 @@ export function createEntity(def: EntityDefinition): Entity {
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
+  const getWritableProperties = object =>
+    entity.writableProperties != null
+      ? _.pick(object, "id", ...entity.writableProperties)
+      : object;
+
   // ACTION TYPES
   const CREATE_ACTION = `metabase/entities/${entity.name}/CREATE`;
   const FETCH_ACTION = `metabase/entities/${entity.name}/FETCH`;
   const UPDATE_ACTION = `metabase/entities/${entity.name}/UPDATE`;
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
+  const INVALIDATE_LISTS_ACTION = `metabase/entities/${
+    entity.name
+  }/INVALIDATE_LISTS_ACTION`;
 
   entity.actionTypes = {
     CREATE: CREATE_ACTION,
@@ -182,6 +200,7 @@ export function createEntity(def: EntityDefinition): Entity {
     UPDATE: UPDATE_ACTION,
     DELETE: DELETE_ACTION,
     FETCH_LIST: FETCH_LIST_ACTION,
+    INVALIDATE_LISTS_ACTION: INVALIDATE_LISTS_ACTION,
     ...(entity.actionTypes || {}),
   };
 
@@ -189,11 +208,12 @@ export function createEntity(def: EntityDefinition): Entity {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.create(entityObject),
+            await entity.api.create(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
@@ -233,6 +253,7 @@ export function createEntity(def: EntityDefinition): Entity {
         dispatch,
         getState,
       ) => {
+        trackAction("update", updatedObject, getState);
         // save the original object for undo
         const originalObject = entity.selectors.getObject(getState(), {
           entityId: entityObject.id,
@@ -248,7 +269,7 @@ export function createEntity(def: EntityDefinition): Entity {
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await entity.api.update(entityObject),
+            await entity.api.update(getWritableProperties(entityObject)),
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
@@ -289,6 +310,7 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("delete", getState);
         const statePath = [...getObjectStatePath(entityObject.id), "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -334,6 +356,37 @@ export function createEntity(def: EntityDefinition): Entity {
     // user defined actions should override defaults
     ...entity.objectActions,
     ...(def.actions || {}),
+  };
+
+  // HACK: the above actions return the normalizr results
+  // (i.e. { entities, result }) rather than the loaded object(s), except
+  // for fetch and fetchList when the data is cached, in which case it returns
+  // the noralized object.
+  //
+  // This is a problem when we use the result of one of the actions as though
+  // though the action creator was an API client.
+  //
+  // For now just use this function until we figure out a cleaner way to do
+  // this. It will make it easy to find instances where we use the result of an
+  // action, and ensures a consistent result
+  //
+  // NOTE: this returns the normalized object(s), nested objects defined in
+  // the schema will be replaced with IDs.
+  //
+  // NOTE: A possible solution is to have an `updateEntities` action which is
+  // dispatched by the actions with the normalized data so that we can return
+  // the denormalized data from the action itself.
+  //
+  entity.HACK_getObjectFromAction = ({ payload }) => {
+    if (payload && "entities" in payload && "result" in payload) {
+      if (Array.isArray(payload.result)) {
+        return payload.result.map(id => payload.entities[entity.name][id]);
+      } else {
+        return payload.entities[entity.name][payload.result];
+      }
+    } else {
+      return payload;
+    }
   };
 
   // SELECTORS
@@ -470,7 +523,8 @@ export function createEntity(def: EntityDefinition): Entity {
     entity.actionShouldInvalidateLists = action =>
       action.type === CREATE_ACTION ||
       action.type === DELETE_ACTION ||
-      action.type === UPDATE_ACTION;
+      action.type === UPDATE_ACTION ||
+      action.type === INVALIDATE_LISTS_ACTION;
   }
 
   entity.requestsReducer = (state, action) => {
@@ -526,6 +580,20 @@ export function createEntity(def: EntityDefinition): Entity {
 
     entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
+  }
+
+  function trackAction(action, object, getState) {
+    try {
+      MetabaseAnalytics.trackEvent(
+        "entity actions",
+        entity.name,
+        action,
+        entity.getAnalyticsMetadata &&
+          entity.getAnalyticsMetadata(action, object, getState),
+      );
+    } catch (e) {
+      console.warn("trackAction threw an error:", e);
+    }
   }
 
   return entity;

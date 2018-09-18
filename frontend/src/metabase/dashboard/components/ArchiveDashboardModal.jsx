@@ -1,16 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
+
+import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 export default class ArchiveDashboardModal extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      error: null,
-    };
-  }
+  state = {
+    error: null,
+  };
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
@@ -43,23 +41,15 @@ export default class ArchiveDashboardModal extends Component {
 
     return (
       <ModalContent title={t`Archive Dashboard`} onClose={this.props.onClose}>
-        <div className="Form-inputs mb4">
-          <p>{t`Are you sure you want to do this?`}</p>
-        </div>
+        <p>{t`Are you sure you want to do this?`}</p>
 
-        <div className="Form-actions">
-          <button
-            className="Button Button--danger"
-            onClick={() => this.archiveDashboard()}
-          >
+        <div>
+          <Button danger onClick={() => this.archiveDashboard()}>
             Yes
-          </button>
-          <button
-            className="Button Button--primary ml1"
-            onClick={this.props.onClose}
-          >
+          </Button>
+          <Button primary ml={1} onClick={this.props.onClose}>
             No
-          </button>
+          </Button>
           {formError}
         </div>
       </ModalContent>

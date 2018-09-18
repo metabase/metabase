@@ -157,13 +157,13 @@ export default class QueryVisualization extends Component {
     const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
     const isEmbeddingEnabled = MetabaseSettings.get("embedding");
     return (
-      <div className="relative flex align-center flex-no-shrink mt2 mb1 sm-py3">
+      <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
         <div className="z4 absolute left hide sm-show">
           {!isObjectDetail && (
             <VisualizationSettings ref="settings" {...this.props} />
           )}
         </div>
-        <div className="z3 absolute left right">
+        <div className="z3 sm-absolute left right">
           <Tooltip tooltip={runButtonTooltip}>
             <RunButton
               isRunnable={isRunnable}
@@ -182,7 +182,7 @@ export default class QueryVisualization extends Component {
             className="flex"
             items={messages}
             renderItem={item => (
-              <div className="flex-no-shrink flex align-center mx2 h5 text-grey-4">
+              <div className="flex-no-shrink flex align-center mx2 h5 text-medium">
                 <Icon className="mr1" name={item.icon} size={12} />
                 {item.message}
               </div>
@@ -289,7 +289,7 @@ export default class QueryVisualization extends Component {
 }
 
 export const VisualizationEmptyState = ({ showTutorialLink }) => (
-  <div className="flex full layout-centered text-grey-1 flex-column">
+  <div className="flex full layout-centered text-light flex-column">
     <h1
     >{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
     {showTutorialLink && (

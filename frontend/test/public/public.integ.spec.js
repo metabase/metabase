@@ -67,7 +67,6 @@ import * as Urls from "metabase/lib/urls";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
-import Collections from "metabase/entities/collections";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
@@ -223,7 +222,6 @@ describe("public/embedded", () => {
           .first()
           .find("a"),
       );
-      await store.waitForActions([Collections.actions.fetchList]);
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),
@@ -397,7 +395,7 @@ describe("public/embedded", () => {
           type: "native",
           native: {
             query: "SELECT {{num}} AS num",
-            template_tags: {
+            "template-tags": {
               num: {
                 name: "num",
                 display_name: "Num",
@@ -419,7 +417,7 @@ describe("public/embedded", () => {
           database: 1,
           type: "query",
           query: {
-            source_table: PEOPLE_TABLE_ID,
+            "source-table": PEOPLE_TABLE_ID,
             aggregation: ["count"],
           },
         },

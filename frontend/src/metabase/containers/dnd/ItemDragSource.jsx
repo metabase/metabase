@@ -9,6 +9,10 @@ import { dragTypeForItem } from ".";
   props => dragTypeForItem(props.item),
   {
     canDrag(props, monitor) {
+      // can't drag if can't write the parent collection
+      if (props.collection && props.collection.can_write === false) {
+        return false;
+      }
       // if items are selected only allow dragging selected items
       if (
         props.selection &&

@@ -1,6 +1,10 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]]
+            [clojure.string :as s]
             [clj-time.core :as time]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -13,14 +17,15 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models
              [card :refer [Card]]
-             [collection :refer [Collection]]
+             [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
-             [permissions-group :refer [PermissionsGroup]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
@@ -28,17 +33,22 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :refer [*driver*]]
-             [dataset-definitions :as defs]]
+             [dataset-definitions :as defs]
+             [datasets :refer [*driver*]]]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import java.util.TimeZone
+  (:import com.mchange.v2.c3p0.PooledDataSource
+           java.util.TimeZone
+           org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -107,8 +117,9 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login}
-                         #(.endsWith (name %) "_id")))
+                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                         #(s/ends-with? % "_id")
+                         #(s/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -221,6 +232,17 @@
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class TaskHistory)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_]
+                         (let [started (time/now)
+                               ended   (time/plus started (time/millis 10))]
+                           {:db_id      (data/id)
+                            :task       (random-name)
+                            :started_at (du/->Timestamp started)
+                            :ended_at   (du/->Timestamp ended)
+                            :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
   test/WithTempDefaults
@@ -337,6 +359,36 @@
   [& body]
   `(do-with-log-messages (fn [] ~@body)))
 
+(def level-kwd->level
+  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
+   Not intended for use outside of the `with-mb-log-messages-at-level` macro."
+  {:error org.apache.log4j.Level/ERROR
+   :warn  org.apache.log4j.Level/WARN
+   :info  org.apache.log4j.Level/INFO
+   :debug org.apache.log4j.Level/DEBUG
+   :trace org.apache.log4j.Level/TRACE})
+
+(defn ^Logger metabase-logger
+  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
+  `with-mb-log-messages-at-level` macro."
+  []
+  (Logger/getLogger "metabase"))
+
+(defmacro with-mb-log-messages-at-level
+  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at
+  a higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is
+  set to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
+  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
+  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
+  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
+  messages even if the threshold is higher than the message you are looking for."
+  [level-kwd & body]
+  `(let  [orig-log-level# (.getLevel (metabase-logger))]
+     (try
+       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
+       (with-log-messages ~@body)
+       (finally
+         (.setLevel (metabase-logger) orig-log-level#)))))
 
 (defn vectorize-byte-arrays
   "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
@@ -378,6 +430,13 @@
                           [:data :cols]
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+
+(defn round-all-decimals
+  "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
+  [decimal-place data]
+  (qputil/postwalk-pred double?
+                        #(u/round-to-decimals decimal-place %)
+                        data))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -443,7 +502,7 @@
   timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
   connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
   [db]
-  (when-let [conn-pool (:datasource (sql/db->pooled-connection-spec db))]
+  (when-let [^PooledDataSource conn-pool (:datasource (sql/db->pooled-connection-spec db))]
     (.softResetAllUsers conn-pool)))
 
 (defn db-timezone-id
@@ -477,7 +536,8 @@
       (DateTimeZone/setDefault dtz)
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
-      (f)
+      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
+        (f))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures
@@ -535,8 +595,8 @@
           pause-query                (promise)
           before-query-called-cancel (realized? called-cancel?)
           before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-query checkins
-                                              (ql/aggregation (ql/count))))
+          query-thunk                (fn [] (data/run-mbql-query checkins
+                                              {:aggregation [[:count]]}))
           ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
           ;; which should cause an interrupt
           query-future               (f query-thunk called-query? called-cancel? pause-query)]
@@ -558,3 +618,31 @@
          ;; This releases the fake query function so it finishes
          (deliver pause-query true)
          true)])))
+
+(defmacro throw-if-called
+  "Redefines `fn-var` with a function that throws an exception if it's called"
+  {:style/indent 1}
+  [fn-var & body]
+  `(with-redefs [~fn-var (fn [& args#]
+                           (throw (RuntimeException. "Should not be called!")))]
+     ~@body))
+
+
+(defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (try
+    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+      (perms/revoke-collection-permissions! group-id collection/root-collection))
+    (f)
+    (finally
+      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+        (when-not (db/exists? Permissions
+                    :group_id group-id
+                    :object   (perms/collection-readwrite-path collection/root-collection))
+          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+
+(defmacro with-non-admin-groups-no-root-collection-perms
+  "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
+  default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
+  admin has removed them."
+  [& body]
+  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))

@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import colors from "metabase/lib/colors";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -155,7 +156,7 @@ export default class ActionsWidget extends Component {
             height: CIRCLE_SIZE,
             transition: "opacity 300ms ease-in-out",
             opacity: popoverIsOpen || iconIsVisible ? 1 : 0,
-            boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.2)",
+            boxShadow: `2px 2px 4px ${colors["shadow"]}`,
           }}
           onClick={this.toggle}
         >
@@ -189,7 +190,7 @@ export default class ActionsWidget extends Component {
             >
               {PopoverComponent ? (
                 <div>
-                  <div className="flex align-center text-grey-4 p1 px2">
+                  <div className="flex align-center text-medium p1 px2">
                     <Icon
                       name="chevronleft"
                       className="cursor-pointer"
@@ -224,7 +225,7 @@ export default class ActionsWidget extends Component {
                 actions.map((action, index) => (
                   <div
                     key={index}
-                    className="p2 flex align-center text-grey-4 brand-hover cursor-pointer"
+                    className="p2 flex align-center text-medium brand-hover cursor-pointer"
                     onClick={() => this.handleActionClick(index)}
                   >
                     {action.icon && (

@@ -252,13 +252,11 @@ const SECTIONS = [
         display_name: t`User filter`,
         type: "string",
         validations: [
-          [
-            value =>
-              (value.match(/\(/g) || []).length !==
-              (value.match(/\)/g) || []).length
-                ? t`Check your parentheses`
-                : null,
-          ],
+          value =>
+            (value.match(/\(/g) || []).length !==
+            (value.match(/\)/g) || []).length
+              ? t`Check your parentheses`
+              : null,
         ],
       },
       {

@@ -124,11 +124,8 @@
   (when timezone-id
     (time/unparse (.withZone timezone-offset-formatter (t/time-zone-for-id timezone-id)) date-time)))
 
-(defn- ^String system-timezone->offset-str
-  "Get the system/JVM timezone offset specified at `date-time`. The time is needed here as offsets can change for a
-  given timezone based on the time of year (i.e. daylight savings time)."
-  [date-time]
-  (timezone-id->offset-str (.getID (TimeZone/getDefault)) date-time))
+(def ^:private ^TimeZone utc   (TimeZone/getTimeZone "UTC"))
+(def ^:private utc-hsql-offset (hx/literal "+00:00"))
 
 (s/defn ^:private create-hsql-for-date
   "Returns an HoneySQL structure representing the date for MySQL. If there's a report timezone, we need to ensure the
@@ -138,14 +135,14 @@
   [date-obj :- java.util.Date
    date-literal-or-string :- (s/either s/Str Literal)]
   (let [date-as-dt                 (tcoerce/from-date date-obj)
-        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)
-        system-timezone-offset-str (system-timezone->offset-str date-as-dt)]
+        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)]
     (if (and report-timezone-offset-str
-             (not= report-timezone-offset-str system-timezone-offset-str))
+             (not (.hasSameRules utc (TimeZone/getTimeZone (driver/report-timezone)))))
       ;; if we have a report timezone we want to generate SQL like convert_tz('2004-01-01T12:00:00','-8:00','-2:00')
-      ;; to convert our timestamp from system timezone -> report timezone.
+      ;; to convert our timestamp from the UTC timezone -> report timezone. Note `date-object-literal` is assumed to be
+      ;; in UTC as `du/format-date` is being used which defaults to UTC.
       ;; See https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_convert-tz
-      ;; (We're using raw offsets for the JVM timezone instead of the timezone ID because we can't be 100% sure that
+      ;; (We're using raw offsets for the JVM/report timezone instead of the timezone ID because we can't be 100% sure that
       ;; MySQL will accept either of our timezone IDs as valid.)
       ;;
       ;; Note there's a small chance that report timezone will never be set on the MySQL connection, if attempting to
@@ -157,7 +154,7 @@
       ;; was the previous behavior.
       (hsql/call :convert_tz
         date-literal-or-string
-        (hx/literal system-timezone-offset-str)
+        utc-hsql-offset
         (hx/literal report-timezone-offset-str))
       ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared
       ;; statement param
@@ -178,7 +175,7 @@
                             hx/->date
                             (hsql/format :quoting (sql/quote-style (MySQLDriver.)))
                             first)
-                        [(du/format-date :date-hour-minute-second-ms date)])))
+                        [date-str])))
 
 (defmethod sqlqp/->honeysql [MySQLDriver Time]
   [_ time-value]
@@ -269,28 +266,13 @@
    (sql/IDriverSQLDefaultsMixin)
    {:date-interval                     (u/drop-first-arg date-interval)
     :details-fields                    (constantly (ssh/with-tunnel-config
-                                                     [{:name         "host"
-                                                       :display-name "Host"
-                                                       :default      "localhost"}
-                                                      {:name         "port"
-                                                       :display-name "Port"
-                                                       :type         :integer
-                                                       :default      3306}
-                                                      {:name         "dbname"
-                                                       :display-name "Database name"
-                                                       :placeholder  "birds_of_the_word"
-                                                       :required     true}
-                                                      {:name         "user"
-                                                       :display-name "Database username"
-                                                       :placeholder  "What username do you use to login to the database?"
-                                                       :required     true}
-                                                      {:name         "password"
-                                                       :display-name "Database password"
-                                                       :type         :password
-                                                       :placeholder  "*******"}
-                                                      {:name         "additional-options"
-                                                       :display-name "Additional JDBC connection string options"
-                                                       :placeholder  "tinyInt1isBit=false"}]))
+                                                     [driver/default-host-details
+                                                      (assoc driver/default-port-details :default 3306)
+                                                      driver/default-dbname-details
+                                                      driver/default-user-details
+                                                      driver/default-password-details
+                                                      (assoc driver/default-additional-options-details
+                                                        :placeholder  "tinyInt1isBit=false")]))
     :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
     :current-db-time                   (driver/make-current-db-time-fn mysql-db-time-query mysql-date-formatters)
     :features                          (fn [this]

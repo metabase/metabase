@@ -88,7 +88,9 @@ export default class SetUserPassword extends Component {
   render() {
     const { updatePasswordResult } = this.props;
     let { formError, valid } = this.state;
-    const passwordComplexity = MetabaseSettings.passwordComplexity(true);
+    const passwordComplexity = MetabaseSettings.passwordComplexityDescription(
+      true,
+    );
 
     formError =
       updatePasswordResult && !formError ? updatePasswordResult : formError;

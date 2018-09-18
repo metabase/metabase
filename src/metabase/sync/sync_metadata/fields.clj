@@ -74,7 +74,7 @@
         {:table_id      (u/get-id table)
          :name          field-name
          :display_name  (humanization/name->human-readable-name field-name)
-         :database_type database-type
+         :database_type (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
          :base_type     base-type
          :special_type  (special-type field)
          :parent_id     parent-id}))))
@@ -194,36 +194,38 @@
   (let [known-fields (u/key-by canonical-name our-metadata)]
     (+
      ;; Loop thru fields in DB-METADATA. Create/reactivate any fields that don't exist in OUR-METADATA.
-     (sync-util/sum-numbers (fn [db-field-chunk]
-                              (sync-util/with-error-handling (format "Error checking if Fields '%s' needs to be created or reactivated"
-                                                                     (pr-str (map :name db-field-chunk)))
-                                (let [known-field-pred    (comp known-fields canonical-name)
-                                      fields-to-update    (filter known-field-pred db-field-chunk)
-                                      new-fields          (remove known-field-pred db-field-chunk)
-                                      updated-chunk-count (sync-util/sum-numbers #(update-field-chunk! table known-fields %) fields-to-update)]
+     (sync-util/sum-numbers
+      (fn [db-field-chunk]
+        (sync-util/with-error-handling (format "Error checking if Fields '%s' needs to be created or reactivated"
+                                               (pr-str (map :name db-field-chunk)))
+          (let [known-field-pred    (comp known-fields canonical-name)
+                fields-to-update    (filter known-field-pred db-field-chunk)
+                new-fields          (remove known-field-pred db-field-chunk)
+                updated-chunk-count (sync-util/sum-numbers #(update-field-chunk! table known-fields %) fields-to-update)]
 
-                                  ;; otherwise if field doesn't exist, create or reactivate it
-                                  (when (seq new-fields)
-                                    (create-or-reactivate-field-chunk! table new-fields parent-id))
-                                  ;; Add the updated number of fields with the number of newly created fields
-                                  (+ updated-chunk-count (count new-fields)))))
-                            (partition-all 1000 db-metadata))
+            ;; otherwise if field doesn't exist, create or reactivate it
+            (when (seq new-fields)
+              (create-or-reactivate-field-chunk! table new-fields parent-id))
+            ;; Add the updated number of fields with the number of newly created fields
+            (+ updated-chunk-count (count new-fields)))))
+      (partition-all 1000 db-metadata))
 
      ;; ok, loop thru Fields in OUR-METADATA. Mark Fields as inactive if they don't exist in DB-METADATA.
-     (sync-util/sum-numbers (fn [our-field]
-                              (sync-util/with-error-handling (format "Error checking if '%s' needs to be retired" (:name our-field))
-                                (if-let [db-field (matching-field-metadata our-field db-metadata)]
-                                  ;; if field exists in both metadata sets we just need to recursively check the nested fields
-                                  (if-let [our-nested-fields (seq (:nested-fields our-field))]
-                                    (sync-field-instances! table (:nested-fields db-field) (set our-nested-fields) (:id our-field))
-                                    ;; No fields were updated
-                                    0)
-                                  ;; otherwise if field exists in our metadata but not DB metadata time to make it inactive
-                                  (do
-                                    (retire-field! table our-field)
-                                    ;; 1 field was updated (retired)
-                                    1))))
-                            our-metadata))))
+     (sync-util/sum-numbers
+      (fn [our-field]
+        (sync-util/with-error-handling (format "Error checking if '%s' needs to be retired" (:name our-field))
+          (if-let [db-field (matching-field-metadata our-field db-metadata)]
+            ;; if field exists in both metadata sets we just need to recursively check the nested fields
+            (if-let [our-nested-fields (seq (:nested-fields our-field))]
+              (sync-field-instances! table (:nested-fields db-field) (set our-nested-fields) (:id our-field))
+              ;; No fields were updated
+              0)
+            ;; otherwise if field exists in our metadata but not DB metadata time to make it inactive
+            (do
+              (retire-field! table our-field)
+              ;; 1 field was updated (retired)
+              1))))
+      our-metadata))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -239,32 +241,34 @@
                                   :parent_id parent-id)
         field-name->db-metadata (u/key-by canonical-name db-metadata)]
     ;; Make sure special types are up-to-date for all the fields
-    (sync-util/sum-numbers (fn [field]
-                             (let [db-field         (get field-name->db-metadata (canonical-name field))
-                                   new-special-type (special-type db-field)]
-                               (if (and db-field
-                                        (or
-                                         ;; If the base_type has changed, we need to updated it
-                                         (not= (:base_type field) (:base-type db-field))
-                                         ;; If the base_type hasn't changed, but we now have a special_type, we should update
-                                         ;; it. We should not overwrite a special_type that is already present (could have
-                                         ;; been specified by the user).
-                                         (and (not (:special_type field)) new-special-type)))
-                                 (do
-                                   ;; update special type if one came back from DB metadata but Field doesn't currently have one
-                                   (db/update! Field (u/get-id field)
-                                     (merge {:base_type (:base-type db-field)}
-                                            (when-not (:special_type field)
-                                              {:special_type new-special-type})))
-                                   ;; now recursively do the same for any nested fields
-                                   (if-let [db-nested-fields (seq (:nested-fields db-field))]
-                                     ;; This field was updated + any nested fields
-                                     (+ 1 (update-metadata! table (set db-nested-fields) (u/get-id field)))
-                                     ;; No nested fields, so just this field was updated
-                                     1))
-                                 ;; The field was not updated
-                                 0)))
-                           existing-fields)))
+    (sync-util/sum-numbers
+     (fn [field]
+       (let [db-field         (get field-name->db-metadata (canonical-name field))
+             new-special-type (special-type db-field)]
+         (if (and db-field
+                  (or
+                   ;; If the base_type has changed, we need to updated it
+                   (not= (:base_type field) (:base-type db-field))
+                   ;; If the base_type hasn't changed, but we now have a special_type, we should
+                   ;; update it. We should not overwrite a special_type that is already present
+                   ;; (could have been specified by the user).
+                   (and (not (:special_type field)) new-special-type)))
+           (do
+             ;; update special type if one came back from DB metadata but Field doesn't
+             ;; currently have one
+             (db/update! Field (u/get-id field)
+               (merge {:base_type (:base-type db-field)}
+                      (when-not (:special_type field)
+                        {:special_type new-special-type})))
+             ;; now recursively do the same for any nested fields
+             (if-let [db-nested-fields (seq (:nested-fields db-field))]
+               ;; This field was updated + any nested fields
+               (+ 1 (update-metadata! table (set db-nested-fields) (u/get-id field)))
+               ;; No nested fields, so just this field was updated
+               1))
+           ;; The field was not updated
+           0)))
+     existing-fields)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

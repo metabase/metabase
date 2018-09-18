@@ -38,7 +38,8 @@ groups:
   - Overview:
       title: Overview
   - Breakdowns:
-      title: How [[this]] are distributed
+      title: How the [[this]] is distributed
+      comparison_title: How they compare by distribution
 cards:
   - Count:
       title: Count
@@ -60,7 +61,7 @@ cards:
       group: Overview
       width: 6
   - Distribution:
-      title: How [[this]] is distributed
+      title: How the [[this]] is distributed
       visualization: bar
       metrics: Count
       dimensions: this
@@ -68,12 +69,13 @@ cards:
       width: 12
   - ByNumber:
       title: "[[GenericNumber]] by [[this]]"
-      visualization: line
+      visualization: bar
       metrics:
       - Sum
       - Avg
       dimensions: this
       group: Breakdowns
+      height: 8
   - Crosstab:
       title: "[[this]] by [[GenericCategoryMedium]]"
       visualization: table

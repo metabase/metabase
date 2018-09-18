@@ -17,8 +17,9 @@
              [interface :as i]
              [permissions :as perms :refer [Permissions]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -42,13 +43,13 @@
 (defn- assert-valid-hex-color [^String hex-color]
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info (tru "Invalid color")
+    (throw (ui18n/ex-info (tru "Invalid color")
              {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
-    (throw (ex-info (tru "Collection name cannot be blank!")
+    (throw (ui18n/ex-info (tru "Collection name cannot be blank!")
              {:status-code 400, :errors {:name (tru "cannot be blank")}})))
   (u/slugify collection-name collection-slug-max-length))
 
@@ -141,20 +142,20 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (throw
-       (ex-info (tru "Invalid Collection location: path is invalid.")
+       (ui18n/ex-info (tru "Invalid Collection location: path is invalid.")
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (contains? collection :personal_owner_id)
       (when-not (= location "/")
         (throw
-         (ex-info (tru "You cannot move a Personal Collection.")
+         (ui18n/ex-info (tru "You cannot move a Personal Collection.")
            {:status-code 400
             :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
-       (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
+       (ui18n/ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
          {:status-code 404
           :errors      {:location (tru "Invalid Collection location: some or all ancestors do not exist.")}})))))
 
@@ -183,6 +184,13 @@
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true}))
+
+(defn root-collection-with-ui-details
+  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  []
+  (assoc root-collection
+    :name (str (tru "Our analytics"))
+    :id   "root"))
 
 (defn- is-root-collection? [x]
   (instance? RootCollection x))
@@ -273,7 +281,7 @@
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [CollectionInstance]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -282,11 +290,11 @@
 
   The ancestors of D are:
 
-    A > B > C
+    [Root] > A > B > C
 
   If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
 
-    A > C
+    [Root] > A > C
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
@@ -294,7 +302,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     []
-    (filter i/can-read? (ancestors collection))))
+    (filter i/can-read? (cons (root-collection-with-ui-details) (ancestors collection)))))
+
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the immediate parent `collection` id, if set."
+  {:hydrate :parent_id}
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
+  (if location (location-path->parent-id location)))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -497,11 +511,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
-          :archived true))
-      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+          :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -512,7 +525,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))
@@ -604,7 +617,7 @@
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
        {:status-code 400
         :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
   ;;
@@ -615,15 +628,15 @@
   ;; You also definitely cannot *move* a Personal Collection
   (when (api/column-will-change? :location collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to move a Personal Collection.")
        {:status-code 400
         :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection!")
+     (ui18n/ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -632,7 +645,7 @@
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
+      (throw (ui18n/ex-info (tru "You cannot move a Collection and archive it at the same time.")
                {:status-code 400
                 :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
     ;; ok, go ahead and do the archive/unarchive operation
@@ -954,7 +967,7 @@
   ;; the same first & last name! This will *ruin* their lives :(
   (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
                                                          :id (u/get-id user-or-id))]
-    (tru "{0} {1}''s Personal Collection" first-name last-name)))
+    (str (tru "{0} {1}''s Personal Collection" first-name last-name))))
 
 (s/defn user->personal-collection :- CollectionInstance
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
@@ -1002,7 +1015,12 @@
   {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
+    ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/get-id users))])]
+      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
+      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
+      ;; as a side-effect. This will ensure this property never comes back as `nil`
       (for [user users]
-        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))
+        (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
+                                                (user->personal-collection-id (u/get-id user))))))))

@@ -1,6 +1,6 @@
 :root {
-  --modal-background-color: rgba(46, 53, 59, 0.6);
-  --modal-background-color-transition: rgba(46, 53, 59, 0.01);
+  --modal-background-color: color(var(--color-bg-black) alpha(-40%));
+  --modal-background-color-transition: color(var(--color-bg-black) alpha(-99%));
 }
 
 .ModalContainer {
@@ -10,7 +10,7 @@
 .Modal {
   margin: auto;
   width: 640px;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 6px var(--color-shadow);
   max-height: 90%;
   overflow-y: auto;
 }
@@ -48,7 +48,7 @@
 }
 
 .Modal-backdrop {
-  background-color: var(--modal-background-color);
+  background-color: color(var(--color-bg-black) alpha(-40%));
 }
 
 /* TRANSITIONS */
@@ -58,21 +58,21 @@
 .Modal-backdrop.Modal-appear,
 .Modal-backdrop.Modal-enter {
   transition: background-color 200ms ease-in-out;
-  background-color: var(--modal-background-color-transition);
+  background-color: color(var(--color-bg-black) alpha(-99%));
 }
 
 .Modal-backdrop.Modal-appear-active,
 .Modal-backdrop.Modal-enter-active {
-  background-color: var(--modal-background-color);
+  background-color: color(var(--color-bg-black) alpha(-40%));
 }
 
 .Modal-backdrop.Modal-leave {
   transition: background-color 200ms ease-in-out 100ms;
-  background-color: var(--modal-background-color);
+  background-color: color(var(--color-bg-black) alpha(-40%));
 }
 
 .Modal-backdrop.Modal-leave-active {
-  background-color: var(--modal-background-color-transition);
+  background-color: color(var(--color-bg-black) alpha(-99%));
 }
 
 /* modal */

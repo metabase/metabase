@@ -5,6 +5,7 @@ import {
 
 import React from "react";
 import { mount } from "enzyme";
+import { assocIn } from "icepick";
 
 import { CardApi, SegmentApi } from "metabase/services";
 
@@ -24,6 +25,8 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 
+// NOTE: database/table_id/source-table are hard-coded, this might be a problem at some point
+
 describe("The Reference Section", () => {
   // Test data
   const segmentDef = {
@@ -32,7 +35,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -30, "day"],
     },
   };
@@ -43,7 +46,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -15, "day"],
     },
   };
@@ -53,10 +56,9 @@ describe("The Reference Section", () => {
     display: "scalar",
     dataset_query: {
       database: 1,
-      table_id: 1,
       type: "query",
       query: {
-        source_table: 1,
+        "source-table": 1,
         aggregation: ["count"],
         filter: ["segment", 1],
       },
@@ -154,7 +156,12 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        let card = await CardApi.create(segmentCardDef);
+        const cardDef = assocIn(
+          segmentCardDef,
+          ["dataset_query", "query", "filter", 1],
+          segmentIds[0],
+        );
+        let card = await CardApi.create(cardDef);
 
         expect(card.name).toBe(segmentCardDef.name);
 

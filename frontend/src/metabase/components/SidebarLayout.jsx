@@ -2,6 +2,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import fitViewport from "metabase/hoc/FitViewPort";
+
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
     className={className}
@@ -10,7 +12,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
     {React.cloneElement(
       sidebar,
       {
-        style: { flexShrink: 0 },
+        style: { flexShrink: 0, alignSelf: "stretch" },
         className: "scroll-y scroll-show scroll--light scroll-show--hover",
       },
       sidebar.props.children,
@@ -39,4 +41,4 @@ SidebarLayout.propTypes = {
   children: PropTypes.element.isRequired,
 };
 
-export default SidebarLayout;
+export default fitViewport(SidebarLayout);

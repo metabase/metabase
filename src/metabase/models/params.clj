@@ -7,7 +7,8 @@
             [metabase.query-processor.middleware.expand :as ql]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]])
+             [hydrate :refer [hydrate]]]
+            [metabase.mbql.util :as mbql.u])
   (:import metabase.query_processor.interface.FieldPlaceholder))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -15,13 +16,35 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn field-form->id
-  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
+  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references. Also handles unwrapped integers.
 
      (field-form->id [:field-id 100])  ; -> 100"
   [field-form]
-  (when-let [field-placeholder (u/ignore-exceptions (ql/expand-ql-sexpr field-form))]
-    (when (instance? FieldPlaceholder field-placeholder)
-      (:field-id field-placeholder))))
+  (cond
+    (mbql.u/is-clause? :field-id field-form)
+    (second field-form)
+
+    (mbql.u/is-clause? :fk-> field-form)
+    (last field-form)
+
+    (integer? field-form)
+    field-form
+
+    :else
+    (throw (IllegalArgumentException. (str "Don't know what to do with: " field-form)))))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field-id` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql.u/mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field-id field-id-or-form]
+
+    :else
+    (throw (IllegalArgumentException. (str "Don't know how to wrap:" field-id-or-form)))))
 
 (defn- field-ids->param-field-values
   "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
@@ -36,7 +59,7 @@
 
      (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
   [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template_tags (keyword tag) :dimension]))
+  (get-in dashcard [:card :dataset_query :native :template-tags (u/keyword->qualified-name tag) :dimension]))
 
 (defn- param-target->field-id
   "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
@@ -196,7 +219,7 @@
 (defn card->template-tag-field-ids
   "Return a set of Field IDs referenced in template tag parameters in CARD."
   [card]
-  (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template_tags])
+  (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
              :let                       [field-id (field-form->id dimension)]
              :when                      field-id]

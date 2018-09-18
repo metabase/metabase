@@ -22,7 +22,7 @@
 (expect
   {:query {:filter nil}
    :ga    {:segment nil, :metrics "ga:users"}}
-  (qp/transform-query {:query {:aggregation ["METRIC" "ga:users"]}}))
+  (qp/transform-query {:query {:aggregation [:metric "ga:users"]}}))
 
 
 ;; check that a built-in segment gets removed from the query and put in `:ga`
@@ -198,7 +198,7 @@
            :visualization_settings {}
            :dataset_query          {:database (u/get-id db)
                                     :type     :query
-                                    :query    {:source_table (u/get-id table)
+                                    :query    {:source-table (u/get-id table)
                                                :aggregation  [[:METRIC "ga:sessions"]
                                                               [:METRIC "ga:1dayUsers"]]
                                                :breakout     [[:datetime-field [:field-id (u/get-id field)] :day]]}}

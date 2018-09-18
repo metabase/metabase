@@ -14,6 +14,7 @@ import type {
   ExpressionClause,
   ExpressionName,
   Expression,
+  FieldsClause,
 } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -84,15 +85,18 @@ export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
 
 // ORDER_BY
 
-export const getOrderBys = (query: SQ) => O.getOrderBys(query.order_by);
-export const addOrderBy = (query: SQ, order_by: OrderBy) =>
-  setOrderByClause(query, O.addOrderBy(query.order_by, order_by));
-export const updateOrderBy = (query: SQ, index: number, order_by: OrderBy) =>
-  setOrderByClause(query, O.updateOrderBy(query.order_by, index, order_by));
+export const getOrderBys = (query: SQ) => O.getOrderBys(query["order-by"]);
+export const addOrderBy = (query: SQ, orderBy: OrderBy) =>
+  setOrderByClause(query, O.addOrderBy(query["order-by"], orderBy));
+export const updateOrderBy = (query: SQ, index: number, orderBy: OrderBy) =>
+  setOrderByClause(query, O.updateOrderBy(query["order-by"], index, orderBy));
 export const removeOrderBy = (query: SQ, index: number) =>
-  setOrderByClause(query, O.removeOrderBy(query.order_by, index));
+  setOrderByClause(query, O.removeOrderBy(query["order-by"], index));
 export const clearOrderBy = (query: SQ) =>
-  setOrderByClause(query, O.clearOrderBy(query.order_by));
+  setOrderByClause(query, O.clearOrderBy(query["order-by"]));
+
+// FIELD
+export const clearFields = (query: SQ) => setFieldsClause(query, null);
 
 // LIMIT
 
@@ -140,31 +144,37 @@ function setAggregationClause(
 ): SQ {
   let wasBareRows = A.isBareRows(query.aggregation);
   let isBareRows = A.isBareRows(aggregationClause);
-  // when switching to or from bare rows clear out any sorting clauses
+  // when switching to or from bare rows clear out any sorting and fields clauses
   if (isBareRows !== wasBareRows) {
-    clearOrderBy(query);
+    query = clearFields(query);
+    query = clearOrderBy(query);
   }
   // for bare rows we always clear out any dimensions because they don't make sense
   if (isBareRows) {
-    clearBreakouts(query);
+    query = clearBreakouts(query);
   }
   return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
   let breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    let sortId = Query.getFieldTargetId(sort[0]);
+    let sortId = Query.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }
   }
+  // clear fields when changing breakouts
+  query = clearFields(query);
   return setClause("breakout", query, breakoutClause);
 }
 function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
   return setClause("filter", query, filterClause);
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
-  return setClause("order_by", query, orderByClause);
+  return setClause("order-by", query, orderByClause);
+}
+function setFieldsClause(query: SQ, fieldsClause: ?FieldsClause): SQ {
+  return setClause("fields", query, fieldsClause);
 }
 function setLimitClause(query: SQ, limitClause: ?LimitClause): SQ {
   return setClause("limit", query, limitClause);
@@ -183,9 +193,11 @@ type FilterClauseName =
   | "filter"
   | "aggregation"
   | "breakout"
-  | "order_by"
+  | "order-by"
   | "limit"
-  | "expressions";
+  | "expressions"
+  | "fields";
+
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
   query = { ...query };
   if (clause == null) {

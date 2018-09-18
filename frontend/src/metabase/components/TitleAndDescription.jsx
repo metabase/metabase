@@ -13,7 +13,7 @@ type Attributes = {
 };
 const TitleAndDescription = ({ title, description, className }: Attributes) => (
   <div className={cx("flex align-center", className)}>
-    <h2 className="mr1">{title}</h2>
+    <h2 className="h2 mr1">{title}</h2>
     {description && (
       <Tooltip tooltip={description} maxWidth={"22em"}>
         <Icon name="info" style={{ marginTop: 3 }} />

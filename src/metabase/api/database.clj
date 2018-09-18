@@ -13,6 +13,7 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -21,7 +22,6 @@
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.sync
              [analyze :as analyze]
              [field-values :as sync-field-values]
@@ -97,14 +97,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (when (seq aggregations)
-    (some (fn [[ag-type]]
-            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
-          ;; over list of aggregations
-          (if-not (sequential? (first aggregations))
-            [aggregations]
-            aggregations))))
+  (seq (mbql.u/clause-instances #{:cum-count :cum-sum} aggregations)))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -550,21 +543,36 @@
   (delete-all-field-values-for-database! id)
   {:status :ok})
 
+
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(defn- can-read-schema?
+  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
+  at least some of its tables?)"
+  [database-id schema-name]
+  (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+    (perms/object-path database-id schema-name)))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id]
-  (let [db (api/read-check Database id)]
-    (sort (db/select-field :schema Table :db_id id))))
+  (api/read-check Database id)
+  (->> (db/select-field :schema Table :db_id id)
+       (filter (partial can-read-schema? id))
+       sort))
+
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of tables for the given database `id` and `schema`"
   [id schema]
-  (let [db (api/read-check Database id)]
-    (api/let-404 [tables (seq (db/select Table :db_id id :schema schema {:order-by [[:name :asc]]}))]
-      tables)))
+  (api/read-check Database id)
+  (api/check-403 (can-read-schema? id schema))
+  (->> (db/select Table :db_id id, :schema schema, {:order-by [[:name :asc]]})
+       (filter mi/can-read?)
+       seq
+       api/check-404))
+
 
 (api/define-routes)

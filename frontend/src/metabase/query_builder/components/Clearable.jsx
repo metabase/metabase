@@ -8,7 +8,7 @@ const Clearable = ({ onClear, children, className }) => (
     {children}
     {onClear && (
       <a
-        className="text-grey-2 no-decoration pr1 flex align-center"
+        className="text-light no-decoration pr1 flex align-center"
         onClick={onClear}
       >
         <Icon name="close" size={14} />

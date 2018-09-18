@@ -22,10 +22,11 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
+             [i18n :refer [tru]]
              [ssh :as ssh]])
   (:import java.sql.Time
            java.util.Date
-           [metabase.query_processor.interface TimeValue]))
+           metabase.query_processor.interface.TimeValue))
 
 (defrecord PrestoDriver []
   :load-ns true
@@ -326,29 +327,14 @@
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      8080}
-                                                            {:name         "catalog"
-                                                             :display-name "Database name"
-                                                             :placeholder  "hive"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database"
-                                                             :default      "metabase"}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "ssl"
-                                                             :display-name "Use a secure connection (SSL)?"
-                                                             :type         :boolean
-                                                             :default      false}]))
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 8080)
+                                                            (assoc driver/default-dbname-details
+                                                              :name         "catalog"
+                                                              :placeholder  (tru "hive"))
+                                                            driver/default-user-details
+                                                            driver/default-password-details
+                                                            driver/default-ssl-details]))
           :execute-query                     (u/drop-first-arg execute-query)
           :features                          (constantly (set/union #{:set-timezone
                                                                       :basic-aggregations

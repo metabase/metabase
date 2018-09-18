@@ -14,6 +14,8 @@ import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import EditButton from "metabase/reference/components/EditButton.jsx";
 
+import colors from "metabase/lib/colors";
+
 const EditableReferenceHeader = ({
   entity = {},
   table,
@@ -36,7 +38,10 @@ const EditableReferenceHeader = ({
     >
       <div className={L.leftIcons}>
         {headerIcon && (
-          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+          <IconBorder
+            borderWidth="0"
+            style={{ backgroundColor: colors["bg-medium"] }}
+          >
             <Icon
               className="text-brand"
               name={headerIcon}

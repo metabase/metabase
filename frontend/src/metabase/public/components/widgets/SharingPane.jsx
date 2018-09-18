@@ -126,7 +126,7 @@ export default class SharingPane extends Component {
                         "cursor-pointer text-brand-hover text-bold text-uppercase",
                         extension === this.state.extension
                           ? "text-brand"
-                          : "text-grey-2",
+                          : "text-light",
                       )}
                       onClick={() =>
                         this.setState({

@@ -5,16 +5,18 @@
             [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.models
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
-            [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -36,22 +38,25 @@
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
+(def segmented-perm-regex
+  "Regex that matches a segmented permission"
+  #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$")
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (def ^:private ^:const valid-object-path-patterns
-  [#"^/db/(\d+)/$"                                              ; permissions for the entire DB -- native and all schemas
-   #"^/db/(\d+)/native/$"                                       ; permissions to create new native queries for the DB
-   #"^/db/(\d+)/schema/$"                                       ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^\\/]*)/$"                             ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"                 ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"            ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$"           ; Permissions to run any sort of query against a Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$" ; Permissions to run a query against a Table using GTAP
-   #"^/collection/(\d+)/$"                                      ; readwrite permissions for a collection
-   #"^/collection/(\d+)/read/$"                                 ; read permissions for a collection
-   #"^/collection/root/$"                                       ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
-   #"^/collection/root/read/$"])                                ; read permissions for the 'Root' Collection
+  [#"^/db/(\d+)/$"                                    ; permissions for the entire DB -- native and all schemas
+   #"^/db/(\d+)/native/$"                             ; permissions to create new native queries for the DB
+   #"^/db/(\d+)/schema/$"                             ; permissions for all schemas in the DB
+   #"^/db/(\d+)/schema/([^\\/]*)/$"                   ; permissions for a specific schema
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
+   segmented-perm-regex                               ; Permissions to run a query against a Table using GTAP
+   #"^/collection/(\d+)/$"                            ; readwrite permissions for a collection
+   #"^/collection/(\d+)/read/$"                       ; read permissions for a collection
+   #"^/collection/root/$"          ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
+   #"^/collection/root/read/$"])   ; read permissions for the 'Root' Collection
 
 (defn valid-object-path?
   "Does OBJECT-PATH follow a known, allowed format to an *object*?
@@ -77,7 +82,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ex-info (tru "You cannot create or revoke permissions for the 'Admin' group.")
+    (throw (ui18n/ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -87,7 +92,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
+    (throw (ui18n/ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -103,7 +108,9 @@
   (s/cond-pre su/Map su/IntGreaterThanZero))
 
 (s/defn object-path :- ObjectPath
-  "Return the permissions path for a Database, schema, or Table."
+  "Return the [readwrite] permissions path for a Database, schema, or Table. (At the time of this writing, DBs and
+  schemas don't have separate `read/` and write permissions; you either have 'data access' permissions for them, or
+  you don't. Tables, however, have separate read and write perms.)"
   ([database-or-id :- MapOrID]
    (str "/db/" (u/get-id database-or-id) "/"))
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str)]
@@ -123,7 +130,7 @@
   (str (object-path database-or-id) "schema/"))
 
 (s/defn collection-readwrite-path :- ObjectPath
-  "Return the permissions path for *readwrite* access for a COLLECTION-OR-ID."
+  "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str "/collection/"
        (if (get collection-or-id :metabase.models.collection/is-root?)
@@ -132,7 +139,7 @@
        "/"))
 
 (s/defn collection-read-path :- ObjectPath
-  "Return the permissions path for *read* access for a COLLECTION-OR-ID."
+  "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
 
@@ -362,11 +369,26 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-;; TODO - why does this take a PATH when everything else takes PATH-COMPONENTS or IDs?
-(s/defn delete-related-permissions!
-  "Delete all permissions for `group-or-id` for ancestors or descendant objects of object with `path`.
-   You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-   deleted."
+(s/defn ^:private delete-related-permissions!
+  "This is somewhat hard to explain, but I will do my best:
+
+  Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
+  This includes *both* ancestor and descendant paths. For example:
+
+  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Dependning on the
+  permissions the group has, it could end up doing something like:
+
+    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
+    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
+
+  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
+  for `/db/1/schema/`.
+
+  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
+  deleted.
+
+  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
+  `revoke-permissions!` elsewhere instead of calling this directly."
   {:style/indent 2}
   [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero), path :- ObjectPath, & other-conditions]
   (let [where {:where (apply list
@@ -381,12 +403,19 @@
       (db/delete! Permissions where))))
 
 (defn revoke-permissions!
-  "Revoke all permissions for GROUP-OR-ID to object with PATH-COMPONENTS, *including* related permissions."
+  "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
+  permissions that grant full or partial access to the object in question).
+
+
+    (revoke-permissions! my-group my-db)"
+  {:arglists '([group-id database-or-id]
+               [group-id database-or-id schema-name]
+               [group-id database-or-id schema-name table-or-id])}
   [group-or-id & path-components]
   (delete-related-permissions! group-or-id (apply object-path path-components)))
 
 (defn grant-permissions!
-  "Grant permissions to GROUP-OR-ID to an object."
+  "Grant permissions to `group-or-id` to an object."
   ([group-or-id db-id schema & more]
    (grant-permissions! group-or-id (apply object-path db-id schema more)))
   ([group-or-id path]
@@ -396,15 +425,20 @@
        :object   path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
-       (log/error (u/format-color 'red "Failed to grant permissions: %s" (.getMessage e)))))))
+       (log/error (u/format-color 'red (tru "Failed to grant permissions: {0}" (.getMessage e))))
+       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
+       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
+       ;; to pass when they shouldn't. Don't allow this during tests
+       (when config/is-test?
+         (throw e))))))
 
 (defn revoke-native-permissions!
-  "Revoke all native query permissions for GROUP-OR-ID to database with DATABASE-ID."
+  "Revoke all native query permissions for `group-or-id` to database with `database-id`."
   [group-or-id database-id]
   (delete-related-permissions! group-or-id (adhoc-native-query-path database-id)))
 
 (defn grant-native-readwrite-permissions!
-  "Grant full readwrite permissions for GROUP-OR-ID to database with DATABASE-ID."
+  "Grant full readwrite permissions for `group-or-id` to database with `database-id`."
   [group-or-id database-id]
   (grant-permissions! group-or-id (adhoc-native-query-path database-id)))
 
@@ -524,8 +558,8 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
-                         (tru "Please fetch new data and try again."))
+    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                               (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

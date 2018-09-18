@@ -23,7 +23,7 @@ describe("CompoundQueryAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: "card__2",
+      "source-table": "card__2",
     });
   });
 
@@ -34,7 +34,7 @@ describe("CompoundQueryAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: "card__3",
+      "source-table": "card__3",
     });
   });
 });

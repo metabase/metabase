@@ -305,7 +305,7 @@ export default class FilterPopover extends Component {
     const { filter } = this.state;
     const [operatorName, fieldRef] = filter;
 
-    if (operatorName === "SEGMENT" || fieldRef == undefined) {
+    if (operatorName === "segment" || fieldRef == undefined) {
       return (
         <div className="FilterPopover">
           <FieldList
@@ -331,7 +331,7 @@ export default class FilterPopover extends Component {
             maxWidth: dimension.field().isDate() ? null : 500,
           }}
         >
-          <div className="FilterPopover-header border-bottom text-grey-3 p1 flex align-center">
+          <div className="FilterPopover-header border-bottom text-medium p1 flex align-center">
             <div className="flex py1">
               <a
                 className="cursor-pointer text-purple-hover transition-color flex align-center"

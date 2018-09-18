@@ -13,7 +13,7 @@
              [field-values :as field-values]
              [table :as table :refer [Table]]]
             [metabase.sync.analyze :as analyze]
-            [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
             [metabase.test
              [data :as data]
@@ -40,7 +40,7 @@
 
 (defn- values-are-valid-json? [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (= (:special_type (classify-text-fingerprint/infer-special-type field (#'fingerprint/fingerprint field values)))
+    (= (:special_type (classify-text-fingerprint/infer-special-type field (transduce identity (fingerprinters/fingerprinter field) values)))
        :type/SerializedJSON)))
 
 ;; When all the values are valid JSON dicts they're valid JSON
@@ -71,7 +71,7 @@
 
 (defn- values-are-valid-emails? [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (= (:special_type (classify-text-fingerprint/infer-special-type field (#'fingerprint/fingerprint field values)))
+    (= (:special_type (classify-text-fingerprint/infer-special-type field (transduce identity (fingerprinters/fingerprinter field) values)))
        :type/Email)))
 
 (expect true (values-are-valid-emails? ["helper@metabase.com"]))
@@ -79,7 +79,6 @@
 
 (expect false (values-are-valid-emails? ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"]))
 (expect false (values-are-valid-emails? ["\"A string should not cause a Field to be marked as email\""]))
-(expect false (values-are-valid-emails? [100]))
 (expect false (values-are-valid-emails? ["true"]))
 (expect false (values-are-valid-emails? ["false"]))
 

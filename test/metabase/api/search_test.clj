@@ -1,6 +1,7 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
@@ -98,17 +99,19 @@
 ;; NOTE: Metrics and segments don't have collections, so they'll be returned
 (expect
   default-metric-segment-results
-  (with-search-items-in-root-collection "test"
-    (search-request :rasta :q "test")))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-search-items-in-root-collection "test"
+      (search-request :rasta :q "test"))))
 
 ;; Users that have root collection permissions should get root collection search results
 (expect
   (set (remove (comp #{"collection"} :model) default-search-results))
-  (with-search-items-in-root-collection "test"
-    (tt/with-temp* [PermissionsGroup           [group]
-                    PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
-      (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
-      (search-request :rasta :q "test"))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-search-items-in-root-collection "test"
+      (tt/with-temp* [PermissionsGroup           [group]
+                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+        (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+        (search-request :rasta :q "test")))))
 
 ;; Users without root collection permissions should still see other collections they have access to
 (expect
@@ -116,12 +119,13 @@
         (map #(merge default-search-row %)
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
-  (with-search-items-in-collection {:keys [collection]} "test"
-    (with-search-items-in-root-collection "test2"
-      (tt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
-        (perms/grant-collection-read-permissions! group (u/get-id collection))
-        (search-request :rasta :q "test")))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-search-items-in-collection {:keys [collection]} "test"
+      (with-search-items-in-root-collection "test2"
+        (tt/with-temp* [PermissionsGroup           [group]
+                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+          (perms/grant-collection-read-permissions! group (u/get-id collection))
+          (search-request :rasta :q "test"))))))
 
 ;; Users with root collection permissions should be able to search root collection data long with collections they
 ;; have access to
@@ -130,13 +134,14 @@
         (for [row default-search-results
               :when (not= "collection" (:model row))]
           (update row :name #(str/replace % "test" "test2"))))
-  (with-search-items-in-collection {:keys [collection]} "test"
-    (with-search-items-in-root-collection "test2"
-      (tt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
-        (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
-        (perms/grant-collection-read-permissions! group collection)
-        (search-request :rasta :q "test")))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-search-items-in-collection {:keys [collection]} "test"
+      (with-search-items-in-root-collection "test2"
+        (tt/with-temp* [PermissionsGroup           [group]
+                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+          (perms/grant-collection-read-permissions! group collection)
+          (search-request :rasta :q "test"))))))
 
 ;; Users with access to multiple collections should see results from all collections they have access to
 (expect
@@ -157,12 +162,13 @@
         (map #(merge default-search-row %)
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
-  (with-search-items-in-collection {coll-1 :collection} "test"
-    (with-search-items-in-collection {coll-2 :collection} "test2"
-      (tt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
-        (perms/grant-collection-read-permissions! group (u/get-id coll-1))
-        (search-request :rasta :q "test")))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-search-items-in-collection {coll-1 :collection} "test"
+      (with-search-items-in-collection {coll-2 :collection} "test2"
+        (tt/with-temp* [PermissionsGroup           [group]
+                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+          (perms/grant-collection-read-permissions! group (u/get-id coll-1))
+          (search-request :rasta :q "test"))))))
 
 ;; Favorites are per user, so other user's favorites don't cause search results to be favorited
 (expect

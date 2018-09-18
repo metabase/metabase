@@ -51,6 +51,7 @@ import {
 } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -106,6 +107,7 @@ export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
+export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 
@@ -728,6 +730,28 @@ export const setParameterDefaultValue = createThunkAction(
   },
 );
 
+export const setParameterIndex = createThunkAction(
+  SET_PARAMETER_INDEX,
+  (parameterId, index) => (dispatch, getState) => {
+    const dashboard = getDashboard(getState());
+    const parameterIndex = _.findIndex(
+      dashboard.parameters,
+      p => p.id === parameterId,
+    );
+    if (parameterIndex >= 0) {
+      const parameters = dashboard.parameters.slice();
+      parameters.splice(index, 0, parameters.splice(parameterIndex, 1)[0]);
+      dispatch(
+        setDashboardAttributes({
+          id: dashboard.id,
+          attributes: { parameters },
+        }),
+      );
+    }
+    return { id: parameterId, index };
+  },
+);
+
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (dispatch, getState) => {
@@ -772,7 +796,7 @@ const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
-    const { metadata } = getState();
+    const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
     const cardIsDirty = !_.isEqual(

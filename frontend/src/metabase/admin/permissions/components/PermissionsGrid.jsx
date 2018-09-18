@@ -1,6 +1,7 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import { Link } from "react-router";
 
@@ -13,13 +14,14 @@ import Modal from "metabase/components/Modal.jsx";
 import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
 import { AutoSizer } from "react-virtualized";
 
-import { isAdminGroup } from "metabase/lib/groups";
-import { capitalize, pluralize } from "metabase/lib/formatting";
+import { isAdminGroup, getGroupNameLocalized } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
 
-const LIGHT_BORDER = "rgb(225, 226, 227)";
-const DARK_BORDER = "rgb(161, 163, 169)";
+import colors from "metabase/lib/colors";
+
+const LIGHT_BORDER = colors["text-light"];
+const DARK_BORDER = colors["text-medium"];
 const BORDER_RADIUS = 4;
 
 const getBorderStyles = ({
@@ -46,8 +48,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
   icon: "unknown",
-  iconColor: "#9BA5B1",
-  bgColor: "#DFE8EA",
+  iconColor: colors["text-medium"],
+  bgColor: colors["bg-medium"],
 };
 
 const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
@@ -69,7 +71,7 @@ const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
         }}
       >
         {permission.header && (
-          <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">
+          <h5 className="my1 text-centered text-medium text-uppercase text-light">
             {permission.header}
           </h5>
         )}
@@ -88,7 +90,7 @@ const GroupHeader = ({
 }) => (
   <div>
     <h4 className="text-centered full my1 flex layout-centered">
-      {group.name}
+      {getGroupNameLocalized(group)}
       {group.tooltip && (
         <Tooltip tooltip={group.tooltip} maxWidth="24em">
           <Icon className="ml1" name="question" />
@@ -115,12 +117,17 @@ const EntityHeader = ({
   isLast,
 }) => (
   <div className="flex flex-column">
-    <div className={cx("relative flex", { "align-self-center mb1": isColumn })}>
-      <Icon name={icon} className="mr1" />
-      <div className="flex-full">
+    <div
+      className={cx("relative flex", {
+        "align-self-center mb1": isColumn,
+        "align-center": !isColumn,
+      })}
+    >
+      <Icon name={icon} className="ml3 mr2 text-light" />
+      <div>
         <h4>{entity.name}</h4>
         {entity.subtitle && (
-          <div className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">
+          <div className="mt1 h5 text-monospace text-normal text-light text-uppercase">
             {entity.subtitle}
           </div>
         )}
@@ -141,14 +148,6 @@ const EntityHeader = ({
         isLast={isLast}
       />
     )}
-  </div>
-);
-
-const CornerHeader = ({ grid }) => (
-  <div className="absolute bottom left right flex flex-column align-center pb1">
-    <div className="flex align-center">
-      <h3 className="ml1">{capitalize(pluralize(grid.type))}</h3>
-    </div>
   </div>
 );
 
@@ -188,6 +187,20 @@ const PermissionsCell = ({
   </div>
 );
 
+const ActionsList = connect()(({ actions, dispatch }) => (
+  <ul className="border-top">
+    {actions.map(action => (
+      <li>
+        {typeof action === "function" ? (
+          action()
+        ) : (
+          <AccessOption option={action} onChange={dispatch} />
+        )}
+      </li>
+    ))}
+  </ul>
+));
+
 class GroupPermissionCell extends Component {
   constructor(props, context) {
     super(props, context);
@@ -223,6 +236,8 @@ class GroupPermissionCell extends Component {
     const { confirmations } = this.state;
 
     const value = permission.getter(group.id, entity.id);
+    const actions =
+      permission.actions && permission.actions(group.id, entity.id);
     const options = permission.options(group.id, entity.id);
     const warning =
       permission.warning && permission.warning(group.id, entity.id);
@@ -258,7 +273,9 @@ class GroupPermissionCell extends Component {
                 name={option.icon}
                 size={28}
                 style={{
-                  color: this.state.hovered ? "#fff" : option.iconColor,
+                  color: this.state.hovered
+                    ? colors["text-white"]
+                    : option.iconColor,
                 }}
               />
               {confirmations &&
@@ -324,6 +341,9 @@ class GroupPermissionCell extends Component {
             this.refs.popover.close();
           }}
         />
+        {actions && actions.length > 0 ? (
+          <ActionsList actions={actions} />
+        ) : null}
       </PopoverWithTrigger>
     );
   }
@@ -332,7 +352,7 @@ class GroupPermissionCell extends Component {
 const AccessOption = ({ value, option, onChange }) => (
   <div
     className={cx(
-      "flex py2 px2 align-center bg-brand-hover text-white-hover cursor-pointer",
+      "flex py2 pl2 pr3 align-center bg-brand-hover text-white-hover cursor-pointer text-bold",
       {
         "bg-brand text-white": value === option,
       },
@@ -341,9 +361,9 @@ const AccessOption = ({ value, option, onChange }) => (
   >
     <Icon
       name={option.icon}
-      className="mr1"
+      className="mr2"
       style={{ color: option.iconColor }}
-      size={18}
+      size={22}
     />
     {option.title}
   </div>
@@ -479,9 +499,6 @@ const PermissionsGrid = ({
                 )}
               </div>
             )}
-            renderCorner={
-              showHeader ? () => <CornerHeader grid={grid} /> : undefined
-            }
           />
         )}
       </AutoSizer>

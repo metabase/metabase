@@ -86,18 +86,17 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:database 21
-                             :query    {:filter ["abc"]}}}
+   :definition              {:filter ["=" ["field-id" 10] 20]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
-    (segment-response ((user->client :crowberto) :post 200 "segment" {:name                    "A Segment"
-                                                                      :description             "I did it!"
-                                                                      :show_in_getting_started false
-                                                                      :caveats                 nil
-                                                                      :points_of_interest      nil
-                                                                      :table_id                id
-                                                                      :definition              {:database 21
-                                                                                                :query    {:filter ["abc"]}}}))))
+    (segment-response ((user->client :crowberto) :post 200 "segment"
+                       {:name                    "A Segment"
+                        :description             "I did it!"
+                        :show_in_getting_started false
+                        :caveats                 nil
+                        :points_of_interest      nil
+                        :table_id                id
+                        :definition              {:filter [:= [:field-id 10] 20]}}))))
 
 
 ;; ## PUT /api/segment
@@ -139,8 +138,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:database 2
-                             :query    {:filter ["not" "the toucans you're looking for"]}}}
+   :definition              {:filter ["!=" ["field-id" 2] "cans"]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:table_id table-id}]]
@@ -152,8 +150,7 @@
                                                                                     :points_of_interest      nil
                                                                                     :table_id                456
                                                                                     :revision_message        "I got me some revisions"
-                                                                                    :definition              {:database 2
-                                                                                                              :query    {:filter ["not" "the toucans you're looking for"]}}}))))
+                                                                                    :definition              {:filter [:!= [:field-id 2] "cans"]}}))))
 
 
 ;; ## DELETE /api/segment/:id
@@ -182,7 +179,7 @@
     :created_at              true
     :updated_at              true
     :archived                true
-    :definition              {}}]
+    :definition              nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id table-id}]]
@@ -208,14 +205,12 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {:database 123
-                             :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+   :definition              {:filter ["=" ["field-id" 2] "cans"]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
                                             :table_id   table-id
-                                            :definition {:database 123
-                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]]
+                                            :definition {:filter [:= [:field-id 2] "cans"]}}]]
     (segment-response ((user->client :crowberto) :get 200 (format "segment/%d" id)))))
 
 
@@ -240,24 +235,24 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
+                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:creator_id (user->id :crowberto)
                                           :table_id   table-id
                                           :definition {:database 123
-                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                                                       :query    {:filter [:= [:field-id 2] "cans"]}}}]
                   Revision [_ {:model       "Segment"
                                :model_id    id
                                :object      {:name "b"
-                                             :definition {:filter ["AND" [">" 1 25]]}}
+                                             :definition {:filter [:and [:> 1 25]]}}
                                :is_creation true}]
                   Revision [_ {:model    "Segment"
                                :model_id id
                                :user_id  (user->id :crowberto)
                                :object   {:name "c"
-                                          :definition {:filter ["AND" [">" 1 25]]}}
+                                          :definition {:filter [:and [:> 1 25]]}}
                                :message  "updated"}]]
     (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]
              (dissoc revision :timestamp :id)))))
@@ -311,8 +306,7 @@
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
                     :description {:after "One segment to bring them all, and in the DataModel bind them"}
-                    :definition  {:after {:database 123
-                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
+                    :definition  {:after {:filter ["=" ["field-id" 2] "cans"]}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
@@ -323,15 +317,7 @@
                                                :show_in_getting_started false
                                                :caveats                 nil
                                                :points_of_interest      nil
-                                               :definition              {:creator_id              (user->id :crowberto)
-                                                                         :table_id                table-id
-                                                                         :name                    "Reverted Segment Name"
-                                                                         :description             nil
-                                                                         :show_in_getting_started false
-                                                                         :caveats                 nil
-                                                                         :points_of_interest      nil
-                                                                         :definition              {:database 123
-                                                                                                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                                               :definition              {:filter [:= [:field-id 2] "cans"]}}]
                   Revision [{revision-id :id} {:model       "Segment"
                                                :model_id    id
                                                :object      {:creator_id              (user->id :crowberto)
@@ -341,8 +327,7 @@
                                                              :show_in_getting_started false
                                                              :caveats                 nil
                                                              :points_of_interest      nil
-                                                             :definition              {:database 123
-                                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                             :definition              {:filter [:= [:field-id 2] "cans"]}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Segment"
                                                :model_id id
@@ -354,8 +339,7 @@
                                                           :show_in_getting_started false
                                                           :caveats                 nil
                                                           :points_of_interest      nil
-                                                          :definition              {:database 123
-                                                                                    :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                          :definition              {:filter [:= [:field-id 2] "cans"]}}
                                                :message  "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]

@@ -13,7 +13,7 @@ const DetailPane = ({
 }) => (
   <div>
     <h1>{name}</h1>
-    <p className={cx({ "text-grey-3": !description })}>
+    <p className={cx({ "text-medium": !description })}>
       {description || t`No description set.`}
     </p>
     {useForCurrentQuestion && useForCurrentQuestion.length > 0 ? (

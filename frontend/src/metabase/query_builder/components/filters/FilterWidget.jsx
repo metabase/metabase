@@ -139,7 +139,7 @@ export default class FilterWidget extends Component {
         </div>
         {removeFilter && (
           <a
-            className="text-grey-2 no-decoration px1 flex align-center"
+            className="text-light no-decoration px1 flex align-center"
             onClick={() => removeFilter(index)}
           >
             <Icon name="close" size={14} />

@@ -303,7 +303,8 @@
         [result result]))))
 
 (api/defendpoint GET "/:id/search/:search-id"
-  "Search for values of a Field that match values of another Field when breaking out by the "
+  "Search for values of a Field with `search-id` that start with `value`. See docstring for
+  `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}

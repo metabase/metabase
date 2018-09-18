@@ -62,7 +62,7 @@
       (assoc :created_at (boolean created_at)
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
-                             (dissoc :id :database_id :table_id :created_at :updated_at)
+                             (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
                              (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
@@ -76,11 +76,12 @@
       ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
 
 (defn- do-with-dashboards-in-a-collection [grant-collection-perms-fn! dashboards-or-ids f]
-  (tt/with-temp Collection [collection]
-    (grant-collection-perms-fn! (group/all-users) collection)
-    (doseq [dashboard-or-id dashboards-or-ids]
-      (db/update! Dashboard (u/get-id dashboard-or-id) :collection_id (u/get-id collection)))
-    (f)))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (grant-collection-perms-fn! (group/all-users) collection)
+      (doseq [dashboard-or-id dashboards-or-ids]
+        (db/update! Dashboard (u/get-id dashboard-or-id) :collection_id (u/get-id collection)))
+      (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-read-permissions! ~dashboards-or-ids (fn [] ~@body)))
@@ -138,38 +139,41 @@
           :updated_at    true
           :created_at    true
           :collection_id true})
-  (tu/with-model-cleanup [Dashboard]
-    (tt/with-temp Collection [collection]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      (-> ((user->client :rasta) :post 200 "dashboard" {:name          "Test Create Dashboard"
-                                                        :parameters    [{:hash "abc123", :name "test", :type "date"}]
-                                                        :collection_id (u/get-id collection)})
-          dashboard-response))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tu/with-model-cleanup [Dashboard]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        (-> ((user->client :rasta) :post 200 "dashboard" {:name          "Test Create Dashboard"
+                                                          :parameters    [{:hash "abc123", :name "test", :type "date"}]
+                                                          :collection_id (u/get-id collection)})
+            dashboard-response)))))
 
 ;; Make sure we can create a Dashboard with a Collection position
 (expect
   #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
-  (tu/with-model-cleanup [Dashboard]
-    (let [dashboard-name (tu/random-name)]
-      (tt/with-temp Collection [collection]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-        ((user->client :rasta) :post 200 "dashboard" {:name                dashboard-name
-                                                      :collection_id       (u/get-id collection)
-                                                      :collection_position 1000})
-        (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                (update :collection_id (partial = (u/get-id collection))))))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tu/with-model-cleanup [Dashboard]
+      (let [dashboard-name (tu/random-name)]
+        (tt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          ((user->client :rasta) :post 200 "dashboard" {:name                dashboard-name
+                                                        :collection_id       (u/get-id collection)
+                                                        :collection_position 1000})
+          (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                  (update :collection_id (partial = (u/get-id collection)))))))))
 
 ;; ...but not if we don't have permissions for the Collection
 (expect
   nil
-  (tu/with-model-cleanup [Dashboard]
-    (let [dashboard-name (tu/random-name)]
-      (tt/with-temp Collection [collection]
-        ((user->client :rasta) :post 403 "dashboard" {:name                dashboard-name
-                                                      :collection_id       (u/get-id collection)
-                                                      :collection_position 1000})
-        (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                (update :collection_id (partial = (u/get-id collection))))))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tu/with-model-cleanup [Dashboard]
+      (let [dashboard-name (tu/random-name)]
+        (tt/with-temp Collection [collection]
+          ((user->client :rasta) :post 403 "dashboard" {:name                dashboard-name
+                                                        :collection_id       (u/get-id collection)
+                                                        :collection_position 1000})
+          (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                  (update :collection_id (partial = (u/get-id collection)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -181,6 +185,7 @@
          {:name          "Test Dashboard"
           :creator_id    (user->id :rasta)
           :collection_id true
+          :can_write     false
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -198,7 +203,6 @@
                                                            :dataset_query          {}
                                                            :read_permissions       nil
                                                            :visualization_settings {}
-                                                           :query_average_duration nil
                                                            :result_metadata        nil})
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
@@ -212,16 +216,17 @@
 ;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
-                  Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
-                                                           :creator_id (user->id :crowberto)}]
-                  Card                [{card-id :id}      {:name          "Dashboard Test Card"
-                                                           :collection_id coll-id}]
-                  Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
-                                                           :collection_id coll-id}]
-                  DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
-    ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection          [{coll-id :id}      {:name "Collection 1"}]
+                    Dashboard           [{dashboard-id :id} {:name       "Test Dashboard"
+                                                             :creator_id (user->id :crowberto)}]
+                    Card                [{card-id :id}      {:name          "Dashboard Test Card"
+                                                             :collection_id coll-id}]
+                    Card                [{card-id2 :id}     {:name          "Dashboard Test Card 2"
+                                                             :collection_id coll-id}]
+                    DashboardCard       [{dbc_id :id}       {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCardSeries [_                  {:dashboardcard_id dbc_id, :card_id card-id2, :position 0}]]
+      ((user->client :rasta) :get 403 (format "dashboard/%d" dashboard-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -298,59 +303,65 @@
 ;; ...but if we don't have the Permissions for the old collection, we should get an Exception
 (expect
   "You don't have permissions to do that."
-  (dashboard-test/with-dash-in-collection [db collection dash]
-    (tt/with-temp Collection [new-collection]
-      ;; grant Permissions for only the *new* collection
-      (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
-      ;; now make an API call to move collections. Should fail
-      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)}))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (dashboard-test/with-dash-in-collection [db collection dash]
+      (tt/with-temp Collection [new-collection]
+        ;; grant Permissions for only the *new* collection
+        (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
+        ;; now make an API call to move collections. Should fail
+        ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)})))))
 
 ;; ...and if we don't have the Permissions for the new collection, we should get an Exception
 (expect
   "You don't have permissions to do that."
-  (dashboard-test/with-dash-in-collection [db collection dash]
-    (tt/with-temp Collection [new-collection]
-      ;; grant Permissions for only the *old* collection
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ;; now make an API call to move collections. Should fail
-      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)}))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (dashboard-test/with-dash-in-collection [db collection dash]
+      (tt/with-temp Collection [new-collection]
+        ;; grant Permissions for only the *old* collection
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ;; now make an API call to move collections. Should fail
+        ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dash)) {:collection_id (u/get-id new-collection)})))))
 
 ;; Can we change the Collection position of a Dashboard?
 (expect
   1
-  (tt/with-temp* [Collection [collection]
-                  Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
-     {:collection_position 1})
-    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection]
+                    Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
+       {:collection_position 1})
+      (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard)))))
 
 ;; ...and unset (unpin) it as well?
 (expect
   nil
-  (tt/with-temp* [Collection [collection]
-                  Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
-    (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
-     {:collection_position nil})
-    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection]
+                    Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
+      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard))
+       {:collection_position nil})
+      (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard)))))
 
 ;; ...we shouldn't be able to if we don't have permissions for the Collection
 (expect
   nil
-  (tt/with-temp* [Collection [collection]
-                  Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
-    ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
-     {:collection_position 1})
-    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection]
+                    Dashboard  [dashboard {:collection_id (u/get-id collection)}]]
+      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
+       {:collection_position 1})
+      (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard)))))
 
 (expect
   1
-  (tt/with-temp* [Collection [collection]
-                  Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
-    ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
-     {:collection_position nil})
-    (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection]
+                    Dashboard  [dashboard {:collection_id (u/get-id collection), :collection_position 1}]]
+      ((user->client :rasta) :put 403 (str "dashboard/" (u/get-id dashboard))
+       {:collection_position nil})
+      (db/select-one-field :collection_position Dashboard :id (u/get-id dashboard)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              UPDATING DASHBOARD COLLECTION POSITIONS                                           |
@@ -362,15 +373,16 @@
    "c" 2
    "d" 3
    "b" 4}
-  (tt/with-temp Collection [collection]
-    (card-api-test/with-ordered-items collection [Dashboard a
-                                                  Dashboard b
-                                                  Dashboard c
-                                                  Dashboard d]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id b))
-       {:collection_position 4})
-      (card-api-test/get-name->collection-position :rasta collection))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (card-api-test/with-ordered-items collection [Dashboard a
+                                                    Dashboard b
+                                                    Dashboard c
+                                                    Dashboard d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id b))
+         {:collection_position 4})
+        (card-api-test/get-name->collection-position :rasta collection)))))
 
 ;; Check that updating a dashboard at position 3 to position 1 will increment the positions before 3, not after
 (expect
@@ -378,15 +390,16 @@
    "a" 2
    "b" 3
    "d" 4}
-  (tt/with-temp Collection [collection]
-    (card-api-test/with-ordered-items collection [Card      a
-                                                  Pulse     b
-                                                  Dashboard c
-                                                  Dashboard d]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id c))
-       {:collection_position 1})
-      (card-api-test/get-name->collection-position :rasta collection))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (card-api-test/with-ordered-items collection [Card      a
+                                                    Pulse     b
+                                                    Dashboard c
+                                                    Dashboard d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id c))
+         {:collection_position 1})
+        (card-api-test/get-name->collection-position :rasta collection)))))
 
 ;; Check that updating position 1 to 3 will cause b and c to be decremented
 (expect
@@ -394,15 +407,16 @@
    "c" 2
    "a" 3
    "d" 4}
-  (tt/with-temp Collection [collection]
-    (card-api-test/with-ordered-items collection [Dashboard a
-                                                  Card      b
-                                                  Pulse     c
-                                                  Dashboard d]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
-       {:collection_position 3})
-      (card-api-test/get-name->collection-position :rasta collection))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (card-api-test/with-ordered-items collection [Dashboard a
+                                                    Card      b
+                                                    Pulse     c
+                                                    Dashboard d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+         {:collection_position 3})
+        (card-api-test/get-name->collection-position :rasta collection)))))
 
 ;; Check that updating position 1 to 4 will cause a through c to be decremented
 (expect
@@ -410,15 +424,16 @@
    "c" 2
    "d" 3
    "a" 4}
-  (tt/with-temp Collection [collection]
-    (card-api-test/with-ordered-items collection [Dashboard a
-                                                  Card      b
-                                                  Pulse     c
-                                                  Pulse     d]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
-       {:collection_position 4})
-      (card-api-test/get-name->collection-position :rasta collection))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (card-api-test/with-ordered-items collection [Dashboard a
+                                                    Card      b
+                                                    Pulse     c
+                                                    Pulse     d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+         {:collection_position 4})
+        (card-api-test/get-name->collection-position :rasta collection)))))
 
 ;; Check that updating position 4 to 1 will cause a through c to be incremented
 (expect
@@ -426,15 +441,16 @@
    "a" 2
    "b" 3
    "c" 4}
-  (tt/with-temp Collection [collection]
-    (card-api-test/with-ordered-items collection [Card      a
-                                                  Pulse     b
-                                                  Card      c
-                                                  Dashboard d]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-      ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id d))
-       {:collection_position 1})
-      (card-api-test/get-name->collection-position :rasta collection))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (card-api-test/with-ordered-items collection [Card      a
+                                                    Pulse     b
+                                                    Card      c
+                                                    Dashboard d]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id d))
+         {:collection_position 1})
+        (card-api-test/get-name->collection-position :rasta collection)))))
 
 ;; Check that moving a dashboard to another collection will fixup both collections
 (expect
@@ -446,25 +462,26 @@
     "f" 3
     "g" 4
     "h" 5}]
-  (tt/with-temp* [Collection [collection-1]
-                  Collection [collection-2]]
-    (card-api-test/with-ordered-items collection-1 [Dashboard a
-                                                    Card      b
-                                                    Card      c
-                                                    Pulse     d]
-      (card-api-test/with-ordered-items collection-2 [Pulse     e
-                                                      Pulse     f
-                                                      Dashboard g
-                                                      Card      h]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection-1)
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection-2)
-        ;; Move the first dashboard in collection-1 to collection-1
-        ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
-         {:collection_position 1, :collection_id (u/get-id collection-2)})
-        ;; "a" should now be gone from collection-1 and all the existing dashboards bumped down in position
-        [(card-api-test/get-name->collection-position :rasta collection-1)
-         ;; "a" is now first, all other dashboards in collection-2 bumped down 1
-         (card-api-test/get-name->collection-position :rasta collection-2)]))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection [collection-1]
+                    Collection [collection-2]]
+      (card-api-test/with-ordered-items collection-1 [Dashboard a
+                                                      Card      b
+                                                      Card      c
+                                                      Pulse     d]
+        (card-api-test/with-ordered-items collection-2 [Pulse     e
+                                                        Pulse     f
+                                                        Dashboard g
+                                                        Card      h]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection-1)
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection-2)
+          ;; Move the first dashboard in collection-1 to collection-1
+          ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id a))
+           {:collection_position 1, :collection_id (u/get-id collection-2)})
+          ;; "a" should now be gone from collection-1 and all the existing dashboards bumped down in position
+          [(card-api-test/get-name->collection-position :rasta collection-1)
+           ;; "a" is now first, all other dashboards in collection-2 bumped down 1
+           (card-api-test/get-name->collection-position :rasta collection-2)])))))
 
 ;; Check that adding a new card at position 3 will cause the existing card at 3 to be incremented
 (expect
@@ -475,19 +492,20 @@
     "b" 2
     "c" 3
     "d" 4}]
-  (tt/with-temp Collection [collection]
-    (tu/with-model-cleanup [Dashboard]
-      (card-api-test/with-ordered-items collection [Card  a
-                                                    Pulse b
-                                                    Card  d]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-        [(card-api-test/get-name->collection-position :rasta collection)
-         (do
-           ((user->client :rasta) :post 200 "dashboard" {:name "c"
-                                                         :parameters          [{}]
-                                                         :collection_id       (u/get-id collection)
-                                                         :collection_position 3})
-           (card-api-test/get-name->collection-position :rasta collection))]))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (tu/with-model-cleanup [Dashboard]
+        (card-api-test/with-ordered-items collection [Card  a
+                                                      Pulse b
+                                                      Card  d]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          [(card-api-test/get-name->collection-position :rasta collection)
+           (do
+             ((user->client :rasta) :post 200 "dashboard" {:name                "c"
+                                                           :parameters          [{}]
+                                                           :collection_id       (u/get-id collection)
+                                                           :collection_position 3})
+             (card-api-test/get-name->collection-position :rasta collection))])))))
 
 ;; Check that adding a new card without a position, leaves the existing positions unchanged
 (expect
@@ -498,18 +516,19 @@
     "b" 2
     "c" nil
     "d" 3}]
-  (tt/with-temp Collection [collection]
-    (tu/with-model-cleanup [Dashboard]
-      (card-api-test/with-ordered-items collection [Dashboard a
-                                                    Card      b
-                                                    Pulse     d]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-        [(card-api-test/get-name->collection-position :rasta collection)
-         (do
-           ((user->client :rasta) :post 200 "dashboard" {:name "c"
-                                                         :parameters          [{}]
-                                                         :collection_id       (u/get-id collection)})
-           (card-api-test/get-name->collection-position :rasta collection))]))))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp Collection [collection]
+      (tu/with-model-cleanup [Dashboard]
+        (card-api-test/with-ordered-items collection [Dashboard a
+                                                      Card      b
+                                                      Pulse     d]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          [(card-api-test/get-name->collection-position :rasta collection)
+           (do
+             ((user->client :rasta) :post 200 "dashboard" {:name          "c"
+                                                           :parameters    [{}]
+                                                           :collection_id (u/get-id collection)})
+             (card-api-test/get-name->collection-position :rasta collection))])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

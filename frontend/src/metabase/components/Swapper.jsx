@@ -28,6 +28,7 @@ class Swapper extends React.Component {
         onMouseEnter={() => this._onMouseEnter()}
         onMouseLeave={() => this._onMouseLeave()}
         className="block relative"
+        style={{ lineHeight: 1 }}
       >
         <Motion
           defaultStyle={{
@@ -39,10 +40,7 @@ class Swapper extends React.Component {
         >
           {({ scale }) => {
             return (
-              <span
-                className=""
-                style={{ display: "block", transform: `scale(${scale})` }}
-              >
+              <span style={{ display: "block", transform: `scale(${scale})` }}>
                 {defaultElement}
               </span>
             );

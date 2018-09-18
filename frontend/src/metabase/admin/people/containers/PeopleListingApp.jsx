@@ -160,10 +160,7 @@ export default class PeopleListingApp extends Component {
       });
     } else {
       // generate a password
-      const password = MetabaseUtils.generatePassword(
-        14,
-        MetabaseSettings.get("password_complexity"),
-      );
+      const password = MetabaseUtils.generatePassword();
 
       // trigger the reset
       this.props.resetPasswordManually(user, password);
@@ -438,15 +435,19 @@ export default class PeopleListingApp extends Component {
     let title = t`People`;
     if (deactivated.length > 0) {
       title = (
-        <Radio
-          className="h6"
-          value={!!showDeactivated}
-          options={[
-            { name: t`Active`, value: false },
-            { name: t`Deactivated`, value: true },
-          ]}
-          onChange={showDeactivated => this.setState({ showDeactivated })}
-        />
+        <div className="mb2">
+          <Radio
+            className="h6"
+            value={!!showDeactivated}
+            options={[
+              { name: t`Active`, value: false },
+              { name: t`Deactivated`, value: true },
+            ]}
+            underlined
+            py={1}
+            onChange={showDeactivated => this.setState({ showDeactivated })}
+          />
+        </div>
       );
     }
 
@@ -517,7 +518,7 @@ export default class PeopleListingApp extends Component {
                               <Tooltip tooltip={t`Reactivate this account`}>
                                 <Icon
                                   name="refresh"
-                                  className="text-grey-1 text-brand-hover cursor-pointer"
+                                  className="text-light text-brand-hover cursor-pointer"
                                   size={20}
                                   onClick={() =>
                                     this.props.showModal({

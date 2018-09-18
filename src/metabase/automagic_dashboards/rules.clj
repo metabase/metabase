@@ -4,9 +4,11 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.automagic-dashboards.populate :as populate]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [schema
              [coerce :as sc]
              [core :as s]]
@@ -104,8 +106,9 @@
                (s/optional-key :series_labels) [s/Str]}})
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)       s/Str
-               (s/optional-key :description) s/Str}})
+  {Identifier {(s/required-key :title)            s/Str
+               (s/optional-key :comparison_title) s/Str
+               (s/optional-key :description)      s/Str}})
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -119,8 +122,7 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{"dimension"} str/lower-case name))
+  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
           "dimension")
    (s/one s/Str "identifier")
    su/Map])
@@ -297,13 +299,13 @@
           rules-validator
           (as-> rule (assoc rule :specificity (specificity rule)))))
     (catch Exception e
-      (log/errorf (trs "Error parsing %s:\n%s")
-                  (.getFileName f)
-                  (or (some-> e
-                              ex-data
-                              (select-keys [:error :value])
-                              u/pprint-to-str)
-                      e))
+      (log/error (trs "Error parsing {0}:\n{1}"
+                      (.getFileName f)
+                      (or (some-> e
+                                  ex-data
+                                  (select-keys [:error :value])
+                                  u/pprint-to-str)
+                          e)))
       nil)))
 
 (defn- trim-trailing-slash

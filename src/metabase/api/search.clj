@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [compojure.core :refer [GET]]
             [honeysql.helpers :as h]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint define-routes]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint
+                                         define-routes]]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -45,7 +46,7 @@
   default-columns)
 
 (defn- ->column
-  "Returns the column name. If the column is aliased, i.e. [`:original_namd` `:aliased_name`], return the aliased
+  "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
   [column-or-aliased]
   (if (sequential? column-or-aliased)
@@ -95,8 +96,9 @@
   [query-map entity-type entity-columns]
   (let [col-name->column (u/key-by ->column entity-columns)
         cols-or-nils     (make-canonical-columns entity-type col-name->column)]
-    (apply h/merge-select query-map (concat cols-or-nils ))))
+    (apply h/merge-select query-map (concat cols-or-nils))))
 
+;; TODO - not used anywhere except `merge-name-and-archived-search` anymore so we can roll it into that
 (s/defn ^:private merge-name-search
   "Add case-insensitive name query criteria to `query-map`"
   [query-map {:keys [search-string]} :- SearchContext]
@@ -161,14 +163,13 @@
       (add-collection-criteria :collection_id search-ctx)))
 
 (s/defmethod ^:private create-search-query :pulse
-  [_ {:keys [archived?] :as search-ctx} :- SearchContext]
+  [_ search-ctx :- SearchContext]
   ;; Pulses don't currently support being archived, omit if archived is true
-  (when-not archived?
-    (-> (make-honeysql-search-query Pulse "pulse" pulse-columns-without-type)
-        (merge-name-search search-ctx)
-        (add-collection-criteria :collection_id search-ctx)
-        ;; We don't want alerts included in pulse results
-        (h/merge-where [:= :alert_condition nil]))))
+  (-> (make-honeysql-search-query Pulse "pulse" pulse-columns-without-type)
+      (merge-name-and-archived-search search-ctx)
+      (add-collection-criteria :collection_id search-ctx)
+      ;; We don't want alerts included in pulse results
+      (h/merge-where [:= :alert_condition nil])))
 
 (s/defmethod ^:private create-search-query :metric
   [_ search-ctx :- SearchContext]

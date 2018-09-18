@@ -16,7 +16,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [puppetlabs.i18n.core :refer [trs *locale*]]
+            [puppetlabs.i18n.core :refer [*locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 

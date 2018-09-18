@@ -21,7 +21,7 @@ describe("ZoomDrill", () => {
       question: question
         .query()
         .setQuery({
-          source_table: ORDERS_TABLE_ID,
+          "source-table": ORDERS_TABLE_ID,
           aggregation: [["count"]],
           breakout: [
             [
@@ -45,7 +45,7 @@ describe("ZoomDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       aggregation: [["count"]],
       filter: [
         "=",

@@ -32,8 +32,10 @@
             [metabase.query-processor.middleware
              [cache :as cache]
              [results-metadata :as results-metadata]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.sync.analyze.query-results :as qr]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -180,7 +182,7 @@
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
 
-(s/defn ^:private result-metadata-for-query :- results-metadata/ResultsMetadata
+(s/defn ^:private result-metadata-for-query :- qr/ResultsMetadata
   "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
@@ -191,12 +193,12 @@
                    (u/pprint-to-str 'red results))
         (get-in results [:data :results_metadata :columns])))))
 
-(s/defn ^:private result-metadata :- (s/maybe results-metadata/ResultsMetadata)
+(s/defn ^:private result-metadata :- (s/maybe qr/ResultsMetadata)
   "Get the right results metadata for this CARD. We'll check to see whether the METADATA passed in seems valid;
    otherwise we'll run the query ourselves to get the right values."
   [query metadata checksum]
   (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate results-metadata/ResultsMetadata metadata))]
+                             (s/validate qr/ResultsMetadata metadata))]
     (log/info (str "Card results metadata passed in to API is "
                    (cond
                      valid-metadata? "VALID. Thanks!"
@@ -216,7 +218,7 @@
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
@@ -395,7 +397,7 @@
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
-   result_metadata        (s/maybe results-metadata/ResultsMetadata)
+   result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   (let [card-before-update (api/write-check Card id)]
     ;; Do various permissions checks
@@ -434,10 +436,9 @@
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
 (api/defendpoint DELETE "/:id"
-  "Delete a `Card`."
+  "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
-  (log/warn (str "DELETE /api/card/:id is deprecated. Instead of deleting a Card, "
-                 "you should change its `archived` value via PUT /api/card/:id."))
+  (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (db/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
@@ -555,10 +556,11 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [card parameters constraints]
+(defn- query-for-card [card parameters constraints middleware]
   (let [query (assoc (:dataset_query card)
                 :constraints constraints
-                :parameters  parameters)
+                :parameters  parameters
+                :middleware  middleware)
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
@@ -567,12 +569,12 @@
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id]
+  [card-id & {:keys [parameters constraints context dashboard-id middleware]
               :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (Card card-id))
-        query   (query-for-card card parameters constraints)
+        query   (query-for-card card parameters constraints middleware)
         options {:executed-by  api/*current-user-id*
                  :context      context
                  :card-id      card-id
@@ -598,7 +600,8 @@
       (run-query-for-card card-id
         :parameters  (json/parse-string parameters keyword)
         :constraints nil
-        :context     (dataset-api/export-format->context export-format)))))
+        :context     (dataset-api/export-format->context export-format)
+        :middleware  {:skip-results-metadata? true}))))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

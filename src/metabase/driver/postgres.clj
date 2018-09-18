@@ -251,32 +251,14 @@
           :date-interval                     (u/drop-first-arg date-interval)
           :describe-table                    describe-table
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      5432}
-                                                            {:name         "dbname"
-                                                             :display-name "Database name"
-                                                             :placeholder  "birds_of_the_word"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database?"
-                                                             :required     true}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "ssl"
-                                                             :display-name "Use a secure connection (SSL)?"
-                                                             :type         :boolean
-                                                             :default      false}
-                                                            {:name         "additional-options"
-                                                             :display-name "Additional JDBC connection string options"
-                                                             :placeholder  "prepareThreshold=0"}]))
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 5432)
+                                                            driver/default-dbname-details
+                                                            driver/default-user-details
+                                                            driver/default-password-details
+                                                            driver/default-ssl-details
+                                                            (assoc driver/default-additional-options-details
+                                                              :placeholder "prepareThreshold=0")]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

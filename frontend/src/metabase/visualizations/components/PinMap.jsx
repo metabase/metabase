@@ -81,9 +81,7 @@ export default class PinMap extends Component {
     if (
       newProps.series[0].data !== this.props.series[0].data ||
       !_.isEqual(
-        // $FlowFixMe
         _.pick(newProps.settings, ...SETTINGS_KEYS),
-        // $FlowFixMe
         _.pick(this.props.settings, ...SETTINGS_KEYS),
       )
     ) {

@@ -2,6 +2,7 @@
   "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [honeysql.helpers :as hh]
             [metabase.api
              [common :as api]
              [session :as session-api]]
@@ -9,8 +10,9 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -34,10 +36,10 @@
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
                                        user/admin-or-self-visible-columns
                                        user/non-admin-or-self-visible-columns)))
-            (merge {:order-by [[:%lower.last_name :asc]
-                               [:%lower.first_name :asc]]}
-                   (when-not include_deactivated
-                     {:where [:= :is_active true]})))
+            (-> {}
+                (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                (hh/merge-where (when-not include_deactivated
+                                  [:= :is_active true]))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id)))
 
@@ -86,6 +88,19 @@
   (check-self-or-superuser id)
   (api/check-404 (fetch-user :id id, :is_active true)))
 
+(defn- valid-email-update?
+  "This predicate tests whether or not the user is allowed to update the email address associated with this account."
+  [{:keys [google_auth ldap_auth email] :as foo } maybe-new-email]
+  (or
+   ;; Admin users can update
+   api/*is-superuser?*
+   ;; If the email address didn't change, let it through
+   (= email maybe-new-email)
+   ;; We should not allow a regular user to change their email address if they are a google/ldap user
+   (and
+    (not google_auth)
+    (not ldap_auth))))
+
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
   [id :as {{:keys [email first_name last_name is_superuser login_attributes] :as body} :body}]
@@ -95,18 +110,20 @@
    login_attributes (s/maybe user/LoginAttributes)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
-  (api/check-404 (db/exists? User, :id id, :is_active true))
-  ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-  (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
-    "email" (tru "Email address already associated to another user."))
-  (api/check-500
-   (db/update! User id
-     (u/select-keys-when body
-       :present (when api/*is-superuser?*
-                  #{:login_attributes})
-       :non-nil (set (concat [:first_name :last_name :email]
-                             (when api/*is-superuser?*
-                               [:is_superuser]))))))
+  (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
+    ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
+    (api/check-403 (valid-email-update? user-before-update email))
+    ;; can't change email if it's already taken BY ANOTHER ACCOUNT
+    (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
+      "email" (tru "Email address already associated to another user."))
+    (api/check-500
+     (db/update! User id
+       (u/select-keys-when body
+         :present (when api/*is-superuser?*
+                    #{:login_attributes})
+         :non-nil (set (concat [:first_name :last_name :email]
+                               (when api/*is-superuser?*
+                                 [:is_superuser])))))))
   (fetch-user :id id))
 
 (api/defendpoint PUT "/:id/reactivate"

@@ -21,7 +21,7 @@ export default class Activity extends Component {
       "bg-error",
       "bg-green",
       "bg-gold",
-      "bg-grey-2",
+      "bg-medium",
     ];
   }
 
@@ -528,7 +528,7 @@ export default class Activity extends Component {
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}
                   </div>
-                  <div className="text-normal text-grey-2">
+                  <div className="text-normal text-light">
                     {t`Save a question and get this baby going!`}
                   </div>
                 </div>

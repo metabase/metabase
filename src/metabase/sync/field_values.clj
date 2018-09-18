@@ -8,7 +8,7 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db]))
 

@@ -1,5 +1,39 @@
 import generatePassword from "password-generator";
 import { t } from "c-3po";
+import MetabaseSettings from "metabase/lib/settings";
+
+const LAYOUT_PROPS = [
+  "m",
+  "ml",
+  "mr",
+  "mt",
+  "mb",
+  "mx",
+  "my",
+  "p",
+  "pl",
+  "pr",
+  "pt",
+  "pb",
+  "px",
+  "py",
+  "bg",
+  "color",
+  "hover",
+  "bordered",
+];
+
+export function stripLayoutProps(props) {
+  const newProps = props;
+
+  LAYOUT_PROPS.map(l => {
+    if (Object.keys(newProps).includes(l)) {
+      delete newProps[l];
+    }
+  });
+
+  return newProps;
+}
 
 function s4() {
   return Math.floor((1 + Math.random()) * 0x10000)
@@ -9,20 +43,22 @@ function s4() {
 
 // provides functions for building urls to things we care about
 let MetabaseUtils = {
-  generatePassword: function(length, complexity) {
-    const len = length || 14;
+  // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
+  // `password_complexity` Setting; must be a map like {total: 6, number: 1}
+  generatePassword: function(complexity) {
+    complexity =
+      complexity || MetabaseSettings.passwordComplexityRequirements() || {};
+    // generated password must be at least `complexity.total`, but can be longer
+    // so hard code a minimum of 14
+    const len = Math.max(complexity.total || 0, 14);
 
-    if (!complexity) {
-      return generatePassword(len, false);
-    } else {
-      let password = "";
-      let tries = 0;
-      while (!isStrongEnough(password) && tries < 100) {
-        password = generatePassword(len, false, /[\w\d\?\-]/);
-        tries++;
-      }
-      return password;
+    let password = "";
+    let tries = 0;
+    while (!isStrongEnough(password) && tries < 100) {
+      password = generatePassword(len, false, /[\w\d\?\-]/);
+      tries++;
     }
+    return password;
 
     function isStrongEnough(password) {
       let uc = password.match(/([A-Z])/g);
