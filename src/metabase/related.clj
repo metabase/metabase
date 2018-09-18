@@ -151,7 +151,7 @@
 (defn- similar-questions
   [card]
   (->> (db/select Card
-         :table_id (qp.util/get-normalized card :table-id)
+         :table_id (:table_id card)
          :archived false)
        filter-visible
        (rank-by-similarity card)
@@ -160,7 +160,7 @@
 (defn- canonical-metric
   [card]
   (->> (db/select Metric
-         :table_id (qp.util/get-normalized card :table-id)
+         :table_id (:table_id card)
          :archived false)
        filter-visible
        (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
@@ -211,7 +211,7 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table             (Table (qp.util/get-normalized card :table-id))
+  (let [table             (Table (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table

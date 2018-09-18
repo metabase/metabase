@@ -22,7 +22,7 @@ function makeDatasetQuery(query) {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       ...query,
     },
   };
@@ -103,7 +103,7 @@ describe("StructuredQuery unit tests", () => {
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.query().source_table).toBe(ORDERS_TABLE_ID);
+        expect(query.query()["source-table"]).toBe(ORDERS_TABLE_ID);
       });
     });
     describe("setDatabase", () => {
@@ -237,7 +237,7 @@ describe("StructuredQuery unit tests", () => {
       it("returns a saved metric's name", () => {
         expect(
           makeQueryWithAggregation([
-            "METRIC",
+            "metric",
             MAIN_METRIC_ID,
           ]).aggregationName(),
         ).toBe("Total Order Value");
@@ -286,7 +286,7 @@ describe("StructuredQuery unit tests", () => {
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
         expect(query.addAggregation(["count"]).query()).toEqual({
-          source_table: ORDERS_TABLE_ID,
+          "source-table": ORDERS_TABLE_ID,
           aggregation: [["count"]],
         });
       });
@@ -383,7 +383,7 @@ describe("StructuredQuery unit tests", () => {
 
     describe("segments", () => {
       it("should list any applied segments that are currently active filters", () => {
-        const queryWithSegmentFilter = query.addFilter(["SEGMENT", 1]);
+        const queryWithSegmentFilter = query.addFilter(["segment", 1]);
         // expect there to be segments
         expect(queryWithSegmentFilter.segments().length).toBe(1);
         // and they should actually be segments
@@ -425,9 +425,9 @@ describe("StructuredQuery unit tests", () => {
       it("return an array with the sort clause", () => {
         expect(
           makeQuery({
-            order_by: [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"],
+            "order-by": ["asc", ["field-id", ORDERS_TOTAL_FIELD_ID]],
           }).sorts(),
-        ).toEqual([["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]);
+        ).toEqual(["asc", ["field-id", ORDERS_TOTAL_FIELD_ID]]);
       });
     });
 
@@ -438,14 +438,14 @@ describe("StructuredQuery unit tests", () => {
 
       it("excludes the already used sorts", () => {
         const queryWithBreakout = query.addSort([
+          "asc",
           ["field-id", ORDERS_TOTAL_FIELD_ID],
-          "ascending",
         ]);
         expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
       });
 
       it("includes an explicitly provided sort although it has already been used", () => {
-        const sort = [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"];
+        const sort = ["asc", ["field-id", ORDERS_TOTAL_FIELD_ID]];
         const queryWithBreakout = query.addSort(sort);
         expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
         expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(7);
@@ -579,7 +579,7 @@ describe("StructuredQuery unit tests", () => {
     describe("setDatasetQuery", () => {
       it("replaces the previous dataset query with the provided one", () => {
         const newDatasetQuery = makeDatasetQuery({
-          source_table: ORDERS_TABLE_ID,
+          "source-table": ORDERS_TABLE_ID,
           aggregation: [["count"]],
         });
 

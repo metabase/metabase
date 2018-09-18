@@ -56,7 +56,7 @@ export const getDatabaseId = createSelector(
 );
 
 export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source_table"]),
+  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;

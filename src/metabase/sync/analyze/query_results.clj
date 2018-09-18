@@ -5,9 +5,9 @@
   time."
   (:require [clojure.string :as str]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [redux.core :as redux]

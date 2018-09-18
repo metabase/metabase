@@ -15,7 +15,7 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
     database: databaseId,
     native: {
       query: queryText,
-      template_tags: templateTags,
+      "template-tags": templateTags,
     },
   };
 }

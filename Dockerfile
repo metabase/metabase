@@ -15,7 +15,7 @@ ENV LC_CTYPE en_US.UTF-8
 # nodejs:  frontend building
 # make:    backend building
 # gettext: translations
-RUN apk add --update bash nodejs git wget make gettext nodejs-npm
+RUN apk add --update bash nodejs nodejs-npm git wget make gettext
 
 # yarn:    frontend dependencies
 RUN npm install -g yarn

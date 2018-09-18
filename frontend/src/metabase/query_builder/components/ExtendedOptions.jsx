@@ -111,7 +111,7 @@ export default class ExtendedOptions extends Component {
             text={t`Pick a field to sort by`}
             onClick={() => {
               // $FlowFixMe: shouldn't be adding a sort with null field
-              query.addSort([null, "ascending"]).update(setDatasetQuery);
+              query.addSort(["asc", null]).update(setDatasetQuery);
             }}
           />
         );
