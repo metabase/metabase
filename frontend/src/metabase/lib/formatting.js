@@ -25,6 +25,13 @@ import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
+import {
+  DEFAULT_DATE_STYLE,
+  getDateFormatFromStyle,
+  DEFAULT_TIME_STYLE,
+  getTimeFormatFromStyle,
+} from "metabase/lib/formatting/date";
+
 import Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
@@ -284,27 +291,41 @@ function formatWeek(m: Moment, options: FormattingOptions = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
+function replaceDateFormatNames(format, options) {
+  return format
+    .replace(/\bMMMM\b/g, getMonthFormat(options))
+    .replace(/\bdddd\b/g, getDayFormat(options));
+}
+
+function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
+  let m = parseTimestamp(value, options.column && options.column.unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const format = [];
+  if (dateFormat) {
+    format.push(replaceDateFormatNames(dateFormat, options));
+  }
+  if (timeFormat && options.time_enabled) {
+    format.push(timeFormat);
+  }
+  return m.format(format.join(" "));
+}
+
 function formatDateTime(value, options) {
   let m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
 
-  if (options.date_format) {
-    const format = [];
-    if (options.date_abbreviate) {
-      format.push(
-        options.date_format
-          .replace(/\bMMMM\b/g, getMonthFormat(options))
-          .replace(/\bdddd\b/g, getDayFormat(options)),
-      );
-    } else {
-      format.push(options.date_format);
-    }
-    if (options.time_format && options.time_enabled !== false) {
-      format.push(options.time_format);
-    }
-    return m.format(format.join(" "));
+  if (options.date_format || options.time_format) {
+    formatDateTimeWithFormats(
+      value,
+      options.date_format,
+      options.time_format,
+      options,
+    );
   } else {
     if (options.show_time === false) {
       return m.format(options.date_abbreviate ? "ll" : "LL");
@@ -324,71 +345,31 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
-  // only use custom formats for unbucketed dates for now
-  if (options.date_format) {
-    formatDateTime(value, options);
+  // expand "week" into a range in specific contexts
+  if (unit === "week") {
+    if (
+      (options.type === "tooltip" || options.type === "cell") &&
+      !options.noRange
+    ) {
+      // tooltip show range like "January 1 - 7, 2017"
+      return formatDateTimeRangeWithUnit(value, unit, options);
+    }
   }
 
-  switch (unit) {
-    case "hour": // 12 AM - January 1, 2015
-      return formatMajorMinor(
-        m.format("h A"),
-        m.format(`${getMonthFormat(options)} D, YYYY`),
-        options,
-      );
-    case "day": // January 1, 2015
-      return m.format(`${getMonthFormat(options)} D, YYYY`);
-    case "week": // 1st - 2015
-      if (options.type === "tooltip" && !options.noRange) {
-        // tooltip show range like "January 1 - 7, 2017"
-        return formatDateTimeRangeWithUnit(value, unit, options);
-      } else if (options.type === "cell" && !options.noRange) {
-        // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
-        return formatDateTimeRangeWithUnit(value, unit, options);
-      } else if (options.type === "axis") {
-        // axis ticks show start of the week as "Jan 1"
-        return m
-          .clone()
-          .startOf(unit)
-          .format(`MMM D`);
-      } else {
-        return formatWeek(m, options);
-      }
-    case "month": // January 2015
-      return options.jsx ? (
-        <div>
-          <span className="text-bold">{m.format(getMonthFormat(options))}</span>{" "}
-          {m.format("YYYY")}
-        </div>
-      ) : (
-        m.format(`${getMonthFormat(options)} YYYY`)
-      );
-    case "year": // 2015
-      return m.format("YYYY");
-    case "quarter": // Q1 - 2015
-      return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), {
-        ...options,
-        majorWidth: 0,
-      });
-    case "minute-of-hour":
-      return m.format("m");
-    case "hour-of-day": // 12 AM
-      return m.format("h A");
-    case "day-of-week": // Sunday
-      return m.format(getDayFormat(options));
-    case "day-of-month":
-      return m.format("D");
-    case "day-of-year":
-      return m.format("DDD");
-    case "week-of-year": // 1st
-      return m.format("wo");
-    case "month-of-year": // January
-      return m.format(getMonthFormat(options));
-    case "quarter-of-year": // January
-      return m.format("[Q]Q");
-    default:
-      return formatDateTime(value, options);
+  let dateFormat = options.date_format;
+  let timeFormat = options.time_format;
+
+  if (!dateFormat) {
+    const dateStyle = options.date_style || DEFAULT_DATE_STYLE;
+    dateFormat = getDateFormatFromStyle(dateStyle, unit);
   }
+
+  if (!timeFormat) {
+    const timeStyle = options.time_style || DEFAULT_TIME_STYLE;
+    timeFormat = getTimeFormatFromStyle(timeStyle, unit, options.time_enabled);
+  }
+
+  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {

@@ -8,6 +8,12 @@ import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
+import {
+  DEFAULT_DATE_STYLE,
+  getDateFormatFromStyle,
+  hasDay,
+  hasHour,
+} from "metabase/lib/formatting/date";
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map(s => s.data.cols));
@@ -31,51 +37,99 @@ export function columnSettings({
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
-function dateTimeFormatOption(format, description) {
+function getDateStyleOptionsForUnit(unit) {
+  const options = [
+    dateStyleOption("M/D/YY", unit, hasDay(unit) && "month, day, year"),
+    dateStyleOption("D/M/YY", unit, hasDay(unit) && "day, month, year"),
+    dateStyleOption("YYYY/M/D", unit, hasDay(unit) && "year, month, day"),
+    dateStyleOption("MMMM D, YYYY", unit),
+    dateStyleOption("D MMMM, YYYY", unit),
+    dateStyleOption("dddd, MMMM D, YYYY", unit),
+  ];
+  const seen = new Set();
+  return options.filter(option => {
+    const format = getDateFormatFromStyle(option.value, unit);
+    if (seen.has(format)) {
+      return false;
+    } else {
+      seen.add(format);
+      return true;
+    }
+  });
+}
+
+function dateStyleOption(style, unit, description) {
+  const format = getDateFormatFromStyle(style, unit);
   return {
     name:
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
-    value: format,
+    value: style,
+  };
+}
+
+function timeStyleOption(style, description) {
+  const format = style;
+  return {
+    name:
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    value: style,
   };
 }
 
 export const DATE_COLUMN_SETTINGS = {
-  date_format: {
+  date_style: {
     title: t`Date style`,
     widget: "radio",
-    default: "dddd, MMMM D, YYYY",
-    props: {
-      options: [
-        dateTimeFormatOption("M/D/YYYY", "month, day, year"),
-        dateTimeFormatOption("D/M/YYYY", "day, month, year"),
-        dateTimeFormatOption("YYYY/M/D", "year, month, day"),
-        dateTimeFormatOption("MMMM D, YYYY"),
-        dateTimeFormatOption("D MMMM YYYY"),
-        dateTimeFormatOption("dddd, MMMM D, YYYY"),
-      ],
-    },
+    default: DEFAULT_DATE_STYLE,
+    getProps: ({ unit }) => ({
+      options: getDateStyleOptionsForUnit(unit),
+    }),
+    getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_abbreviate: {
     title: t`Abbreviate names of days and months`,
     widget: "toggle",
     default: false,
+    getHidden: ({ unit }, settings) => {
+      const format = getDateFormatFromStyle(settings["date_style"], unit);
+      return !format.match(/MMMM|dddd/);
+    },
+    readDependencies: ["date_style"],
   },
   time_enabled: {
     title: t`Show the time`,
-    widget: "toggle",
-    default: true,
+    widget: "buttonGroup",
+    getProps: ({ unit }, settings) => {
+      const options = [
+        { name: t`Off`, value: null },
+        { name: t`Minutes`, value: "minutes" },
+      ];
+      if (!unit || unit === "default" || unit === "second") {
+        options.push({ name: t`Seconds`, value: "seconds" });
+      }
+      if (!unit || unit === "default") {
+        options.push({ name: t`Milliseconds`, value: "milliseconds" });
+      }
+      if (options.length === 2) {
+        options[1].name = t`On`;
+      }
+      return { options };
+    },
+    getHidden: ({ unit }, settings) => !hasHour(unit),
+    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
-  time_format: {
+  time_style: {
     title: t`Time style`,
     widget: "radio",
     default: "h:mm A",
-    props: {
+    getProps: (column, settings) => ({
       options: [
-        dateTimeFormatOption("h:mm A", "12-hour clock"),
-        dateTimeFormatOption("k:mm", "24-hour clock"),
+        timeStyleOption("h:mm A", "12-hour clock"),
+        timeStyleOption("k:mm", "24-hour clock"),
       ],
-    },
+    }),
     getHidden: (column, settings) => !settings["time_enabled"],
+    readDependencies: ["time_enabled"],
   },
 };
 
