@@ -167,6 +167,14 @@ export const NUMBER_COLUMN_SETTINGS = {
       placeholder: "1",
     },
   },
+  prefix: {
+    title: t`Add a prefix`,
+    widget: "input",
+  },
+  suffix: {
+    title: t`Add a suffix`,
+    widget: "input",
+  },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
     getValue: (column, settings) => numberFormatterForOptions(settings),
@@ -182,13 +190,13 @@ export const NUMBER_COLUMN_SETTINGS = {
 };
 
 const COMMON_COLUMN_SETTINGS = {
-  markdown_template: {
-    title: t`Markdown template`,
-    widget: "input",
-    props: {
-      placeholder: "{{value}}",
-    },
-  },
+  // markdown_template: {
+  //   title: t`Markdown template`,
+  //   widget: "input",
+  //   props: {
+  //     placeholder: "{{value}}",
+  //   },
+  // },
 };
 
 export function getSettingDefintionsForColumn(series, column) {

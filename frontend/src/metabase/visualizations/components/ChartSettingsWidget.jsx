@@ -6,24 +6,23 @@ const ChartSettingsWidget = ({
   title,
   hidden,
   disabled,
-  widget,
+  widget: Widget,
   value,
   onChange,
   props,
-  // NOTE: special props to support adding additional fields
-  question,
-  addField,
+  // NOTE: pass along special props to support:
+  // * adding additional fields
+  // * substituting widgets
+  ...additionalProps
 }) => {
-  const W = widget;
   return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
+    <div className={cx({ mb2: !hidden, hide: hidden, disable: disabled })}>
       {title && <h4 className="mb1">{title}</h4>}
-      {W && (
-        <W
+      {Widget && (
+        <Widget
           value={value}
           onChange={onChange}
-          question={question}
-          addField={addField}
+          {...additionalProps}
           {...props}
         />
       )}

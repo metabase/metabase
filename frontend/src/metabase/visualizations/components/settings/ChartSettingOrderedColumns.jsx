@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { t } from "c-3po";
 
 import Icon from "metabase/components/Icon.jsx";
+import ColumnItem from "./ColumnItem";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
@@ -11,20 +12,23 @@ import {
   findColumnForColumnSetting,
 } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { keyForColumn } from "metabase/lib/dataset";
 
 import _ from "underscore";
 
 const SortableColumn = SortableElement(
-  ({ columnSetting, getColumnName, onRemove }) => (
+  ({ columnSetting, getColumnName, onEdit, onRemove }) => (
     <ColumnItem
       title={getColumnName(columnSetting)}
-      onRemove={() => onRemove(columnSetting)}
+      onEdit={onEdit ? () => onEdit(columnSetting) : null}
+      onRemove={onRemove ? () => onRemove(columnSetting) : null}
+      draggable
     />
   ),
 );
 
 const SortableColumnList = SortableContainer(
-  ({ columnSettings, getColumnName, onRemove }) => {
+  ({ columnSettings, getColumnName, onEdit, onRemove }) => {
     return (
       <div>
         {columnSettings.map((columnSetting, index) => (
@@ -33,6 +37,7 @@ const SortableColumnList = SortableContainer(
             index={columnSetting.index}
             columnSetting={columnSetting}
             getColumnName={getColumnName}
+            onEdit={onEdit}
             onRemove={onRemove}
           />
         ))}
@@ -60,6 +65,22 @@ export default class ChartSettingOrderedColumns extends Component {
     const fields = [...this.props.value];
     fields.splice(newIndex, 0, fields.splice(oldIndex, 1)[0]);
     this.props.onChange(fields);
+  };
+
+  handleEdit = columnSetting => {
+    const column = findColumnForColumnSetting(
+      this.props.columns,
+      columnSetting,
+    );
+    if (column) {
+      this.props.onSubstituteWidget({
+        originalId: "table.columns",
+        replacementId: "column_settings",
+        props: {
+          editingColumnKey: keyForColumn(column),
+        },
+      });
+    }
   };
 
   handleAddNewField = fieldRef => {
@@ -109,6 +130,7 @@ export default class ChartSettingOrderedColumns extends Component {
           <SortableColumnList
             columnSettings={enabledColumns}
             getColumnName={this.getColumnName}
+            onEdit={this.handleEdit}
             onRemove={this.handleDisable}
             onSortEnd={this.handleSortEnd}
             distance={5}
@@ -120,13 +142,14 @@ export default class ChartSettingOrderedColumns extends Component {
           </div>
         )}
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
-          <h4 className="mb2 mt4 pt4 border-top">{`More fields`}</h4>
+          <h4 className="mb2 mt4 pt4 border-top">{`More columns`}</h4>
         ) : null}
         {disabledColumns.map((columnSetting, index) => (
           <ColumnItem
             key={index}
             title={this.getColumnName(columnSetting)}
             onAdd={() => this.handleEnable(columnSetting)}
+            onClick={() => this.handleEnable(columnSetting)}
           />
         ))}
         {additionalFieldOptions.count > 0 && (
@@ -158,36 +181,3 @@ export default class ChartSettingOrderedColumns extends Component {
     );
   }
 }
-
-const ColumnItem = ({ title, onAdd, onRemove }) => (
-  <div
-    className="my1 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
-    onClick={onAdd}
-  >
-    <div className="p1 border-bottom relative">
-      <div className="px1 flex align-center relative">
-        <span className="h4 flex-full text-dark">{title}</span>
-        {onAdd && (
-          <Icon
-            name="add"
-            className="cursor-pointer text-light text-medium-hover"
-            onClick={e => {
-              e.stopPropagation();
-              onAdd();
-            }}
-          />
-        )}
-        {onRemove && (
-          <Icon
-            name="close"
-            className="cursor-pointer text-light text-medium-hover"
-            onClick={e => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          />
-        )}
-      </div>
-    </div>
-  </div>
-);

@@ -405,11 +405,18 @@ const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a
 
 export function formatEmail(
   value: Value,
-  { jsx, rich }: FormattingOptions = {},
+  { jsx, rich, view_as, link_text }: FormattingOptions = {},
 ) {
   const email = String(value);
-  if (jsx && rich && EMAIL_WHITELIST_REGEX.test(email)) {
-    return <ExternalLink href={"mailto:" + email}>{email}</ExternalLink>;
+  if (
+    jsx &&
+    rich &&
+    (view_as === "email_link" || view_as === "auto") &&
+    EMAIL_WHITELIST_REGEX.test(email)
+  ) {
+    return (
+      <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
+    );
   } else {
     return email;
   }
@@ -418,14 +425,34 @@ export function formatEmail(
 // based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
 const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
-export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
+export function formatUrl(
+  value: Value,
+  { jsx, rich, view_as, link_text }: FormattingOptions = {},
+) {
   const url = String(value);
-  if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
+  if (
+    jsx &&
+    rich &&
+    (view_as === "link" || view_as === "auto") &&
+    URL_WHITELIST_REGEX.test(url)
+  ) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {url}
+        {link_text || url}
       </ExternalLink>
     );
+  } else {
+    return url;
+  }
+}
+
+export function formatImage(
+  value: Value,
+  { jsx, rich, view_as, link_text }: FormattingOptions = {},
+) {
+  const url = String(value);
+  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+    return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
   }
@@ -436,6 +463,9 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   value = formatUrl(value, options);
   if (typeof value === "string") {
     value = formatEmail(value, options);
+  }
+  if (typeof value === "string") {
+    value = formatImage(value, options);
   }
   return value;
 }
@@ -463,6 +493,19 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         "formatValue: options.markdown_template not supported when options.jsx = false",
       );
       return formatted;
+    }
+  }
+  if (options.prefix || options.suffix) {
+    if (options.jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {options.prefix || ""}
+          {formatted}
+          {options.suffix || ""}
+        </span>
+      );
+    } else {
+      return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {
     return formatted;

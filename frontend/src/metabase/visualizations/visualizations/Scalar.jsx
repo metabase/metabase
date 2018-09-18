@@ -20,18 +20,12 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
-  const o = _.chain(settings)
+  return _.chain(settings)
     .pairs()
     .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
     .map(([key, value]) => [key.replace(/^scalar\./, ""), value])
     .object()
     .value();
-  // `prefix`/`suffix` replaced with `markdown_template`
-  if (o.prefix || o.suffix) {
-    o.markdown_template = `${o.prefix || ""}{{value}}${o.suffix || ""}`;
-    delete o.prefix, o.suffix;
-  }
-  return o;
 }
 
 export default class Scalar extends Component {

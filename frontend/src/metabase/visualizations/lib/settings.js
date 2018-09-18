@@ -27,6 +27,7 @@ export type SettingDef = {
   title?: string,
   props?: { [key: string]: any },
   default?: any,
+  hidden?: boolean,
   getTitle?: (object: any, settings: Settings) => ?string,
   getHidden?: (object: any, settings: Settings) => boolean,
   getDisabled?: (object: any, settings: Settings) => boolean,
@@ -170,7 +171,7 @@ function getSettingWidget(
       : settingDef.title,
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, settings)
-      : false,
+      : settingDef.hidden || false,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, settings)
       : false,
@@ -205,7 +206,7 @@ export function getSettingsWidgets(
         onChangeSettings,
       ),
     )
-    .filter(widget => widget.widget && !widget.hidden);
+    .filter(widget => widget.widget);
 }
 
 export function getPersistableDefaultSettings(
