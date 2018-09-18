@@ -8,11 +8,11 @@ import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
+  keyForColumn,
   fieldRefForColumn,
   findColumnForColumnSetting,
 } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { keyForColumn } from "metabase/lib/dataset";
 
 import _ from "underscore";
 
