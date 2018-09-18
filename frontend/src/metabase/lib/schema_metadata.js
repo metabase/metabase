@@ -172,6 +172,13 @@ export const isLongitude = field =>
 
 export const isID = field => isFK(field) || isPK(field);
 
+export const isURL = field => isa(field && field.special_type, TYPE.URL);
+export const isEmail = field => isa(field && field.special_type, TYPE.Email);
+export const isAvatarURL = field =>
+  isa(field && field.special_type, TYPE.AvatarURL);
+export const isImageURL = field =>
+  isa(field && field.special_type, TYPE.ImageURL);
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {

@@ -43,7 +43,7 @@ describe("The Reference Section", () => {
       database: 1,
       table_id: 1,
       type: "query",
-      query: { source_table: 1, aggregation: ["count"] },
+      query: { "source-table": 1, aggregation: ["count"] },
     },
     visualization_settings: {},
   };

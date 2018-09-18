@@ -7,9 +7,8 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database]]
-            [metabase.sync.analyze.query-results :as qr :refer :all]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
-            [metabase.sync.analyze.classifiers.name :as classify-name]
+            [metabase.sync.analyze.query-results :as qr :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -98,7 +97,7 @@
                                               :query    {:source-table (data/id :venues)}}}]
     (tu/throw-if-called fprint/fingerprinter
       (name->fingerprints
-       (query->result-metadata (assoc-in (query-for-card card) [:query :fields] (data/id :venues :longitude)))))))
+       (query->result-metadata (assoc-in (query-for-card card) [:query :fields] [:field-id (data/id :venues :longitude)]))))))
 
 ;; Similar query as above, just native so that we need to calculate the fingerprint
 (expect

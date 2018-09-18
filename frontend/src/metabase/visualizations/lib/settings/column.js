@@ -4,7 +4,7 @@ import _ from "underscore";
 import ChartSettingColumnSettings from "metabase/visualizations/components/settings/ChartSettingColumnSettings";
 
 import { keyForColumn } from "metabase/lib/dataset";
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 import { numberFormatterForOptions } from "metabase/lib/formatting";
@@ -125,6 +125,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     title: t`Currency`,
     widget: "select",
     props: {
+      // FIXME: rest of these options
       options: [{ name: "USD", value: "USD" }, { name: "EUR", value: "EUR" }],
     },
     default: "USD",
@@ -167,6 +168,14 @@ export const NUMBER_COLUMN_SETTINGS = {
       placeholder: "1",
     },
   },
+  prefix: {
+    title: t`Add a prefix`,
+    widget: "input",
+  },
+  suffix: {
+    title: t`Add a suffix`,
+    widget: "input",
+  },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
     getValue: (column, settings) => numberFormatterForOptions(settings),
@@ -182,13 +191,13 @@ export const NUMBER_COLUMN_SETTINGS = {
 };
 
 const COMMON_COLUMN_SETTINGS = {
-  markdown_template: {
-    title: t`Markdown template`,
-    widget: "input",
-    props: {
-      placeholder: "{{value}}",
-    },
-  },
+  // markdown_template: {
+  //   title: t`Markdown template`,
+  //   widget: "input",
+  //   props: {
+  //     placeholder: "{{value}}",
+  //   },
+  // },
 };
 
 export function getSettingDefintionsForColumn(series, column) {
@@ -204,7 +213,7 @@ export function getSettingDefintionsForColumn(series, column) {
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
     };
-  } else if (isNumber(column)) {
+  } else if (isNumber(column) && !isCoordinate(column)) {
     return {
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,

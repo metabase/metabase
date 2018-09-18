@@ -67,12 +67,24 @@
 (defn- pre-insert [revision]
   (assoc revision :timestamp (du/new-sql-timestamp)))
 
+(defn- do-post-select-for-object
+  "Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
+  This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
+  coming out of the DB."
+  [{:keys [model], :as revision}]
+  ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
+  ;; those cases
+  (let [model (u/ignore-exceptions (db/resolve-model (symbol model)))]
+    (cond-> revision
+      model (update :object (partial models/do-post-select model)))))
+
 (u/strict-extend (class Revision)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:object :json, :message :clob})
-          :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))}))
+         {:types       (constantly {:object :json, :message :clob})
+          :pre-insert  pre-insert
+          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))
+          :post-select do-post-select-for-object}))
 
 
 ;;; # Functions
@@ -92,8 +104,7 @@
 (defn revisions
   "Get the revisions for ENTITY with ID in reverse chronological order."
   [entity id]
-  {:pre [(models/model? entity)
-         (integer? id)]}
+  {:pre [(models/model? entity) (integer? id)]}
   (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
@@ -110,7 +121,10 @@
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(models/model? entity) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
+  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id]
+                                                               :model    (:name entity)
+                                                               :model_id id
+                                                               {:order-by [[:timestamp :desc]]}))))]
     (db/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
