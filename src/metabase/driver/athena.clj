@@ -62,10 +62,13 @@
   [database query {:keys [read-fn]}]
   (let [current-read-fn (or read-fn #(into [] (jdbc/result-set-seq % {:identifiers identity})))]
     (log/infof "Running Athena query : '%s'..." query)
-    (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-      (-> (.createStatement conn)
-          (.executeQuery query)
-          (current-read-fn)))))
+    (try
+      (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+        (-> (.createStatement conn)
+            (.executeQuery query)
+            (current-read-fn)))
+      (catch Exception e
+        (log/error (u/format-color 'red "Failed to execute query: %s %s\n%s" query (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
 
 (defn- column->base-type [column-type]
   ({:array      :type/*
