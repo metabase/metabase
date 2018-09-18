@@ -11,6 +11,7 @@
             [metabase.driver.druid.js :as js]
             [metabase.query-processor
              [annotate :as annotate]
+             [store :as qp.store]
              [interface :as i]]
             [metabase.util :as u]
             [metabase.util.date :as du])
@@ -102,10 +103,9 @@
 
 ;;; ### handle-source-table
 
-(defn- handle-source-table [_ {{source-table-name :name} :source-table} query-context]
-  {:pre [(or (string? source-table-name)
-             (keyword? source-table-name))]}
-  (assoc-in query-context [:query :dataSource] source-table-name))
+(defn- handle-source-table [_ {source-table-id :source-table} query-context]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (assoc-in query-context [:query :dataSource] source-table-name)))
 
 
 ;;; ### handle-aggregation

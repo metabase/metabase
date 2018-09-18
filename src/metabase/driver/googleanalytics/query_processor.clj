@@ -4,7 +4,9 @@
   (:require [clojure.string :as s]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util :as u]
             [metabase.util.date :as du])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
@@ -58,9 +60,9 @@
 
 ;;; ### source-table
 
-(defn- handle-source-table [{{source-table-name :name} :source-table}]
-  {:pre [((some-fn keyword? string?) source-table-name)]}
-  {:ids (str "ga:" source-table-name)})
+(defn- handle-source-table [{source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    {:ids (str "ga:" source-table-name)}))
 
 
 ;;; ### breakout
