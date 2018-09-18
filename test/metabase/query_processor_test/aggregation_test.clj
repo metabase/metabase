@@ -133,7 +133,7 @@
   (format-rows-by [int (partial u/round-to-decimals 4)]
     (rows (data/run-mbql-query venues
             {:aggregation [[:max $latitude]]
-             :breakout    $price}))))
+             :breakout    [$price]}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -236,7 +236,7 @@
    :native_form true}
   (->> (data/run-mbql-query users
          {:aggregation [[:cum-sum $id]]
-          :breakout    $name})
+          :breakout    [$name]})
        booleanize-native-form
        (format-rows-by [str int])
        tu/round-fingerprint-cols))
@@ -255,7 +255,7 @@
    :native_form true}
   (->> (data/run-mbql-query venues
          {:aggregation [[:cum-sum $id]]
-          :breakout    $price})
+          :breakout    [$price]})
        booleanize-native-form
        (format-rows-by [int int])))
 
@@ -302,7 +302,7 @@
    :native_form true}
   (->> (data/run-mbql-query users
          {:aggregation [[:cum-count $id]]
-          :breakout    $name})
+          :breakout    [$name]})
        booleanize-native-form
        (format-rows-by [str int])
        tu/round-fingerprint-cols))
@@ -321,6 +321,6 @@
    :native_form true}
   (->> (data/run-mbql-query venues
          {:aggregation [[:cum-count $id]]
-          :breakout    $price})
+          :breakout    [$price]})
        booleanize-native-form
        (format-rows-by [int int])))

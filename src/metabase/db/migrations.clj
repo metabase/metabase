@@ -26,17 +26,14 @@
              [permissions-group :as perm-group :refer [PermissionsGroup]]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [pulse :refer [Pulse]]
-             [query-execution :as query-execution :refer [QueryExecution]]
              [setting :as setting :refer [Setting]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]]
             [toucan
              [db :as db]
-             [models :as models]]
-            [metabase.models.permissions-group :as group])
+             [models :as models]])
   (:import java.util.UUID))
 
 ;;; # Migration Helpers
@@ -205,40 +202,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Migrating QueryExecutions                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522
-;; and #4531 for details
-
-;; model definition for the old table to facilitate the data copying process
-(models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
-
-(u/strict-extend (class LegacyQueryExecution)
-  models/IModel
-  (merge models/IModelDefaults
-         {:default-fields (constantly [:executor_id :result_rows :started_at :json_query :error :running_time])
-          :types          (constantly {:json_query :json, :error :clob})}))
-
-(defn- LegacyQueryExecution->QueryExecution
-  "Convert a LegacyQueryExecution to a format suitable for insertion as a new-format QueryExecution."
-  [{query :json_query, :as query-execution}]
-  (-> (assoc query-execution
-        :hash   (qputil/query-hash query)
-        :native (not (qputil/mbql-query? query)))
-      ;; since error is nullable now remove the old blank error message strings
-      (update :error (fn [error-message]
-                       (when-not (str/blank? error-message)
-                         error-message)))
-      (dissoc :json_query)))
-
-;; Migrate entries from the old query execution table to the new one. This might take a few minutes
-(defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
-  ;; migrate the most recent 100,000 entries. Make sure the DB doesn't get snippy by trying to insert too many records
-  ;; at once. Divide the INSERT statements into chunks of 1,000
-  (binding [query-execution/*validate-context* false]
-    (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
-      (db/insert-many! QueryExecution
-        (for [query-execution chunk]
-          (LegacyQueryExecution->QueryExecution query-execution))))))
 
 ;; drop the legacy QueryExecution table now that we don't need it anymore
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table

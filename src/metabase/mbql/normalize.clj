@@ -209,7 +209,8 @@
                 :expressions  normalize-expressions-tokens
                 :order-by     normalize-order-by-tokens
                 :source-query normalize-source-query}
-   :parameters {::sequence normalize-query-parameter}})
+   :parameters {::sequence normalize-query-parameter}
+   :context    #(some-> % mbql.u/normalize-token)})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.
