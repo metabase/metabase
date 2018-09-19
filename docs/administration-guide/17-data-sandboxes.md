@@ -1,6 +1,6 @@
 ## Sandboxing your data
 
-**This feature is available in [Metabase Enterprise Edition](https://store.metabase.com).**
+**This feature is available in the Enterprise edition of Metabase**
 
 Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Metabase has a feature called sandboxing that lets you do just that.
 

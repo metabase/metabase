@@ -1,6 +1,6 @@
 ## Authenticating with SAML
 
-**This feature is available in [Metabase Enterprise Edition](https://store.metabase.com).**
+**This feature is available in the Enterprise edition of Metabase**
 
 Connecting Metabase to your SAML identity provider lets your team access Metabase with ease through SSO.
 

@@ -1,6 +1,6 @@
 ## White labeling Metabase
 
-**This feature is available in [Metabase Enterprise Edition](https://store.metabase.com).**
+**This feature is available in the Enterprise edition of Metabase**
 
 White labeling lets you customize the way Metabase looks so that it matches your company’s branding. Go to the Admin Panel and click on the White Labeling section to start customizing things. Here’s what you can do:
 
