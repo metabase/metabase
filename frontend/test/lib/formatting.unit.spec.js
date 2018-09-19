@@ -75,7 +75,11 @@ describe("formatting", () => {
     it("should return a component for links in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("http://metabase.com/", { jsx: true, rich: true }),
+          formatValue("http://metabase.com/", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+          }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -83,7 +87,11 @@ describe("formatting", () => {
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("tom@metabase.com", { jsx: true, rich: true }),
+          formatValue("tom@metabase.com", {
+            jsx: true,
+            rich: true,
+            view_as: "email_link",
+          }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -97,19 +105,31 @@ describe("formatting", () => {
     it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
       expect(
         isElementOfType(
-          formatUrl("http://metabase.com/", { jsx: true, rich: true }),
+          formatUrl("http://metabase.com/", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+          }),
           ExternalLink,
         ),
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("https://metabase.com/", { jsx: true, rich: true }),
+          formatUrl("https://metabase.com/", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+          }),
           ExternalLink,
         ),
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("mailto:tom@metabase.com", { jsx: true, rich: true }),
+          formatUrl("mailto:tom@metabase.com", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+          }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -117,25 +137,34 @@ describe("formatting", () => {
     it("should not return a link component for unrecognized links in jsx mode", () => {
       expect(
         isElementOfType(
-          formatUrl("nonexistent://metabase.com/", { jsx: true, rich: true }),
+          formatUrl("nonexistent://metabase.com/", {
+            jsx: true,
+            rich: true,
+            view_as: "link",
+          }),
           ExternalLink,
         ),
       ).toEqual(false);
       expect(
         isElementOfType(
-          formatUrl("metabase.com", { jsx: true, rich: true }),
+          formatUrl("metabase.com", { jsx: true, rich: true, view_as: "link" }),
           ExternalLink,
         ),
       ).toEqual(false);
     });
     it("should return a string for javascript:, data:, and other links in jsx mode", () => {
       expect(
-        formatUrl("javascript:alert('pwnd')", { jsx: true, rich: true }),
+        formatUrl("javascript:alert('pwnd')", {
+          jsx: true,
+          rich: true,
+          view_as: "link",
+        }),
       ).toEqual("javascript:alert('pwnd')");
       expect(
         formatUrl("data:text/plain;charset=utf-8,hello%20world", {
           jsx: true,
           rich: true,
+          view_as: "link",
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
