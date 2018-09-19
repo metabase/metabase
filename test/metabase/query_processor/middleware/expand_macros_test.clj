@@ -181,23 +181,36 @@
                           :aggregation  [[:metric (u/get-id metric)]]
                           :breakout     [[:field-id (data/id :venues :price)]]}})))))
 
+(defn- mbql-query [inner-query]
+  {:database 1, :type :query, :query inner-query})
+
 ;; make sure that we don't try to expand GA "metrics" (#6104)
 (expect
-  {:query {:aggregation [[:metric :ga:users]]}}
-  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :ga:users]]}}))
+  (mbql-query {:aggregation [[:metric "ga:users"]]})
+  (#'expand-macros/expand-metrics-and-segments (mbql-query {:aggregation [[:metric "ga:users"]]})))
 
 (expect
-  {:query {:aggregation [[:metric :gaid:users]]}}
-  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :gaid:users]]}}))
+  (mbql-query {:aggregation [[:metric "gaid:users"]]})
+  (#'expand-macros/expand-metrics-and-segments (mbql-query {:aggregation [[:metric "gaid:users"]]})))
 
 ;; make sure expansion works with multiple GA "metrics" (#7399)
 (expect
-  {:query {:aggregation [[:metric :ga:users] [:metric :ga:1dayUsers]]}}
-  (#'expand-macros/expand-metrics-and-segments {:query {:aggregation [[:metric :ga:users] [:metric :ga:1dayUsers]]}}))
+  (mbql-query {:aggregation [[:metric "ga:users"]
+                             [:metric "ga:1dayUsers"]]})
+  (#'expand-macros/expand-metrics-and-segments (mbql-query {:aggregation [[:metric "ga:users"]
+                                                                          [:metric "ga:1dayUsers"]]})))
+
+;; make sure we don't try to expand GA "segments"
+(expect
+  (mbql-query {:filter [:segment "gaid:-11"]})
+  (#'expand-macros/expand-metrics-and-segments (mbql-query {:filter [:segment "gaid:-11"]})))
 
 ;; make sure we can name a :metric (ick)
 (expect
+  (mbql-query
+   {:aggregation [[:named [:sum [:field-id 20]] "My Cool Metric"]]
+    :breakout    [[:field-id 10]]})
   (tt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
     (#'expand-macros/expand-metrics-and-segments
-     {:query {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
-              :breakout    [[:field-id 10]]}})))
+     (mbql-query {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
+                  :breakout    [[:field-id 10]]}))))
