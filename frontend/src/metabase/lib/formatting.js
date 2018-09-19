@@ -257,7 +257,7 @@ export function formatRange(
       </span>
     );
   } else {
-    return `${start} ${RANGE_SEPARATOR} ${start}`;
+    return `${start} ${RANGE_SEPARATOR} ${end}`;
   }
 }
 
