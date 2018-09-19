@@ -57,6 +57,54 @@ Another great thing about sandboxing is that this user can still use all of the 
 
 ![Filtered pie chart](images/sandboxing/filtered-pie-chart.png)
 
+
+#### Advanced sandbox examples
+As we mentioned above, the second way you can create a sandbox is by using a saved question to define a customized view of a table to display. When a user with sandboxed access to a table queries that table, behind the scenes they'll really be using that saved question as the source data for their query.
+
+**Example 1: hiding specific columns**
+In this example I have a table called `People` that I want users in my Marketing team to be able to see, but I don't want them to see most of these sensitive columns that have personal information in them:
+
+![Original People table](images/sandboxing/advanced-example-1-people-table.png)
+
+So what I can do is create a query that only returns the columns in that table that I *do* want them to see, like this:
+
+![Filtering question](images/sandboxing/advanced-example-1-filtering-question.png)
+
+Now, when I go to the Permissions section and grant this group sandboxed access to this table, I'll select the second option and select the saved question I just created, like so:
+
+![Sandbox options](images/sandboxing/advanced-example-1-sandbox-modal.png)
+
+To verify things are working correctly, I'll log in as a test user in the Marketing group, and when I go to open up the `People` table, you'll see that I actually am shown the results of the filtering question instead:
+
+![Sandboxed results](images/sandboxing/advanced-example-1-results.png)
+
+**Note:** this filtering will also happen when a user with sandboxed access goes to look at a chart that uses data from the sandboxed table. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will not load for that user.
+
+**Example 2: using variables in a saved question**
+To create even more powerful and nuanced filters, you can use variables in a filtering question in conjunction with user attributes.
+
+In this example, I'm going to give users in a specific group access to my `Orders` table, but I'll filter out which columns they can see, and I'll also make it so that they only see rows where the "Customer ID" column equals the user's `customer_id` attribute.
+
+Here's the table I'm going to filter:
+
+![Original Orders table](images/sandboxing/advanced-example-2-orders-table.png)
+
+The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in an optional `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
+
+![Filtering question](images/sandboxing/advanced-example-2-filtering-question.png)
+
+Going back over to the Permissions section, when I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
+
+![Sandboxing options](images/sandboxing/advanced-example-2-sandboxing-options.png)
+
+My user's attribute is defined like this, and I got here by clicking on the `…` icon next to this user's name in the People section:
+
+![User attributes](images/sandboxing/advanced-example-2-user-attributes.png)
+
+Now, when I log in as this user and look at the `Orders` table, I only see the columns I included in the filtering question, and the rows are filtered as I specified in my `WHERE` clause:
+
+![Results](images/sandboxing/advanced-example-2-results.png)
+
 ---
 
 ## Next: sharing and embedding with public links
