@@ -85,6 +85,7 @@ export default class Table extends Component {
       }),
       getHidden: (series, settings) => !settings["table.pivot"],
       readDependencies: ["table.pivot"],
+      persistDefault: true,
     },
     "table.cell_column": {
       section: t`Columns`,
@@ -100,6 +101,7 @@ export default class Table extends Component {
       getHidden: ([{ data: { cols } }], settings) =>
         !settings["table.pivot"] || cols.filter(isMetric).length < 2,
       readDependencies: ["table.pivot", "table.pivot_column"],
+      persistDefault: true,
     },
     "table.columns": {
       section: t`Data`,
