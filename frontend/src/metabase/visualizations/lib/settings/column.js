@@ -130,6 +130,8 @@ export const DATE_COLUMN_SETTINGS = {
   time_enabled: {
     title: t`Show the time`,
     widget: "buttonGroup",
+    isValid: ({ unit }: Column, settings: ColumnSettings) =>
+      !settings["time_enabled"] || hasHour(unit),
     getProps: ({ unit }: Column, settings: ColumnSettings) => {
       const options = [
         { name: t`Off`, value: null },
