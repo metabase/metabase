@@ -34,7 +34,7 @@
     :not-cached))
 
 (defn- run-query [& {:as query-kvs}]
-  (cached? (maybe-return-cached-results (merge {:cache_ttl 60, :query :abc} query-kvs))))
+  (cached? (maybe-return-cached-results (merge {:cache-ttl 60, :query :abc} query-kvs))))
 
 
 ;;; -------------------------------------------- tests for is-cacheable? ---------------------------------------------
@@ -42,17 +42,17 @@
 ;; something is-cacheable? if it includes a cach_ttl and the caching setting is enabled
 (expect
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (#'cache/is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache-ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching false]
-    (#'cache/is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache-ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (#'cache/is-cacheable? {:cache_ttl nil})))
+    (#'cache/is-cacheable? {:cache-ttl nil})))
 
 
 ;;; ------------------------------------- results-are-below-max-byte-threshold? --------------------------------------
@@ -104,9 +104,9 @@
   (tu/with-temporary-setting-values [enable-query-caching  true
                                      query-caching-min-ttl 0]
     (clear-cache!)
-    (run-query :cache_ttl 1)
+    (run-query :cache-ttl 1)
     (Thread/sleep 2000)
-    (run-query :cache_ttl 1)))
+    (run-query :cache-ttl 1)))
 
 ;; if caching is disabled then cache shouldn't be used even if there's something valid in there
 (expect
