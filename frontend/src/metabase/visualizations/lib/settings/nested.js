@@ -12,28 +12,41 @@ import type {
   SettingDef,
   SettingDefs,
   Settings,
+  WidgetDef,
+  ExtraProps,
 } from "metabase/visualizations/lib/settings";
 
 import type { Series } from "metabase/meta/types/Visualization";
 
-type Object = any;
+export type NestedObject = any;
+export type NestedObjectKey = string;
 
 type NestedSettingDef = SettingDef & {
   objectName: string,
-  getObjects: (series: Series, settings: Settings) => Object[],
-  getObjectKey: (object: Object) => string,
+  getObjects: (series: Series, settings: Settings) => NestedObject[],
+  getObjectKey: (object: NestedObject) => string,
   getSettingDefintionsForObject: (
     series: Series,
-    object: Object,
+    object: NestedObject,
   ) => SettingDefs,
   getObjectSettingsExtra?: (
     series: Series,
     settings: Settings,
-    object: Object,
+    object: NestedObject,
   ) => { [key: string]: any },
   component: React$Component<any, any, any>,
   id?: SettingId,
 };
+
+export type SettingsWidgetsForObjectGetter = (
+  series: Series,
+  object: NestedObject,
+  storedSettings: Settings,
+  onChangeSettings: (newSettings: Settings) => void,
+  extra: ExtraProps,
+) => WidgetDef[];
+
+export type NestedObjectKeyGetter = (object: NestedObject) => NestedObjectKey;
 
 export function nestedSettings(
   id: SettingId,
@@ -134,7 +147,7 @@ export function nestedSettings(
     [objectName]: {
       getDefault(series: Series, settings: Settings) {
         const cache = new Map();
-        return (object: Object) => {
+        return (object: NestedObject) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             cache.set(key, {

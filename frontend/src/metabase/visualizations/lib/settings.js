@@ -23,8 +23,6 @@ export type SettingDefs = {
 };
 
 export type SettingDef = {
-  id?: SettingId,
-  value?: any,
   title?: string,
   props?: { [key: string]: any },
   default?: any,
@@ -57,6 +55,8 @@ export type WidgetDef = {
   onChange: (value: any) => void,
 };
 
+export type ExtraProps = { [key: string]: any };
+
 const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
@@ -75,7 +75,7 @@ export function getComputedSettings(
   settingsDefs: SettingDefs,
   object: any,
   storedSettings: Settings,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ) {
   const computedSettings = {};
   for (let settingId in settingsDefs) {
@@ -97,7 +97,7 @@ function getComputedSetting(
   settingId: SettingId,
   object: any,
   storedSettings: Settings,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ): any {
   if (settingId in computedSettings) {
     return;
@@ -158,7 +158,7 @@ function getSettingWidget(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
   const value = settings[settingId];
@@ -204,7 +204,7 @@ export function getSettingsWidgets(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>

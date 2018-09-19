@@ -36,6 +36,7 @@ import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
   card: Card,
@@ -65,7 +66,7 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings = {
+  static settings: SettingDefs = {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,

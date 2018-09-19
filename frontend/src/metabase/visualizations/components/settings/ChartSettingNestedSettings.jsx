@@ -1,15 +1,66 @@
+/* @flow */
+
 import React from "react";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
 
 import _ from "underscore";
 
+import type {
+  Settings,
+  ExtraProps,
+  WidgetDef,
+} from "metabase/visualizations/lib/settings";
+import type {
+  NestedObject,
+  NestedObjectKey,
+  SettingsWidgetsForObjectGetter,
+  NestedObjectKeyGetter,
+} from "metabase/visualizations/lib/settings/nested";
+import type { Series } from "metabase/meta/types/Visualization";
+
+export type NestedSettingComponentProps = {
+  objects: NestedObject[],
+  object: ?NestedObject,
+  objectSettingsWidgets: ?(WidgetDef[]),
+  onChangeEditingObject: (editingObject: ?NestedObject) => void,
+};
+type NestedSettingComponent = Class<
+  React$Component<NestedSettingComponentProps, *, *>,
+>;
+
+type SettingsByObjectKey = { [key: NestedObjectKey]: Settings };
+
+type Props = {
+  value: SettingsByObjectKey,
+  onChange: (newSettings: SettingsByObjectKey) => void,
+  onEndEditing?: () => void,
+  series: Series,
+  extra: ExtraProps,
+  objects: NestedObject[],
+  initialKey?: NestedObjectKey,
+};
+
+type State = {
+  editingObjectKey: ?NestedObjectKey,
+};
+
+type ChartSettingsNestedSettingHOCProps = {
+  getObjectKey: NestedObjectKeyGetter,
+  getSettingsWidgetsForObject: SettingsWidgetsForObjectGetter,
+};
+
 const chartSettingNestedSettings = ({
   getObjectKey,
   getSettingsWidgetsForObject,
-}) => ComposedComponent =>
+}: ChartSettingsNestedSettingHOCProps) => (
+  ComposedComponent: NestedSettingComponent,
+) =>
   class extends React.Component {
-    constructor(props) {
+    props: Props;
+    state: State;
+
+    constructor(props: Props) {
       super(props);
       this.state = {
         editingObjectKey:
@@ -18,7 +69,7 @@ const chartSettingNestedSettings = ({
       };
     }
 
-    componentWillReceiveProps(nextProps) {
+    componentWillReceiveProps(nextProps: Props) {
       // reset editingObjectKey if there's only one object
       if (
         nextProps.objects.length === 1 &&
@@ -30,7 +81,7 @@ const chartSettingNestedSettings = ({
       }
     }
 
-    handleChangeEditingObject = editingObject => {
+    handleChangeEditingObject = (editingObject: ?NestedObject) => {
       this.setState({
         editingObjectKey: editingObject ? getObjectKey(editingObject) : null,
       });
@@ -40,16 +91,27 @@ const chartSettingNestedSettings = ({
       }
     };
 
-    handleChangeSettingsForEditingObject = newSettings => {
+    handleChangeSettingsForEditingObject = (newSettings: Settings) => {
       const { editingObjectKey } = this.state;
-      this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
+      if (editingObjectKey) {
+        this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
+      }
     };
 
-    handleChangeSettingsForObject = (object, newSettings) => {
-      this.handleChangeSettingsForObjectKey(getObjectKey(object), newSettings);
+    handleChangeSettingsForObject = (
+      object: NestedObject,
+      newSettings: Settings,
+    ) => {
+      const objectKey = getObjectKey(object);
+      if (objectKey) {
+        this.handleChangeSettingsForObjectKey(objectKey, newSettings);
+      }
     };
 
-    handleChangeSettingsForObjectKey = (objectKey, newSettings) => {
+    handleChangeSettingsForObjectKey = (
+      objectKey: NestedObjectKey,
+      newSettings: Settings,
+    ) => {
       const { onChange } = this.props;
       const objectsSettings = this.props.value || {};
       const objectSettings = objectsSettings[objectKey] || {};
@@ -65,43 +127,44 @@ const chartSettingNestedSettings = ({
     render() {
       const { series, objects, extra } = this.props;
       const { editingObjectKey } = this.state;
-      const objectsSettings = this.props.value || {};
 
-      const editingObject = _.find(
-        objects,
-        o => getObjectKey(o) === editingObjectKey,
-      );
-      if (editingObject) {
-        const objectSettings = objectsSettings[editingObjectKey] || {};
-        const objectSettingsWidgets = getSettingsWidgetsForObject(
-          series,
-          editingObject,
-          objectSettings,
-          this.handleChangeSettingsForEditingObject,
-          extra,
+      if (editingObjectKey) {
+        const editingObject = _.find(
+          objects,
+          o => getObjectKey(o) === editingObjectKey,
         );
-        return (
-          <ComposedComponent
-            {...this.props}
-            getObjectKey={getObjectKey}
-            onChangeEditingObject={this.handleChangeEditingObject}
-            onChangeObjectSettings={this.handleChangeSettingsForObject}
-            object={editingObject}
-            objectSettingsWidgets={objectSettingsWidgets.map(widget => (
-              <ChartSettingsWidget key={widget.id} {...widget} />
-            ))}
-          />
-        );
-      } else {
-        return (
-          <ComposedComponent
-            {...this.props}
-            getObjectKey={getObjectKey}
-            onChangeEditingObject={this.handleChangeEditingObject}
-            onChangeObjectSettings={this.handleChangeSettingsForObject}
-          />
-        );
+        if (editingObject) {
+          const objectsSettings = this.props.value || {};
+          const objectSettings = objectsSettings[editingObjectKey] || {};
+          const objectSettingsWidgets = getSettingsWidgetsForObject(
+            series,
+            editingObject,
+            objectSettings,
+            this.handleChangeSettingsForEditingObject,
+            extra,
+          );
+          return (
+            <ComposedComponent
+              {...this.props}
+              getObjectKey={getObjectKey}
+              onChangeEditingObject={this.handleChangeEditingObject}
+              onChangeObjectSettings={this.handleChangeSettingsForObject}
+              object={editingObject}
+              objectSettingsWidgets={objectSettingsWidgets.map(widget => (
+                <ChartSettingsWidget key={widget.id} {...widget} />
+              ))}
+            />
+          );
+        }
       }
+      return (
+        <ComposedComponent
+          {...this.props}
+          getObjectKey={getObjectKey}
+          onChangeEditingObject={this.handleChangeEditingObject}
+          onChangeObjectSettings={this.handleChangeSettingsForObject}
+        />
+      );
     }
   };
 

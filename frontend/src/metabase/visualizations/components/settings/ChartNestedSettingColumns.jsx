@@ -1,3 +1,5 @@
+/* @flow */
+
 import React from "react";
 
 import Icon from "metabase/components/Icon";
@@ -7,8 +9,12 @@ import ColumnItem from "./ColumnItem";
 const displayNameForColumn = column =>
   column ? column.display_name || column.name : "[Unknown]";
 
+import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
+
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeries extends React.Component {
+  props: NestedSettingComponentProps;
+
   render() {
     const {
       objects,
