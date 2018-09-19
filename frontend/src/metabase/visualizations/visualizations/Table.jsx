@@ -7,6 +7,8 @@ import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 
 import Query from "metabase/lib/query";
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
@@ -67,6 +69,37 @@ export default class Table extends Component {
         Query.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
+    },
+    "table.pivot_column": {
+      section: t`Columns`,
+      title: t`Pivot column`,
+      widget: "field",
+      getDefault: ([{ data: { cols, rows } }], settings) => {
+        const col = _.min(cols.filter(isDimension), col =>
+          getColumnCardinality(cols, rows, cols.indexOf(col)),
+        );
+        return col && col.name;
+      },
+      getProps: ([{ data: { cols } }], settings) => ({
+        options: cols.filter(isDimension).map(getOptionFromColumn),
+      }),
+      getHidden: (series, settings) => !settings["table.pivot"],
+      readDependencies: ["table.pivot"],
+    },
+    "table.cell_column": {
+      section: t`Columns`,
+      title: t`Cell column`,
+      widget: "field",
+      getDefault: ([{ data: { cols, rows } }], settings) => {
+        const col = cols.filter(isMetric)[0];
+        return col && col.name;
+      },
+      getProps: ([{ data: { cols } }], settings) => ({
+        options: cols.filter(isMetric).map(getOptionFromColumn),
+      }),
+      getHidden: ([{ data: { cols } }], settings) =>
+        !settings["table.pivot"] || cols.filter(isMetric).length < 2,
+      readDependencies: ["table.pivot", "table.pivot_column"],
     },
     "table.columns": {
       section: t`Data`,
@@ -139,8 +172,20 @@ export default class Table extends Component {
     settings: VisualizationSettings,
   }) {
     if (settings["table.pivot"]) {
+      const pivotIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.pivot_column"],
+      );
+      const cellIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.cell_column"],
+      );
+      const normalIndex = _.findIndex(
+        data.cols,
+        (col, index) => index !== pivotIndex && index !== cellIndex,
+      );
       this.setState({
-        data: DataGrid.pivot(data),
+        data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
       });
     } else {
       const { cols, rows, columns } = data;

@@ -1,39 +1,11 @@
 import * as SchemaMetadata from "metabase/lib/schema_metadata";
 import { formatValue } from "metabase/lib/formatting";
 
-function compareNumbers(a, b) {
-  return a - b;
-}
+import _ from "underscore";
 
-export function pivot(data) {
-  // find the lowest cardinality dimension and make it our "pivoted" column
-  // TODO: we assume dimensions are in the first 2 columns, which is less than ideal
-  let pivotCol = 0,
-    normalCol = 1,
-    cellCol = 2,
-    pivotColValues = distinctValues(data, pivotCol),
-    normalColValues = distinctValues(data, normalCol);
-  if (normalColValues.length <= pivotColValues.length) {
-    pivotCol = 1;
-    normalCol = 0;
-
-    let tmp = pivotColValues;
-    pivotColValues = normalColValues;
-    normalColValues = tmp;
-  }
-
-  // sort the column values sensibly
-  if (SchemaMetadata.isNumeric(data.cols[pivotCol])) {
-    pivotColValues.sort(compareNumbers);
-  } else {
-    pivotColValues.sort();
-  }
-
-  if (SchemaMetadata.isNumeric(data.cols[normalCol])) {
-    normalColValues.sort(compareNumbers);
-  } else {
-    normalColValues.sort();
-  }
+export function pivot(data, normalCol, pivotCol, cellCol) {
+  const pivotColValues = distinctValues(data, pivotCol);
+  const normalColValues = distinctValues(data, normalCol);
 
   // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
   pivotColValues.unshift(data.cols[normalCol].display_name);
@@ -86,16 +58,6 @@ export function pivot(data) {
   };
 }
 
-export function distinctValues(data, colIdx) {
-  let vals = data.rows.map(function(r) {
-    return r[colIdx];
-  });
-
-  return vals.filter(function(v, i) {
-    return i == vals.lastIndexOf(v);
-  });
-}
-
-export function cardinality(data, colIdx) {
-  return distinctValues(data, colIdx).length;
+export function distinctValues(data, colIndex) {
+  return _.uniq(data.rows.map(row => row[colIndex]));
 }
