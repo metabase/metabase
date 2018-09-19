@@ -174,7 +174,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "Normal", value: "decimal" },
         { name: "Percent", value: "percent" },
         { name: "Scientific", value: "scientific" },
-        { name: "Currency", value: "currency" },
+        // { name: "Currency", value: "currency" },
       ],
     },
     // TODO: default to currency for fields that are a currency type
