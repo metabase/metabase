@@ -405,7 +405,7 @@ export function formatDateTimeWithUnit(
   options = {
     date_style: DEFAULT_DATE_STYLE,
     time_style: DEFAULT_TIME_STYLE,
-    time_enabled: hasHour(unit),
+    time_enabled: hasHour(unit) ? "minutes" : null,
     ...options,
   };
 
@@ -413,11 +413,13 @@ export function formatDateTimeWithUnit(
   let timeFormat = options.time_format;
 
   if (!dateFormat) {
+    // $FlowFixMe: date_style default set above
     dateFormat = getDateFormatFromStyle(options.date_style, unit);
   }
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
+      // $FlowFixMe: time_style default set above
       options.time_style,
       unit,
       options.time_enabled,
