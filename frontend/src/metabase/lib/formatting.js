@@ -133,11 +133,11 @@ export function numberFormatterForOptions(options: FormattingOptions) {
     currency: options.currency,
     currencyDisplay: options.currency_style,
     useGrouping: options.useGrouping,
-    // minimumIntegerDigits: options.minimumIntegerDigits,
+    minimumIntegerDigits: options.minimumIntegerDigits,
     minimumFractionDigits: options.minimumFractionDigits,
     maximumFractionDigits: options.maximumFractionDigits,
-    // minimumSignificantDigits: options.minimumSignificantDigits,
-    // maximumSignificantDigits: options.maximumSignificantDigits,
+    minimumSignificantDigits: options.minimumSignificantDigits,
+    maximumSignificantDigits: options.maximumSignificantDigits,
   });
 }
 
@@ -154,9 +154,22 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     return formatNumberScientific(number, options);
   } else {
     try {
-      // NOTE: options._numberFormatter allows you to provide a predefined
-      // Intl.NumberFormat object for increased performance
-      const nf = options._numberFormatter || numberFormatterForOptions(options);
+      let nf;
+      if (number < 1 && number > -1 && options.decimals == null) {
+        // NOTE: special case to match existing behavior for small numbers, use
+        // max significant digits instead of max fraction digits
+        nf = numberFormatterForOptions({
+          ...options,
+          maximumSignificantDigits: 2,
+          maximumFractionDigits: undefined,
+        });
+      } else if (options._numberFormatter) {
+        // NOTE: options._numberFormatter allows you to provide a predefined
+        // Intl.NumberFormat object for increased performance
+        nf = options._numberFormatter;
+      } else {
+        nf = numberFormatterForOptions(options);
+      }
       return nf.format(number);
     } catch (e) {
       console.warn("Error formatting number", e);
@@ -428,7 +441,7 @@ const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a
 
 export function formatEmail(
   value: Value,
-  { jsx, rich, view_as, link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const email = String(value);
   if (
@@ -450,7 +463,7 @@ const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:
 
 export function formatUrl(
   value: Value,
-  { jsx, rich, view_as, link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
   if (
@@ -471,7 +484,7 @@ export function formatUrl(
 
 export function formatImage(
   value: Value,
-  { jsx, rich, view_as, link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
   if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {

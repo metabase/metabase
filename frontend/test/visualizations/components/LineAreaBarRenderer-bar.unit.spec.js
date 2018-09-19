@@ -99,7 +99,7 @@ describe("LineAreaBarRenderer-bar", () => {
 
                     normalizedDisplay = [
                       { key: "Category", value: "A" },
-                      { key: "% Sum", value: "33.33%" },
+                      { key: "% Sum", value: "33%" },
                     ];
 
                     expect(data).toEqual(
@@ -116,7 +116,7 @@ describe("LineAreaBarRenderer-bar", () => {
 
                     normalizedDisplay = [
                       { key: "Category", value: "A" },
-                      { key: "% Count", value: "66.67%" },
+                      { key: "% Count", value: "67%" },
                     ];
 
                     expect(data).toEqual(

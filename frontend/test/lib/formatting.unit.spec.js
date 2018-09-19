@@ -40,6 +40,18 @@ describe("formatting", () => {
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
     });
+    it("should format to correct number of decimal places", () => {
+      expect(formatNumber(0.1)).toEqual("0.1");
+      expect(formatNumber(0.11)).toEqual("0.11");
+      expect(formatNumber(0.111)).toEqual("0.11");
+      expect(formatNumber(0.01)).toEqual("0.01");
+      expect(formatNumber(0.011)).toEqual("0.011");
+      expect(formatNumber(0.0111)).toEqual("0.011");
+      expect(formatNumber(1.1)).toEqual("1.1");
+      expect(formatNumber(1.11)).toEqual("1.11");
+      expect(formatNumber(1.111)).toEqual("1.11");
+      expect(formatNumber(111.111)).toEqual("111.11");
+    });
   });
 
   describe("formatValue", () => {
@@ -75,11 +87,7 @@ describe("formatting", () => {
     it("should return a component for links in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("http://metabase.com/", {
-            jsx: true,
-            rich: true,
-            view_as: "link",
-          }),
+          formatValue("http://metabase.com/", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -87,11 +95,7 @@ describe("formatting", () => {
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("tom@metabase.com", {
-            jsx: true,
-            rich: true,
-            view_as: "email_link",
-          }),
+          formatValue("tom@metabase.com", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -105,31 +109,19 @@ describe("formatting", () => {
     it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
       expect(
         isElementOfType(
-          formatUrl("http://metabase.com/", {
-            jsx: true,
-            rich: true,
-            view_as: "link",
-          }),
+          formatUrl("http://metabase.com/", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("https://metabase.com/", {
-            jsx: true,
-            rich: true,
-            view_as: "link",
-          }),
+          formatUrl("https://metabase.com/", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("mailto:tom@metabase.com", {
-            jsx: true,
-            rich: true,
-            view_as: "link",
-          }),
+          formatUrl("mailto:tom@metabase.com", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -137,34 +129,25 @@ describe("formatting", () => {
     it("should not return a link component for unrecognized links in jsx mode", () => {
       expect(
         isElementOfType(
-          formatUrl("nonexistent://metabase.com/", {
-            jsx: true,
-            rich: true,
-            view_as: "link",
-          }),
+          formatUrl("nonexistent://metabase.com/", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(false);
       expect(
         isElementOfType(
-          formatUrl("metabase.com", { jsx: true, rich: true, view_as: "link" }),
+          formatUrl("metabase.com", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(false);
     });
     it("should return a string for javascript:, data:, and other links in jsx mode", () => {
       expect(
-        formatUrl("javascript:alert('pwnd')", {
-          jsx: true,
-          rich: true,
-          view_as: "link",
-        }),
+        formatUrl("javascript:alert('pwnd')", { jsx: true, rich: true }),
       ).toEqual("javascript:alert('pwnd')");
       expect(
         formatUrl("data:text/plain;charset=utf-8,hello%20world", {
           jsx: true,
           rich: true,
-          view_as: "link",
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
