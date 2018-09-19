@@ -296,7 +296,10 @@
 
 ;; A segment is a special `macro` that saves some pre-definied filter clause, e.g. [:segment 1]
 ;; this gets replaced by a normal Filter clause in MBQL macroexpansion
-(defclause segment, segment-id su/IntGreaterThanZero)
+;;
+;; It can also be used for GA, which looks something like `[:segment "gaid::-11"]`. GA segments aren't actually MBQL
+;; segments and pass-thru to GA.
+(defclause segment, segment-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
 (def Filter
   "Schema for a valid MBQL `:filter` clause."
@@ -319,7 +322,9 @@
 (def ^:private NativeQuery
   "Schema for a valid, normalized native [inner] query."
   {:query                          s/Any
-   (s/optional-key :template-tags) {su/NonBlankString TemplateTag}})
+   (s/optional-key :template-tags) {su/NonBlankString TemplateTag}
+   ;; collection (table) this query should run against. Needed for MongoDB
+   (s/optional-key :collection)    (s/maybe su/NonBlankString)})
 
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
@@ -453,6 +458,10 @@
     (s/optional-key :settings)    (s/maybe Settings)
     (s/optional-key :constraints) (s/maybe Constraints)
     (s/optional-key :middleware)  (s/maybe MiddlewareOptions)
+    ;; The maximum time, in seconds, to return cached results for this query rather than running a new query. This is
+    ;; added automatically when running queries belonging to Cards when caching is enabled. Caching is handled by the
+    ;; automatically by caching middleware.
+    (s/optional-key :cache-ttl)   (s/maybe su/IntGreaterThanZero)
     ;;
     ;; -------------------- INFO --------------------
     ;;

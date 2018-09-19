@@ -519,6 +519,21 @@
     :type     :query
     :query    {:filter []}}))
 
+;; make sure we can handle GA segments
+(expect
+  {:database 1,
+   :type     :query
+   :query    {:filter
+              [:and
+               [:segment "gaid:-11"]
+               [:time-interval [:field-id 6851] -365 :day {}]]}}
+  (#'normalize/canonicalize
+   {:database 1
+    :type     :query
+    :query    {:filter [:and
+                        [:segment "gaid:-11"]
+                        [:time-interval [:field-id 6851] -365 :day {}]]}}))
+
 ;; ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98 [direction field]
 (expect
   {:query {:order-by [[:asc [:field-id 10]]]}}
@@ -711,6 +726,7 @@
                                                            :required     true
                                                            :default      "Widget"}}}}}))
 
+;; make sure `rows` queries get removed
 (expect
   {:database 4,
    :type     :query,
