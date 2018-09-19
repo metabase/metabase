@@ -9,13 +9,13 @@ describe("visualization_settings", () => {
   describe("getSettings", () => {
     describe("stackable.stack_type", () => {
       it("should default to unstacked stacked", () => {
-        const settings = getSettings(
+        const settings = getComputedSettingsForSeries(
           cardWithTimeseriesBreakout({ unit: "month" }),
         );
         expect(settings["stackable.stack_type"]).toBe(null);
       });
       it("should default area chart to stacked for 1 dimensions and 2 metrics", () => {
-        const settings = getSettings(
+        const settings = getComputedSettingsForSeries(
           cardWithTimeseriesBreakoutAndTwoMetrics({
             display: "area",
             unit: "month",
@@ -42,14 +42,18 @@ describe("visualization_settings", () => {
       describe("non-histgram units", () =>
         NON_HISTOGRAM_UNITS.map(unit =>
           it(`should default ${unit} to false`, () => {
-            const settings = getSettings(cardWithTimeseriesBreakout({ unit }));
+            const settings = getComputedSettingsForSeries(
+              cardWithTimeseriesBreakout({ unit }),
+            );
             expect(settings["graph.x_axis._is_histogram"]).toBe(false);
           }),
         ));
       describe("histgram units", () =>
         HISTOGRAM_UNITS.map(unit =>
           it(`should default ${unit} to true`, () => {
-            const settings = getSettings(cardWithTimeseriesBreakout({ unit }));
+            const settings = getComputedSettingsForSeries(
+              cardWithTimeseriesBreakout({ unit }),
+            );
             expect(settings["graph.x_axis._is_histogram"]).toBe(true);
           }),
         ));

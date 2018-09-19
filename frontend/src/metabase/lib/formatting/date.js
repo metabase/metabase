@@ -3,8 +3,8 @@
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 
 export type DateStyle =
-  | "M/D/YY"
-  | "D/M/YY"
+  | "M/D/YYYY"
+  | "D/M/YYYY"
   | "YYYY/M/D"
   | "MMMM D, YYYY"
   | "MMMM D, YYYY"
@@ -36,11 +36,11 @@ const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
 const DATE_STYLE_TO_FORMAT: {
   [style: DateStyle]: { [unit: DatetimeUnit]: MomentFormat },
 } = {
-  "M/D/YY": {
-    month: "M/YY",
+  "M/D/YYYY": {
+    month: "M/YYYY",
   },
-  "D/M/YY": {
-    month: "M/YY",
+  "D/M/YYYY": {
+    month: "M/YYYY",
   },
   "YYYY/M/D": {
     month: "YYYY/M",

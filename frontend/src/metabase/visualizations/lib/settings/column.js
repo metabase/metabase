@@ -59,12 +59,12 @@ const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
 function getDateStyleOptionsForUnit(unit: ?DatetimeUnit) {
   const options = [
-    dateStyleOption("M/D/YY", unit, hasDay(unit) ? "month, day, year" : null),
-    dateStyleOption("D/M/YY", unit, hasDay(unit) ? "day, month, year" : null),
-    dateStyleOption("YYYY/M/D", unit, hasDay(unit) ? "year, month, day" : null),
     dateStyleOption("MMMM D, YYYY", unit),
     dateStyleOption("D MMMM, YYYY", unit),
     dateStyleOption("dddd, MMMM D, YYYY", unit),
+    dateStyleOption("M/D/YYYY", unit, hasDay(unit) ? "month, day, year" : null),
+    dateStyleOption("D/M/YYYY", unit, hasDay(unit) ? "day, month, year" : null),
+    dateStyleOption("YYYY/M/D", unit, hasDay(unit) ? "year, month, day" : null),
   ];
   const seen = new Set();
   return options.filter(option => {

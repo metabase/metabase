@@ -112,7 +112,7 @@ export function nestedSettings(
       onChangeSettings,
       extra,
     );
-    return widgets;
+    return widgets.map(widget => ({ ...widget, noPadding: true }));
   }
 
   // decorate with nested settings HOC
