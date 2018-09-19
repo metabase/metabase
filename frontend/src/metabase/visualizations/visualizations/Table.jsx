@@ -7,7 +7,7 @@ import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 
 import Query from "metabase/lib/query";
