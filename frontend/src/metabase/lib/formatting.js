@@ -30,6 +30,7 @@ import {
   getDateFormatFromStyle,
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
+  hasHour,
 } from "metabase/lib/formatting/date";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -342,7 +343,7 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   if (timeFormat && options.time_enabled) {
     format.push(timeFormat);
   }
-  return m.format(format.join(" "));
+  return m.format(format.join(", "));
 }
 
 function formatDateTime(value, options) {
@@ -388,17 +389,26 @@ export function formatDateTimeWithUnit(
     }
   }
 
+  options = {
+    date_style: DEFAULT_DATE_STYLE,
+    time_style: DEFAULT_TIME_STYLE,
+    time_enabled: hasHour(unit),
+    ...options,
+  };
+
   let dateFormat = options.date_format;
   let timeFormat = options.time_format;
 
   if (!dateFormat) {
-    const dateStyle = options.date_style || DEFAULT_DATE_STYLE;
-    dateFormat = getDateFormatFromStyle(dateStyle, unit);
+    dateFormat = getDateFormatFromStyle(options.date_style, unit);
   }
 
   if (!timeFormat) {
-    const timeStyle = options.time_style || DEFAULT_TIME_STYLE;
-    timeFormat = getTimeFormatFromStyle(timeStyle, unit, options.time_enabled);
+    timeFormat = getTimeFormatFromStyle(
+      options.time_style,
+      unit,
+      options.time_enabled,
+    );
   }
 
   return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);

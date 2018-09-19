@@ -8,7 +8,13 @@ import ChartNestedSettingColumns from "metabase/visualizations/components/settin
 
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
-import { getVisualizationRaw } from "metabase/visualizations";
+
+// HACK: cyclical dependency causing errors in unit tests
+// import { getVisualizationRaw } from "metabase/visualizations";
+function getVisualizationRaw(...args) {
+  return require("metabase/visualizations").getVisualizationRaw(...args);
+}
+
 import { numberFormatterForOptions } from "metabase/lib/formatting";
 import {
   DEFAULT_DATE_STYLE,
