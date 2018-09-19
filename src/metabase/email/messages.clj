@@ -14,13 +14,14 @@
             [metabase.util
              [date :as du]
              [export :as export]
+             [i18n :refer [tru]]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File FileOutputStream]
+  (:import [java.io File FileOutputStream IOException]
            java.util.Arrays))
 
 ;; Dev only -- disable template caching
@@ -195,9 +196,20 @@
          (random-quote-context)))
 
 (defn- create-temp-file
+  "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
   [suffix]
-  (doto (java.io.File/createTempFile "metabase_attachment" suffix)
+  (doto (File/createTempFile "metabase_attachment" suffix)
     .deleteOnExit))
+
+(defn- create-temp-file-or-throw
+  "Tries to create a temp file, will give the users a better error message if we are unable to create the temp file"
+  [suffix]
+  (try
+    (create-temp-file suffix)
+    (catch IOException e
+      (let [ex-msg (str (tru "Unable to create temp file in `{0}` for email attachments "
+                             (System/getProperty "java.io.tmpdir")))]
+        (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
   (let [{:keys [content-type ext]} (get export/export-formats export-type)]
@@ -214,12 +226,12 @@
                        :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
                        :when (seq rows)]
                    [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
-                                              (create-temp-file "csv"))]
+                                              (create-temp-file-or-throw "csv"))]
                       (export/export-to-csv-writer temp-file result)
                       (create-result-attachment-map "csv" card-name temp-file))
 
                     (when-let [temp-file (and (:include_xls card)
-                                              (create-temp-file "xlsx"))]
+                                              (create-temp-file-or-throw "xlsx"))]
                       (export/export-to-xlsx-file temp-file result)
                       (create-result-attachment-map "xlsx" card-name temp-file))]))))
 
