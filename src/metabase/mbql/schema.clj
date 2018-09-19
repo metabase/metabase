@@ -205,7 +205,8 @@
 (defclause asc,  field FieldOrAggregationReference)
 (defclause desc, field FieldOrAggregationReference)
 
-(def ^:private OrderBy
+(def OrderBy
+  "Schema for an `order-by` clause subclause."
   (one-of asc desc))
 
 
@@ -348,7 +349,17 @@
     (s/optional-key :limit)        su/IntGreaterThanZero
     (s/optional-key :order-by)     (su/non-empty [OrderBy])
     (s/optional-key :page)         {:page  su/IntGreaterThanOrEqualToZero
-                                    :items su/IntGreaterThanZero}}
+                                    :items su/IntGreaterThanZero}
+    ;;
+    ;; INTERNAL KEYS
+    ;;
+    ;; These keys are added by various bits of QP middleware to track how it was processed. Don't add them
+    ;; yourself unless you like breaking things. Go ahead an ignore them.
+    ;;
+    ;; `fields-is-implict` tracks whether the `:fields` clause was added implicitly, for queries with no aggregations.
+    ;; This is used to determine post-processing column sort order. TODO - I think we can remove this key entirely
+    ;; once we start doing sorting in pre-processing
+    (s/optional-key :fields-is-implicit) s/Bool}
    (fn [query]
      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
    "Query must specify either `:source-table` or `:source-query`, but not both."))
@@ -438,30 +449,39 @@
   `Card.dataset_query`."
   (s/constrained
    ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
-   {:database                     (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
+   {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
-    :type                         (s/enum :query :native)
-    (s/optional-key :native)      NativeQuery
-    (s/optional-key :query)       MBQLQuery
-    (s/optional-key :parameters)  [Parameter]
+    :type                             (s/enum :query :native)
+    (s/optional-key :native)          NativeQuery
+    (s/optional-key :query)           MBQLQuery
+    (s/optional-key :parameters)      [Parameter]
     ;;
-    ;; -------------------- OPTIONS --------------------
+    ;; OPTIONS
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;; TODO - can we combine these all into a single `:options` map?
     ;;
-    (s/optional-key :settings)    (s/maybe Settings)
-    (s/optional-key :constraints) (s/maybe Constraints)
-    (s/optional-key :middleware)  (s/maybe MiddlewareOptions)
+    (s/optional-key :settings)        (s/maybe Settings)
+    (s/optional-key :constraints)     (s/maybe Constraints)
+    (s/optional-key :middleware)      (s/maybe MiddlewareOptions)
     ;;
-    ;; -------------------- INFO --------------------
+    ;; INFO
     ;;
-    (s/optional-key :info)        (s/maybe Info)
+    (s/optional-key :info)            (s/maybe Info)
     ;;
-    ;; not even really info, but in some cases `:driver` gets added to the query even though we have middleware that
-    ;; is supposed to resolve driver, and we also have the `*driver*` dynamic var where we should probably be stashing
-    ;; the resolved driver anyway. It might make sense to take this out in the future.
-    (s/optional-key :driver)      {}}
+    ;; INTERNAL KEYS
+    ;;
+    ;; Don't try to specify these yourself, unless you want to make the query fail. These are added in along the way
+    ;; for internal usage only.
+    ;;
+    ;; This gets added in for reasons I don't fully understand when we resolve source queries. Not sure I like it
+    ;; being here.
+    (s/optional-key :result_metadata) (s/maybe [su/Map])
+    ;;
+    ;; `:driver` gets added to the query even though we have middleware that is supposed to resolve driver, and we
+    ;; also have the `*driver*` dynamic var where we should probably be stashing the resolved driver anyway. It might
+    ;; make sense to take this out in the future.
+    (s/optional-key :driver)          {}}
    (fn [{native :native, mbql :query, query-type :type}]
      (case query-type
        :native (core/and native (core/not mbql))

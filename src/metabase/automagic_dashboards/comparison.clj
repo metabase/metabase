@@ -48,7 +48,7 @@
   [{:keys [query-filter cell-query] :as root} card]
   (-> card
       (update :dataset_query #(reduce mbql.u/add-filter-clause
-                                      %
+                                      (normalize/normalize %)
                                       (map (partial normalize/normalize-fragment [:query :filter])
                                            [query-filter cell-query])))
       (update :series (partial map (partial inject-filter root)))))

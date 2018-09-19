@@ -17,8 +17,9 @@
   [query]
   (= :query (keyword (:type query))))
 
-(defn datetime-field?
-  "Is FIELD a `DateTime` field?"
+(defn ^:deprecated datetime-field?
+  "Is FIELD a `DateTime` field?
+   (DEPRECATED because this only works for expanded queries.)"
   [{:keys [base-type special-type]}]
   (or (isa? base-type :type/DateTime)
       (isa? special-type :type/DateTime)))

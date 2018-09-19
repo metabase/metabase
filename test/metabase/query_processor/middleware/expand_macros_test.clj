@@ -87,7 +87,7 @@
     (#'expand-macros/expand-metrics-and-segments {:database 1
                                                   :type     :query
                                                   :query    {:aggregation [[:metric metric-1-id]]
-                                                             :filter      [:and [:> [:field-id 4] 1]]
+                                                             :filter      [:> [:field-id 4] 1]
                                                              :breakout    [[:field-id 17]]
                                                              :order-by    [[:asc [:field-id 1]]]}})))
 
@@ -95,10 +95,11 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [[:count]]
-              :filter      [:= [:field-id 5] "abc"]
-              :breakout    [[:field-id 17]]
-              :order-by    [[:asc [:field-id 1]]]}}
+   :query    {:source-table 1000
+              :aggregation  [[:count]]
+              :filter       [:= [:field-id 5] "abc"]
+              :breakout     [[:field-id 17]]
+              :order-by     [[:asc [:field-id 1]]]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-1-id :id} {:table_id   table-id
@@ -106,9 +107,10 @@
                                                             :filter      [:and [:= [:field-id 5] "abc"]]}}]]
     (#'expand-macros/expand-metrics-and-segments {:database 1
                                                   :type     :query
-                                                  :query    {:aggregation [[:metric metric-1-id]]
-                                                             :breakout    [[:field-id 17]]
-                                                             :order-by    [[:asc [:field-id 1]]]}})))
+                                                  :query    {:source-table 1000
+                                                             :aggregation  [[:metric metric-1-id]]
+                                                             :breakout     [[:field-id 17]]
+                                                             :order-by     [[:asc [:field-id 1]]]}})))
 
 ;; metric w/ no filter definition
 (expect
@@ -133,14 +135,15 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [[:sum [:field-id 18]]]
-              :filter      [:and
-                            [:> [:field-id 4] 1]
-                            [:is-null [:field-id 7]]
-                            [:= [:field-id 5] "abc"]
-                            [:between [:field-id 9] 0 25]]
-              :breakout    [[:field-id 17]]
-              :order-by    [[:asc [:field-id 1]]]}}
+   :query    {:source-table 1000
+              :aggregation  [[:sum [:field-id 18]]]
+              :filter       [:and
+                             [:> [:field-id 4] 1]
+                             [:is-null [:field-id 7]]
+                             [:= [:field-id 5] "abc"]
+                             [:between [:field-id 9] 0 25]]
+              :breakout     [[:field-id 17]]
+              :order-by     [[:asc [:field-id 1]]]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}     {:db_id database-id}]
                   Segment  [{segment-1-id :id} {:table_id   table-id
@@ -154,12 +157,13 @@
                                                                            [:segment segment-1-id]]}}]]
     (#'expand-macros/expand-metrics-and-segments {:database 1
                                                   :type     :query
-                                                  :query    {:aggregation [[:metric metric-1-id]]
-                                                             :filter      [:and
-                                                                           [:> [:field-id 4] 1]
-                                                                           [:segment segment-2-id]]
-                                                             :breakout    [[:field-id 17]]
-                                                             :order-by    [[:asc [:field-id 1]]]}})))
+                                                  :query    {:source-table 1000
+                                                             :aggregation  [[:metric metric-1-id]]
+                                                             :filter       [:and
+                                                                            [:> [:field-id 4] 1]
+                                                                            [:segment segment-2-id]]
+                                                             :breakout     [[:field-id 17]]
+                                                             :order-by     [[:asc [:field-id 1]]]}})))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
