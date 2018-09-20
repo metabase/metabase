@@ -241,7 +241,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
             searchProp="name"
             defaultValue="USD"
-            value={field.settings.currencyType}
+            value={field.settings.currency}
             searchCaseSensitive="false"
           >
             {Object.values(currency).map(c => (
