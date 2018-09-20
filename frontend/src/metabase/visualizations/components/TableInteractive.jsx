@@ -8,7 +8,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import { isID } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
@@ -443,11 +443,11 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted } = this.props;
+    const { sort, isPivoted, settings } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = formatColumn(column);
+    let columnTitle = settings.column(column).column_title;
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }

@@ -7,6 +7,7 @@ import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
+import { formatColumn } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
 import {
@@ -122,7 +123,13 @@ export default class Table extends Component {
   };
 
   static columnSettings = column => {
-    const settings = {};
+    const settings: SettingDefs = {
+      column_title: {
+        title: t`Column title`,
+        widget: "input",
+        getDefault: column => formatColumn(column),
+      },
+    };
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
