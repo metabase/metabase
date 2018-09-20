@@ -60,6 +60,11 @@ export function fieldRefForColumn(column: Column): ?ConcreteField {
   }
 }
 
+export const keyForColumn = (column: Column): string => {
+  const ref = fieldRefForColumn(column);
+  return JSON.stringify(ref ? ["ref", ref] : ["name", column.name]);
+};
+
 /**
  * Finds the column object from the dataset results for the given `table.columns` column setting
  * @param  {Column[]} columns             Dataset results columns

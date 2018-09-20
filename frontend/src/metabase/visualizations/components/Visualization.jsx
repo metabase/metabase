@@ -17,7 +17,7 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
@@ -347,7 +347,7 @@ export default class Visualization extends Component {
     let settings = this.props.settings || {};
 
     if (!loading && !error) {
-      settings = this.props.settings || getSettings(series);
+      settings = this.props.settings || getComputedSettingsForSeries(series);
       if (!CardVisualization) {
         error = t`Could not find visualization`;
       } else {

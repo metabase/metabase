@@ -9,41 +9,14 @@ import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-
-const Widget = ({
-  title,
-  hidden,
-  disabled,
-  widget,
-  value,
-  onChange,
-  props,
-  // NOTE: special props to support adding additional fields
-  question,
-  addField,
-}) => {
-  const W = widget;
-  return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
-      {title && <h4 className="mb1">{title}</h4>}
-      {W && (
-        <W
-          value={value}
-          onChange={onChange}
-          question={question}
-          addField={addField}
-          {...props}
-        />
-      )}
-    </div>
-  );
-};
 
 class ChartSettings extends Component {
   constructor(props) {
@@ -53,6 +26,7 @@ class ChartSettings extends Component {
       currentTab: null,
       settings: initialSettings,
       series: this._getSeries(props.series, initialSettings),
+      showWidget: props.initialWidget,
     };
   }
 
@@ -110,18 +84,31 @@ class ChartSettings extends Component {
     this.props.onClose();
   };
 
+  // allows a widget to temporarily replace itself with a different widget
+  handleShowWidget = widget => {
+    this.setState({ showWidget: widget });
+  };
+  handleEndShowWidget = () => {
+    this.setState({ showWidget: null });
+  };
+
   render() {
     const { isDashboard, question, addField } = this.props;
-    const { series } = this.state;
+    const { series, showWidget } = this.state;
+
+    const widgetsById = {};
 
     const tabs = {};
-    for (const widget of getSettingsWidgets(
+    for (const widget of getSettingsWidgetsForSeries(
       series,
       this.handleChangeSettings,
       isDashboard,
     )) {
-      tabs[widget.section] = tabs[widget.section] || [];
-      tabs[widget.section].push(widget);
+      widgetsById[widget.id] = widget;
+      if (widget.widget && !widget.hidden) {
+        tabs[widget.section] = tabs[widget.section] || [];
+        tabs[widget.section].push(widget);
+      }
     }
 
     // Move settings from the "undefined" section in the first tab
@@ -133,7 +120,30 @@ class ChartSettings extends Component {
 
     const tabNames = Object.keys(tabs);
     const currentTab = this.state.currentTab || tabNames[0];
-    const widgets = tabs[currentTab];
+
+    let widgets;
+    let widget = showWidget && widgetsById[showWidget.id];
+    if (widget) {
+      widget = {
+        ...widget,
+        hidden: false,
+        props: {
+          ...(widget.props || {}),
+          ...(showWidget.props || {}),
+        },
+      };
+      widgets = [widget];
+    } else {
+      widgets = tabs[currentTab];
+    }
+
+    const extraWidgetProps = {
+      // NOTE: special props to support adding additional fields
+      question: question,
+      addField: addField,
+      onShowWidget: this.handleShowWidget,
+      onEndShowWidget: this.handleEndShowWidget,
+    };
 
     return (
       <div className="flex flex-column spread">
@@ -151,16 +161,14 @@ class ChartSettings extends Component {
         )}
         <div className="full-height relative">
           <div className="Grid spread">
-            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right p4">
-              {widgets &&
-                widgets.map(widget => (
-                  <Widget
-                    key={`${widget.id}`}
-                    question={question}
-                    addField={addField}
-                    {...widget}
-                  />
-                ))}
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+              {widgets.map(widget => (
+                <ChartSettingsWidget
+                  key={`${widget.id}`}
+                  {...widget}
+                  {...extraWidgetProps}
+                />
+              ))}
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">

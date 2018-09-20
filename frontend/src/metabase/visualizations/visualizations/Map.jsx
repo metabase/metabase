@@ -14,14 +14,13 @@ import {
   isState,
   isCountry,
 } from "metabase/lib/schema_metadata";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
   fieldSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 import MetabaseSettings from "metabase/lib/settings";
-
-import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
 
@@ -114,34 +113,29 @@ export default class Map extends Component {
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
-    "map.latitude_column": {
+    ...fieldSetting("map.latitude_column", {
       title: t`Latitude field`,
-      ...fieldSetting(
-        "map.latitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLatitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.longitude_column": {
+    }),
+    ...fieldSetting("map.longitude_column", {
       title: t`Longitude field`,
-      ...fieldSetting(
-        "map.longitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLongitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.metric_column": {
+    }),
+    ...metricSetting("map.metric_column", {
       title: t`Metric field`,
-      ...metricSetting("map.metric_column"),
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
         (vizSettings["map.pin_type"] !== "heat" &&
           vizSettings["map.pin_type"] !== "grid"),
-    },
+    }),
     "map.region": {
       title: t`Region map`,
       widget: "select",
@@ -161,17 +155,15 @@ export default class Map extends Component {
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
-    "map.metric": {
+    ...metricSetting("map.metric", {
       title: t`Metric field`,
-      ...metricSetting("map.metric"),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
-    },
-    "map.dimension": {
+    }),
+    ...dimensionSetting("map.dimension", {
       title: t`Region field`,
       widget: "select",
-      ...dimensionSetting("map.dimension"),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
-    },
+    }),
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},

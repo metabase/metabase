@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import React from "react";
 import _ from "underscore";
 import d3 from "d3";
 import { t } from "c-3po";
@@ -259,6 +258,16 @@ export function getColumnCardinality(cols, rows, index) {
   return cardinalityCache.get(col);
 }
 
+const extentCache = new WeakMap();
+
+export function getColumnExtent(cols, rows, index) {
+  const col = cols[index];
+  if (!extentCache.has(col)) {
+    extentCache.set(col, d3.extent(rows, row => row[index]));
+  }
+  return extentCache.get(col);
+}
+
 export function getChartTypeFromData(cols, rows, strict = true) {
   // this should take precendence for backwards compatibilty
   if (isDimensionMetricMetric(cols, strict)) {
@@ -273,60 +282,6 @@ export function getChartTypeFromData(cols, rows, strict = true) {
   return null;
 }
 
-export function enableVisualizationEasterEgg(
-  code,
-  OriginalVisualization,
-  EasterEggVisualization,
-) {
-  if (!code) {
-    code = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
-  } else if (typeof code === "string") {
-    code = code.split("").map(c => c.charCodeAt(0));
-  }
-  wrapMethod(
-    OriginalVisualization.prototype,
-    "componentWillMount",
-    function easterEgg() {
-      let keypresses = [];
-      let enabled = false;
-      let render_original = this.render;
-      let render_egg = function() {
-        return <EasterEggVisualization {...this.props} />;
-      };
-      this._keyListener = e => {
-        keypresses = keypresses.concat(e.keyCode).slice(-code.length);
-        if (
-          code.reduce(
-            (ok, value, index) => ok && value === keypresses[index],
-            true,
-          )
-        ) {
-          enabled = !enabled;
-          this.render = enabled ? render_egg : render_original;
-          this.forceUpdate();
-        }
-      };
-      window.addEventListener("keyup", this._keyListener, false);
-    },
-  );
-  wrapMethod(
-    OriginalVisualization.prototype,
-    "componentWillUnmount",
-    function cleanupEasterEgg() {
-      window.removeEventListener("keyup", this._keyListener, false);
-    },
-  );
-}
-
-function wrapMethod(object, name, method) {
-  let method_original = object[name];
-  object[name] = function() {
-    method.apply(this, arguments);
-    if (typeof method_original === "function") {
-      return method_original.apply(this, arguments);
-    }
-  };
-}
 // TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
 export const cardHasBecomeDirty = (nextCard, previousCard) =>
   !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
@@ -353,6 +308,26 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
     return {
       ...nextCard,
       original_card_id: nextCard.id,
+    };
+  }
+}
+
+export function getDefaultDimensionAndMetric([{ data }]) {
+  const type = data && getChartTypeFromData(data.cols, data.rows, false);
+  if (type === DIMENSION_METRIC) {
+    return {
+      dimension: data.cols[0].name,
+      metric: data.cols[1].name,
+    };
+  } else if (type === DIMENSION_DIMENSION_METRIC) {
+    return {
+      dimension: null,
+      metric: data.cols[2].name,
+    };
+  } else {
+    return {
+      dimension: null,
+      metric: null,
     };
   }
 }
