@@ -469,7 +469,7 @@
     (s/optional-key :settings)        (s/maybe Settings)
     (s/optional-key :constraints)     (s/maybe Constraints)
     (s/optional-key :middleware)      (s/maybe MiddlewareOptions)
-        ;; The maximum time, in seconds, to return cached results for this query rather than running a new query. This is
+    ;; The maximum time, in seconds, to return cached results for this query rather than running a new query. This is
     ;; added automatically when running queries belonging to Cards when caching is enabled. Caching is handled by the
     ;; automatically by caching middleware.
     (s/optional-key :cache-ttl)       (s/maybe su/IntGreaterThanZero)
