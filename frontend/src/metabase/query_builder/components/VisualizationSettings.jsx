@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import Modal from "metabase/components/Modal.jsx";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
@@ -91,25 +91,27 @@ export default class VisualizationSettings extends React.Component {
   }
 
   open = () => {
-    this.refs.popover.open();
+    this.props.showChartSettings({});
+  };
+
+  close = () => {
+    this.props.showChartSettings(null);
   };
 
   render() {
     if (this.props.result && this.props.result.error === undefined) {
+      const { chartSettings } = this.props.uiControls;
       return (
         <div className="VisualizationSettings flex align-center">
           {this.renderChartTypePicker()}
-          <ModalWithTrigger
-            wide
-            tall
-            triggerElement={
-              <span data-metabase-event="Query Builder;Chart Settings">
-                <Icon name="gear" />
-              </span>
-            }
-            triggerClasses="text-brand-hover"
-            ref="popover"
+          <span
+            className="text-brand-hover"
+            data-metabase-event="Query Builder;Chart Settings"
+            onClick={this.open}
           >
+            <Icon name="gear" />
+          </span>
+          <Modal wide tall isOpen={chartSettings} onClose={this.close}>
             <ChartSettings
               question={this.props.question}
               addField={this.props.addField}
@@ -120,8 +122,10 @@ export default class VisualizationSettings extends React.Component {
                 },
               ]}
               onChange={this.props.onReplaceAllVisualizationSettings}
+              onClose={this.close}
+              initialWidget={chartSettings && chartSettings.widget}
             />
-          </ModalWithTrigger>
+          </Modal>
         </div>
       );
     } else {

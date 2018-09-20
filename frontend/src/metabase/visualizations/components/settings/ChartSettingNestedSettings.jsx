@@ -34,7 +34,7 @@ type SettingsByObjectKey = { [key: NestedObjectKey]: Settings };
 type Props = {
   value: SettingsByObjectKey,
   onChange: (newSettings: SettingsByObjectKey) => void,
-  onEndEditing?: () => void,
+  onEndShowWidget?: () => void,
   series: Series,
   extra: ExtraProps,
   objects: NestedObject[],
@@ -86,8 +86,8 @@ const chartSettingNestedSettings = ({
         editingObjectKey: editingObject ? getObjectKey(editingObject) : null,
       });
       // special prop to notify ChartSettings it should unswap replaced widget
-      if (!editingObject && this.props.onEndEditing) {
-        this.props.onEndEditing();
+      if (!editingObject && this.props.onEndShowWidget) {
+        this.props.onEndShowWidget();
       }
     };
 

@@ -72,9 +72,8 @@ export default class ChartSettingOrderedColumns extends Component {
       columnSetting,
     );
     if (column) {
-      this.props.onSubstituteWidget({
-        originalId: "table.columns",
-        replacementId: "column_settings",
+      this.props.onShowWidget({
+        id: "column_settings",
         props: {
           initialKey: keyForColumn(column),
         },
