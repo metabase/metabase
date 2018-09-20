@@ -175,7 +175,7 @@ export class SpecialTypeAndTargetPicker extends Component {
   onCurrencyTypeChange = async currency => {
     const { field, updateField } = this.props;
 
-    field.caveats = currency;
+    field.settings = { currencyType: currency };
 
     await updateField(field);
     MetabaseAnalytics.trackEvent(
@@ -240,7 +240,8 @@ export class SpecialTypeAndTargetPicker extends Component {
             placeholder={t`Select a currency type`}
             onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
             searchProp="name"
-            value={field.caveats}
+            defaultValue="USD"
+            value={field.settings.currencyType}
             searchCaseSensitive="false"
           >
             {Object.values(currency).map(c => (

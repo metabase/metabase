@@ -230,7 +230,9 @@ export default class FieldApp extends Component {
                       <input
                         className="input"
                         type="text"
-                        value={currency[field.caveats].decimal_digits}
+                        value={
+                          currency[field.settings.currencyType].decimal_digits
+                        }
                       />
                     </Box>
                   </Box>
