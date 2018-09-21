@@ -25,7 +25,6 @@ import { parseTimestamp, parseTime } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
-import currency from "metabase/lib/currency";
 
 import {
   DEFAULT_DATE_STYLE,
