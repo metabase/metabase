@@ -36,6 +36,7 @@
              [resolve-driver :as resolve-driver]
              [results-metadata :as results-metadata]
              [source-table :as source-table]
+             [store :as store]
              [validate :as validate]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
@@ -94,7 +95,6 @@
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       annotate-and-sort/annotate-and-sort
       perms/check-query-permissions
-      log-query/log-expanded-query
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
@@ -104,8 +104,8 @@
       resolve/resolve-middleware
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
-      source-table/resolve-source-table-middleware
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      source-table/resolve-source-table-middleware
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros
@@ -114,7 +114,9 @@
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
+      store/initialize-store
       log-query/log-initial-query
+      ;; TODO - bind *query* here ?
       cache/maybe-return-cached-results
       log-query/log-results-metadata
       validate/validate-query

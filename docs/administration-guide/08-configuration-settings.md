@@ -23,5 +23,5 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ---
 
-## Next: Setting up Slack
-If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](09-setting-up-slack.md).
+## Next: caching query results
+Metabase makes it easy to [automatically cache results](14-caching.md) for queries that take a long time to run.

@@ -38,6 +38,9 @@
    Not neccesarily bound when using various functions like `fk->` in the REPL."
   nil)
 
+
+;;; ------------------------------------------------------ ETC -------------------------------------------------------
+
 (defn ^:deprecated driver-supports?
   "Does the currently bound `*driver*` support FEATURE?
    (This returns `nil` if `*driver*` is unbound. `*driver*` is always bound when running queries the normal way,

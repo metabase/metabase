@@ -81,5 +81,5 @@ Pulses act a bit differently with regard to permissions. When a user creates a n
 
 ---
 
-## Next: managing collections
-Learn how to create collections of dashboards, questions, and pulses to organize things and decide who gets to see what in the [next section](06-collections.md).
+## Next: custom segments and metrics
+Metabase lets you create and set permissions on collections of dashboards and questions. [Learn how](06-collections.md).

@@ -140,3 +140,25 @@
   (if-not new-clause
     outer-query
     (update-in outer-query [:query :filter] combine-filter-clauses new-clause)))
+
+
+(defn query->source-table-id
+  "Return the source Table ID associated with `query`, if applicable; handles nested queries as well."
+  {:argslists '([outer-query])}
+  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query}]
+  (cond
+    ;; for native queries, there's no source table to resolve
+    (not= query-type :query)
+    nil
+
+    ;; for MBQL queries with a *native* source query, it's the same story
+    (and (nil? source-table-id) source-query (:native source-query))
+    nil
+
+    ;; for MBQL queries with an MBQL source query, recurse on the source query and try again
+    (and (nil? source-table-id) source-query)
+    (recur (assoc query :query source-query))
+
+    ;; otherwise resolve the source Table
+    :else
+    source-table-id))

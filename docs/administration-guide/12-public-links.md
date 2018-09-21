@@ -12,4 +12,7 @@ Next, exit the Admin Panel and go to the dashboard or question that you want to 
 ### Copy, paste, and share!
 Now just copy and share the public link URL with whomever you please. If you want to embed your dashboard or question in a simple web page or blog post, then copy and paste the iframe snippet to your destination of choice.
 
+---
+
+## Next: embedding dashboards and charts in other applications
 If you're trying to do more complex, integrated embedding in your own web application, then you can check out the [documentation for that feature](13-embedding.md).
