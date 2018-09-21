@@ -3,13 +3,9 @@ import React from "react";
 import colors, { alpha } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
-const CELL_HEIGHT = 30;
 const BAR_HEIGHT = 11;
 const BAR_WIDTH = 70;
 const BORDER_RADIUS = 3;
-
-// matches .TableInteractive-cellWrapper
-const CELL_BORDER_COLOR = alpha(colors["border"], 0.3);
 
 const LABEL_MIN_WIDTH = 30;
 

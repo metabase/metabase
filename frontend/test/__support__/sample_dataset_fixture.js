@@ -38,7 +38,7 @@ export const state = {
         table_id: 1,
         definition: {
           aggregation: [["sum", ["field-id", 6]]],
-          source_table: 1,
+          "source-table": 1,
         },
         creator: {
           email: "sameer@metabase.com",
@@ -70,7 +70,7 @@ export const state = {
         table_id: 1,
         definition: {
           filter: [">", ["field-id", 6], 30],
-          source_table: 1,
+          "source-table": 1,
         },
         creator: {
           email: "sameer@metabase.com",
@@ -1298,7 +1298,7 @@ export const card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1310,7 +1310,7 @@ export const product_card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: PRODUCT_TABLE_ID,
+      "source-table": PRODUCT_TABLE_ID,
     },
   },
 };
@@ -1325,7 +1325,7 @@ export const orders_raw_card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1340,7 +1340,7 @@ export const orders_count_card = {
     database: DATABASE_ID,
     query: {
       aggregation: [["count"]],
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1397,7 +1397,7 @@ export const orders_count_by_id_card = {
     database: DATABASE_ID,
     query: {
       aggregation: [["count"]],
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       breakout: [["field-id", ORDERS_PK_FIELD_ID]],
     },
   },
@@ -1484,7 +1484,7 @@ export const orders_past_300_days_segment = {
   description: "Past 300 days created at",
   table_id: 1,
   definition: {
-    source_table: 1,
+    "source-table": 1,
     filter: ["time-interval", ["field-id", 1], -300, "day"],
   },
 };
@@ -1496,7 +1496,7 @@ export const vendor_count_metric = {
   table_id: 3,
   definition: {
     aggregation: [["distinct", ["field-id", 28]]],
-    source_table: 3,
+    "source-table": 3,
   },
 };
 

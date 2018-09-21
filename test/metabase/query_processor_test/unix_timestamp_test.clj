@@ -1,13 +1,10 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets :refer [*driver* *engine*]]
-             [interface :as i]]))
+            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
 
 ;; There were 10 "sad toucan incidents" on 2015-06-02 in UTC
 (expect-with-non-timeseries-dbs
@@ -20,10 +17,11 @@
   ;; the issue go away
   (tu/with-temporary-setting-values [report-timezone "UTC"]
     (count (rows (data/dataset sad-toucan-incidents
-                   (data/run-query incidents
-                     (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
-                                        (ql/< $timestamp "2015-06-03")))
-                     (ql/order-by (ql/asc $timestamp))))))))
+                   (data/run-mbql-query incidents
+                     {:filter   [:and
+                                 [:> $timestamp "2015-06-01"]
+                                 [:< $timestamp "2015-06-03"]]
+                      :order-by [[:asc $timestamp]]}))))))
 
 (expect-with-non-timeseries-dbs
   (cond
@@ -77,8 +75,8 @@
 
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (data/dataset sad-toucan-incidents
-           (data/run-query incidents
-             (ql/aggregation (ql/count))
-             (ql/breakout $timestamp)
-             (ql/limit 10)))
+           (data/run-mbql-query incidents
+             {:aggregation [[:count]]
+              :breakout    [$timestamp]
+              :limit       10}))
          rows (format-rows-by [identity int]))))

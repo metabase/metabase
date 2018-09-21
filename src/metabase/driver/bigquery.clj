@@ -1,6 +1,5 @@
 (ns metabase.driver.bigquery
-  (:require [cheshire.core :as json]
-            [clj-time
+  (:require [clj-time
              [coerce :as tcoerce]
              [core :as time]
              [format :as tformat]]
@@ -24,6 +23,7 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [annotate :as annotate]
+             [store :as qp.store]
              [util :as qputil]]
             [metabase.util
              [date :as du]
@@ -33,7 +33,8 @@
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
+            TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
            java.sql.Time
            [java.util Collections Date]
@@ -445,16 +446,11 @@
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
-  ;; TODO - Making a DB call for each field to fetch its dataset is inefficient and makes me cry, but this method is
+  ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
   [{table-id :table_id, :as field}]
-  ;; manually write the query here to save us from having to do 2 seperate queries...
-  (let [[{:keys [details table-name]}] (db/query {:select    [[:database.details :details] [:table.name :table-name]]
-                                                  :from      [[:metabase_table :table]]
-                                                  :left-join [[:metabase_database :database]
-                                                              [:= :database.id :table.db_id]]
-                                                  :where     [:= :table.id (u/get-id table-id)]})
-        details (json/parse-string (u/jdbc-clob->str details) keyword)]
+  (let [{table-name :name, database-id :db_id} (db/select-one ['Table :name :db_id], :id (u/get-id table-id))
+        details                                (db/select-one-field :details 'Database, :id (u/get-id database-id))]
     (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
 
 (defn- field->breakout-identifier [driver field]
@@ -473,24 +469,25 @@
 (defn apply-source-table
   "Copy of the Generic SQL implementation of `apply-source-table` that prepends the current dataset ID to the table
   name."
-  [honeysql-form {{table-name :name} :source-table}]
-  {:pre [(seq table-name)]}
-  (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name})))
+  [honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name} (qp.store/table source-table-id)]
+    (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name}))))
 
 (defn- apply-join-tables
   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends the current dataset ID to join-alias."
-  [honeysql-form {join-tables :join-tables, {source-table-name :name} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
-    (let [honeysql-form
-          (h/merge-left-join honeysql-form
-            [(map->BigQueryIdentifier {:table-name table-name})
-             (map->BigQueryIdentifier {:table-name join-alias})]
-            [:=
-             (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
-             (map->BigQueryIdentifier {:table-name join-alias,        :field-name (:field-name pk-field)})])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
+      (let [honeysql-form
+            (h/merge-left-join honeysql-form
+              [(map->BigQueryIdentifier {:table-name table-name})
+               (map->BigQueryIdentifier {:table-name join-alias})]
+              [:=
+               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
+               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:field-name pk-field)})])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn- apply-order-by [driver honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
@@ -520,10 +517,11 @@
      *  Incldues `table-name` in the resulting map (do not remember why we are doing so, perhaps it is needed to run the
         query)"
   [{{{:keys [dataset-id]} :details, :as database} :database
-    {{table-name :name} :source-table}            :query
+    {source-table-id :source-table}               :query
     :as                                           outer-query}]
-  {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [aliased-query (pre-alias-aggregations outer-query)]
+  {:pre [(map? database) (seq dataset-id)]}
+  (let [aliased-query      (pre-alias-aggregations outer-query)
+        {table-name :name} (qp.store/table source-table-id)]
     (binding [sqlqp/*query* aliased-query]
       {:query      (->> aliased-query
                        (sqlqp/build-honeysql-form bq-driver)

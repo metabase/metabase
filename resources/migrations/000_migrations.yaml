@@ -5049,3 +5049,19 @@ databaseChangeLog:
             columns:
               - column:
                   name: db_id
+# Before this changeset, the databasechangelog table didn't include any uniqueness constraing for the databasechangelog
+# table. Not having anything that uniquely identifies a row can cause issues for database replication. In earlier
+# versions of Liquibase the uniquenes constraint was (ID, AUTHOR, FILENAME) but that was dropped
+# (https://liquibase.jira.com/browse/CORE-1909) as some as the combination of the three columns caused issues on some
+# databases. We only support PostgreSQL, MySQL and H2 which doesn't have that issue. This changeset puts back that
+# uniqueness constraint since the issue shouldn't affect us and it will allow replication without the user needed to
+# add their own constraint.
+  - changeSet:
+      id: 95
+      author: senior
+      comment: 'Added 0.31.0'
+      changes:
+        - addUniqueConstraint:
+            columnNames: id, author, filename
+            constraintName: idx_databasechangelog_id_author_filename
+            tableName: DATABASECHANGELOG

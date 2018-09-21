@@ -66,7 +66,7 @@
   (map
    (u/rpartial select-keys [:field-id :field-name :source])
    (annotate/collect-fields
-     {:aggregation  [{:aggregation-type :count, :custom-name nil}]
+     {:aggregation  [[:count]]
       :breakout     [(qpi/map->FieldLiteral {:field-name "text", :base-type :type/Text, :datetime-unit nil})]
       :source-query {:source-table       {:schema "public", :name "messages", :id 1}
                      :fields-is-implicit true

@@ -25,7 +25,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 
-// NOTE: database/table_id/source_table are hard-coded, this might be a problem at some point
+// NOTE: database/table_id/source-table are hard-coded, this might be a problem at some point
 
 describe("The Reference Section", () => {
   // Test data
@@ -35,7 +35,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -30, "day"],
     },
   };
@@ -46,7 +46,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -15, "day"],
     },
   };
@@ -56,10 +56,9 @@ describe("The Reference Section", () => {
     display: "scalar",
     dataset_query: {
       database: 1,
-      table_id: 1,
       type: "query",
       query: {
-        source_table: 1,
+        "source-table": 1,
         aggregation: ["count"],
         filter: ["segment", 1],
       },

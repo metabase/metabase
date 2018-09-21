@@ -145,11 +145,23 @@ export default class TableInteractive extends Component {
 
   componentWillReceiveProps(newProps: Props) {
     if (
-      JSON.stringify(this.props.data && this.props.data.cols) !==
-      JSON.stringify(newProps.data && newProps.data.cols)
+      this.props.data &&
+      newProps.data &&
+      !_.isEqual(this.props.data.cols, newProps.data.cols)
     ) {
       this.resetColumnWidths();
     }
+
+    // remeasure columns if the column settings change, e.x. turning on/off mini bar charts
+    const oldColSettings = this._getColumnSettings(this.props);
+    const newColSettings = this._getColumnSettings(newProps);
+    if (!_.isEqual(oldColSettings, newColSettings)) {
+      this.remeasureColumnWidths();
+    }
+  }
+
+  _getColumnSettings(props: Props) {
+    return props.data && props.data.cols.map(col => props.settings.column(col));
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -169,12 +181,16 @@ export default class TableInteractive extends Component {
     }
   }
 
-  resetColumnWidths() {
+  remeasureColumnWidths() {
     this.setState({
       columnWidths: [],
       contentWidths: null,
     });
     this.columnHasResized = {};
+  }
+
+  resetColumnWidths() {
+    this.remeasureColumnWidths();
     this.props.onUpdateVisualizationSettings({
       "table.column_widths": undefined,
     });
@@ -427,11 +443,12 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted } = this.props;
+    const { sort, isPivoted, settings } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = formatColumn(column);
+    let columnTitle =
+      settings.column(column).column_title || formatColumn(column);
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }
@@ -455,7 +472,7 @@ export default class TableInteractive extends Component {
     // the column id is in `["field-id", fieldId]` format
     const isSorted =
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
-    const isAscending = sort && sort[0] && sort[0][1] === "ascending";
+    const isAscending = sort && sort[0] && sort[0][0] === "asc";
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */

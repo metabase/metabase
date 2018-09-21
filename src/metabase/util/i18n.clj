@@ -1,6 +1,7 @@
 (ns metabase.util.i18n
   (:refer-clojure :exclude [ex-info])
   (:require [cheshire.generate :as json-gen]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [puppetlabs.i18n.core :as i18n :refer [available-locales]]
             [schema.core :as s])
@@ -16,10 +17,24 @@
   [locale]
   (Locale/setDefault (Locale/forLanguageTag locale)))
 
+(defn- translate
+  "A failsafe version of `i18n/translate`. Will attempt to translate `msg` but if for some reason we're not able
+  to (such as a typo in the translated version of the string), log the failure but return the original (untranslated)
+  string. This is a workaround for translations that, due to a typo, will fail to parse using Java's message
+  formatter."
+  [ns-str msg args]
+  (try
+    (apply i18n/translate ns-str (i18n/user-locale) msg args)
+    (catch IllegalArgumentException e
+      ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
+      ;; that had the typo, we'd just recur endlessly without logging an error.
+      (log/errorf e "Unable to translate string '%s'" msg)
+      msg)))
+
 (defrecord UserLocalizedString [ns-str msg args]
   java.lang.Object
   (toString [_]
-    (apply i18n/translate ns-str (i18n/user-locale) msg args))
+    (translate ns-str msg args))
   schema.core.Schema
   (explain [this]
     (str this)))
@@ -27,7 +42,7 @@
 (defrecord SystemLocalizedString [ns-str msg args]
   java.lang.Object
   (toString [_]
-    (apply i18n/translate ns-str (i18n/system-locale) msg args))
+    (translate ns-str msg args))
   s/Schema
   (explain [this]
     (str this)))

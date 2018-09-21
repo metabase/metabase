@@ -11,7 +11,8 @@
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
             [metabase.query-processor
              [annotate :as annotate]
-             [interface :as i]]
+             [interface :as i]
+             [store :as qp.store]]
             [metabase.util :as u]
             [metabase.util.date :as du]
             [monger
@@ -19,8 +20,7 @@
              [operators :refer :all]])
   (:import java.sql.Timestamp
            [java.util Date TimeZone]
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral
-            RelativeDateTimeValue Value]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral RelativeDateTimeValue Value]
            org.bson.types.ObjectId
            org.joda.time.DateTime))
 
@@ -37,6 +37,7 @@
 
 ;; # DRIVER QP INTERFACE
 
+;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
 (defn- log-monger-form [form]
@@ -505,16 +506,16 @@
 
 (defn mbql->native
   "Process and run an MBQL query."
-  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
-  {:pre [(map? database)
-         (string? source-table-name)]}
-  (binding [*query* query]
-    (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
-      (log-monger-form generated-pipeline)
-      {:projections proj
-       :query       generated-pipeline
-       :collection  source-table-name
-       :mbql?       true})))
+  [{database :database, {source-table-id :source-table} :query, :as query}]
+  {:pre [(map? database)]}
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (binding [*query* query]
+      (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
+        (log-monger-form generated-pipeline)
+        {:projections proj
+         :query       generated-pipeline
+         :collection  source-table-name
+         :mbql?       true}))))
 
 (defn execute-query
   "Process and run a native MongoDB query."

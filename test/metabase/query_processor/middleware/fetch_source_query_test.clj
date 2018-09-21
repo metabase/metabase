@@ -38,7 +38,7 @@
    :query    {:aggregation  [:count]
               :breakout     [[:field-literal :price :type/Integer]]
               :source-query {:native        (format "SELECT * FROM %s" (data/format-name "venues"))
-                             :template_tags nil}}}
+                             :template-tags nil}}}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query (format "SELECT * FROM %s" (data/format-name "venues"))}}}]
@@ -66,7 +66,7 @@
 ;; `fetch-source-query`)
 (expect
   (default-expanded-results
-   {:source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
+   {:source-query {:source-table (data/id :venues)
                    :join-tables  nil}})
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
@@ -78,7 +78,8 @@
 (expect
   (let [date-field-literal {:field-name "date", :base-type :type/Date, :binning-strategy nil, :binning-param nil, :fingerprint nil}]
     (default-expanded-results
-     {:source-query {:source-table {:schema "PUBLIC" :name "CHECKINS" :id (data/id :checkins)}, :join-tables nil}
+     {:source-query {:source-table (data/id :checkins)
+                     :join-tables  nil}
       :filter       {:filter-type :between,
                      :field       date-field-literal
                      :min-val     {:value (tcoerce/to-timestamp (du/str->date-time "2015-01-01"))
@@ -115,7 +116,7 @@
   (default-expanded-results
    {:limit        25
     :source-query {:limit 50
-                   :source-query {:source-table {:schema "PUBLIC", :name "VENUES", :id (data/id :venues)}
+                   :source-query {:source-table (data/id :venues)
                                   :limit        100
                                   :join-tables  nil}}})
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)

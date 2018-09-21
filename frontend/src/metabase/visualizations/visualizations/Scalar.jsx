@@ -17,21 +17,17 @@ import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { Column } from "metabase/meta/types/Dataset";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
-  const o = _.chain(settings)
+  return _.chain(settings)
     .pairs()
     .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
     .map(([key, value]) => [key.replace(/^scalar\./, ""), value])
     .object()
     .value();
-  // `prefix`/`suffix` replaced with `markdown_template`
-  if (o.prefix || o.suffix) {
-    o.markdown_template = `${o.prefix || ""}{{value}}${o.suffix || ""}`;
-    delete o.prefix, o.suffix;
-  }
-  return o;
 }
 
 export default class Scalar extends Component {
@@ -132,7 +128,7 @@ export default class Scalar extends Component {
     },
   };
 
-  _getColumnIndex(cols, settings) {
+  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
     const columnIndex = _.findIndex(
       cols,
       col => col.name === settings["scalar.field"],

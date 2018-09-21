@@ -46,8 +46,8 @@ describe("CommonMetricsAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: ORDERS_TABLE_ID,
-      aggregation: [["METRIC", MAIN_METRIC_ID]],
+      "source-table": ORDERS_TABLE_ID,
+      aggregation: [["metric", MAIN_METRIC_ID]],
     });
     expect(newCard.display).toEqual("scalar");
   });

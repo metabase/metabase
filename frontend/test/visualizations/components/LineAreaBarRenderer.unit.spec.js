@@ -124,16 +124,16 @@ describe("LineAreaBarRenderer", () => {
               formatValue(rows[0][0], {
                 column: DateTimeColumn({ unit: "hour" }),
               }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
             expect(
               formatValue(hover.data[0].value, { column: hover.data[0].col }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
 
             expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-              "1 AM - January 1, 2016",
-              "2 AM - January 1, 2016",
-              "3 AM - January 1, 2016",
-              "4 AM - January 1, 2016",
+              "January 1, 2016, 1:00 AM",
+              "January 1, 2016, 2:00 AM",
+              "January 1, 2016, 3:00 AM",
+              "January 1, 2016, 4:00 AM",
             ]);
 
             resolve();

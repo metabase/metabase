@@ -8,7 +8,7 @@ const EXAMPLES = {
     type: "native",
     native: {
       query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
-      template_tags: {
+      "template-tags": {
         category: {
           name: "category",
           display_name: "Category",
@@ -24,7 +24,7 @@ const EXAMPLES = {
     type: "native",
     native: {
       query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
-      template_tags: {
+      "template-tags": {
         created_at: {
           name: "created_at",
           display_name: "Created At",
@@ -40,7 +40,7 @@ const EXAMPLES = {
     native: {
       query:
         "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
-      template_tags: {
+      "template-tags": {
         category: {
           name: "category",
           display_name: "Category",
@@ -56,7 +56,7 @@ const EXAMPLES = {
     native: {
       query:
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
-      template_tags: {
+      "template-tags": {
         id: { name: "id", display_name: "ID", type: "number", required: false },
         category: {
           name: "category",

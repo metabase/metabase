@@ -25,23 +25,39 @@ import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
+import {
+  DEFAULT_DATE_STYLE,
+  getDateFormatFromStyle,
+  DEFAULT_TIME_STYLE,
+  getTimeFormatFromStyle,
+  hasHour,
+} from "metabase/lib/formatting/date";
+
 import Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
+import type {
+  DateStyle,
+  TimeStyle,
+  TimeEnabled,
+} from "metabase/lib/formatting/date";
+
 export type FormattingOptions = {
+  // GENERIC
   column?: Column | Field,
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
-  // number options:
   compact?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram
   noRange?: boolean,
+  // NUMBER
   // TODO: docoument these:
+  number_style?: null | "decimal" | "percent" | "scientific" | "currency",
   prefix?: string,
   suffix?: string,
   scale?: number,
@@ -54,7 +70,20 @@ export type FormattingOptions = {
   useGrouping?: boolean,
   // decimals sets both minimumFractionDigits and maximumFractionDigits
   decimals?: number,
+  // STRING
+  view_as?: "link" | "email_link" | "image",
+  link_text?: string,
+  // DATE/TIME
+  // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
+  date_style?: DateStyle,
+  date_abbreviate?: boolean,
+  date_format?: string,
+  time_style?: TimeStyle,
+  time_enabled?: TimeEnabled,
+  time_format?: string,
 };
+
+type FormattedString = string | React$Element<any>;
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
@@ -98,16 +127,17 @@ const RANGE_SEPARATOR = ` – `;
 export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // if we don't provide a locale much of the formatting doens't work
+  // $FlowFixMe: doesn't know about Intl.NumberFormat
   return new Intl.NumberFormat(options.locale || "en", {
     style: options.number_style,
     currency: options.currency,
     currencyDisplay: options.currency_style,
     useGrouping: options.useGrouping,
-    // minimumIntegerDigits: options.minimumIntegerDigits,
+    minimumIntegerDigits: options.minimumIntegerDigits,
     minimumFractionDigits: options.minimumFractionDigits,
     maximumFractionDigits: options.maximumFractionDigits,
-    // minimumSignificantDigits: options.minimumSignificantDigits,
-    // maximumSignificantDigits: options.maximumSignificantDigits,
+    minimumSignificantDigits: options.minimumSignificantDigits,
+    maximumSignificantDigits: options.maximumSignificantDigits,
   });
 }
 
@@ -124,9 +154,22 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     return formatNumberScientific(number, options);
   } else {
     try {
-      // NOTE: options._numberFormatter allows you to provide a predefined
-      // Intl.NumberFormat object for increased performance
-      const nf = options._numberFormatter || numberFormatterForOptions(options);
+      let nf;
+      if (number < 1 && number > -1 && options.decimals == null) {
+        // NOTE: special case to match existing behavior for small numbers, use
+        // max significant digits instead of max fraction digits
+        nf = numberFormatterForOptions({
+          ...options,
+          maximumSignificantDigits: 2,
+          maximumFractionDigits: undefined,
+        });
+      } else if (options._numberFormatter) {
+        // NOTE: options._numberFormatter allows you to provide a predefined
+        // Intl.NumberFormat object for increased performance
+        nf = options._numberFormatter;
+      } else {
+        nf = numberFormatterForOptions(options);
+      }
       return nf.format(number);
     } catch (e) {
       console.warn("Error formatting number", e);
@@ -139,7 +182,10 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 }
 
-function formatNumberScientific(value: number, options: FormattingOptions) {
+function formatNumberScientific(
+  value: number,
+  options: FormattingOptions,
+): FormattedString {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }
@@ -200,12 +246,19 @@ export function formatCoordinate(
 
 export function formatRange(
   range: [number, number],
-  formatter: (value: number) => string,
+  formatter: (value: number) => any,
   options: FormattingOptions = {},
 ) {
-  return range
-    .map(value => formatter(value, options))
-    .join(` ${RANGE_SEPARATOR} `);
+  const [start, end] = range.map(value => formatter(value, options));
+  if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
+    return (
+      <span>
+        {start} {RANGE_SEPARATOR} {end}
+      </span>
+    );
+  } else {
+    return `${start} ${RANGE_SEPARATOR} ${end}`;
+  }
 }
 
 function formatMajorMinor(major, minor, options = {}) {
@@ -284,29 +337,43 @@ function formatWeek(m: Moment, options: FormattingOptions = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
+function replaceDateFormatNames(format, options) {
+  return format
+    .replace(/\bMMMM\b/g, getMonthFormat(options))
+    .replace(/\bdddd\b/g, getDayFormat(options));
+}
+
+function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
+  let m = parseTimestamp(value, options.column && options.column.unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+
+  const format = [];
+  if (dateFormat) {
+    format.push(replaceDateFormatNames(dateFormat, options));
+  }
+  if (timeFormat && options.time_enabled) {
+    format.push(timeFormat);
+  }
+  return m.format(format.join(", "));
+}
+
 function formatDateTime(value, options) {
   let m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
 
-  if (options.date_format) {
-    const format = [];
-    if (options.date_abbreviate) {
-      format.push(
-        options.date_format
-          .replace(/\bMMMM\b/g, getMonthFormat(options))
-          .replace(/\bdddd\b/g, getDayFormat(options)),
-      );
-    } else {
-      format.push(options.date_format);
-    }
-    if (options.time_format && options.time_enabled !== false) {
-      format.push(options.time_format);
-    }
-    return m.format(format.join(" "));
+  if (options.date_format || options.time_format) {
+    formatDateTimeWithFormats(
+      value,
+      options.date_format,
+      options.time_format,
+      options,
+    );
   } else {
-    if (options.show_time === false) {
+    if (options.time_enabled === false) {
       return m.format(options.date_abbreviate ? "ll" : "LL");
     } else {
       return m.format(options.date_abbreviate ? "llll" : "LLLL");
@@ -324,71 +391,42 @@ export function formatDateTimeWithUnit(
     return String(value);
   }
 
-  // only use custom formats for unbucketed dates for now
-  if (options.date_format) {
-    formatDateTime(value, options);
+  // expand "week" into a range in specific contexts
+  if (unit === "week") {
+    if (
+      (options.type === "tooltip" || options.type === "cell") &&
+      !options.noRange
+    ) {
+      // tooltip show range like "January 1 - 7, 2017"
+      return formatDateTimeRangeWithUnit(value, unit, options);
+    }
   }
 
-  switch (unit) {
-    case "hour": // 12 AM - January 1, 2015
-      return formatMajorMinor(
-        m.format("h A"),
-        m.format(`${getMonthFormat(options)} D, YYYY`),
-        options,
-      );
-    case "day": // January 1, 2015
-      return m.format(`${getMonthFormat(options)} D, YYYY`);
-    case "week": // 1st - 2015
-      if (options.type === "tooltip" && !options.noRange) {
-        // tooltip show range like "January 1 - 7, 2017"
-        return formatDateTimeRangeWithUnit(value, unit, options);
-      } else if (options.type === "cell" && !options.noRange) {
-        // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
-        return formatDateTimeRangeWithUnit(value, unit, options);
-      } else if (options.type === "axis") {
-        // axis ticks show start of the week as "Jan 1"
-        return m
-          .clone()
-          .startOf(unit)
-          .format(`MMM D`);
-      } else {
-        return formatWeek(m, options);
-      }
-    case "month": // January 2015
-      return options.jsx ? (
-        <div>
-          <span className="text-bold">{m.format(getMonthFormat(options))}</span>{" "}
-          {m.format("YYYY")}
-        </div>
-      ) : (
-        m.format(`${getMonthFormat(options)} YYYY`)
-      );
-    case "year": // 2015
-      return m.format("YYYY");
-    case "quarter": // Q1 - 2015
-      return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), {
-        ...options,
-        majorWidth: 0,
-      });
-    case "minute-of-hour":
-      return m.format("m");
-    case "hour-of-day": // 12 AM
-      return m.format("h A");
-    case "day-of-week": // Sunday
-      return m.format(getDayFormat(options));
-    case "day-of-month":
-      return m.format("D");
-    case "day-of-year":
-      return m.format("DDD");
-    case "week-of-year": // 1st
-      return m.format("wo");
-    case "month-of-year": // January
-      return m.format(getMonthFormat(options));
-    case "quarter-of-year": // January
-      return m.format("[Q]Q");
-    default:
-      return formatDateTime(value, options);
+  options = {
+    date_style: DEFAULT_DATE_STYLE,
+    time_style: DEFAULT_TIME_STYLE,
+    time_enabled: hasHour(unit) ? "minutes" : null,
+    ...options,
+  };
+
+  let dateFormat = options.date_format;
+  let timeFormat = options.time_format;
+
+  if (!dateFormat) {
+    // $FlowFixMe: date_style default set above
+    dateFormat = getDateFormatFromStyle(options.date_style, unit);
   }
+
+  if (!timeFormat) {
+    timeFormat = getTimeFormatFromStyle(
+      // $FlowFixMe: time_style default set above
+      options.time_style,
+      unit,
+      options.time_enabled,
+    );
+  }
+
+  return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
 }
 
 export function formatTime(value: Value) {
@@ -405,11 +443,18 @@ const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a
 
 export function formatEmail(
   value: Value,
-  { jsx, rich }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const email = String(value);
-  if (jsx && rich && EMAIL_WHITELIST_REGEX.test(email)) {
-    return <ExternalLink href={"mailto:" + email}>{email}</ExternalLink>;
+  if (
+    jsx &&
+    rich &&
+    (view_as === "email_link" || view_as === "auto") &&
+    EMAIL_WHITELIST_REGEX.test(email)
+  ) {
+    return (
+      <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
+    );
   } else {
     return email;
   }
@@ -418,14 +463,34 @@ export function formatEmail(
 // based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
 const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
-export function formatUrl(value: Value, { jsx, rich }: FormattingOptions = {}) {
+export function formatUrl(
+  value: Value,
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+) {
   const url = String(value);
-  if (jsx && rich && URL_WHITELIST_REGEX.test(url)) {
+  if (
+    jsx &&
+    rich &&
+    (view_as === "link" || view_as === "auto") &&
+    URL_WHITELIST_REGEX.test(url)
+  ) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {url}
+        {link_text || url}
       </ExternalLink>
     );
+  } else {
+    return url;
+  }
+}
+
+export function formatImage(
+  value: Value,
+  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+) {
+  const url = String(value);
+  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+    return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
   }
@@ -436,6 +501,9 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   value = formatUrl(value, options);
   if (typeof value === "string") {
     value = formatEmail(value, options);
+  }
+  if (typeof value === "string") {
+    value = formatImage(value, options);
   }
   return value;
 }
@@ -463,6 +531,20 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         "formatValue: options.markdown_template not supported when options.jsx = false",
       );
       return formatted;
+    }
+  }
+  if (options.prefix || options.suffix) {
+    if (options.jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {options.prefix || ""}
+          {formatted}
+          {options.suffix || ""}
+        </span>
+      );
+    } else {
+      // $FlowFixMe: doesn't understand formatted is a string
+      return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {
     return formatted;

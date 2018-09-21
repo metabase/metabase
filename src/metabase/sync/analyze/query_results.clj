@@ -3,11 +3,12 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
+  (:require [clojure.string :as str]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.analyze.fingerprint.insights :as insights]
+            [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [redux.core :as redux]

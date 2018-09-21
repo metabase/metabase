@@ -6,12 +6,13 @@ import ChartSettingInputNumeric from "metabase/visualizations/components/setting
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
+import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup.jsx";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 
-type SettingId = string;
+export type SettingId = string;
 
 export type Settings = {
   [settingId: SettingId]: any,
@@ -22,11 +23,11 @@ export type SettingDefs = {
 };
 
 export type SettingDef = {
-  id: SettingId,
-  value: any,
   title?: string,
   props?: { [key: string]: any },
   default?: any,
+  hidden?: boolean,
+  disabled?: boolean,
   getTitle?: (object: any, settings: Settings) => ?string,
   getHidden?: (object: any, settings: Settings) => boolean,
   getDisabled?: (object: any, settings: Settings) => boolean,
@@ -55,6 +56,8 @@ export type WidgetDef = {
   onChange: (value: any) => void,
 };
 
+export type ExtraProps = { [key: string]: any };
+
 const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
@@ -62,6 +65,7 @@ const WIDGETS = {
   radio: ChartSettingRadio,
   select: ChartSettingSelect,
   toggle: ChartSettingToggle,
+  buttonGroup: ChartSettingButtonGroup,
   field: ChartSettingFieldPicker,
   fields: ChartSettingFieldsPicker,
   color: ChartSettingColorPicker,
@@ -72,6 +76,7 @@ export function getComputedSettings(
   settingsDefs: SettingDefs,
   object: any,
   storedSettings: Settings,
+  extra?: ExtraProps = {},
 ) {
   const computedSettings = {};
   for (let settingId in settingsDefs) {
@@ -81,6 +86,7 @@ export function getComputedSettings(
       settingId,
       object,
       storedSettings,
+      extra,
     );
   }
   return computedSettings;
@@ -92,6 +98,7 @@ function getComputedSetting(
   settingId: SettingId,
   object: any,
   storedSettings: Settings,
+  extra?: ExtraProps = {},
 ): any {
   if (settingId in computedSettings) {
     return;
@@ -104,8 +111,9 @@ function getComputedSetting(
       computedSettings,
       settingDefs,
       dependentId,
-      storedSettings,
       object,
+      storedSettings,
+      extra,
     );
   }
 
@@ -113,22 +121,25 @@ function getComputedSetting(
     object = object._raw;
   }
 
+  const settings = { ...storedSettings, ...computedSettings };
+
   try {
     if (settingDef.getValue) {
       return (computedSettings[settingId] = settingDef.getValue(
         object,
-        computedSettings,
+        settings,
+        extra,
       ));
     }
 
     if (storedSettings[settingId] !== undefined) {
-      if (!settingDef.isValid || settingDef.isValid(object, computedSettings)) {
+      if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
         return (computedSettings[settingId] = storedSettings[settingId]);
       }
     }
 
     if (settingDef.getDefault) {
-      const defaultValue = settingDef.getDefault(object, computedSettings);
+      const defaultValue = settingDef.getDefault(object, settings, extra);
 
       return (computedSettings[settingId] = defaultValue);
     }
@@ -148,6 +159,7 @@ function getSettingWidget(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
+  extra?: ExtraProps = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
   const value = settings[settingId];
@@ -166,18 +178,18 @@ function getSettingWidget(
     id: settingId,
     value: value,
     title: settingDef.getTitle
-      ? settingDef.getTitle(object, settings)
+      ? settingDef.getTitle(object, settings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(object, settings)
-      : false,
+      ? settingDef.getHidden(object, settings, extra)
+      : settingDef.hidden || false,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(object, settings)
-      : false,
+      ? settingDef.getDisabled(object, settings, extra)
+      : settingDef.disabled || false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, settings, onChange)
+        ? settingDef.getProps(object, settings, onChange, extra)
         : {}),
     },
     widget:
@@ -193,19 +205,20 @@ export function getSettingsWidgets(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
+  extra?: ExtraProps = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
-      // $FlowFixMe: doesn't understand settingDef is a SettingDef
       getSettingWidget(
         settingDefs,
         settingId,
         settings,
         object,
         onChangeSettings,
+        extra,
       ),
     )
-    .filter(widget => widget.widget && !widget.hidden);
+    .filter(widget => widget.widget);
 }
 
 export function getPersistableDefaultSettings(
