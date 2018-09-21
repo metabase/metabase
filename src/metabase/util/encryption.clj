@@ -10,7 +10,7 @@
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]))
 
 (defn secret-key->hash
@@ -36,7 +36,8 @@
    (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
    (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
  (u/emoji (if default-secret-key "🔐" "🔓"))
- (trs "\nFor more information, see")
+ "\n"
+ (trs "For more information, see")
  "https://www.metabase.com/docs/latest/operations-guide/start.html#encrypting-your-database-connection-details-at-rest")
 
 (defn encrypt

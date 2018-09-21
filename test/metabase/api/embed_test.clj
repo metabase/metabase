@@ -143,7 +143,7 @@
     (with-temp-card [card {:enable_embedding true
                            :dataset_query    {:database (data/id)
                                               :type     :native
-                                              :native   {:template_tags {:a {:type "date", :name "a", :display_name "a"}
+                                              :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
                                                                          :b {:type "date", :name "b", :display_name "b"}
                                                                          :c {:type "date", :name "c", :display_name "c"}
                                                                          :d {:type "date", :name "d", :display_name "d"}}}}
@@ -284,11 +284,11 @@
   {:dataset_query    {:database (data/id)
                       :type     :native
                       :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
-                                 :template_tags {:date {:name         "date"
-                                                        :display_name "Date"
+                                 :template-tags {:date {:name         "date"
+                                                        :display-name "Date"
                                                         :type         "dimension"
                                                         :dimension    [:field-id (data/id :checkins :date)]
-                                                        :widget_type  "date/quarter-year"}}}}
+                                                        :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
 

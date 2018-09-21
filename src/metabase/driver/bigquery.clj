@@ -1,6 +1,5 @@
 (ns metabase.driver.bigquery
-  (:require [cheshire.core :as json]
-            [clj-time
+  (:require [clj-time
              [coerce :as tcoerce]
              [core :as time]
              [format :as tformat]]
@@ -24,11 +23,12 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [annotate :as annotate]
+             [store :as qp.store]
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [tru]]
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
@@ -178,34 +178,45 @@
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(defn- parse-timestamp-str [s]
-  ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-  (or
-   (du/->Timestamp s time/utc)
-   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
-   ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
-   (du/->Timestamp (* (Double/parseDouble s) 1000))))
+(def ^:private ^:dynamic *bigquery-timezone*
+  "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
+  native query, but that change in timezone is not conveyed through the BigQuery API. In most situations
+  `*bigquery-timezone*` will just be UTC. If the user is always changing the timezone via native SQL function
+  invocation, they can set their JVM TZ to the correct timezone, mark `use-jvm-timezone` to `true` and that will bind
+  this dynamic var to the JVM TZ rather than UTC"
+  time/utc)
 
-(def ^:private bigquery-time-format (tformat/formatter "HH:mm:SS" time/utc))
+(defn- parse-timestamp-str [timezone]
+  (fn [s]
+    ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
+    (or
+     (du/->Timestamp s timezone)
+     ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
+     ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
+     (du/->Timestamp (* (Double/parseDouble s) 1000)))))
 
-(defn- parse-bigquery-time [time-string]
-  (->> time-string
-       (tformat/parse bigquery-time-format)
-       tcoerce/to-long
-       Time.))
+(defn- bigquery-time-format [timezone]
+  (tformat/formatter "HH:mm:SS" timezone))
 
-(defn- unparse-bigquery-time [coercible-to-dt]
+(defn- parse-bigquery-time [timezone]
+  (fn [time-string]
+    (->> time-string
+         (tformat/parse (bigquery-time-format timezone))
+         tcoerce/to-long
+         Time.)))
+
+(defn- unparse-bigquery-time [timezone coercible-to-dt]
   (->> coercible-to-dt
        tcoerce/to-date-time
-       (tformat/unparse bigquery-time-format)))
+       (tformat/unparse (bigquery-time-format timezone))))
 
 (def ^:private type->parser
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
-  {"BOOLEAN"   #(Boolean/parseBoolean %)
-   "FLOAT"     #(Double/parseDouble %)
-   "INTEGER"   #(Long/parseLong %)
-   "RECORD"    identity
-   "STRING"    identity
+  {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
+   "FLOAT"     (constantly #(Double/parseDouble %))
+   "INTEGER"   (constantly #(Long/parseLong %))
+   "RECORD"    (constantly identity)
+   "STRING"    (constantly identity)
    "DATE"      parse-timestamp-str
    "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str
@@ -225,8 +236,10 @@
        (post-process-native response (dec timeout-seconds)))
      ;; Otherwise the job *is* complete
      (let [^TableSchema schema (.getSchema response)
-           parsers             (for [^TableFieldSchema field (.getFields schema)]
-                                 (type->parser (.getType field)))
+           parsers             (doall
+                                (for [^TableFieldSchema field (.getFields schema)
+                                      :let [parser-fn (type->parser (.getType field))]]
+                                  (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
                                  (set/rename-keys column {:base-type :base_type}))]
        {:columns (map :name columns)
@@ -394,7 +407,7 @@
 (defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
   [driver {:keys [value]}]
   (->> value
-       unparse-bigquery-time
+       (unparse-bigquery-time *bigquery-timezone*)
        (sqlqp/->honeysql driver)
        hx/->time))
 
@@ -433,16 +446,11 @@
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
-  ;; TODO - Making a DB call for each field to fetch its dataset is inefficient and makes me cry, but this method is
+  ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
   [{table-id :table_id, :as field}]
-  ;; manually write the query here to save us from having to do 2 seperate queries...
-  (let [[{:keys [details table-name]}] (db/query {:select    [[:database.details :details] [:table.name :table-name]]
-                                                  :from      [[:metabase_table :table]]
-                                                  :left-join [[:metabase_database :database]
-                                                              [:= :database.id :table.db_id]]
-                                                  :where     [:= :table.id (u/get-id table-id)]})
-        details (json/parse-string (u/jdbc-clob->str details) keyword)]
+  (let [{table-name :name, database-id :db_id} (db/select-one ['Table :name :db_id], :id (u/get-id table-id))
+        details                                (db/select-one-field :details 'Database, :id (u/get-id database-id))]
     (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
 
 (defn- field->breakout-identifier [driver field]
@@ -461,24 +469,25 @@
 (defn apply-source-table
   "Copy of the Generic SQL implementation of `apply-source-table` that prepends the current dataset ID to the table
   name."
-  [honeysql-form {{table-name :name} :source-table}]
-  {:pre [(seq table-name)]}
-  (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name})))
+  [honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name} (qp.store/table source-table-id)]
+    (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name}))))
 
 (defn- apply-join-tables
   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends the current dataset ID to join-alias."
-  [honeysql-form {join-tables :join-tables, {source-table-name :name} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
-    (let [honeysql-form
-          (h/merge-left-join honeysql-form
-            [(map->BigQueryIdentifier {:table-name table-name})
-             (map->BigQueryIdentifier {:table-name join-alias})]
-            [:=
-             (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
-             (map->BigQueryIdentifier {:table-name join-alias,        :field-name (:field-name pk-field)})])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
+      (let [honeysql-form
+            (h/merge-left-join honeysql-form
+              [(map->BigQueryIdentifier {:table-name table-name})
+               (map->BigQueryIdentifier {:table-name join-alias})]
+              [:=
+               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
+               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:field-name pk-field)})])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn- apply-order-by [driver honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
@@ -508,10 +517,11 @@
      *  Incldues `table-name` in the resulting map (do not remember why we are doing so, perhaps it is needed to run the
         query)"
   [{{{:keys [dataset-id]} :details, :as database} :database
-    {{table-name :name} :source-table}            :query
+    {source-table-id :source-table}               :query
     :as                                           outer-query}]
-  {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [aliased-query (pre-alias-aggregations outer-query)]
+  {:pre [(map? database) (seq dataset-id)]}
+  (let [aliased-query      (pre-alias-aggregations outer-query)
+        {table-name :name} (qp.store/table source-table-id)]
     (binding [sqlqp/*query* aliased-query]
       {:query      (->> aliased-query
                        (sqlqp/build-honeysql-form bq-driver)
@@ -519,17 +529,24 @@
        :table-name table-name
        :mbql?      true})))
 
+(defn- effective-query-timezone [database]
+  (if-let [^java.util.TimeZone jvm-tz (and (get-in database [:details :use-jvm-timezone])
+                                           @du/jvm-timezone)]
+    (time/time-zone-for-id (.getID jvm-tz))
+    time/utc))
+
 (defn- execute-query [{database                                               :database
                        {sql :query, params :params, :keys [table-name mbql?]} :native
                        :as                                                    outer-query}]
-  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
-                                                                     sql))
-        results (process-native* database sql)
-        results (if mbql?
-                  (post-process-mbql table-name results)
-                  (update results :columns (partial map keyword)))]
-    (assoc results :annotate? mbql?)))
+  (binding [*bigquery-timezone* (effective-query-timezone database)]
+    (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                       (unprepare/unprepare (cons sql params))
+                                                                       sql))
+          results (process-native* database sql)
+          results (if mbql?
+                    (post-process-mbql table-name results)
+                    (update results :columns (partial map keyword)))]
+      (assoc results :annotate? mbql?))))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
@@ -579,8 +596,12 @@
                                                  {:name         "auth-code"
                                                   :display-name (tru "Auth Code")
                                                   :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                                  :required     true}])
-          :execute-query            (u/drop-first-arg execute-query)
+                                                  :required     true}
+                                                 {:name         "use-jvm-timezone"
+                                                  :display-name (tru "Use JVM Time Zone")
+                                                  :default      "false"
+                                                  :type         :boolean}])
+          :execute-query            (u/drop-first-arg #'execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins
           ;; are still allowed, which puts us in a weird position, however; people can manually specifiy "foreign key"
           ;; relationships in admin and everything should work correctly. Since we can't infer any "FK" relationships

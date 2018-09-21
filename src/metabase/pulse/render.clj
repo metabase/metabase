@@ -14,9 +14,9 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
+             [i18n :refer [trs tru]]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -548,7 +548,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No appropriate image writer found!")]
+      (let [^String msg (str (tru "No appropriate image writer found!"))]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
@@ -777,7 +777,7 @@
   [render-type timezone card {:keys [data error]}]
   (try
     (when error
-      (let [^String msg (tru "Card has errors: {0}" error)]
+      (let [^String msg (str (tru "Card has errors: {0}" error))]
         (throw (Exception. msg))))
     (case (detect-pulse-card-type card data)
       :empty     (render:empty     render-type card data)

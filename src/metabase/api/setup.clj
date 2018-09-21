@@ -14,8 +14,9 @@
              [database :refer [Database]]
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 

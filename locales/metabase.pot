@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-20 10:53-0700\n"
+"POT-Creation-Date: 2018-09-05 12:05-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -127,7 +127,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:222
 #: frontend/src/metabase/components/ActionButton.jsx:52
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:429
 msgid "Saving..."
 msgstr ""
 
@@ -323,7 +323,7 @@ msgstr ""
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:468
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:375
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
 #: frontend/src/metabase/containers/EntitySearch.jsx:26
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:218
 #: frontend/src/metabase/entities/collections.js:86
@@ -563,7 +563,7 @@ msgid "Create metrics to add them to the View dropdown in the query builder"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:24
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:921
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:922
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:33
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:19
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:56
@@ -2344,7 +2344,7 @@ msgstr ""
 #: frontend/src/metabase/components/BrowseApp.jsx:93
 #: frontend/src/metabase/components/BrowseApp.jsx:152
 #: frontend/src/metabase/components/BrowseApp.jsx:243
-#: frontend/src/metabase/containers/Overworld.jsx:217
+#: frontend/src/metabase/containers/Overworld.jsx:222
 msgid "Our data"
 msgstr ""
 
@@ -2358,7 +2358,7 @@ msgid "X-ray this table"
 msgstr ""
 
 #: frontend/src/metabase/components/BrowseApp.jsx:201
-#: frontend/src/metabase/containers/Overworld.jsx:244
+#: frontend/src/metabase/containers/Overworld.jsx:249
 msgid "Learn about this table"
 msgstr ""
 
@@ -2527,11 +2527,22 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:247
+msgid "Use the Java Virtual Machine (JVM) timezone"
+msgstr ""
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+msgid ""
+"We suggest you leave this off unless you're doing manual timezone casting "
+"in\n"
+"many or most of your queries with this data."
+msgstr ""
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:274
 msgid ""
 "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:276
 msgid ""
 "By default, Metabase does a lightweight hourly sync and an intensive daily "
 "scan of field values.\n"
@@ -2539,43 +2550,43 @@ msgid ""
 "when and how often the field value scans happen."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:265
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
 msgid "{0} to generate a Client ID and Client Secret for your project."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:267
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:294
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:329
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:321
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:356
 msgid "Click here"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:270
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:297
 msgid "Choose \"Other\" as the application type. Name it whatever you'd like."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:319
 msgid "{0} to get an auth code"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:304
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:331
 msgid "with Google Drive permissions"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:324
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:351
 msgid ""
 "To use Metabase with this data you must enable API access in the Google "
 "Developers Console."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:327
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:354
 msgid "{0} to go to the console if you haven't already done so."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:376
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
 msgid "How would you like to refer to this database?"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:430
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:240
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:188
@@ -3041,25 +3052,40 @@ msgstr ""
 msgid "Don't tell anyone, but you're my favorite."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:102
+#: frontend/src/metabase/containers/Overworld.jsx:105
 msgid "Try these x-rays based on your data."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:126
+#: frontend/src/metabase/containers/Overworld.jsx:131
+#: frontend/src/metabase/containers/Overworld.jsx:302
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:183
+#: frontend/src/metabase/containers/Overworld.jsx:188
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:186
+#: frontend/src/metabase/containers/Overworld.jsx:191
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:201
+#: frontend/src/metabase/containers/Overworld.jsx:206
 msgid "Browse all items"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:297
+#: frontend/src/metabase/entities/collections.js:140
+#: src/metabase/models/collection.clj
+msgid "Our analytics"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:313
+msgid "Your team's most important dashboards go here"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:314
+msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr ""
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:165
@@ -3345,11 +3371,6 @@ msgstr ""
 
 #: frontend/src/metabase/entities/collections.js:108
 msgid "Collection it's saved in"
-msgstr ""
-
-#: frontend/src/metabase/entities/collections.js:140
-#: src/metabase/models/collection.clj
-msgid "Our analytics"
 msgstr ""
 
 #: frontend/src/metabase/entities/collections.js:157
@@ -5263,28 +5284,28 @@ msgstr ""
 msgid "Select a table"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:784
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:785
 msgid "No tables found in this database."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:821
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:822
 msgid "Is a question missing?"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:825
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:826
 msgid "Learn more about nested queries"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:859
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:860
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:30
 msgid "Fields"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:937
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:938
 msgid "No segments were found."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:960
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:961
 msgid "Find a segment"
 msgstr ""
 
@@ -8346,6 +8367,10 @@ msgid ""
 "another instance."
 msgstr ""
 
+#: src/metabase/db.clj
+msgid "Unable to release the Liquibase lock after a migration failure"
+msgstr ""
+
 #. Set up liquibase and let it do its thing
 #: src/metabase/db.clj
 msgid "Setting up Liquibase..."
@@ -8538,6 +8563,10 @@ msgstr ""
 
 #: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
 msgid "Auth Code"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj
+msgid "Use JVM Time Zone"
 msgstr ""
 
 #: src/metabase/driver/crate.clj

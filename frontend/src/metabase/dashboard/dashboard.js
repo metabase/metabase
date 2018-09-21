@@ -107,6 +107,7 @@ export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
+export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 
@@ -726,6 +727,28 @@ export const setParameterDefaultValue = createThunkAction(
       setParamDefaultValue(parameter, defaultValue),
     );
     return { id: parameterId, defaultValue };
+  },
+);
+
+export const setParameterIndex = createThunkAction(
+  SET_PARAMETER_INDEX,
+  (parameterId, index) => (dispatch, getState) => {
+    const dashboard = getDashboard(getState());
+    const parameterIndex = _.findIndex(
+      dashboard.parameters,
+      p => p.id === parameterId,
+    );
+    if (parameterIndex >= 0) {
+      const parameters = dashboard.parameters.slice();
+      parameters.splice(index, 0, parameters.splice(parameterIndex, 1)[0]);
+      dispatch(
+        setDashboardAttributes({
+          id: dashboard.id,
+          attributes: { parameters },
+        }),
+      );
+    }
+    return { id: parameterId, index };
   },
 );
 

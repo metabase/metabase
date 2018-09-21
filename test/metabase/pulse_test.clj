@@ -33,7 +33,7 @@
   {:name          card-name
    :dataset_query {:database (data/id)
                    :type     :query
-                   :query    (merge {:source_table (data/id :checkins)
+                   :query    (merge {:source-table (data/id :checkins)
                                      :aggregation  [["count"]]}
                                     query-map)}})
 
@@ -643,7 +643,7 @@
   {:name          card-name
    :dataset_query {:database (data/id)
                    :type     :query
-                   :query    {:source_table (data/id :venues)
+                   :query    {:source-table (data/id :venues)
                               :aggregation  [[aggregation-op (data/id :venues :price)]]}}})
 
 ;; Above goal alert with a progress bar

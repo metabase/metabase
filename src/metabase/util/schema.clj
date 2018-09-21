@@ -5,12 +5,31 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [tru]]
-            [schema.core :as s]))
+            [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]
+            [schema.macros :as s.macros]
+            [schema.utils :as s.utils]))
 
 ;; always validate all schemas in s/defn function declarations. See
 ;; https://github.com/plumatic/schema#schemas-in-practice for details.
 (s/set-fn-validation! true)
+
+;; swap out the default impl of `schema.core/validator` with one that does not barf out the entire schema, since it's
+;; way too huge with things like our MBQL query schema
+(defn- schema-core-validator [schema]
+  (let [c (s/checker schema)]
+    (fn [value]
+      (when-let [error (c value)]
+        (s.macros/error! (s.utils/format* "Value does not match schema: %s" (pr-str error))
+                         {:value value, :error error}))
+      value)))
+
+(intern 'schema.core 'validator schema-core-validator)
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     API Schema Validation & Error Messages                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
@@ -110,6 +129,12 @@
   "Schema for a string that cannot be blank."
   (with-api-error-message (s/constrained s/Str (complement str/blank?) "Non-blank string")
     (tru "value must be a non-blank string.")))
+
+(def IntGreaterThanOrEqualToZero
+  "Schema representing an integer than must also be greater than or equal to zero."
+  (with-api-error-message
+      (s/constrained s/Int (partial <= 0) (tru "Integer greater than or equal to zero"))
+    (tru "value must be an integer greater than or equal to zero.")))
 
 ;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero

@@ -7,6 +7,7 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [dependency :as dependency]
              [field-values :as field-values]
@@ -17,13 +18,14 @@
              [revision :as revision]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.query :as q]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]]
+            [metabase.mbql.normalize :as normalize]))
 
 (models/defmodel Card :report_card)
+
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -33,17 +35,23 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
+
+(defn- extract-ids
+  "Get all the Segment or Metric IDs referenced by a query."
+  [segment-or-metric query]
+  (set (for [[_ id] (mbql.u/clause-instances segment-or-metric query)]
+         id)))
 
 (defn card-dependencies
   "Calculate any dependent objects for a given `card`."
   ([_ _ card]
    (card-dependencies card))
-  ([{:keys [dataset_query]}]
-   (when (and dataset_query
-              (= :query (keyword (:type dataset_query))))
-     {:Metric  (q/extract-metric-ids (:query dataset_query))
-      :Segment (q/extract-segment-ids (:query dataset_query))})))
+  ([{{query-type :type, inner-query :query} :dataset_query}]
+   (when (= :query query-type)
+     {:Metric  (extract-ids :metric inner-query)
+      :Segment (extract-ids :segment inner-query)})))
 
 
 ;;; -------------------------------------------------- Revisions --------------------------------------------------
@@ -81,14 +89,18 @@
 
         (ids-already-seen source-card-id)
         (throw
-         (ex-info (tru "Cannot save Question: source query has circular references.")
+         (ui18n/ex-info (tru "Cannot save Question: source query has circular references.")
            {:status-code 400}))
 
         :else
         (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
-                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
+                   (throw (ui18n/ex-info (tru "Card {0} does not exist." source-card-id)
                             {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
+
+(defn- maybe-normalize-query [card]
+  (cond-> card
+    (:dataset_query card) (update :dataset_query normalize/normalize)))
 
 (defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - we usually check permissions to save/update stuff in the API layer rather than here in the Toucan
@@ -113,7 +125,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
-(defn- pre-update [{archived? :archived, query :dataset_query, :as card}]
+(defn- pre-update [{archived? :archived, :as card}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 card
@@ -151,7 +163,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])
-          :types          (constantly {:dataset_query          :json
+          :types          (constantly {:dataset_query          :metabase-query
                                        :description            :clob
                                        :display                :keyword
                                        :embedding_params       :json
@@ -159,8 +171,10 @@
                                        :result_metadata        :json
                                        :visualization_settings :json})
           :properties     (constantly {:timestamped? true})
-          :pre-update     (comp populate-query-fields pre-update)
-          :pre-insert     (comp populate-query-fields pre-insert)
+          ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
+          ;; functions those fns call assume normalized queries
+          :pre-update     (comp populate-query-fields pre-update maybe-normalize-query)
+          :pre-insert     (comp populate-query-fields pre-insert maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})

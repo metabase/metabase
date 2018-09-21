@@ -399,6 +399,42 @@ jobs:
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
 
+  fe-linter-eslint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run ESLint linter
+          command: yarn lint-eslint
+          no_output_timeout: 5m
+
+  fe-linter-prettier:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run Prettier formatting linter
+          command: yarn lint-prettier
+          no_output_timeout: 5m
+
+  fe-linter-flow:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run Flow type checker
+          command: yarn flow
+          no_output_timeout: 5m
+
   fe-tests-karma:
     <<: *defaults
     steps:
@@ -460,6 +496,18 @@ jobs:
           name: Run frontend integrated tests
           command: yarn run test-integrated-no-build
           no_output_timeout: 5m
+
+
+########################################################################################################################
+#                                                   DEPLOYMENT, ETC.                                                   #
+########################################################################################################################
+
+  deploy-master:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
 ########################################################################################################################
@@ -528,6 +576,15 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+      - fe-linter-eslint:
+          requires:
+            - fe-deps
+      - fe-linter-prettier:
+          requires:
+            - fe-deps
+      - fe-linter-flow:
+          requires:
+            - fe-deps
       - fe-tests-karma:
           requires:
             - fe-deps
@@ -541,3 +598,31 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+      - deploy-master:
+          requires:
+            - be-linter-eastwood
+            - be-linter-docstring-checker
+            - be-linter-bikeshed
+            - be-linter-reflection-warnings
+            - be-tests
+            - be-tests-mysql
+            - be-tests-postgres
+            - be-tests-sparksql
+            - be-tests-mongo
+            - be-tests-sqlserver
+            - be-tests-bigquery
+            - be-tests-sqlite
+            - be-tests-presto
+            - be-tests-oracle
+            - be-tests-druid
+            - be-tests-redshift
+            - be-tests-vertica
+            - fe-linter-eslint
+            - fe-linter-prettier
+            - fe-linter-flow
+            - fe-tests-karma
+            - fe-tests-unit
+            - fe-tests-integrated
+          filters:
+            branches:
+              only: master

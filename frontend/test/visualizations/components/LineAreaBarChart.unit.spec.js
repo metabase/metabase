@@ -51,7 +51,7 @@ const millisecondCard = {
       database: 5,
       type: "query",
       query: {
-        source_table: 1784,
+        "source-table": 1784,
         aggregation: [["count"]],
         breakout: [["datetime-field", ["field-id", 8159], "week"]],
       },
@@ -180,7 +180,7 @@ const dateTimeCard = {
       database: 1,
       type: "query",
       query: {
-        source_table: 1,
+        "source-table": 1,
         aggregation: [["sum", ["field-id", 4]]],
         breakout: [["datetime-field", ["field-id", 1], "month"]],
       },
@@ -358,7 +358,7 @@ const numberCard = {
       database: 1,
       type: "query",
       query: {
-        source_table: 4,
+        "source-table": 4,
         aggregation: [["count"]],
         breakout: [["field-id", 33]],
       },

@@ -317,7 +317,7 @@ export default class Question {
           type: "query",
           database: SAVED_QUESTIONS_FAUX_DATABASE,
           query: {
-            source_table: "card__" + this.id(),
+            "source-table": "card__" + this.id(),
           },
         },
       };
@@ -549,7 +549,7 @@ export default class Question {
     } else if (!this._card.id) {
       if (
         this._card.dataset_query.query &&
-        this._card.dataset_query.query.source_table
+        this._card.dataset_query.query["source-table"]
       ) {
         return true;
       } else if (

@@ -17,8 +17,9 @@
              [interface :as i]
              [permissions :as perms :refer [Permissions]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -42,13 +43,13 @@
 (defn- assert-valid-hex-color [^String hex-color]
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info (tru "Invalid color")
+    (throw (ui18n/ex-info (tru "Invalid color")
              {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
-    (throw (ex-info (tru "Collection name cannot be blank!")
+    (throw (ui18n/ex-info (tru "Collection name cannot be blank!")
              {:status-code 400, :errors {:name (tru "cannot be blank")}})))
   (u/slugify collection-name collection-slug-max-length))
 
@@ -141,20 +142,20 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (throw
-       (ex-info (tru "Invalid Collection location: path is invalid.")
+       (ui18n/ex-info (tru "Invalid Collection location: path is invalid.")
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (contains? collection :personal_owner_id)
       (when-not (= location "/")
         (throw
-         (ex-info (tru "You cannot move a Personal Collection.")
+         (ui18n/ex-info (tru "You cannot move a Personal Collection.")
            {:status-code 400
             :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
-       (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
+       (ui18n/ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
          {:status-code 404
           :errors      {:location (tru "Invalid Collection location: some or all ancestors do not exist.")}})))))
 
@@ -188,7 +189,7 @@
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   []
   (assoc root-collection
-    :name (tru "Our analytics")
+    :name (str (tru "Our analytics"))
     :id   "root"))
 
 (defn- is-root-collection? [x]
@@ -616,7 +617,7 @@
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
        {:status-code 400
         :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
   ;;
@@ -627,13 +628,13 @@
   ;; You also definitely cannot *move* a Personal Collection
   (when (api/column-will-change? :location collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to move a Personal Collection.")
        {:status-code 400
         :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection.")
+     (ui18n/ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
         :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
@@ -644,7 +645,7 @@
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
+      (throw (ui18n/ex-info (tru "You cannot move a Collection and archive it at the same time.")
                {:status-code 400
                 :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
     ;; ok, go ahead and do the archive/unarchive operation
@@ -966,7 +967,7 @@
   ;; the same first & last name! This will *ruin* their lives :(
   (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
                                                          :id (u/get-id user-or-id))]
-    (tru "{0} {1}''s Personal Collection" first-name last-name)))
+    (str (tru "{0} {1}''s Personal Collection" first-name last-name))))
 
 (s/defn user->personal-collection :- CollectionInstance
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."

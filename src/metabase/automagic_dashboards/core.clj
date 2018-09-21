@@ -6,35 +6,40 @@
             [clj-time
              [core :as t]
              [format :as t.format]]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [clojure.math.combinatorics :as combo]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [kixi.stats
              [core :as stats]
              [math :as math]]
             [medley.core :as m]
+            [metabase
+             [driver :as driver]
+             [related :as related]
+             [util :as u]]
             [metabase.automagic-dashboards
              [filters :as filters]
              [populate :as populate]
              [rules :as rules]]
-            [metabase.driver :as driver]
+            [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
             [metabase.models
              [card :as card :refer [Card]]
              [database :refer [Database]]
-             [field :refer [Field] :as field]
+             [field :as field :refer [Field]]
              [interface :as mi]
-             [metric :refer [Metric] :as metric]
+             [metric :as metric :refer [Metric]]
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :as qp.expand]
+            [metabase.query-processor.middleware.expand-macros :as qp.macros]
             [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
             [metabase.sync.analyze.classify :as classify]
-            [metabase.util :as u]
             [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [tru trs]]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -76,11 +81,11 @@
    :cum-sum   (tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
-  (every-pred (comp #{:metric} qp.util/normalize-token first)
-              (complement qp.expand/ga-metric?)))
+  (every-pred (partial mbql.u/is-clause? :metric)
+              (complement qp.macros/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
-  (comp #{:named} qp.util/normalize-token first))
+  (partial mbql.u/is-clause? :named))
 
 (def ^:private ^{:arglists '([metric])} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))
@@ -89,10 +94,10 @@
   "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
   (cond
-    (qp.expand/ga-metric? metric) (-> args first str (subs 3) str/capitalize)
-    (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)        (-> args first Metric :name)
-    :else                         (second args)))
+    (qp.macros/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
+    (adhoc-metric? metric)                   (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)                   (-> args first Metric :name)
+    :else                                    (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
@@ -124,9 +129,9 @@
 
 (defn- question-description
   [root question]
-  (let [aggregations (->> (qp.util/get-in-normalized question [:dataset_query :query :aggregation])
+  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
                           (metric->description root))
-        dimensions   (->> (qp.util/get-in-normalized question [:dataset_query :query :breakout])
+        dimensions   (->> (get-in question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
                           (map (comp :display_name
                                      (partial ->field root)
@@ -170,7 +175,7 @@
      :comparison-name (tru "{0} segment" (:name segment))
      :source          table
      :database        (:db_id table)
-     :query-filter    [:SEGMENT (u/get-id segment)]
+     :query-filter    [:segment (u/get-id segment)]
      :url             (format "%ssegment/%s" public-endpoint (u/get-id segment))
      :rules-prefix    ["table"]}))
 
@@ -206,18 +211,24 @@
   (comp qp.util/query->source-card-id :dataset_query))
 
 (def ^:private ^{:arglists '([card-or-question])} native-query?
-  (comp #{:native} qp.util/normalize-token #(qp.util/get-in-normalized % [:dataset_query :type])))
+  (comp #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
 (def ^:private ^{:arglists '([card-or-question])} source-question
   (comp Card qp.util/query->source-card-id :dataset_query))
 
 (defn- table-like?
   [card-or-question]
-  (let [[aggregation & _] (qp.util/get-in-normalized card-or-question [:dataset_query :query :aggregation])]
-    (or (nil? aggregation)
-        (and (or (string? aggregation)
-                 (keyword? aggregation))
-             (= (qp.util/normalize-token aggregation) :rows)))))
+  (nil? (get-in card-or-question [:dataset_query :query :aggregation])))
+
+(defn- table-id
+  "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
+  or an ad-hoc query (referred to as a 'question' in this namespace) created with the
+  `metabase.models.query/adhoc-query` function, which has a `:table-id` property."
+  ;; TODO - probably better if we just changed `adhoc-query` to use the same keys as Cards (e.g. `:table_id`) so we
+  ;; didn't need this function, seems like something that would be too easy to forget
+  [card-or-question]
+  (or (:table_id card-or-question)
+      (:table-id card-or-question)))
 
 (defn- source
   [card]
@@ -226,7 +237,7 @@
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (-> card (qp.util/get-normalized :table-id) Table)))
+    :else                (-> card table-id Table)))
 
 (defmethod ->root (type Card)
   [card]
@@ -234,7 +245,7 @@
     {:entity       card
      :source       source
      :database     (:database_id card)
-     :query-filter (qp.util/get-in-normalized card [:dataset_query :query :filter])
+     :query-filter (get-in card [:dataset_query :query :filter])
      :full-name    (tru "\"{0}\" question" (:name card))
      :short-name   (source-name {:source source})
      :url          (format "%squestion/%s" public-endpoint (u/get-id card))
@@ -248,7 +259,7 @@
     {:entity       query
      :source       source
      :database     (:database-id query)
-     :query-filter (qp.util/get-in-normalized query [:dataset_query :query :filter])
+     :query-filter (get-in query [:dataset_query :query :filter])
      :full-name    (cond
                      (native-query? query) (tru "Native query")
                      (table-like? query)   (-> source ->root :full-name)
@@ -317,7 +328,7 @@
 (defmethod ->reference [:mbql (type Metric)]
   [_ {:keys [id definition]}]
   (if id
-    ["METRIC" id]
+    [:metric id]
     (-> definition :aggregation first)))
 
 (defmethod ->reference [:native (type Field)]
@@ -479,12 +490,12 @@
   [dimensions metrics order-by]
   (let [dimensions (set dimensions)]
     (for [[identifier ordering] (map first order-by)]
-      [(if (dimensions identifier)
-          [:dimension identifier]
-          [:aggregation (u/index-of #{identifier} metrics)])
-        (if (= ordering "ascending")
-          :ascending
-          :descending)])))
+      [(if (= ordering "ascending")
+         :asc
+         :desc)
+       (if (dimensions identifier)
+         [:dimension identifier]
+         [:aggregation (u/index-of #{identifier} metrics)])])))
 
 (defn- build-query
   ([context bindings filters metrics dimensions limit order_by]
@@ -496,25 +507,28 @@
         subform))
     {:type     :query
      :database (-> context :root :database)
-     :query    (cond-> {:source_table (if (->> context :source (instance? (type Table)))
+     :query    (cond-> {:source-table (if (->> context :source (instance? (type Table)))
                                         (-> context :source u/get-id)
                                         (->> context :source u/get-id (str "card__")))}
-                 (not-empty filters)
-                 (assoc :filter (->> filters
-                                     (map :filter)
-                                     (apply qp.expand/merge-filter-clauses)))
+                 (seq filters)
+                 (assoc :filter (apply
+                                 vector
+                                 :and
+                                 (map (comp (partial normalize/normalize-fragment [:query :filter])
+                                            :filter)
+                                      filters)))
 
-                 (not-empty dimensions)
+                 (seq dimensions)
                  (assoc :breakout dimensions)
 
-                 (not-empty metrics)
+                 (seq metrics)
                  (assoc :aggregation (map :metric metrics))
 
                  limit
                  (assoc :limit limit)
 
-                 (not-empty order_by)
-                 (assoc :order_by order_by))}))
+                 (seq order_by)
+                 (assoc :order-by order_by))}))
   ([context bindings query]
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
@@ -527,8 +541,8 @@
        (every? (partial get dimensions))))
 
 (defn- resolve-overloading
-  "Find the overloaded definition with the highest `score` for which all
-   referenced dimensions have at least one matching field."
+  "Find the overloaded definition with the highest `score` for which all referenced dimensions have at least one
+  matching field."
   [{:keys [dimensions]} definitions]
   (apply merge-with (fn [a b]
                       (case (map (partial has-matches? dimensions) [a b])
@@ -841,7 +855,7 @@
                                      (encode-base64-json
                                       {:database (:database root)
                                        :type     :query
-                                       :query    {:source_table (->> root
+                                       :query    {:source-table (->> root
                                                                      :source
                                                                      u/get-id
                                                                      (str "card__" ))}})))
@@ -1016,12 +1030,12 @@
                  qp.util/normalize-token
                  (= :metric))
            (-> aggregation-clause second Metric)
-           (let [table-id (qp.util/get-normalized question :table-id)]
+           (let [table-id (table-id question)]
              (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
-                                                       :source_table table-id}
+                                                       :source-table table-id}
                                           :name       (metric->description root aggregation-clause)
                                           :table_id   table-id}))))
-       (qp.util/get-in-normalized question [:dataset_query :query :aggregation])))
+       (get-in question [:dataset_query :query :aggregation])))
 
 (defn- collect-breakout-fields
   [root question]
@@ -1029,7 +1043,7 @@
              filters/field-reference->id
              first
              filters/collect-field-references)
-       (qp.util/get-in-normalized question [:dataset_query :query :breakout])))
+       (get-in question [:dataset_query :query :breakout])))
 
 (defn- decompose-question
   [root question opts]
@@ -1138,7 +1152,7 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (qp.util/get-in-normalized (-> root :entity) [:dataset_query :query :aggregation])]
+  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

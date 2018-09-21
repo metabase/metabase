@@ -61,7 +61,7 @@ export default class VisualizationSettings extends React.Component {
           triggerClasses="flex align-center"
           sizeToFit
         >
-          <ul className="pt1 pb1">
+          <ul className="pt1 pb1 scroll-y">
             {Array.from(visualizations).map(([vizType, viz], index) => (
               <li
                 key={index}
