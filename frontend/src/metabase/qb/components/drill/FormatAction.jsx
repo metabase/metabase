@@ -6,7 +6,12 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
-import { showChartSettings } from "metabase/query_builder/actions";
+// NOTE: cyclical dependency
+// import { showChartSettings } from "metabase/query_builder/actions";
+function showChartSettings(...args) {
+  return require("metabase/query_builder/actions").showChartSettings(...args);
+}
+
 import { keyForColumn } from "metabase/lib/dataset";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
