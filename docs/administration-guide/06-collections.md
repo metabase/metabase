@@ -57,5 +57,7 @@ Users with curate permission for a collection can archive collections. Click the
 
 You can always *unarchive* things by clicking on the More menu from a collection and selecting `View the archive`, then clicking the un-archive button next to an archived item. Questions within archived collections are not individually listed in the archive, so if you want to unarchive a specific question from an archived collection, you have to unarchive that whole collection.
 
-## Next: custom segments and metrics
-Learn how to define custom segments and commonly referenced metrics in the [next section](07-segments-and-metrics.md).
+---
+
+## Next: data sandboxing
+To set even more advanced data permissions based on user attributes, check out [data sandboxes](17-data-sandboxes.md).
