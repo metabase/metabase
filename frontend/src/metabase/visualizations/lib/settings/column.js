@@ -7,7 +7,12 @@ import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns.jsx";
 
 import { keyForColumn } from "metabase/lib/dataset";
-import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+} from "metabase/lib/schema_metadata";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -22,6 +27,8 @@ import {
   hasDay,
   hasHour,
 } from "metabase/lib/formatting/date";
+
+import currency from "metabase/lib/currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
@@ -54,11 +61,15 @@ export function columnSettings({
     getObjects: getColumns,
     getObjectKey: keyForColumn,
     getSettingDefintionsForObject: getSettingDefintionsForColumn,
-    getObjectSettingsExtra: (series, settings, object) => ({ column: object }),
     component: ChartNestedSettingColumns,
+    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
     ...def,
   });
+}
+
+function getInhertiedSettingsForColumn(column) {
+  return column.settings || {};
 }
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
@@ -176,18 +187,21 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "Normal", value: "decimal" },
         { name: "Percent", value: "percent" },
         { name: "Scientific", value: "scientific" },
-        // { name: "Currency", value: "currency" },
+        { name: "Currency", value: "currency" },
       ],
     },
-    // TODO: default to currency for fields that are a currency type
-    default: "decimal",
+    getDefault: (column, settings) =>
+      isCurrency(column) && settings["currency"] ? "currency" : "decimal",
   },
   currency: {
     title: t`Currency`,
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: [{ name: "USD", value: "USD" }, { name: "EUR", value: "EUR" }],
+      options: Object.values(currency).map(currency => ({
+        name: currency.name,
+        value: currency.code,
+      })),
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
@@ -262,6 +276,9 @@ const COMMON_COLUMN_SETTINGS = {
   //     placeholder: "{{value}}",
   //   },
   // },
+  column: {
+    getValue: column => column,
+  },
 };
 
 export function getSettingDefintionsForColumn(series: Series, column: Column) {

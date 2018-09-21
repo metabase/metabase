@@ -23,7 +23,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as datamodelActions from "../datamodel";
 
-import { isCurrency } from "metabase/lib/types";
+import { isCurrency } from "metabase/lib/schema_metadata";
 import currency from "metabase/lib/currency";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
@@ -223,7 +223,7 @@ export default class FieldApp extends Component {
                   idfields={idfields}
                   selectSeparator={<SelectSeparator />}
                 />
-                {isCurrency(field.special_type) && (
+                {isCurrency(field) && (
                   <Box my={2}>
                     <label>{t`Default number of decimal points`}</label>
                     <Box>

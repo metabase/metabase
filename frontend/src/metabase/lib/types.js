@@ -50,10 +50,6 @@ export function isPK(type) {
   return isa(type, TYPE.PK);
 }
 
-export function isCurrency(type) {
-  return isa(type, TYPE.Currency);
-}
-
 export function isFK(type) {
   return isa(type, TYPE.FK);
 }
