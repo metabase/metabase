@@ -48,4 +48,9 @@ public class WhenSpec extends BaseSpec {
         }
         out.flush();
     }
+
+    @When("^We update system property '(.+?)' to value '(.*)'$")
+    public void setSystemProperty(String property, String value) {
+        System.setProperty(property, value);
+    }
 }

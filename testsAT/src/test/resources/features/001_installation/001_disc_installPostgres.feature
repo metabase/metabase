@@ -99,7 +99,7 @@ Feature: Install Postgres for Discovery
 #
   @runOnEnv(DISC_VERSION=0.28.9)
   Scenario: [Basic Installation Postgres Dependencies][03] Create database for Discovery on PostgresMD5
-    Given I connect with JDBC to database '${POSTGRES_FRAMEWORK_DEFAULT_DB:-postgres}' on host '!{postgresMD5_IP}' and port '!{postgresMD5_Port}' with user '${POSTGRES_FRAMEWORK_USER:-postgres}' and password '${POSTGRES_FRAMEWORK_PASSWORD:-stratio}'
+    Given I connect with JDBC and security type 'MD5' to database '${POSTGRES_FRAMEWORK_DEFAULT_DB:-postgres}' on host '!{postgresMD5_IP}' and port '!{postgresMD5_Port}' with user '${POSTGRES_FRAMEWORK_USER:-postgres}' and password '${POSTGRES_FRAMEWORK_PASSWORD:-stratio}'
     When I execute query 'CREATE DATABASE ${DISCOVERY_DATASTORE_DB:-discovery};'
     Then the command output contains 'CREATE DATABASE'
     When I execute query 'CREATE DATABASE ${DISCOVERY_DATA_DB:-pruebadiscovery};'
