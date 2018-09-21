@@ -7,9 +7,8 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database]]
-            [metabase.sync.analyze.query-results :as qr :refer :all]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
-            [metabase.sync.analyze.classifiers.name :as classify-name]
+            [metabase.sync.analyze.query-results :as qr :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -54,9 +53,9 @@
 ;; Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields
 (expect
   mutil/venue-fingerprints
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :venues)}}}]
     (tu/throw-if-called fprint/with-global-fingerprinter ; check for a "proper" fingerprinter, fallthrough for PKs is fune.
       (name->fingerprints
        (query->result-metadata (query-for-card card))))))
@@ -64,18 +63,18 @@
 ;; Getting the result metadata for a card backed by an MBQL query should just infer the types of all the fields
 (expect
   venue-name->special-types
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :venues)}}}]
     (name->special-type (query->result-metadata (query-for-card card)))))
 
 ;; Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but
 ;; they should sill be the same except for some of the optimizations we do when we have all the information.
 (expect
   (update mutil/venue-fingerprints :category_id assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}})
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :native
-                                              :native   {:query "select * from venues"}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "select * from venues"}}}]
     (name->fingerprints
      (query->result-metadata (query-for-card card)))))
 
@@ -84,27 +83,27 @@
 ;; only
 (expect
   (assoc venue-name->special-types :category_id nil, :price nil)
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :native
-                                              :native   {:query "select * from venues"}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "select * from venues"}}}]
     (name->special-type
      (query->result-metadata (query-for-card card)))))
 
 ;; Limiting to just 1 column on an MBQL query should still get the result metadata from the Field
 (expect
   (select-keys mutil/venue-fingerprints [:longitude])
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :query
+                                            :query    {:source-table (data/id :venues)}}}]
     (tu/throw-if-called fprint/fingerprinter
       (name->fingerprints
-       (query->result-metadata (assoc-in (query-for-card card) [:query :fields] (data/id :venues :longitude)))))))
+       (query->result-metadata (assoc-in (query-for-card card) [:query :fields] [[:field-id (data/id :venues :longitude)]]))))))
 
 ;; Similar query as above, just native so that we need to calculate the fingerprint
 (expect
   (select-keys mutil/venue-fingerprints [:longitude])
-  (tt/with-temp Card [card {:dataset_query   {:database (data/id)
-                                              :type     :native
-                                              :native   {:query "select longitude from venues"}}}]
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "select longitude from venues"}}}]
     (name->fingerprints
      (query->result-metadata (query-for-card card)))))

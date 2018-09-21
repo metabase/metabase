@@ -29,33 +29,25 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  const [sortFieldRef, sortDirection] = query.sorts()[0] || [];
+  const [sortDirection, sortFieldRef] = query.sorts()[0] || [];
   const isAlreadySorted =
     sortFieldRef != null && Query.isSameField(sortFieldRef, fieldRef);
 
   const actions = [];
-  if (
-    !isAlreadySorted ||
-    sortDirection === "descending" ||
-    sortDirection === "desc"
-  ) {
+  if (!isAlreadySorted || sortDirection === "desc") {
     actions.push({
       name: "sort-ascending",
       section: "sort",
       title: t`Ascending`,
-      question: () => query.replaceSort([fieldRef, "ascending"]).question(),
+      question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
   }
-  if (
-    !isAlreadySorted ||
-    sortDirection === "ascending" ||
-    sortDirection === "asc"
-  ) {
+  if (!isAlreadySorted || sortDirection === "asc") {
     actions.push({
       name: "sort-descending",
       section: "sort",
       title: t`Descending`,
-      question: () => query.replaceSort([fieldRef, "descending"]).question(),
+      question: () => query.replaceSort(["desc", fieldRef]).question(),
     });
   }
   return actions;

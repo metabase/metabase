@@ -1,20 +1,23 @@
 (ns metabase.driver.bigquery-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as time]
+            [expectations :refer :all]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qptest]]
+             [query-processor-test :as qptest]
+             [util :as u]]
             [metabase.driver.bigquery :as bigquery]
             [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]))
+            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [toucan.util.test :as tt]))
 
 (def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
@@ -71,7 +74,7 @@
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    {:source_table (data/id :checkins)
+                       :query    {:source-table (data/id :checkins)
                                   :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
@@ -85,50 +88,53 @@
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
     (aggregation-names (#'bigquery/pre-alias-aggregations query-map))))
 
-(defn- agg-query-map [aggregations]
-  (-> {}
-      (ql/source-table 1)
-      (ql/aggregation aggregations)))
+(defn- expanded-query-with-aggregations [aggregations]
+  (-> (qp/expand {:database (data/id)
+                  :type     :query
+                  :query    {:source-table (data/id :venues)
+                             :aggregation  aggregations}})
+      :query))
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
-                                           (ql/count (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/avg (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/min (ql/field-id 2))])))
+  (pre-alias-aggregations'
+   (expanded-query-with-aggregations
+    [[:sum [:field-id (data/id :venues :id)]]
+     [:count [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:avg [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:min [:field-id (data/id :venues :id)]]])))
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (pre-alias-aggregations' (agg-query-map [(ql/sum (ql/field-id 2))
-                                           (ql/count (ql/field-id 2))
-                                           (ql/sum (ql/field-id 2))
-                                           (ql/avg (ql/field-id 2))
-                                           (assoc (ql/sum (ql/field-id 2)) :custom-name "sum_2")
-                                           (ql/min (ql/field-id 2))])))
+  (pre-alias-aggregations'
+   (expanded-query-with-aggregations [[:sum [:field-id (data/id :venues :id)]]
+                                      [:count [:field-id (data/id :venues :id)]]
+                                      [:sum [:field-id (data/id :venues :id)]]
+                                      [:avg [:field-id (data/id :venues :id)]]
+                                      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
+                                      [:min [:field-id (data/id :venues :id)]]])))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    (-> {}
-                                     (ql/source-table (data/id :checkins))
-                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+                       :query    {:source-table (data/id :checkins)
+                                  :aggregation [[:sum [:field-id (data/id :checkins :user_id)]]
+                                                [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
-                       :query    (-> {}
-                                     (ql/source-table (data/id :checkins))
-                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))
-                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+                       :query    {:source-table (data/id :checkins)
+                                  :aggregation  [[:sum [:field-id (data/id :checkins :user_id)]]
+                                                 [:sum [:field-id (data/id :checkins :user_id)]]
+                                                 [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
 (expect-with-engine :bigquery
   "UTC"
@@ -168,3 +174,38 @@
 (expect
   ["SELECT `dataset.table`"]
   (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
+
+(defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
+  (-> (qp/process-query
+        {:database (u/get-id db-or-db-id)
+         :type     :native
+         :native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
+      :data
+      :rows
+      ffirst))
+
+;; This query tests out the timezone handling of parsed dates. For this test a UTC date is returned, we should
+;; read/return it as UTC
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000Z"
+  (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
+
+;; This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery is already
+;; in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that the correct date is
+;; compared
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000-05:00"
+  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (Database (data/id)))
+                                             :use-jvm-timezone true)}]]
+      (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
+
+;; Similar to the above test, but covers a positive offset
+(expect-with-engine :bigquery
+  "2018-08-31T00:00:00.000+07:00"
+  (tu/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (Database (data/id)))
+                                             :use-jvm-timezone true)}]]
+      (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))

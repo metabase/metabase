@@ -10,6 +10,7 @@
              [permissions :as perms]
              [permissions-group :as group]]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.util :as qputil]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -54,7 +55,7 @@
   (tt/with-temp Card [card]
     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                         :info {:card-id    (u/get-id card)
-                               :query-hash (byte-array 0)}))
+                               :query-hash (qputil/query-hash {})}))
     (round-all-decimals' (card-metadata card))))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
@@ -120,7 +121,7 @@
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
-                   :type {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
+                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query
@@ -128,5 +129,5 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
                        :info     {:card-id    (u/get-id card)
-                                  :query-hash (byte-array 0)}})
+                                  :query-hash (qputil/query-hash {})}})
     (round-all-decimals' (card-metadata card))))

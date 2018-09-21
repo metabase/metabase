@@ -45,5 +45,5 @@ You should see this form:
 
 ---
 
-## Next: editing your metadata
-Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with Metabase. Let’s learn [how to edit your metadata](03-metadata-editing.md).
+## Next: setting up Slack
+If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](09-setting-up-slack.md).

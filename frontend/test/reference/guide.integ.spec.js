@@ -24,7 +24,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -30, "day"],
     },
   };
@@ -35,7 +35,7 @@ describe("The Reference Section", () => {
     table_id: 1,
     show_in_getting_started: true,
     definition: {
-      source_table: 1,
+      "source-table": 1,
       filter: ["time-interval", ["field-id", 1], -30, "day"],
     },
   };

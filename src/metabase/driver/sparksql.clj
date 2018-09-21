@@ -15,10 +15,13 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qputil]
-            [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [trs tru]])
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs tru]]])
   (:import clojure.lang.Reflector
            java.sql.DriverManager
            metabase.query_processor.interface.Field))
@@ -33,13 +36,8 @@
 
 (def ^:private source-table-alias "t1")
 
-(defn- find-source-table [query]
-  (first (qputil/postwalk-collect #(instance? (type Table) %)
-                                  identity
-                                  query)))
-
 (defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
-  (let [source-table (find-source-table sqlqp/*query*)]
+  (let [source-table (qp.store/table (mbql.u/query->source-table-id sqlqp/*query*))]
     (if (and (= schema-name (:schema source-table))
              (= table-name (:name source-table)))
       (-> (assoc field :schema-name nil)
@@ -62,12 +60,12 @@
       :else                                               field)))
 
 (defn- apply-join-tables
-  [honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  [honeysql-form {join-tables :join-tables}]
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
                           [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
+                           (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -90,9 +88,9 @@
             (h/limit items))))))
 
 (defn- apply-source-table
-  [honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [table-name]}
-  (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias]))
+  [honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
+    (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------

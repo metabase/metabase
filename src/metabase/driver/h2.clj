@@ -8,8 +8,9 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [toucan.db :as db]))
 
 (def ^:private ^:const column->base-type

@@ -13,8 +13,8 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
              [date :as du]
+             [i18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]

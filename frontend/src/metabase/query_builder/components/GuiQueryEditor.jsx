@@ -309,7 +309,7 @@ export default class GuiQueryEditor extends Component {
     const datasetQuery = query.datasetQuery();
     const databaseId = datasetQuery && datasetQuery.database;
     const sourceTableId =
-      datasetQuery && datasetQuery.query && datasetQuery.query.source_table;
+      datasetQuery && datasetQuery.query && datasetQuery.query["source-table"];
     const isInitiallyOpen =
       (!datasetQuery.database || !sourceTableId) && !isShowingTutorial;
 

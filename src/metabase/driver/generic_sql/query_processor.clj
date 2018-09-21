@@ -10,26 +10,29 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [annotate :as annotate]
              [interface :as i]
+             [store :as qp.store]
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [trs]])
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
             ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
 
+;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
   "The outer query currently being processed."
   nil)
 
 (def ^:private ^:dynamic *nested-query-level*
   "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
-  find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  find referenced aggregations (otherwise something like [:aggregation 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
 
@@ -57,7 +60,7 @@
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defn- aggregation-at-index
-  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregate-field 0]).
+  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations."
   ([index]
    (aggregation-at-index index (:query *query*) *nested-query-level*))
@@ -283,9 +286,11 @@
   "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
   a `JoinQuery`"
   [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
-  (let [{{source-table-name :name, source-schema :schema} :source-table} *query*]
+  (let [source-table-id                                  (mbql.u/query->source-table-id *query*)
+        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
     [[table-or-query-expr (keyword join-alias)]
-     [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+     [:=
+      (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
       (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
 
 (defmethod ->honeysql [Object JoinTable]
@@ -331,9 +336,9 @@
 (defn apply-source-table
   "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
   Override as needed."
-  [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [(seq table-name)]}
-  (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
+  [_ honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
+    (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name))))
 
 (declare apply-clauses)
 
