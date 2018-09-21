@@ -8,7 +8,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isID } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
@@ -447,7 +447,8 @@ export default class TableInteractive extends Component {
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = settings.column(column).column_title;
+    let columnTitle =
+      settings.column(column).column_title || formatColumn(column);
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }

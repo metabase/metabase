@@ -27,6 +27,7 @@ export type SettingDef = {
   props?: { [key: string]: any },
   default?: any,
   hidden?: boolean,
+  disabled?: boolean,
   getTitle?: (object: any, settings: Settings) => ?string,
   getHidden?: (object: any, settings: Settings) => boolean,
   getDisabled?: (object: any, settings: Settings) => boolean,
@@ -184,7 +185,7 @@ function getSettingWidget(
       : settingDef.hidden || false,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, settings, extra)
-      : false,
+      : settingDef.disabled || false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
