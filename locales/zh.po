@@ -8006,7 +8006,7 @@ msgstr "用户搜索基础.（将采用递归检索）"
 
 #: src/metabase/integrations/ldap.clj
 msgid "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login."
-msgstr "用户查找过滤器，占位符“{Login}”将被用户提供的登录替换"
+msgstr "用户查找过滤器，占位符'{login}'将被用户提供的登录替换"
 
 #: src/metabase/integrations/ldap.clj
 msgid "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')"
