@@ -3,7 +3,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -30,18 +29,22 @@ const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import type { Row, Column } from "metabase/meta/types/Dataset";
+import type {Row, Column, ColumnName} from "metabase/meta/types/Dataset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
 import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_interactive_summary";
+import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 
 type Props = VisualizationProps & {
   width: number,
   height: number,
-  sort: any,
-  isPivoted: boolean,
+
   onActionDismissal: () => void,
+
+  sort: {[key: ColumnName] : string},
+  updateSort : ColumnName => void,
+  settings : SummaryTableSettings
 };
 type State = {
   columnWidths: number[],
@@ -96,14 +99,13 @@ export default class TableInteractiveSummary extends Component {
 
     this.state = {
       columnWidths: [],
-      contentWidths: null,
+      contentWidths: null
     };
     this.columnHasResized = {};
   }
 
   static propTypes = {
     data: PropTypes.object.isRequired,
-    sort: PropTypes.array,
   };
 
   componentWillMount() {
@@ -182,7 +184,7 @@ export default class TableInteractiveSummary extends Component {
             title={columnIndex + "-" + columnSpan}
             key={Math.random()}
           >
-            {this.renderHeader({ style: {}, value, column, columnIndex: 0 })}
+            {this.renderHeader({ style: {}, value, column, columnIndex: 0, sortOrder: 'asc' })}
           </div>
         ))}
         {probeCols.map((column, columnIndex) => probeRows.map(probeRow =>
@@ -427,7 +429,19 @@ export default class TableInteractiveSummary extends Component {
       return null;
     }
 
-    return this.renderHeader({ ...columnHeader, key, style, columnIndex});
+    const sortOrder =  this.props.sort[columnHeader.column.name];
+    return this.renderHeader({ ...columnHeader, key, style, columnIndex, sortOrder});
+  };
+
+  getRealSortOrderFromSettings = (columnName : ColumnName) => {
+    const settings : SummaryTableSettings = this.props.settings;
+    const isAsc = (settings.columnNameToMetadata[columnName] || {}).isAscSortOrder;
+    return isAsc === false ?  'desc' : 'asc';
+  };
+
+  canSort = (columnName : ColumnName) => {
+    const settings : SummaryTableSettings = this.props.settings;
+    return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
   };
 
   renderHeader = ({
@@ -437,10 +451,16 @@ export default class TableInteractiveSummary extends Component {
     value,
     columnIndex,
     columnSpan,
-    displayText
+    displayText,
+    sortOrder
   }: CellRendererProps) => {
     columnSpan = columnSpan || 1;
-    const { sort, onVisualizationClick, visualizationIsClickable } = this.props;
+    const { onVisualizationClick, visualizationIsClickable } = this.props;
+
+    const columnName = column.name;
+
+    const summaryHeaderCustomSort = this.canSort(columnName) && { currentSortOrder: sortOrder || this.getRealSortOrderFromSettings(columnName), customAction : () =>  this.props.updateSort(column.name)};
+    const clicked = summaryHeaderCustomSort && {value, column, summaryHeaderCustomSort} ;
 
     let columnTitle = displayText || (value || value === 0
       ? formatValue(value, {
@@ -451,24 +471,11 @@ export default class TableInteractiveSummary extends Component {
         })
       : column && formatColumn(column));
 
-    /*
-        if (isPivoted) {
-          // if it's a pivot table, the first column is
-          if (columnIndex >= 0) {
-            clicked = column._dimension;
-          }
-        } else {
-          clicked = { column };
-        }
-    */
-    const isClickable = onVisualizationClick && visualizationIsClickable(null); //clicked
-    const isSortable = isClickable && column.source;
-    const isRightAligned = isColumnRightAligned(column);
+    const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
 
-    // the column id is in `["field-id", fieldId]` format
-    const isSorted =
-      sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
-    const isAscending = sort && sort[0] && sort[0][1] === "ascending";
+
+    const isSortable = isClickable && sortOrder;
+    const isRightAligned = isColumnRightAligned(column);
 
     return (
       <div
@@ -480,7 +487,7 @@ export default class TableInteractiveSummary extends Component {
         className={cx(
           "TableInteractive-cellWrapper TableInteractive-headerCellData",
           {
-            "TableInteractive-headerCellData--sorted": isSorted,
+            "TableInteractive-headerCellData--sorted": !!sortOrder,
             "cursor-pointer": isClickable,
             "justify-end": isRightAligned,
           },
@@ -489,7 +496,7 @@ export default class TableInteractiveSummary extends Component {
         onMouseUp={
           isClickable
             ? e => {
-                onVisualizationClick({ ...null, element: e.currentTarget }); //clicked
+                onVisualizationClick({ ...clicked, element: e.currentTarget });
               }
             : undefined
         }
@@ -499,19 +506,19 @@ export default class TableInteractiveSummary extends Component {
             isRightAligned && (
               <Icon
                 className="Icon mr1"
-                name={isAscending ? "chevronup" : "chevrondown"}
+                name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
                 size={8}
               />
             )}
           {columnTitle}
           {isSortable &&
-            !isRightAligned && (
-              <Icon
+          !isRightAligned &&
+            <Icon
                 className="Icon ml1"
-                name={isAscending ? "chevronup" : "chevrondown"}
+                name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
                 size={8}
               />
-            )}
+            }
         </div>
         <Draggable
           axis="x"
@@ -554,14 +561,12 @@ export default class TableInteractiveSummary extends Component {
       width,
       height,
       data: { cols, rows, columnsHeaders, columnIndexToFirstInGroupIndexes, totalsRows },
-      className,
+      className
     } = this.props;
     if (!width || !height) {
       return <div className={className} />;
     }
-
     const headerHeight = HEADER_HEIGHT * columnsHeaders.length;
-
 
     const groupsForRows = columnsHeaders.map(createArgsForIndexGenerator );
 
@@ -580,6 +585,7 @@ export default class TableInteractiveSummary extends Component {
               "TableInteractive--ready": this.state.contentWidths,
             })}
           >
+            <label style={{width:'200px', height:'300px', background:'red'}}>{this.props.sort.toString()}</label>
             <canvas
               className="spread"
               style={{ pointerEvents: "none", zIndex: 999 }}
@@ -593,7 +599,7 @@ export default class TableInteractiveSummary extends Component {
                 left: 0,
                 right: 0,
                 position: "absolute",
-                overflow: "hidden"
+                overflow: "hidden",
               }}
               className="TableInteractive-header scroll-hide-all"
               width={width || 0}

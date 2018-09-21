@@ -8,20 +8,38 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
+const getClickActionsForSummaryHeader = ({currentSortOrder, customAction}) =>{
+  return [
+    {name: currentSortOrder === 'desc' ? "sort-ascending" : "sort-descending",
+    section: "sort",
+    title: currentSortOrder === 'desc' ? t`Ascending`: t`Descending`,
+    customAction
+    }
+  ];
+};
+
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+
+  if (
+    !clicked ||
+    !clicked.column ||
+    !clicked.column.source
+  )
+    return [];
+
+  if(clicked.summaryHeaderCustomSort)
+    return getClickActionsForSummaryHeader(clicked.summaryHeaderCustomSort);
+
+
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];
   }
 
-  if (
-    !clicked ||
-    !clicked.column ||
-    clicked.value !== undefined ||
-    !clicked.column.source
-  ) {
+  if(clicked.value !== undefined) {
     return [];
   }
+
   const { column } = clicked;
 
   const fieldRef = query.fieldReferenceForColumn(column);

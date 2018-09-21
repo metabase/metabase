@@ -23,20 +23,23 @@ import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
 import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/table_interactive_summary";
 import orderBy from 'lodash.orderby';
 import set from 'lodash.set';
+import type {ColumnName} from "metabase/meta/types/Dataset";
+import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
-  isPivoted: boolean,
   groupingManager: GroupingManager,
+
+  sort: {[key: ColumnName] : string},
+  updateSort : ColumnName => void,
+  settings : SummaryTableSettings
 };
 
 type State = {
   page: number,
   pageSize: number,
-  sortColumn: ?number,
-  sortDescending: boolean,
 };
 
 @ExplicitSize
@@ -50,8 +53,6 @@ export default class TableSimpleSummary extends Component {
     this.state = {
       page: 0,
       pageSize: 1,
-      sortColumn: null,
-      sortDescending: false,
     };
   }
 
@@ -63,13 +64,6 @@ export default class TableSimpleSummary extends Component {
     className: "",
   };
 
-  setSort(colIndex: number) {
-    if (this.state.sortColumn === colIndex) {
-      this.setState({ sortDescending: !this.state.sortDescending });
-    } else {
-      this.setState({ sortColumn: colIndex });
-    }
-  }
 
   componentDidUpdate() {
     let headerHeight = ReactDOM.findDOMNode(
@@ -92,18 +86,25 @@ export default class TableSimpleSummary extends Component {
     }
   }
 
+  canSort = (columnName : ColumnName) => {
+    const settings : SummaryTableSettings = this.props.settings;
+    return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
+  };
+
   render() {
     const {
       data,
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
+      sort,
+      updateSort
     } = this.props;
     const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, totalsRows } = data;
 
     const groupingManager = data;
 
-    const { page, pageSize, sortColumn, sortDescending } = this.state;
+    const { page, pageSize} = this.state;
 
     let start = pageSize * page;
     let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
@@ -118,13 +119,6 @@ export default class TableSimpleSummary extends Component {
 
     const groupedIndexes = sortedIndexes.reduce((acc, indexes) => set(acc, indexes.rowStartIndex, [...acc[indexes.rowStartIndex] || [], indexes] ) , [])
 
-    // let rowIndexes =  _.range(0, rows.length);
-    // if (sortColumn != null) {
-    //   rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
-    //   if (sortDescending) {
-    //     rowIndexes.reverse();
-    //   }
-    // }
     const groupingColumnsLen = columnsHeaders[0].findIndex(p => p);
 
     return (
@@ -146,6 +140,11 @@ export default class TableSimpleSummary extends Component {
                 <tr key={`header-${rowIndex}`}>
                   {cols.map((col, colIndex) => {
                     if (col) {
+                      const column = col.column;
+                      const sortOrder = sort[column.name];
+                      const columnName = column.name;
+                      const clickAction = this.canSort(columnName) && (() => updateSort(columnName));
+                      const isRightAligned = false; //isColumnRightAligned(column);
                       return (
                         <th
                           key={`header-${rowIndex}-${colIndex}`}
@@ -153,20 +152,18 @@ export default class TableSimpleSummary extends Component {
 
                             "TableInteractive-headerCellData cellData text-brand-hover",
                             {
-                              "TableInteractive-headerCellData--sorted":
-                                sortColumn === colIndex,
-                              "text-right": isColumnRightAligned(
-                                isColumnRightAligned(col.column),
-                              )
+                              "TableInteractive-headerCellData--sorted": !!sortOrder,
+                              "text-right": isRightAligned,
                             },
                           )}
+                          onClick={clickAction}
                           style = {{ 'padding-left': colIndex === 0 && '2em'}}
                           colSpan={col.columnSpan}
                         >
                           <div className="relative">
                             <Icon
                               name={
-                                sortDescending ? "chevrondown" : "chevronup"
+                                sortOrder === 'desc' ? "chevrondown" : "chevronup"
                               }
                               width={8}
                               height={8}

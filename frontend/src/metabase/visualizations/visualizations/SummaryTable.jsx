@@ -14,6 +14,7 @@ import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type {
+  ColumnName,
   DatasetData,
   SummaryDatasetData,
 } from "metabase/meta/types/Dataset";
@@ -37,11 +38,12 @@ type Props = {
   settings: VisualizationSettings,
   isDashboard: boolean,
   query: StructuredQuery,
-  ddd: string,
 };
 type State = {
   data: ?DatasetData,
   query: any,
+  sort: {[key: ColumnName] : string},
+  settings: SummaryTableSettings,
 };
 
 export const COLUMNS_SETTINGS = "summaryTable.columns";
@@ -84,11 +86,12 @@ export default class SummaryTable extends Component {
     this.state = {
       data: null,
       query: props.query,
+      sort: {}
     };
   }
 
   componentWillMount() {
-    this._updateData(this.props);
+    this._updateData(this.props, this.state.sort);
   }
 
   componentWillReceiveProps(newProps: Props) {
@@ -96,9 +99,24 @@ export default class SummaryTable extends Component {
     if (
       newProps.data !== this.props.data ||
       !_.isEqual(newProps.settings, this.props.settings)
+
     ) {
-      this._updateData(newProps);
+      this._updateData(newProps, this.state.sort);
     }
+  }
+
+  componentWillUpdate(newProps, nextState){
+    if(nextState.sort !== this.state.sort) {
+      this._updateData(newProps, nextState.sort);
+    }
+  }
+
+  updateSort(columnName : ColumnName){
+    const {settings} = this.props;
+    const {sort} = this.state;
+    const oldOrder = sort[columnName] || getSortOrderFromSettings(settings[COLUMNS_SETTINGS], columnName);
+    const newOrder = oldOrder === 'asc' ? 'desc' : 'asc';
+    this.setState({sort:{...sort, [columnName] : newOrder}});
   }
 
   _updateData({
@@ -107,34 +125,34 @@ export default class SummaryTable extends Component {
   }: {
     data: SummaryDatasetData,
     settings: VisualizationSettings,
-  }) {
-    {
+  }, sort) {
       const summarySettings = enrichSettings(
         settings[COLUMNS_SETTINGS],
         data.cols,
         data.columns,
+        sort
       );
 
-      const aaaa = buildResultProvider(data, data.totalsData);
-      const bbbb = getQueryPlan(summarySettings);
+      const resultProvider = buildResultProvider(data, data.totalsData);
+      const queryPlan = getQueryPlan(summarySettings);
       const groupingManager = new GroupingManager(
         summarySettings,
         data.cols,
-        aaaa,
-        bbbb,
+        resultProvider,
+        queryPlan
       );
 
       this.setState({
         data: groupingManager,
+        settings : summarySettings,
       });
-    }
   }
 
   render() {
-    const { card, isDashboard } = this.props;
-    const { data } = this.state;
-    const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
+    const { isDashboard } = this.props;
+    const { data, sort, settings } = this.state;
     const isColumnsDisabled = false;
+
     //todo:
     // (settings[COLUMNS_SETTINGS] || []).filter(f => f.enabled).length < 1;
     const TableComponent = isDashboard
@@ -164,12 +182,17 @@ export default class SummaryTable extends Component {
       );
     } else {
       return (
-        // $FlowFixMe
-        <TableComponent {...this.props} data={data} sort={sort} />
+        <TableComponent {...this.props} data={data} sort={sort} settings={settings} updateSort={columnName => this.updateSort(columnName)} />
       );
     }
   }
 }
+
+
+const getSortOrderFromSettings = (setting: SummaryTableSettings, columnName : ColumnName) : string => {
+  const columnInfo = setting.columnNameToMetadata[columnName] || {};
+  return columnInfo.isAscSortOrder === false ? 'desc' : 'asc';
+};
 
 /**
  * A modified version of TestPopover for Jest/Enzyme tests.

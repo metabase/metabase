@@ -43,6 +43,7 @@ export type ClickAction = {
   icon?: string,
   popover?: (props: ClickActionPopoverProps) => any, // React Element
   question?: () => ?Question,
+  customAction?: () => void,
   url?: () => string,
   section?: string,
   name?: string,

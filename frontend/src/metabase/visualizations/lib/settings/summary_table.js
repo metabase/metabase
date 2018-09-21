@@ -277,19 +277,25 @@ const emptyStateSerialized: SummaryTableSettings = {
   columnNameToMetadata: {},
 };
 
-export const enrichSettings = (
-  stateSerialized,
-  cols,
-  columns,
-): SummaryTableSettings => {
-  const stateNormalized = { ...emptyStateSerialized, ...stateSerialized };
-  const {
-    columnsSource,
-    groupsSources,
-    valuesSources,
-    unusedColumns,
-    columnNameToMetadata,
-  } = stateNormalized;
+
+const getMetadataBuilder = (columnNameToMetadata, sortOverride) =>{
+  return columnName => {
+    const metadata = columnNameToMetadata[columnName] || emptyColumnMetadata;
+    const orderOverridden = sortOverride[columnName];
+    if(orderOverridden && orderOverridden !== (metadata.isAscSortOrder ? 'asc' : 'desc'))
+      return {...metadata, isAscSortOrder: !metadata.isAscSortOrder};
+
+
+    return metadata;
+  }
+};
+
+
+const enrichColumns = ({ columnsSource,
+                         groupsSources,
+                         valuesSources,
+                         unusedColumns,
+                       }, cols, columns) => {
 
   const usedColumns = Set.of(
     ...columnsSource,
@@ -300,26 +306,43 @@ export const enrichSettings = (
   const newColumns = columns.filter(p => !usedColumns.has(p));
   const unusedColumnsNew = unusedColumns.filter(p => columns.includes(p));
 
-  if (newColumns.length === 0) {
-    return { ...stateNormalized, unusedColumns: unusedColumnsNew };
-  }
-
   const shouldTotal = shouldTotalizeDefaultBuilder(cols);
 
   const groupsSourcesNew = newColumns.filter(p => !shouldTotal(p));
   const valuesSourcesNew = newColumns.filter(shouldTotal);
 
   return {
-    ...stateNormalized,
     groupsSources: [...groupsSources, ...groupsSourcesNew],
+    columnsSource,
     valuesSources: [...valuesSources, ...valuesSourcesNew],
     unusedColumns: unusedColumnsNew,
-    columnNameToMetadata: groupsSourcesNew.reduce(
-      (acc, column) => ({
-        ...acc,
-        [column]: columnNameToMetadata[column] || emptyColumnMetadata,
-      }),
-      columnNameToMetadata,
-    ),
   };
+};
+
+const enrichMetadata = ({groupsSources, columnsSource, columnNameToMetadata}, sortOverride) => {
+  const fatColumns = [...groupsSources, ...columnsSource];
+  const getMetadata = getMetadataBuilder(columnNameToMetadata, sortOverride);
+  return fatColumns.reduce(
+    (acc, column) => ({
+      ...acc,
+      [column]: getMetadata(column) ,
+    }),
+    {},
+  );
+
+};
+
+export const enrichSettings = (
+  stateSerialized,
+  cols,
+  columns,
+  sortOverride = {}
+): SummaryTableSettings => {
+
+  const stateNormalized = { ...emptyStateSerialized, ...stateSerialized };
+
+  const partColumns = enrichColumns(stateNormalized, cols, columns);
+  const columnNameToMetadata = enrichMetadata(stateNormalized, sortOverride);
+
+  return {...partColumns, columnNameToMetadata};
 };

@@ -104,6 +104,14 @@ export default class ChartClickActions extends Component {
         onChangeCardAndRun({ nextCard: nextQuestion.card() });
       }
       this.close();
+    }else if (action.customAction) {
+      MetabaseAnalytics.trackEvent(
+          "Actions",
+          "Executed Summary Header Custom Sort Action",
+          getGALabelForAction(action),
+        );
+        action.customAction();
+      this.close();
     }
   };
 
