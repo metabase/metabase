@@ -282,7 +282,8 @@
               :extra_info      {}
               :target          nil
               :remapped_from   nil
-              :remapped_to     nil}))
+              :remapped_to     nil
+              :settings        nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
@@ -296,7 +297,8 @@
     :name          (name ag-col-kw)
     :display_name  (name ag-col-kw)
     :remapped_from nil
-    :remapped_to   nil}))
+    :remapped_to   nil
+    :settings      nil}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))

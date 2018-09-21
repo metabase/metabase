@@ -160,7 +160,8 @@
             :field-name         field-name
             :field-display-name field-name
             :base-type          (:base-type ag-field)
-            :special-type       (:special-type ag-field)})
+            :special-type       (:special-type ag-field)
+            :settings           (:settings ag-field)})
          ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
          ;; wacky like a BigDecimal or Float
          (when (contains? #{:count :distinct} ag-type)
