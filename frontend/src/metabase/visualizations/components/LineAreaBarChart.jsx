@@ -17,7 +17,7 @@ import {
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import {
   MinRowsError,
@@ -106,8 +106,8 @@ export default class LineAreaBarChart extends Component {
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
-    let initialSettings = getSettings([initialSeries]);
-    let newSettings = getSettings([newSeries]);
+    let initialSettings = getComputedSettingsForSeries([initialSeries]);
+    let newSettings = getComputedSettingsForSeries([newSeries]);
 
     let initialDimensions = getColumnsFromNames(
       initialSeries.data.cols,
@@ -305,7 +305,7 @@ function transformSingleSeries(s, series, seriesIndex) {
   }
 
   const { cols, rows } = data;
-  const settings = getSettings([s]);
+  const settings = getComputedSettingsForSeries([s]);
 
   const dimensions = settings["graph.dimensions"].filter(d => d != null);
   const metrics = settings["graph.metrics"].filter(d => d != null);

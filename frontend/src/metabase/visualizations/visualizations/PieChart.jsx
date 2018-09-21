@@ -12,7 +12,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -57,16 +57,14 @@ export default class PieChart extends Component {
   }
 
   static settings = {
-    "pie.dimension": {
+    ...dimensionSetting("pie.dimension", {
       section: t`Data`,
       title: t`Dimension`,
-      ...dimensionSetting("pie.dimension"),
-    },
-    "pie.metric": {
+    }),
+    ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("pie.metric"),
-    },
+    }),
     "pie.show_legend": {
       section: t`Display`,
       title: t`Show legend`,

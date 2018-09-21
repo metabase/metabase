@@ -7,9 +7,19 @@ import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
+import { formatColumn } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import {
+  isMetric,
+  isDimension,
+  isNumber,
+  isString,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase/lib/schema_metadata";
 import { columnsAreValid } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
 import ChartSettingsTableFormatting, {
@@ -17,6 +27,7 @@ import ChartSettingsTableFormatting, {
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -26,6 +37,7 @@ import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
   card: Card,
@@ -55,9 +67,10 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings = {
+  static settings: SettingDefs = {
+    ...columnSettings({ hidden: true }),
     "table.pivot": {
-      section: t`Data`,
+      section: t`Columns`,
       title: t`Pivot the table`,
       widget: "toggle",
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
@@ -69,8 +82,8 @@ export default class Table extends Component {
         data.cols.filter(isDimension).length === 2,
     },
     "table.columns": {
-      section: t`Data`,
-      title: t`Visible fields`,
+      section: t`Columns`,
+      title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
@@ -90,7 +103,7 @@ export default class Table extends Component {
     },
     "table.column_widths": {},
     "table.column_formatting": {
-      section: t`Formatting`,
+      section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
       getProps: ([{ data: { cols } }], settings) => ({
@@ -107,6 +120,65 @@ export default class Table extends Component {
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
+  };
+
+  static columnSettings = column => {
+    const settings: SettingDefs = {
+      column_title: {
+        title: t`Column title`,
+        widget: "input",
+        getDefault: column => formatColumn(column),
+      },
+    };
+    if (isNumber(column)) {
+      settings["show_mini_bar"] = {
+        title: t`Show a mini bar chart`,
+        widget: "toggle",
+      };
+    }
+    if (isString(column)) {
+      let defaultValue = null;
+      const options: { name: string, value: null | string }[] = [
+        { name: t`Off`, value: null },
+      ];
+      if (!column.special_type || isURL(column)) {
+        defaultValue = "link";
+        options.push({ name: t`Link`, value: "link" });
+      }
+      if (!column.special_type || isEmail(column)) {
+        defaultValue = "email_link";
+        options.push({ name: t`Email link`, value: "email_link" });
+      }
+      if (!column.special_type || isImageURL(column) || isAvatarURL(column)) {
+        defaultValue = isAvatarURL(column) ? "image" : "link";
+        options.push({ name: t`Image`, value: "image" });
+      }
+      if (!column.special_type) {
+        defaultValue = "auto";
+        options.push({ name: t`Automatic`, value: "auto" });
+      }
+
+      if (options.length > 1) {
+        settings["view_as"] = {
+          title: t`View as link or image`,
+          widget: "select",
+          default: defaultValue,
+          props: {
+            options,
+          },
+        };
+      }
+
+      settings["link_text"] = {
+        title: t`Link text`,
+        widget: "input",
+        default: null,
+        getHidden: (column, settings) =>
+          settings["view_as"] !== "link" &&
+          settings["view_as"] !== "email_link",
+      };
+    }
+    return settings;
   };
 
   constructor(props: Props) {
