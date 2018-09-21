@@ -71,7 +71,7 @@
                  (ql/aggregation (ql/distinct $tips.venue.name))))))
 
 ;; Now let's just get the regular count
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   [500]
   (first-row (data/dataset geographical-tips
                (data/run-query tips
@@ -79,7 +79,7 @@
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   {:rows        [["facebook"   107]
                  ["flare"      105]
                  ["foursquare" 100]
@@ -96,7 +96,7 @@
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   {:columns ["venue.name"]
    :rows    [["Lucky's Gluten-Free Café"]
              ["Joe's Homestyle Eatery"]
@@ -117,7 +117,7 @@
 
 
 ;;; Nested Field w/ ordering by aggregation
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :nested-fields) (set #{:athena}))
   [["jane"           4]
    ["kyle"           5]
    ["tupac"          5]

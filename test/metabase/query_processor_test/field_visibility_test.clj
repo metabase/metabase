@@ -22,7 +22,7 @@
       :cols
       set))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:athena}
   [(set (venues-cols))
    (set (map (fn [col]
                (if (= (data/id :venues :price) (u/get-id col))

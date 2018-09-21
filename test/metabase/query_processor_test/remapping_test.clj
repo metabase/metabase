@@ -7,7 +7,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [clojure.set :as set]))
 
 (qp-expect-with-all-engines-except  #{:athena}
   {:rows  [["20th Century Cafe" 12 "Café Sweets"]
@@ -52,7 +53,7 @@
                    (fn [rows]
                      (map #(mapv % col-indexes) rows))))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :foreign-keys) (set #{:athena}))
   {:rows   [["20th Century Cafe" 2 "Café"]
             ["25°" 2 "Burger"]
             ["33 Taps" 2 "Bar"]
