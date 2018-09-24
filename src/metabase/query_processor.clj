@@ -15,6 +15,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
@@ -105,6 +106,7 @@
       add-dim/add-remapping
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       implicit-clauses/add-implicit-clauses
+      bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters

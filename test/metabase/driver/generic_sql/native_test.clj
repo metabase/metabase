@@ -3,7 +3,7 @@
             [medley.core :as m]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
-            [metabase.test.data :refer :all]
+            [metabase.test.data :as data]
             [toucan.db :as db]))
 
 (def ^:private col-defaults
@@ -20,7 +20,7 @@
                :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
   (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
-                         :database (id)})
+                         :database (data/id)})
       (m/dissoc-in [:data :results_metadata])))
 
 ;; Check that column ordering is maintained
@@ -37,7 +37,7 @@
                :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
   (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
-                         :database (id)})
+                         :database (data/id)})
       (m/dissoc-in [:data :results_metadata])))
 
 ;; Check that we get proper error responses for malformed SQL
@@ -46,7 +46,7 @@
          :error  "Column \"ZID\" not found"}
   (dissoc (qp/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"} ; make sure people know it's to be expected
                              :type     :native
-                             :database (id)})
+                             :database (data/id)})
           :stacktrace
           :query
           :expanded-query))
