@@ -33,7 +33,7 @@
 
 (def ^:private db-connection-details
   (delay {:log_path         (get-db-env-var :log_path "/tmp/athena.log")
-          :schema           (get-db-env-var :schema)
+          :schema           (get-db-env-var :schema "metabase_test")
           :s3_staging_dir   (get-db-env-var :s3-staging-dir)
           :region           (get-db-env-var :region "us-east-1")
           :url              (get-db-env-var :url "jdbc:awsathena://athena.us-east-1.amazonaws.com:443")
@@ -86,8 +86,14 @@
        (table->maps dbdef table)
        (str root-path "/" table ".json")))))
 
-; (dataset->json! "/tmp/test" defs/test-data)
-; (dataset->json! "/home/thiagoslopes/workspace/metabase/tests/" defs/tupac-sightings)
-; (dataset->json! "//home/thiagoslopes/workspace/metabase/tests/toucan" defs/sad-toucan-incidents)
-; (dataset->json! "/tmp/urls" defs/half-valid-urls)
-; (dataset->json! "/tmp/places" defs/places-cam-likes)
+(defn export-data []
+  (println "===========exporting data to /tmp/metabase/test=============")
+  (dataset->json! "/tmp/metabase/test" defs/test-data)
+  (dataset->json! "/tmp/metabase/test" defs/sad-toucan-incidents)
+  (dataset->json! "/tmp/metabase/test" defs/tupac-sightings)
+  (dataset->json! "/tmp/metabase/test" defs/geographical-tips)
+  (dataset->json! "/tmp/metabase/test" defs/places-cam-likes)
+  (dataset->json! "/tmp/metabase/test" defs/avian-singles)
+  (println "===========data exported to /tmp/metabase/test============="))
+
+;(export-data)
