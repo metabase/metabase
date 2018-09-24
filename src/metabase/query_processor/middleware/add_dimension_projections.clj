@@ -19,10 +19,10 @@
    :remapped_to     nil})
 
 (defn- create-fk-remap-col [fk-field-id dest-field-id remapped-from field-display-name]
-  (i/map->FieldPlaceholder {:fk-field-id fk-field-id
-                            :field-id dest-field-id
-                            :remapped-from remapped-from
-                            :remapped-to nil
+  (i/map->FieldPlaceholder {:fk-field-id        fk-field-id
+                            :field-id           dest-field-id
+                            :remapped-from      remapped-from
+                            :remapped-to        nil
                             :field-display-name field-display-name}))
 
 (defn- row-map-fn [dim-seq]
@@ -32,8 +32,8 @@
                         dim-seq))))
 
 (defn- transform-values-for-col
-  "Converts `VALUES` to a type compatible with the base_type found for `COL`. These values should be directly comparable
-  with the values returned from the database for the given `COL`."
+  "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
+  with the values returned from the database for the given `col`."
   [{:keys [base_type] :as col} values]
   (cond
     (isa? base_type :type/Decimal)
@@ -61,15 +61,15 @@
         (update :remapped_from #(or % nil)))))
 
 (defn- col->dim-map
-  [idx {{remap-to :dimension-name remap-type :dimension-type field-id :field-id} :dimensions :as col}]
+  [idx {{remap-to :dimension-name, remap-type :dimension-type, field-id :field-id} :dimensions, :as col}]
   (when field-id
     (let [remap-from (:name col)]
-      {:col-index idx
-       :from remap-from
-       :to remap-to
-       :xform-fn (zipmap (transform-values-for-col col (get-in col [:values :values]))
-                         (get-in col [:values :human-readable-values]))
-       :new-column (create-remapped-col remap-to remap-from)
+      {:col-index      idx
+       :from           remap-from
+       :to             remap-to
+       :xform-fn       (zipmap (transform-values-for-col col (get-in col [:values :values]))
+                               (get-in col [:values :human-readable-values]))
+       :new-column     (create-remapped-col remap-to remap-from)
        :dimension-type remap-type})))
 
 (defn- create-remap-col-pairs
@@ -115,16 +115,16 @@
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
   [results]
-  (let [indexed-dims (keep-indexed col->dim-map (:cols results))
+  (let [indexed-dims       (keep-indexed col->dim-map (:cols results))
         internal-only-dims (filter #(= :internal (:dimension-type %)) indexed-dims)
-        remap-fn (row-map-fn internal-only-dims)
-        columns (concat (:cols results)
-                        (map :new-column internal-only-dims))
-        from->to (reduce (fn [acc {:keys [remapped_from name]}]
-                           (if remapped_from
-                             (assoc acc remapped_from name)
-                             acc))
-                         {} columns)]
+        remap-fn           (row-map-fn internal-only-dims)
+        columns            (concat (:cols results)
+                                   (map :new-column internal-only-dims))
+        from->to           (reduce (fn [acc {:keys [remapped_from name]}]
+                                     (if remapped_from
+                                       (assoc acc remapped_from name)
+                                       acc))
+                                   {} columns)]
     (-> results
         (update :columns into (map :to internal-only-dims))
         ;; TODO - this code doesn't look right... why use `update` if we're not using the value we're updating?

@@ -15,6 +15,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
@@ -103,8 +104,9 @@
       binning/update-binning-strategy
       resolve/resolve-middleware
       add-dim/add-remapping
-      implicit-clauses/add-implicit-clauses
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      implicit-clauses/add-implicit-clauses
+      bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
@@ -146,8 +148,8 @@
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
   (->> identity
        resolve/resolve-middleware
-       source-table/resolve-source-table-middleware
        expand/expand-middleware
+       source-table/resolve-source-table-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
        driver-specific/process-query-in-context

@@ -17,13 +17,15 @@
 
 ;; adding a simple parameter
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   [:= [:field-id (data/id :venues :name)] "Cam's Toucannery"]
-                :breakout [[:field-id 17]]}}
+  {:database 1
+   :type     :query
+   :query    {:source-table 1000
+              :filter       [:= [:field-id (data/id :venues :name)] "Cam's Toucannery"]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
@@ -34,15 +36,17 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:filter   [:and
-                         [:= [:field-id (data/id :venues :id)] 12]
-                         [:= [:field-id (data/id :venues :name)] "Cam's Toucannery"]
-                         [:= [:field-id (data/id :venues :id)] 999]]
-              :breakout [[:field-id 17]]}}
+   :query    {:source-table 1000
+              :filter       [:and
+                             [:= [:field-id (data/id :venues :id)] 12]
+                             [:= [:field-id (data/id :venues :name)] "Cam's Toucannery"]
+                             [:= [:field-id (data/id :venues :id)] 999]]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:filter   ["AND" [:= (data/id :venues :id) 12]]
-                                   :breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :filter       ["AND" [:= (data/id :venues :id) 12]]
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   :id
@@ -56,13 +60,15 @@
 
 ;; date range parameters
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   [:time-interval [:field-id (data/id :users :last_login)] -30 :day {:include-current false}]
-                :breakout [[:field-id 17]]}}
+  {:database 1
+   :type     :query
+   :query    {:source-table 1000
+              :filter       [:time-interval [:field-id (data/id :users :last_login)] -30 :day {:include-current false}]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   :date
@@ -70,13 +76,15 @@
                                     :value  "past30days"}]}))
 
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   [:time-interval [:field-id (data/id :users :last_login)] -30 :day {:include-current true}]
-                :breakout [[:field-id 17]]}}
+  {:database 1
+   :type     :query
+   :query    {:source-table 1000
+              :filter       [:time-interval [:field-id (data/id :users :last_login)] -30 :day {:include-current true}]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   :date
@@ -84,13 +92,15 @@
                                     :value  "past30days~"}]}))
 
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   [:= [:field-id (data/id :users :last_login)] [:relative-datetime -1 :day]]
-                :breakout [[:field-id 17]]}}
+  {:database 1
+   :type     :query
+   :query    {:source-table 1000
+              :filter       [:= [:field-id (data/id :users :last_login)] [:relative-datetime -1 :day]]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
@@ -98,13 +108,15 @@
                                     :value  "yesterday"}]}))
 
 (expect
-  {:database   1
-   :type       :query
-   :query      {:filter   [:between [:field-id (data/id :users :last_login)] "2014-05-10" "2014-05-16"]
-                :breakout [[:field-id 17]]}}
+  {:database 1
+   :type     :query
+   :query    {:source-table 1000
+              :filter       [:between [:field-id (data/id :users :last_login)] "2014-05-10" "2014-05-16"]
+              :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:breakout [[:field-id 17]]}
+                      :query      {:source-table 1000
+                                   :breakout     [[:field-id 17]]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"

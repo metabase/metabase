@@ -205,7 +205,8 @@
 (defclause asc,  field FieldOrAggregationReference)
 (defclause desc, field FieldOrAggregationReference)
 
-(def ^:private OrderBy
+(def OrderBy
+  "Schema for an `order-by` clause subclause."
   (one-of asc desc))
 
 
@@ -324,7 +325,10 @@
   {:query                          s/Any
    (s/optional-key :template-tags) {su/NonBlankString TemplateTag}
    ;; collection (table) this query should run against. Needed for MongoDB
-   (s/optional-key :collection)    (s/maybe su/NonBlankString)})
+   (s/optional-key :collection)    (s/maybe su/NonBlankString)
+   ;; other stuff gets added in my different bits of QP middleware to record bits of state or pass info around.
+   ;; Everyone else can ignore them.
+   s/Keyword                       s/Any})
 
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
@@ -353,7 +357,10 @@
     (s/optional-key :limit)        su/IntGreaterThanZero
     (s/optional-key :order-by)     (su/non-empty [OrderBy])
     (s/optional-key :page)         {:page  su/IntGreaterThanOrEqualToZero
-                                    :items su/IntGreaterThanZero}}
+                                    :items su/IntGreaterThanZero}
+    ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
+    ;; info to other pieces of middleware. Everyone else can ignore them.
+    s/Keyword                      s/Any}
    (fn [query]
      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
    "Query must specify either `:source-table` or `:source-query`, but not both."))
@@ -371,8 +378,10 @@
 (def ^:private Settings
   "Options that tweak the behavior of the query processor."
   ;; The timezone the query should be ran in, overriding the default report timezone for the instance.
-  {(s/optional-key :report-timezone) su/NonBlankString})
-;; TODO - should we add s/Any keys here? What if someone wants to add custom middleware!
+  {(s/optional-key :report-timezone) su/NonBlankString
+   ;; other Settings might be used somewhere, but I don't know about them. Add them if you come across them for
+   ;; documentation purposes
+   s/Keyword                         s/Any})
 
 (def ^:private Constraints
   "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
@@ -381,7 +390,10 @@
   {;; maximum number of results to allow for a query with aggregations
    (s/optional-key :max-results)           su/IntGreaterThanOrEqualToZero
    ;; maximum number of results to allow for a query with no aggregations
-   (s/optional-key :max-results-bare-rows) su/IntGreaterThanOrEqualToZero})
+   (s/optional-key :max-results-bare-rows) su/IntGreaterThanOrEqualToZero
+   ;; other Constraints might be used somewhere, but I don't know about them. Add them if you come across them for
+   ;; documentation purposes
+   s/Keyword                               s/Any})
 
 (def ^:private MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
@@ -390,7 +402,10 @@
    (s/optional-key :skip-results-metadata?) s/Bool
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
-   (s/optional-key :format-rows?)           s/Bool})
+   (s/optional-key :format-rows?)           s/Bool
+   ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
+   ;; for documentation purposes
+   s/Keyword                                s/Any})
 
 
 ;;; ------------------------------------------------------ Info ------------------------------------------------------
@@ -450,7 +465,7 @@
     (s/optional-key :query)       MBQLQuery
     (s/optional-key :parameters)  [Parameter]
     ;;
-    ;; -------------------- OPTIONS --------------------
+    ;; OPTIONS
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;; TODO - can we combine these all into a single `:options` map?
@@ -458,19 +473,15 @@
     (s/optional-key :settings)    (s/maybe Settings)
     (s/optional-key :constraints) (s/maybe Constraints)
     (s/optional-key :middleware)  (s/maybe MiddlewareOptions)
-    ;; The maximum time, in seconds, to return cached results for this query rather than running a new query. This is
-    ;; added automatically when running queries belonging to Cards when caching is enabled. Caching is handled by the
-    ;; automatically by caching middleware.
-    (s/optional-key :cache-ttl)   (s/maybe su/IntGreaterThanZero)
     ;;
-    ;; -------------------- INFO --------------------
+    ;; INFO
     ;;
+    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+    ;; User who ran it
     (s/optional-key :info)        (s/maybe Info)
-    ;;
-    ;; not even really info, but in some cases `:driver` gets added to the query even though we have middleware that
-    ;; is supposed to resolve driver, and we also have the `*driver*` dynamic var where we should probably be stashing
-    ;; the resolved driver anyway. It might make sense to take this out in the future.
-    (s/optional-key :driver)      {}}
+    ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
+    ;; middleware to record bits of state. Everyone else can ignore them.
+    s/Keyword                     s/Any}
    (fn [{native :native, mbql :query, query-type :type}]
      (case query-type
        :native (core/and native (core/not mbql))

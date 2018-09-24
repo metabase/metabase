@@ -19,8 +19,8 @@
 (expect
   {:database (data/id)
    :type     :query
-   :query    {:aggregation  [:count]
-              :breakout     [[:field-literal :price :type/Integer]]
+   :query    {:aggregation  [[:count]]
+              :breakout     [[:field-literal "price" :type/Integer]]
               :source-query {:source-table (data/id :venues)}}}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
@@ -28,25 +28,24 @@
     (fetch-source-query {:database database/virtual-id
                          :type     :query
                          :query    {:source-table (str "card__" (u/get-id card))
-                                    :aggregation  [:count]
-                                    :breakout     [[:field-literal :price :type/Integer]]}})))
+                                    :aggregation  [[:count]]
+                                    :breakout     [[:field-literal "price" :type/Integer]]}})))
 
 ;; make sure that the `fetch-source-query` middleware correctly resolves native queries
 (expect
   {:database (data/id)
    :type     :query
-   :query    {:aggregation  [:count]
-              :breakout     [[:field-literal :price :type/Integer]]
-              :source-query {:native        (format "SELECT * FROM %s" (data/format-name "venues"))
-                             :template-tags nil}}}
+   :query    {:aggregation  [[:count]]
+              :breakout     [[:field-literal "price" :type/Integer]]
+              :source-query {:native (format "SELECT * FROM %s" (data/format-name "venues"))}}}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query (format "SELECT * FROM %s" (data/format-name "venues"))}}}]
     (fetch-source-query {:database database/virtual-id
                          :type     :query
                          :query    {:source-table (str "card__" (u/get-id card))
-                                    :aggregation  [:count]
-                                    :breakout     [[:field-literal :price :type/Integer]]}})))
+                                    :aggregation  [[:count]]
+                                    :breakout     [[:field-literal "price" :type/Integer]]}})))
 
 (defn- expand-and-scrub [query-map]
   (-> query-map

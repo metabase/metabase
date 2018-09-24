@@ -2,9 +2,11 @@
   "Middleware responsible for 'hydrating' the source query for queries that use another query as their source."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- trim-query
@@ -20,14 +22,16 @@
         trimmed-string))))
 
 (defn- card-id->source-query
-  "Return the source query info for Card with CARD-ID."
+  "Return the source query info for Card with `card-id`."
   [card-id]
   (let [card       (db/select-one ['Card :dataset_query :database_id :result_metadata] :id card-id)
         card-query (:dataset_query card)]
     (assoc (or (:query card-query)
                (when-let [native (:native card-query)]
-                 {:native        (trim-query card-id (:query native))
-                  :template-tags (:template-tags native)})
+                 (merge
+                  {:native (trim-query card-id (:query native))}
+                  (when (seq (:template-tags native))
+                    {:template-tags (:template-tags native)})))
                (throw (Exception. (str "Missing source query in Card " card-id))))
       ;; include database ID as well; we'll pass that up the chain so it eventually gets put in its spot in the
       ;; outer-query
@@ -45,7 +49,7 @@
                    ;; No need to include result metadata here, it can be large and will clutter the logs
                    (u/pprint-to-str 'yellow (dissoc <> :result_metadata)))))))
 
-(defn- ^:deprecated expand-card-source-tables
+(defn- expand-card-source-tables
   "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
   `:source-query` information. Does nothing if `source-table` is a normal ID. Recurses for nested-nested queries."
   [{:keys [source-table], :as inner-query}]
@@ -63,7 +67,8 @@
               :database        (:database source-query)
               :result_metadata (:result_metadata source-query))))))
 
-(defn- fetch-source-query* [{inner-query :query, :as outer-query}]
+(s/defn ^:private fetch-source-query* :- mbql.s/Query
+  [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
     ;; for non-MBQL queries there's nothing to do since they have nested queries
     outer-query

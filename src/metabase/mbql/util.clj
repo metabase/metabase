@@ -46,15 +46,30 @@
     ;;-> [[:field-id 10]]
 
     ;; look for :+ or :- clauses
-    (clause-instances #{:+ :-} ...)"
+    (clause-instances #{:+ :-} ...)
+
+  By default, this will not include subclauses of any clauses it finds, but you can toggle this behavior with the
+  `include-subclauses?` option:
+
+    (clause-instances #{:field-id :fk->} [[:field-id 1] [:fk-> [:field-id 2] [:field-id 3]]])
+    ;; -> [[:field-id 1]
+           [:fk-> [:field-id 2] [:field-id 3]]]
+
+    (clause-instances #{:field-id :fk->} [[:field-id 1] [:fk-> [:field-id 2] [:field-id 3]]], :include-subclauses? true)
+    ;; -> [[:field-id 1]
+           [:fk-> [:field-id 2] [:field-id 3]]
+           [:field-id 2]
+           [:field-id 3]]"
   {:style/indent 1}
-  [k-or-ks x]
+  [k-or-ks x & {:keys [include-subclauses?], :or {include-subclauses? false}}]
   (let [instances (atom [])]
-    (walk/postwalk
+    (walk/prewalk
      (fn [clause]
-       (u/prog1 clause
-         (when (is-clause? k-or-ks clause)
-           (swap! instances conj clause))))
+       (if (is-clause? k-or-ks clause)
+         (do (swap! instances conj clause)
+             (when include-subclauses?
+               clause))
+         clause))
      x)
     (seq @instances)))
 
@@ -134,9 +149,9 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (vec (cons :and (filter identity (cons filter-clause more-filter-clauses))))))
 
-(s/defn add-filter-clause
+(s/defn add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- su/Map, new-clause :- (s/maybe mbql.s/Filter)]
+  [outer-query :- mbql.s/Query, new-clause :- (s/maybe mbql.s/Filter)]
   (if-not new-clause
     outer-query
     (update-in outer-query [:query :filter] combine-filter-clauses new-clause)))
@@ -162,3 +177,35 @@
     ;; otherwise resolve the source Table
     :else
     source-table-id))
+
+
+(defn field-clause->id-or-literal
+  "Get the actual Field ID or literal name this clause is referring to. Useful for seeing if two Field clauses are
+  referring to the same thing, e.g.
+
+    (field-clause->id-or-literal [:datetime-field [:field-id 100] ...]) ; -> 100
+    (field-clause->id-or-literal [:field-id 100])                       ; -> 100
+
+  For expressions (or any other clauses) this returns the clause as-is, so as to facilitate the primary use case of
+  comparing Field clauses."
+  [[clause-name x y, :as clause]]
+  (case clause-name
+    :field-id         x
+    :fk->             (recur y)
+    :field-literal    x
+    :datetime-field   (recur x)
+    :binning-strategy (recur x)
+    ;; for anything else, including expressions and ag clause references, just return the clause as-is
+    clause))
+
+(s/defn add-order-by-clause :- mbql.s/Query
+  "Add a new `:order-by` clause to an MBQL query. If the new order-by clause references a Field that is already being
+  used in another order-by clause, this function does nothing."
+  [outer-query :- mbql.s/Query, order-by-clause :- mbql.s/OrderBy]
+  (let [existing-clauses (set (map (comp field-clause->id-or-literal second)
+                                   (-> outer-query :query :order-by)))]
+    (if (existing-clauses (field-clause->id-or-literal (second order-by-clause)))
+      ;; Field already referenced, nothing to do
+      outer-query
+      ;; otherwise add new clause at the end
+      (update-in outer-query [:query :order-by] (comp vec conj) order-by-clause))))
