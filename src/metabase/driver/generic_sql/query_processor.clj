@@ -289,7 +289,7 @@
     (db/select [metabase.models.field/Field [:id :field-id] [:name :field-name] [:parent_id :parent-id]] :table_id [:= source-table-id])
     (fhf/create-from-list)))
 
-(defn get-qualified-name [field-info-list source-field]
+(defn- get-qualified-name [field-info-list source-field]
   (->>
     (filter #(= (:field-id source-field) (:field-id %)) field-info-list)
     (first)

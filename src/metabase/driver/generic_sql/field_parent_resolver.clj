@@ -1,6 +1,8 @@
 (ns metabase.driver.generic-sql.field-parent-resolver)
 
-(defn get-qualified-name [field-info]
+(defn get-qualified-name
+  "Translate nested fields for queries"
+  [field-info]
   (flatten (loop [field-name (:field-name field-info) parent (:parent field-info)]
     (cond
       (not (some? parent)) [field-name]

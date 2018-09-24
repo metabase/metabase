@@ -6,5 +6,7 @@
       (assoc field :parent nil)
       (assoc field :parent (create-complex-field parent fields)))))
 
-(defn create-from-list [fields]
+(defn create-from-list
+  "Transform for complex Athena fields"
+  [fields]
   (map #(create-complex-field % fields) fields))

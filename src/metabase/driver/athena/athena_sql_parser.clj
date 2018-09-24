@@ -1,5 +1,5 @@
 (ns metabase.driver.athena.athena-sql-parser
-  (require [metabase.driver.athena.hive-schema-parser :as hsp]))
+  (:require [metabase.driver.athena.hive-schema-parser :as hsp]))
 
 (defn- column->base-type [column-type]
   ({:bigint :type/BigInteger
@@ -58,7 +58,9 @@
 (defn- is-array-type-field? [field-info]
   (clojure.string/starts-with? (:type field-info) "array"))
 
-(defn parse-schema [field-info]
+(defn parse-schema
+  "Parse specific Athena types"
+  [field-info]
   (cond
     ; :TODO Should we also validate maps?
     (is-struct-type-field? field-info) (parse-struct-type-field field-info)
