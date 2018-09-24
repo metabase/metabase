@@ -15,7 +15,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
   static identifier = "smartscalar";
-  static iconName = "star";
+  static iconName = "smartscalar";
 
   static minSize = { width: 3, height: 3 };
 
