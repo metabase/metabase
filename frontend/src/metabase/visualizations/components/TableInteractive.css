@@ -39,7 +39,7 @@
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-  padding: 1em 1.25em;
+  padding: 0 1.75em;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -50,12 +50,14 @@
   border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
+/*
 .TableInteractive .TableInteractive-cellWrapper--active,
 .TableInteractive:not(.TableInteractive--noHover)
   .TableInteractive-cellWrapper:hover {
   border-color: var(--color-brand);
   color: var(--color-brand);
 }
+*/
 
 .TableInteractive .TableInteractive-cellWrapper--active {
   z-index: 1;
@@ -74,10 +76,13 @@
 
 /* cell overflow ellipsis */
 .TableInteractive .cellData {
+  color: #4f575d;
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
+  font-weight: 700;
+  font-size: 12.5px;
 }
 
 /* pivot */

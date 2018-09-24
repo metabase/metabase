@@ -27,7 +27,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
-const ROW_HEIGHT = 30;
+const ROW_HEIGHT = 42;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 // if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
@@ -345,14 +345,17 @@ export default class TableInteractive extends Component {
           transition: dragColIndex != null ? "left 200ms" : null,
           backgroundColor,
         }}
-        className={cx("TableInteractive-cellWrapper", {
-          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          "TableInteractive-cellWrapper--lastColumn":
-            columnIndex === cols.length - 1,
-          "cursor-pointer": isClickable,
-          "justify-end": isColumnRightAligned(column),
-          link: isClickable && isID(column),
-        })}
+        className={cx(
+          "TableInteractive-cellWrapper text-medium text-dark-hover",
+          {
+            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            "TableInteractive-cellWrapper--lastColumn":
+              columnIndex === cols.length - 1,
+            "cursor-pointer": isClickable,
+            "justify-end": isColumnRightAligned(column),
+            link: isClickable && isID(column),
+          },
+        )}
         onMouseUp={
           isClickable
             ? e => {
@@ -531,7 +534,7 @@ export default class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData",
+            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
               "TableInteractive-cellWrapper--lastColumn":
