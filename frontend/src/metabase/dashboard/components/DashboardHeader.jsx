@@ -347,6 +347,7 @@ export default class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
+        showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
         editingTitle={t`You are editing a dashboard`}
