@@ -8,7 +8,9 @@
 }
 
 .TableInteractive-headerCellData {
-  font-weight: 700;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 10px;
 }
 
 .TableInteractive-headerCellData.TableInteractive-cellWrapper--firstColumn {
