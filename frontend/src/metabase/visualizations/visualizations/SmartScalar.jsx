@@ -11,6 +11,10 @@ import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  MinRowsError,
+  NoBreakoutError,
+} from "metabase/visualizations/lib/errors";
 
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
@@ -31,8 +35,25 @@ export default class Smart extends React.Component {
     },
   };
 
+  // Always return true here so that we don't discourage this feature.
   static isSensible() {
     return true;
+  }
+
+  // Smart scalars need to have a breakout
+  static checkRenderable(series, settings) {
+    const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
+    if (_.every(series, singleSeriesHasNoRows)) {
+      throw new MinRowsError(1, 0);
+    }
+
+    const cols = series[0].data.cols;
+
+    if (cols.length < 2) {
+      throw new NoBreakoutError(
+        t`Group by a time field to see how this has changed over time`,
+      );
+    }
   }
 
   render() {
