@@ -103,8 +103,8 @@
       format-rows/format-rows
       binning/update-binning-strategy
       resolve/resolve-middleware
-      add-dim/add-remapping
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
@@ -118,7 +118,7 @@
       fetch-source-query/fetch-source-query
       store/initialize-store
       log-query/log-initial-query
-      ;; TODO - bind *query* here ?
+      ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
       log-query/log-results-metadata
       validate/validate-query

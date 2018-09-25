@@ -10,15 +10,17 @@
             [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:id           su/IntGreaterThanZero
-   :base_type    (s/maybe su/FieldType)
-   :special_type (s/maybe su/FieldType)})
+  {:base_type    (s/maybe su/FieldType)
+   :special_type (s/maybe su/FieldType)
+   s/Keyword     s/Any})
 
 (s/defn ^:private is-datetime-field?
   [{base-type :base_type, special-type :special_type} :- (s/maybe FieldTypeInfo)]
   (or (isa? base-type :type/DateTime)
       (isa? special-type :type/DateTime)))
 
+;; TODO - we should check the store to see if these Fields have already been resolved! And if they haven't, we should
+;; go ahead and resolve them, and save them in the store...
 (s/defn ^:private unbucketed-breakouts->field-id->type-info :- {su/IntGreaterThanZero (s/maybe FieldTypeInfo)}
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-breakouts`."
   [unbucketed-breakouts :- (su/non-empty [mbql.s/field-id])]
