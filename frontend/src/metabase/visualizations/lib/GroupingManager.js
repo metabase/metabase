@@ -177,9 +177,12 @@ export class GroupingManager {
         cols.map((column, i) => ({ columnIndex: i, column, columnSpan: 1 })),
       ];
     }
+
+
     this.probeRows = [
       this.rows[this.rows.length - 1],
-      ...cols.map(p => this.rows.find(row => p.getValue(row))).filter(p => p),
+      ...this.rows.slice(0, 10),
+      ...cols.map(p => this.rows.find((row, index) => index > 10 && p.getValue(row))).filter(p => p),
     ].map(p => p.isTotalColumnIndex ? ({__proto__:p, colSpan: (summaryTableSettings.groupsSources || []).length - Math.max(p.isTotalColumnIndex-1, 0) }): p);
     this.cols = cols;
 
