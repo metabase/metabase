@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import Calendar from "metabase/components/Calendar";
-import Input from "metabase/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import Tooltip from "metabase/components/Tooltip";
@@ -89,7 +89,7 @@ export default class SpecificDatePicker extends Component {
               "border-right": !calendar,
             })}
           >
-            <Input
+            <InputBlurChange
               placeholder={moment().format("MM/DD/YYYY")}
               className="borderless full p2 h3"
               style={{

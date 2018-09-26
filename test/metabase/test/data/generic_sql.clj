@@ -11,7 +11,9 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.test.data.interface :as i]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
   (:import clojure.lang.Keyword
            java.sql.SQLException
            [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
@@ -173,7 +175,7 @@
       (zipmap fields-for-insert (for [v row]
                                   (if (and (not (instance? java.sql.Time v))
                                            (instance? java.util.Date v))
-                                    (u/->Timestamp v)
+                                    (du/->Timestamp v du/utc)
                                     v))))))
 
 (defn load-data-add-ids
@@ -322,7 +324,7 @@
     (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
-    (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
+    (du/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
       (load-data! driver dbdef tabledef))))
 
 (def IDriverTestExtensionsMixin

@@ -23,14 +23,20 @@
                                                              su/FieldType)
                               special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
-                              fk              :- (s/maybe s/Keyword)])
+                              fk              :- (s/maybe s/Keyword)]
+  nil
+  :load-ns true)
 
 (s/defrecord TableDefinition [table-name        :- su/NonBlankString
                               field-definitions :- [FieldDefinition]
-                              rows              :- [[s/Any]]])
+                              rows              :- [[s/Any]]]
+  nil
+  :load-ns true)
 
 (s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]])
+                                 table-definitions :- [TableDefinition]]
+  nil
+  :load-ns true)
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."

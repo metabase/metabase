@@ -65,7 +65,6 @@ export default class Funnel extends Component {
         column: cols[metricIndex],
         jsx,
         majorWidth: 0,
-        comma: true,
       });
     const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 

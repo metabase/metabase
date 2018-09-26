@@ -4,7 +4,6 @@
              [query-processor-test :refer :all]
              [util :as u]]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -14,9 +13,9 @@
 
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
 (defn- get-col-names []
-  (-> (data/run-query venues
-        (ql/order-by (ql/asc $id))
-        (ql/limit 1))
+  (-> (data/run-mbql-query venues
+        {:order-by [[:asc $id]]
+         :limit    1})
       tu/round-fingerprint-cols
       :data
       :cols
@@ -62,8 +61,8 @@
                  [15 "Rüstem Hebel"]]
    :native_form true}
   ;; Filter out the timestamps from the results since they're hard to test :/
-  (-> (data/run-query users
-        (ql/order-by (ql/asc $id)))
+  (-> (data/run-mbql-query users
+        {:order-by [[:asc $id]]})
       booleanize-native-form
       tu/round-fingerprint-cols
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]

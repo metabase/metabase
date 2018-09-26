@@ -5,7 +5,7 @@ import _ from "underscore";
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { getSettings as _getVisualizationSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
@@ -34,11 +34,11 @@ export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
-export const getQueryResult = state => state.qb.queryResult;
 export const getQueryResults = state => state.qb.queryResults;
+export const getFirstQueryResult = state =>
+  state.qb.queryResults && state.qb.queryResults[0];
 
-// get instance settings, used for determining whether to display certain actions,
-// currently used only for xrays
+// get instance settings, used for determining whether to display certain actions
 export const getSettings = state => state.settings.values;
 
 export const getIsDirty = createSelector(
@@ -56,7 +56,7 @@ export const getDatabaseId = createSelector(
 );
 
 export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source_table"]),
+  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;
@@ -133,7 +133,7 @@ const getNextRunDatasetQuery = createSelector(
 );
 
 const getLastRunParameters = createSelector(
-  [getQueryResult],
+  [getFirstQueryResult],
   queryResult =>
     (queryResult &&
       queryResult.json_query &&
@@ -207,7 +207,7 @@ export const getQuestionAlerts = createSelector(
 );
 
 export const getResultsMetadata = createSelector(
-  [getQueryResult],
+  [getFirstQueryResult],
   result => result && result.data && result.data.results_metadata,
 );
 
@@ -250,5 +250,5 @@ export const getTransformedSeries = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  series => series && _getVisualizationSettings(series),
+  series => series && getComputedSettingsForSeries(series),
 );

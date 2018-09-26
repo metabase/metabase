@@ -5,6 +5,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
@@ -14,6 +15,8 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [auto-bucket-datetime-breakouts :as bucket-datetime]
+             [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -27,20 +30,25 @@
              [limit :as limit]
              [log :as log-query]
              [mbql-to-native :as mbql-to-native]
+             [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
-             [results-metadata :as results-metadata]
-             [resolve-driver :as resolve-driver]
              [resolve :as resolve]
-             [source-table :as source-table]]
+             [resolve-driver :as resolve-driver]
+             [results-metadata :as results-metadata]
+             [source-table :as source-table]
+             [store :as store]
+             [validate :as validate]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                           QUERY PROCESSOR                                             |
-;;; +-------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                QUERY PROCESSOR                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- execute-query
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
@@ -88,30 +96,36 @@
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       annotate-and-sort/annotate-and-sort
       perms/check-query-permissions
-      log-query/log-expanded-query
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
+      results-metadata/record-and-return-metadata!
       format-rows/format-rows
       binning/update-binning-strategy
-      results-metadata/record-and-return-metadata!
       resolve/resolve-middleware
+      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
+      bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
-      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros
       driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
       add-settings/add-settings
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
+      store/initialize-store
       log-query/log-initial-query
+      ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
       log-query/log-results-metadata
+      validate/validate-query
+      normalize/normalize
       catch-exceptions/catch-exceptions))
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
+;; `substitute-parameters`
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -134,20 +148,23 @@
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
   (->> identity
        resolve/resolve-middleware
-       source-table/resolve-source-table-middleware
        expand/expand-middleware
+       source-table/resolve-source-table-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
        driver-specific/process-query-in-context
        resolve-driver/resolve-driver
-       fetch-source-query/fetch-source-query))
+       fetch-source-query/fetch-source-query
+       bind-timezone/bind-effective-timezone
+       validate/validate-query
+       normalize/normalize))
 ;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
 ;; instead of running it
 
 
-;;; +----------------------------------------------------------------------------------------------------+
-;;; |                                     DATASET-QUERY PUBLIC API                                       |
-;;; +----------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            DATASET-QUERY PUBLIC API                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; The only difference between `process-query` and `process-query-and-save-execution!` (below) is that the
 ;; latter records a `QueryExecution` (inserts a new row) recording some stats about this Query run including
@@ -226,10 +243,10 @@
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
    :context           context
-   :hash              (or query-hash (throw (Exception. "Missing query hash!")))
+   :hash              (or query-hash (throw (Exception. (str (tru "Missing query hash!")))))
    :native            (= query-type "native")
    :json_query        (dissoc query :info)
-   :started_at        (u/new-sql-timestamp)
+   :started_at        (du/new-sql-timestamp)
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
@@ -249,23 +266,7 @@
                     (u/pprint-to-str (u/filtered-stacktrace e))))
         (save-and-return-failed-query! query-execution (.getMessage e))))))
 
-(def ^:private DatasetQueryOptions
-  "Schema for the options map for the `dataset-query` function.
-   This becomes available to QP middleware as the `:info` dictionary in the top level of a query.
-   When the query is finished running, most of these values are saved in the new `QueryExecution` row.
-   In some cases, these values are used by the middleware; for example, the permissions-checking middleware
-   will check Collection permissions if applicable if `card-id` is non-nil."
-  (s/constrained {:context                       query-execution/Context
-                  (s/optional-key :executed-by)  (s/maybe su/IntGreaterThanZero)
-                  (s/optional-key :card-id)      (s/maybe su/IntGreaterThanZero)
-                  (s/optional-key :dashboard-id) (s/maybe su/IntGreaterThanZero)
-                  (s/optional-key :pulse-id)     (s/maybe su/IntGreaterThanZero)
-                  (s/optional-key :nested?)      (s/maybe s/Bool)}
-                 (fn [{:keys [executed-by]}]
-                   (or (integer? executed-by)
-                       *allow-queries-with-no-executor-id*))
-                 "executed-by cannot be nil unless *allow-queries-with-no-executor-id* is true"))
-
+;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
 
@@ -277,9 +278,9 @@
   Depending on the database specified in the query this function will delegate to a driver specific implementation.
   For the purposes of tracking we record each call to this function as a QueryExecution in the database.
 
-  OPTIONS must conform to the `DatasetQueryOptions` schema; refer to that for more details."
+  OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
-  [query, options :- DatasetQueryOptions]
+  [query, options :- mbql.s/Info]
   (run-and-save-query! (assoc query :info (assoc options
                                             :query-hash (qputil/query-hash query)
                                             :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))
@@ -300,5 +301,5 @@
 (s/defn process-query-and-save-with-max!
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint"
   {:style/indent 1}
-  [query, options :- DatasetQueryOptions]
+  [query, options :- mbql.s/Info]
   (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))

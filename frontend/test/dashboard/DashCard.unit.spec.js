@@ -20,6 +20,9 @@ const DEFAULT_PROPS = {
   parameterValues: {},
   markNewCardSeen: () => {},
   fetchCardData: () => {},
+  dashboard: {
+    parameters: [],
+  },
 };
 
 describe("DashCard", () => {

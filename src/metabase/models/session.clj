@@ -1,5 +1,6 @@
 (ns metabase.models.session
   (:require [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -7,7 +8,7 @@
 (models/defmodel Session :core_session)
 
 (defn- pre-insert [session]
-  (assoc session :created_at (u/new-sql-timestamp)))
+  (assoc session :created_at (du/new-sql-timestamp)))
 
 (u/strict-extend (class Session)
   models/IModel

@@ -84,7 +84,7 @@ describe("Mode", () => {
 
     describe("for a question with an aggregation and a time breakout", () => {
       it("has pivot as mode actions 1 and 2", () => {
-        expect(timeBreakoutQuestionMode.actions().length).toBe(3);
+        expect(timeBreakoutQuestionMode.actions().length).toBe(4);
         expect(timeBreakoutQuestionMode.actions()[0].name).toBe(
           "pivot-by-category",
         );

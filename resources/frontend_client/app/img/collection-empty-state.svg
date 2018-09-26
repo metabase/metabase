@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="198px" height="202px" viewBox="0 0 198 202" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 50.2 (55047) - http://www.bohemiancoding.com/sketch -->
+    <title>Artboard</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Artboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-3" transform="translate(2.000000, 2.000000)">
+            <g id="Group-5" transform="translate(10.000000, 0.000000)">
+                <path d="M113.382413,151.888668 L140.161554,198.409543" id="Path-6" stroke="#DCE1E4" stroke-width="3.97614314"></path>
+                <rect id="Rectangle-6" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="-0.281493046" y="18.0914513" width="174.959714" height="118.88668" rx="1.59045726"></rect>
+                <polygon id="Triangle-Copy-3" fill="#EDF0F1" transform="translate(164.335086, 83.335086) rotate(-135.000000) translate(-164.335086, -83.335086) " points="164.335086 81.2732123 166.989737 85.3969602 161.680436 85.3969602"></polygon>
+                <polygon id="Triangle-Copy-5" fill="#EDF0F1" transform="translate(154.335086, 130.335086) rotate(-135.000000) translate(-154.335086, -130.335086) " points="154.335086 128.273212 156.989737 132.39696 151.680436 132.39696"></polygon>
+                <polygon id="Triangle-Copy-2" fill="#EDF0F1" transform="translate(9.339849, 115.954026) rotate(-415.000000) translate(-9.339849, -115.954026) " points="9.33984893 113.149924 14.6449187 118.758128 4.03477919 118.758128"></polygon>
+                <polygon id="Triangle-Copy-6" fill="#EDF0F1" transform="translate(33.339849, 37.954026) rotate(-257.000000) translate(-33.339849, -37.954026) " points="33.3398489 35.1499235 38.6449187 40.7581276 28.0347792 40.7581276"></polygon>
+                <polygon id="Triangle-Copy-4" fill="#EDF0F1" transform="translate(156.339849, 71.954026) rotate(-315.000000) translate(-156.339849, -71.954026) " points="156.339849 69.1499235 161.644919 74.7581276 151.034779 74.7581276"></polygon>
+                <polygon id="Triangle-Copy-3" fill="#EDF0F1" transform="translate(57.527189, 123.775026) rotate(-135.000000) translate(-57.527189, -123.775026) " points="57.5271892 121.713152 60.1818394 125.8369 54.8725389 125.8369"></polygon>
+                <path d="M56.8486708,154.671968 L33.2433538,199.005964" id="Path-4" stroke="#DCE1E4" stroke-width="3.97614314"></path>
+                <path d="M86.9880716,155.467197 L86.9880716,193.604394" id="Path-5" stroke="#DCE1E4" stroke-width="3.97614314"></path>
+                <path d="M113.382413,151.888668 L120.207174,163.744681" id="Path-6-Copy" stroke="#BCC5CA" stroke-width="3.97614314" opacity="0.5"></path>
+                <path d="M56.8486708,154.671968 L51.5708389,164.584454" id="Path-4-Copy" stroke="#BCC5CA" stroke-width="3.97614314" opacity="0.5"></path>
+                <path d="M86.9880716,155.467197 L86.9880716,173.607196" id="Path-5-Copy" stroke="#BCC5CA" stroke-width="3.97614314" opacity="0.5"></path>
+                <rect id="Rectangle-9-Copy" fill="#EDF0F1" x="21.7546012" y="41.5685885" width="134.887526" height="80.7157058" rx="0.795228628"></rect>
+                <rect id="Rectangle-9" stroke="#DCE1E4" stroke-width="1.19284294" fill="#FFFFFF" x="19.1581798" y="37.972167" width="136.080369" height="81.9085487" rx="0.795228628"></rect>
+                <rect id="Rectangle-13" stroke="#DCE1E4" stroke-width="1.19284294" fill="#DCE1E4" x="84.2215744" y="-0.596421471" width="5.95357914" height="13.916501" rx="0.795228628"></rect>
+                <rect id="Rectangle-10-Copy" fill="#DCE1E4" x="62.601227" y="13.1332008" width="49.194274" height="18.6878728" rx="2.38568588"></rect>
+                <rect id="Rectangle-10" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="62.0048055" y="10.5367793" width="50.387117" height="19.8807157" rx="2.38568588"></rect>
+            </g>
+            <rect id="Rectangle-7" stroke="#DCE1E4" stroke-width="1.19284294" fill="#F8F9FA" x="-0.596421471" y="135.785288" width="195.192843" height="19.0854871" rx="0.795228628"></rect>
+            <path d="M78.5,15.5 L93.5332964,15.5" id="Line-2" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
+            <path d="M97.125,15.5 L100.883324,15.5" id="Line-2-Copy" stroke="#DCE1E4" stroke-width="2" stroke-linecap="square"></path>
+        </g>
+    </g>
+</svg>

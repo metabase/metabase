@@ -160,12 +160,12 @@ export function downgradeNativePermissionsIfNeeded(
     currentSchemas === "all" &&
     currentNative === "write"
   ) {
-    // if changing schemas to controlled, downgrade native to read
+    // if changing schemas to controlled, downgrade native to none
     return updateNativePermission(
       permissions,
       groupId,
       { databaseId },
-      "read",
+      "none",
       metadata,
     );
   } else {

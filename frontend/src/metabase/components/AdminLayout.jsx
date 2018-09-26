@@ -20,7 +20,7 @@ export default class AdminLayout extends Component {
         <AdminHeader ref="header" title={title} />
         <div className="MetadataEditor-main flex flex-row flex-full mt2">
           {sidebar}
-          <div className="px2 flex-full">{children}</div>
+          <div className="px2 full">{children}</div>
         </div>
       </div>
     );

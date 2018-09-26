@@ -12,6 +12,7 @@ import AreaChart from "./visualizations/AreaChart.jsx";
 import MapViz from "./visualizations/Map.jsx";
 import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel from "./visualizations/Funnel.jsx";
+import Gauge from "./visualizations/Gauge.jsx";
 import ObjectDetail from "./visualizations/ObjectDetail.jsx";
 import { t } from "c-3po";
 import _ from "underscore";
@@ -26,6 +27,9 @@ visualizations.get = function(key) {
 };
 
 export function registerVisualization(visualization) {
+  if (visualization == null) {
+    throw new Error(t`Visualization is null`);
+  }
   let identifier = visualization.identifier;
   if (identifier == null) {
     throw new Error(
@@ -121,6 +125,7 @@ const extractRemappedColumns = data => {
 
 registerVisualization(Scalar);
 registerVisualization(Progress);
+registerVisualization(Gauge);
 registerVisualization(Table);
 registerVisualization(Text);
 registerVisualization(LineChart);

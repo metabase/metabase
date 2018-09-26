@@ -104,6 +104,10 @@ export default class LeafletMap extends Component {
     }
   }
 
+  componentWillUnmount() {
+    this.map.remove();
+  }
+
   startFilter() {
     this._filter = new L.Draw.Rectangle(
       this.map,

@@ -15,8 +15,12 @@
 ;; See test_resources/ldap.ldif for fixtures
 
 (expect
-  "\\2AJohn \\28Dude\\29 Doe\\5C"
-  (#'ldap/escape-value "*John (Dude) Doe\\"))
+  "\\20\\2AJohn \\28Dude\\29 Doe\\5C"
+  (#'ldap/escape-value " *John (Dude) Doe\\"))
+
+(expect
+  "John\\2BSmith@metabase.com"
+  (#'ldap/escape-value "John+Smith@metabase.com"))
 
 ;; The connection test should pass with valid settings
 (expect-with-ldap-server

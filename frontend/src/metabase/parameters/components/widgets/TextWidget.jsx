@@ -54,7 +54,9 @@ export default class TextWidget extends Component {
       : this.props.placeholder || t`Enter a value...`;
 
     const focusChanged = isFocused => {
-      if (parentFocusChanged) parentFocusChanged(isFocused);
+      if (parentFocusChanged) {
+        parentFocusChanged(isFocused);
+      }
       this.setState({ isFocused });
     };
 

@@ -30,7 +30,7 @@ export const getDefaultAlert = (question, user, visualizationSettings) => {
   };
 
   return {
-    card: { id: question.id() },
+    card: { id: question.id(), include_csv: false, include_xls: false },
     channels: [defaultEmailChannel],
     ...typeDependentAlertFields,
   };

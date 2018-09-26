@@ -2,7 +2,7 @@
 
 **This guide will teach you:**
 
-*   [What Metabase does](01-what-is-metabase.md)
+*   [An overview of Metabase](01-what-is-metabase.md)
 *   [The basics of database terminology](02-database-basics.md)
 *   [Basic exploration in Metabase](03-basic-exploration.md)
 *   [Asking questions in Metabase](04-asking-questions.md)

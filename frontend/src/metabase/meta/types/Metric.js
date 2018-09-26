@@ -9,5 +9,5 @@ export type Metric = {
   name: string,
   id: MetricId,
   table_id: TableId,
-  is_active: boolean,
+  archived: boolean,
 };

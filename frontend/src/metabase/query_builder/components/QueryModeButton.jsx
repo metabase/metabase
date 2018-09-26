@@ -69,7 +69,7 @@ export default class QueryModeButton extends Component {
             data-metabase-event={"QueryBuilder;Toggle Mode"}
             className={cx("cursor-pointer", {
               "text-brand-hover": onClick,
-              "text-grey-1": !onClick,
+              "text-light": !onClick,
             })}
             onClick={onClick}
           >

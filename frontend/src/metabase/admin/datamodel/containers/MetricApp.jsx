@@ -49,11 +49,11 @@ export default class MetricApp extends Component {
     let { tableMetadata } = this.props;
     if (metric.id != null) {
       await this.props.updateMetric(metric);
-      this.props.clearRequestState({ statePath: ["metadata", "metrics"] });
+      this.props.clearRequestState({ statePath: ["entities", "metrics"] });
       MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     } else {
       await this.props.createMetric(metric);
-      this.props.clearRequestState({ statePath: ["metadata", "metrics"] });
+      this.props.clearRequestState({ statePath: ["entities", "metrics"] });
       MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
     }
 

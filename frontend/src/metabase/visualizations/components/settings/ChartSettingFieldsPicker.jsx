@@ -12,6 +12,7 @@ const ChartSettingFieldsPicker = ({
     {Array.isArray(value) ? (
       value.map((v, index) => (
         <ChartSettingFieldPicker
+          className={index > 0 ? "mt1" : null}
           key={index}
           value={v}
           options={options}

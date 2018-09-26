@@ -55,3 +55,4 @@ bin/node_modules/
 *.log
 *.trace.db
 /metabase.iml
+/backend-checksums.txt

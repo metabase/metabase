@@ -25,18 +25,25 @@ const SPECIAL_STRINGS = new Set([
   "Max",
 ]);
 
+const obfuscateString = string => {
+  if (SPECIAL_STRINGS.has(string)) {
+    return string.toUpperCase();
+  } else {
+    // divide by 2 because Unicode `FULL BLOCK` is quite wide
+    return new Array(Math.ceil(string.length / 2) + 1).join("█");
+  }
+};
+
 export function enableTranslatedStringReplacement() {
   const c3po = require("c-3po");
   const _t = c3po.t;
   const _jt = c3po.jt;
+  const _ngettext = c3po.ngettext;
   c3po.t = (...args) => {
-    const string = _t(...args);
-    if (SPECIAL_STRINGS.has(string)) {
-      return string.toUpperCase();
-    } else {
-      // divide by 2 because Unicode `FULL BLOCK` is quite wide
-      return new Array(Math.ceil(string.length / 2) + 1).join("█");
-    }
+    return obfuscateString(_t(...args));
+  };
+  c3po.ngettext = (...args) => {
+    return obfuscateString(_ngettext(...args));
   };
   // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {

@@ -1,6 +1,8 @@
 (ns metabase.models.permissions-revision
   (:require [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -8,7 +10,7 @@
 (models/defmodel PermissionsRevision :permissions_revision)
 
 (defn- pre-insert [revision]
-  (assoc revision :created_at (u/new-sql-timestamp)))
+  (assoc revision :created_at (du/new-sql-timestamp)))
 
 (u/strict-extend (class PermissionsRevision)
   models/IModel

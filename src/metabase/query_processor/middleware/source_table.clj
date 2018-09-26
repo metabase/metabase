@@ -1,28 +1,19 @@
 (ns metabase.query-processor.middleware.source-table
-  (:require [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qputil]
+  (:require [metabase.mbql.util :as mbql.u]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
-(defn- resolve-source-table
-  [{{source-table-id :source-table} :query :as expanded-query-dict}]
-  (cond
-    (not (qputil/mbql-query? expanded-query-dict))
-    expanded-query-dict
-
-    (nil? source-table-id)
-    (update-in expanded-query-dict [:query :source-query] (fn [source-query]
-                                                            (if (:native source-query)
-                                                              source-query
-                                                              (:query (resolve-source-table (assoc expanded-query-dict :query source-query))))))
-
-    :else
+(defn- resolve-source-table [query]
+  (when-let [source-table-id (mbql.u/query->source-table-id query)]
     (let [source-table (or (db/select-one [Table :schema :name :id], :id source-table-id)
-                           (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))]
-      (assoc-in expanded-query-dict [:query :source-table] source-table))))
+                           (throw (Exception. (str (trs "Cannot run query: could not find source table {0}." source-table-id)))))]
+      (qp.store/store-table! source-table)))
+  query)
 
 (defn resolve-source-table-middleware
-  "Middleware that will take the source-table (an integer) and hydrate
-  that source table from the the database and attach it as
-  `:source-table`"
+  "Middleware that will take the source-table (an integer) and hydrate that source table from the the database and
+  attach it as `:source-table`"
   [qp]
   (comp qp resolve-source-table))

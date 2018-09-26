@@ -1,8 +1,6 @@
 /* @flow */
 
-import api from "metabase/lib/api";
-const { GET, PUT, POST, DELETE } = api;
-
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 // use different endpoints for embed previews
@@ -38,12 +36,14 @@ export const CardApi = {
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
-  updateLabels: POST("/api/card/:cardId/labels"),
 
   listPublic: GET("/api/card/public"),
   listEmbeddable: GET("/api/card/embeddable"),
   createPublicLink: POST("/api/card/:id/public_link"),
   deletePublicLink: DELETE("/api/card/:id/public_link"),
+  // related
+  related: GET("/api/card/:cardId/related"),
+  adHocRelated: POST("/api/card/related"),
 };
 
 export const DashboardApi = {
@@ -71,8 +71,9 @@ export const CollectionsApi = {
   list: GET("/api/collection"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
+  // Temporary route for getting things not in a collection
+  getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
-  delete: DELETE("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
   updateGraph: PUT("/api/collection/graph"),
 };
@@ -135,7 +136,7 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
-  // db_tables:                   GET("/api/database/:dbId/tables"),
+  //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
@@ -197,28 +198,6 @@ export const MetabaseApi = {
   dataset_duration: POST("/api/dataset/duration"),
 };
 
-export const AsyncApi = {
-  status: GET("/api/async/:jobId"),
-  // endpoints:                  GET("/api/async/running-jobs")
-};
-
-export const XRayApi = {
-  // X-Rays
-  // NOTE Atte Keinänen 9/28/17: All xrays endpoints are asynchronous.
-  // You should use BackgroundJobRequest in `metabase/lib/promise` for invoking them.
-  field_xray: GET("/api/x-ray/field/:fieldId"),
-  table_xray: GET("/api/x-ray/table/:tableId"),
-  segment_xray: GET("/api/x-ray/segment/:segmentId"),
-  card_xray: GET("/api/x-ray/card/:cardId"),
-
-  compare_shared_type: GET(
-    "/api/x-ray/compare/:modelTypePlural/:modelId1/:modelId2",
-  ),
-  compare_two_types: GET(
-    "/api/x-ray/compare/:modelType1/:modelId1/:modelType2/:modelId2",
-  ),
-};
-
 export const PulseApi = {
   list: GET("/api/pulse"),
   create: POST("/api/pulse"),
@@ -265,13 +244,6 @@ export const RevisionsApi = {
   get: GET("/api/:entity/:id/revisions"),
 };
 
-export const LabelApi = {
-  list: GET("/api/label"),
-  create: POST("/api/label"),
-  update: PUT("/api/label/:id"),
-  delete: DELETE("/api/label/:id"),
-};
-
 export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
@@ -285,6 +257,7 @@ export const SessionApi = {
 export const SettingsApi = {
   list: GET("/api/setting"),
   put: PUT("/api/setting/:key"),
+  putAll: PUT("/api/setting"),
   // setAll:                      PUT("/api/setting"),
   // delete:                   DELETE("/api/setting/:key"),
 };
@@ -321,6 +294,7 @@ export const UserApi = {
   update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/qbnewb"),
   delete: DELETE("/api/user/:userId"),
+  reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
 };
 

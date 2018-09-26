@@ -6,6 +6,7 @@ import FieldName from "./FieldName.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class BreakoutWidget extends Component {
   constructor(props, context) {
@@ -77,12 +78,12 @@ export default class BreakoutWidget extends Component {
       return (
         <div className="flex align-center">
           <FieldName
-            className={this.props.className}
+            className={cx(this.props.className, "QueryOption")}
             tableMetadata={this.props.tableMetadata}
             field={field}
             fieldOptions={this.props.fieldOptions}
             customFieldOptions={this.props.customFieldOptions}
-            removeField={() => this.setBreakout(null)}
+            onRemove={() => this.setBreakout(null)}
             onClick={this.open}
           />
           {this.renderPopover()}

@@ -36,6 +36,7 @@ export default class Popover extends Component {
     id: PropTypes.string,
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
+    hasBackground: PropTypes.bool,
     // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
@@ -61,6 +62,7 @@ export default class Popover extends Component {
   static defaultProps = {
     isOpen: true,
     hasArrow: true,
+    hasBackground: true,
     verticalAttachments: ["top", "bottom"],
     horizontalAttachments: ["center", "left", "right"],
     alignVerticalEdge: false,
@@ -106,9 +108,10 @@ export default class Popover extends Component {
         if (this._popoverElement.parentNode) {
           this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
-        clearInterval(this._timer);
-        delete this._popoverElement, this._timer;
+        delete this._popoverElement;
       }, POPOVER_TRANSITION_LEAVE);
+      clearInterval(this._timer);
+      delete this._timer;
     }
   }
 
@@ -133,7 +136,9 @@ export default class Popover extends Component {
           className={cx(
             "PopoverBody",
             {
-              "PopoverBody--withArrow": this.props.hasArrow,
+              "PopoverBody--withBackground": this.props.hasBackground,
+              "PopoverBody--withArrow":
+                this.props.hasArrow && this.props.hasBackground,
               "PopoverBody--autoWidth": this.props.autoWidth,
             },
             // TODO kdoh 10/16/2017 we should eventually remove this
@@ -143,7 +148,9 @@ export default class Popover extends Component {
         >
           {typeof this.props.children === "function"
             ? this.props.children(childProps)
-            : React.Children.count(this.props.children) === 1
+            : React.Children.count(this.props.children) === 1 &&
+              // NOTE: workaround for https://github.com/facebook/react/issues/12136
+              !Array.isArray(this.props.children)
               ? React.cloneElement(
                   React.Children.only(this.props.children),
                   childProps,

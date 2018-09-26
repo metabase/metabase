@@ -157,18 +157,13 @@
     {:columns columns
      :rows rows}))
 
-(defn- unquote-table-name
-  "Workaround for unquoting table name as the JDBC api does not support this feature"
-  [sql-string table-name]
-  (string/replace sql-string (str "\"" table-name "\"") table-name))
-
 (defn- mbql->native
   "Transpile MBQL query into a native SQL statement."
   [driver {inner-query :query, database :database, :as outer-query}]
   (binding [metabase.driver.generic-sql.query-processor/*query* outer-query]
     (let [honeysql-form (sql-qp/build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)
-          athena-sql (unquote-table-name sql (get-in inner-query [:source-table :name]))]
+          athena-sql sql]
       {:query  athena-sql
        :params args})))
 

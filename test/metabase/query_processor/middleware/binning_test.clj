@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [expectations :refer [expect]]
             [metabase.query-processor.middleware
-             [binning :as binning :refer :all]
+             [binning :as binning]
              [expand :as ql]]))
 
 (expect
@@ -70,19 +70,12 @@
                                 (ql/between (ql/field-id 1) 600 700)]}))
 
 (expect
-  [[0.0 1000.0 125.0 8]
-   [200N 1600N 200 8]
-   [0.0 1200.0 200 8]
-   [0.0 1005.0 15.0 67]]
-  [((juxt :min-value :max-value :bin-width :num-bins)
-         (nicer-breakout {:field-id 1 :min-value 100 :max-value 1000
-                          :strategy :num-bins :num-bins 8}))
-   ((juxt :min-value :max-value :bin-width :num-bins)
-         (nicer-breakout {:field-id 1 :min-value 200 :max-value 1600
-                          :strategy :num-bins :num-bins 8}))
-   ((juxt :min-value :max-value :bin-width :num-bins)
-         (nicer-breakout {:field-id 1 :min-value 9 :max-value 1002
-                          :strategy :num-bins :num-bins 8}))
-   ((juxt :min-value :max-value :bin-width :num-bins)
-         (nicer-breakout {:field-id 1 :min-value 9 :max-value 1002
-                          :strategy :bin-width :bin-width 15.0}))])
+  [[ 0.0 1000.0 125.0  8]
+   [200N  1600N   200  8]
+   [ 0.0 1200.0   200  8]
+   [ 0.0 1005.0  15.0 67]]
+  (for [breakout [{:field-id 1, :min-value 100, :max-value 1000, :strategy :num-bins,  :num-bins     8}
+                  {:field-id 1, :min-value 200, :max-value 1600, :strategy :num-bins,  :num-bins     8}
+                  {:field-id 1, :min-value   9, :max-value 1002, :strategy :num-bins,  :num-bins     8}
+                  {:field-id 1, :min-value   9, :max-value 1002, :strategy :bin-width, :bin-width 15.0}]]
+    ((juxt :min-value :max-value :bin-width :num-bins) (binning/nicer-breakout breakout))))

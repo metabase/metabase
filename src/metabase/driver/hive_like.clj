@@ -124,7 +124,7 @@
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"
-  [driver settings connection query]
+  [_ _ connection query]
   (run-query query connection))
 
 (defmethod hformat/fn-handler "hive-like-from-unixtime" [_ datetime-literal]

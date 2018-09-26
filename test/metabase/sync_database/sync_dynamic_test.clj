@@ -61,6 +61,7 @@
           details-field-id      (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
           age-field-id          (u/get-id (db/select-one-id Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
       (db/delete! Field :id age-field-id)
+      (db/update! Table transactions-table-id :fields_hash "something new")
       ;; now sync again.
       (sync-metadata/sync-db-metadata! db)
       ;; field should be added back
@@ -118,6 +119,7 @@
                                             :active        true))]
 
       ;; now sync again.
+      (db/update! Table transactions-table-id :fields_hash "something new")
       (sync-metadata/sync-db-metadata! db)
       ;; field should become inactive
       (db/select-one-field :active Field :id gender-field-id))))
@@ -148,6 +150,7 @@
                                             :active        true))]
 
       ;; now sync again.
+      (db/update! Table transactions-table-id :fields_hash "something new")
       (sync-metadata/sync-db-metadata! db)
       ;; field should become inactive
       (db/select-one-field :active Field :id blueberries-field-id))))

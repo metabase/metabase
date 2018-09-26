@@ -8,6 +8,7 @@
 import { setIn } from "icepick";
 
 jest.mock("metabase/lib/analytics");
+jest.mock("metabase/containers/CollectionSelect");
 
 import { GroupsPermissions } from "metabase/meta/types/Permissions";
 import { normalizedMetadata } from "./selectors.unit.spec.fixtures";
@@ -77,7 +78,7 @@ const initialState = {
       groups,
     },
   },
-  metadata: normalizedMetadata,
+  entities: normalizedMetadata,
 };
 
 let state = initialState;
@@ -210,7 +211,7 @@ describe("permissions selectors", () => {
         permission: "none",
       });
       expect(schemalessDataset.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
+        native: "none",
         schemas: {
           "": {
             "10": "none",
@@ -246,16 +247,6 @@ describe("permissions selectors", () => {
     });
 
     it("should restrict access correctly on db level", () => {
-      // Should let change the native permission to "read"
-      schemalessDataset.changeDbNativePermissions({
-        groupId: 1,
-        permission: "read",
-      });
-      expect(schemalessDataset.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
-        schemas: "all",
-      });
-
       // Should not let change the native permission to none
       schemalessDataset.changeDbNativePermissions({
         groupId: 1,
@@ -321,10 +312,10 @@ describe("permissions selectors", () => {
       // Should pass changes to native permissions through
       schemalessDataset.changeDbNativePermissions({
         groupId: 2,
-        permission: "read",
+        permission: "write",
       });
       expect(schemalessDataset.getPermissions({ groupId: 2 })).toMatchObject({
-        native: "read",
+        native: "write",
         schemas: "all",
       });
     });
@@ -377,14 +368,14 @@ describe("permissions selectors", () => {
     });
 
     it("should restrict access correctly on table level", () => {
-      // Revoking access to one table should downgrade the native permissions to "read"
+      // Revoking access to one table should downgrade the native permissions to "none"
       schema1.changeTablePermissions({
         tableId: 5,
         groupId: 1,
         permission: "none",
       });
       expect(schema1.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
+        native: "none",
         schemas: {
           schema_1: {
             "5": "none",
@@ -406,7 +397,7 @@ describe("permissions selectors", () => {
         permission: "none",
       });
       expect(schema2.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
+        native: "none",
         schemas: {
           schema_1: {
             "5": "none",
@@ -428,7 +419,7 @@ describe("permissions selectors", () => {
       });
 
       expect(schema1.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
+        native: "none",
         schemas: {
           schema_1: "none",
           schema_2: {
@@ -455,7 +446,7 @@ describe("permissions selectors", () => {
       // Revoking access to one schema
       schema2.changeSchemaPermissions({ groupId: 1, permission: "none" });
       expect(schema2.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
+        native: "none",
         schemas: {
           schema_1: "all",
           schema_2: "none",
@@ -471,13 +462,6 @@ describe("permissions selectors", () => {
     });
 
     it("should restrict access correctly on db level", () => {
-      // Should let change the native permission to "read"
-      schema1.changeDbNativePermissions({ groupId: 1, permission: "read" });
-      expect(schema1.getPermissions({ groupId: 1 })).toMatchObject({
-        native: "read",
-        schemas: "all",
-      });
-
       // Should let change the native permission to none
       schema1.changeDbNativePermissions({ groupId: 1, permission: "none" });
       expect(schema1.getPermissions({ groupId: 1 })).toMatchObject({
@@ -573,9 +557,9 @@ describe("permissions selectors", () => {
       });
 
       // Should pass changes to native permissions through
-      schema1.changeDbNativePermissions({ groupId: 2, permission: "read" });
+      schema1.changeDbNativePermissions({ groupId: 2, permission: "write" });
       expect(schema1.getPermissions({ groupId: 2 })).toMatchObject({
-        native: "read",
+        native: "write",
         schemas: "all",
       });
     });

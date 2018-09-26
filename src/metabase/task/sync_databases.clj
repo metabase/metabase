@@ -25,7 +25,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private job-context->database :- DatabaseInstance
-  "Get the Database referred to in JOB-CONTEXT. Guaranteed to return a valid Database."
+  "Get the Database referred to in `job-context`. Guaranteed to return a valid Database."
   [job-context]
   (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
 
@@ -68,27 +68,27 @@
 ;; using them
 
 (s/defn ^:private job-key :- JobKey
-  "Return an appropriate string key for the job described by TASK-INFO for DATABASE-OR-ID."
+  "Return an appropriate string key for the job described by `task-info` for `database-or-id`."
   [task-info :- TaskInfo]
   (jobs/key (format "metabase.task.%s.job" (name (:key task-info)))))
 
 (s/defn ^:private trigger-key :- TriggerKey
-  "Return an appropriate string key for the trigger for TASK-INFO and DATABASE-OR-ID."
+  "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/get-id database))))
 
 (s/defn ^:private cron-schedule :- cron-util/CronScheduleString
-  "Fetch the appropriate cron schedule string for DATABASE and TASK-INFO."
+  "Fetch the appropriate cron schedule string for `database` and `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
 (s/defn ^:private job-class :- Class
-  "Get the Job class for TASK-INFO."
+  "Get the Job class for `task-info`."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
 (s/defn ^:private trigger-description :- s/Str
-  "Return an appropriate description string for a job/trigger for Database described by TASK-INFO."
+  "Return an appropriate description string for a job/trigger for Database described by `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/get-id database)))
 
@@ -103,7 +103,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private delete-task!
-  "Cancel a single sync task for DATABASE-OR-ID and TASK-INFO."
+  "Cancel a single sync task for `database-or-id` and `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red "Unscheduling task for Database %d: trigger: %s"
@@ -111,7 +111,7 @@
     (task/delete-trigger! trigger-key)))
 
 (s/defn unschedule-tasks-for-db!
-  "Cancel *all* scheduled sync and FieldValues caching tassks for DATABASE-OR-ID."
+  "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
   [database :- DatabaseInstance]
   (delete-task! database sync-analyze-task-info)
   (delete-task! database field-values-task-info))
@@ -122,7 +122,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private job :- JobDetail
-  "Build a durable Quartz Job for TASK-INFO. Durable in Quartz allows the job to exist even if there are no triggers
+  "Build a durable Quartz Job for `task-info`. Durable in Quartz allows the job to exist even if there are no triggers
   for it."
   [task-info :- TaskInfo]
   (jobs/build
@@ -135,7 +135,7 @@
 (s/def ^:private field-values-job (job field-values-task-info))
 
 (s/defn ^:private trigger :- CronTrigger
-  "Build a Quartz Trigger for DATABASE and TASK-INFO."
+  "Build a Quartz Trigger for `database` and `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
@@ -153,7 +153,7 @@
       (cron/with-misfire-handling-instruction-fire-and-proceed)))))
 
 (s/defn ^:private schedule-tasks-for-db!
-  "Schedule a new Quartz job for DATABASE and TASK-INFO."
+  "Schedule a new Quartz job for `database` and `task-info`."
   [database :- DatabaseInstance]
   (let [sync-trigger (trigger database sync-analyze-task-info)
         fv-trigger   (trigger database field-values-task-info)]

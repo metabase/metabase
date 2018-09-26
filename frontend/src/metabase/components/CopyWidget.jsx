@@ -16,7 +16,7 @@ export default class CopyWidget extends Component {
     return (
       <div className="flex">
         <input
-          className="flex-full p1 flex align-center text-grey-4 text-bold no-focus border-top border-left border-bottom border-med rounded-left"
+          className="flex-full p1 flex align-center text-medium text-bold no-focus border-top border-left border-bottom border-med rounded-left"
           style={{ borderRight: "none" }}
           type="text"
           value={value}

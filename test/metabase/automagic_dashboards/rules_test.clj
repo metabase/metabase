@@ -14,9 +14,12 @@
 (expect "ga:foo"  (#'rules/->type "ga:foo"))
 (expect :type/Foo (#'rules/->type "Foo"))
 
-(expect (every? some? (load-rules "table")))
-(expect (every? some? (load-rules "metrics")))
-(expect (every? some? (load-rules "fields")))
+;; This also tests that all the rules are valid (else there would be nils returned)
+(expect (every? some? (get-rules ["table"])))
+(expect (every? some? (get-rules ["metrics"])))
+(expect (every? some? (get-rules ["fields"])))
+
+(expect (some? (get-rules ["table" "GenericTable" "ByCountry"])))
 
 (expect true  (dimension-form? [:dimension "Foo"]))
 (expect true  (dimension-form? ["dimension" "Foo"]))

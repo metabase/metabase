@@ -65,6 +65,7 @@ export default class ParameterWidget extends Component {
       setValue,
       setDefaultValue,
       remove,
+      children,
     } = this.props;
 
     const isEditingDashboard = isEditing;
@@ -90,6 +91,7 @@ export default class ParameterWidget extends Component {
             parameter.name,
             isFullscreen,
           )}
+          {children}
         </FieldSet>
       );
     };
@@ -119,6 +121,7 @@ export default class ParameterWidget extends Component {
             }}
             autoFocus
           />
+          {children}
         </FieldSet>
       );
     };
@@ -153,6 +156,7 @@ export default class ParameterWidget extends Component {
             parameter.name,
             isFullscreen,
           )}
+          {children}
         </FieldSet>
       );
     };
@@ -177,6 +181,7 @@ export default class ParameterWidget extends Component {
               <span className="ml1">{t`Remove`}</span>
             </div>
           </div>
+          {children}
         </FieldSet>
       );
     };
@@ -189,7 +194,7 @@ export default class ParameterWidget extends Component {
       } else {
         return <span className="hide" />;
       }
-    } else if (!isEditingDashboard) {
+    } else if (!isEditingDashboard || !setEditingParameter) {
       return renderFieldInNormalMode();
     } else if (isEditingParameter) {
       if (this.state.isEditingName) {

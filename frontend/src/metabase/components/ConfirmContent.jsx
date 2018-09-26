@@ -2,6 +2,9 @@ import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 import { t } from "c-3po";
+
+import Button from "metabase/components/Button";
+
 const nop = () => {};
 
 const ConfirmContent = ({
@@ -16,36 +19,35 @@ const ConfirmContent = ({
 }) => (
   <ModalContent
     title={title}
+    formModal
     onClose={() => {
       onCancel();
       onClose();
     }}
   >
-    <div className="mx4">{content}</div>
+    <div>{content}</div>
 
-    <div className="Form-inputs mb4">
-      <p>{message}</p>
-    </div>
+    <p className="mb4">{message}</p>
 
-    <div className="Form-actions ml-auto">
-      <button
-        className="Button"
+    <div className="ml-auto mb4">
+      <Button
         onClick={() => {
           onCancel();
           onClose();
         }}
       >
         {cancelButtonText}
-      </button>
-      <button
-        className="Button Button--danger ml2"
+      </Button>
+      <Button
+        danger
+        ml={2}
         onClick={() => {
           onAction();
           onClose();
         }}
       >
         {confirmButtonText}
-      </button>
+      </Button>
     </div>
   </ModalContent>
 );

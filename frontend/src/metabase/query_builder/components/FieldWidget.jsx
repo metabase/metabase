@@ -8,6 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import Query from "metabase/lib/query";
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class FieldWidget extends Component {
   constructor(props, context) {
@@ -25,7 +26,7 @@ export default class FieldWidget extends Component {
     fieldOptions: PropTypes.object.isRequired,
     customFieldOptions: PropTypes.object,
     setField: PropTypes.func.isRequired,
-    removeField: PropTypes.func,
+    onRemove: PropTypes.func,
     isInitiallyOpen: PropTypes.bool,
     tableMetadata: PropTypes.object.isRequired,
     enableSubDimensions: PropTypes.bool,
@@ -70,13 +71,13 @@ export default class FieldWidget extends Component {
     return (
       <div className="flex align-center">
         <FieldName
-          className={className}
+          className={cx(className, "QueryOption")}
           field={field}
           query={query}
           tableMetadata={this.props.tableMetadata}
           fieldOptions={this.props.fieldOptions}
           customFieldOptions={this.props.customFieldOptions}
-          removeField={this.props.removeField}
+          onRemove={this.props.onRemove}
           onClick={this.toggle}
         />
         {this.renderPopover()}

@@ -30,6 +30,7 @@ import {
   UPDATE_QUESTION,
   SET_DATASET_QUERY,
   RUN_QUERY,
+  CLEAR_QUERY_RESULT,
   CANCEL_QUERY,
   QUERY_COMPLETED,
   QUERY_ERRORED,
@@ -39,6 +40,7 @@ import {
   DELETE_PUBLIC_LINK,
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_EMBEDDING_PARAMS,
+  SHOW_CHART_SETTINGS,
 } from "./actions";
 
 // various ui state options
@@ -105,6 +107,10 @@ export const uiControls = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
     },
+
+    [SHOW_CHART_SETTINGS]: {
+      next: (state, { payload }) => ({ ...state, chartSettings: payload }),
+    },
   },
   {
     isShowingDataReference: false,
@@ -113,6 +119,7 @@ export const uiControls = handleActions(
     isShowingNewbModal: false,
     isEditing: false,
     isRunning: false,
+    chartSettings: null,
   },
 );
 
@@ -249,28 +256,17 @@ export const lastRunCard = handleActions(
   null,
 );
 
-// NOTE Atte Keinänen 6/1/17: DEPRECATED, you should use queryResults instead
-export const queryResult = handleActions(
-  {
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [QUERY_COMPLETED]: {
-      next: (state, { payload }) => payload.queryResults[0],
-    },
-    [QUERY_ERRORED]: {
-      next: (state, { payload }) => (payload ? payload : state),
-    },
-  },
-  null,
-);
-
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
-    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResults },
-    [QUERY_ERRORED]: {
-      next: (state, { payload }) => (payload ? payload : state),
+    [QUERY_COMPLETED]: {
+      next: (state, { payload }) => payload.queryResults,
     },
+    [QUERY_ERRORED]: {
+      next: (state, { payload }) => (payload ? [payload] : state),
+    },
+    [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
   null,
 );

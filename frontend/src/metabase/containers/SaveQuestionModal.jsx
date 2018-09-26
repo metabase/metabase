@@ -3,12 +3,11 @@ import PropTypes from "prop-types";
 
 import { CSSTransitionGroup } from "react-transition-group";
 
-import FormField from "metabase/components/FormField.jsx";
+import FormField from "metabase/components/form/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
 import Button from "metabase/components/Button";
-import CollectionList from "metabase/questions/containers/CollectionList";
+import CollectionSelect from "metabase/containers/CollectionSelect";
 
 import Query from "metabase/lib/query";
 import { t } from "c-3po";
@@ -33,7 +32,10 @@ export default class SaveQuestionModal extends Component {
               )
             : "",
         description: props.card.description || "",
-        collection_id: props.card.collection_id || null,
+        collection_id:
+          props.card.collection_id === undefined
+            ? props.initialCollectionId
+            : props.card.collection_id,
         saveType: props.originalCard ? "overwrite" : "create",
       },
     };
@@ -159,9 +161,9 @@ export default class SaveQuestionModal extends Component {
     if (!this.props.card.id && this.props.originalCard) {
       saveOrUpdate = (
         <FormField
+          name="saveType"
           displayName={t`Replace or save as new?`}
-          fieldName="saveType"
-          errors={this.state.errors}
+          formError={this.state.errors}
         >
           <Radio
             value={this.state.details.saveType}
@@ -175,7 +177,7 @@ export default class SaveQuestionModal extends Component {
               },
               { name: t`Save as new question`, value: "create" },
             ]}
-            isVertical
+            vertical
           />
         </FormField>
       );
@@ -199,7 +201,7 @@ export default class SaveQuestionModal extends Component {
         ]}
         onClose={this.props.onClose}
       >
-        <form className="Form-inputs" onSubmit={this.formSubmitted}>
+        <form onSubmit={this.formSubmitted}>
           {saveOrUpdate}
           <CSSTransitionGroup
             transitionName="saveQuestionModalFields"
@@ -212,9 +214,9 @@ export default class SaveQuestionModal extends Component {
                 className="saveQuestionModalFields"
               >
                 <FormField
+                  name="name"
                   displayName={t`Name`}
-                  fieldName="name"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <input
                     className="Form-input full"
@@ -226,9 +228,9 @@ export default class SaveQuestionModal extends Component {
                   />
                 </FormField>
                 <FormField
+                  name="description"
                   displayName={t`Description`}
-                  fieldName="description"
-                  errors={this.state.errors}
+                  formError={this.state.errors}
                 >
                   <textarea
                     className="Form-input full"
@@ -238,41 +240,17 @@ export default class SaveQuestionModal extends Component {
                     onChange={e => this.onChange("description", e.target.value)}
                   />
                 </FormField>
-                <CollectionList writable>
-                  {collections =>
-                    collections.length > 0 && (
-                      <FormField
-                        displayName={t`Which collection should this go in?`}
-                        fieldName="collection_id"
-                        errors={this.state.errors}
-                      >
-                        <Select
-                          className="block"
-                          value={this.state.details.collection_id}
-                          onChange={e =>
-                            this.onChange("collection_id", e.target.value)
-                          }
-                        >
-                          {[{ name: t`None`, id: null }]
-                            .concat(collections)
-                            .map((collection, index) => (
-                              <Option
-                                key={index}
-                                value={collection.id}
-                                icon={
-                                  collection.id != null ? "collection" : null
-                                }
-                                iconColor={collection.color}
-                                iconSize={18}
-                              >
-                                {collection.name}
-                              </Option>
-                            ))}
-                        </Select>
-                      </FormField>
-                    )
-                  }
-                </CollectionList>
+                <FormField
+                  name="collection_id"
+                  displayName={t`Which collection should this go in?`}
+                  formError={this.state.errors}
+                >
+                  <CollectionSelect
+                    className="block"
+                    value={this.state.details.collection_id}
+                    onChange={value => this.onChange("collection_id", value)}
+                  />
+                </FormField>
               </div>
             )}
           </CSSTransitionGroup>

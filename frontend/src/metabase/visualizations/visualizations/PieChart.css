@@ -26,13 +26,13 @@
 }
 
 :local .Value {
-  color: #676c72;
+  color: var(--color-text-dark);
   font-size: 22px;
   font-weight: bolder;
 }
 
 :local .Title {
-  color: #b8c0c9;
+  color: var(--color-text-light);
   font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;

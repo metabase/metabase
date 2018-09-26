@@ -291,6 +291,54 @@ describe("TokenField", () => {
     });
   });
 
+  describe("when updateOnInputBlur is false", () => {
+    beforeEach(() => {
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          options={DEFAULT_OPTIONS}
+          multi
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputBlur={false}
+        />,
+      );
+    });
+
+    it("should not add freeform value immediately", () => {
+      focusAndType("yep");
+      expect(value()).toEqual([]);
+    });
+    it("should not add freeform value when blurring", () => {
+      focusAndType("yep");
+      blur();
+      expect(value()).toEqual([]);
+    });
+  });
+
+  describe("when updateOnInputBlur is true", () => {
+    beforeEach(() => {
+      component = mount(
+        <TokenFieldWithStateAndDefaults
+          options={DEFAULT_OPTIONS}
+          multi
+          // return null for empty string since it's not a valid
+          parseFreeformValue={value => value || null}
+          updateOnInputBlur={true}
+        />,
+      );
+    });
+
+    it("should not add freeform value immediately", () => {
+      focusAndType("yep");
+      expect(value()).toEqual([]);
+    });
+    it("should add freeform value when blurring", () => {
+      focusAndType("yep");
+      blur();
+      expect(value()).toEqual(["yep"]);
+    });
+  });
+
   describe("key selection", () => {
     [KEYCODE_TAB, KEYCODE_ENTER, KEYCODE_COMMA].map(key =>
       it(`should allow the user to use arrow keys and then ${key} to select a recipient`, () => {

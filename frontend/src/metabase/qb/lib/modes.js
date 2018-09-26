@@ -52,7 +52,11 @@ export function getMode(
         if (tableMetadata && Array.isArray(filter) && filter[0] === "=") {
           const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
           const field = tableMetadata.fields_lookup[fieldId];
-          if (field && field.table.id === query.source_table && isPK(field)) {
+          if (
+            field &&
+            field.table.id === query["source-table"] &&
+            isPK(field)
+          ) {
             return true;
           }
         }

@@ -1,7 +1,7 @@
 (ns metabase.cmd.reset-password
   (:require [metabase.db :as mdb]
             [metabase.models.user :refer [User] :as user]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (defn- set-reset-token!

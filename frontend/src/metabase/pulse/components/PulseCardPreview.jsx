@@ -9,6 +9,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { t } from "c-3po";
 import cx from "classnames";
+import colors, { alpha } from "metabase/lib/colors";
 
 export default class PulseCardPreview extends Component {
   constructor(props, context) {
@@ -68,18 +69,20 @@ export default class PulseCardPreview extends Component {
       cardPreview.pulse_card_type == null;
     return (
       <div
-        className="flex relative flex-full"
+        className="relative full"
         style={{
           maxWidth: 379,
         }}
       >
         <div
-          className="absolute p2 text-grey-2"
+          className="absolute p2 text-light"
           style={{
             top: 2,
             right: 2,
-            background:
-              "linear-gradient(to right, rgba(255,255,255,0.2), white, white)",
+            background: `linear-gradient(to right, ${alpha(
+              colors["bg-white"],
+              0.2,
+            )}, white, white)`,
             paddingLeft: 100,
           }}
         >
@@ -110,7 +113,7 @@ export default class PulseCardPreview extends Component {
           />
         </div>
         <div
-          className="bordered rounded flex-full scroll-x"
+          className="bordered rounded bg-white scroll-x"
           style={{ display: !cardPreview && "none" }}
         >
           {/* Override backend rendering if pulse_card_type == null */}
@@ -177,7 +180,7 @@ const RenderedPulseCardPreviewHeader = ({ children }) => (
                 'Lato, "Helvetica Neue", Helvetica, Arial, sans-serif',
               fontSize: 16,
               fontWeight: 700,
-              color: "rgb(57,67,64)",
+              color: colors["text-dark"],
               textDecoration: "none",
             }}
           >
@@ -195,7 +198,7 @@ RenderedPulseCardPreviewHeader.propTypes = {
 };
 
 const RenderedPulseCardPreviewMessage = ({ children }) => (
-  <div className="text-grey-4">{children}</div>
+  <div className="text-medium">{children}</div>
 );
 
 RenderedPulseCardPreviewMessage.propTypes = {

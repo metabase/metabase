@@ -10,6 +10,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
+import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -48,7 +49,9 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) totalLength += String(value).length;
+  for (let value of values) {
+    totalLength += String(value).length;
+  }
 
   return Math.round(totalLength / values.length);
 }
@@ -73,7 +76,9 @@ function adjustXAxisTicksIfNeeded(axis, chartWidthPixels, xValues) {
   const maxTicks = Math.floor(chartWidthPixels / tickAverageWidthPixels);
 
   // finally, if the chart is currently showing more ticks than we think it can show, adjust it down
-  if (getNumTicks(axis) > maxTicks) axis.ticks(maxTicks);
+  if (getNumTicks(axis) > maxTicks) {
+    axis.ticks(maxTicks);
+  }
 }
 
 export function applyChartTimeseriesXAxis(
@@ -203,13 +208,21 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d =>
-      formatValue(d, {
-        column: dimensionColumn,
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      }),
-    );
+    // if xInterval is less than 1 we need to scale the values before doing
+    // modulo comparison. isMultipleOf will compute it for us but we can do it
+    // once here as an optimization
+    const modulorScale = getModuloScaleFactor(xInterval);
+
+    chart.xAxis().tickFormat(d => {
+      // don't show ticks that aren't multiples of xInterval
+      if (isMultipleOf(d, xInterval, modulorScale)) {
+        return formatValue(d, {
+          column: dimensionColumn,
+          type: "axis",
+          compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+        });
+      }
+    });
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
@@ -238,7 +251,11 @@ export function applyChartQuantitativeXAxis(
   chart.x(scale.domain(xDomain)).xUnits(dc.units.fp.precision(xInterval));
 }
 
-export function applyChartOrdinalXAxis(chart, series, { xValues }) {
+export function applyChartOrdinalXAxis(
+  chart,
+  series,
+  { xValues, isHistogramBar },
+) {
   // find the first nonempty single series
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
@@ -267,6 +284,7 @@ export function applyChartOrdinalXAxis(chart, series, { xValues }) {
         column: dimensionColumn,
         type: "axis",
         compact: chart.settings["graph.x_axis.labels_enabled"] === "compact",
+        noRange: isHistogramBar,
       }),
     );
   } else {

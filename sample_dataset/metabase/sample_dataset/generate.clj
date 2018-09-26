@@ -16,7 +16,8 @@
             [jdistlib.core :as dist]
             [medley.core :as m]
             [metabase.db.spec :as dbspec]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.date :as du])
   (:import java.util.Date))
 
 (def ^:private ^:const sample-dataset-filename
@@ -67,7 +68,7 @@
     {:name       (format "%s %s" first last)
      :email      (internet/free-email (format "%s.%s" first last))
      :password   (str (java.util.UUID/randomUUID))
-     :birth_date (random-date-between (u/relative-date :year -60) (u/relative-date :year -18))
+     :birth_date (random-date-between (du/relative-date :year -60) (du/relative-date :year -18))
      :address    (str (:house-number addr) " " (:street addr))
      :city       (:city addr)
      :zip        (:zip addr)
@@ -75,7 +76,7 @@
      :latitude   (:lat addr)
      :longitude  (:lon addr)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
-     :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))}))
+     :created_at (random-date-between (du/relative-date :year -2) (du/relative-date :year 1))}))
 
 ;;; ## PRODUCTS
 
@@ -141,7 +142,7 @@
    :category   (rand-nth ["Widget" "Gizmo" "Gadget" "Doohickey"])
    :vendor     (random-company-name)
    :price      (random-price 12 100)
-   :created_at (random-date-between (u/relative-date :year -2) (u/relative-date :year 1))})
+   :created_at (random-date-between (du/relative-date :year -2) (du/relative-date :year 1))})
 
 
 ;;; ## ORDERS
@@ -240,7 +241,7 @@
                      (format "No tax rate found for state '%s'." state))
         created-at (random-date-between (min-date (:created_at person)
                                                   (:created_at product))
-                                        (u/relative-date :year 2))
+                                        (du/relative-date :year 2))
         price      (if (> (.getTime created-at) (.getTime (Date. 118 0 1)))
                      (* 1.5 price)
                      price)
@@ -266,7 +267,7 @@
                           4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
                           5 5 5 5 5 5 5 5 5 5 5 5 5])
    :body       (first (lorem/paragraphs))
-   :created_at (random-date-between (:created_at product) (u/relative-date :year 2))})
+   :created_at (random-date-between (:created_at product) (du/relative-date :year 2))})
 
 (defn- add-ids [objs]
   (map-indexed

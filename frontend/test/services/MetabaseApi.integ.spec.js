@@ -21,7 +21,9 @@ function stripKeys(object) {
   if (object && typeof object === "object") {
     for (const key in object) {
       if (
-        /^((updated|created)_at|last_analyzed|timezone|is_on_demand)$/.test(key)
+        /^((updated|created)_at|last_analyzed|timezone|is_on_demand|fields_hash)$/.test(
+          key,
+        )
       ) {
         delete object[key];
       } else {

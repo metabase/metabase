@@ -47,7 +47,9 @@ export default class EditUserForm extends Component {
     let isValid = true;
 
     ["firstName", "lastName", "email"].forEach(fieldName => {
-      if (MetabaseUtils.isEmpty(this.state[fieldName])) isValid = false;
+      if (MetabaseUtils.isEmpty(this.state[fieldName])) {
+        isValid = false;
+      }
     });
 
     if (isValid !== valid) {
@@ -61,7 +63,7 @@ export default class EditUserForm extends Component {
     this.validateForm();
   };
 
-  formSubmitted(e) {
+  async formSubmitted(e) {
     e.preventDefault();
 
     this.setState({
@@ -85,18 +87,27 @@ export default class EditUserForm extends Component {
       return;
     }
 
-    this.props.submitFn({
-      ...(this.props.user || {}),
-      first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
-      last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
-      email: email,
-      groups:
-        this.props.groups && this.state.selectedGroups
-          ? Object.entries(this.state.selectedGroups)
-              .filter(([key, value]) => value)
-              .map(([key, value]) => parseInt(key, 10))
-          : null,
-    });
+    try {
+      await this.props.submitFn({
+        ...(this.props.user || {}),
+        first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
+        last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
+        email: email,
+        groups:
+          this.props.groups && this.state.selectedGroups
+            ? Object.entries(this.state.selectedGroups)
+                .filter(([key, value]) => value)
+                .map(([key, value]) => parseInt(key, 10))
+            : null,
+      });
+    } catch (e) {
+      // HACK: sometimes errors don't follow our usual conventions
+      if (e && typeof e.data === "string") {
+        this.setState({ formError: { data: { message: e.data } } });
+      } else {
+        this.setState({ formError: e });
+      }
+    }
   }
 
   cancel() {
@@ -118,7 +129,7 @@ export default class EditUserForm extends Component {
 
     return (
       <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-        <div className="px4 pb2">
+        <div>
           <FormField fieldName="first_name" formError={formError}>
             <FormLabel
               title={t`First name`}
@@ -229,7 +240,12 @@ export default class EditUserForm extends Component {
           ) : null}
         </div>
 
-        <ModalFooter>
+        <ModalFooter className="flex align-center p0">
+          {formError &&
+            formError.data &&
+            formError.data.message && (
+              <span className="text-error">{formError.data.message}</span>
+            )}
           <Button type="button" onClick={this.cancel.bind(this)}>
             {t`Cancel`}
           </Button>
