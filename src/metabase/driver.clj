@@ -413,8 +413,9 @@
         (catch Exception e
           (throw
            (Exception.
-            (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
-                    time-str (-> database :engine name)) e)))))))
+            (str
+             (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
+                  time-str (-> database :engine name))) e)))))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.

@@ -1,6 +1,6 @@
 (ns metabase.test.data.snowflake
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
@@ -40,13 +40,15 @@
 (defn- create-db-sql [driver {:keys [database-name]}]
   (let [db (generic/qualify+quote-name driver database-name)
         schema-name (generic/qualify+quote-name driver schema-name)]
-    (format "CREATE DATABASE %s; USE DATABASE %s;" db db)))
+    (format "CREATE DATABASE %s; USE DATABASE %s; ALTER SESSION SET TIMEZONE = 'UTC';" db db)))
 
 (defn- load-data! [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
     (.setAutoCommit (jdbc/get-connection conn) false)
     (let [table (format "\"%s\".\"public\".\"%s\"" database-name table-name)
-          rows  (generic/load-data-get-rows driver dbdef tabledef)
+          rows  (keep-indexed (fn [i row]
+                                (assoc row :id (inc i)))
+                              (generic/load-data-get-rows driver dbdef tabledef))
           cols  (keys (first rows))
           vals  (for [row rows]
                   (map row cols))]
@@ -66,6 +68,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
-          :format-name                  (u/drop-first-arg s/upper-case)
+          :format-name                  (u/drop-first-arg str/upper-case)
           :default-schema               (constantly "public")
           :engine                       (constantly :snowflake)}))

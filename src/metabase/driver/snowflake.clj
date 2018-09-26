@@ -21,6 +21,7 @@
             :subname                                    (str "//" host ".snowflakecomputing.com/")
             :db                                         dbname
             :client_metadata_request_use_connection_ctx true
+            :week_start                                 7
             :ssl                                        true}
            (dissoc opts :host :port :dbname))))
 
@@ -29,10 +30,10 @@
   clojure.lang.Named
   (getName [_] "Snowflake"))
 
-(def ^:private snowflake-date-formatter
+(def ^:private snowflake-date-formatters
   "The default timestamp format for Snowflake.
   See https://docs.snowflake.net/manuals/sql-reference/data-types-datetime.html#timestamp."
-  (driver/create-db-time-formatters "EEE, dd MMM yyyy HH:mm:ss Z"))
+  (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSSSSS Z"))
 
 (def ^:private snowflake-db-time-query
   "Snowflake current database time, with hour and minute timezone offset."
@@ -109,6 +110,10 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :VARCHAR field-key)))
 
+(defn- describe-database [driver database]
+  (sql/with-metadata [metadata driver database]
+    {:tables (sql/fast-active-tables driver metadata (:name database))}))
+
 (u/strict-extend SnowflakeDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -144,8 +149,9 @@
                                                     :placeholder  "my_role"}]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
           :current-db-time          (driver/make-current-db-time-fn
-                                     snowflake-date-formatter
-                                     snowflake-db-time-query)})
+                                     snowflake-db-time-query
+                                     snowflake-date-formatters)
+          :describe-database        describe-database})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

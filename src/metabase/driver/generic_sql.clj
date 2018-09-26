@@ -293,8 +293,8 @@
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
-  (with-resultset-open [rs-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil, ^String database-name-or-nil]
+  (with-resultset-open [rs-seq (.getTables metadata database-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
                                            (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
     ;; Ensure we read all rows before exiting
     (doall rs-seq)))
@@ -306,12 +306,12 @@
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
    seconds vs 60)."
-  [driver, ^DatabaseMetaData metadata]
+  [driver, ^DatabaseMetaData metadata, & [database-name-or-nil]]
   (with-resultset-open [rs-seq (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem rs-seq))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema     schemas
-                 table-name (mapv :table_name (get-tables metadata schema))]
+                 table-name (mapv :table_name (get-tables metadata schema database-name-or-nil))]
              {:name   table-name
               :schema schema})))))
 
@@ -320,7 +320,7 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (get-tables metadata nil))]
+                           (get-tables metadata nil nil))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
