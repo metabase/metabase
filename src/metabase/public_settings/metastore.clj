@@ -35,7 +35,7 @@
 
 (defn- token-status-url [token]
   (when (seq token)
-    (format "%s/api/%s/status" store-url token)))
+    (format "%s/api/%s/v2/status" store-url token)))
 
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
