@@ -1,8 +1,5 @@
-import type { Card, DatasetQuery } from "metabase/meta/types/Card";
-import SummaryTable, {
-  COLUMNS_SETTINGS,
-} from "metabase/visualizations/visualizations/SummaryTable";
-import { updateIn } from "icepick";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { Column } from "metabase/meta/types/Dataset";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
   canTotalizeByType,
@@ -10,24 +7,16 @@ import {
   getQueryPlan,
 } from "metabase/visualizations/lib/settings/summary_table";
 
-export const getAggregationQueries = visualizationSettings => (
-  card: Card,
-  fields,
-): DatasetQuery[] => {
-  const settings: SummaryTableSettings =
-    visualizationSettings[COLUMNS_SETTINGS];
+export const getAggregationQueries = (settings : SummaryTableSettings,  cols : Column[]): DatasetQuery[] => {
 
-  if (card.display !== SummaryTable.identifier || !isOk(settings)) return [];
-
-  const nameToTypeMap = getNameToTypeMap(fields);
+  const nameToTypeMap = getNameToTypeMap(cols);
 
   const createLiteral = name => ["field-literal", name, nameToTypeMap[name]];
   const createTotal = name => ["named", ["sum", createLiteral(name)], name];
 
-  const queryPlan = getQueryPlan(settings);
-  const allKeys = getAllAggregationKeysFlatten(queryPlan, p =>
-    canTotalizeByType(nameToTypeMap[p]),
-  );
+  const queryPlan = getQueryPlan(settings, p =>
+    canTotalizeByType(nameToTypeMap[p]));
+  const allKeys = getAllAggregationKeysFlatten(queryPlan);
 
   return allKeys.map(([groupings, aggregations]) => ({
     aggregation: aggregations.toArray().map(createTotal),
@@ -35,9 +24,9 @@ export const getAggregationQueries = visualizationSettings => (
   }));
 };
 
-const getNameToTypeMap = fields => {
-  return Object.keys(fields || {}).reduce(
-    (acc, value) => ({ ...acc, [fields[value].name]: fields[value].base_type }),
+const getNameToTypeMap = columns => {
+  return columns.reduce(
+    (acc, column) => ({ ...acc, [column.name]: column.base_type }),
     {},
   );
 };

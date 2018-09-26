@@ -13,7 +13,7 @@ import type {
 } from "metabase/meta/types/summary_table";
 import {
   getAllQueryKeys,
-  getColumnsFromSettings,
+  getColumnsFromSettings, getQueryPlan,
   mainKey,
 } from "metabase/visualizations/lib/settings/summary_table";
 import type { ColumnName, Column } from "metabase/meta/types/Dataset";
@@ -38,8 +38,9 @@ export class GroupingManager {
     summaryTableSettings: SummaryTableSettings,
     rawCols,
     rp: ResultProvider,
-    qp: QueryPlan,
   ) {
+
+    const qp = getQueryPlan(summaryTableSettings, canTotalizeBuilder(rawCols));
 
     const isPivoted = summaryTableSettings.columnsSource.length > 0;
     const columnsIndexesForGrouping = [
@@ -55,7 +56,7 @@ export class GroupingManager {
       .map(getAscDesc)
       .map(isAsc => (isAsc ? "asc" : "desc"));
 
-    const normalizedRows = getAllQueryKeys(qp, canTotalizeBuilder(rawCols))
+    const normalizedRows = getAllQueryKeys(qp)
       .map(keys => [
         flatMap(keys, key => normalizeRows(summaryTableSettings, rp(key))),
         keys,
@@ -340,6 +341,7 @@ const getStartGroupIndexToEndGroupIndex = (startIndexes: Set): {} => {
 };
 
 const createUberRows = (pivotIndex, values) => {
+
   const piv = values.reduce(
     (acc, value) => ({
       ...acc,
@@ -347,6 +349,7 @@ const createUberRows = (pivotIndex, values) => {
     }),
     {},
   );
+
   const properties = Object.getOwnPropertyNames(piv);
   const resPart = _.zip(...properties.map(propName => piv[propName]));
   const aa = resPart.map(arr =>
@@ -379,6 +382,7 @@ const normalizeRows = (settings, { cols, rows }) => {
   const columnIndexes = getAvailableColumnIndexes(settings, cols).map(
     p => p[0],
   );
+
   return rows.map(row => columnIndexes.map(i => row[i]));
 };
 

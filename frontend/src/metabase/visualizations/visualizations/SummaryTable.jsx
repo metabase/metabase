@@ -26,10 +26,12 @@ import type { RawSeries } from "metabase/meta/types/Visualization";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
   buildResultProvider,
-  enrichSettings,
+  enrichSettings, fetchAggregationsDataBuilder,
   getQueryPlan,
   settingsAreValid,
 } from "metabase/visualizations/lib/settings/summary_table";
+import { connect } from "react-redux";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 type Props = {
   card: Card,
@@ -37,7 +39,8 @@ type Props = {
   rawSeries: RawSeries,
   settings: VisualizationSettings,
   isDashboard: boolean,
-  query: StructuredQuery,
+  query: AtomicQuery,
+  fetchAggregationsData: (SummaryTableSettings, Column[]) => DatasetData[]
 };
 type State = {
   data: ?DatasetData,
@@ -48,6 +51,13 @@ type State = {
 
 export const COLUMNS_SETTINGS = "summaryTable.columns";
 
+
+const mapDispatchToProps = (dispatch,{card, parameters}) => {
+  const fetchAggregationsData = fetchAggregationsDataBuilder(dispatch, parameters);
+  return {fetchAggregationsData};
+};
+
+@connect(null, mapDispatchToProps)
 export default class SummaryTable extends Component {
   props: Props;
   state: State;
@@ -94,20 +104,20 @@ export default class SummaryTable extends Component {
     this._updateData(this.props, this.state.sort);
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  async componentWillReceiveProps(newProps: Props) {
     // TODO: remove use of deprecated "card" and "data" props
     if (
       newProps.data !== this.props.data ||
       !_.isEqual(newProps.settings, this.props.settings)
 
     ) {
-      this._updateData(newProps, this.state.sort);
+      await this._updateData(newProps, this.state.sort);
     }
   }
 
-  componentWillUpdate(newProps, nextState){
+  async componentWillUpdate(newProps, nextState){
     if(nextState.sort !== this.state.sort) {
-      this._updateData(newProps, nextState.sort);
+      await this._updateData(newProps, nextState.sort);
     }
   }
 
@@ -119,9 +129,10 @@ export default class SummaryTable extends Component {
     this.setState({sort:{...sort, [columnName] : newOrder}});
   }
 
-  _updateData({
+  async _updateData({
     data,
     settings,
+    card
   }: {
     data: SummaryDatasetData,
     settings: VisualizationSettings,
@@ -133,13 +144,14 @@ export default class SummaryTable extends Component {
         sort
       );
 
-      const resultProvider = buildResultProvider(data, data.totalsData);
-      const queryPlan = getQueryPlan(summarySettings);
+      const totalsData = await this.props.fetchAggregationsData(summarySettings, card, data.cols);
+
+      const resultProvider = buildResultProvider(data, totalsData);
+
       const groupingManager = new GroupingManager(
         summarySettings,
         data.cols,
-        resultProvider,
-        queryPlan
+        resultProvider
       );
 
       this.setState({

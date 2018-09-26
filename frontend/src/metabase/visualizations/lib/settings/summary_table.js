@@ -18,6 +18,14 @@ import flatMap from "lodash.flatmap";
 import _ from "lodash";
 import { Set } from "immutable";
 import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
+import {getAggregationQueries} from "metabase-lib/lib/SummaryTableQueryBuilder";
+import {
+  fetchDataOrError, getDashboardType
+} from "metabase/dashboard/dashboard";
+import {CardApi, EmbedApi, MetabaseApi, PublicApi} from "metabase/services";
+import {getParametersBySlug} from "metabase/meta/Parameter";
+import {getDashboardComplete} from "metabase/dashboard/selectors";
+import {applyParameters} from "metabase/meta/Card";
 
 const AGGREGATION = "aggregation";
 const BREAKOUT = "breakout";
@@ -164,7 +172,7 @@ const emptyQueryPlan: QueryPlan = { groupings: [], aggregations: Set.of() };
 
 export const getQueryPlan = (
   settings: SummaryTableSettings,
-  canTotalize: ColumnName => boolean = () => true,
+  canTotalize: ColumnName => boolean,
 ): QueryPlan => {
   const aggregations = Set.of(...settings.valuesSources.filter(canTotalize));
 
@@ -204,12 +212,11 @@ export const getQueryPlan = (
     aggregations,
   };
 };
-
+//todo: move into QueryPlan object
 const getAllAggregationKeysRaw = (
-  qp: QueryPlan,
-  totalValueFilter: ColumnName => boolean,
+  qp: QueryPlan
 ): { mainQueryColumn?: AggregationKey, totals: AggregationKey[][] } => {
-  const aggregations = qp.aggregations.filter(totalValueFilter);
+  const aggregations = qp.aggregations;
 
   return {
     mainQueryColumn:
@@ -222,23 +229,18 @@ const getAllAggregationKeysRaw = (
 };
 
 export const getAllQueryKeys = (
-  qp: QueryPlan,
-  totalValueFilter: ColumnName => boolean,
+  qp: QueryPlan
 ): AggregationKey[][] => {
   const { mainQueryColumn, totals } = getAllAggregationKeysRaw(
-    qp,
-    totalValueFilter,
-  );
+    qp);
   return [[mainKey, mainQueryColumn].filter(p => p), ...totals];
 };
 
 export const getAllAggregationKeysFlatten = (
-  qp: QueryPlan,
-  totalValueFilter: ColumnName => boolean,
+  qp: QueryPlan
 ): AggregationKey[][] => {
   const { mainQueryColumn, totals } = getAllAggregationKeysRaw(
-    qp,
-    totalValueFilter,
+    qp
   );
   if (!mainQueryColumn) {
     return flatMap(totals);
@@ -345,4 +347,78 @@ export const enrichSettings = (
   const columnNameToMetadata = enrichMetadata(stateNormalized, sortOverride);
 
   return {...partColumns, columnNameToMetadata};
+};
+
+
+const  getFetchForDashboard = (dashboard, card, state) => {
+  const {parameterValues} = state.dashboard;
+    const dashcard = dashboard.ordered_cards.find(c => c.card_id === card.id);
+    const dashboardId = dashboard.id;
+
+    const dashboardType = getDashboardType(dashboardId);
+
+    const datasetQuery = applyParameters(
+      card,
+      dashboard.parameters,
+      parameterValues,
+      dashcard && dashcard.parameter_mappings,
+    );
+
+  if (dashboardType === "public") {
+    return sq => fetchDataOrError(
+      PublicApi.dashboardCardSuperQuery({
+        uuid: dashboardId,
+        cardId: card.id,
+        "super-query": sq,
+        parameters: datasetQuery.parameters
+          ? JSON.stringify(datasetQuery.parameters)
+          : undefined,
+      }));
+  }
+  else if (dashboardType === "embed") {
+    return sq => fetchDataOrError(
+        EmbedApi.dashboardCardSuperQuery({
+          token: dashboardId,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          "super-query": sq,
+          parameters: getParametersBySlug(
+            dashboard.parameters,
+            parameterValues,
+          ),
+        }),
+      );
+  }
+  else
+    {
+    return sq => fetchDataOrError(
+        MetabaseApi.dataset({
+          ...datasetQuery,
+          "super-query": sq,
+        }),
+      );
+  }
+
+};
+
+const getFetchForQuestion = (card, state, parameters) => {
+  const {qb:{parameterValues}} = state;
+  const datasetQuery = applyParameters(
+    card,
+    parameters,
+    parameterValues,
+  );
+
+  return sq => MetabaseApi.dataset({...datasetQuery, 'super-query' : sq});
+};
+
+export const fetchAggregationsDataBuilder =  (dispatch, parameters) => (settings, card, cols) => {
+  return dispatch(async (dispatch, getState) => {
+    const state = getState();
+    const dashboard = getDashboardComplete(state);
+    const fetchSuperQuery = dashboard ? getFetchForDashboard(dashboard, card, state) : getFetchForQuestion(card, state, parameters);
+    const totalsTasks = getAggregationQueries(settings, cols).map(fetchSuperQuery);
+    return [...await Promise.all(totalsTasks)].map(p => p.data).filter(p => p);
+  });
+
 };
