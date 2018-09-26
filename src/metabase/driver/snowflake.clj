@@ -1,20 +1,11 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
+  (:require [clojure.string :as str]
+            [honeysql.core :as hsql]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver
-             [generic-sql :as sql]]
-            ;; TODO delete
-            [metabase.models
-             [field :as field]
-             [table :as table]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
@@ -47,7 +38,7 @@
   "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF TZHTZM')")
 
 (def ^:private column->base-type
-    "Map of the default Snowflake column types -> Field base types. Add more
+  "Map of the default Snowflake column types -> Field base types. Add more
   mappings here as you come across them."
   {:NUMBER                     :type/Number
    :DECIMAL                    :type/Decimal

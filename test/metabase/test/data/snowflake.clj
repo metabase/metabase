@@ -1,14 +1,10 @@
 (ns metabase.test.data.snowflake
   (:require [clojure.string :as s]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.util
-             [honeysql-extensions :as hx]]
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.snowflake.SnowflakeDriver))
-
 
 (def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"
