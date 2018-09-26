@@ -270,32 +270,28 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type       :type/Integer
-              :special_type    :type/Number
-              :name            "count"
-              :display_name    "count"
-              :id              nil
-              :table_id        nil
-              :description     nil
-              :source          :aggregation
-              :extra_info      {}
-              :target          nil
-              :remapped_from   nil
-              :remapped_to     nil}))
+     :count {:base_type    :type/Integer
+             :special_type :type/Number
+             :name         "count"
+             :display_name "count"
+             :id           nil
+             :table_id     nil
+             :description  nil
+             :source       :aggregation
+             :extra_info   {}
+             :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
-    :special_type  special_type
-    :id            nil
-    :table_id      nil
-    :description   nil
-    :source        :aggregation
-    :extra_info    {}
-    :target        nil
-    :name          (name ag-col-kw)
-    :display_name  (name ag-col-kw)
-    :remapped_from nil
-    :remapped_to   nil}))
+    :special_type special_type
+    :id           nil
+    :table_id     nil
+    :description  nil
+    :source       :aggregation
+    :extra_info   {}
+    :target       nil
+    :name         (name ag-col-kw)
+    :display_name (name ag-col-kw)}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))

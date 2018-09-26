@@ -19,9 +19,6 @@
             [metabase.test.data.datasets :refer [expect-with-engine]]
             [toucan.util.test :as tt]))
 
-(def ^:private col-defaults
-  {:remapped_to nil, :remapped_from nil})
-
 ;; Test native queries
 (expect-with-engine :bigquery
   [[100]
@@ -52,10 +49,9 @@
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    (mapv #(merge col-defaults %)
-                  [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
-                   {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
-                   {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}])}
+   :cols    [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
+             {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
+             {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}]}
 
   (select-keys (:data (qp/process-query
                         {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "

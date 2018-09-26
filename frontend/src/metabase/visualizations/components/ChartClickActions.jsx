@@ -51,6 +51,9 @@ const SECTIONS = {
   auto: {
     icon: "bolt",
   },
+  Formatting: {
+    icon: "pencil",
+  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {

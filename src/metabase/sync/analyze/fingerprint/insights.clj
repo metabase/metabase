@@ -2,7 +2,6 @@
   "Deeper statistical analysis of results."
   (:require [kixi.stats.core :as stats]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util.date :as du]
             [redux.core :as redux]))
 
 (defn- last-n
@@ -79,10 +78,10 @@
                                          (assoc col :position idx)))
                           (group-by (fn [{:keys [base_type unit]}]
                                       (cond
-                                        (du/date-extract-units unit)    :numbers
-                                        (isa? base_type :type/Number)   :numbers
-                                        (isa? base_type :type/DateTime) :datetimes
-                                        :else                           :others))))]
+                                        (metabase.util.date/date-extract-units unit) :numbers
+                                        (isa? base_type :type/Number)                :numbers
+                                        (isa? base_type :type/DateTime)              :datetimes
+                                        :else                                        :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))
