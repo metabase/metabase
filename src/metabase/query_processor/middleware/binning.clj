@@ -4,8 +4,8 @@
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.query-processor.util :as qputil])
-  (:import [metabase.query_processor.interface BetweenFilter BinnedField ComparisonFilter]))
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.util :as qputil]))
 
 (defn- update!
   "Similar to `clojure.core/update` but works on transient maps"
@@ -13,9 +13,11 @@
   (assoc! coll k (f (get coll k))))
 
 (defn- filter->field-map
-  "A bit of a stateful hack using clojure.walk/prewalk to find any comparison or between filter. This should be replaced
-  by a zipper for a more functional/composable approach to this problem."
+  "Find any comparison or `:between` filter. AND...?" ; TODO
   [mbql-filter]
+  (for [filter-clause    (mbql.u/clause-instances #{:between :< :<= :> :>=} mbql-filter)
+        field-id-clauses (mbql.u/clause-instances #{:field-id} filter)])
+  (let [filters ])
   (let [acc (transient {})]
     (walk/prewalk
      (fn [x]
@@ -155,14 +157,15 @@
       ;; nice version.
       (or (nicer-breakout resolved-binned-field) resolved-binned-field))))
 
+(defn update-binning-strategy* [query]
+  (let [filter-field-map (filter->field-map (get-in query [:query :filter]))]
+    (qputil/postwalk-pred #(instance? BinnedField %)
+                          #(update-binned-field % filter-field-map)
+                          query)))
+
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (fn [query]
-    (let [filter-field-map (filter->field-map (get-in query [:query :filter]))]
-      (qp
-       (qputil/postwalk-pred #(instance? BinnedField %)
-                             #(update-binned-field % filter-field-map)
-                             query)))))
+  (comp qp update-binning-strategy*))

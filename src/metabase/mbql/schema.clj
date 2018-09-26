@@ -31,6 +31,7 @@
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
   (s/constrained su/NonBlankString du/date-string? "datetime-literal"))
 
+;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
   n    (s/cond-pre (s/eq :current) s/Int)
   unit (optional RelativeDatetimeUnit))
@@ -74,10 +75,11 @@
 (def ^:private BinningStrategyName
   (s/enum :num-bins :bin-width :default))
 
+;; TODO - binning strategy is disallowed for `:default` and required for the others
 (defclause binning-strategy
   field                     (one-of field-id field-literal fk-> expression datetime-field)
   strategy-name             BinningStrategyName
-  strategy-param            (optional s/Num))
+  strategy-param            (optional (s/constrained s/Num (complement neg?) "strategy param must be >= 0.")))
 
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
@@ -245,6 +247,7 @@
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
   (s/cond-pre
    s/Num
+   s/Str
    DatetimeLiteral
    FieldOrRelativeDatetime))
 
