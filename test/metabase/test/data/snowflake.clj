@@ -1,5 +1,6 @@
 (ns metabase.test.data.snowflake
-  (:require [clojure.string :as s]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
@@ -27,7 +28,7 @@
            {:db database-name})))
 
 
-(def schema-name "public")
+(def ^:private schema-name "public")
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defn qualified-name-components
@@ -41,6 +42,17 @@
         schema-name (generic/qualify+quote-name driver schema-name)]
     (format "CREATE DATABASE %s; USE DATABASE %s;" db db)))
 
+(defn- load-data! [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
+    (.setAutoCommit (jdbc/get-connection conn) false)
+    (let [table (format "\"%s\".\"public\".\"%s\"" database-name table-name)
+          rows  (generic/load-data-get-rows driver dbdef tabledef)
+          cols  (keys (first rows))
+          vals  (for [row rows]
+                  (map row cols))]
+      (jdbc/insert-multi! conn table cols vals))))
+
+
 (u/strict-extend SnowflakeDriver
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
@@ -48,7 +60,8 @@
           :create-db-sql             create-db-sql
           :execute-sql!              generic/sequentially-execute-sql!
           :pk-sql-type               (constantly "INTEGER AUTOINCREMENT")
-          :qualified-name-components qualified-name-components})
+          :qualified-name-components qualified-name-components
+          :load-data!                load-data!})
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin

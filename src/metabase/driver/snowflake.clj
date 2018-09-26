@@ -25,6 +25,7 @@
            (dissoc opts :host :port :dbname))))
 
 (defrecord SnowflakeDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Snowflake"))
 
