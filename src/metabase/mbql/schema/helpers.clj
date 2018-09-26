@@ -49,7 +49,9 @@
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
                                   [clause-name clause-name])]
-    `(def ~(vary-meta symb-name assoc :private true, :clause-name (keyword clause-name))
+    `(def ~(vary-meta symb-name assoc
+                      :clause-name (keyword clause-name)
+                      :doc         (format "Schema for a valid %s clause." clause-name))
        (clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))))
 
 

@@ -22,22 +22,14 @@
 
 ;; check that a built-in Metric gets removed from the query and put in `:ga`
 (expect
-  {:query {:filter nil}
-   :ga    {:segment nil, :metrics "ga:users"}}
-  (qp/transform-query {:query {:aggregation [:metric "ga:users"]}}))
+  {:ga {:segment nil, :metrics "ga:users"}}
+  (qp/transform-query {:query {:aggregation [[:metric "ga:users"]]}}))
 
 
 ;; check that a built-in segment gets removed from the query and put in `:ga`
 (expect
-  {:query {:filter nil}
-   :ga    {:segment "gaid::-4", :metrics nil}}
+  {:ga {:segment "gaid::-4", :metrics nil}}
   (qp/transform-query {:query {:filter [:segment "gaid::-4"]}}))
-
-;; check that it still works if wrapped in an `:and`
-(expect
-  {:query {:filter nil}
-   :ga    {:segment "gaid::-4", :metrics nil}}
-  (qp/transform-query {:query {:filter [:and [:segment "gaid::-4"]]}}))
 
 ;; check that other things stay in the order-by clause
 (expect
