@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import styles from "./Scalar.css";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -20,6 +19,10 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import type { Column } from "metabase/meta/types/Dataset";
 import type { VisualizationSettings } from "metabase/meta/types/Card";
 
+import ScalarValue, {
+  ScalarWrapper,
+} from "metabase/visualizations/components/ScalarValue";
+
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
   return _.chain(settings)
@@ -37,7 +40,6 @@ export default class Scalar extends Component {
   static identifier = "scalar";
   static iconName = "number";
 
-  static noHeader = true;
   static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
@@ -138,9 +140,8 @@ export default class Scalar extends Component {
 
   render() {
     let {
-      series: [{ card, data: { cols, rows } }],
+      series: [{ data: { cols, rows } }],
       className,
-      actionButtons,
       gridSize,
       settings,
       onChangeCardAndRun,
@@ -170,24 +171,11 @@ export default class Scalar extends Component {
     const isClickable = visualizationIsClickable(clicked);
 
     return (
-      <div
-        className={cx(
-          className,
-          styles.Scalar,
-          styles[isSmall ? "small" : "large"],
-        )}
-      >
-        <div className="Card-title absolute top right p1 px2">
-          {actionButtons}
-        </div>
+      <ScalarWrapper>
         <Ellipsified
-          className={cx(
-            styles.Value,
-            "ScalarValue text-dark fullscreen-normal-text fullscreen-night-text",
-            {
-              "text-brand-hover cursor-pointer": isClickable,
-            },
-          )}
+          className={cx("fullscreen-normal-text fullscreen-night-text", {
+            "text-brand-hover cursor-pointer": isClickable,
+          })}
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== compactScalarValue}
           style={{ maxWidth: "100%" }}
@@ -201,24 +189,11 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            {compactScalarValue}
+            <ScalarValue value={compactScalarValue} />
           </span>
         </Ellipsified>
         {this.props.isDashboard && (
-          <div className={styles.Title + " flex align-center relative"}>
-            <Ellipsified tooltip={card.name}>
-              <span
-                onClick={
-                  onChangeCardAndRun &&
-                  (() => onChangeCardAndRun({ nextCard: card }))
-                }
-                className={cx("fullscreen-normal-text fullscreen-night-text", {
-                  "cursor-pointer": !!onChangeCardAndRun,
-                })}
-              >
-                <span className="Scalar-title">{settings["card.title"]}</span>
-              </span>
-            </Ellipsified>
+          <div className={"flex align-center relative"}>
             {description && (
               <div
                 className="absolute top bottom hover-child flex align-center justify-center"
@@ -231,7 +206,7 @@ export default class Scalar extends Component {
             )}
           </div>
         )}
-      </div>
+      </ScalarWrapper>
     );
   }
 }

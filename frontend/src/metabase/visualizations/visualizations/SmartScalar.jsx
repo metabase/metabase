@@ -16,12 +16,18 @@ import {
   NoBreakoutError,
 } from "metabase/visualizations/lib/errors";
 
+import ScalarValue, {
+  ScalarWrapper,
+} from "metabase/visualizations/components/ScalarValue";
+
 export default class Smart extends React.Component {
   static uiName = "Smart Scalar";
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
   static minSize = { width: 3, height: 3 };
+
+  _scalar: ?HTMLElement;
 
   static settings = {
     ...columnSettings({
@@ -56,17 +62,26 @@ export default class Smart extends React.Component {
     }
   }
 
+  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
+    const columnIndex = _.findIndex(
+      cols,
+      col => col.name === settings["scalar.field"],
+    );
+    return columnIndex < 0 ? 0 : columnIndex;
+  }
+
   render() {
     const insights =
       this.props.rawSeries &&
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
     const {
+      isClickable,
       isDashboard,
+      onVisualizationClick,
       settings,
-      series: [{ card, data: { cols } }],
+      series: [{ card, data: { rows, cols } }],
     } = this.props;
-    const column = cols[1];
 
     let granularity;
     if (Card.isStructured(card)) {
@@ -95,18 +110,26 @@ export default class Smart extends React.Component {
       >{jt`past ${granularity}`}</span>
     );
 
+    const columnIndex = this._getColumnIndex(cols, settings);
+    const value = rows[0] && rows[0][columnIndex];
+    const column = cols[columnIndex];
+    const clicked = { value, column };
+
     return (
-      <Flex
-        align="center"
-        justify="center"
-        flexDirection="column"
-        className="full-height full"
-        flex={1}
-        style={{ fontSize: isDashboard ? "1rem" : "2rem", flexWrap: "wrap" }}
-      >
-        <h1 style={{ fontSize: "2em", fontWeight: 900, lineHeight: 1 }}>
-          {formatValue(insights["last-value"], settings.column(column))}
-        </h1>
+      <ScalarWrapper>
+        <span
+          onClick={
+            isClickable &&
+            (() =>
+              this._scalar &&
+              onVisualizationClick({ ...clicked, element: this._scalar }))
+          }
+          ref={scalar => (this._scalar = scalar)}
+        >
+          <ScalarValue
+            value={formatValue(insights["last-value"], settings.column(column))}
+          />
+        </span>
         <Flex align="center" mt={1} flexWrap="wrap">
           <h4
             style={{
@@ -122,7 +145,7 @@ export default class Smart extends React.Component {
             )} ${granularityDisplay})`}
           </h4>
         </Flex>
-      </Flex>
+      </ScalarWrapper>
     );
   }
 }
