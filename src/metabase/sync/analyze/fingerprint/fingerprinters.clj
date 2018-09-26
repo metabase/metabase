@@ -61,7 +61,8 @@
 
 (def ^:private global-fingerprinter
   (redux/post-complete
-   (redux/fuse {:distinct-count cardinality})
+   (redux/fuse {:distinct-count cardinality
+                :nils           (stats/share nil?)})
    (partial hash-map :global)))
 
 (defmethod fingerprinter :default
