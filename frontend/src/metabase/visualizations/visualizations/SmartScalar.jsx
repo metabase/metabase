@@ -67,7 +67,7 @@ export default class Smart extends React.Component {
       cols,
       col => col.name === settings["scalar.field"],
     );
-    return columnIndex < 0 ? 0 : columnIndex;
+    return columnIndex < 0 ? 1 : columnIndex;
   }
 
   render() {
@@ -76,10 +76,10 @@ export default class Smart extends React.Component {
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
     const {
-      isClickable,
       isDashboard,
       onVisualizationClick,
       settings,
+      visualizationIsClickable,
       series: [{ card, data: { rows, cols } }],
     } = this.props;
 
@@ -115,6 +115,9 @@ export default class Smart extends React.Component {
     const column = cols[columnIndex];
     const clicked = { value, column };
 
+    const isClickable = visualizationIsClickable(clicked);
+
+    console.log(this._scalar, isClickable);
     return (
       <ScalarWrapper>
         <span
@@ -136,7 +139,7 @@ export default class Smart extends React.Component {
               fontWeight: 900,
               textTransform: "uppercase",
               color: colors["text-medium"],
-              fontSize: isDashboard ? "0.8em" : "0.68em",
+              fontSize: isDashboard ? "1em" : "2em",
             }}
           >
             {jt`${changeDisplay} (${formatValue(

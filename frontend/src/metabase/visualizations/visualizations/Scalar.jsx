@@ -141,10 +141,8 @@ export default class Scalar extends Component {
   render() {
     let {
       series: [{ data: { cols, rows } }],
-      className,
       gridSize,
       settings,
-      onChangeCardAndRun,
       visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
