@@ -21,13 +21,11 @@ import type {
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import { GroupingManager } from "../lib/GroupingManager";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { RawSeries } from "metabase/meta/types/Visualization";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
   buildResultProvider,
   enrichSettings, fetchAggregationsDataBuilder,
-  getQueryPlan,
   settingsAreValid,
 } from "metabase/visualizations/lib/settings/summary_table";
 import { connect } from "react-redux";
@@ -88,11 +86,12 @@ export default class SummaryTable extends Component {
         columns,
       }),
     },
-    "summaryTable.column_widths": {},
+    "summaryTable.column_widths": [],
   };
 
   constructor(props: Props) {
     super(props);
+
     this.state = {
       data: null,
       query: props.query,
@@ -194,7 +193,7 @@ export default class SummaryTable extends Component {
       );
     } else {
       return (
-        <TableComponent {...this.props} data={data} sort={sort} settings={settings} updateSort={columnName => this.updateSort(columnName)} />
+        <TableComponent {...this.props} data={data} sort={sort} summarySettings={settings} updateSort={columnName => this.updateSort(columnName)} />
       );
     }
   }

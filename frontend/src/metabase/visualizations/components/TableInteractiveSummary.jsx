@@ -35,6 +35,7 @@ import set from "lodash.set";
 import flatMap from "lodash.flatmap";
 import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_interactive_summary";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import type {VisualizationSettings} from "metabase/meta/types/Card";
 
 type Props = VisualizationProps & {
   width: number,
@@ -44,7 +45,8 @@ type Props = VisualizationProps & {
 
   sort: {[key: ColumnName] : string},
   updateSort : ColumnName => void,
-  settings : SummaryTableSettings
+  settings : VisualizationSettings,
+  summarySettings: SummaryTableSettings
 };
 type State = {
   columnWidths: number[],
@@ -58,10 +60,6 @@ type CellRendererProps = {
   rowIndex: number,
 };
 
-type CellRangeProps = {
-  visibleRowIndices: Range,
-  visibleColumnIndices: Range,
-};
 
 type Range = { start: Number, stop: Number };
 
@@ -280,18 +278,20 @@ export default class TableInteractiveSummary extends Component {
     this.setState({ contentWidths: null });
   }, 100);
 
-  onCellResize(columnIndex: number) {
-    this.columnNeedsResize = this.columnNeedsResize || {};
-    this.columnNeedsResize[columnIndex] = true;
-    this.recomputeColumnSizes();
-  }
 
-  onColumnResize(columnIndex: number, width: number) {
+  onColumnResize(columnIndex: number, columnSpan: number, width: number) {
+
     const { settings } = this.props;
-    let columnWidthsSetting = settings["summaryTable.column_widths"]
+    const columnWidthsSetting = settings["summaryTable.column_widths"]
       ? settings["summaryTable.column_widths"].slice()
       : [];
-    columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+
+    const { columnWidths } = this.state;
+    const updated = computeNewWidths(columnWidths,
+      { columnIndex, columnSpan, offsetWidth : width });
+
+    updated.reduce((acc, currentElem, index) => set(acc, index + columnIndex, currentElem), columnWidthsSetting);
+
     this.props.onUpdateVisualizationSettings({
       "summaryTable.column_widths": columnWidthsSetting,
     });
@@ -434,13 +434,13 @@ export default class TableInteractiveSummary extends Component {
   };
 
   getRealSortOrderFromSettings = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.settings;
+    const settings : SummaryTableSettings = this.props.summarySettings;
     const isAsc = (settings.columnNameToMetadata[columnName] || {}).isAscSortOrder;
     return isAsc === false ?  'desc' : 'asc';
   };
 
   canSort = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.settings;
+    const settings : SummaryTableSettings = this.props.summarySettings;
     return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
   };
 
@@ -527,7 +527,7 @@ export default class TableInteractiveSummary extends Component {
           onStop={(e, { x }) => {
             // prevent onVisualizationClick from being fired
             e.stopPropagation();
-            this.onColumnResize(columnIndex + columnSpan -1, x);
+            this.onColumnResize(columnIndex, columnSpan, x);
           }}
         >
           <div
@@ -671,28 +671,36 @@ const createArgsForIndexGenerator = (cells) => cells.reduce(({acc, shouldIgnoreN
 } , {acc:{}} ).acc;
 
 const computeWidths = (
-  acc: Number[],
-  { columnIndex, columnSpan, offsetWidth },
+  widths: Number[],
+  rangeInfo,
 ) => {
-  if (columnSpan === 1)
-    return set(
-      acc,
-      columnIndex,
-      Math.max(offsetWidth, acc[columnIndex] || MIN_COLUMN_WIDTH),
-    );
+  const { columnIndex, columnSpan, offsetWidth } = rangeInfo;
+  const lastIndex = columnIndex + columnSpan-1;
+  //force resize if necessary
+  widths[lastIndex] = widths[lastIndex];
 
-  const subsetToModify = acc
+  const subsetToModify = widths
     .slice(columnIndex, columnIndex + columnSpan)
     .map(p => p || MIN_COLUMN_WIDTH);
-  const subsetLen = subsetToModify.reduce((acc, elem) => acc + elem, 0);
-  if (subsetLen < offsetWidth) {
-    const multiplier = offsetWidth / subsetLen;
-    subsetToModify
-      .map(p => p * multiplier)
-      .forEach((newValue, index) => set(acc, columnIndex + index, newValue));
+  const currentLen = subsetToModify.reduce((acc, elem) => acc + elem , 0);
+  if (currentLen < offsetWidth) {
+    const toUpdate = computeNewWidths(widths, rangeInfo);
+    return toUpdate.reduce((acc, value, index) => set(acc, columnIndex + index ,value), widths);
   }
-
-  return acc;
+  return widths;
 };
 
+
+const computeNewWidths = (
+  currentWidths: Number[],
+  { columnIndex, columnSpan, offsetWidth }
+) => {
+
+  const subsetToUpdate = currentWidths
+    .slice(columnIndex, columnIndex + columnSpan)
+    .map(p => p || MIN_COLUMN_WIDTH);
+  const subsetLen = subsetToUpdate.reduce((acc, elem) => acc + elem, 0);
+  const multiplier = offsetWidth / subsetLen;
+  return subsetToUpdate.map(p => Math.max(p * multiplier, MIN_COLUMN_WIDTH));
+};
 

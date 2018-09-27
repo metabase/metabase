@@ -25,6 +25,7 @@ import orderBy from 'lodash.orderby';
 import set from 'lodash.set';
 import type {ColumnName} from "metabase/meta/types/Dataset";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import type {VisualizationSettings} from "metabase/meta/types/Card";
 
 
 type Props = VisualizationProps & {
@@ -34,7 +35,8 @@ type Props = VisualizationProps & {
 
   sort: {[key: ColumnName] : string},
   updateSort : ColumnName => void,
-  settings : SummaryTableSettings
+  settings : VisualizationSettings,
+  summarySettings: SummaryTableSettings
 };
 
 type State = {
@@ -87,7 +89,7 @@ export default class TableSimpleSummary extends Component {
   }
 
   canSort = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.settings;
+    const settings : SummaryTableSettings = this.props.summarySettings;
     return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
   };
 
