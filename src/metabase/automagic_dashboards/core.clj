@@ -273,8 +273,7 @@
 (defmulti
   ^{:doc "Get a reference for a given model to be injected into a template
           (either MBQL, native query, or string)."
-    :arglists '([template-type model])
-    :private true}
+    :arglists '([template-type model])}
   ->reference (fn [template-type model]
                 [template-type (type model)]))
 

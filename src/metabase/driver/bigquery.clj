@@ -53,7 +53,7 @@
    (and (string? s)
         (re-matches #"^([a-zA-Z_][a-zA-Z_0-9]*){1,128}$" s))))
 
-(defn- dataset-name-for-current-query
+(defn dataset-name-for-current-query
   "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
   `BigQueryIdentifier` record type; see its definition for more details.
@@ -419,7 +419,7 @@
       (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
       :else                                               field)))
 
-(defn- field->alias
+(defn field->alias
   "Generate an appropriate alias for a `field`. This will normally be something like `tableName___fieldName` (done this
   way because BigQuery will not let us include symbols in identifiers, so we can't make our alias be
   `tableName.fieldName`, like we do for other drivers)."

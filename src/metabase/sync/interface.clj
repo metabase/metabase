@@ -88,7 +88,8 @@
 
 (def GlobalFingerprint
   "Fingerprint values that Fields of all types should have."
-  {(s/optional-key :distinct-count) s/Int})
+  {(s/optional-key :distinct-count) s/Int
+   (s/optional-key :nils)           Percent})
 
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
