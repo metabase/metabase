@@ -735,3 +735,16 @@
    {:database 4
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
+
+;; make sure that parameters get normalized/canonicalized correctly. value should not get normalized, but type should;
+;; target should do canonicalization for MBQL clauses
+(expect
+  {:type       :query,
+   :query      {:source-table 1}
+   :parameters [{:type :id, :target [:dimension [:fk-> [:field-id 3265] [:field-id 4575]]], :value ["field-id"]}
+                {:type :date/all-options, :target [:dimension [:field-id 3270]], :value "thismonth"}]}
+  (normalize/normalize
+   {:type       :query
+    :query      {:source-table 1}
+    :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
+                 {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]}))
