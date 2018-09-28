@@ -465,7 +465,8 @@
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
   [outer-query]
   (cond-> outer-query
-    (:query outer-query) (update :query canonicalize-inner-mbql-query)))
+    (:query outer-query)      (update :query canonicalize-inner-mbql-query)
+    (:parameters outer-query) (update :parameters (partial mapv canonicalize-mbql-clauses))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
