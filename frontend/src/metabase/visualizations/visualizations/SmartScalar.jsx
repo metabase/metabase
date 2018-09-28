@@ -149,15 +149,9 @@ export default class Smart extends React.Component {
           />
         </span>
         <h3>{settings["card.title"]}</h3>
-        <Absolute bottom={isFullscreen ? 0 : 20}>
+        <Absolute bottom={20}>
           <Flex align="center" mt={1} flexWrap="wrap">
-            <Flex
-              align="center"
-              bg={isFullscreen ? color : "transparent"}
-              color={isFullscreen ? "white" : color}
-              p={isFullscreen ? 1 : 0}
-              style={{ borderTopLeftRadius: 6, borderTopRightRadius: 6 }}
-            >
+            <Flex align="center" color={color}>
               <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
               {changeDisplay}
             </Flex>
