@@ -19,7 +19,6 @@ export type SummaryTableSettings = {
 export type ResultProvider = AggregationKey => DatasetData;
 
 export type QueryPlan = {
-  mainQueryTotalColumn?: Groups,
   groupings: Groups[][],
   aggregations: Aggregations,
 };

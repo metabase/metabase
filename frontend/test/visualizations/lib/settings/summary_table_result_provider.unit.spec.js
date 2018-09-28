@@ -2,8 +2,7 @@ import { TYPE } from "metabase/lib/types";
 import type { DatasetData, Row } from "metabase/meta/types/Dataset";
 import {
   buildResultProvider,
-  createKey,
-  mainKey,
+  createKey
 } from "metabase/visualizations/lib/settings/summary_table";
 import { Column, ColumnName } from "metabase/meta/types/Dataset";
 import isEqual from "lodash.isequal";
@@ -51,11 +50,15 @@ const addSource = (col: Column, source?: string) => {
 
 describe("summary table result provider", () => {
   describe("given result provider initialized by main results", () => {
-    const mainResults = buildData(allRows, allColumns);
+    const rawResults = buildData(allRows, allColumns);
+    const mainResults = buildData(allRows, allColumns.map(col => addSource(col)));
 
-    const resultsProvider = buildResultProvider(mainResults, []);
+    const resultsProvider = buildResultProvider(rawResults, [mainResults]);
     it("results provider should return main results", () =>
-      expect(resultsProvider(mainKey)).toBe(mainResults));
+    {
+      const mainKey = createKey(['C1', 'C2'], ['C3']);
+      expect(resultsProvider(mainKey)).toBe(mainResults);
+    });
     it("results provider should compute results for grand totals", () => {
       const grandTotalKey = createKey([], ["C3"]);
       const expectedResults = buildData([[8]], [addSource(columnNumeric)]);
@@ -73,25 +76,11 @@ describe("summary table result provider", () => {
         datasAreEqual(resultsProvider(totalsKey), expectedResults),
       ).toEqual(true);
     });
-    it("results provider should compute results for totals on C2", () => {
-      const totalsKey = createKey(["C1", "C2"], ["C3"]);
-      const resRows = [
-        ["a", "a", 3],
-        ["b", "a", 4],
-        ["a", "b", 1],
-        ["b", "c", 0],
-      ];
-      const expectedResults = buildData(
-        resRows,
-        [columnText2, columnText1, columnNumeric].map(p => addSource(p)),
-      );
-      const data = resultsProvider(totalsKey);
-      expect(datasAreEqual(data, expectedResults)).toEqual(true);
-    });
   });
 
-  describe("given result provider initialized by main and totals results", () => {
-    const mainResults = buildData(allRows, allColumns);
+  fdescribe("given result provider initialized by main and totals results", () => {
+    const rawResults = buildData(allRows, allColumns);
+    const mainResults = buildData(allRows, allColumns.map(col => addSource(col)));
 
     const grandTotalKey = createKey([], ["C3"]);
     const grandTotalResults = buildData([[8]], [addSource(columnNumeric)]);
@@ -102,13 +91,17 @@ describe("summary table result provider", () => {
       [columnText1, columnNumeric].map(p => addSource(p)),
     );
 
-    const resultsProvider = buildResultProvider(mainResults, [
+    const resultsProvider = buildResultProvider(rawResults, [
+      mainResults,
       grandTotalResults,
       totalsResults,
     ]);
 
     it("results provider should return main results", () =>
-      expect(resultsProvider(mainKey)).toBe(mainResults));
+    {
+      const mainKey = createKey(['C1', 'C2'], ['C3']);
+      expect(resultsProvider(mainKey)).toBe(mainResults);
+    });
     it("results provider should return results for grand totals", () => {
       expect(resultsProvider(grandTotalKey)).toBe(grandTotalResults);
     });
@@ -116,17 +109,15 @@ describe("summary table result provider", () => {
       expect(resultsProvider(totalsKey)).toBe(totalsResults);
     });
 
-    it("results provider should compute results for totals on C2", () => {
-      const totalsKey = createKey(["C1", "C2"], ["C3"]);
+    fit("results provider should compute results for totals on C2", () => {
+      const totalsKey = createKey(["C2"], ["C3"]);
       const resRows = [
-        ["a", "a", 3],
-        ["b", "a", 4],
-        ["a", "b", 1],
-        ["b", "c", 0],
+        [4, "a"],
+        [4, "b"],
       ];
       const expectedResults = buildData(
         resRows,
-        [columnText2, columnText1, columnNumeric].map(p => addSource(p)),
+        [columnNumeric, columnText2].map(p => addSource(p)),
       );
       const data = resultsProvider(totalsKey);
       expect(datasAreEqual(data, expectedResults)).toEqual(true);
@@ -140,6 +131,7 @@ const datasAreEqual = (
   data: DatasetData,
   expectedData: DatasetData,
 ): boolean => {
+
   const columnsAreEqual = isEqual(
     orderBy(data.columns),
     orderBy(expectedData.columns),

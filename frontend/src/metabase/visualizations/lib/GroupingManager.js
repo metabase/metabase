@@ -13,8 +13,7 @@ import type {
 } from "metabase/meta/types/summary_table";
 import {
   getAllQueryKeys,
-  getColumnsFromSettings, getQueryPlan,
-  mainKey,
+  getColumnsFromSettings, getMainKey, getQueryPlan
 } from "metabase/visualizations/lib/settings/summary_table";
 import type { ColumnName, Column } from "metabase/meta/types/Dataset";
 
@@ -62,16 +61,17 @@ export class GroupingManager {
         keys,
       ])
       .map(
-        res =>
-          res[1].includes(mainKey)
+        (res, index) =>
+          index === 0
             ? [sortMainGroup(res[0], mainSsortOrderMethod, ascDesc), res[1]]
             : res,
       )
       .map(
         res => (isPivoted ? [pivotRows(res[0], sortOrderMethod), res[1]] : res),
       )
-      .map(([rows, keys]) =>
-        tryAddColumnTotalIndex(
+      .map(([rows, keys], index) =>
+        index === 0 ? rows
+          :tryAddColumnTotalIndex(
           rows,
           keys,
           summaryTableSettings.columnsSource[0],
@@ -99,9 +99,10 @@ export class GroupingManager {
     ).resArr;
     const res3 = res2.map((v, i) => [columnsIndexesForGrouping[i], v]);
     if (isPivoted) {
-      const mainRes = rp(mainKey);
+      const mainRes = rp(getMainKey(qp));
       const pivotIndex = mainRes.columns.indexOf(summaryTableSettings.columnsSource[0]);
       const columns = mainRes.rows.reduce((acc, elem) => acc.add(elem[pivotIndex]), new Set());
+
 
       const hasUndef = summaryTableSettings.columnNameToMetadata[summaryTableSettings.columnsSource[0]].showTotals;
 
@@ -391,8 +392,6 @@ const tryAddColumnTotalIndex = (
   keys: AggregationKey[],
   columnSource: string,
 ): Row[] => {
-  if (keys.includes(mainKey)) return rows;
-
   const groupings = keys[0][0];
   const pivotCorrection = groupings.has(columnSource) ? 1 : 0;
 

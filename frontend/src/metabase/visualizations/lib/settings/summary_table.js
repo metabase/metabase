@@ -15,6 +15,7 @@ import isEqual from "lodash.isequal";
 import values from "lodash.values";
 import invert from "lodash.invert";
 import flatMap from "lodash.flatmap";
+import partition from "lodash.partition";
 import _ from "lodash";
 import { Set } from "immutable";
 import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
@@ -61,7 +62,6 @@ const createKeyFrom = (dataSet: DatasetData) =>
 const createValueKey = (groups: ColumnName[]): string =>
   groups.reduce((acc, k) => (acc.length < k.length ? k : acc), "") + "_42";
 
-export const mainKey: AggregationKey = [Set.of(), Set.of()];
 
 const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
   groupings,
@@ -131,28 +131,25 @@ const isSuperset = (subsetValues: ColumnName[]) => (
 ) => superSet.subtract(subsetValues).size === 0;
 
 export const buildResultProvider = (
-  mainResult: DatasetData,
+  rawResults: DatasetData,
   totalsSeries: DatasetData[],
 ): ResultProvider => {
   const totalsWithKeys = (totalsSeries || []).map(p => [p, createKeyFrom(p)]);
 
-  const valueKey = createValueKey(mainResult.columns);
+  const valueKey = createValueKey(rawResults.columns);
 
   const totalsLookupTree = totalsWithKeys.reduce(
     (acc, [elem, [gr, unused]]) => set(acc, [...gr, valueKey], elem),
     {},
   );
 
-  const canBuildResults = canBuildResultsBuilder(mainResult);
+  const canBuildResults = canBuildResultsBuilder(rawResults);
   //all results from totalsSeries should have the same aggregations
-  const canBeInCache = isSuperset(get(totalsWithKeys, [0, 1], mainKey)[1]);
+  const canBeInCache = isSuperset(get(totalsWithKeys, [0, 1])[1]);
 
-  const buildResultsFor = resultsBuilder(mainResult);
+  const buildResultsFor = resultsBuilder(rawResults);
 
   return (key: AggregationKey): DatasetData => {
-    if (mainKey === key) {
-      return mainResult;
-    }
 
     const [groups, aggregations] = key;
 
@@ -168,27 +165,27 @@ export const buildResultProvider = (
   };
 };
 
-const emptyQueryPlan: QueryPlan = { groupings: [], aggregations: Set.of() };
+export const getMainKey = (qp : QueryPlan) => createKey(qp.groupings[0].reduce((acc, current) => acc.size < current.size ? current : acc, Set.of()), qp.aggregations);
 
 export const getQueryPlan = (
   settings: SummaryTableSettings,
   canTotalize: ColumnName => boolean,
 ): QueryPlan => {
-  const aggregations = Set.of(...settings.valuesSources.filter(canTotalize));
+  const [aggregationsList, additionalGroupings] = partition(settings.valuesSources, canTotalize);
+  const aggregations = Set.of(...aggregationsList);
+  const subqueriesBreakouts = [...settings.columnsSource, ...settings.groupsSources];
+  const allBreakouts = Set.of(...subqueriesBreakouts, ...additionalGroupings);
+
 
   if (aggregations.size === 0) {
-    return emptyQueryPlan;
+    return {groupings: [[allBreakouts]], aggregations: Set.of() };
   }
 
   const showTotalsFor = name =>
     (settings.columnNameToMetadata[name] || {}).showTotals;
-  const allBreakouts = [...settings.columnsSource, ...settings.groupsSources];
 
-  if (!allBreakouts.find(showTotalsFor)) {
-    return emptyQueryPlan;
-  }
 
-  const queriesBreakouts = allBreakouts.reduce(
+  const queriesBreakouts = subqueriesBreakouts.reduce(
     ({ acc, prev }, br) => {
       const next = prev.add(br);
 
@@ -198,56 +195,35 @@ export const getQueryPlan = (
     { acc: [], prev: Set.of() },
   );
 
+  const breakoutsList = [allBreakouts, ...queriesBreakouts.acc];
+
   if (!showTotalsFor(settings.columnsSource[0])) {
-    return { groupings: queriesBreakouts.acc.map(p => [p]), aggregations };
+    return { groupings: breakoutsList.map(p => [p]), aggregations };
   }
 
-  const groupings = queriesBreakouts.acc
-    .splice(0, queriesBreakouts.acc.length - 1)
-    .map(p => [p, p.remove(settings.columnsSource[0])]);
+  const groupings = breakoutsList
+    .slice(0, breakoutsList.length-1)
+    .map(p => [p, p.filter(p => !settings.columnsSource.includes(p) && !additionalGroupings.includes(p))]);
 
   return {
-    mainQueryTotalColumn: Set.of(...settings.groupsSources),
     groupings,
     aggregations,
   };
 };
 //todo: move into QueryPlan object
-const getAllAggregationKeysRaw = (
-  qp: QueryPlan
-): { mainQueryColumn?: AggregationKey, totals: AggregationKey[][] } => {
-  const aggregations = qp.aggregations;
-
-  return {
-    mainQueryColumn:
-      qp.mainQueryTotalColumn &&
-      createKey(qp.mainQueryTotalColumn, aggregations),
-    totals: qp.groupings.map(group =>
-      group.map(p => createKey(p, aggregations)),
-    ),
-  };
-};
-
 export const getAllQueryKeys = (
   qp: QueryPlan
-): AggregationKey[][] => {
-  const { mainQueryColumn, totals } = getAllAggregationKeysRaw(
-    qp);
-  return [[mainKey, mainQueryColumn].filter(p => p), ...totals];
+): { totals: AggregationKey[][] } => {
+  const aggregations = qp.aggregations;
+
+  return  qp.groupings.map(group =>
+      group.map(p => createKey(p, aggregations)));
 };
 
 export const getAllAggregationKeysFlatten = (
   qp: QueryPlan
-): AggregationKey[][] => {
-  const { mainQueryColumn, totals } = getAllAggregationKeysRaw(
-    qp
-  );
-  if (!mainQueryColumn) {
-    return flatMap(totals);
-  }
+): AggregationKey[][] => flatMap(getAllQueryKeys(qp));
 
-  return [mainQueryColumn, ...flatMap(totals)];
-};
 
 export const canTotalizeByType = (type: string) =>
   type === "type/BigInteger" ||

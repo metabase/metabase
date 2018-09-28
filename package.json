@@ -45,6 +45,7 @@
     "lodash.mapvalues": "^4.6.0",
     "lodash.memoize": "^4.1.2",
     "lodash.orderby": "^4.6.0",
+    "lodash.partition": "^4.6.0",
     "lodash.range": "^3.2.0",
     "lodash.set": "^4.1.2",
     "lodash.unset": "^4.1.2",
