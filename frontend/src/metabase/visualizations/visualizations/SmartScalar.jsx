@@ -91,7 +91,9 @@ export default class Smart extends React.Component {
     if (Card.isStructured(card)) {
       const query = Card.getQuery(card);
       const breakouts = query && Query.getBreakouts(query);
-      granularity = formatBucketing(parseFieldBucketing(breakouts[0]));
+      granularity = formatBucketing(
+        parseFieldBucketing(breakouts[0]),
+      ).toLowerCase();
     }
 
     const change = formatNumber(insights["last-change"] * 100);
@@ -106,8 +108,21 @@ export default class Smart extends React.Component {
       color = colors["error"];
     }
 
-    const changeDisplay = <span style={{ color }}>{change}%</span>;
-
+    const changeDisplay = (
+      <span style={{ color, fontWeight: 900 }}>{Math.abs(change)}%</span>
+    );
+    const separator = (
+      <span
+        style={{
+          color: colors["text-light"],
+          fontSize: "0.6rem",
+          marginLeft: 4,
+          marginRight: 4,
+        }}
+      >
+        •
+      </span>
+    );
     const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -117,7 +132,6 @@ export default class Smart extends React.Component {
 
     const isClickable = visualizationIsClickable(clicked);
 
-    console.log(this._scalar, isClickable);
     return (
       <ScalarWrapper>
         <span
@@ -136,17 +150,13 @@ export default class Smart extends React.Component {
         <h3>{settings["card.title"]}</h3>
         <Absolute bottom={20}>
           <Flex align="center" mt={1} flexWrap="wrap">
-            <Icon
-              name={isNegative ? "chevrondown" : "chevronup"}
-              color={color}
-            />
+            <Icon name={isNegative ? "arrowDown" : "arrowUp"} color={color} />
             <h4
               style={{
-                fontWeight: 900,
                 color: colors["text-medium"],
               }}
             >
-              {jt`${changeDisplay} was ${formatValue(
+              {jt`${changeDisplay} ${separator} was ${formatValue(
                 insights["previous-value"],
                 settings.column(column),
               )} ${granularityDisplay}`}
