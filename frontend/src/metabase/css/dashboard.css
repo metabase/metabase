@@ -1,5 +1,6 @@
 :root {
   --night-mode-color: color(var(--color-text-white) alpha(-14%));
+  --night-mode-card: #42484e;
 }
 .Dashboard {
   background-color: var(--color-bg-light);
@@ -75,8 +76,8 @@
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
-  background-color: var(--color-bg-black);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--night-mode-card);
+  border-color: var(--night-mode-card);
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
