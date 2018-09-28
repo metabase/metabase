@@ -455,7 +455,7 @@ export default class TableInteractiveSummary extends Component {
     sortOrder
   }: CellRendererProps) => {
     columnSpan = columnSpan || 1;
-    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    const { onVisualizationClick, visualizationIsClickable, data:{ cols } } = this.props;
 
     const columnName = column.name;
 
@@ -475,7 +475,7 @@ export default class TableInteractiveSummary extends Component {
 
 
     const isSortable = isClickable && sortOrder;
-    const isRightAligned = isColumnRightAligned(column);
+    const isRightAligned =  columnSpan > 1 || isColumnRightAligned(cols[columnIndex]);
 
     return (
       <div

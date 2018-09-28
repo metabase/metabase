@@ -138,15 +138,15 @@ export default class TableSimpleSummary extends Component {
               )}
             >
               <thead ref="header">
-              {columnsHeaders.map((cols, rowIndex) =>
+              {columnsHeaders.map((visibleCols, rowIndex) =>
                 <tr key={`header-${rowIndex}`}>
-                  {cols.map((col, colIndex) => {
+                  {visibleCols.map((col, colIndex) => {
                     if (col) {
                       const column = col.column;
                       const sortOrder = sort[column.name];
                       const columnName = column.name;
                       const clickAction = this.canSort(columnName) && (() => updateSort(columnName));
-                      const isRightAligned = false; //isColumnRightAligned(column);
+                      const isRightAligned = col.columnSpan > 1 || isColumnRightAligned(cols[colIndex]);
                       return (
                         <th
                           key={`header-${rowIndex}-${colIndex}`}
