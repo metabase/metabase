@@ -141,6 +141,12 @@
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
+(defn table-name
+  "Return the correct (database specific) table name for `table-name`. For most databases `table-name` is just
+  returned. For others (like Oracle), the real name is prefixed by the dataset and might be different"
+  [db-id table-name]
+  (db/select-one-field :name Table :id (get-table-id-or-explode db-id table-name)))
+
 (defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]
     (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)

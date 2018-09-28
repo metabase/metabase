@@ -2,6 +2,7 @@
   "Settings related to checking token validity and accessing the MetaStore."
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             [metabase
@@ -22,8 +23,11 @@
   (or
    ;; only enable the changing the store url during dev because we don't want people switching it out in production!
    (when config/is-dev?
-     (env :metastore-dev-server-url))
+     (some-> (env :metastore-dev-server-url)
+             ;; remove trailing slashes
+             (str/replace  #"/$" "")))
    "https://store.metabase.com"))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
@@ -31,50 +35,68 @@
 
 (defn- token-status-url [token]
   (when (seq token)
-    (format "%s/api/%s/status" store-url token)))
+    (format "%s/api/%s/v2/status" store-url token)))
 
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
-(s/defn ^:private fetch-token-status :- {:valid s/Bool, :status su/NonBlankString}
-  "Fetch info about the validity of TOKEN from the MetaStore. "
-  [token :- ValidToken]
-  (try
-    ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-    ;; reasonable amount of time throw a timeout exception
-    (deref (future
-             (try (some-> (token-status-url token)
-                          slurp
-                          (json/parse-string keyword))
-                  ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
-                  ;; 'Not Found' message
-                  (catch java.io.FileNotFoundException e
-                    {:valid false, :status (tru "Unable to validate token.")})
-                  ;; if there was any other error fetching the token, log it and return a generic message about the
-                  ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
-                  ;; we do not want something complicated
-                  (catch Throwable e
-                    (log/error e (trs "Error fetching token status:"))
-                    {:valid false, :status (tru "There was an error checking whether this token was valid.")})))
-           fetch-token-status-timeout-ms
-           {:valid false, :status (tru "Token validation timed out.")})))
+(def ^:private TokenStatus
+  {:valid                     s/Bool
+   :status                    su/NonBlankString
+   (s/optional-key :features) [su/NonBlankString]})
 
-(defn- check-embedding-token-is-valid* [token]
-  (when (s/check ValidToken token)
-    (throw (Exception. (str (trs "Invalid token: token isn't in the right format.")))))
+(s/defn ^:private fetch-token-status* :- TokenStatus
+  "Fetch info about the validity of `token` from the MetaStore."
+  [token :- ValidToken]
+  ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
+  ;; reasonable amount of time throw a timeout exception
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
-  (let [{:keys [valid status]} (fetch-token-status token)]
-    (or valid
-        ;; if token isn't valid throw an Exception with the `:status` message
-        (throw (Exception. ^String status)))))
+  (deref
+   (future
+     (println (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
+     (try (some-> (token-status-url token)
+                  slurp
+                  (json/parse-string keyword))
+          ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
+          ;; 'Not Found' message
+          (catch java.io.FileNotFoundException e
+            {:valid false, :status (tru "Unable to validate token: 404 not found.")})
+          ;; if there was any other error fetching the token, log it and return a generic message about the
+          ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
+          ;; we do not want something complicated
+          (catch Throwable e
+            (log/error e (trs "Error fetching token status:"))
+            {:valid false, :status (str (tru "There was an error checking whether this token was valid:")
+                                        " "
+                                        (.getMessage e))})))
+   fetch-token-status-timeout-ms
+   {:valid false, :status (tru "Token validation timed out.")}))
+
+(def ^:private ^{:arglists '([token])} fetch-token-status
+  "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
+  too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
+  otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
+  because checks failed. "
+  (memoize/ttl
+   fetch-token-status*
+   :ttl/threshold (* 1000 60 5)))
+
+(s/defn ^:private valid-token->features* :- #{su/NonBlankString}
+  [token :- ValidToken]
+  (let [{:keys [valid status features]} (fetch-token-status token)]
+    ;; if token isn't valid throw an Exception with the `:status` message
+    (when-not valid
+      (throw (Exception. ^String status)))
+    ;; otherwise return the features this token supports
+    (set features)))
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
   (* 1000 60 60 24)) ; once a day
 
-(def ^:private ^{:arglists '([token])} check-embedding-token-is-valid
-  "Check whether TOKEN is valid. Throws an Exception if not."
-  ;; this is just `check-embedding-token-is-valid*` with some light caching
-  (memoize/ttl check-embedding-token-is-valid*
+(def ^:private ^{:arglists '([token])} valid-token->features
+  "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
+  ;; this is just `valid-token->features*` with some light caching
+  (memoize/ttl valid-token->features*
     :ttl/threshold valid-token-recheck-interval-ms))
 
 
@@ -82,24 +104,55 @@
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - better docstring
-(defsetting premium-embedding-token
-  (tru "Token for premium embedding. Go to the MetaStore to get yours!")
-  :setter (fn [new-value]
-            ;; validate the new value if we're not unsetting it
-            (try
-              (when (seq new-value)
-                (check-embedding-token-is-valid new-value)
-                (log/info (trs "Token is valid.")))
-              (setting/set-string! :premium-embedding-token new-value)
-              (catch Throwable e
-                (log/error e (trs "Error setting premium embedding token"))
-                (throw (ex-info (.getMessage e) {:status-code 400}))))))
+(defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
+  (tru "Token for premium features. Go to the MetaStore to get yours!")
+  :setter
+  (fn [new-value]
+    ;; validate the new value if we're not unsetting it
+    (try
+      (when (seq new-value)
+        (when (s/check ValidToken new-value)
+          (throw (ex-info (tru "Token format is invalid. Token should be 64 hexadecimal characters.")
+                   {:status-code 400})))
+        (valid-token->features new-value)
+        (log/info (trs "Token is valid.")))
+      (setting/set-string! :premium-embedding-token new-value)
+      (catch Throwable e
+        (log/error e (trs "Error setting premium features token"))
+        (throw (ex-info (.getMessage e) {:status-code 400}))))))
+
+(s/defn ^:private token-features :- #{su/NonBlankString}
+  "Get the features associated with the system's premium features token."
+  []
+  (try
+    (or (some-> (premium-embedding-token) valid-token->features)
+        #{})
+    (catch Throwable e
+      (log/error (trs "Error validating token:") (.getMessage e))
+      #{})))
 
 (defn hide-embed-branding?
   "Should we hide the 'Powered by Metabase' attribution on the embedding pages? `true` if we have a valid premium
    embedding token."
   []
-  (boolean
-   (u/ignore-exceptions
-     (check-embedding-token-is-valid (premium-embedding-token)))))
+  (boolean ((token-features) "embedding")))
+
+(defn enable-whitelabeling?
+  "Should we allow full whitelabel embedding (reskinning the entire interface?)"
+  []
+  (boolean ((token-features) "whitelabel")))
+
+(defn enable-audit-app?
+  "Should we allow use of the audit app?"
+  []
+  (boolean ((token-features) "audit-app")))
+
+(defn enable-sandboxes?
+  "Should we enable data sandboxes (row and column-level permissions?"
+  []
+  (boolean ((token-features) "sandboxes")))
+
+(defn enable-sso?
+  "Should we enable SAML/JWT sign-in?"
+  []
+  (boolean ((token-features) "sso")))
