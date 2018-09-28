@@ -82,6 +82,7 @@ export default class Smart extends React.Component {
       this.props.rawSeries[0].data.insights;
     const {
       onVisualizationClick,
+      isFullscreen,
       settings,
       visualizationIsClickable,
       series: [{ card, data: { rows, cols } }],
@@ -156,10 +157,12 @@ export default class Smart extends React.Component {
                 color: colors["text-medium"],
               }}
             >
-              {jt`${changeDisplay} ${separator} was ${formatValue(
-                insights["previous-value"],
-                settings.column(column),
-              )} ${granularityDisplay}`}
+              {isFullscreen
+                ? changeDisplay
+                : jt`${changeDisplay} ${separator} was ${formatValue(
+                    insights["previous-value"],
+                    settings.column(column),
+                  )} ${granularityDisplay}`}
             </h4>
           </Flex>
         </Absolute>
