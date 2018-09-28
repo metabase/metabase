@@ -19,7 +19,10 @@ export const ScalarWrapper = ({ children }) => (
 );
 
 const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
-  <h1 className="text-dark" style={{ fontSize: "2.8rem", fontWeight: 900 }}>
+  <h1
+    className="cursor-pointer text-brand-hover"
+    style={{ fontSize: "2.8rem", fontWeight: 900 }}
+  >
     {value}
   </h1>
 );
