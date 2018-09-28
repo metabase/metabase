@@ -110,7 +110,7 @@ export default class Smart extends React.Component {
     }
 
     const changeDisplay = (
-      <span style={{ color, fontWeight: 900 }}>{Math.abs(change)}%</span>
+      <span style={{ fontWeight: 900 }}>{Math.abs(change)}%</span>
     );
     const separator = (
       <span
@@ -149,20 +149,28 @@ export default class Smart extends React.Component {
           />
         </span>
         <h3>{settings["card.title"]}</h3>
-        <Absolute bottom={20}>
+        <Absolute bottom={isFullscreen ? 0 : 20}>
           <Flex align="center" mt={1} flexWrap="wrap">
-            <Icon name={isNegative ? "arrowDown" : "arrowUp"} color={color} />
+            <Flex
+              align="center"
+              bg={isFullscreen ? color : "transparent"}
+              color={isFullscreen ? "white" : color}
+              p={isFullscreen ? 1 : 0}
+              style={{ borderTopLeftRadius: 6, borderTopRightRadius: 6 }}
+            >
+              <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
+              {changeDisplay}
+            </Flex>
             <h4
               style={{
                 color: colors["text-medium"],
               }}
             >
-              {isFullscreen
-                ? changeDisplay
-                : jt`${changeDisplay} ${separator} was ${formatValue(
-                    insights["previous-value"],
-                    settings.column(column),
-                  )} ${granularityDisplay}`}
+              {!isFullscreen &&
+                jt`${separator} was ${formatValue(
+                  insights["previous-value"],
+                  settings.column(column),
+                )} ${granularityDisplay}`}
             </h4>
           </Flex>
         </Absolute>
