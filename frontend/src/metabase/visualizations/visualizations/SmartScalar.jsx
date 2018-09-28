@@ -7,6 +7,7 @@ import { formatNumber, formatValue } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
 import { Absolute } from "metabase/components/Position";
+import Icon from "metabase/components/Icon";
 
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
@@ -80,7 +81,6 @@ export default class Smart extends React.Component {
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
     const {
-      isDashboard,
       onVisualizationClick,
       settings,
       visualizationIsClickable,
@@ -136,6 +136,10 @@ export default class Smart extends React.Component {
         <h3>{settings["card.title"]}</h3>
         <Absolute bottom={20}>
           <Flex align="center" mt={1} flexWrap="wrap">
+            <Icon
+              name={isNegative ? "chevrondown" : "chevronup"}
+              color={color}
+            />
             <h4
               style={{
                 fontWeight: 900,
