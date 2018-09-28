@@ -6,6 +6,8 @@ import _ from "underscore";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
+import { Absolute } from "metabase/components/Position";
+
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
@@ -26,6 +28,8 @@ export default class Smart extends React.Component {
   static iconName = "smartscalar";
 
   static minSize = { width: 3, height: 3 };
+
+  static noHeader = true;
 
   _scalar: ?HTMLElement;
 
@@ -104,11 +108,7 @@ export default class Smart extends React.Component {
 
     const changeDisplay = <span style={{ color }}>{change}%</span>;
 
-    const granularityDisplay = (
-      <span
-        style={{ fontSize: "0.98em", letterSpacing: 1.02 }}
-      >{jt`past ${granularity}`}</span>
-    );
+    const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
@@ -133,21 +133,22 @@ export default class Smart extends React.Component {
             value={formatValue(insights["last-value"], settings.column(column))}
           />
         </span>
-        <Flex align="center" mt={1} flexWrap="wrap">
-          <h4
-            style={{
-              fontWeight: 900,
-              textTransform: "uppercase",
-              color: colors["text-medium"],
-              fontSize: isDashboard ? "1em" : "2em",
-            }}
-          >
-            {jt`${changeDisplay} (${formatValue(
-              insights["previous-value"],
-              settings.column(column),
-            )} ${granularityDisplay})`}
-          </h4>
-        </Flex>
+        <h3>{settings["card.title"]}</h3>
+        <Absolute bottom={20}>
+          <Flex align="center" mt={1} flexWrap="wrap">
+            <h4
+              style={{
+                fontWeight: 900,
+                color: colors["text-medium"],
+              }}
+            >
+              {jt`${changeDisplay} was ${formatValue(
+                insights["previous-value"],
+                settings.column(column),
+              )} ${granularityDisplay}`}
+            </h4>
+          </Flex>
+        </Absolute>
       </ScalarWrapper>
     );
   }

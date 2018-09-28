@@ -40,7 +40,7 @@ export default class Scalar extends Component {
   static identifier = "scalar";
   static iconName = "number";
 
-  static supportsSeries = true;
+  static noHeader = true;
 
   static minSize = { width: 3, height: 3 };
 
@@ -190,6 +190,7 @@ export default class Scalar extends Component {
             <ScalarValue value={compactScalarValue} />
           </span>
         </Ellipsified>
+        <h3>{settings["card.title"]}</h3>
         {this.props.isDashboard && (
           <div className={"flex align-center relative"}>
             {description && (
