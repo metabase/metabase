@@ -1,6 +1,8 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [metabase.query-processor-test :refer :all]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -89,7 +91,7 @@
 ;;; FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-engines
   {:rows        [[29]]
-   :columns     ["count"]
+   :columns     [(driver/format-aggregation-column-name datasets/*driver* "count")]
    :cols        [(aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query checkins

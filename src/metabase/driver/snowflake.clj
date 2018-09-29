@@ -117,41 +117,42 @@
 (u/strict-extend SnowflakeDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval            (u/drop-first-arg date-interval)
-          :details-fields           (constantly (ssh/with-tunnel-config
-                                                  [{:name         "account"
-                                                    :display-name "Account"
-                                                    :placeholder  "Your snowflake account name."
-                                                    :required     true}
-                                                   {:name         "user"
-                                                    :display-name "Database username"
-                                                    :placeholder  "ken bier"
-                                                    :required     true}
-                                                   {:name         "password"
-                                                    :display-name "Database user password"
-                                                    :type         :password
-                                                    :placeholder  "*******"
-                                                    :required     true}
-                                                   {:name         "warehouse"
-                                                    :display-name "Warehouse"
-                                                    :placeholder  "my_warehouse"}
-                                                   {:name         "dbname"
-                                                    :display-name "Database name"
-                                                    :placeholder  "cockerel"}
-                                                   {:name         "regionid"
-                                                    :display-name "Region Id"
-                                                    :placeholder  "my_region"}
-                                                   {:name         "schema"
-                                                    :display-name "Schema"
-                                                    :placeholder  "my_schema"}
-                                                   {:name         "role"
-                                                    :display-name "Role"
-                                                    :placeholder  "my_role"}]))
-          :format-custom-field-name (u/drop-first-arg str/lower-case)
-          :current-db-time          (driver/make-current-db-time-fn
-                                     snowflake-db-time-query
-                                     snowflake-date-formatters)
-          :describe-database        describe-database})
+         {:date-interval                  (u/drop-first-arg date-interval)
+          :details-fields                 (constantly (ssh/with-tunnel-config
+                                                        [{:name         "account"
+                                                          :display-name "Account"
+                                                          :placeholder  "Your snowflake account name."
+                                                          :required     true}
+                                                         {:name         "user"
+                                                          :display-name "Database username"
+                                                          :placeholder  "ken bier"
+                                                          :required     true}
+                                                         {:name         "password"
+                                                          :display-name "Database user password"
+                                                          :type         :password
+                                                          :placeholder  "*******"
+                                                          :required     true}
+                                                         {:name         "warehouse"
+                                                          :display-name "Warehouse"
+                                                          :placeholder  "my_warehouse"}
+                                                         {:name         "dbname"
+                                                          :display-name "Database name"
+                                                          :placeholder  "cockerel"}
+                                                         {:name         "regionid"
+                                                          :display-name "Region Id"
+                                                          :placeholder  "my_region"}
+                                                         {:name         "schema"
+                                                          :display-name "Schema"
+                                                          :placeholder  "my_schema"}
+                                                         {:name         "role"
+                                                          :display-name "Role"
+                                                          :placeholder  "my_role"}]))
+          :format-custom-field-name       (u/drop-first-arg str/lower-case)
+          :current-db-time                (driver/make-current-db-time-fn
+                                           snowflake-db-time-query
+                                           snowflake-date-formatters)
+          :format-aggregation-column-name (u/drop-first-arg str/upper-case)
+          :describe-database              describe-database})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
