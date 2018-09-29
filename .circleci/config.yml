@@ -256,6 +256,24 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-snowflake:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Snowflake)
+          environment:
+            ENGINES: h2,snowflake
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
   be-tests-sqlserver:
     <<: *defaults
     steps:
@@ -577,6 +595,9 @@ workflows:
       - be-tests-vertica:
           requires:
             - be-tests
+      - be-tests-snowflake:
+          requires:
+            - be-tests
       - fe-deps:
           requires:
             - checkout
@@ -621,6 +642,7 @@ workflows:
             - be-tests-druid
             - be-tests-redshift
             - be-tests-vertica
+            - be-tests-snowflake
             - fe-linter-eslint
             - fe-linter-prettier
             - fe-linter-flow
