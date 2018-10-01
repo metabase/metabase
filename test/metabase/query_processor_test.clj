@@ -268,30 +268,33 @@
     (aggregate-col :count)
     (aggregate-col :avg (venues-col :id))"
   {:arglists '([ag-col-kw] [ag-col-kw field])}
+  ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
   ([ag-col-kw]
-   (case ag-col-kw
-     :count {:base_type    :type/Integer
-             :special_type :type/Number
-             :name         "count"
-             :display_name "count"
-             :id           nil
-             :table_id     nil
-             :description  nil
-             :source       :aggregation
-             :extra_info   {}
-             :target       nil}))
+   {:pre [(= ag-col-kw :count)]}
+   (let [ag-name (driver/format-aggregation-column-name datasets/*driver* "count")]
+     {:base_type    :type/Integer
+      :special_type :type/Number
+      :name         ag-name
+      :display_name ag-name
+      :id           nil
+      :table_id     nil
+      :description  nil
+      :source       :aggregation
+      :extra_info   {}
+      :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
-   {:base_type    base_type
-    :special_type special_type
-    :id           nil
-    :table_id     nil
-    :description  nil
-    :source       :aggregation
-    :extra_info   {}
-    :target       nil
-    :name         (name ag-col-kw)
-    :display_name (name ag-col-kw)}))
+   (let [ag-name (driver/format-aggregation-column-name datasets/*driver* (name ag-col-kw))]
+     {:base_type    base_type
+      :special_type special_type
+      :id           nil
+      :table_id     nil
+      :description  nil
+      :source       :aggregation
+      :extra_info   {}
+      :target       nil
+      :name         ag-name
+      :display_name ag-name})))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))

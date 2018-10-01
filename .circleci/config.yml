@@ -221,6 +221,8 @@ jobs:
           <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (MongoDB 3.2)
+          environment:
+            ENGINES: h2,mongo
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
             lein with-profile +ci test
@@ -247,6 +249,8 @@ jobs:
           no_output_timeout: 5m
       - run:
           name: Run backend unit tests (Vertica)
+          environment:
+            ENGINES: h2,vertica
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
             lein with-profile +ci test

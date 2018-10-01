@@ -18,37 +18,39 @@
    :type/Text       "TEXT"
    :type/Time       "TIME"})
 
+;; Since all tests share the same Snowflake server let's make sure we don't stomp over any tests running
+;; simultaneously by creating different databases for different tests. We'll append a random suffix to each DB name
+;; created for the duration of this test which should hopefully be enough to prevent collision.
+(defonce ^:private session-db-suffix
+  (str "__" (rand-int 100)))
+
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:account                        (i/db-test-env-var-or-throw :snowflake :account)
           :user                           (i/db-test-env-var-or-throw :snowflake :user)
           :password                       (i/db-test-env-var-or-throw :snowflake :password)
           :warehouse                      (i/db-test-env-var-or-throw :snowflake :warehouse)
-          :QUOTED_IDENTIFIERS_IGNORE_CASE true}
+          ;; SESSION parameters
+          :quoted_identifiers_ignore_case true
+          :timezone                       "UTC"}
          (when (= context :db)
-           {:db database-name})))
+           {:db (str database-name session-db-suffix)})))
 
-
-(def ^:private schema-name "public")
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
-(defn qualified-name-components
-  ([_ db-or-schema-name]             [db-or-schema-name])
-  ([_ db-name table-name]            [db-name schema-name table-name])
-  ([_ db-name table-name field-name] [db-name schema-name table-name field-name]))
-
+(defn- qualified-name-components
+  ([_ db-name]                       [(str db-name session-db-suffix)])
+  ([_ db-name table-name]            [(str db-name session-db-suffix) "public" table-name])
+  ([_ db-name table-name field-name] [(str db-name session-db-suffix) "public" table-name field-name]))
 
 (defn- create-db-sql [driver {:keys [database-name]}]
-  (let [db (generic/qualify+quote-name driver database-name)
-        schema-name (generic/qualify+quote-name driver schema-name)]
-    (format "CREATE DATABASE %s; USE DATABASE %s; ALTER SESSION SET TIMEZONE = 'UTC';" db db)))
+  (let [db (generic/qualify+quote-name driver database-name)]
+    (format "CREATE DATABASE %s; USE DATABASE %s;" db db)))
 
 (defn- load-data! [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
     (.setAutoCommit (jdbc/get-connection conn) false)
-    (let [table (format "\"%s\".\"public\".\"%s\"" database-name table-name)
-          rows  (keep-indexed (fn [i row]
-                                (assoc row :id (inc i)))
-                              (generic/load-data-get-rows driver dbdef tabledef))
+    (let [table (generic/qualify+quote-name driver database-name table-name)
+          rows  (generic/add-ids (generic/load-data-get-rows driver dbdef tabledef))
           cols  (keys (first rows))
           vals  (for [row rows]
                   (map row cols))]

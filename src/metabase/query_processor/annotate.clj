@@ -140,9 +140,11 @@
                                               (aggregation-name arg)))))
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
     ;; is called `:count` (WHY?)
-    aggregation-type          (if (= (keyword aggregation-type) :distinct)
-                                "count"
-                                (name aggregation-type))))
+    aggregation-type          (driver/format-aggregation-column-name
+                               i/*driver*
+                               (if (= (keyword aggregation-type) :distinct)
+                                 "count"
+                                 (name aggregation-type)))))
 
 (defn- expression-aggregate-field-info [expression]
   (let [ag-name (aggregation-name expression)]
@@ -193,7 +195,7 @@
                        (expression-aggregate-field-info ag)
                        (aggregate-field-info ag))))))
 
-(defn- generic-info-for-missing-key
+(defn- generic-info-for-unexpected-key
   "Return a set of bare-bones metadata for a Field named K when all else fails.
    Scan the INITIAL-VALUES of K in an attempt to determine the `base-type`."
   [k & [initial-values]]
@@ -211,7 +213,7 @@
    (This is basically the same as the generic information, but we also add `:id` and `:source`
    columns so drill-through operations can be done on it)."
   [k & [initial-values]]
-  (let [col (generic-info-for-missing-key k initial-values)]
+  (let [col (generic-info-for-unexpected-key k initial-values)]
     (assoc col
       :id     [:field-literal k (:base-type col)]
       :source :fields)))
@@ -226,33 +228,33 @@
   (when-let [[_ field-name-without-suffix] (re-matches #"^(.*)_\d+$" (name k))]
     (some (fn [{field-name :field-name, :as field}]
             (when (= (name field-name) field-name-without-suffix)
-              (merge (generic-info-for-missing-key k)
+              (merge (generic-info-for-unexpected-key k)
                      (select-keys field [:base-type :special-type :source]))))
           fields)))
 
-(defn- info-for-missing-key
+(defn- info-for-unexpected-key
   "Metadata for a field named K, which we weren't able to resolve normally."
   [inner-query fields k initial-values]
   (or (when (:source-query inner-query)
         (info-for-column-from-source-query k initial-values))
       (info-for-duplicate-field fields k)
-      (generic-info-for-missing-key k initial-values)))
+      (generic-info-for-unexpected-key k initial-values)))
 
 (defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
   [inner-query actual-keys initial-rows fields]
   {:pre [(sequential? actual-keys) (every? keyword? actual-keys)]}
-  (let [expected-keys (u/prog1 (set (map :field-name fields))
-                        (assert (every? keyword? <>)))
-        missing-keys  (set/difference (set actual-keys) expected-keys)]
-    (when (seq missing-keys)
+  (let [expected-keys   (u/prog1 (set (map :field-name fields))
+                          (assert (every? keyword? <>)))
+        unexpected-keys (set/difference (set actual-keys) expected-keys)]
+    (when (seq unexpected-keys)
       (log/warn (u/format-color 'yellow (str "There are fields we (maybe) weren't expecting in the results: %s\n"
                                              "Expected: %s\nActual: %s")
-                  missing-keys expected-keys (set actual-keys))))
+                  unexpected-keys expected-keys (set actual-keys))))
     (concat fields (for [k     actual-keys
-                         :when (contains? missing-keys k)]
-                     (info-for-missing-key inner-query fields k (map k initial-rows))))))
+                         :when (contains? unexpected-keys k)]
+                     (info-for-unexpected-key inner-query fields k (map k initial-rows))))))
 
 (defn- fixup-renamed-fields
   "After executing the query, it's possible that java.jdbc changed the name of the column that was originally in the
