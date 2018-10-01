@@ -1,12 +1,11 @@
 import React from "react";
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 import { t, jt } from "c-3po";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import colors from "metabase/lib/colors";
 
-import { Absolute } from "metabase/components/Position";
 import Icon from "metabase/components/Icon";
 
 import * as Query from "metabase/lib/query/query";
@@ -21,6 +20,7 @@ import {
 
 import ScalarValue, {
   ScalarWrapper,
+  ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
@@ -81,7 +81,9 @@ export default class Smart extends React.Component {
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
     const {
+      onChangeCardAndRun,
       onVisualizationClick,
+      isDashboard,
       isFullscreen,
       settings,
       visualizationIsClickable,
@@ -148,8 +150,23 @@ export default class Smart extends React.Component {
             value={formatValue(insights["last-value"], settings.column(column))}
           />
         </span>
-        <h3>{settings["card.title"]}</h3>
-        <Absolute bottom={20}>
+        {isDashboard && (
+          <ScalarTitle
+            title={settings["card.title"]}
+            description={card.description}
+            onClick={
+              onChangeCardAndRun &&
+              (() => onChangeCardAndRun({ nextCard: card }))
+            }
+          />
+        )}
+        <Box
+          style={{
+            position: isDashboard ? "absolute" : "relative",
+            bottom: 20,
+            marginTop: isDashboard ? 0 : 20,
+          }}
+        >
           <Flex align="center" mt={1} flexWrap="wrap">
             <Flex align="center" color={color}>
               <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
@@ -167,7 +184,7 @@ export default class Smart extends React.Component {
                 )} ${granularityDisplay}`}
             </h4>
           </Flex>
-        </Absolute>
+        </Box>
       </ScalarWrapper>
     );
   }

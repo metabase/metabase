@@ -2,9 +2,10 @@
 
 import React, { Component } from "react";
 import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+
+import Ellipsified from "metabase/components/Ellipsified";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
@@ -21,6 +22,7 @@ import type { VisualizationSettings } from "metabase/meta/types/Card";
 
 import ScalarValue, {
   ScalarWrapper,
+  ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -140,7 +142,9 @@ export default class Scalar extends Component {
 
   render() {
     let {
-      series: [{ data: { cols, rows } }],
+      series: [{ card, data: { cols, rows } }],
+      isDashboard,
+      onChangeCardAndRun,
       gridSize,
       settings,
       visualizationIsClickable,
@@ -190,20 +194,15 @@ export default class Scalar extends Component {
             <ScalarValue value={compactScalarValue} />
           </span>
         </Ellipsified>
-        <h3>{settings["card.title"]}</h3>
-        {this.props.isDashboard && (
-          <div className={"flex align-center relative"}>
-            {description && (
-              <div
-                className="absolute top bottom hover-child flex align-center justify-center"
-                style={{ right: -20, top: 2 }}
-              >
-                <Tooltip tooltip={description} maxWidth={"22em"}>
-                  <Icon name="infooutlined" />
-                </Tooltip>
-              </div>
-            )}
-          </div>
+        {isDashboard && (
+          <ScalarTitle
+            title={settings["card.title"]}
+            description={card.description}
+            onClick={
+              onChangeCardAndRun &&
+              (() => onChangeCardAndRun({ nextCard: card }))
+            }
+          />
         )}
       </ScalarWrapper>
     );

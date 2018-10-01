@@ -3,6 +3,11 @@
  */
 
 import React from "react";
+import cx from "classnames";
+
+import Ellipsified from "metabase/components/Ellipsified";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import { Flex } from "grid-styled";
 
@@ -25,6 +30,34 @@ const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
   >
     {value}
   </h1>
+);
+
+export const ScalarTitle = ({ title, description, onClick }) => (
+  <div>
+    <Ellipsified tooltip={title}>
+      <span
+        onClick={onClick}
+        className={cx(
+          "fullscreen-normal-text fullscreen-night-text text-brand-hover",
+          {
+            "cursor-pointer": !!onClick,
+          },
+        )}
+      >
+        <h3>{title}</h3>
+      </span>
+    </Ellipsified>
+    {description && (
+      <div
+        className="absolute top bottom hover-child flex align-center justify-center"
+        style={{ right: -20, top: 2 }}
+      >
+        <Tooltip tooltip={description} maxWidth={"22em"}>
+          <Icon name="infooutlined" />
+        </Tooltip>
+      </div>
+    )}
+  </div>
 );
 
 export default ScalarValue;
