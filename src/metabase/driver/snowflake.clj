@@ -21,8 +21,9 @@
             :subname                                    (str "//" host ".snowflakecomputing.com/")
             :db                                         dbname
             :client_metadata_request_use_connection_ctx true
-            :week_start                                 7
-            :ssl                                        true}
+            :ssl                                        true
+            ;; other SESSION parameters
+            :week_start                                 7}
            (dissoc opts :host :port :dbname))))
 
 (defrecord SnowflakeDriver []

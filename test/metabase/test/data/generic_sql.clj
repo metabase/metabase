@@ -178,13 +178,19 @@
                                     (du/->Timestamp v du/utc)
                                     v))))))
 
+(defn add-ids
+  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
+  specified."
+  [rows]
+  (for [[i row] (m/indexed rows)]
+    (assoc row :id (inc i))))
+
 (defn load-data-add-ids
   "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or
   `load-data-one-at-a-time`."
   [insert!]
   (fn [rows]
-    (insert! (vec (for [[i row] (m/indexed rows)]
-                    (assoc row :id (inc i)))))))
+    (insert! (vec (add-ids rows)))))
 
 (defn load-data-chunked
   "Insert rows in chunks, which default to 200 rows each."
