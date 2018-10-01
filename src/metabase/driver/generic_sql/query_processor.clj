@@ -325,8 +325,9 @@
         {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
     [[table-or-query-expr (keyword join-alias)]
      [:=
-      (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
+      (let [name (get-qualified-name (get-field-hierarchy source-table-id) source-field)
+      (hx/qualify-and-escape-dots source-schema source-table-name name)
+      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))])]]))
 
 (defmethod ->honeysql [Object JoinTable]
   ;; Returns a seq of clauses used in a honeysql join clause

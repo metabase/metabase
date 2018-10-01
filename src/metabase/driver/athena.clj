@@ -59,16 +59,12 @@
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
-  [database query {:keys [read-fn]}]
-  (let [current-read-fn (or read-fn #(into [] (jdbc/result-set-seq % {:identifiers identity})))]
+  [database query]
     (log/infof "Running Athena query : '%s'..." query)
     (try
-      (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-        (-> (.createStatement conn)
-            (.executeQuery query)
-            (current-read-fn)))
+      (jdbc/query (sql/db->jdbc-connection-spec database) (string/replace query ";" " ") {:raw? true})
       (catch Exception e
-        (log/error (u/format-color 'red "Failed to execute query: %s %s\n%s" query (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
+        (log/error (u/format-color 'red "Failed to execute query: %s %s\n%s" query (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn- column->base-type [column-type]
   ({:array      :type/*
@@ -113,7 +109,7 @@
           (#(= 1 (first (vals (first %)))))))))
 
 (defn- get-databases [driver database]
-  (->> (run-query database "SHOW DATABASES" {})
+  (->> (run-query database "SHOW DATABASES")
        (remove #(= (:database_name %) "default"))
        (map (fn [{:keys [database_name]}]
               {:name database_name :schema nil}))
@@ -122,7 +118,7 @@
 (defn- get-tables [driver database databases]
   (->> databases
        (map (fn [{:keys [name] :as table}]
-              (let [tables (run-query database (str "SHOW TABLES IN `" name "`") {})]
+              (let [tables (run-query database (str "SHOW TABLES IN `" name "`"))]
                 (map (fn [{:keys [tab_name]}] (assoc table :schema name :name tab_name))
                      tables))))
        (flatten)
@@ -135,8 +131,7 @@
     {:tables tables}))
 
 (defn- describe-table-fields [db {:keys [name schema]}]
-  (->> (run-query db (str "DESCRIBE `" schema "`.`" name "`;")
-                     {:read-fn describe-all-database->clj})
+  (->> (run-query db (str "DESCRIBE `" schema "`.`" name "`;"))
        (map schema-parser/parse-schema)
        (set)))
 
@@ -149,13 +144,18 @@
   [driver {:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
   (let [final-query (str "-- " (qputil/query->remark outer-query) "\n"
                                (unprepare/unprepare (cons sql params) :quote-escape "\"", :iso-8601-fn :from_iso8601_timestamp))
-        results (run-query database final-query {})
+        results (run-query database final-query)
         columns (into [] (keys (first results)))
         rows (->> results
                   (map vals)
                   (map #(into [] %)))]
     {:columns columns
      :rows rows}))
+
+(defn- unquote-table-name
+  "Workaround for unquoting table name as the JDBC api does not support this feature"
+  [sql-string table-name]
+  (string/replace sql-string (str "\"" table-name "\"") table-name))
 
 (defn- mbql->native
   "Transpile MBQL query into a native SQL statement."
