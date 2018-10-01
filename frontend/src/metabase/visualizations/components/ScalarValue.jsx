@@ -25,7 +25,7 @@ export const ScalarWrapper = ({ children }) => (
 
 const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
   <h1
-    className="cursor-pointer text-brand-hover"
+    className="ScalarValue cursor-pointer text-brand-hover"
     style={{ fontSize: "2.8rem", fontWeight: 900 }}
   >
     {value}
@@ -44,7 +44,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
           },
         )}
       >
-        <h3>{title}</h3>
+        <h3 className="Scalar-title">{title}</h3>
       </span>
     </Ellipsified>
     {description && (
