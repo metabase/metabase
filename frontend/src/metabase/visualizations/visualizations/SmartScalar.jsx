@@ -153,7 +153,7 @@ export default class Smart extends React.Component {
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}
-            description={card.description}
+            description={settings["card.description"]}
             onClick={
               onChangeCardAndRun &&
               (() => onChangeCardAndRun({ nextCard: card }))
@@ -165,6 +165,7 @@ export default class Smart extends React.Component {
             position: isDashboard ? "absolute" : "relative",
             bottom: 20,
             marginTop: isDashboard ? 0 : 20,
+            fontSize: isDashboard ? "inherit" : "1.4em",
           }}
         >
           <Flex align="center" mt={1} flexWrap="wrap">

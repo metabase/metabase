@@ -4,8 +4,6 @@ import React, { Component } from "react";
 import { t } from "c-3po";
 
 import Ellipsified from "metabase/components/Ellipsified";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
@@ -150,7 +148,6 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
-    let description = settings["card.description"];
 
     let isSmall = gridSize && gridSize.width < 4;
 
@@ -197,7 +194,7 @@ export default class Scalar extends Component {
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}
-            description={card.description}
+            description={settings["card.description"]}
             onClick={
               onChangeCardAndRun &&
               (() => onChangeCardAndRun({ nextCard: card }))
