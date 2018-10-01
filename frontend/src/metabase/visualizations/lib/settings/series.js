@@ -7,7 +7,8 @@ import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
 export function keyForSingleSeries(single) {
-  return String(single.card.name);
+  // _seriesKey is sometimes set by transformSeries
+  return single.card._seriesKey || String(single.card.name);
 }
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
