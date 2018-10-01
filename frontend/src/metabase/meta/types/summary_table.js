@@ -1,7 +1,7 @@
 /* @flow */
 
 import type { ColumnName, DatasetData } from "metabase/meta/types/Dataset";
-import type { ColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
+import type { ColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
 import { Set } from "immutable";
 
 export type Groups = Set<ColumnName>;

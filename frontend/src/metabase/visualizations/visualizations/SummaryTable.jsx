@@ -1,4 +1,3 @@
-/* @flow */
 
 import React, { Component } from "react";
 
@@ -6,7 +5,7 @@ import TableInteractiveSummary from "../components/TableInteractiveSummary.jsx";
 import TableSimpleSummary from "../components/TableSimpleSummary.jsx";
 import { t } from "c-3po";
 
-import ChartSettingSummaryTableColumns from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns.jsx";
+import ChartSettingsSummaryTableColumns from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -16,7 +15,6 @@ import { getIn } from "icepick";
 import type {
   ColumnName,
   DatasetData,
-  SummaryDatasetData,
 } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
@@ -33,7 +31,7 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 type Props = {
   card: Card,
-  data: SummaryDatasetData,
+  data: DatasetData,
   rawSeries: RawSeries,
   settings: VisualizationSettings,
   isDashboard: boolean,
@@ -76,7 +74,7 @@ export default class SummaryTable extends Component {
 
   static settings = {
     [COLUMNS_SETTINGS]: {
-      widget: ChartSettingSummaryTableColumns,
+      widget: ChartSettingsSummaryTableColumns,
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
       getDefault: ([{ data }]): SummaryTableSettings =>
@@ -133,7 +131,7 @@ export default class SummaryTable extends Component {
     settings,
     card
   }: {
-    data: SummaryDatasetData,
+    data: DatasetData,
     settings: VisualizationSettings,
   }, sort) {
       const summarySettings = enrichSettings(

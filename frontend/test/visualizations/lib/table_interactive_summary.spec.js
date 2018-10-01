@@ -1,6 +1,6 @@
 import {
   buildIndexGenerator
-} from "metabase/visualizations/lib/table_interactive_summary";
+} from "metabase/visualizations/lib/summary_table";
 import orderBy from "lodash.orderby";
 import isEqual from "lodash.isequal";
 import zip from "lodash.zip";
@@ -22,7 +22,7 @@ const createGroups = (...args) => args.reduce((acc, [key, value]) => set(acc, ke
 
 
 
-describe("metabase/visualization/lib/table_interactive_summary", () => {
+describe("metabase/visualization/lib/summary_table.js", () => {
   describe('index builders', () =>{
   describe("given no groups, visible column indexes: [1..2], rows indexes: [7...10] ", () => {
     const window = {windowRowStartIndex : 7, windowRowStopIndex: 10, windowColumnStartIndex : 1, windowColumnStopIndex :2};

@@ -1,4 +1,3 @@
-/* @flow */
 
 import type {
   AggregationKey,
@@ -18,7 +17,7 @@ import flatMap from "lodash.flatmap";
 import partition from "lodash.partition";
 import _ from "lodash";
 import { Set } from "immutable";
-import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingSummaryTableColumns";
+import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
 import {getAggregationQueries} from "metabase-lib/lib/SummaryTableQueryBuilder";
 import {
   fetchDataOrError, getDashboardType

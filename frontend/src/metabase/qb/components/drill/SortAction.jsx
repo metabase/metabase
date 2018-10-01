@@ -8,7 +8,7 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
-const getClickActionsForSummaryHeader = ({currentSortOrder, customAction}) =>{
+const getClickActionsForSummaryHeader = ({currentSortOrder, customAction}: {currentSortOrder : string, customAction : () => void}) =>{
   return [
     {name: currentSortOrder === 'desc' ? "sort-ascending" : "sort-descending",
     section: "sort",
@@ -26,9 +26,10 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     !clicked.column.source
   )
     return [];
-
-  if(clicked.summaryHeaderCustomSort)
-    return getClickActionsForSummaryHeader(clicked.summaryHeaderCustomSort);
+  // $FlowFixMe summaryHeaderCustomSort
+  const {summaryHeaderCustomSort} = clicked;
+  if(summaryHeaderCustomSort)
+    return getClickActionsForSummaryHeader(summaryHeaderCustomSort);
 
 
   const query = question.query();

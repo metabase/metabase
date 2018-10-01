@@ -1,11 +1,11 @@
-/* @flow */
+
 //todo rename
 //todo remove {name}.css (update style using ChartSettingsTableFormatting)
 import React, { Component } from "react";
 
 import { t } from "c-3po";
 
-import styles from "./ChartSettingSummaryTableColumns.css";
+import styles from "./ChartSettingsSummaryTableColumns.css";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
@@ -158,7 +158,7 @@ const convertItemsToState = (
   };
 };
 
-export default class ChartSettingSummaryTableColumns extends Component<
+export default class ChartSettingsSummaryTableColumns extends Component<
   any,
   Props,
   State,

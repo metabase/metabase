@@ -1,3 +1,5 @@
+import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
+
 import range from 'lodash.range';
 import flatMap from 'lodash.flatmap';
 
@@ -123,3 +125,40 @@ export const buildCellRangeRenderer = (indexGenerator) => (args) =>{
 };
 
 
+export function getTableCellClickedObjectForSummary(
+  cols: Column[],
+  column: Column,
+  row : Row,
+  value: any,
+): ClickObject {
+  if (row.isTotalColumnIndex !== undefined) {
+    let dimensions = cols
+      // $FlowFixMe: isTotalColumnIndex
+      .filter((column, index) => index < row.isTotalColumnIndex)
+      .map((column, index) => ({value: row[index], column}))
+      .filter(dimension => dimension.column.source === "breakout")
+    ;
+    if(column.pivotedDimension)
+      dimensions.push(column.pivotedDimension);
+    return {
+      dimensions,
+    };
+  } else if (column.source === "aggregation") {
+    let dimensions = cols
+      .map((column, index) => ({value: row[index], column}))
+      .filter(dimension => dimension.column.source === "breakout")
+    ;
+    if(column.pivotedDimension)
+    // $FlowFixMe: pivotedDimension
+      dimensions.push(column.pivotedDimension);
+    if(!value)
+      value="";  // so that SortAction won't be available when dilling  
+    return {
+      value,
+      column,
+      dimensions,
+    };
+  } else {
+    return { value, column };
+  }
+}

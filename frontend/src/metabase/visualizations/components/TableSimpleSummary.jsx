@@ -20,7 +20,7 @@ import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
-import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/table_interactive_summary";
+import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/summary_table";
 import orderBy from 'lodash.orderby';
 import set from 'lodash.set';
 import type {ColumnName} from "metabase/meta/types/Dataset";

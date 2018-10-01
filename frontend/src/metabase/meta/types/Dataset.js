@@ -33,8 +33,6 @@ export type DatasetData = {
   columns: ColumnName[],
   rows: Row[],
 };
-// $FlowFixMe
-export type SummaryDatasetData = DatasetData & { totalsData: DatasetData[] };
 
 export type Dataset = {
   data: DatasetData,

@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { DatasetData, Column } from "metabase/meta/types/Dataset";
+import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
 import type { ClickObject } from "metabase/meta/types/Visualization";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
@@ -52,38 +52,3 @@ export function isColumnRightAligned(column: Column) {
 
 
 
-export function getTableCellClickedObjectForSummary(
-  cols,
-  column,
-  row,
-  value,
-): ClickObject {
-  if (row.isTotalColumnIndex !== undefined) {
-    let dimensions = cols
-      .filter((column, index) => index < row.isTotalColumnIndex)
-      .map((column, index) => ({value: row[index], column}))
-      .filter(dimension => dimension.column.source === "breakout")
-    ;
-    if(column.pivotedDimension)
-      dimensions.push(column.pivotedDimension);
-    return {
-      dimensions,
-    };
-  } else if (column.source === "aggregation") {
-    let dimensions = cols
-      .map((column, index) => ({value: row[index], column}))
-      .filter(dimension => dimension.column.source === "breakout")
-    ;
-    if(column.pivotedDimension)
-      dimensions.push(column.pivotedDimension);
-    if(!value)
-      value="";  // so that SortAction won't be available when dilling  
-    return {
-      value,
-      column,
-      dimensions,
-    };
-  } else {
-    return { value, column };
-  }
-}

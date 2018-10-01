@@ -110,6 +110,7 @@ export default class ChartClickActions extends Component {
           "Executed Summary Header Custom Sort Action",
           getGALabelForAction(action),
         );
+      // $FlowFixMe action
         action.customAction();
       this.close();
     }

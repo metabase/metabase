@@ -1,4 +1,4 @@
-/* @flow */
+
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -10,7 +10,6 @@ import Icon from "metabase/components/Icon.jsx";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isID } from "metabase/lib/schema_metadata";
 import {
-  getTableCellClickedObjectForSummary,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 
@@ -20,7 +19,7 @@ import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
 // $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
-import { Grid, ScrollSync, defaultCellRangeRenderer } from "react-virtualized";
+import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
@@ -33,7 +32,7 @@ import type {Row, Column, ColumnName} from "metabase/meta/types/Dataset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
-import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_interactive_summary";
+import {buildCellRangeRenderer, buildIndexGenerator, getTableCellClickedObjectForSummary} from "metabase/visualizations/lib/summary_table";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 import type {VisualizationSettings} from "metabase/meta/types/Card";
 
