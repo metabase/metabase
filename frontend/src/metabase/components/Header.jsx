@@ -159,7 +159,7 @@ export default class Header extends Component {
           <div className="Entity py3">
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
-            {!this.props.isEditingInfo && (
+            {this.props.showBadge && (
               <CollectionBadge
                 collectionId={item.collection_id}
                 analyticsContext={this.props.analyticsContext}
