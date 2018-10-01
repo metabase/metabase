@@ -160,7 +160,7 @@ export default class TableInteractive extends Component {
     }
   }
 
-  _getColumnSettings(props) {
+  _getColumnSettings(props: Props) {
     return props.data && props.data.cols.map(col => props.settings.column(col));
   }
 
@@ -443,11 +443,12 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted } = this.props;
+    const { sort, isPivoted, settings } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = formatColumn(column);
+    let columnTitle =
+      settings.column(column).column_title || formatColumn(column);
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }

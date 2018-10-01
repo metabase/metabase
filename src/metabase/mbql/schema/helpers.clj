@@ -49,20 +49,28 @@
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
                                   [clause-name clause-name])]
-    `(def ~(vary-meta symb-name assoc :private true, :clause-name (keyword clause-name))
+    `(def ~(vary-meta symb-name assoc
+                      :clause-name (keyword clause-name)
+                      :doc         (format "Schema for a valid %s clause." clause-name))
        (clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))))
 
 
 ;;; ----------------------------------------------------- one-of -----------------------------------------------------
 
-;; TODO - consider using impl in `mbql.u` instead
-(defn is-clause?
-  "True if `x` is a given MBQL clause.
+;; TODO - this is a copy of the one in the `metabase.mbql.util` namespace. We need to reorganize things a bit so we
+;; can use the same fn and avoid circular refs
+(defn ^:deprecated is-clause?
+  "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
-     (is-clause? :field-id [:field-id 10]) ;-> true"
-  [clause-name x]
-  (and (sequential? x)
-       (= (first x) clause-name)))
+    (is-clause? :count [:count 10])        ; -> true
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
+  [k-or-ks x]
+  (and
+   (sequential? x)
+   (keyword? (first x))
+   (if (coll? k-or-ks)
+     ((set k-or-ks) (first x))
+     (= k-or-ks (first x)))))
 
 (defn one-of*
   "Interal impl of `one-of` macro."

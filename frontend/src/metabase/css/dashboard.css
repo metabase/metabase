@@ -51,6 +51,10 @@
   background-color: var(--color-bg-black);
 }
 
+.Dashboard.Dashboard--night .DashboardHeader {
+  color: var(--color-text-white);
+}
+
 .Dashboard.Dashboard--night .Card {
   color: var(--color-text-white);
 }

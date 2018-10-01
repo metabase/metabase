@@ -12,7 +12,7 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 
-type SettingId = string;
+export type SettingId = string;
 
 export type Settings = {
   [settingId: SettingId]: any,
@@ -23,12 +23,11 @@ export type SettingDefs = {
 };
 
 export type SettingDef = {
-  id: SettingId,
-  value: any,
   title?: string,
   props?: { [key: string]: any },
   default?: any,
   hidden?: boolean,
+  disabled?: boolean,
   getTitle?: (object: any, settings: Settings) => ?string,
   getHidden?: (object: any, settings: Settings) => boolean,
   getDisabled?: (object: any, settings: Settings) => boolean,
@@ -57,6 +56,8 @@ export type WidgetDef = {
   onChange: (value: any) => void,
 };
 
+export type ExtraProps = { [key: string]: any };
+
 const WIDGETS = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
@@ -75,7 +76,7 @@ export function getComputedSettings(
   settingsDefs: SettingDefs,
   object: any,
   storedSettings: Settings,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ) {
   const computedSettings = {};
   for (let settingId in settingsDefs) {
@@ -97,7 +98,7 @@ function getComputedSetting(
   settingId: SettingId,
   object: any,
   storedSettings: Settings,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ): any {
   if (settingId in computedSettings) {
     return;
@@ -158,7 +159,7 @@ function getSettingWidget(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
   const value = settings[settingId];
@@ -184,7 +185,7 @@ function getSettingWidget(
       : settingDef.hidden || false,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, settings, extra)
-      : false,
+      : settingDef.disabled || false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
@@ -204,11 +205,10 @@ export function getSettingsWidgets(
   settings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
-  extra?: { [key: string]: any } = {},
+  extra?: ExtraProps = {},
 ) {
   return Object.keys(settingDefs)
     .map(settingId =>
-      // $FlowFixMe: doesn't understand settingDef is a SettingDef
       getSettingWidget(
         settingDefs,
         settingId,

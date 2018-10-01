@@ -1534,6 +1534,9 @@ export const viewPreviousObjectDetail = () => {
   };
 };
 
+export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
+export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
+
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;
 export const onBeginEditing = beginEditing;

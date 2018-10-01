@@ -10,7 +10,6 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.util.date :as du]
             [metabase.models
              [database :refer [Database]]
              [field :as field]
@@ -18,15 +17,18 @@
              [table :refer [Table]]]
             [metabase.query-processor
              [interface :as i]
+             [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
   (:import java.util.TimeZone
-           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral FieldPlaceholder
-            RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
+           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral
+            FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -406,31 +408,32 @@
   (if (:native source-query)
     expanded-query-dict
     (let [ ;; Resolve the nested query as if it were a top level query
-          {nested-q :query :as nested-qd} (resolve-tables (assoc expanded-query-dict :query source-query))
-          nested-source-table             (get-in nested-qd [:query :source-table])
+          {nested-inner :query, :as nested-outer} (resolve-tables (assoc expanded-query-dict :query source-query))
+          nested-source-table-id                  (:source-table nested-inner)
           ;; Build a list of join tables found from the newly resolved nested query
-          nested-joined-tables            (fk-field-ids->joined-tables (:id nested-source-table)
-                                                                       (:fk-field-ids nested-qd))
+          nested-joined-tables                    (fk-field-ids->joined-tables nested-source-table-id
+                                                                               (:fk-field-ids nested-outer))
           ;; Create the map of fk to table info from the resolved nested query
-          fk-id+table-id->table           (create-fk-id+table-id->table nested-source-table nested-joined-tables)
+          fk-id+table-id->table                   (create-fk-id+table-id->table (some-> nested-source-table-id qp.store/table)
+                                                                                nested-joined-tables)
           ;; Resolve the top level (original) breakout fields with the join information from the resolved nested query
-          resolved-breakout               (for [breakout (get-in expanded-query-dict [:query :breakout])]
-                                            (resolve-table breakout fk-id+table-id->table))]
+          resolved-breakout                       (for [breakout (get-in expanded-query-dict [:query :breakout])]
+                                                    (resolve-table breakout fk-id+table-id->table))]
       (assoc-in expanded-query-dict [:query :source-query]
-                (if (and (contains? nested-q :fields)
+                (if (and (contains? nested-inner :fields)
                          (seq resolved-breakout))
-                  (update nested-q :fields append-new-fields resolved-breakout)
-                  nested-q)))))
+                  (update nested-inner :fields append-new-fields resolved-breakout)
+                  nested-inner)))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{:keys [fk-field-ids], {{source-table-id :id :as source-table} :source-table} :query, :as expanded-query-dict}]
+  [{:keys [fk-field-ids], {source-table-id :source-table} :query, :as expanded-query-dict}]
   (if-not source-table-id
     ;; if we have a `source-query`, recurse and resolve tables in that
     (resolve-tables-in-nested-query expanded-query-dict)
     ;; otherwise we can resolve tables in the (current) top-level
     (let [joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
-          fk-id+table-id->table (create-fk-id+table-id->table source-table joined-tables)]
+          fk-id+table-id->table (create-fk-id+table-id->table (qp.store/table source-table-id) joined-tables)]
       (as-> expanded-query-dict <>
         (assoc-in <> [:query :join-tables]  joined-tables)
         (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
@@ -470,9 +473,9 @@
       (map #(resolve-field % field-id->field) fields)
       fields)))
 
-(defn resolve
+(s/defn resolve :- su/Map
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
-  [expanded-query-dict]
+  [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields

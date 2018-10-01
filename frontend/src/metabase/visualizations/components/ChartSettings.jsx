@@ -26,6 +26,7 @@ class ChartSettings extends Component {
       currentTab: null,
       settings: initialSettings,
       series: this._getSeries(props.series, initialSettings),
+      showWidget: props.initialWidget,
     };
   }
 
@@ -84,16 +85,16 @@ class ChartSettings extends Component {
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleSubstituteWidget = substituteWidget => {
-    this.setState({ substituteWidget });
+  handleShowWidget = widget => {
+    this.setState({ showWidget: widget });
   };
-  handleEndSubstituteWidget = () => {
-    this.setState({ substituteWidget: null });
+  handleEndShowWidget = () => {
+    this.setState({ showWidget: null });
   };
 
   render() {
     const { isDashboard, question, addField } = this.props;
-    const { series, substituteWidget } = this.state;
+    const { series, showWidget } = this.state;
 
     const widgetsById = {};
 
@@ -119,7 +120,30 @@ class ChartSettings extends Component {
 
     const tabNames = Object.keys(tabs);
     const currentTab = this.state.currentTab || tabNames[0];
-    const widgets = tabs[currentTab];
+
+    let widgets;
+    let widget = showWidget && widgetsById[showWidget.id];
+    if (widget) {
+      widget = {
+        ...widget,
+        hidden: false,
+        props: {
+          ...(widget.props || {}),
+          ...(showWidget.props || {}),
+        },
+      };
+      widgets = [widget];
+    } else {
+      widgets = tabs[currentTab];
+    }
+
+    const extraWidgetProps = {
+      // NOTE: special props to support adding additional fields
+      question: question,
+      addField: addField,
+      onShowWidget: this.handleShowWidget,
+      onEndShowWidget: this.handleEndShowWidget,
+    };
 
     return (
       <div className="flex flex-column spread">
@@ -138,37 +162,13 @@ class ChartSettings extends Component {
         <div className="full-height relative">
           <div className="Grid spread">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-              {widgets &&
-                widgets.map(widget => {
-                  if (
-                    substituteWidget &&
-                    substituteWidget.originalId === widget.id
-                  ) {
-                    const replacementWidget =
-                      widgetsById[substituteWidget.replacementId];
-                    if (replacementWidget) {
-                      widget = {
-                        ...replacementWidget,
-                        hidden: false,
-                        props: {
-                          onEndEditing: this.handleEndSubstituteWidget,
-                          ...(replacementWidget.props || {}),
-                          ...(substituteWidget.props || {}),
-                        },
-                      };
-                    }
-                  }
-                  return (
-                    <ChartSettingsWidget
-                      key={`${widget.id}`}
-                      {...widget}
-                      // NOTE: special props to support adding additional fields
-                      question={question}
-                      addField={addField}
-                      onSubstituteWidget={this.handleSubstituteWidget}
-                    />
-                  );
-                })}
+              {widgets.map(widget => (
+                <ChartSettingsWidget
+                  key={`${widget.id}`}
+                  {...widget}
+                  {...extraWidgetProps}
+                />
+              ))}
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">

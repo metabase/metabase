@@ -4,6 +4,19 @@ import React from "react";
 
 import cx from "classnames";
 
+type Value = any;
+type Option = any;
+
+type Props = {
+  value: Value,
+  onChange: (value: Value) => void,
+  options: Option[],
+  optionNameFn?: (o: Option) => string | React$Element<any>,
+  optionValueFn?: (o: Option) => Value,
+  optionKeyFn?: (o: Option) => string,
+  className?: string,
+};
+
 const ButtonGroup = ({
   value,
   onChange,
@@ -12,7 +25,7 @@ const ButtonGroup = ({
   optionValueFn = o => o.value,
   optionKeyFn = optionValueFn,
   className,
-}) => {
+}: Props) => {
   return (
     <div className={cx(className, "rounded bordered flex")}>
       {options.map((o, index) => (

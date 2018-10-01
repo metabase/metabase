@@ -17,6 +17,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { Column } from "metabase/meta/types/Dataset";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -126,7 +128,7 @@ export default class Scalar extends Component {
     },
   };
 
-  _getColumnIndex(cols, settings) {
+  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
     const columnIndex = _.findIndex(
       cols,
       col => col.name === settings["scalar.field"],

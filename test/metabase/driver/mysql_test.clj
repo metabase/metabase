@@ -147,10 +147,10 @@
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))
           (qp/process-query
-           {:database (data/id),
-            :type :native,
-            :settings {:report-timezone "UTC"}
-            :native     {:query "SELECT cast({{date}} as date)"
+           {:database   (data/id)
+            :type       :native
+            :settings   {:report-timezone "UTC"}
+            :native     {:query         "SELECT cast({{date}} as date)"
                          :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
             :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
 

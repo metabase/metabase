@@ -2,7 +2,7 @@
 # STAGE 1: builder
 ###################
 
-FROM java:openjdk-8-jdk-alpine as builder
+FROM openjdk:8-jdk-alpine as builder
 
 WORKDIR /app/source
 
@@ -15,7 +15,7 @@ ENV LC_CTYPE en_US.UTF-8
 # nodejs:  frontend building
 # make:    backend building
 # gettext: translations
-RUN apk add --update bash nodejs git wget make gettext
+RUN apk add --update bash nodejs nodejs-npm git wget make gettext
 
 # yarn:    frontend dependencies
 RUN npm install -g yarn

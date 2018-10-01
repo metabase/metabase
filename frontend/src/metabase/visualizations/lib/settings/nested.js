@@ -1,3 +1,5 @@
+/* @flow */
+
 import _ from "underscore";
 import { t } from "c-3po";
 
@@ -5,8 +7,49 @@ import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
+import type {
+  SettingId,
+  SettingDef,
+  SettingDefs,
+  Settings,
+  WidgetDef,
+  ExtraProps,
+} from "metabase/visualizations/lib/settings";
+
+import type { Series } from "metabase/meta/types/Visualization";
+
+export type NestedObject = any;
+export type NestedObjectKey = string;
+
+type NestedSettingDef = SettingDef & {
+  objectName: string,
+  getObjects: (series: Series, settings: Settings) => NestedObject[],
+  getObjectKey: (object: NestedObject) => string,
+  getSettingDefintionsForObject: (
+    series: Series,
+    object: NestedObject,
+  ) => SettingDefs,
+  getObjectSettingsExtra?: (
+    series: Series,
+    settings: Settings,
+    object: NestedObject,
+  ) => { [key: string]: any },
+  component: React$Component<any, any, any>,
+  id?: SettingId,
+};
+
+export type SettingsWidgetsForObjectGetter = (
+  series: Series,
+  object: NestedObject,
+  storedSettings: Settings,
+  onChangeSettings: (newSettings: Settings) => void,
+  extra: ExtraProps,
+) => WidgetDef[];
+
+export type NestedObjectKeyGetter = (object: NestedObject) => NestedObjectKey;
+
 export function nestedSettings(
-  id,
+  id: SettingId,
   {
     objectName = "object",
     getObjects,
@@ -15,7 +58,7 @@ export function nestedSettings(
     getObjectSettingsExtra = () => ({}),
     component,
     ...def
-  } = {},
+  }: NestedSettingDef = {},
 ) {
   function getComputedSettingsForObject(series, object, storedSettings, extra) {
     const settingsDefs = getSettingDefintionsForObject(series, object);
@@ -69,7 +112,7 @@ export function nestedSettings(
       onChangeSettings,
       extra,
     );
-    return widgets;
+    return widgets.map(widget => ({ ...widget, noPadding: true }));
   }
 
   // decorate with nested settings HOC
@@ -82,7 +125,7 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings) => {
+      getProps: (series: Series, settings: Settings) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -102,9 +145,9 @@ export function nestedSettings(
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings) {
+      getDefault(series: Series, settings: Settings) {
         const cache = new Map();
-        return object => {
+        return (object: NestedObject) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             cache.set(key, {

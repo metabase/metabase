@@ -209,7 +209,8 @@
                 :expressions  normalize-expressions-tokens
                 :order-by     normalize-order-by-tokens
                 :source-query normalize-source-query}
-   :parameters {::sequence normalize-query-parameter}})
+   :parameters {::sequence normalize-query-parameter}
+   :context    #(some-> % mbql.u/normalize-token)})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.
@@ -296,9 +297,8 @@
         (cond-> arg
           (mbql-clause? arg) canonicalize-aggregation-subclause))))
 
-    ;; for metric and segment macros (e.g. [:metric <metric-id>]) do not wrap the metric/segment ID in a :field-id
-    ;; clause
-    (#{:metric :segment} ag-type)
+    ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
+    (= :metric ag-type)
     ag-subclause
 
     ;; something with an arg like [:sum [:field-id 41]]
@@ -465,7 +465,8 @@
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
   [outer-query]
   (cond-> outer-query
-    (:query outer-query) (update :query canonicalize-inner-mbql-query)))
+    (:query outer-query)      (update :query canonicalize-inner-mbql-query)
+    (:parameters outer-query) (update :parameters (partial mapv canonicalize-mbql-clauses))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -274,6 +274,16 @@
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
 
+;; Does the QueryExecution context get normalized?
+(expect
+  {:context :json-download}
+  (#'normalize/normalize-tokens {:context "json-download"}))
+
+;; if `:context` is `nil` it's not our problem
+(expect
+  {:context nil}
+  (#'normalize/normalize-tokens {:context nil}))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -509,6 +519,21 @@
     :type     :query
     :query    {:filter []}}))
 
+;; make sure we can handle GA segments
+(expect
+  {:database 1,
+   :type     :query
+   :query    {:filter
+              [:and
+               [:segment "gaid:-11"]
+               [:time-interval [:field-id 6851] -365 :day {}]]}}
+  (#'normalize/canonicalize
+   {:database 1
+    :type     :query
+    :query    {:filter [:and
+                        [:segment "gaid:-11"]
+                        [:time-interval [:field-id 6851] -365 :day {}]]}}))
+
 ;; ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98 [direction field]
 (expect
   {:query {:order-by [[:asc [:field-id 10]]]}}
@@ -588,6 +613,12 @@
    {:database 4
     :type     :query
     :query    {:source-query {:source-table 1, :aggregation :rows}}}))
+
+;; make sure canonicalization can handle aggregations with expressions where the Field normally goes
+(expect
+  {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}
+  (#'normalize/canonicalize
+   {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -695,6 +726,7 @@
                                                            :required     true
                                                            :default      "Widget"}}}}}))
 
+;; make sure `rows` queries get removed
 (expect
   {:database 4,
    :type     :query,
@@ -703,3 +735,16 @@
    {:database 4
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
+
+;; make sure that parameters get normalized/canonicalized correctly. value should not get normalized, but type should;
+;; target should do canonicalization for MBQL clauses
+(expect
+  {:type       :query,
+   :query      {:source-table 1}
+   :parameters [{:type :id, :target [:dimension [:fk-> [:field-id 3265] [:field-id 4575]]], :value ["field-id"]}
+                {:type :date/all-options, :target [:dimension [:field-id 3270]], :value "thismonth"}]}
+  (normalize/normalize
+   {:type       :query
+    :query      {:source-table 1}
+    :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
+                 {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]}))
