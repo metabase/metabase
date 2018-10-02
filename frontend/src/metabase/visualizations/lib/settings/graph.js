@@ -327,6 +327,14 @@ export const GRAPH_GOAL_SETTINGS = {
     getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
   },
+  "graph.goal_label": {
+    section: t`Display`,
+    title: t`Goal label`,
+    widget: "input",
+    default: t`Goal`,
+    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
+    readDependencies: ["graph.show_goal"],
+  },
 };
 
 export const GRAPH_COLORS_SETTINGS = {
