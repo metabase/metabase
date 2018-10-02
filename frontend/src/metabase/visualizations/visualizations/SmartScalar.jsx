@@ -13,10 +13,7 @@ import * as Card from "metabase/meta/Card";
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
-  MinRowsError,
-  NoBreakoutError,
-} from "metabase/visualizations/lib/errors";
+import { NoBreakoutError } from "metabase/visualizations/lib/errors";
 
 import ScalarValue, {
   ScalarWrapper,
