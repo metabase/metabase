@@ -113,7 +113,7 @@
   (->honeysql driver field))
 
 (defmethod ->honeysql [Object BinnedField]
-  [driver {:keys [bin-width min-value max-value field]}]
+  [driver {:keys [bin-width min-value max-value field] :as binned-field}]
   (let [honeysql-field-form (->honeysql driver field)]
     ;;
     ;; Equation is | (value - min) |
