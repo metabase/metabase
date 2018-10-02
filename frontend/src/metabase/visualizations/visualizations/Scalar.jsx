@@ -46,7 +46,7 @@ export default class Scalar extends Component {
 
   _scalar: ?HTMLElement;
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
