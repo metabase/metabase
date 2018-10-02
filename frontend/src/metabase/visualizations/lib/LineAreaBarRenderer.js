@@ -592,7 +592,7 @@ function addGoalChartAndGetOnGoalHover(
     onHoverChange(
       element && {
         element,
-        data: [{ key: t`Goal`, value: goalValue }],
+        data: [{ key: settings["graph.goal_label"], value: goalValue }],
       },
     );
   };

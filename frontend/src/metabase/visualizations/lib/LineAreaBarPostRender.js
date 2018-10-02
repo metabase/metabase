@@ -277,7 +277,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
     chart
       .selectAll(".goal .stack._0")
       .append("text")
-      .text("Goal")
+      .text(chart.settings["graph.goal_label"])
       .attr({
         x: labelOnRight ? x + width : x,
         y: y - 5,
