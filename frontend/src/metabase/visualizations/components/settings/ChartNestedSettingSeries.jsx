@@ -56,7 +56,7 @@ export default class ChartNestedSettingSeries extends React.Component {
           const key = getObjectKey(single);
           const settings = allComputedSettings[key] || {};
           return (
-            <div key={key} className="px4 pb2 mb2 border-bottom">
+            <div key={key} className="pl4 pr2 pb2 mb2 border-bottom">
               <div className="flex align-center">
                 <ColorPicker
                   className="align-self-stretch"
@@ -88,8 +88,8 @@ export default class ChartNestedSettingSeries extends React.Component {
                 ) : null}
                 {objects.length > 1 ? (
                   <Icon
-                    className="ml2 text-medium cursor-pointer"
-                    name={isSelected(single) ? "chevrondown" : "chevronup"}
+                    className="ml2 text-medium cursor-pointer text-brand-hover"
+                    name={isSelected(single) ? "chevronup" : "chevrondown"}
                     onClick={() =>
                       onChangeEditingObject(isSelected(single) ? null : single)
                     }
