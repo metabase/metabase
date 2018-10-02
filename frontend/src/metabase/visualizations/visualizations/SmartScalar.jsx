@@ -67,14 +67,6 @@ export default class Smart extends React.Component {
     }
   }
 
-  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
-    const columnIndex = _.findIndex(
-      cols,
-      col => col.name === settings["scalar.field"],
-    );
-    return columnIndex < 0 ? 1 : columnIndex;
-  }
-
   render() {
     const insights =
       this.props.rawSeries &&
@@ -119,7 +111,7 @@ export default class Smart extends React.Component {
       <span
         style={{
           color: colors["text-light"],
-          fontSize: "0.6rem",
+          fontSize: "0.7rem",
           marginLeft: 4,
           marginRight: 4,
         }}
@@ -127,12 +119,17 @@ export default class Smart extends React.Component {
         •
       </span>
     );
-    const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
+    const granularityDisplay = (
+      <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
+    );
 
-    const columnIndex = this._getColumnIndex(cols, settings);
+    const columnIndex = 1;
     const value = rows[0] && rows[0][columnIndex];
     const column = cols[columnIndex];
-    const clicked = { value, column };
+    const clicked = {
+      value,
+      column,
+    };
 
     const isClickable = visualizationIsClickable(clicked);
 
@@ -178,7 +175,7 @@ export default class Smart extends React.Component {
               {changeDisplay}
             </Flex>
             <h4
-              className="hide md-show"
+              className="flex align-center hide md-show"
               style={{
                 color: colors["text-medium"],
               }}
