@@ -80,7 +80,7 @@
 
 .Dashboard.Dashboard--night .DashCard .Card {
   background-color: var(--color-bg-black);
-  border: 1px solid var(--color-accent2);
+  border: 1px solid var(--color-text-medium);
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
