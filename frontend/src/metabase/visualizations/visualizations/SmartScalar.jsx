@@ -124,11 +124,20 @@ export default class Smart extends React.Component {
     );
 
     const columnIndex = 1;
-    const value = rows[0] && rows[0][columnIndex];
+    const value = rows[rows.length - 1] && rows[rows.length - 1][columnIndex];
     const column = cols[columnIndex];
+
+    const dimensionIndex = 0;
+
     const clicked = {
       value,
       column,
+      dimensions: [
+        {
+          value: rows[rows.length - 1][dimensionIndex],
+          column: cols[dimensionIndex],
+        },
+      ],
     };
 
     const isClickable = visualizationIsClickable(clicked);
