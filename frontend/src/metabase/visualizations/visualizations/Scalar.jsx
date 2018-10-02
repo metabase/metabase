@@ -140,6 +140,7 @@ export default class Scalar extends Component {
 
   render() {
     let {
+      actionButtons,
       series: [{ card, data: { cols, rows } }],
       isDashboard,
       onChangeCardAndRun,
@@ -171,6 +172,9 @@ export default class Scalar extends Component {
 
     return (
       <ScalarWrapper>
+        <div className="Card-title absolute top right p1 px2">
+          {actionButtons}
+        </div>
         <Ellipsified
           className={cx("fullscreen-normal-text fullscreen-night-text", {
             "text-brand-hover cursor-pointer": isClickable,

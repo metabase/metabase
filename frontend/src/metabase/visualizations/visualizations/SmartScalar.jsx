@@ -81,6 +81,7 @@ export default class Smart extends React.Component {
       this.props.rawSeries[0].data &&
       this.props.rawSeries[0].data.insights;
     const {
+      actionButtons,
       onChangeCardAndRun,
       onVisualizationClick,
       isDashboard,
@@ -137,6 +138,9 @@ export default class Smart extends React.Component {
 
     return (
       <ScalarWrapper>
+        <div className="Card-title absolute top right p1 px2">
+          {actionButtons}
+        </div>
         <span
           onClick={
             isClickable &&
@@ -174,6 +178,7 @@ export default class Smart extends React.Component {
               {changeDisplay}
             </Flex>
             <h4
+              className="hide md-show"
               style={{
                 color: colors["text-medium"],
               }}
