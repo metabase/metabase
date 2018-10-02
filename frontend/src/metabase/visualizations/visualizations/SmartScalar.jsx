@@ -46,21 +46,13 @@ export default class Smart extends React.Component {
     },
   };
 
-  // Always return true here so that we don't discourage this feature.
-  static isSensible() {
-    return true;
+  static isSensible({ insights }) {
+    return !!insights;
   }
 
   // Smart scalars need to have a breakout
   static checkRenderable(series, settings) {
-    const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
-    if (_.every(series, singleSeriesHasNoRows)) {
-      throw new MinRowsError(1, 0);
-    }
-
-    const cols = series[0].data.cols;
-
-    if (cols.length < 2) {
+    if (!series[0].data.insights) {
       throw new NoBreakoutError(
         t`Group by a time field to see how this has changed over time`,
       );
@@ -82,6 +74,10 @@ export default class Smart extends React.Component {
       visualizationIsClickable,
       series: [{ card, data: { rows, cols } }],
     } = this.props;
+
+    if (!insights) {
+      return null;
+    }
 
     let granularity;
     if (Card.isStructured(card)) {
