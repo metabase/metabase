@@ -14,6 +14,34 @@ const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowe
 const X_LABEL_DISABLED_SPACING = 6; // spacing to use if the x-axis is disabled completely
 
 // +-------------------------------------------------------------------------------------------------------------------+
+// |                                                  HELPER FUNCTIONS                                                 |
+// +-------------------------------------------------------------------------------------------------------------------+
+
+// moves an element on top of all siblings
+function moveToTop(element) {
+  if (element) {
+    element.parentNode.appendChild(element);
+  }
+}
+
+// assumes elements are in order from left to right, skips those that aren't
+function getMinElementSpacing(elements) {
+  let min = null;
+  let lastLeft = null;
+  for (const element of elements) {
+    const { left } = element.getBoundingClientRect();
+    if (lastLeft !== null) {
+      const delta = left - lastLeft;
+      if (delta > 0 && (min == null || delta < min)) {
+        min = delta;
+      }
+    }
+    lastLeft = left;
+  }
+  return min;
+}
+
+// +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
 // +-------------------------------------------------------------------------------------------------------------------+
 
@@ -23,12 +51,6 @@ function onRenderRemoveClipPath(chart) {
   for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
     // prevents dots from being clipped:
     elem.removeAttribute("clip-path");
-  }
-}
-
-function moveToTop(element) {
-  if (element) {
-    element.parentNode.appendChild(element);
   }
 }
 
@@ -63,6 +85,15 @@ function onRenderSetDotStyle(chart) {
   for (let elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
     elem.style.color = elem.getAttribute("fill");
+  }
+}
+
+function onRenderSetLineWidth(chart) {
+  const min = getMinElementSpacing(chart.svg().selectAll(".dot")[0]);
+  if (min > 150) {
+    chart.svg().classed("line--heavy", true);
+  } else if (min > 75) {
+    chart.svg().classed("line--medium", true);
   }
 }
 
@@ -338,6 +369,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
   onRenderSetDotStyle(chart);
+  onRenderSetLineWidth(chart);
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoal(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
