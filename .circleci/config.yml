@@ -265,6 +265,8 @@ jobs:
           <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQL Server)
+          environment:
+            ENGINES: h2,sqlserver
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
             lein with-profile +ci test
