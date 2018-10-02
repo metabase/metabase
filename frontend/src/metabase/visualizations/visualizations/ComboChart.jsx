@@ -16,7 +16,7 @@ import {
 export default class LineChart extends LineAreaBarChart {
   static uiName = t`Line + Bar`;
   static identifier = "combo";
-  static iconName = "line";
+  static iconName = "lineandbar";
   static noun = t`line and bar chart`;
 
   static settings = {
