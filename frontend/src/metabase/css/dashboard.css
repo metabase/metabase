@@ -1,7 +1,3 @@
-:root {
-  --night-mode-color: color(var(--color-text-white) alpha(-14%));
-  --night-mode-card: #42484e;
-}
 .Dashboard {
   background-color: var(--color-bg-light);
   min-height: 100vh;
