@@ -164,7 +164,6 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    // $FlowFixMe
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     let sliceThreshold =

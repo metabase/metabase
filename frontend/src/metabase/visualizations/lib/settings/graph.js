@@ -1,4 +1,3 @@
-import { capitalize } from "metabase/lib/formatting";
 import {
   isDimension,
   isMetric,
@@ -9,7 +8,6 @@ import {
 import { t } from "c-3po";
 import {
   columnsAreValid,
-  getCardColors,
   getFriendlyName,
   getChartTypeFromData,
   getColumnCardinality,

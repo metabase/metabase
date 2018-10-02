@@ -168,17 +168,23 @@ const PREFERRED_COLORS = {
 
 const PREFERRED_COLORS_MAP = new Map();
 for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
+  // $FlowFixMe
   for (const key of keys) {
     PREFERRED_COLORS_MAP.set(key, color);
   }
 }
 
-function getPreferredColor(key) {
+type Key = string;
+
+function getPreferredColor(key: Key) {
   return PREFERRED_COLORS_MAP.get(key.toLowerCase());
 }
 
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
-export function getColorsForValues(keys, existingAssignments = {}) {
+export function getColorsForValues(
+  keys: string[],
+  existingAssignments: ?{ [key: Key]: ColorString } = {},
+) {
   const all = Object.values(harmony);
   const primaryTier = all.slice(0, 8);
   const secondaryTier = all.slice(8);
@@ -192,6 +198,6 @@ export function getColorsForValues(keys, existingAssignments = {}) {
 }
 
 // conviennce for a single color (only use for visualizations with a single color)
-export function getColorForValue(key) {
+export function getColorForValue(key: Key) {
   return getColorsForValues([key])[key];
 }

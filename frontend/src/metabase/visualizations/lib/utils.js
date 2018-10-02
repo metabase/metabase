@@ -5,8 +5,6 @@ import d3 from "d3";
 import { t } from "c-3po";
 import crossfilter from "crossfilter";
 
-import { harmony } from "metabase/lib/colors";
-
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
@@ -174,23 +172,6 @@ export function getFriendlyName(column) {
       column.name
     );
   }
-}
-
-export function getCardColors(card) {
-  let settings = card.visualization_settings;
-  let chartColor, chartColorList;
-  if (card.display === "bar" && settings.bar) {
-    chartColor = settings.bar.color;
-    chartColorList = settings.bar.colors;
-  } else if (card.display !== "bar" && settings.line) {
-    chartColor = settings.line.lineColor;
-    chartColorList = settings.line.colors;
-  }
-  return _.uniq(
-    [chartColor || Object.values(harmony)[0]].concat(
-      chartColorList || Object.values(harmony),
-    ),
-  );
 }
 
 export function isSameSeries(seriesA, seriesB) {

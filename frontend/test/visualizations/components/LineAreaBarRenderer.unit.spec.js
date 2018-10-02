@@ -226,6 +226,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": 30,
+          "graph.goal_label": "Goal",
         },
       });
 
@@ -243,6 +244,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": goalValue,
+          "graph.goal_label": "Goal",
         },
         onHoverChange: hover => {
           expect(hover.data[0].value).toEqual(goalValue);
@@ -279,6 +281,7 @@ describe("LineAreaBarRenderer", () => {
         "graph.x_axis.scale": "timeseries",
         "graph.x_axis.axis_enabled": true,
         "graph.colors": ["#000000"],
+        series: () => ({ display: "line" }),
         ...settings,
       },
       onHoverChange,
@@ -302,6 +305,7 @@ describe("LineAreaBarRenderer", () => {
         "graph.x_axis.axis_enabled": true,
         "graph.x_axis.scale": "ordinal",
         "graph.x_axis._is_numeric": false,
+        series: () => ({ display: "bar" }),
       },
       onHoverChange,
     });

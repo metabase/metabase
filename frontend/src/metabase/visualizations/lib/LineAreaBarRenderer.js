@@ -687,7 +687,7 @@ export default function lineAreaBar(
   element: Element,
   props: LineAreaBarProps,
 ): DeregisterFunction {
-  const { onRender, chartType, isScalarSeries, settings, series } = props;
+  const { onRender, isScalarSeries, settings, series } = props;
 
   const warnings = {};
   const warn = id => {

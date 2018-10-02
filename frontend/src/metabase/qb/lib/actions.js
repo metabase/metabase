@@ -400,7 +400,7 @@ const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
 const guessVisualization = (
   card: CardObject,
   tableMetadata: Table,
-  existingDisplay: string = null,
+  existingDisplay: ?string = null,
 ) => {
   const query = Card.getQuery(card);
   if (!query) {
