@@ -43,9 +43,12 @@ export default class ChartNestedSettingSeries extends React.Component {
       objectSettingsWidgets,
       object,
       allComputedSettings,
+      settings,
     } = this.props;
     const objectKey = object && getObjectKey(object);
     const isSelected = single => objectKey === getObjectKey(single);
+
+    const isStacked = settings["stackable.stack_type"] != null;
 
     return (
       <div>
@@ -71,16 +74,18 @@ export default class ChartNestedSettingSeries extends React.Component {
                     onChangeObjectSettings(single, { title: e.target.value })
                   }
                 />
-                <ButtonGroup
-                  className="align-self-stretch ml1"
-                  value={settings.display}
-                  options={["line", "area", "bar"]}
-                  optionValueFn={o => o}
-                  optionNameFn={o => <Icon name={o} />}
-                  onChange={value =>
-                    onChangeObjectSettings(single, { display: value })
-                  }
-                />
+                {!isStacked ? (
+                  <ButtonGroup
+                    className="align-self-stretch ml1"
+                    value={settings.display}
+                    options={["line", "area", "bar"]}
+                    optionValueFn={o => o}
+                    optionNameFn={o => <Icon name={o} />}
+                    onChange={value =>
+                      onChangeObjectSettings(single, { display: value })
+                    }
+                  />
+                ) : null}
                 {objects.length > 1 ? (
                   <Icon
                     className="ml2 text-medium cursor-pointer"

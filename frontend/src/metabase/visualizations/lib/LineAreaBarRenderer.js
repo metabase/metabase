@@ -456,6 +456,15 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
   }
 }
 
+// returns the series "display" type, either from the series settings or stack_display setting
+function getSeriesDisplay(settings, single) {
+  if (settings["stackable.stack_type"] != null) {
+    return settings["stackable.stack_display"];
+  } else {
+    return settings.series(single).display;
+  }
+}
+
 /// Return a sequence of little charts for each of the groups.
 function getCharts(
   props,
@@ -470,7 +479,7 @@ function getCharts(
   const { yAxisSplit } = yAxisProps;
 
   const isHeterogenous =
-    _.uniq(series.map(single => settings.series(single).display)).length > 1;
+    _.uniq(series.map(single => getSeriesDisplay(settings, single))).length > 1;
   const isHeterogenousOrdinal =
     settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
 
@@ -493,8 +502,9 @@ function getCharts(
   }
 
   return groups.map((group, index) => {
-    const seriesSettings = settings.series(series[index]);
-    const seriesChartType = seriesSettings.display || chartType;
+    const single = series[index];
+    const seriesSettings = settings.series(single);
+    const seriesChartType = getSeriesDisplay(settings, single) || chartType;
 
     const chart = getDcjsChart(seriesChartType, parent);
 
@@ -749,7 +759,10 @@ export default function lineAreaBar(
   }
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
-  const hasBar = _.any(series, s => settings.series(s).display === "bar");
+  const hasBar = _.any(
+    series,
+    single => getSeriesDisplay(settings, single) === "bar",
+  );
   parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
 
   applyXAxisSettings(parent, props.series, xAxisProps);

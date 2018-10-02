@@ -245,26 +245,70 @@ export const LINE_SETTINGS_2 = {
   },
 };
 
+const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+
 export const STACKABLE_SETTINGS = {
   "stackable.stack_type": {
     section: t`Display`,
     title: t`Stacking`,
     widget: "radio",
-    getProps: (series, vizSettings) => ({
+    props: {
       options: [
         { name: t`Don't stack`, value: null },
         { name: t`Stack`, value: "stacked" },
         { name: t`Stack - 100%`, value: "normalized" },
       ],
-    }),
-    getDefault: ([{ card, data }], vizSettings) =>
+    },
+    isValid: (series, settings) => {
+      if (settings["stackable.stack_type"] != null) {
+        const displays = series.map(single => settings.series(single).display);
+        const hasStackable = _.any(displays, display =>
+          STACKABLE_DISPLAY_TYPES.has(display),
+        );
+        return hasStackable;
+      }
+      return true;
+    },
+    getDefault: ([{ card, data }], settings) =>
       // legacy setting and default for D-M-M+ charts
-      vizSettings["stackable.stacked"] ||
-      (card.display === "area" && vizSettings["graph.metrics"].length > 1)
+      settings["stackable.stacked"] ||
+      (card.display === "area" && settings["graph.metrics"].length > 1)
         ? "stacked"
         : null,
-    getHidden: series => series.length < 2,
-    readDependencies: ["graph.metrics"],
+    getHidden: (series, settings) => {
+      if (series.length < 2) {
+        return true;
+      }
+      const displays = series.map(single => settings.series(single).display);
+      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+    },
+    readDependencies: ["graph.metrics", "series"],
+  },
+  "stackable.stack_display": {
+    section: t`Display`,
+    title: t`Stacked chart type`,
+    widget: "buttonGroup",
+    props: {
+      options: [
+        { icon: "area", name: t`Area`, value: "area" },
+        { icon: "bar", name: t`Bar`, value: "bar" },
+      ],
+    },
+    getDefault: (series, settings) => {
+      const displays = series.map(single => settings.series(single).display);
+      const firstStackable = _.find(displays, display =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
+      if (firstStackable) {
+        return firstStackable;
+      }
+      if (STACKABLE_DISPLAY_TYPES.has(series[0].card.display)) {
+        return series[0].card.display;
+      }
+      return "bar";
+    },
+    getHidden: (series, settings) => settings["stackable.stack_type"] == null,
+    readDependencies: ["stackable.stack_type", "series"],
   },
 };
 
