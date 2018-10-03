@@ -311,6 +311,7 @@
        :year            (.get cal Calendar/YEAR)))))
 
 (def ^:const date-trunc-units
+  "Valid date bucketing units"
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]

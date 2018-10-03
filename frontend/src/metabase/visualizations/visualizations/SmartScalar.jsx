@@ -21,7 +21,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
-  static uiName = "Smart Scalar";
+  static uiName = "Smart Number";
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
@@ -116,11 +116,12 @@ export default class Smart extends React.Component {
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
 
-    const columnIndex = 1;
-    const value = rows[rows.length - 1] && rows[rows.length - 1][columnIndex];
-    const column = cols[columnIndex];
-
+    const metricIndex = 1;
     const dimensionIndex = 0;
+
+    const lastRow = rows[rows.length - 1];
+    const value = lastRow && lastRow[metricIndex];
+    const column = cols[metricIndex];
 
     const clicked = {
       value,
@@ -163,14 +164,7 @@ export default class Smart extends React.Component {
             }
           />
         )}
-        <Box
-          style={{
-            position: isDashboard ? "absolute" : "relative",
-            bottom: 20,
-            marginTop: isDashboard ? 0 : 20,
-            fontSize: isDashboard ? "inherit" : "1.4em",
-          }}
-        >
+        <Box className="SmartWrapper">
           <Flex align="center" mt={1} flexWrap="wrap">
             <Flex align="center" color={color}>
               <Icon name={isNegative ? "arrowDown" : "arrowUp"} />

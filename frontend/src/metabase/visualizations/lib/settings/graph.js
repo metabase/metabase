@@ -258,20 +258,6 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
-export const INSIGHT_SETTINGS = {
-  "graph.show_trendline": {
-    section: t`Display`,
-    title: t`Show trend line`,
-    widget: "toggle",
-    default: false,
-    getHidden: (series, vizSettings) => {
-      const { insights } = series[0].data;
-      return !insights || insights.slope == null || insights.offset == null;
-    },
-    useRawSeries: true,
-  },
-};
-
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
@@ -286,6 +272,17 @@ export const GRAPH_GOAL_SETTINGS = {
     default: 0,
     getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
+  },
+  "graph.show_trendline": {
+    section: t`Display`,
+    title: t`Show trend line`,
+    widget: "toggle",
+    default: false,
+    getHidden: (series, vizSettings) => {
+      const { insights } = series[0].data;
+      return !insights || insights.slope == null || insights.offset == null;
+    },
+    useRawSeries: true,
   },
 };
 

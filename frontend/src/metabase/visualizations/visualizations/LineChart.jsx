@@ -11,7 +11,6 @@ import {
   LINE_SETTINGS_2,
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
-  INSIGHT_SETTINGS,
 } from "../lib/settings/graph";
 
 export default class LineChart extends LineAreaBarChart {
@@ -24,7 +23,6 @@ export default class LineChart extends LineAreaBarChart {
     ...GRAPH_DATA_SETTINGS,
     ...LINE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
-    ...INSIGHT_SETTINGS,
     ...LINE_SETTINGS_2,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
