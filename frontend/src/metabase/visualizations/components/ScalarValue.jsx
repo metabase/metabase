@@ -24,12 +24,7 @@ export const ScalarWrapper = ({ children }) => (
 );
 
 const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
-  <h1
-    className="ScalarValue cursor-pointer text-brand-hover"
-    style={{ fontSize: "2.8rem", fontWeight: 900 }}
-  >
-    {value}
-  </h1>
+  <h1 className="ScalarValue cursor-pointer text-brand-hover">{value}</h1>
 );
 
 export const ScalarTitle = ({ title, description, onClick }) => (

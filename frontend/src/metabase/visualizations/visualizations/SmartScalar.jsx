@@ -164,14 +164,7 @@ export default class Smart extends React.Component {
             }
           />
         )}
-        <Box
-          style={{
-            position: isDashboard ? "absolute" : "relative",
-            bottom: 20,
-            marginTop: isDashboard ? 0 : 20,
-            fontSize: isDashboard ? "inherit" : "1.4em",
-          }}
-        >
+        <Box className="SmartWrapper">
           <Flex align="center" mt={1} flexWrap="wrap">
             <Flex align="center" color={color}>
               <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
