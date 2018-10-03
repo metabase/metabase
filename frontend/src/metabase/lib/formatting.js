@@ -18,7 +18,6 @@ import {
   isCoordinate,
   isLatitude,
   isLongitude,
-  isCurrency,
 } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp, parseTime } from "metabase/lib/time";
@@ -125,6 +124,9 @@ const getDayFormat = options =>
 // use en dashes, for Maz
 const RANGE_SEPARATOR = ` – `;
 
+// for extracting number portion from a formatted currency string
+const NUMBER_REGEX = /[\+\-]?[0-9\., ]+/;
+
 export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // if we don't provide a locale much of the formatting doens't work
@@ -171,7 +173,21 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       } else {
         nf = numberFormatterForOptions(options);
       }
-      return nf.format(number);
+      const formatted = nf.format(number);
+
+      // extract number portion of currency if we're formatting a cell
+      if (
+        options["type"] === "cell" &&
+        options["currency_in_header"] &&
+        options["number_style"] === "currency"
+      ) {
+        const match = formatted.match(NUMBER_REGEX);
+        if (match) {
+          return match[0].trim();
+        }
+      }
+
+      return formatted;
     } catch (e) {
       console.warn("Error formatting number", e);
       // fall back to old, less capable formatter
@@ -625,11 +641,6 @@ export function formatColumn(column: Column): string {
     let columnTitle = getFriendlyName(column);
     if (column.unit && column.unit !== "default") {
       columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "));
-    }
-    if (isCurrency(column)) {
-      // TODO - this should be the actual chosen currency symbol once we have
-      // it stored in the right spot
-      columnTitle = `$ ${columnTitle}`;
     }
     return columnTitle;
   }

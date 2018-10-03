@@ -206,6 +206,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
       settings["number_style"] !== "currency",
+    readDependencies: ["number_style"],
   },
   currency_style: {
     title: t`Currency Style`,
@@ -220,6 +221,16 @@ export const NUMBER_COLUMN_SETTINGS = {
     default: "symbol",
     getHidden: (column: Column, settings: ColumnSettings) =>
       settings["number_style"] !== "currency",
+    readDependencies: ["number_style"],
+  },
+  currency_in_header: {
+    title: t`Show currency in header`,
+    widget: "toggle",
+    default: true,
+    getHidden: (column: Column, settings: ColumnSettings, { series }) =>
+      settings["number_style"] !== "currency" ||
+      series[0].card.display !== "table",
+    readDependencies: ["number_style"],
   },
   locale: {
     title: t`Separator style`,
@@ -265,6 +276,42 @@ export const NUMBER_COLUMN_SETTINGS = {
       "locale",
       "decimals",
     ],
+  },
+  _header_unit: {
+    getValue: (column: Column, settings: ColumnSettings) => {
+      if (
+        settings["number_style"] === "currency" &&
+        settings["currency_in_header"]
+      ) {
+        return (0)
+          .toLocaleString(settings["locale"] || "en", {
+            style: "currency",
+            currency: settings["currency"],
+            currencyDisplay: settings["currency_style"],
+          })
+          .replace(/0([.,]0+)?/, "")
+          .trim(); // strip off actual number
+      }
+      return null;
+    },
+    readDependencies: [
+      "number_style",
+      "currency",
+      "currency_style",
+      "currency_header_only",
+      "locale",
+    ],
+  },
+  _column_title_full: {
+    getValue: (column, settings) => {
+      let columnTitle = settings["column_title"];
+      const headerUnit = settings["_header_unit"];
+      if (headerUnit) {
+        columnTitle += ` (${headerUnit})`;
+      }
+      return columnTitle;
+    },
+    readDependencies: ["column_title", "_header_unit"],
   },
 };
 
