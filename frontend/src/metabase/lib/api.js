@@ -4,14 +4,40 @@ import querystring from "querystring";
 
 import EventEmitter from "events";
 
+import { delay } from "metabase/lib/promise";
+
 type TransformFn = (o: any) => any;
 
 export type Options = {
   noEvent?: boolean,
+  retry?: boolean,
   transformResponse?: TransformFn,
   cancelled?: Promise<any>,
   raw?: { [key: string]: boolean },
 };
+
+export type RetryOptions = {
+  maxRetries: number,
+  retryDelayIntervals?: Array<number>,
+};
+
+const NO_RETRY: RetryOptions = {
+  maxRetries: 0,
+  retryDelayIntervals: [],
+};
+
+const ONE_SECOND = 1000;
+const MAX_RETRIES = 10;
+
+const DEFAULT_RETRY: RetryOptions = {
+  maxRetries: MAX_RETRIES,
+  // Creates an array with exponential backoff in millis
+  // i.e. [1000, 2000, 4000, 8000...]
+  retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys())
+    .map(x => ONE_SECOND * Math.pow(2, x))
+    .reverse(),
+};
+
 export type Data = {
   [key: string]: any,
 };
@@ -35,13 +61,17 @@ class Api extends EventEmitter {
 
   constructor() {
     super();
-    this.GET = this._makeMethod("GET");
-    this.DELETE = this._makeMethod("DELETE");
-    this.POST = this._makeMethod("POST", true);
-    this.PUT = this._makeMethod("PUT", true);
+    this.GET = this._makeMethod("GET", DEFAULT_RETRY);
+    this.DELETE = this._makeMethod("DELETE", NO_RETRY);
+    this.POST = this._makeMethod("POST", DEFAULT_RETRY, true);
+    this.PUT = this._makeMethod("PUT", NO_RETRY, true);
   }
 
-  _makeMethod(method: string, hasBody: boolean = false): APICreator {
+  _makeMethod(
+    method: string,
+    retryOptions: RetryOptions,
+    hasBody: boolean = false,
+  ): APICreator {
     return (
       urlTemplate: string,
       methodOptions?: Options | TransformFn = {},
@@ -49,8 +79,12 @@ class Api extends EventEmitter {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
       }
+
       const defaultOptions = { ...DEFAULT_OPTIONS, ...methodOptions };
-      return (data?: Data, invocationOptions?: Options = {}): Promise<any> => {
+      return async (
+        data?: Data,
+        invocationOptions?: Options = {},
+      ): Promise<any> => {
         const options: Options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         data = { ...data };
@@ -89,9 +123,55 @@ class Api extends EventEmitter {
           }
         }
 
-        return this._makeRequest(method, url, headers, body, data, options);
+        return this._makeRequestWithRetries(
+          method,
+          url,
+          headers,
+          body,
+          data,
+          options,
+          options.retry === false ? NO_RETRY : retryOptions,
+        );
       };
     };
+  }
+
+  async _makeRequestWithRetries(
+    method,
+    url,
+    headers,
+    body,
+    data,
+    options,
+    retryOptions,
+  ) {
+    // Get a copy of the delay intervals that we can remove items from as we retry
+    let retryDelays = retryOptions.retryDelayIntervals.slice();
+    let retryCount: number = 0;
+    // maxAttempts is the first attempt followed by the number of retries
+    let maxAttempts: number = retryOptions.maxRetries + 1;
+    // Make the first attempt for the request, then loop incrementing the retryCount
+    do {
+      try {
+        return await this._makeRequest(
+          method,
+          url,
+          headers,
+          body,
+          data,
+          options,
+        );
+      } catch (e) {
+        retryCount++;
+        // If the response is 503 and the next retry won't put us over the maxAttempts,
+        // wait a bit and try again
+        if (e.status === 503 && retryCount < maxAttempts) {
+          await delay(retryDelays.pop());
+        } else {
+          throw e;
+        }
+      }
+    } while (retryCount < maxAttempts);
   }
 
   // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
