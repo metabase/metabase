@@ -145,6 +145,8 @@ export const darken = (color: ColorString, factor: number): ColorString =>
 const PREFERRED_COLORS = {
   [colors["success"]]: [
     "success",
+    "succeeded",
+    "pass",
     "valid",
     "complete",
     "completed",
@@ -154,6 +156,7 @@ const PREFERRED_COLORS = {
   ],
   [colors["error"]]: [
     "fail",
+    "failed",
     "failure",
     "failures",
     "invalid",
@@ -164,6 +167,10 @@ const PREFERRED_COLORS = {
     "deleted",
     "pending",
   ],
+  [colors["warning"]]: ["warn", "warning", "incomplete"],
+  [colors["brand"]]: ["count"],
+  [colors["accent1"]]: ["sum"],
+  [colors["accent2"]]: ["average"],
 };
 
 const PREFERRED_COLORS_MAP = new Map();
