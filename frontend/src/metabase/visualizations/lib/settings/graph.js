@@ -258,15 +258,6 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
-export const INSIGHT_SETTINGS = {
-  "graph.show_insights": {
-    section: t`Display`,
-    title: t`Show insights about the values`,
-    widget: "toggle",
-    default: "false",
-  },
-};
-
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,

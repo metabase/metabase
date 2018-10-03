@@ -21,7 +21,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
-  static uiName = "Smart Scalar";
+  static uiName = "Smart Number";
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
@@ -116,11 +116,12 @@ export default class Smart extends React.Component {
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
 
-    const columnIndex = 1;
-    const value = rows[rows.length - 1] && rows[rows.length - 1][columnIndex];
-    const column = cols[columnIndex];
-
+    const metricIndex = 1;
     const dimensionIndex = 0;
+
+    const lastRow = rows[rows.length - 1];
+    const value = lastRow && lastRow[metricIndex];
+    const column = cols[metricIndex];
 
     const clicked = {
       value,
