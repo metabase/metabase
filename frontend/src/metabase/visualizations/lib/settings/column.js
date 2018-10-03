@@ -192,6 +192,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     getDefault: (column, settings) =>
       isCurrency(column) && settings["currency"] ? "currency" : "decimal",
+    // hide this for currency
+    getHidden: (column, settings) =>
+      isCurrency(column) && settings["number_style"] === "currency",
   },
   currency: {
     title: t`Currency`,
