@@ -34,6 +34,7 @@ import {
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -221,6 +222,7 @@ export default class FieldApp extends Component {
                     onChange={this.onUpdateFieldSettings}
                     column={field}
                     blacklist={new Set(["column_title"])}
+                    inheritedSettings={getGlobalSettingsForColumn(field)}
                   />
                 </Section>
               ) : (

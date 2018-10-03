@@ -71,33 +71,59 @@ export function columnSettings({
 import MetabaseSettings from "metabase/lib/settings";
 import { isa } from "metabase/lib/types";
 
-function getInhertiedSettingsForColumn(column) {
-  let inheritedSettings = {};
+export function getGlobalSettingsForColumn(column) {
+  let settings = {};
 
   const customFormatting = MetabaseSettings.get("custom-formatting");
+  // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
     if (isa(column.special_type, type)) {
-      Object.assign(inheritedSettings, globalSettings);
+      Object.assign(settings, globalSettings);
     }
   }
 
-  if (column.settings) {
-    Object.assign(inheritedSettings, column.settings);
-  }
+  return settings;
+}
 
-  return inheritedSettings;
+function getLocalSettingsForColumn(column) {
+  return column.settings || {};
+}
+
+function getInhertiedSettingsForColumn(column) {
+  return {
+    ...getGlobalSettingsForColumn(column),
+    ...getLocalSettingsForColumn(column),
+  };
 }
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
 
-function getDateStyleOptionsForUnit(unit: ?DatetimeUnit) {
+function getDateStyleOptionsForUnit(
+  unit: ?DatetimeUnit,
+  abbreviate?: boolean = false,
+) {
   const options = [
-    dateStyleOption("MMMM D, YYYY", unit),
-    dateStyleOption("D MMMM, YYYY", unit),
-    dateStyleOption("dddd, MMMM D, YYYY", unit),
-    dateStyleOption("M/D/YYYY", unit, hasDay(unit) ? "month, day, year" : null),
-    dateStyleOption("D/M/YYYY", unit, hasDay(unit) ? "day, month, year" : null),
-    dateStyleOption("YYYY/M/D", unit, hasDay(unit) ? "year, month, day" : null),
+    dateStyleOption("MMMM D, YYYY", unit, null, abbreviate),
+    dateStyleOption("D MMMM, YYYY", unit, null, abbreviate),
+    dateStyleOption("dddd, MMMM D, YYYY", unit, null, abbreviate),
+    dateStyleOption(
+      "M/D/YYYY",
+      unit,
+      hasDay(unit) ? "month, day, year" : null,
+      abbreviate,
+    ),
+    dateStyleOption(
+      "D/M/YYYY",
+      unit,
+      hasDay(unit) ? "day, month, year" : null,
+      abbreviate,
+    ),
+    dateStyleOption(
+      "YYYY/M/D",
+      unit,
+      hasDay(unit) ? "year, month, day" : null,
+      abbreviate,
+    ),
   ];
   const seen = new Set();
   return options.filter(option => {
@@ -115,8 +141,12 @@ function dateStyleOption(
   style: DateStyle,
   unit: ?DatetimeUnit,
   description?: ?string,
+  abbreviate?: boolean = false,
 ) {
-  const format = getDateFormatFromStyle(style, unit);
+  let format = getDateFormatFromStyle(style, unit);
+  if (abbreviate) {
+    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+  }
   return {
     name:
       EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
@@ -138,8 +168,8 @@ export const DATE_COLUMN_SETTINGS = {
     title: t`Date style`,
     widget: "radio",
     default: DEFAULT_DATE_STYLE,
-    getProps: ({ unit }: Column) => ({
-      options: getDateStyleOptionsForUnit(unit),
+    getProps: ({ unit }: Column, settings: ColumnSettings) => ({
+      options: getDateStyleOptionsForUnit(unit, settings["date_abbreviate"]),
     }),
     getHidden: ({ unit }: Column) =>
       getDateStyleOptionsForUnit(unit).length < 2,

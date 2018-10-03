@@ -69,6 +69,12 @@ class ChartSettings extends Component {
       ...this.state.settings,
       ...newSettings,
     };
+    // remove undefined settings
+    for (const [key, value] of Object.entries(newSettings)) {
+      if (value === undefined) {
+        delete settings[key];
+      }
+    }
     this.setState({
       settings: settings,
       series: this._getSeries(this.props.series, settings),

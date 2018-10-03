@@ -156,17 +156,18 @@ function getComputedSetting(
 function getSettingWidget(
   settingDefs: SettingDefs,
   settingId: SettingId,
-  settings: Settings,
+  storedSettings: Settings,
+  computedSettings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
   extra?: ExtraProps = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
-  const value = settings[settingId];
+  const value = computedSettings[settingId];
   const onChange = value => {
     const newSettings = { [settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
-      newSettings[settingId] = settings[settingId];
+      newSettings[settingId] = computedSettings[settingId];
     }
     onChangeSettings(newSettings);
   };
@@ -178,20 +179,21 @@ function getSettingWidget(
     id: settingId,
     value: value,
     title: settingDef.getTitle
-      ? settingDef.getTitle(object, settings, extra)
+      ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(object, settings, extra)
+      ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(object, settings, extra)
+      ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, settings, onChange, extra)
+        ? settingDef.getProps(object, computedSettings, onChange, extra)
         : {}),
     },
+    set: settingId in storedSettings,
     widget:
       typeof settingDef.widget === "string"
         ? WIDGETS[settingDef.widget]
@@ -202,7 +204,8 @@ function getSettingWidget(
 
 export function getSettingsWidgets(
   settingDefs: SettingDefs,
-  settings: Settings,
+  storedSettings: Settings,
+  computedSettings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
   extra?: ExtraProps = {},
@@ -212,7 +215,8 @@ export function getSettingsWidgets(
       getSettingWidget(
         settingDefs,
         settingId,
-        settings,
+        storedSettings,
+        computedSettings,
         object,
         onChangeSettings,
         extra,

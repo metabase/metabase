@@ -19,6 +19,7 @@ type Props = {
   column: any,
   whitelist?: Set<SettingId>,
   blacklist?: Set<SettingId>,
+  inheritedSettings?: Settings,
 };
 
 const ColumnSettings = ({
@@ -27,6 +28,7 @@ const ColumnSettings = ({
   column,
   whitelist,
   blacklist,
+  inheritedSettings = {},
 }: Props) => {
   const storedSettings = value || {};
 
@@ -38,12 +40,13 @@ const ColumnSettings = ({
   const computedSettings = getComputedSettings(
     settingsDefs,
     column,
-    storedSettings,
+    { ...inheritedSettings, ...storedSettings },
     { series },
   );
 
   const widgets = getSettingsWidgets(
     settingsDefs,
+    storedSettings,
     computedSettings,
     column,
     changedSettings => {
@@ -65,6 +68,7 @@ const ColumnSettings = ({
             key={widget.id}
             {...widget}
             hidden={false}
+            unset={storedSettings[widget.id] === undefined}
             noPadding
           />
         ))}

@@ -39,9 +39,12 @@ class FormattingWidget extends React.Component {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;
     return (
-      <div className="flex mt2">
+      <div className="flex flex-full mt2">
         {SETTING_TYPES.map(({ type, name, column, settings }) => (
-          <div className="border-column-divider pr4 mr4">
+          <div
+            className="border-column-divider pr4 mr4 flex-full"
+            style={{ maxWidth: 300 }}
+          >
             <h3 className="mb2">{name}</h3>
             <ColumnSettings
               value={value[type]}

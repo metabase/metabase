@@ -1,11 +1,14 @@
 import React from "react";
 
+import Icon from "metabase/components/Icon";
+
 import cx from "classnames";
 
 const ChartSettingsWidget = ({
   title,
   hidden,
   disabled,
+  set,
   widget: Widget,
   value,
   onChange,
@@ -26,7 +29,20 @@ const ChartSettingsWidget = ({
         disable: disabled,
       })}
     >
-      {title && <h4 className="mb1">{title}</h4>}
+      {title && (
+        <h4 className="mb1 flex align-center">
+          {title}
+          <Icon
+            size={12}
+            className={cx("ml1 text-light text-medium-hover cursor-pointer", {
+              hidden: !set,
+            })}
+            name="close"
+            onClick={() => onChange(undefined)}
+          />
+        </h4>
+      )}
+
       {Widget && (
         <Widget
           value={value}
