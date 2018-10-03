@@ -37,15 +37,25 @@
        (= (count datetimes) 1)
        (empty? others)))
 
+(def ^:private unit->step-duration
+  {:minute  (* 60 1000)
+   :hour    (* 60 60 1000)
+   :day     (* 24 60 60 1000)
+   :week    (* 7 24 60 60 1000)
+   :month   (* 30.5 24 60 60 1000)
+   :quarter (* 3 30.5 24 60 60 1000)
+   :year    (* 365.25 24 60 60 1000)})
+
 (defn- normalize-linear-function
-  [[offset slope] start end n]
+  [[offset slope] start end n unit]
   (when (and offset slope start end)
     (let [model (fn [x]
                   (+ offset (* slope x)))
-          unit  (if (> n 1)
-                  (/ (- end start) (dec n))
-                  1)]
-      [(model start) (* unit slope)])))
+          step  (cond
+                  unit    (unit->step-duration unit)
+                  (> n 1) (/ (- end start) (dec n))
+                  :else   1)]
+      [(model start) (* step slope)])))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -69,7 +79,8 @@
                  stats/count
                  (stats/simple-linear-regression xfn yfn)))
    (fn [[[previous current] start [end] n linear-regression-coefficients]]
-     (let [[offset slope] (normalize-linear-function linear-regression-coefficients start end n)]
+     (let [[offset slope] (normalize-linear-function linear-regression-coefficients start end n
+                                                     (-> datetimes first :unit))]
        {:last-value     current
         :previous-value previous
         :last-change    (change current previous)
