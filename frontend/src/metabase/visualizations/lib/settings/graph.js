@@ -259,11 +259,16 @@ export const STACKABLE_SETTINGS = {
 };
 
 export const INSIGHT_SETTINGS = {
-  "graph.show_insights": {
+  "graph.show_trendline": {
     section: t`Display`,
-    title: t`Show insights about the values`,
+    title: t`Show trend line`,
     widget: "toggle",
-    default: "false",
+    default: false,
+    getHidden: (series, vizSettings) => {
+      const { insights } = series[0].data;
+      return !insights || insights.slope == null || insights.offset == null;
+    },
+    useRawSeries: true,
   },
 };
 

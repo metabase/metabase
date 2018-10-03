@@ -512,6 +512,50 @@ function addGoalChartAndGetOnGoalHover(
   };
 }
 
+function addTrendlineChart(
+  { series, settings, onHoverChange },
+  xDomain,
+  parent,
+  charts,
+) {
+  if (!settings["graph.show_trendline"]) {
+    return;
+  }
+
+  const rawSeries = series._raw || series;
+  const insights = rawSeries[0].data.insights;
+
+  if (insights && insights.slope != null && insights.offset != null) {
+    const fn = x => x * insights.slope + insights.offset;
+
+    const trendData = [
+      [xDomain[0], fn(xDomain[0])],
+      [xDomain[1], fn(xDomain[1])],
+    ];
+    const trendDimension = crossfilter(trendData).dimension(d => d[0]);
+
+    // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
+    // has just a single row / datapoint
+    const trendGroup = trendDimension
+      .group()
+      .reduce((p, d) => d[1], (p, d) => p, () => 0);
+    const trendIndex = charts.length;
+
+    const trendChart = dc
+      .lineChart(parent)
+      .dimension(trendDimension)
+      .group(trendGroup)
+      .on("renderlet", function(chart) {
+        // remove "sub" class so the trend is not used in voronoi computation
+        chart
+          .select(".sub._" + trendIndex)
+          .classed("sub", false)
+          .classed("trend", true);
+      });
+    charts.push(trendChart);
+  }
+}
+
 function applyXAxisSettings(parent, series, xAxisProps) {
   if (isTimeseries(parent.settings)) {
     applyChartTimeseriesXAxis(parent, series, xAxisProps);
@@ -661,6 +705,7 @@ export default function lineAreaBar(
     parent,
     charts,
   );
+  addTrendlineChart(props, xAxisProps.xDomain, parent, charts);
 
   parent.compose(charts);
 

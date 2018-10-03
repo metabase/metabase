@@ -165,15 +165,11 @@ function onRenderVoronoiHover(chart) {
 
 function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
   // remove dots
-  chart.selectAll(".goal .dot").remove();
+  chart.selectAll(".goal .dot, .trend .dot").remove();
 
   // move to end of the parent node so it's on top
-  chart.selectAll(".goal").each(function() {
+  chart.selectAll(".goal, .trend").each(function() {
     this.parentNode.appendChild(this);
-  });
-  chart.selectAll(".goal .line").attr({
-    stroke: colors["text-medium"],
-    "stroke-dasharray": "5,5",
   });
 
   // add the label

@@ -96,6 +96,12 @@ class ChartSettings extends Component {
     const { isDashboard, question, addField } = this.props;
     const { series, showWidget } = this.state;
 
+    const rawSeries = assocIn(
+      this.props.series,
+      [0, "card", "visualization_settings"],
+      this.state.settings,
+    );
+
     const widgetsById = {};
 
     const tabs = {};
@@ -181,7 +187,7 @@ class ChartSettings extends Component {
               <div className="mx4 flex-full relative">
                 <Visualization
                   className="spread"
-                  rawSeries={series}
+                  rawSeries={rawSeries}
                   showTitle
                   isEditing
                   isDashboard
