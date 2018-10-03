@@ -1,3 +1,5 @@
+/* @flow */
+
 import React from "react";
 
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -8,9 +10,24 @@ import {
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
-const ColumnSettings = ({ value, onChange, column, settings = null }) => {
-  const settingsSet = settings && new Set(settings);
+type SettingId = string;
+type Settings = { [id: SettingId]: any };
 
+type Props = {
+  value: Settings,
+  onChange: (settings: Settings) => void,
+  column: any,
+  whitelist?: Set<SettingId>,
+  blacklist?: Set<SettingId>,
+};
+
+const ColumnSettings = ({
+  value,
+  onChange,
+  column,
+  whitelist,
+  blacklist,
+}: Props) => {
   const storedSettings = value || {};
 
   // fake series
@@ -38,7 +55,11 @@ const ColumnSettings = ({ value, onChange, column, settings = null }) => {
   return (
     <div>
       {widgets
-        .filter(widget => !settingsSet || settingsSet.has(widget.id))
+        .filter(
+          widget =>
+            (!whitelist || whitelist.has(widget.id)) &&
+            (!blacklist || !blacklist.has(widget.id)),
+        )
         .map(widget => (
           <ChartSettingsWidget
             key={widget.id}

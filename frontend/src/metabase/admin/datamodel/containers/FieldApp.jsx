@@ -220,6 +220,7 @@ export default class FieldApp extends Component {
                     value={(field && field.settings) || {}}
                     onChange={this.onUpdateFieldSettings}
                     column={field}
+                    blacklist={new Set(["column_title"])}
                   />
                 </Section>
               ) : (
