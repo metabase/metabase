@@ -37,6 +37,7 @@
     (->> results
          :data
          results->column-metadata
+         :metadata
          (tu/round-all-decimals 2))))
 
 (defn- query-for-card [card]

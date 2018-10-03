@@ -31,6 +31,7 @@
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
   (s/constrained su/NonBlankString du/date-string? "datetime-literal"))
 
+;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
   n    (s/cond-pre (s/eq :current) s/Int)
   unit (optional RelativeDatetimeUnit))
@@ -71,13 +72,30 @@
   unit  DatetimeFieldUnit)
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
-(def ^:private BinningStrategyName
+(def BinningStrategyName
+  "Schema for a valid value for the `strategy-name` param of a `binning-strategy` clause."
   (s/enum :num-bins :bin-width :default))
 
+(def BinnableField
+  "Schema for any sort of field clause that can be wrapped by a `binning-strategy` clause."
+  (one-of field-id fk-> datetime-field field-literal))
+
+(def ResolvedBinningStrategyOptions
+  "Schema for map of options tacked on to the end of `binning-strategy` clauses by the `binning` middleware."
+  {:num-bins   su/IntGreaterThanZero
+   :bin-width  (s/constrained s/Num (complement neg?) "bin width must be >= 0.")
+   :min-value  s/Num
+   :max-value  s/Num})
+
+;; TODO - binning strategy param is disallowed for `:default` and required for the others. For `num-bins` it must also
+;; be an integer.
 (defclause binning-strategy
-  field                     (one-of field-id field-literal fk-> expression datetime-field)
-  strategy-name             BinningStrategyName
-  strategy-param            (optional s/Num))
+  field            BinnableField
+  strategy-name    BinningStrategyName
+  strategy-param   (optional (s/maybe (s/constrained s/Num (complement neg?) "strategy param must be >= 0.")))
+  ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
+  ;; replaced.
+  resolved-options (optional ResolvedBinningStrategyOptions))
 
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
@@ -245,6 +263,7 @@
   "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
   (s/cond-pre
    s/Num
+   s/Str
    DatetimeLiteral
    FieldOrRelativeDatetime))
 
@@ -450,6 +469,17 @@
    ;; when we get a chance
    (s/optional-key :query-type)   (s/enum "MBQL" "native")})
 
+(def SourceQueryMetadata
+  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
+  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  {:name                          su/NonBlankString
+   :display_name                  su/NonBlankString
+   :base_type                     su/FieldType
+   (s/optional-key :special_type) (s/maybe su/FieldType)
+   ;; you'll need to provide this in order to use BINNING
+   (s/optional-key :fingerprint)  (s/maybe su/Map)
+   s/Any                          s/Any})
+
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -458,30 +488,36 @@
   `Card.dataset_query`."
   (s/constrained
    ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
-   {:database                     (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
+   {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
-    :type                         (s/enum :query :native)
-    (s/optional-key :native)      NativeQuery
-    (s/optional-key :query)       MBQLQuery
-    (s/optional-key :parameters)  [Parameter]
+    :type                             (s/enum :query :native)
+    (s/optional-key :native)          NativeQuery
+    (s/optional-key :query)           MBQLQuery
+    (s/optional-key :parameters)      [Parameter]
     ;;
     ;; OPTIONS
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;; TODO - can we combine these all into a single `:options` map?
     ;;
-    (s/optional-key :settings)    (s/maybe Settings)
-    (s/optional-key :constraints) (s/maybe Constraints)
-    (s/optional-key :middleware)  (s/maybe MiddlewareOptions)
+    (s/optional-key :settings)        (s/maybe Settings)
+    (s/optional-key :constraints)     (s/maybe Constraints)
+    (s/optional-key :middleware)      (s/maybe MiddlewareOptions)
     ;;
     ;; INFO
     ;;
     ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
     ;; User who ran it
-    (s/optional-key :info)        (s/maybe Info)
+    (s/optional-key :info)            (s/maybe Info)
+    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
+    ;; used to let power things like binning when used with Field Literals instead of normal Fields
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
+    #_:fk-field-ids
+    #_:table-ids
+    ;;
     ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
     ;; middleware to record bits of state. Everyone else can ignore them.
-    s/Keyword                     s/Any}
+    s/Keyword                         s/Any}
    (fn [{native :native, mbql :query, query-type :type}]
      (case query-type
        :native (core/and native (core/not mbql))

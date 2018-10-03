@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve
+(ns ^:deprecated metabase.query-processor.middleware.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary. During the `expand`
   phase of the Query Processor, forms like `[:field-id 10]` are replaced with placeholder objects of types like
   `FieldPlaceholder` or similar. During this phase, we'll take those placeholder objects and fetch information from
@@ -163,21 +163,10 @@
 
 ;;; ----------------------------------------------- FIELD PLACEHOLDER ------------------------------------------------
 
-(defn- resolve-binned-field [binning-strategy binning-param field]
-  (let [binned-field (i/map->BinnedField {:field    field
-                                          :strategy binning-strategy})]
-    (case binning-strategy
-      :num-bins
-      (assoc binned-field :num-bins binning-param)
-
-      :bin-width
-      (assoc binned-field :bin-width binning-param)
-
-      :default
-      binned-field
-
-      :else
-      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy))))))
+(defn- resolve-binned-field [binning-strategy binning-param binning-opts field]
+  (i/map->BinnedField (merge {:field    field
+                              :strategy binning-strategy}
+                             binning-opts)))
 
 (defn- merge-non-nils
   "Like `clojure.core/merge` but only merges non-nil values"
@@ -186,7 +175,7 @@
 
 (defn- field-ph-resolve-field
   "Attempt to resolve the `Field` for a `FieldPlaceholder`. Return a resolved `Field` or `DateTimeField`."
-  [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
+  [{:keys [field-id datetime-unit binning-strategy binning-param binning-opts], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
@@ -202,7 +191,7 @@
       (i/map->TimeField {:field field})
 
       binning-strategy
-      (resolve-binned-field binning-strategy binning-param field)
+      (resolve-binned-field binning-strategy binning-param binning-opts field)
 
       :else field)
     ;; If that fails just return ourselves as-is
@@ -441,12 +430,12 @@
 (defn- resolve-field-literals
   "When resolving a field, we connect a `field-id` with a `Field` in our metadata tables. This is a similar process
   for `FieldLiteral`s, except we are attempting to connect a `FieldLiteral` with an associated entry in the
-  `result_metadata` attached to the query (typically from the `Card` of a nested query)."
-  [{:keys [result_metadata] :as expanded-query-dict}]
-  (let [name->fingerprint (zipmap (map :name result_metadata)
-                                  (map :fingerprint result_metadata))]
+  `source-metadata` attached to the query (typically from the `Card` of a nested query)."
+  [{:keys [source-metadata] :as expanded-query-dict}]
+  (let [name->fingerprint (zipmap (map :name source-metadata)
+                                  (map :fingerprint source-metadata))]
     (qputil/postwalk-pred #(instance? FieldLiteral %)
-                          (fn [{:keys [binning-strategy binning-param] :as node}]
+                          (fn [{:keys [binning-strategy binning-param binning-opts] :as node}]
                             (let [fingerprint     (get name->fingerprint (:field-name node))
                                   node-with-print (assoc node :fingerprint fingerprint)]
                               (cond
@@ -455,7 +444,7 @@
                                 (throw (Exception. "Binning not supported on a field literal with no fingerprint"))
 
                                 (and fingerprint binning-strategy)
-                                (resolve-binned-field binning-strategy binning-param node-with-print)
+                                (resolve-binned-field binning-strategy binning-param binning-opts node-with-print)
 
                                 :else
                                 node-with-print)))
@@ -464,7 +453,7 @@
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
-(defn resolve-fields-if-needed
+(defn ^:deprecated resolve-fields-if-needed
   "Resolves any unresolved fields found in `fields`. Will just return resolved fields with no changes."
   [fields]
   (let [fields-to-resolve (map unresolved-field-id fields)]
@@ -473,7 +462,7 @@
       (map #(resolve-field % field-id->field) fields)
       fields)))
 
-(s/defn resolve :- su/Map
+(s/defn ^:deprecated resolve :- su/Map
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
   [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
@@ -482,7 +471,7 @@
           resolve-field-literals
           resolve-tables))
 
-(defn resolve-middleware
+(defn ^:deprecated resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
   [qp]
   (fn [{database-id :database, query-type :type, :as query}]

@@ -75,7 +75,12 @@
                        :query    {:source-table (str "card__" (u/get-id card))}})))
 
 (expect
-  (let [date-field-literal {:field-name "date", :base-type :type/Date, :binning-strategy nil, :binning-param nil, :fingerprint nil}]
+  (let [date-field-literal {:field-name       "date"
+                            :base-type        :type/Date
+                            :binning-strategy nil
+                            :binning-param    nil
+                            :binning-opts     nil
+                            :fingerprint      nil}]
     (default-expanded-results
      {:source-query {:source-table (data/id :checkins)
                      :join-tables  nil}
