@@ -1,11 +1,9 @@
 /* @flow */
 
 import React, { Component } from "react";
-import styles from "./Scalar.css";
 import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+
+import Ellipsified from "metabase/components/Ellipsified";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
@@ -19,6 +17,11 @@ import _ from "underscore";
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import type { Column } from "metabase/meta/types/Dataset";
 import type { VisualizationSettings } from "metabase/meta/types/Card";
+
+import ScalarValue, {
+  ScalarWrapper,
+  ScalarTitle,
+} from "metabase/visualizations/components/ScalarValue";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -38,13 +41,12 @@ export default class Scalar extends Component {
   static iconName = "number";
 
   static noHeader = true;
-  static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
 
   _scalar: ?HTMLElement;
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
@@ -138,16 +140,15 @@ export default class Scalar extends Component {
 
   render() {
     let {
-      series: [{ card, data: { cols, rows } }],
-      className,
       actionButtons,
+      series: [{ card, data: { cols, rows } }],
+      isDashboard,
+      onChangeCardAndRun,
       gridSize,
       settings,
-      onChangeCardAndRun,
       visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
-    let description = settings["card.description"];
 
     let isSmall = gridSize && gridSize.width < 4;
 
@@ -170,24 +171,14 @@ export default class Scalar extends Component {
     const isClickable = visualizationIsClickable(clicked);
 
     return (
-      <div
-        className={cx(
-          className,
-          styles.Scalar,
-          styles[isSmall ? "small" : "large"],
-        )}
-      >
+      <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
         <Ellipsified
-          className={cx(
-            styles.Value,
-            "ScalarValue text-dark fullscreen-normal-text fullscreen-night-text",
-            {
-              "text-brand-hover cursor-pointer": isClickable,
-            },
-          )}
+          className={cx("fullscreen-normal-text fullscreen-night-text", {
+            "text-brand-hover cursor-pointer": isClickable,
+          })}
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== compactScalarValue}
           style={{ maxWidth: "100%" }}
@@ -201,37 +192,20 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            {compactScalarValue}
+            <ScalarValue value={compactScalarValue} />
           </span>
         </Ellipsified>
-        {this.props.isDashboard && (
-          <div className={styles.Title + " flex align-center relative"}>
-            <Ellipsified tooltip={card.name}>
-              <span
-                onClick={
-                  onChangeCardAndRun &&
-                  (() => onChangeCardAndRun({ nextCard: card }))
-                }
-                className={cx("fullscreen-normal-text fullscreen-night-text", {
-                  "cursor-pointer": !!onChangeCardAndRun,
-                })}
-              >
-                <span className="Scalar-title">{settings["card.title"]}</span>
-              </span>
-            </Ellipsified>
-            {description && (
-              <div
-                className="absolute top bottom hover-child flex align-center justify-center"
-                style={{ right: -20, top: 2 }}
-              >
-                <Tooltip tooltip={description} maxWidth={"22em"}>
-                  <Icon name="infooutlined" />
-                </Tooltip>
-              </div>
-            )}
-          </div>
+        {isDashboard && (
+          <ScalarTitle
+            title={settings["card.title"]}
+            description={settings["card.description"]}
+            onClick={
+              onChangeCardAndRun &&
+              (() => onChangeCardAndRun({ nextCard: card }))
+            }
+          />
         )}
-      </div>
+      </ScalarWrapper>
     );
   }
 }

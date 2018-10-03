@@ -59,7 +59,7 @@ export default class Table extends Component {
 
   static minSize = { width: 4, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return true;
   }
 

@@ -60,6 +60,14 @@ cards:
       group: Overview
       width: 5
       height: 3
+  - EventGrowth:
+      visualization: smartscalar
+      title: Event growth
+      dimensions: Timestamp
+      metrics: Count
+      width: 5
+      height: 3
+      group: Overview
   - EventsByTime:
       title: Events over time
       metrics: Count

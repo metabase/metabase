@@ -303,7 +303,8 @@
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence

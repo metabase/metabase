@@ -26,7 +26,7 @@ export default class Progress extends Component {
 
   static minSize = { width: 3, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
