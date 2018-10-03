@@ -84,7 +84,7 @@
           (m/dissoc-in [:data :results_metadata])))))
 
 (def ^:private col-defaults
-  {:base_type :type/Text, :remapped_from nil, :remapped_to nil})
+  {:base_type :type/Text})
 
 ;; test druid native queries
 (expect-with-engine :druid

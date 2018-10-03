@@ -19,7 +19,9 @@
              [interface :as i]
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -471,9 +473,9 @@
       (map #(resolve-field % field-id->field) fields)
       fields)))
 
-(defn resolve
+(s/defn resolve :- su/Map
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
-  [expanded-query-dict]
+  [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields

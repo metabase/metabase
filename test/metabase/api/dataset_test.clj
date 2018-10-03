@@ -52,8 +52,9 @@
   [ ;; API call response
    {:data                   {:rows    [[1000]]
                              :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                        :description nil, :target nil, :extra_info {}, :source "aggregation", :remapped_from nil, :remapped_to nil}]
+                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count",
+                                        :display_name "count", :id nil, :table_id nil, :description nil, :target nil,
+                                        :extra_info {}, :source "aggregation", :settings nil}]
                              :native_form true}
     :row_count              1
     :status                 "completed"

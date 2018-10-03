@@ -66,7 +66,7 @@
    {:data       {:columns ["count"]
                  :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count",
                             :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
-                            :base_type "type/Integer", :remapped_from nil, :remapped_to nil}]
+                            :base_type "type/Integer", :settings nil}]
                  :rows    [[100]]}
     :json_query {:parameters nil}
     :status     "completed"})

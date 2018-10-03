@@ -1,8 +1,9 @@
-(ns metabase.query-processor.interface
+(ns ^:deprecated metabase.query-processor.interface
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions ^:deprecated of various protocols and record types; associated logic
   should go in `metabase.query-processor.middleware.expand`."
-  (:require [metabase.models
+  (:require [metabase.config :as config]
+            [metabase.models
              [dimension :as dim]
              [field :as field]]
             [metabase.sync.interface :as i]
@@ -580,3 +581,10 @@
                     source-query
                     native-source-query))))
    "Query must specify either `:source-table` or `:source-query`, but not both."))
+
+;; Go ahead and mark all the `->Record` and `map->Record` functions as deprecated too! Just so they show up in red in
+;; Emacs
+(when config/is-dev?
+  (doseq [[_ varr] (ns-publics *ns*)
+          :when (fn? (var-get varr))]
+    (alter-meta! varr assoc :deprecated true)))

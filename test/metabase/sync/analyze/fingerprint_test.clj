@@ -60,7 +60,7 @@
      [:and
       [:< :fingerprint_version 2]
       [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                        "type/Share"}]]
+                        "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
      [:and
       [:< :fingerprint_version 1]
       [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
@@ -82,7 +82,7 @@
      [:and
       [:< :fingerprint_version 2]
       [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                        "type/Share"}]]
+                        "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
      ;; no type/Float stuff should be included for 1
      [:and
       [:< :fingerprint_version 1]
@@ -104,7 +104,7 @@
      [:and
       [:< :fingerprint_version 4]
       [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                        "type/Share"}]]
+                        "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
      [:and
       [:< :fingerprint_version 3]
       [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
