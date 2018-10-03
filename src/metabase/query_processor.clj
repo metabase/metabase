@@ -35,6 +35,7 @@
              [permissions :as perms]
              [resolve :as resolve]
              [resolve-driver :as resolve-driver]
+             [resolve-fields :as resolve-fields]
              [results-metadata :as results-metadata]
              [source-table :as source-table]
              [store :as store]
@@ -101,9 +102,10 @@
       cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
-      binning/update-binning-strategy
       resolve/resolve-middleware
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      binning/update-binning-strategy
+      resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       bucket-datetime/auto-bucket-datetime-breakouts

@@ -14,6 +14,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
@@ -217,8 +218,8 @@
                    :num_bins         4,          :min_value 10.0
                    :max_value        50.0})
   (-> (data/run-mbql-query venues
-        {:aggregation          [[:count]]
-         :breakout [[:binning-strategy $latitude :default]]})
+        {:aggregation [[:count]]
+         :breakout    [[:binning-strategy $latitude :default]]})
       tu/round-fingerprint-cols
       (get-in [:data :cols])
       first))
@@ -229,8 +230,8 @@
                    :num_bins         5,         :min_value 7.5,
                    :max_value        45.0})
   (-> (data/run-mbql-query venues
-        {:aggregation          [[:count]]
-         :breakout [[:binning-strategy $latitude :num-bins 5]]})
+        {:aggregation [[:count]]
+         :breakout    [[:binning-strategy $latitude :num-bins 5]]})
       tu/round-fingerprint-cols
       (get-in [:data :cols])
       first))
@@ -239,13 +240,11 @@
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   {:status :failed
    :class  Exception
-   :error  (format "Unable to bin field '%s' with id '%s' without a min/max value"
-                   (:name (Field (data/id :venues :latitude)))
-                   (data/id :venues :latitude))}
+   :error  "Unable to bin Field without a min/max value"}
   (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
     (-> (data/run-mbql-query venues
-          {:aggregation          [[:count]]
-           :breakout [[:binning-strategy $latitude :default]]})
+          {:aggregation [[:count]]
+           :breakout    [[:binning-strategy $latitude :default]]})
         (select-keys [:status :class :error]))))
 
 (defn- field->result-metadata [field]
@@ -253,10 +252,10 @@
 
 (defn- nested-venues-query [card-or-card-id]
   {:database metabase.models.database/virtual-id
-   :type :query
-   :query {:source-table (str "card__" (u/get-id card-or-card-id))
-           :aggregation  [:count]
-           :breakout     [[:binning-strategy [:field-literal (data/format-name :latitude) :type/Float] :num-bins 20]]}})
+   :type     :query
+   :query    {:source-table (str "card__" (u/get-id card-or-card-id))
+              :aggregation  [:count]
+              :breakout     [[:binning-strategy [:field-literal (data/format-name :latitude) :type/Float] :num-bins 20]]}})
 
 ;; Binning should be allowed on nested queries that have result metadata
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning :nested-queries)
