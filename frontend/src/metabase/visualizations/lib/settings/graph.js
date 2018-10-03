@@ -523,7 +523,8 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) =>
-      series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null,
+      series.length === 1 ? vizSettings.series(series[0]).title : null,
+    readDependencies: ["series"],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

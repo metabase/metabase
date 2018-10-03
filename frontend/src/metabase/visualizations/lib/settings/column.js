@@ -4,7 +4,7 @@ import { t } from "c-3po";
 import moment from "moment";
 
 import { nestedSettings } from "./nested";
-import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns.jsx";
+import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
 import { keyForColumn } from "metabase/lib/dataset";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";

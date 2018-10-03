@@ -1,23 +1,32 @@
+/* @flow */
+
 import { t } from "c-3po";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries.jsx";
+import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
-export function keyForSingleSeries(single) {
+import type { SettingDef } from "../settings";
+import type { SingleSeries } from "metabase/meta/types/Visualization";
+
+export function keyForSingleSeries(single: SingleSeries): string {
   // _seriesKey is sometimes set by transformSeries
   return single.card._seriesKey || String(single.card.name);
 }
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
+type SeriesSettingDef = SettingDef & {
+  noPadding?: boolean,
+};
+
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
-} = {}) {
+}: SeriesSettingDef = {}) {
   const settingId = "series_settings";
   const colorSettingId = `${settingId}.colors`;
 

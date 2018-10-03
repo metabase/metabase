@@ -1,39 +1,17 @@
+/* @flow */
+
 import React from "react";
+
 import ColorPicker from "metabase/components/ColorPicker";
+import ButtonGroup from "metabase/components/ButtonGroup";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
-
-const ButtonGroup = ({
-  value,
-  onChange,
-  options,
-  optionNameFn = o => o.name,
-  optionValueFn = o => o.value,
-  optionKeyFn = optionValueFn,
-  className,
-}) => {
-  return (
-    <div className={cx(className, "rounded bordered flex")}>
-      {options.map((o, index) => (
-        <div
-          key={optionKeyFn(o)}
-          className={cx(
-            "flex align-center text-brand-hover p1 cursor-pointer",
-            { "border-left": index > 0 },
-            optionValueFn(o) === value ? "text-brand" : "text-medium",
-          )}
-          onClick={() => onChange(optionValueFn(o))}
-        >
-          {optionNameFn(o)}
-        </div>
-      ))}
-    </div>
-  );
-};
+import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
 
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeries extends React.Component {
+  props: NestedSettingComponentProps;
+
   render() {
     const {
       objects,
