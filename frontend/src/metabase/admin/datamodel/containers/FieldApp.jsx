@@ -31,6 +31,9 @@ import {
   FieldVisibilityPicker,
   SpecialTypeAndTargetPicker,
 } from "metabase/admin/datamodel/components/database/ColumnItem";
+
+import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
@@ -152,6 +155,10 @@ export default class FieldApp extends Component {
     this.props.deleteFieldDimension,
   );
 
+  onUpdateFieldSettings = settings => {
+    return this.onUpdateFieldProperties({ settings });
+  };
+
   render() {
     const {
       metadata,
@@ -261,6 +268,14 @@ export default class FieldApp extends Component {
                   discardFieldValues={() =>
                     this.props.discardFieldValues(field.id)
                   }
+                />
+              </Section>
+
+              <Section>
+                <ColumnSettings
+                  value={(field && field.settings) || {}}
+                  onChange={this.onUpdateFieldSettings}
+                  column={field}
                 />
               </Section>
             </div>

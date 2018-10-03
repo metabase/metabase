@@ -68,8 +68,24 @@ export function columnSettings({
   });
 }
 
+import MetabaseSettings from "metabase/lib/settings";
+import { isa } from "metabase/lib/types";
+
 function getInhertiedSettingsForColumn(column) {
-  return column.settings || {};
+  let inheritedSettings = {};
+
+  const customFormatting = MetabaseSettings.get("custom-formatting");
+  for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
+    if (isa(column.special_type, type)) {
+      Object.assign(inheritedSettings, globalSettings);
+    }
+  }
+
+  if (column.settings) {
+    Object.assign(inheritedSettings, column.settings);
+  }
+
+  return inheritedSettings;
 }
 
 const EXAMPLE_DATE = moment("2018-01-07 17:24");
