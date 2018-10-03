@@ -15,6 +15,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Radio from "metabase/components/Radio";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -72,6 +73,10 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class FieldApp extends Component {
+  state = {
+    tab: "general",
+  };
+
   saveStatus: null;
 
   props: {
@@ -197,87 +202,103 @@ export default class FieldApp extends Component {
                 <SaveStatus ref={ref => (this.saveStatus = ref)} />
               </div>
 
-              <Section>
-                <FieldHeader
-                  field={field}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldDimension={this.onUpdateFieldDimension}
+              <div className="border-bottom">
+                <Radio
+                  value={this.state.tab}
+                  onChange={tab => this.setState({ tab })}
+                  options={[
+                    { name: t`General`, value: "general" },
+                    { name: t`Formatting`, value: "formatting" },
+                  ]}
+                  underlined
                 />
-              </Section>
+              </div>
 
-              <Section>
-                <SectionHeader
-                  title={t`Visibility`}
-                  description={t`Where this field will appear throughout Metabase`}
-                />
-                <FieldVisibilityPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                />
-              </Section>
+              {this.state.tab === "formatting" ? (
+                <Section>
+                  <ColumnSettings
+                    value={(field && field.settings) || {}}
+                    onChange={this.onUpdateFieldSettings}
+                    column={field}
+                  />
+                </Section>
+              ) : (
+                <div>
+                  <Section>
+                    <FieldHeader
+                      field={field}
+                      updateFieldProperties={this.onUpdateFieldProperties}
+                      updateFieldDimension={this.onUpdateFieldDimension}
+                    />
+                  </Section>
 
-              <Section>
-                <SectionHeader title={t`Type`} />
-                <SpecialTypeAndTargetPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                  idfields={idfields}
-                  selectSeparator={<SelectSeparator />}
-                />
-              </Section>
+                  <Section>
+                    <SectionHeader
+                      title={t`Visibility`}
+                      description={t`Where this field will appear throughout Metabase`}
+                    />
+                    <FieldVisibilityPicker
+                      triggerClasses={SelectClasses}
+                      field={field.getPlainObject()}
+                      updateField={this.onUpdateField}
+                    />
+                  </Section>
 
-              <Section>
-                <SectionHeader
-                  title={t`Filtering on this field`}
-                  description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
-                />
-                <Select
-                  triggerClasses={SelectClasses}
-                  value={_.findWhere(has_field_values_options, {
-                    value: field.has_field_values,
-                  })}
-                  onChange={option =>
-                    this.onUpdateFieldProperties({
-                      has_field_values: option.value,
-                    })
-                  }
-                  options={has_field_values_options}
-                />
-              </Section>
+                  <Section>
+                    <SectionHeader title={t`Type`} />
+                    <SpecialTypeAndTargetPicker
+                      triggerClasses={SelectClasses}
+                      field={field.getPlainObject()}
+                      updateField={this.onUpdateField}
+                      idfields={idfields}
+                      selectSeparator={<SelectSeparator />}
+                    />
+                  </Section>
 
-              <Section>
-                <FieldRemapping
-                  field={field}
-                  table={table}
-                  fields={metadata.fields}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldValues={this.onUpdateFieldValues}
-                  updateFieldDimension={this.onUpdateFieldDimension}
-                  deleteFieldDimension={this.onDeleteFieldDimension}
-                  fetchTableMetadata={fetchTableMetadata}
-                />
-              </Section>
+                  <Section>
+                    <SectionHeader
+                      title={t`Filtering on this field`}
+                      description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
+                    />
+                    <Select
+                      triggerClasses={SelectClasses}
+                      value={_.findWhere(has_field_values_options, {
+                        value: field.has_field_values,
+                      })}
+                      onChange={option =>
+                        this.onUpdateFieldProperties({
+                          has_field_values: option.value,
+                        })
+                      }
+                      options={has_field_values_options}
+                    />
+                  </Section>
 
-              <Section>
-                <UpdateCachedFieldValues
-                  rescanFieldValues={() =>
-                    this.props.rescanFieldValues(field.id)
-                  }
-                  discardFieldValues={() =>
-                    this.props.discardFieldValues(field.id)
-                  }
-                />
-              </Section>
+                  <Section>
+                    <FieldRemapping
+                      field={field}
+                      table={table}
+                      fields={metadata.fields}
+                      updateFieldProperties={this.onUpdateFieldProperties}
+                      updateFieldValues={this.onUpdateFieldValues}
+                      updateFieldDimension={this.onUpdateFieldDimension}
+                      deleteFieldDimension={this.onDeleteFieldDimension}
+                      fetchTableMetadata={fetchTableMetadata}
+                    />
+                  </Section>
 
-              <Section>
-                <ColumnSettings
-                  value={(field && field.settings) || {}}
-                  onChange={this.onUpdateFieldSettings}
-                  column={field}
-                />
-              </Section>
+                  <Section>
+                    <UpdateCachedFieldValues
+                      rescanFieldValues={() =>
+                        this.props.rescanFieldValues(field.id)
+                      }
+                      discardFieldValues={() =>
+                        this.props.discardFieldValues(field.id)
+                      }
+                    />
+                  </Section>
+                </div>
+              )}
             </div>
           </div>
         )}
