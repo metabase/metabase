@@ -235,7 +235,7 @@
   {:style/indent 2}
   (^String [color x]
    {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color x))
+   (colorize color (str x)))
 
   (^String [color format-string & args]
    (colorize color (apply format format-string args))))
