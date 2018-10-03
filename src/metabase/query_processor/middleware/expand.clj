@@ -161,12 +161,12 @@
 (s/defn ^:deprecated ^:private ag-with-field :- i/Aggregation [ag-type f]
   (i/map->AggregationWithField {:aggregation-type ag-type, :field (field-or-expression f)}))
 
-(def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
-(def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
-(def ^:ql ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
-(def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
-(def ^:ql ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
-(def ^:ql ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
+(def ^:ql ^:deprecated ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
+(def ^:ql ^:deprecated ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
+(def ^:ql ^:deprecated ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
+(def ^:ql ^:deprecated ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
+(def ^:ql ^:deprecated ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
+(def ^:ql ^:deprecated ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
 
 (defn ^:deprecated ^:ql stddev
   "Aggregation clause. Return the standard deviation of values of F.
@@ -219,17 +219,17 @@
 (s/defn ^:deprecated ^:ql binning-strategy :- (s/cond-pre FieldPlaceholder FieldLiteral)
   "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
   `STRATEGY-PARAM`"
-  ([f strategy-name & [strategy-param]]
+  ([f strategy-name & [strategy-param resolved-options]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
-     (assoc field :binning-strategy strategy, :binning-param strategy-param))))
+     (assoc field :binning-strategy strategy, :binning-param strategy-param, :binning-opts resolved-options))))
 
 (defn- ^:deprecated fields-list-clause
   ([_ query] query)
   ([k query & fields] (assoc query k (mapv field fields))))
 
-(def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
-(def ^:ql ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
+(def ^:ql ^:deprecated ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
+(def ^:ql ^:deprecated ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
 
 ;;; ## filter
 
@@ -241,8 +241,8 @@
   ([compound-type, subclause :- i/Filter, & more :- [i/Filter]]
    (i/map->CompoundFilter {:compound-type compound-type, :subclauses (vec (cons subclause more))})))
 
-(def ^:ql ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
-(def ^:ql ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
+(def ^:ql ^:deprecated ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
+(def ^:ql ^:deprecated ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
 
 (s/defn ^:deprecated ^:private equality-filter :- i/Filter
   ([filter-type _ f v]
@@ -251,7 +251,7 @@
    (apply compound-fn (for [v (cons v more)]
                         (equality-filter filter-type compound-fn f v)))))
 
-(def ^:ql ^{:arglists '([f v & more])} =
+(def ^:ql ^:deprecated ^{:arglists '([f v & more])} =
   "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F
   matches *any* of the values (i.e.`IN`)
 
@@ -259,7 +259,7 @@
      (= f v1 v2) ; same as (or (= f v1) (= f v2))"
   (partial equality-filter := or))
 
-(def ^:ql ^{:arglists '([f v & more])} !=
+(def ^:ql ^:deprecated ^{:arglists '([f v & more])} !=
   "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F
   does not match *any* of the values (i.e. `NOT IN`)
 
@@ -273,10 +273,10 @@
 (s/defn ^:deprecated ^:private comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
 
-(def ^:ql ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
-(def ^:ql ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
-(def ^:ql ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
-(def ^:ql ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
 
 (s/defn ^:deprecated ^:ql between :- BetweenFilter
   "Filter subclause. Return results where F is between MIN and MAX. MIN and MAX must be orderable, i.e. numbers or datetimes.
@@ -309,17 +309,17 @@
      :value           (value f s)
      :case-sensitive? (get options-map :case-sensitive true)})))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} starts-with
   "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
   `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :starts-with))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} contains
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} contains
   "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
   `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :contains))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} ends-with
   "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
   an `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :ends-with))
@@ -353,7 +353,7 @@
                             (> field max-val)))
              (i/strict-map->NotFilter {:compound-type :not, :subclause clause})))))
 
-(def ^:ql ^{:arglists '([f s]), :added "0.15.0"} does-not-contain
+(def ^:ql ^:deprecated ^{:arglists '([f s]), :added "0.15.0"} does-not-contain
   "Filter subclause. Return results where F does not start with the string S."
   (comp not contains))
 
@@ -421,13 +421,13 @@
                   (update f :datetime-unit (fn [unit]
                                              (core/or unit :default)))))})
 
-(def ^:ql ^{:arglists '([field])} asc
+(def ^:ql ^:deprecated ^{:arglists '([field])} asc
   "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (asc 100))"
   (partial order-by-subclause :ascending))
 
-(def ^:ql ^{:arglists '([field])} desc
+(def ^:ql ^:deprecated ^{:arglists '([field])} desc
   "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (desc 100))"
@@ -503,10 +503,10 @@
                                                   (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
                                                   arg)))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
 ;;; Metric & Segment handlers
 

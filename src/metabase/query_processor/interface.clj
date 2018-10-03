@@ -205,6 +205,7 @@
                                         base-type        :- su/FieldType
                                         binning-strategy :- (s/maybe (apply s/enum binning-strategies))
                                         binning-param    :- (s/maybe s/Num)
+                                        binning-opts     :- s/Any
                                         fingerprint      :- (s/maybe i/Fingerprint)]
   nil
   :load-ns true
@@ -275,6 +276,7 @@
                                             remapped-to         :- (s/maybe s/Str)
                                             field-display-name  :- (s/maybe s/Str)
                                             binning-strategy    :- (s/maybe (apply s/enum binning-strategies))
+                                            binning-opts        :- s/Any
                                             binning-param       :- (s/maybe s/Num)]
   nil
   :load-ns true)
