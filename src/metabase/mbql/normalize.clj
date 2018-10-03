@@ -197,20 +197,27 @@
 (defn- normalize-source-query [{native? :native, :as source-query}]
   (normalize-tokens source-query [(if native? :native :query)]))
 
+(defn- normalize-source-metadata [metadata]
+  (-> metadata
+      (update :base_type    keyword)
+      (update :special_type keyword)
+      (update :fingerprint  walk/keywordize-keys )))
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
   defined below."
-  {:type       mbql.u/normalize-token
+  {:type            mbql.u/normalize-token
    ;; don't normalize native queries
-   :native     {:query         identity
-                :template-tags normalize-template-tags}
-   :query      {:aggregation  normalize-ag-clause-tokens
-                :expressions  normalize-expressions-tokens
-                :order-by     normalize-order-by-tokens
-                :source-query normalize-source-query}
-   :parameters {::sequence normalize-query-parameter}
-   :context    #(some-> % mbql.u/normalize-token)})
+   :native          {:query         identity
+                     :template-tags normalize-template-tags}
+   :query           {:aggregation  normalize-ag-clause-tokens
+                     :expressions  normalize-expressions-tokens
+                     :order-by     normalize-order-by-tokens
+                     :source-query normalize-source-query}
+   :parameters      {::sequence normalize-query-parameter}
+   :context         #(some-> % mbql.u/normalize-token)
+   :source-metadata {::sequence normalize-source-metadata}})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

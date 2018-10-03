@@ -5,9 +5,10 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.mbql.normalize :as normalize]))
 
 (defn- trim-query
   "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a
@@ -32,22 +33,22 @@
                   {:native (trim-query card-id (:query native))}
                   (when (seq (:template-tags native))
                     {:template-tags (:template-tags native)})))
-               (throw (Exception. (str "Missing source query in Card " card-id))))
+               (throw (Exception. (str (tru "Missing source query in Card {0}" card-id)))))
       ;; include database ID as well; we'll pass that up the chain so it eventually gets put in its spot in the
       ;; outer-query
       :database        (:database card-query)
-      :result_metadata (:result_metadata card))))
+      :source-metadata (normalize/normalize-fragment [:source-metadata] (:result_metadata card)))))
 
 (defn- source-table-str->source-query
-  "Given a SOURCE-TABLE-STR like `card__100` return the appropriate source query."
+  "Given a `source-table-str` like `card__100` return the appropriate source query."
   [source-table-str]
   (let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
     (u/prog1 (card-id->source-query (Integer/parseInt card-id-str))
       (when-not i/*disable-qp-logging*
-        (log/infof "\nFETCHED SOURCE QUERY FROM CARD %s:\n%s"
-                   card-id-str
-                   ;; No need to include result metadata here, it can be large and will clutter the logs
-                   (u/pprint-to-str 'yellow (dissoc <> :result_metadata)))))))
+        (log/info (trs "Fetched source query from Card {0}:" card-id-str)
+                  "\n"
+                  ;; No need to include result metadata here, it can be large and will clutter the logs
+                  (u/pprint-to-str 'yellow (dissoc <> :result_metadata)))))))
 
 (defn- expand-card-source-tables
   "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
@@ -63,9 +64,9 @@
           ;; Add new `source-query` info in its place. Pass the database ID up the chain, removing it from the
           ;; source query
           (assoc
-              :source-query    (dissoc source-query :database :result_metadata)
+              :source-query    (dissoc source-query :database :source-metadata)
               :database        (:database source-query)
-              :result_metadata (:result_metadata source-query))))))
+              :source-metadata (:source-metadata source-query))))))
 
 (s/defn ^:private fetch-source-query* :- mbql.s/Query
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
@@ -75,11 +76,11 @@
     ;; otherwise attempt to expand any source queries as needed
     (let [expanded-inner-query (expand-card-source-tables inner-query)]
       (merge outer-query
-             {:query (dissoc expanded-inner-query :database :result_metadata)}
+             {:query (dissoc expanded-inner-query :database :source-metadata)}
              (when-let [database (:database expanded-inner-query)]
                {:database database})
-             (when-let [result-metadata (:result_metadata expanded-inner-query)]
-               {:result_metadata result-metadata})))))
+             (when-let [source-metadata (:source-metadata expanded-inner-query)]
+               {:source-metadata source-metadata})))))
 
 (defn fetch-source-query
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
