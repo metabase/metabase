@@ -101,9 +101,11 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
-                  :exclusions [honeysql]]]
+                  :exclusions [honeysql]]
+                  [br.com.quintoandar.amazonaws/athena-jdbc "42-2.0.5"]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
-                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
+                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]
+                 ["athena" "https://s3.amazonaws.com/athena-drivers-download"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
