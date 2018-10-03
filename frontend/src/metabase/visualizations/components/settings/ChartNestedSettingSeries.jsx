@@ -5,6 +5,7 @@ import React from "react";
 import ColorPicker from "metabase/components/ColorPicker";
 import ButtonGroup from "metabase/components/ButtonGroup";
 import Icon from "metabase/components/Icon";
+import IconWrapper from "metabase/components/IconWrapper";
 
 import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
 
@@ -37,15 +38,14 @@ export default class ChartNestedSettingSeries extends React.Component {
             <div key={key} className="pl4 pr2 pb2 mb2 border-bottom">
               <div className="flex align-center">
                 <ColorPicker
-                  className="align-self-stretch"
                   value={settings.color}
-                  triggerSize={28}
+                  triggerSize={21}
                   onChange={value =>
                     onChangeObjectSettings(single, { color: value })
                   }
                 />
                 <input
-                  className="input align-self-stretch flex-full ml1"
+                  className="input flex-full ml1"
                   size={1}
                   value={settings.title}
                   onChange={e =>
@@ -54,7 +54,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                 />
                 {!isStacked ? (
                   <ButtonGroup
-                    className="align-self-stretch ml1"
+                    className="ml1"
                     value={settings.display}
                     options={["line", "area", "bar"]}
                     optionValueFn={o => o}
@@ -65,13 +65,16 @@ export default class ChartNestedSettingSeries extends React.Component {
                   />
                 ) : null}
                 {objects.length > 1 ? (
-                  <Icon
-                    className="ml2 text-medium cursor-pointer text-brand-hover"
-                    name={isSelected(single) ? "chevronup" : "chevrondown"}
-                    onClick={() =>
-                      onChangeEditingObject(isSelected(single) ? null : single)
-                    }
-                  />
+                  <IconWrapper className="ml1 p1">
+                    <Icon
+                      className="text-medium cursor-pointer text-brand-hover"
+                      name={isSelected(single) ? "chevronup" : "chevrondown"}
+                      tooltip={isSelected(single) ? "Hide options" : "More options"}
+                      onClick={() =>
+                        onChangeEditingObject(isSelected(single) ? null : single)
+                      }
+                    />
+                  </IconWrapper>
                 ) : null}
               </div>
               {objectSettingsWidgets &&
