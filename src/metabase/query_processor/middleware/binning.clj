@@ -64,14 +64,14 @@
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(s/defn ^:private calculate-num-bins :- s/Num
+(s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
   [min-value :- s/Num, max-value :- s/Num, bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
   (long (Math/ceil (/ (- max-value min-value)
                       bin-width))))
 
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
-                                               (s/one {:bin-width s/Num, :num-bins s/Num} "opts")]
+                                               (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
   [metadata :- {:special_type su/FieldType, s/Any s/Any}, min-value :- s/Num, max-value :- s/Num]
   (if (isa? (:special_type metadata) :type/Coordinate)
@@ -147,6 +147,21 @@
 
 ;;; -------------------------------------------- Adding resolved options ---------------------------------------------
 
+(defn- resolve-options [strategy strategy-param metadata min-value max-value]
+  (case strategy
+    :num-bins
+    [:num-bins
+     {:num-bins  strategy-param
+      :bin-width (calculate-bin-width min-value max-value strategy-param)}]
+
+    :bin-width
+    [:bin-width
+     {:bin-width strategy-param
+      :num-bins  (calculate-num-bins min-value max-value strategy-param)}]
+
+    :default
+    (resolve-default-strategy metadata min-value max-value)))
+
 (s/defn ^:private update-binned-field :- mbql.s/binning-strategy
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
@@ -163,22 +178,10 @@
          :as   min-max}                 (extract-bounds (when (integer? field-id-or-name) field-id-or-name)
                                                         (:fingerprint metadata)
                                                         field-id->filters)
-        [new-strategy resolved-options] (case strategy
-                                          :num-bins
-                                          [:num-bins
-                                           {:num-bins  strategy-param
-                                            :bin-width (calculate-bin-width min-value max-value strategy-param)}]
-
-                                          :bin-width
-                                          [:bin-width
-                                           {:bin-width strategy-param
-                                            :num-bins  (calculate-num-bins min-value max-value strategy-param)}]
-
-                                          :default
-                                          (resolve-default-strategy metadata min-value max-value))
+        [new-strategy resolved-options] (resolve-options strategy strategy-param metadata min-value max-value)
         resolved-options (merge min-max resolved-options)]
     ;; Bail out and use unmodifed version if we can't converge on a nice version.
-    [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout strategy resolved-options)
+    [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout new-strategy resolved-options)
                                                                     resolved-options)]))
 
 

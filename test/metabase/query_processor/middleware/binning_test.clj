@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [expectations :refer [expect]]
-            [metabase.models.field :as field]
-            [metabase.query-processor.middleware.binning :as binning]))
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.query-processor.middleware.binning :as binning]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.test.data :as data]
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 (expect
   {}
@@ -84,3 +88,44 @@
                          [:num-bins  {:min-value 9,   :max-value 1002, :num-bins 8, :bin-width 0}]
                          [:bin-width {:min-value 9,   :max-value 1002, :num-bins 1, :bin-width 15.0}]]]
     (#'binning/nicer-breakout strategy opts)))
+
+;; does `resolve-default-strategy` work the way we'd expect?
+(expect
+  [:num-bins {:num-bins 8, :bin-width 28.28321}]
+  (#'binning/resolve-default-strategy {:special_type :type/Income} 12.061602936923117 238.32732001721533))
+
+;; does `nicer-breakout` make things NICER?
+(expect
+  {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}
+  (#'binning/nicer-breakout :num-bins {:min-value 12.061602936923117
+                                       :max-value 238.32732001721533
+                                       :bin-width 28.28321
+                                       :num-bins  8}))
+
+;; Try an end-to-end test of the middleware
+(tt/expect-with-temp [Field [field (field/map->FieldInstance
+                                    {:database_type "DOUBLE"
+                                     :table_id      (data/id :checkins)
+                                     :special_type  :type/Income
+                                     :name          "TOTAL"
+                                     :display_name  "Total"
+                                     :fingerprint   {:global {:distinct-count 10000}
+                                                     :type   {:type/Number {:min 12.061602936923117
+                                                                            :max 238.32732001721533
+                                                                            :avg 82.96014815230829}}}
+                                     :base_type     :type/Float})]]
+  {:query    {:source-table (data/id :checkins)
+              :breakout     [[:binning-strategy
+                              [:field-id (u/get-id field)]
+                              :num-bins
+                              nil
+                              {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}
+   :type     :query
+   :database (data/id)}
+  (qp.store/with-store
+    (qp.store/store-field! field)
+    ((binning/update-binning-strategy identity)
+     {:query    {:source-table (data/id :checkins)
+                 :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
+      :type     :query
+      :database (data/id)})))
