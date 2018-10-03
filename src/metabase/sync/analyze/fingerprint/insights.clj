@@ -52,10 +52,16 @@
   (redux/post-complete
    (let [x-position (-> datetimes first :position)
          y-position (-> numbers first :position)
-         xfn        #(some-> %
-                             (nth x-position)
-                             f/->date
-                             (.getTime))
+         xfn        (if (-> datetimes first :base_type (isa? :type/DateTime))
+                      #(some-> %
+                               (nth x-position)
+                               ;; at this point in the pipeline, dates are still stings
+                               f/->date
+                               (.getTime))
+                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
+                      ;; at this stage in the pipeline the value is still an int, so we can use it
+                      ;; directly.
+                      #(nth % x-position))
          yfn        #(nth % y-position)]
      (redux/juxt ((map yfn) (last-n 2))
                  ((map xfn) first-value)
@@ -70,14 +76,25 @@
         :slope          slope
         :offset         offset}))))
 
+(defn- datetime-truncated-to-year?
+  "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
+   this is the only way to recover the information they were once datetimes."
+  [{:keys [base_type unit fingerprint] :as field}]
+  (and (= base_type :type/Text)
+       (contains? field :unit)
+       (nil? unit)
+       (or (nil? (:type fingerprint))
+           (-> fingerprint :type :type/DateTime))))
+
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."
   [cols]
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (fn [{:keys [base_type unit]}]
+                          (group-by (fn [{:keys [base_type unit] :as field}]
                                       (cond
+                                        (datetime-truncated-to-year? field)          :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
                                         (isa? base_type :type/Number)                :numbers
                                         (isa? base_type :type/DateTime)              :datetimes

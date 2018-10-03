@@ -310,7 +310,7 @@
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
 
-(def ^:private ^:const date-trunc-units
+(def ^:const date-trunc-units
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
