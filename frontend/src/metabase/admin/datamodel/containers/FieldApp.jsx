@@ -464,9 +464,7 @@ export const Section = ({ children }) => (
 export const SectionHeader = ({ title, description }) => (
   <div className="mb2">
     <h4>{title}</h4>
-    {description && (
-      <p className="mb0 text-medium mt1">{description}</p>
-    )}
+    {description && <p className="mb0 text-medium mt1">{description}</p>}
   </div>
 );
 
