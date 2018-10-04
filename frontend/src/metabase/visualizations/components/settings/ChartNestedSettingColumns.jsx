@@ -12,7 +12,7 @@ const displayNameForColumn = column =>
 import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeries extends React.Component {
+export default class ChartNestedSettingColumns extends React.Component {
   props: NestedSettingComponentProps;
 
   render() {
