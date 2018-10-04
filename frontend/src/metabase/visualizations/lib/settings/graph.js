@@ -206,40 +206,13 @@ export const GRAPH_BUBBLE_SETTINGS = {
 export const LINE_SETTINGS = {
   // DEPRECATED: moved to series settings
   "line.interpolate": {
-    // section: t`Display`,
-    // title: t`Style`,
-    // widget: "select",
-    // props: {
-    //   options: [
-    //     { name: t`Line`, value: "linear" },
-    //     { name: t`Curve`, value: "cardinal" },
-    //     { name: t`Step`, value: "step-after" },
-    //   ],
-    // },
-    getDefault: () => "linear",
+    default: "linear",
   },
   // DEPRECATED: moved to series settings
-  "line.marker_enabled": {
-    // section: t`Display`,
-    // title: t`Show point markers on lines`,
-    // widget: "toggle",
-  },
-};
-
-export const LINE_SETTINGS_2 = {
+  "line.marker_enabled": {},
   // DEPRECATED: moved to series settings
   "line.missing": {
-    // section: t`Display`,
-    // title: t`Replace missing values with`,
-    // widget: "select",
     default: "interpolate",
-    // getProps: (series, vizSettings) => ({
-    //   options: [
-    //     { name: t`Zero`, value: "zero" },
-    //     { name: t`Nothing`, value: "none" },
-    //     { name: t`Linear Interpolated`, value: "interpolate" },
-    //   ],
-    // }),
   },
 };
 
