@@ -3,13 +3,13 @@
 }
 
 .TableInteractive {
+  color: #4f575d;
   border-radius: var(--table-border-radius);
   overflow: hidden;
 }
 
-.TableInteractive-headerCellData {
+.TableInteractive-headerCellData .cellData {
   font-weight: 900;
-  text-transform: uppercase;
   font-size: 10px;
 }
 
@@ -52,15 +52,6 @@
   border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
-/*
-.TableInteractive .TableInteractive-cellWrapper--active,
-.TableInteractive:not(.TableInteractive--noHover)
-  .TableInteractive-cellWrapper:hover {
-  border-color: var(--color-brand);
-  color: var(--color-brand);
-}
-*/
-
 .TableInteractive .TableInteractive-cellWrapper--active {
   z-index: 1;
 }
@@ -78,7 +69,6 @@
 
 /* cell overflow ellipsis */
 .TableInteractive .cellData {
-  color: #4f575d;
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -100,4 +90,13 @@
 .TableInteractive .TableInteractive-cellWrapper.tether-enabled {
   background-color: var(--color-brand);
   color: white !important;
+}
+/*
+.TableInteractive-emptyCell {
+  background-color: var(--color-bg-light);
+}
+*/
+
+.TableInteractive-cellWrapper:hover {
+  background-color: color(var(--color-brand) alpha(-90%));
 }
