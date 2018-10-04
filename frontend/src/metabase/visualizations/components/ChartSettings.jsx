@@ -18,6 +18,8 @@ import {
   extractRemappings,
 } from "metabase/visualizations";
 
+const DEFAULT_TAB_PRIORITY = ["Display"];
+
 class ChartSettings extends Component {
   constructor(props) {
     super(props);
@@ -119,7 +121,10 @@ class ChartSettings extends Component {
     }
 
     const tabNames = Object.keys(tabs);
-    const currentTab = this.state.currentTab || tabNames[0];
+    const currentTab =
+      this.state.currentTab ||
+      _.find(DEFAULT_TAB_PRIORITY, name => name in tabs) ||
+      tabNames[0];
 
     let widgets;
     let widget = showWidget && widgetsById[showWidget.id];
