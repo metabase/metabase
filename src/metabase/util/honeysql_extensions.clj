@@ -1,20 +1,14 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
   (:require [clojure.string :as s]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      helpers))
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]])
   (:import honeysql.format.ToSql
            java.util.Locale))
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
-
-;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see
-;; https://github.com/jkk/honeysql/issues/123
-(alter-meta! #'honeysql.helpers/merge-left-join assoc
-             :arglists '([m & clauses])
-             :style/indent 1)
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
