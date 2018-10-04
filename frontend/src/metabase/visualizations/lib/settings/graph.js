@@ -15,7 +15,10 @@ import {
   DIMENSION_METRIC,
   DIMENSION_METRIC_METRIC,
 } from "metabase/visualizations/lib/utils";
+
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
@@ -92,6 +95,10 @@ function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
 }
 
 export const GRAPH_DATA_SETTINGS = {
+  ...columnSettings({
+    getColumns: ([{ data: { cols } }], settings) => cols,
+    hidden: true,
+  }),
   "graph._dimension_filter": {
     getDefault: ([{ card }]) =>
       card.display === "scatter" ? isAny : isDimension,
