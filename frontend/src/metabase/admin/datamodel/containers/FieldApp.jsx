@@ -41,9 +41,6 @@ import { rescanFieldValues, discardFieldValues } from "../field";
 import { has_field_values_options } from "metabase/lib/core";
 import colors from "metabase/lib/colors";
 
-const SelectClasses =
-  "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
-
 const mapStateToProps = (state, props) => {
   return {
     databaseId: parseInt(props.params.databaseId),
@@ -203,17 +200,17 @@ export default class FieldApp extends Component {
                   title={t`Visibility`}
                   description={t`Where this field will appear throughout Metabase`}
                 />
-                <FieldVisibilityPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                />
+                <div style={{ maxWidth: 400 }}>
+                  <FieldVisibilityPicker
+                    field={field.getPlainObject()}
+                    updateField={this.onUpdateField}
+                  />
+                </div>
               </Section>
 
               <Section>
-                <SectionHeader title={t`Type`} />
+                <SectionHeader title={t`Field Type`} />
                 <SpecialTypeAndTargetPicker
-                  triggerClasses={SelectClasses}
                   field={field.getPlainObject()}
                   updateField={this.onUpdateField}
                   idfields={idfields}
@@ -227,7 +224,6 @@ export default class FieldApp extends Component {
                   description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
                 />
                 <Select
-                  triggerClasses={SelectClasses}
                   value={_.findWhere(has_field_values_options, {
                     value: field.has_field_values,
                   })}
@@ -322,7 +318,7 @@ export class FieldHeader extends Component {
     return (
       <div>
         <InputBlurChange
-          className="h1 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
@@ -462,17 +458,13 @@ export class FieldValueMapping extends Component {
 }
 
 export const Section = ({ children }) => (
-  <section className="my3">{children}</section>
+  <section className="my4 pb4 border-bottom">{children}</section>
 );
 
 export const SectionHeader = ({ title, description }) => (
-  <div className="border-bottom py2 mb2">
-    <h2 className="text-italic">{title}</h2>
-    {description && (
-      <p className="mb0 text-medium mt1 text-paragraph text-measure">
-        {description}
-      </p>
-    )}
+  <div className="mb2">
+    <h4>{title}</h4>
+    {description && <p className="mb0 text-medium mt1">{description}</p>}
   </div>
 );
 
@@ -704,7 +696,6 @@ export class FieldRemapping extends Component {
           description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
         />
         <Select
-          triggerClasses={SelectClasses}
           value={mappingType}
           onChange={this.onSetMappingType}
           options={this.getAvailableMappingTypes()}
@@ -716,18 +707,15 @@ export class FieldRemapping extends Component {
             triggerElement={
               <SelectButton
                 hasValue={hasFKMappingValue}
-                className={cx(
-                  "flex inline-block no-decoration h3 p2 shadowed",
-                  {
-                    "border-error": dismissedInitialFkTargetPopover,
-                    "border-dark": !dismissedInitialFkTargetPopover,
-                  },
-                )}
+                className={cx("flex inline-block no-decoration", {
+                  "border-error": dismissedInitialFkTargetPopover,
+                  "border-dark": !dismissedInitialFkTargetPopover,
+                })}
               >
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-light">{t`Choose a field`}</span>
+                  <span className="text-medium">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }
@@ -768,7 +756,7 @@ export class FieldRemapping extends Component {
 
 export const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip:`}</span>
+    <span className="text-brand text-bold">{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );
