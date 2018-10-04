@@ -16,6 +16,7 @@ import {
   isState,
   isCountry,
   isCoordinate,
+  isNumber,
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -50,7 +51,7 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     const newCard = startNewCard(
       "query",
       card.dataset_query.database,
-      query.source_table,
+      query["source-table"],
     );
     newCard.dataset_query.query.filter = query.filter;
     return newCard;
@@ -229,6 +230,23 @@ export const breakout = (card, breakout, tableMetadata) => {
     breakout,
   );
   guessVisualization(newCard, tableMetadata);
+  return newCard;
+};
+
+export const distribution = (card, column) => {
+  const breakout = isDate(column)
+    ? ["datetime-field", getFieldRefFromColumn(column), "month"]
+    : isNumber(column)
+      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+      : getFieldRefFromColumn(column);
+
+  const newCard = startNewCard("query");
+  newCard.dataset_query = Utils.copy(card.dataset_query);
+  newCard.dataset_query.query.aggregation = [["count"]];
+  newCard.dataset_query.query.breakout = [breakout];
+  delete newCard.dataset_query.query["order-by"];
+  delete newCard.dataset_query.query.fields;
+  newCard.display = "bar";
   return newCard;
 };
 

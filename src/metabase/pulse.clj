@@ -13,10 +13,9 @@
              [pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [i18n :refer [trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
-            [metabase.util.urls :as urls]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.TimeZone
@@ -120,7 +119,7 @@
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
-  (fn [pulse results] (alert-or-pulse pulse)))
+  (fn [pulse _results] (alert-or-pulse pulse)))
 
 (defmethod should-send-notification? :alert
   [{:keys [alert_condition] :as alert} results]
@@ -132,7 +131,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
+    (let [^String error-text (str (tru "Unrecognized alert with condition ''{0}''" alert_condition))]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
@@ -189,7 +188,7 @@
 
 (defmethod create-notification :default
   [_ _ {:keys [channel_type] :as channel}]
-  (let [^String ex-msg (tru "Unrecognized channel type {0}" (pr-str channel_type))]
+  (let [^String ex-msg (str (tru "Unrecognized channel type {0}" (pr-str channel_type)))]
     (throw (UnsupportedOperationException. ex-msg))))
 
 (defmulti ^:private send-notification!
@@ -212,7 +211,12 @@
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
-    (send-notification! notification)))
+    ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
+    ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
+    (try
+      (send-notification! notification)
+      (catch Throwable e
+        (log/error e (trs "Error sending notification!"))))))
 
 (defn- pulse->notifications [{:keys [cards channel-ids], :as pulse}]
   (let [results     (for [card  cards

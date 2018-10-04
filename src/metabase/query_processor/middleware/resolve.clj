@@ -1,14 +1,12 @@
-(ns metabase.query-processor.middleware.resolve
+(ns ^:deprecated metabase.query-processor.middleware.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary. During the `expand`
   phase of the Query Processor, forms like `[:field-id 10]` are replaced with placeholder objects of types like
   `FieldPlaceholder` or similar. During this phase, we'll take those placeholder objects and fetch information from
   the DB and replace them with actual objects like `Field`."
   (:refer-clojure :exclude [resolve])
-  (:require [clj-time.coerce :as tcoerce]
-            [clojure
+  (:require [clojure
              [set :as set]
              [walk :as walk]]
-            [medley.core :as m]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -19,15 +17,18 @@
              [table :refer [Table]]]
             [metabase.query-processor
              [interface :as i]
+             [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
   (:import java.util.TimeZone
-           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder
-            RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
+           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral
+            FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -162,21 +163,10 @@
 
 ;;; ----------------------------------------------- FIELD PLACEHOLDER ------------------------------------------------
 
-(defn- resolve-binned-field [{:keys [binning-strategy binning-param] :as field-ph} field]
-  (let [binned-field (i/map->BinnedField {:field    field
-                                          :strategy binning-strategy})]
-    (case binning-strategy
-      :num-bins
-      (assoc binned-field :num-bins binning-param)
-
-      :bin-width
-      (assoc binned-field :bin-width binning-param)
-
-      :default
-      binned-field
-
-      :else
-      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy))))))
+(defn- resolve-binned-field [binning-strategy binning-param binning-opts field]
+  (i/map->BinnedField (merge {:field    field
+                              :strategy binning-strategy}
+                             binning-opts)))
 
 (defn- merge-non-nils
   "Like `clojure.core/merge` but only merges non-nil values"
@@ -185,7 +175,7 @@
 
 (defn- field-ph-resolve-field
   "Attempt to resolve the `Field` for a `FieldPlaceholder`. Return a resolved `Field` or `DateTimeField`."
-  [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
+  [{:keys [field-id datetime-unit binning-strategy binning-param binning-opts], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
@@ -201,7 +191,7 @@
       (i/map->TimeField {:field field})
 
       binning-strategy
-      (resolve-binned-field this field)
+      (resolve-binned-field binning-strategy binning-param binning-opts field)
 
       :else field)
     ;; If that fails just return ourselves as-is
@@ -231,11 +221,7 @@
 
   DateTimeField
   (parse-value [this value]
-    (let [tz                 (when-let [tz-id ^String (setting/get :report-timezone)]
-                               (TimeZone/getTimeZone tz-id))
-          parsed-string-date (some-> value
-                                     (du/str->date-time tz)
-                                     du/->Timestamp)]
+    (let [parsed-string-date (some-> value du/->Timestamp)]
       (cond
         parsed-string-date
         (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value parsed-string-date}))
@@ -382,44 +368,115 @@
                               ;; the first 30 here
                               :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
+(defn- create-fk-id+table-id->table
+  "Create the `fk-id+table-id->table` map used in resolving table names in `resolve-table` calls"
+  [{source-table-id :id :as source-table} joined-tables]
+  (into {[nil source-table-id] source-table}
+        (for [{:keys [source-field table-id join-alias]} joined-tables]
+          {[(:field-id source-field) table-id] {:name join-alias
+                                                :id   table-id}})))
+
+(defn- append-new-fields
+  "Returns a vector fields that have all `existing-fields` and any field in `new-fields` not already found in
+  `existing-fields`"
+  [existing-fields new-fields]
+  (let [existing-field-names (set (map name existing-fields))]
+    (vec (concat existing-fields
+                 (remove (comp existing-field-names name) new-fields)))))
+
+;; Needed as `resolve-tables-in-nested-query` and `resolved-tables` are mutually recursive
+(declare resolve-tables)
+
+(defn- resolve-tables-in-nested-query
+  "This function is pull up a nested query found in `expanded-query-dict` and run it through
+  `resolve-tables`. Unfortunately our work isn't done there. If `expanded-query-dict` has a breakout that refers to a
+  column from the nested query we will need to resolve the fields in that breakout after the nested query has been
+  resolved. More comments in-line that breakout the work for that."
+  [{{:keys [source-query]} :query, :as expanded-query-dict}]
+  ;; No need to try and resolve a nested native query
+  (if (:native source-query)
+    expanded-query-dict
+    (let [ ;; Resolve the nested query as if it were a top level query
+          {nested-inner :query, :as nested-outer} (resolve-tables (assoc expanded-query-dict :query source-query))
+          nested-source-table-id                  (:source-table nested-inner)
+          ;; Build a list of join tables found from the newly resolved nested query
+          nested-joined-tables                    (fk-field-ids->joined-tables nested-source-table-id
+                                                                               (:fk-field-ids nested-outer))
+          ;; Create the map of fk to table info from the resolved nested query
+          fk-id+table-id->table                   (create-fk-id+table-id->table (some-> nested-source-table-id qp.store/table)
+                                                                                nested-joined-tables)
+          ;; Resolve the top level (original) breakout fields with the join information from the resolved nested query
+          resolved-breakout                       (for [breakout (get-in expanded-query-dict [:query :breakout])]
+                                                    (resolve-table breakout fk-id+table-id->table))]
+      (assoc-in expanded-query-dict [:query :source-query]
+                (if (and (contains? nested-inner :fields)
+                         (seq resolved-breakout))
+                  (update nested-inner :fields append-new-fields resolved-breakout)
+                  nested-inner)))))
+
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{{ source-table-id :id :as source-table} :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{:keys [fk-field-ids], {source-table-id :source-table} :query, :as expanded-query-dict}]
   (if-not source-table-id
     ;; if we have a `source-query`, recurse and resolve tables in that
-    (update-in expanded-query-dict [:query :source-query] (fn [source-query]
-                                                            (if (:native source-query)
-                                                              source-query
-                                                              (:query (resolve-tables (assoc expanded-query-dict
-                                                                                        :query source-query))))))
+    (resolve-tables-in-nested-query expanded-query-dict)
     ;; otherwise we can resolve tables in the (current) top-level
-    (let [table-ids             (conj table-ids source-table-id)
-          joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
-          fk-id+table-id->table (into {[nil source-table-id] source-table}
-                                      (for [{:keys [source-field table-id join-alias]} joined-tables]
-                                        {[(:field-id source-field) table-id] {:name join-alias
-                                                                              :id   table-id}}))]
+    (let [joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
+          fk-id+table-id->table (create-fk-id+table-id->table (qp.store/table source-table-id) joined-tables)]
       (as-> expanded-query-dict <>
         (assoc-in <> [:query :join-tables]  joined-tables)
         (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
 
+(defn- resolve-field-literals
+  "When resolving a field, we connect a `field-id` with a `Field` in our metadata tables. This is a similar process
+  for `FieldLiteral`s, except we are attempting to connect a `FieldLiteral` with an associated entry in the
+  `source-metadata` attached to the query (typically from the `Card` of a nested query)."
+  [{:keys [source-metadata] :as expanded-query-dict}]
+  (let [name->fingerprint (zipmap (map :name source-metadata)
+                                  (map :fingerprint source-metadata))]
+    (qputil/postwalk-pred #(instance? FieldLiteral %)
+                          (fn [{:keys [binning-strategy binning-param binning-opts] :as node}]
+                            (let [fingerprint     (get name->fingerprint (:field-name node))
+                                  node-with-print (assoc node :fingerprint fingerprint)]
+                              (cond
+                                ;; We can't bin without min/max values found from a fingerprint
+                                (and binning-strategy (not fingerprint))
+                                (throw (Exception. "Binning not supported on a field literal with no fingerprint"))
+
+                                (and fingerprint binning-strategy)
+                                (resolve-binned-field binning-strategy binning-param binning-opts node-with-print)
+
+                                :else
+                                node-with-print)))
+                          expanded-query-dict)))
+
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
-(defn resolve
+(defn ^:deprecated resolve-fields-if-needed
+  "Resolves any unresolved fields found in `fields`. Will just return resolved fields with no changes."
+  [fields]
+  (let [fields-to-resolve (map unresolved-field-id fields)]
+    (if-let [field-id->field (and (seq fields-to-resolve)
+                                  (u/key-by :field-id (fetch-fields fields-to-resolve)))]
+      (map #(resolve-field % field-id->field) fields)
+      fields)))
+
+(s/defn ^:deprecated resolve :- su/Map
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
-  [expanded-query-dict]
+  [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
+          resolve-field-literals
           resolve-tables))
 
-(defn resolve-middleware
+(defn ^:deprecated resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
   [qp]
-  (fn [{database-id :database, :as query}]
+  (fn [{database-id :database, query-type :type, :as query}]
     (let [resolved-db (db/select-one [Database :name :id :engine :details :timezone], :id database-id)
-          query       (if (qputil/mbql-query? query)
+          query       (if (= query-type :query)
                         (resolve query)
                         query)]
       (qp (assoc query :database resolved-db)))))

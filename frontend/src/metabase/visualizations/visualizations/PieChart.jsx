@@ -12,11 +12,11 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import * as colors from "metabase/lib/colors";
+import { normal, harmony } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -43,7 +43,7 @@ export default class PieChart extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length === 2;
   }
 
@@ -57,29 +57,27 @@ export default class PieChart extends Component {
   }
 
   static settings = {
-    "pie.dimension": {
-      section: "Data",
+    ...dimensionSetting("pie.dimension", {
+      section: t`Data`,
       title: t`Dimension`,
-      ...dimensionSetting("pie.dimension"),
-    },
-    "pie.metric": {
-      section: "Data",
+    }),
+    ...metricSetting("pie.metric", {
+      section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("pie.metric"),
-    },
+    }),
     "pie.show_legend": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
     },
     "pie.show_legend_perecent": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
     },
     "pie.slice_threshold": {
-      section: "Display",
+      section: t`Display`,
       title: t`Minimum slice percentage`,
       widget: "number",
       default: SLICE_THRESHOLD * 100,
@@ -136,9 +134,7 @@ export default class PieChart extends Component {
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
-    let sliceColors = Object.values(
-      rows.length > 5 ? colors.harmony : colors.normal,
-    );
+    let sliceColors = Object.values(rows.length > 5 ? harmony : normal);
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
@@ -162,7 +158,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: colors.normal.grey1,
+          color: normal.grey1,
         };
         slices.push(otherSlice);
       }
@@ -188,7 +184,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors.normal.grey1,
+        color: normal.grey1,
         noHover: true,
       };
       slices.push(otherSlice);

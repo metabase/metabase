@@ -64,7 +64,7 @@ const init = async () => {
   if (!isJestWatchMode) {
     console.log(
       chalk.yellow(
-        "If you are developing locally, prefer using `lein run test-integrated-watch` instead.\n",
+        "If you are developing locally, prefer using `yarn test-integrated-watch` instead.\n",
       ),
     );
   }

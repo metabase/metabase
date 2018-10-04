@@ -6,12 +6,13 @@
              [sqlserver :as sqlserver]]
             [metabase.test
              [data :as data]
-             [util :refer [obj->json->obj] :as tu]]
+             [util :as tu :refer [obj->json->obj]]]
             [metabase.test.data
              [datasets :refer [expect-with-engine]]
              [interface :refer [def-database-definition]]]))
 
-;;; ------------------------------------------------------------ VARCHAR(MAX) ------------------------------------------------------------
+;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
+
 ;; Make sure something long doesn't come back as some weird type like `ClobImpl`
 (def ^:private ^:const a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""
@@ -25,7 +26,7 @@
 (expect-with-engine :sqlserver
   [[1 a-gene]]
   (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
-        (data/run-query genetic-data))
+        (data/run-mbql-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
 ;;; Test that additional connection string options work (#5296)

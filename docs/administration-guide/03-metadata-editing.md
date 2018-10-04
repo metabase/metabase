@@ -101,5 +101,5 @@ If Metabase picked the wrong kind of filter UI for one of your fields, you can m
 
 ---
 
-## Next: managing users
-Let’s learn how to add, remove, and edit users in the [managing users section](04-managing-users.md).
+## Next: creating segments and metrics
+Learn how to create canonical definitions of your commonly used [segments and metrics](07-segments-and-metrics.md).

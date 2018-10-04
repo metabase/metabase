@@ -7,7 +7,7 @@
             [metabase.driver.google :as google]
             [metabase.driver.googleanalytics.query-processor :as qp]
             [metabase.models.database :refer [Database]]
-            [puppetlabs.i18n.core :refer [tru]])
+            [metabase.util.i18n :refer [tru]])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
@@ -228,12 +228,13 @@
   ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
   ;; how we need to enable the API
   (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
-    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
-         enable-api-url)
+    (str (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+              enable-api-url))
     message))
 
 
 (defrecord GoogleAnalyticsDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Google Analytics"))
 
@@ -244,19 +245,19 @@
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly [{:name         "account-id"
-                                                           :display-name "Google Analytics Account ID"
+                                                           :display-name (tru "Google Analytics Account ID")
                                                            :placeholder  "1234567"
                                                            :required     true}
                                                           {:name         "client-id"
-                                                           :display-name "Client ID"
+                                                           :display-name (tru "Client ID")
                                                            :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
                                                            :required     true}
                                                           {:name         "client-secret"
-                                                           :display-name "Client Secret"
+                                                           :display-name (tru "Client Secret")
                                                            :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
                                                            :required     true}
                                                           {:name         "auth-code"
-                                                           :display-name "Auth Code"
+                                                           :display-name (tru "Auth Code")
                                                            :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                            :required     true}])
           :execute-query                     (u/drop-first-arg (partial qp/execute-query do-query))

@@ -164,8 +164,8 @@
     {:values [], :field_id (:id field)}))
 
 (api/defendpoint GET "/:id/values"
-  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return all distinct
-  values of the field, and a map of human-readable values defined by the user."
+  "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
+  defined by a User) a map of human-readable remapped values."
   [id]
   (field->values (api/read-check Field id)))
 
@@ -303,7 +303,8 @@
         [result result]))))
 
 (api/defendpoint GET "/:id/search/:search-id"
-  "Search for values of a Field that match values of another Field when breaking out by the "
+  "Search for values of a Field with `search-id` that start with `value`. See docstring for
+  `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}

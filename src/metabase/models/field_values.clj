@@ -1,29 +1,30 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [models :as models]]))
 
-(def ^:const ^Integer category-cardinality-threshold
+(def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
   (int 30))
 
-(def ^:const ^Integer auto-list-cardinality-threshold
+(def ^Integer auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
   (int 100))
 
-(def ^:private ^:const ^Integer entry-max-length
+(def ^:private ^Integer entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
   (int 100))
 
-(def ^:private ^:const ^Integer total-max-length
+(def ^:private ^Integer total-max-length
   "Maximum total length for a `FieldValues` entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
@@ -63,10 +64,10 @@
   (let [total-length (reduce + (map (comp count str)
                                     distinct-values))]
     (u/prog1 (<= total-length total-max-length)
-      (log/debug (format "Field values total length is %d (max %d)." total-length total-max-length)
+      (log/debug (trs "Field values total length is {0} (max {1})." total-length total-max-length)
                  (if <>
-                   "FieldValues are allowed for this Field."
-                   "FieldValues are NOT allowed for this Field.")))))
+                   (trs "FieldValues are allowed for this Field.")
+                   (trs "FieldValues are NOT allowed for this Field."))))))
 
 
 (defn- distinct-values
@@ -197,6 +198,6 @@
     (doseq [{table-id :table_id, :as field} fields]
       (when (table-id->is-on-demand? table-id)
         (log/debug
-         (format "Field %d '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+         (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
                  (u/get-id field) (:name field)))
         (create-or-update-field-values! field)))))

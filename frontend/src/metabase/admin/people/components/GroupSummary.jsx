@@ -1,8 +1,7 @@
 import React from "react";
 
 import _ from "underscore";
-import { t } from "c-3po";
-import { inflect } from "metabase/lib/formatting";
+import { t, ngettext, msgid } from "c-3po";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
 const GroupSummary = ({ groups, selectedGroups }) => {
@@ -14,14 +13,12 @@ const GroupSummary = ({ groups, selectedGroups }) => {
     return (
       <span>
         <span className="text-purple">{t`Admin`}</span>
-        {otherGroups.length > 0 && " and "}
+        {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
           <span className="text-brand">
-            {otherGroups.length +
-              " " +
-              t`other` +
-              " " +
-              inflect("group", otherGroups.length)}
+            {(n => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
+              otherGroups.length,
+            )}
           </span>
         )}
       </span>
@@ -31,7 +28,9 @@ const GroupSummary = ({ groups, selectedGroups }) => {
   } else if (otherGroups.length > 1) {
     return (
       <span className="text-brand">
-        {otherGroups.length + " " + inflect("group", otherGroups.length)}
+        {(n => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
+          otherGroups.length,
+        )}
       </span>
     );
   } else {

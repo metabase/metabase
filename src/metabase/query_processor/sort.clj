@@ -1,9 +1,10 @@
 (ns metabase.query-processor.sort
   "Code for determining the order columns should be returned in from query results."
-  ;; TODO - This namespace should be called something like `metabase.query-processor.middleware.sort`
   (:require [clojure.tools.logging :as log]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]))
+
+;; TODO - shouldn't this be `metabase.query-processor.middleware.sort` ??
 
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
@@ -14,8 +15,9 @@
 ;;
 ;; 4.  All other Fields, sorted by:
 ;;     A.  :position (ascending)
-;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return Fields in the specified
-;;         order; most of the time they'll have the default value of 0, in which case we'll compare...
+;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return
+;;         Fields in the specified order; most of the time they'll have the default value of 0, in which case we'll
+;;         compare...
 ;;
 ;;     B.  :special_type "group" -- :id Fields, then :name Fields, then everyting else
 ;;         Attempt to put the most relevant Fields first. Order the Fields as follows:
@@ -24,14 +26,19 @@
 ;;         3.  all other Fields
 ;;
 ;;     C.  Field Name
-;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
-;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
+;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields
+;;         alphabetically by name. This is arbitrary, but it makes the QP deterministic by keeping the results in a
+;;         consistent order, which makes it testable.
 
 ;;; ## Field Sorting
 
 ;; We sort Fields with a "importance" vector like [source-importance position special-type-importance name]
 
-(defn- source-importance-fn
+;; THE FOLLOWING FUNCTIONS ARE DEPRECATED: THEY WILL BE REMOVED IN A FUTURE RELEASE.
+;;
+;; We plan to move towards a pattern of figuring out sort order *before* queries are ran, rather than after.
+
+(defn- ^:deprecated source-importance-fn
   "Create a function to return a importance for FIELD based on its source clause in the query.
    e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
   [{:keys [fields-is-implicit]}]
@@ -43,7 +50,7 @@
            (= source :fields))      :2-fields
       :else                         :3-other)))
 
-(defn- special-type-importance
+(defn- ^:deprecated special-type-importance
   "Return a importance for FIELD based on the relative importance of its `:special-type`.
    i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
   [{:keys [special-type]}]
@@ -52,7 +59,7 @@
     (isa? special-type :type/Name) :1-name
     :else                          :2-other))
 
-(defn- field-importance-fn
+(defn- ^:deprecated field-importance-fn
   "Create a function to return an \"importance\" vector for use in sorting FIELD."
   [query]
   (let [source-importance (source-importance-fn query)]
@@ -65,7 +72,7 @@
        (special-type-importance field)
        field-name])))
 
-(defn- should-sort? [inner-query]
+(defn- ^:deprecated should-sort? [inner-query]
   (or
    ;; if there's no source query then always sort
    (not (:source-query inner-query))
@@ -75,7 +82,7 @@
    (:aggregation inner-query)
    (:breakout inner-query)))
 
-(defn sort-fields
+(defn ^:deprecated sort-fields
   "Sort FIELDS by their \"importance\" vectors."
   [inner-query fields]
   (if-not (should-sort? inner-query)

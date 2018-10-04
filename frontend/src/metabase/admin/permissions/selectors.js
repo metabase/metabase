@@ -4,7 +4,11 @@ import { createSelector } from "reselect";
 
 import { push } from "react-router-redux";
 
+import TogglePropagateAction from "./containers/TogglePropagateAction";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
+import colors, { alpha } from "metabase/lib/colors";
+
 import { t } from "c-3po";
 import {
   isDefaultGroup,
@@ -219,20 +223,22 @@ function getRevokingAccessToAllTablesWarningModal(
   }
 }
 
+const BG_ALPHA = 0.15;
+
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: "#9CC177",
-  bgColor: "#F6F9F2",
+  iconColor: colors["success"],
+  bgColor: alpha(colors["success"], BG_ALPHA),
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: "#F9D45C",
-  bgColor: "#FEFAEE",
+  iconColor: colors["warning"],
+  bgColor: alpha(colors["warning"], BG_ALPHA),
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: "#EEA5A5",
-  bgColor: "#FDF3F3",
+  iconColor: colors["error"],
+  bgColor: alpha(colors["error"], BG_ALPHA),
 };
 
 const OPTION_ALL = {
@@ -265,25 +271,18 @@ const OPTION_NATIVE_WRITE = {
   icon: "sql",
 };
 
-const OPTION_NATIVE_READ = {
-  ...OPTION_YELLOW,
-  value: "read",
-  title: t`View raw queries`,
-  tooltip: t`Can view raw queries`,
-};
-
 const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
   title: t`Curate collection`,
-  tooltip: t`Can add and remove questions from this collection`,
+  tooltip: t`Can edit this collection and its contents`,
 };
 
 const OPTION_COLLECTION_READ = {
   ...OPTION_YELLOW,
   value: "read",
   title: t`View collection`,
-  tooltip: t`Can view questions in this collection`,
+  tooltip: t`Can view items in this collection`,
 };
 
 export const getTablesPermissionsGrid = createSelector(
@@ -591,7 +590,7 @@ export const getDatabasesPermissionsGrid = createSelector(
             ) {
               return [OPTION_NONE];
             } else {
-              return [OPTION_NATIVE_WRITE, OPTION_NATIVE_READ, OPTION_NONE];
+              return [OPTION_NATIVE_WRITE, OPTION_NONE];
             }
           },
           getter(groupId, entityId) {
@@ -663,17 +662,75 @@ export const getDatabasesPermissionsGrid = createSelector(
   },
 );
 
-const getCollections = state => state.admin.permissions.collections;
+import Collections from "metabase/entities/collections";
+
+const getCollectionId = (state, props) => props && props.collectionId;
+
+const getSingleCollectionPermissionsMode = (state, props) =>
+  (props && props.singleCollectionMode) || false;
+
+const permissionsCollectionFilter = collection => !collection.is_personal;
+
+const getCollections = createSelector(
+  [
+    Collections.selectors.getExpandedCollectionsById,
+    getCollectionId,
+    getSingleCollectionPermissionsMode,
+  ],
+  (collectionsById, collectionId, singleMode) => {
+    if (collectionId && collectionsById[collectionId]) {
+      if (singleMode) {
+        // pass the `singleCollectionMode=true` prop when we just want to show permissions for the provided collection, and not it's subcollections
+        return [collectionsById[collectionId]];
+      } else {
+        return collectionsById[collectionId].children.filter(
+          permissionsCollectionFilter,
+        );
+      }
+      // default to root collection
+    } else if (collectionsById["root"]) {
+      return [collectionsById["root"]];
+    } else {
+      return null;
+    }
+  },
+);
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
   getIn(permissions, [groupId, collectionId]);
+
+export const getPropagatePermissions = state =>
+  state.admin.permissions.propagatePermissions;
 
 export const getCollectionsPermissionsGrid = createSelector(
   getCollections,
   getGroups,
   getPermissions,
-  (collections, groups: Array<Group>, permissions: GroupsPermissions) => {
-    if (!groups || !permissions || !collections) {
+  getPropagatePermissions,
+  (
+    collections,
+    groups: Array<Group>,
+    permissions: GroupsPermissions,
+    propagatePermissions: boolean,
+  ) => {
+    if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
+    }
+
+    const crumbs = [];
+    let parent = collections[0] && collections[0].parent;
+    if (parent) {
+      while (parent) {
+        if (crumbs.length > 0) {
+          crumbs.unshift([
+            parent.name,
+            `/admin/permissions/collections/${parent.id}`,
+          ]);
+        } else {
+          crumbs.unshift([parent.name]);
+        }
+        parent = parent.parent;
+      }
+      crumbs.unshift([t`Collections`, "/admin/permissions/collections"]);
     }
 
     const defaultGroup = _.find(groups, isDefaultGroup);
@@ -681,9 +738,11 @@ export const getCollectionsPermissionsGrid = createSelector(
     return {
       type: "collection",
       icon: "collection",
+      crumbs,
       groups,
       permissions: {
         access: {
+          header: t`Collection Access`,
           options(groupId, entityId) {
             return [
               OPTION_COLLECTION_WRITE,
@@ -691,11 +750,38 @@ export const getCollectionsPermissionsGrid = createSelector(
               OPTION_NONE,
             ];
           },
+          actions(groupId, { collectionId }) {
+            const collection = _.findWhere(collections, {
+              id: collectionId,
+            });
+            if (collection && collection.children.length > 0) {
+              return [TogglePropagateAction];
+            } else {
+              return [];
+            }
+          },
           getter(groupId, entityId) {
             return getCollectionPermission(permissions, groupId, entityId);
           },
           updater(groupId, { collectionId }, value) {
-            return assocIn(permissions, [groupId, collectionId], value);
+            let newPermissions = assocIn(
+              permissions,
+              [groupId, collectionId],
+              value,
+            );
+            if (propagatePermissions) {
+              const collection = _.findWhere(collections, {
+                id: collectionId,
+              });
+              for (const descendent of getDecendentCollections(collection)) {
+                newPermissions = assocIn(
+                  newPermissions,
+                  [groupId, descendent.id],
+                  value,
+                );
+              }
+            }
+            return newPermissions;
           },
           confirm(groupId, entityId, value) {
             return [
@@ -711,14 +797,34 @@ export const getCollectionsPermissionsGrid = createSelector(
             ];
           },
           warning(groupId, entityId) {
-            return getPermissionWarning(
-              getCollectionPermission,
-              null,
-              defaultGroup,
+            const collection = _.findWhere(collections, {
+              id: entityId.collectionId,
+            });
+            if (!collection) {
+              return;
+            }
+            const collectionPerm = getCollectionPermission(
               permissions,
               groupId,
               entityId,
             );
+            const descendentCollections = getDecendentCollections(collection);
+            const descendentPerms = getPermissionsSet(
+              descendentCollections,
+              permissions,
+              groupId,
+            );
+            if (
+              collectionPerm === "none" &&
+              (descendentPerms.has("read") || descendentPerms.has("write"))
+            ) {
+              return t`This group has permission to view at least one subcollection of this collection.`;
+            } else if (
+              collectionPerm === "read" &&
+              descendentPerms.has("write")
+            ) {
+              return t`This group has permission to edit at least one subcollection of this collection.`;
+            }
           },
         },
       },
@@ -728,11 +834,32 @@ export const getCollectionsPermissionsGrid = createSelector(
             collectionId: collection.id,
           },
           name: collection.name,
+          link: collection.children &&
+            collection.children.length > 0 && {
+              name: t`View sub-collections`,
+              url: `/admin/permissions/collections/${collection.id}`,
+            },
         };
       }),
     };
   },
 );
+
+function getDecendentCollections(collection) {
+  const subCollections = collection.children.filter(
+    permissionsCollectionFilter,
+  );
+  return subCollections.concat(...subCollections.map(getDecendentCollections));
+}
+
+function getPermissionsSet(collections, permissions, groupId) {
+  let perms = collections.map(collection =>
+    getCollectionPermission(permissions, groupId, {
+      collectionId: collection.id,
+    }),
+  );
+  return new Set(perms);
+}
 
 export const getDiff = createSelector(
   getMetadata,

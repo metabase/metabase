@@ -11,24 +11,33 @@
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
             [metabase.query-processor
              [annotate :as annotate]
-             [interface :as i]]
+             [interface :as i]
+             [store :as qp.store]]
             [metabase.util :as u]
             [metabase.util.date :as du]
-            [monger joda-time
+            [monger
              [collection :as mc]
              [operators :refer :all]])
   (:import java.sql.Timestamp
-           java.util.Date
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral
-            RelativeDateTimeValue Value]
+           [java.util Date TimeZone]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral RelativeDateTimeValue Value]
            org.bson.types.ObjectId
            org.joda.time.DateTime))
+
+;; See http://clojuremongodb.info/articles/integration.html
+;; Loading these namespaces will load appropriate Monger integrations with JODA Time and Cheshire respectively
+;;
+;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
+;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
+(require 'monger.joda-time
+         'monger.json)
 
 (def ^:private ^:const $subtract :$subtract)
 
 
 ;; # DRIVER QP INTERFACE
 
+;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
 (defn- log-monger-form [form]
@@ -416,8 +425,8 @@
   (for [row results]
     (into {} (for [[k v] row]
                {k (if (and (map? v)
-                           (:___date v))
-                    (du/->Timestamp (:___date v))
+                           (contains? v :___date))
+                    (du/->Timestamp (:___date v) (TimeZone/getDefault))
                     v)}))))
 
 
@@ -497,16 +506,16 @@
 
 (defn mbql->native
   "Process and run an MBQL query."
-  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
-  {:pre [(map? database)
-         (string? source-table-name)]}
-  (binding [*query* query]
-    (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
-      (log-monger-form generated-pipeline)
-      {:projections proj
-       :query       generated-pipeline
-       :collection  source-table-name
-       :mbql?       true})))
+  [{database :database, {source-table-id :source-table} :query, :as query}]
+  {:pre [(map? database)]}
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (binding [*query* query]
+      (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
+        (log-monger-form generated-pipeline)
+        {:projections proj
+         :query       generated-pipeline
+         :collection  source-table-name
+         :mbql?       true}))))
 
 (defn execute-query
   "Process and run a native MongoDB query."

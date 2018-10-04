@@ -88,6 +88,7 @@ type Props = {
     parameterId: ParameterId,
     defaultValue: string,
   ) => void,
+  setParameterIndex: (parameterId: ParameterId, index: number) => void,
 
   editingParameter: ?Parameter,
 
@@ -243,6 +244,7 @@ export default class Dashboard extends Component {
           editingParameter={editingParameter}
           setEditingParameter={this.props.setEditingParameter}
           setParameterName={this.props.setParameterName}
+          setParameterIndex={this.props.setParameterIndex}
           setParameterDefaultValue={this.props.setParameterDefaultValue}
           removeParameter={this.props.removeParameter}
           setParameterValue={this.props.setParameterValue}
@@ -283,7 +285,7 @@ export default class Dashboard extends Component {
                   <div className="text-normal mt3 mb1">
                     {t`This dashboard is looking empty.`}
                   </div>
-                  <div className="text-normal text-grey-2">
+                  <div className="text-normal text-light">
                     {t`Add a question to start making it useful!`}
                   </div>
                 </div>

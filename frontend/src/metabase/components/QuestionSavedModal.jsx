@@ -18,7 +18,7 @@ export default class QuestionSavedModal extends Component {
         onClose={this.props.onClose}
         className="Modal-content Modal-content--small NewForm"
       >
-        <div className="Form-inputs mb4">
+        <div>
           <button
             className="Button Button--primary"
             onClick={this.props.addToDashboardFn}

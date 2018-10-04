@@ -13,7 +13,7 @@
 
 ;; ## Static Definitions
 
-(def ^:const days-of-week
+(def days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
 
    NOTE: order is important here!!
@@ -36,7 +36,7 @@
   [hour]
   (and (integer? hour) (<= 0 hour 23)))
 
-(def ^:private ^:const schedule-frames
+(def ^:private schedule-frames
   "Set of possible schedule-frames allowe for a pulse channel."
   #{:first :mid :last})
 
@@ -45,7 +45,7 @@
   [frame]
   (contains? schedule-frames frame))
 
-(def ^:private ^:const schedule-types
+(def ^:private schedule-types
   "Set of the possible schedule-types allowed for a pulse channel."
   #{:hourly :daily :weekly :monthly})
 
@@ -75,7 +75,7 @@
              (and (= :mid schedule-frame)
                   (nil? schedule-day))))))
 
-(def ^:const channel-types
+(def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
    which contains any other relevant information for defining the channel.  E.g.
 

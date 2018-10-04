@@ -3,11 +3,13 @@ import cx from "classnames";
 import _ from "underscore";
 import { assocIn } from "icepick";
 import { t } from "c-3po";
-import FormMessage from "metabase/components/form/FormMessage";
 
+import FormMessage from "metabase/components/form/FormMessage";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import MetabaseAnalytics from "metabase/lib/analytics";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+import colors from "metabase/lib/colors";
 
 export const SyncOption = ({ selected, name, children, select }) => (
   <div
@@ -20,7 +22,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
         width: 18,
         height: 18,
         borderWidth: 2,
-        borderColor: selected ? "#509ee3" : "#ddd",
+        borderColor: selected ? colors["brand"] : colors["text-light"],
         borderStyle: "solid",
       }}
     >
@@ -30,7 +32,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
           style={{
             width: 8,
             height: 8,
-            backgroundColor: selected ? "#509ee3" : "#ddd",
+            backgroundColor: selected ? colors["brand"] : colors["text-light"],
           }}
         />
       )}

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import Input from "metabase/components/Input.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 import { t } from "c-3po";
 import cx from "classnames";
@@ -27,7 +27,7 @@ export default class Header extends Component {
     if (isEditing) {
       titleAndDescription = (
         <div className="Header-title flex flex-column flex-full bordered rounded my1">
-          <Input
+          <InputBlurChange
             className="AdminInput text-bold border-bottom rounded-top h3"
             type="text"
             value={name}
@@ -35,7 +35,7 @@ export default class Header extends Component {
               this.props.setItemAttributeFn("name", e.target.value)
             }
           />
-          <Input
+          <InputBlurChange
             className="AdminInput rounded-bottom h4"
             type="text"
             value={description}

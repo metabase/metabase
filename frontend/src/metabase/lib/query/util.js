@@ -11,11 +11,17 @@ export const mbqlEq = (a: string, b: string): boolean => mbql(a) === mbql(b);
 // doing a simple comparison because field IDs are not guaranteed to be numeric:
 // the might be FieldLiterals, e.g. [field-literal <name> <unit>], instead.
 export const fieldIdsEq = (a: any, b: any): boolean => {
-  if (typeof a !== typeof b) return false;
+  if (typeof a !== typeof b) {
+    return false;
+  }
 
-  if (typeof a === "number") return a === b;
+  if (typeof a === "number") {
+    return a === b;
+  }
 
-  if (a == null && b == null) return true;
+  if (a == null && b == null) {
+    return true;
+  }
 
   // field literals
   if (

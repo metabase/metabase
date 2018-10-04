@@ -7,6 +7,7 @@ import {
   isAdminGroup,
   canEditMembership,
   getGroupColor,
+  getGroupNameLocalized,
 } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
@@ -24,7 +25,7 @@ export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
       <span className={cx("pr1", getGroupColor(group), { disabled })}>
         <CheckBox checked={selected} size={18} />
       </span>
-      {group.name}
+      {getGroupNameLocalized(group)}
     </div>
   );
 };

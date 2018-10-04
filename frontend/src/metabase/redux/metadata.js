@@ -6,26 +6,26 @@ import _ from "underscore";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { MetabaseApi, MetricApi, RevisionsApi } from "metabase/services";
-// import { entities } from "metabase/redux/entities";
-import {
-  databases,
-  tables,
-  fields,
-  segments,
-  metrics,
-} from "metabase/entities";
+
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
+import Segments from "metabase/entities/segments";
+import Metrics from "metabase/entities/metrics";
+
+// NOTE: All of these actions are deprecated. Use metadata entities directly.
 
 const deprecated = message => console.warn("DEPRECATED: " + message);
 
-export const FETCH_METRICS = metrics.actions.fetchList.toString();
+export const FETCH_METRICS = Metrics.actions.fetchList.toString();
 export const fetchMetrics = (reload = false) => {
   deprecated("metabase/redux/metadata fetchMetrics");
-  return metrics.actions.fetchList(null, reload);
+  return Metrics.actions.fetchList(null, { reload });
 };
 
 export const updateMetric = metric => {
   deprecated("metabase/redux/metadata updateMetric");
-  return metrics.actions.update(metric);
+  return Metrics.actions.update(metric);
 };
 
 const UPDATE_METRIC_IMPORTANT_FIELDS =
@@ -61,45 +61,45 @@ export const updateMetricImportantFields = createThunkAction(
   },
 );
 
-export const FETCH_SEGMENTS = segments.actions.fetchList.toString();
+export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
 export const fetchSegments = (reload = false) => {
   deprecated("metabase/redux/metadata fetchSegments");
-  return segments.actions.fetchList(null, reload);
+  return Segments.actions.fetchList(null, { reload });
 };
 
 export const updateSegment = segment => {
   deprecated("metabase/redux/metadata updateSegment");
-  return segments.actions.update(segment);
+  return Segments.actions.update(segment);
 };
 
-export const FETCH_DATABASES = databases.actions.fetchList.toString();
+export const FETCH_DATABASES = Databases.actions.fetchList.toString();
 export const fetchDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabases");
-  return databases.actions.fetchList(
+  return Databases.actions.fetchList(
     {
       include_tables: true,
       include_cards: true,
     },
-    reload,
+    { reload },
   );
 };
 
-export const FETCH_REAL_DATABASES = databases.actions.fetchList.toString();
+export const FETCH_REAL_DATABASES = Databases.actions.fetchList.toString();
 export const fetchRealDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchRealDatabases");
-  return databases.actions.fetchList(
+  return Databases.actions.fetchList(
     {
       include_tables: true,
       include_cards: false,
     },
-    reload,
+    { reload },
   );
 };
 
-export const FETCH_DATABASE_METADATA = databases.actions.fetchDatabaseMetadata.toString();
+export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return databases.actions.fetchDatabaseMetadata({ id: dbId }, reload);
+  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, reload);
 };
 
 export const updateDatabase = database => {
@@ -119,66 +119,66 @@ export const updateTable = table => {
     "metrics",
     "segments",
   );
-  return tables.actions.update(slimTable);
+  return Tables.actions.update(slimTable);
 };
 
 export const fetchTables = (reload = false) => {
   deprecated("metabase/redux/metadata fetchTables");
-  return tables.actions.fetchList(null, reload);
+  return Tables.actions.fetchList(null, { reload });
 };
 
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (tableId, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return tables.actions.fetchTableMetadata({ id: tableId }, reload);
+  return Tables.actions.fetchTableMetadata({ id: tableId }, reload);
 };
 
 export const fetchField = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchField");
-  return fields.actions.fetch({ id }, reload);
+  return Fields.actions.fetch({ id }, { reload });
 };
 
-export const FETCH_FIELD_VALUES = fields.actions.fetchFieldValues.toString();
+export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
 export const fetchFieldValues = (fieldId, reload) => {
   deprecated("metabase/redux/metadata fetchFieldValues");
-  return fields.actions.fetchFieldValues({ id: fieldId }, reload);
+  return Fields.actions.fetchFieldValues({ id: fieldId }, reload);
 };
 
-export const UPDATE_FIELD_VALUES = fields.actions.updateFieldValues.toString();
+export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
-  return fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
+  return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
 export { ADD_PARAM_VALUES } from "metabase/entities/fields";
 export const addParamValues = paramValues => {
   deprecated("metabase/redux/metadata addParamValues");
-  return fields.actions.addParamValues(paramValues);
+  return Fields.actions.addParamValues(paramValues);
 };
 
 export { ADD_FIELDS } from "metabase/entities/fields";
 export const addFields = fieldMaps => {
   deprecated("metabase/redux/metadata addFields");
-  return fields.actions.addFields(fieldMaps);
+  return Fields.actions.addFields(fieldMaps);
 };
 
-export const UPDATE_FIELD = fields.actions.update.toString();
+export const UPDATE_FIELD = Fields.actions.update.toString();
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "operators_lookup");
-  return fields.actions.update(slimField);
+  return Fields.actions.update(slimField);
 };
 
-export const DELETE_FIELD_DIMENSION = fields.actions.deleteFieldDimension.toString();
+export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
-  return fields.actions.deleteFieldDimension({ id: fieldId });
+  return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
-export const UPDATE_FIELD_DIMENSION = fields.actions.updateFieldDimension.toString();
+export const UPDATE_FIELD_DIMENSION = Fields.actions.updateFieldDimension.toString();
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
-  return fields.actions.updateFieldDimension({ id: fieldId }, dimension);
+  return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
 };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
@@ -304,7 +304,7 @@ export const fetchDatabasesWithMetadata = createThunkAction(
 
 export const addRemappings = (fieldId, remappings) => {
   deprecated("metabase/redux/metadata addRemappings");
-  return fields.actions.addRemappings({ id: fieldId }, remappings);
+  return Fields.actions.addRemappings({ id: fieldId }, remappings);
 };
 
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
@@ -312,7 +312,7 @@ export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
   (value, fieldId) => async (dispatch, getState) => {
     const metadata = getMetadata(getState());
-    const field = metadata.fields[fieldId];
+    const field = metadata.field(fieldId);
     const remappedField = field && field.remappedField();
     if (field && remappedField && !field.hasRemappedValue(value)) {
       const fieldId = (field.target || field).id;

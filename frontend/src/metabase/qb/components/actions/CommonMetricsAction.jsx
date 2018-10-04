@@ -19,6 +19,6 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
   return activeMetrics.slice(0, 5).map(metric => ({
     name: "common-metric",
     title: <span>{jt`View ${<strong>{metric.name}</strong>}`}</span>,
-    question: () => question.summarize(["METRIC", metric.id]),
+    question: () => question.summarize(["metric", metric.id]),
   }));
 };

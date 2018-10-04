@@ -12,8 +12,8 @@
             [metabase.util :as u]))
 
 (defn- expand-parameters*
-  "Expand any :parameters set on the QUERY-DICT and apply them to the query definition.
-   This function removes the :parameters attribute from the QUERY-DICT as part of its execution."
+  "Expand any `:parameters` set on the `query-dict` and apply them to the query definition. This function removes
+  the `:parameters` attribute from the `query-dict` as part of its execution."
   [{:keys [parameters], :as query-dict}]
   ;; params in native queries are currently only supported for SQL drivers
   (if (qputil/mbql-query? query-dict)
@@ -22,13 +22,13 @@
 
 (defn- expand-params-in-native-source-query
   "Expand parameters in a native source query."
-  [{{{original-query :native, tags :template_tags} :source-query} :query, :as outer-query}]
+  [{{{original-query :native, tags :template-tags} :source-query} :query, :as outer-query}]
   ;; TODO - This isn't recursive for nested-nested queries
   ;; TODO - Yes, this approach is hacky. But hacky & working > not working
   (let [{{new-query :query, new-params :params} :native} (sql-params/expand (assoc outer-query
                                                                               :type   :native
                                                                               :native {:query         original-query
-                                                                                       :template_tags tags}))]
+                                                                                       :template-tags tags}))]
     (if (= original-query new-query)
       ;; if the native query didn't change, we don't need to do anything; return as-is
       outer-query

@@ -22,7 +22,7 @@ export default class AddClauseButton extends Component {
     const { text, onClick } = this.props;
 
     const className =
-      "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
+      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>

@@ -25,7 +25,7 @@ import cx from "classnames";
 const MOBILE_ASPECT_RATIO = 3 / 2;
 const MOBILE_TEXT_CARD_ROW_HEIGHT = 40;
 
-@ExplicitSize
+@ExplicitSize()
 export default class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
@@ -227,6 +227,7 @@ export default class DashboardGrid extends Component {
           this.props.navigateToNewCardFromDashboard
         }
         metadata={this.props.metadata}
+        dashboard={this.props.dashboard}
       />
     );
   }

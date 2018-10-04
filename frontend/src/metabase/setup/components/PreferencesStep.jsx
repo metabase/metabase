@@ -69,7 +69,7 @@ export default class PreferencesStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep rounded full relative SetupStep--active">
+        <section className="SetupStep bg-white rounded full relative SetupStep--active">
           <StepTitle title={stepText} circleText={"3"} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field Form-offset">

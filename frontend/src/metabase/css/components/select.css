@@ -1,15 +1,15 @@
 :root {
-  --select-arrow-bg-color: #cacaca;
-  --select-border-color: #d9d9d9;
-  --select-bg-color: #fff;
-  --select-text-color: #777;
+  --select-arrow-bg-color: var(--color-bg-medium);
+  --select-border-color: var(--color-border);
+  --select-bg-color: var(--color-bg-white);
+  --select-text-color: var(--color-text-medium);
 
   --select-border-radius: 4px;
 }
 .Select {
   position: relative;
   display: inline-block;
-  color: var(--select-text-color);
+  color: var(--color-text-medium);
 }
 
 /* custom arrows */
@@ -29,7 +29,7 @@
   margin-top: -0.25rem;
   border-left: 0.3rem solid transparent;
   border-right: 0.3rem solid transparent;
-  border-bottom: 0.3rem solid var(--select-arrow-bg-color);
+  border-bottom: 0.3rem solid var(--color-border);
 }
 
 /* arrow pointing down */
@@ -37,7 +37,7 @@
   margin-top: 0.2rem;
   border-left: 0.3rem solid transparent;
   border-right: 0.3rem solid transparent;
-  border-top: 0.3rem solid var(--select-arrow-bg-color);
+  border-top: 0.3rem solid var(--color-border);
 }
 
 .Select select {
@@ -46,40 +46,40 @@
   padding: 1rem 3rem 1rem 1rem;
   font-size: 0.8em;
   line-height: 1;
-  color: var(--select-text-color);
+  color: var(--color-text-medium);
 
-  border: 1px solid var(--select-border-color);
-  background: var(--select-bg-color);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
 
   border-radius: var(--select-border-radius);
   -webkit-appearance: none;
   -moz-appearance: none;
 
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px var(--color-shadow);
 }
 
 .Select--blue select {
-  color: rgb(78, 146, 223);
-  border-color: rgb(195, 216, 241);
-  background-color: rgb(227, 238, 249);
+  color: var(--color-brand);
+  border-color: var(--color-border);
+  background-color: var(--color-bg-medium);
 }
 .Select--blue:after {
-  border-top: 0.3rem solid rgb(78, 146, 223);
+  border-top: 0.3rem solid var(--color-brand);
 }
 .Select--blue:before {
-  border-bottom: 0.3rem solid rgb(78, 146, 223);
+  border-bottom: 0.3rem solid var(--color-brand);
 }
 
 .Select--purple select {
-  color: rgb(168, 138, 195);
-  border-color: rgb(203, 186, 219);
-  background-color: rgb(231, 223, 239);
+  color: var(--color-accent2);
+  border-color: var(--color-accent2);
+  background-color: var(--color-bg-medium);
 }
 .Select--purple:after {
-  border-top: 0.3rem solid rgb(168, 138, 195);
+  border-top: 0.3rem solid var(--color-accent2);
 }
 .Select--purple:before {
-  border-bottom: 0.3rem solid rgb(168, 138, 195);
+  border-bottom: 0.3rem solid var(--color-accent2);
 }
 
 .Select--small select {

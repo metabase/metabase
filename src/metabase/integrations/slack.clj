@@ -3,7 +3,7 @@
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util :as u]))
 
 ;; Define a setting which captures our Slack api token

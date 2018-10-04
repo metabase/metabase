@@ -30,7 +30,8 @@
              :schema "default"
              :fields #{{:name          "id"
                         :database-type "SERIAL"
-                        :base-type     :type/Integer}
+                        :base-type     :type/Integer
+                        :special-type  :type/PK}
                        {:name          "title"
                         :database-type "VARCHAR"
                         :base-type     :type/Text
@@ -51,6 +52,7 @@
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
 (defrecord SyncTestDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 
@@ -103,7 +105,6 @@
    :entity_type             :entity/GenericTable
    :id                      true
    :points_of_interest      nil
-   :raw_table_id            false
    :rows                    nil
    :schema                  nil
    :show_in_getting_started false
@@ -126,7 +127,6 @@
    :points_of_interest  nil
    :position            0
    :preview_display     true
-   :raw_column_id       false
    :special_type        nil
    :table_id            true
    :updated_at          true
@@ -142,7 +142,8 @@
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
-                                  :base_type     :type/Integer})
+                                  :base_type     :type/Integer
+                                  :special_type  :type/PK})
                           (merge field-defaults
                                  {:name               "studio"
                                   :display_name       "Studio"
@@ -189,7 +190,8 @@
                                 {:name          "id"
                                  :display_name  "ID"
                                  :database_type "SERIAL"
-                                 :base_type     :type/Integer})
+                                 :base_type     :type/Integer
+                                 :special_type  :type/PK})
                          (merge field-defaults
                                 {:name          "studio"
                                  :display_name  "Studio"
@@ -209,9 +211,9 @@
     (table-details (Table (:id table)))))
 
 
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-;; !!                                                                                                                 !!
-;; !!  HEY! Your tests probably don't belong in this namespace! Put them in one appropriate to the specific part of   !!
-;; !!                                             sync they are testing.                                              !!
-;; !!                                                                                                                 !!
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                                               !!
+;; !! HEY! Your tests probably don't belong in this namespace! Put them in one appropriate to the specific part of  !!
+;; !!                                            sync they are testing.                                             !!
+;; !!                                                                                                               !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

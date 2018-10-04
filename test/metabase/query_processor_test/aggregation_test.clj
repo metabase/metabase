@@ -3,79 +3,79 @@
   (:require [metabase
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.middleware.expand :as ql]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :as tu]))
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
 (qp-expect-with-all-engines
-    {:rows        [[100]]
-     :columns     ["count"]
-     :cols        [(aggregate-col :count)]
-     :native_form true}
-    (->> (data/run-query venues
-           (ql/aggregation (ql/count)))
-         booleanize-native-form
-         (format-rows-by [int])))
+  {:rows        [[100]]
+   :columns     ["count"]
+   :cols        [(aggregate-col :count)]
+   :native_form true}
+  (->> (data/run-mbql-query venues
+         {:aggregation [[:count]]})
+       booleanize-native-form
+       (format-rows-by [int])))
 
 
 ;;; ----------------------------------------------- "SUM" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
-    {:rows        [[203]]
-     :columns     ["sum"]
-     :cols        [(aggregate-col :sum (venues-col :price))]
-     :native_form true}
-    (->> (data/run-query venues
-           (ql/aggregation (ql/sum $price)))
-         booleanize-native-form
-         (format-rows-by [int])))
+  {:rows        [[203]]
+   :columns     ["sum"]
+   :cols        [(aggregate-col :sum (venues-col :price))]
+   :native_form true}
+  (->> (data/run-mbql-query venues
+         {:aggregation [[:sum $price]]})
+       booleanize-native-form
+       (format-rows-by [int])))
 
 
 ;;; ----------------------------------------------- "AVG" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
-    {:rows        [[35.5059]]
-     :columns     ["avg"]
-     :cols        [(aggregate-col :avg (venues-col :latitude))]
-     :native_form true}
-    (->> (data/run-query venues
-           (ql/aggregation (ql/avg $latitude)))
-         booleanize-native-form
-         (format-rows-by [(partial u/round-to-decimals 4)])))
+  {:rows        [[35.5059]]
+   :columns     ["avg"]
+   :cols        [(aggregate-col :avg (venues-col :latitude))]
+   :native_form true}
+  (->> (data/run-mbql-query venues
+         {:aggregation [[:avg $latitude]]})
+       booleanize-native-form
+       (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
 ;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
 (qp-expect-with-all-engines
-    {:rows        [[15]]
-     :columns     ["count"]
-     :cols        [(aggregate-col :count)]
-     :native_form true}
-    (->> (data/run-query checkins
-           (ql/aggregation (ql/distinct $user_id)))
-         booleanize-native-form
-         (format-rows-by [int])))
+  {:rows        [[15]]
+   :columns     ["count"]
+   :cols        [(aggregate-col :count)]
+   :native_form true}
+  (->> (data/run-mbql-query checkins
+         {:aggregation [[:distinct $user_id]]})
+       booleanize-native-form
+       (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------- NO AGGREGATION -------------------------------------------------
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
 (qp-expect-with-all-engines
-    {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
-                   [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
-                   [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
-                   [ 4 "Wurstküche"                   29 33.9997 -118.465 2]
-                   [ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
-                   [ 6 "The 101 Coffee Shop"          20 34.1054 -118.324 2]
-                   [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
-                   [ 8 "25°"                          11 34.1015 -118.342 2]
-                   [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
-                   [10 "Fred 62"                      20 34.1046 -118.292 2]]
-     :columns     (venues-columns)
-     :cols        (venues-cols)
-     :native_form true}
-    (-> (data/run-query venues
-           (ql/limit 10)
-           (ql/order-by (ql/asc $id)))
+  {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
+                 [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
+                 [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
+                 [ 4 "Wurstküche"                   29 33.9997 -118.465 2]
+                 [ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
+                 [ 6 "The 101 Coffee Shop"          20 34.1054 -118.324 2]
+                 [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
+                 [ 8 "25°"                          11 34.1015 -118.342 2]
+                 [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
+                 [10 "Fred 62"                      20 34.1046 -118.292 2]]
+   :columns     (venues-columns)
+   :cols        (venues-cols)
+   :native_form true}
+    (-> (data/run-mbql-query venues
+          {:limit    10
+           :order-by [[:asc $id]]})
         booleanize-native-form
         formatted-venues-rows
         tu/round-fingerprint-cols))
@@ -88,8 +88,8 @@
    :cols        [(aggregate-col :stddev (venues-col :latitude))]
    :rows        [[3.4]]
    :native_form true}
-  (-> (data/run-query venues
-        (ql/aggregation (ql/stddev $latitude)))
+  (-> (data/run-mbql-query venues
+        {:aggregation [[:stddev $latitude]]})
       booleanize-native-form
       (update-in [:data :rows] (fn [[[v]]]
                                  [[(u/round-to-decimals 1 v)]]))))
@@ -98,8 +98,8 @@
 (datasets/expect-with-engines (non-timeseries-engines-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (select-keys (data/run-query venues
-                 (ql/aggregation (ql/stddev $latitude)))
+  (select-keys (data/run-mbql-query venues
+                 {:aggregation [[:stddev $latitude]]})
                [:status :error]))
 
 
@@ -107,29 +107,33 @@
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect-with-non-timeseries-dbs [1] (first-row
-                                      (format-rows-by [int]
-                                        (data/run-query venues
-                                          (ql/aggregation (ql/min $price))))))
+(expect-with-non-timeseries-dbs
+  [1]
+  (first-row
+    (format-rows-by [int]
+      (data/run-mbql-query venues
+        {:aggregation [[:min $price]]}))))
 
-(expect-with-non-timeseries-dbs [4] (first-row
-                                      (format-rows-by [int]
-                                        (data/run-query venues
-                                          (ql/aggregation (ql/max $price))))))
+(expect-with-non-timeseries-dbs
+  [4]
+  (first-row
+    (format-rows-by [int]
+      (data/run-mbql-query venues
+        {:aggregation [[:max $price]]}))))
 
 (expect-with-non-timeseries-dbs
   [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
   (format-rows-by [int (partial u/round-to-decimals 4)]
-    (rows (data/run-query venues
-            (ql/aggregation (ql/min $latitude))
-            (ql/breakout $price)))))
+    (rows (data/run-mbql-query venues
+            {:aggregation [[:min $latitude]]
+             :breakout    [$price]}))))
 
 (expect-with-non-timeseries-dbs
   [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
   (format-rows-by [int (partial u/round-to-decimals 4)]
-    (rows (data/run-query venues
-            (ql/aggregation (ql/max $latitude))
-            (ql/breakout $price)))))
+    (rows (data/run-mbql-query venues
+            {:aggregation [[:max $latitude]]
+             :breakout    [$price]}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -140,15 +144,15 @@
 (expect-with-non-timeseries-dbs
   [[100 203]]
   (format-rows-by [int int]
-    (rows (data/run-query venues
-            (ql/aggregation (ql/count) (ql/sum $price))))))
+    (rows (data/run-mbql-query venues
+            {:aggregation [[:count] [:sum $price]]}))))
 
 ;; how about with *three* aggregations?
 (expect-with-non-timeseries-dbs
   [[2 100 203]]
   (format-rows-by [int int int]
-    (rows (data/run-query venues
-            (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
+    (rows (data/run-mbql-query venues
+            {:aggregation [[:avg $price] [:count] [:sum $price]]}))))
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
 ;;
@@ -160,8 +164,8 @@
      :display_name    "Count 2"
      :name            "count_2"
      :preview_display true)]
-  (-> (data/run-query venues
-        (ql/aggregation (ql/count) (ql/count)))
+  (-> (data/run-mbql-query venues
+        {:aggregation [[:count] [:count]]})
       :data :cols))
 
 
@@ -173,8 +177,8 @@
    :columns     ["sum"]
    :cols        [(aggregate-col :sum (users-col :id))]
    :native_form true}
-  (->> (data/run-query users
-         (ql/aggregation (ql/cum-sum $id)))
+  (->> (data/run-mbql-query users
+         {:aggregation [[:cum-sum $id]]})
        booleanize-native-form
        (format-rows-by [int])))
 
@@ -201,9 +205,9 @@
    :cols        [(breakout-col (users-col :id))
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
-  (->> (data/run-query users
-         (ql/aggregation (ql/cum-sum $id))
-         (ql/breakout $id))
+  (->> (data/run-mbql-query users
+         {:aggregation [[:cum-sum $id]]
+          :breakout [$id]})
        booleanize-native-form
        (format-rows-by [int int])))
 
@@ -230,9 +234,9 @@
    :cols        [(breakout-col (users-col :name))
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
-  (->> (data/run-query users
-         (ql/aggregation (ql/cum-sum $id))
-         (ql/breakout $name))
+  (->> (data/run-mbql-query users
+         {:aggregation [[:cum-sum $id]]
+          :breakout    [$name]})
        booleanize-native-form
        (format-rows-by [str int])
        tu/round-fingerprint-cols))
@@ -249,9 +253,9 @@
                  [3 4681]
                  [4 5050]]
    :native_form true}
-  (->> (data/run-query venues
-         (ql/aggregation (ql/cum-sum $id))
-         (ql/breakout $price))
+  (->> (data/run-mbql-query venues
+         {:aggregation [[:cum-sum $id]]
+          :breakout    [$price]})
        booleanize-native-form
        (format-rows-by [int int])))
 
@@ -265,12 +269,12 @@
 
 ;;; cum_count w/o breakout should be treated the same as count
 (qp-expect-with-all-engines
-    {:rows    [[15]]
-     :columns ["count"]
-     :cols    [(cumulative-count-col users-col :id)]
-     :native_form true}
-  (->> (data/run-query users
-                  (ql/aggregation (ql/cum-count)))
+  {:rows        [[15]]
+   :columns     ["count"]
+   :cols        [(cumulative-count-col users-col :id)]
+   :native_form true}
+  (->> (data/run-mbql-query users
+         {:aggregation [[:cum-count $id]]})
        booleanize-native-form
        (format-rows-by [int])))
 
@@ -296,9 +300,9 @@
    :cols        [(breakout-col (users-col :name))
                  (cumulative-count-col users-col :id)]
    :native_form true}
-  (->> (data/run-query users
-         (ql/aggregation (ql/cum-count))
-         (ql/breakout $name))
+  (->> (data/run-mbql-query users
+         {:aggregation [[:cum-count $id]]
+          :breakout    [$name]})
        booleanize-native-form
        (format-rows-by [str int])
        tu/round-fingerprint-cols))
@@ -315,8 +319,8 @@
                  [3 94]
                  [4 100]]
    :native_form true}
-  (->> (data/run-query venues
-         (ql/aggregation (ql/cum-count))
-         (ql/breakout $price))
+  (->> (data/run-mbql-query venues
+         {:aggregation [[:cum-count $id]]
+          :breakout    [$price]})
        booleanize-native-form
        (format-rows-by [int int])))

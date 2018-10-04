@@ -6,9 +6,7 @@
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
-  (:require [clj-time.core :as time]
-            [clojure.tools.logging :as log]
-            [metabase.sync
+  (:require [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.sync-metadata
@@ -17,8 +15,7 @@
              [metabase-metadata :as metabase-metadata]
              [sync-timezone :as sync-tz]
              [tables :as sync-tables]]
-            [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
 (defn- sync-fields-summary [{:keys [total-fields updated-fields] :as step-info}]

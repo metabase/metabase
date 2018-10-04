@@ -8,8 +8,9 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.util.honeysql-extensions :as hx]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [toucan.db :as db]))
 
 (def ^:private ^:const column->base-type
@@ -209,6 +210,7 @@
 (def ^:private h2-db-time-query  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
 (defrecord H2Driver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "H2"))
 
@@ -217,8 +219,9 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly [{:name         "db"
-                                                           :display-name "Connection String"
-                                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans"
+                                                           :display-name (tru "Connection String")
+                                                           :placeholder  (str "file:/"
+                                                                              (tru "Users/camsaul/bird_sightings/toucans"))
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)

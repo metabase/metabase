@@ -1,6 +1,6 @@
 import React from "react";
 
-import FilterList from "../filters/FilterList.jsx";
+import FilterList from "../FilterList.jsx";
 import AggregationWidget from "../AggregationWidget.jsx";
 
 import Query from "metabase/lib/query";
@@ -16,11 +16,7 @@ const QueryDefinition = ({ className, object, tableMetadata }) => {
         />
       )}
       {filters.length > 0 && (
-        <FilterList
-          filters={filters}
-          tableMetadata={tableMetadata}
-          maxDisplayValues={Infinity}
-        />
+        <FilterList filters={filters} maxDisplayValues={Infinity} />
       )}
     </div>
   );

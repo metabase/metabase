@@ -1,4 +1,7 @@
 (ns metabase.models.dependency
+  "Dependencies are used to keep track of objects that depend on other objects, and acts as a sort of m2m FK table. For
+  example, a Card might use a Segment; a Dependency object will be used to track this dependency so appropriate
+  actions can take place or be prevented when something changes."
   (:require [clojure.set :as set]
             [metabase.util.date :as du]
             [toucan

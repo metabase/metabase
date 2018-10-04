@@ -1,5 +1,5 @@
 :root {
-  --default-link-color: #4a90e2;
+  --default-link-color: var(--color-brand);
 }
 
 .no-decoration,
@@ -10,7 +10,7 @@
 .link {
   cursor: pointer;
   text-decoration: none;
-  color: var(--default-link-color);
+  color: var(--color-brand);
 }
 .link:hover {
   text-decoration: underline;

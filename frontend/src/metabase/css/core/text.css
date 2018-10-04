@@ -1,6 +1,6 @@
 :root {
-  --body-text-color: #8e9ba9;
-  --70-percent-black: #444444;
+  --body-text-color: var(--color-text-medium);
+  --70-percent-black: var(--color-text-dark);
 }
 
 /* center */
@@ -131,7 +131,7 @@
 :local(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
-  color: var(--body-text-color); /* TODO - is this bad? */
+  color: var(--color-text-medium); /* TODO - is this bad? */
 }
 
 .text-paragraph,
@@ -170,8 +170,8 @@
 
 .text-code {
   font-family: monospace;
-  color: #8691ac;
-  background-color: #e9f2f5;
+  color: var(--color-text-medium);
+  background-color: var(--color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;

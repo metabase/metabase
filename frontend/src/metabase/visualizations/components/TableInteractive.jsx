@@ -14,11 +14,13 @@ import {
   getTableCellClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import MiniBar from "./MiniBar";
 
 // $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
@@ -88,7 +90,7 @@ type GridComponent = Component<void, void, void> & {
   recomputeGridSize: () => void,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableInteractive extends Component {
   state: State;
   props: Props;
@@ -143,11 +145,23 @@ export default class TableInteractive extends Component {
 
   componentWillReceiveProps(newProps: Props) {
     if (
-      JSON.stringify(this.props.data && this.props.data.cols) !==
-      JSON.stringify(newProps.data && newProps.data.cols)
+      this.props.data &&
+      newProps.data &&
+      !_.isEqual(this.props.data.cols, newProps.data.cols)
     ) {
       this.resetColumnWidths();
     }
+
+    // remeasure columns if the column settings change, e.x. turning on/off mini bar charts
+    const oldColSettings = this._getColumnSettings(this.props);
+    const newColSettings = this._getColumnSettings(newProps);
+    if (!_.isEqual(oldColSettings, newColSettings)) {
+      this.remeasureColumnWidths();
+    }
+  }
+
+  _getColumnSettings(props: Props) {
+    return props.data && props.data.cols.map(col => props.settings.column(col));
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -167,12 +181,16 @@ export default class TableInteractive extends Component {
     }
   }
 
-  resetColumnWidths() {
+  remeasureColumnWidths() {
     this.setState({
       columnWidths: [],
       contentWidths: null,
     });
     this.columnHasResized = {};
+  }
+
+  resetColumnWidths() {
+    this.remeasureColumnWidths();
     this.props.onUpdateVisualizationSettings({
       "table.column_widths": undefined,
     });
@@ -294,9 +312,10 @@ export default class TableInteractive extends Component {
   }
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const { data, isPivoted } = this.props;
+    const { data, isPivoted, settings } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
@@ -309,6 +328,11 @@ export default class TableInteractive extends Component {
       isPivoted,
     );
     const isClickable = this.visualizationIsClickable(clicked);
+    const backgroundColor =
+      getCellBackgroundColor &&
+      getCellBackgroundColor(value, rowIndex, column.name);
+
+    const columnSettings = settings.column(column);
 
     return (
       <div
@@ -319,6 +343,7 @@ export default class TableInteractive extends Component {
           left: this.getColumnLeft(style, columnIndex),
           // add a transition while dragging column
           transition: dragColIndex != null ? "left 200ms" : null,
+          backgroundColor,
         }}
         className={cx("TableInteractive-cellWrapper", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
@@ -337,13 +362,22 @@ export default class TableInteractive extends Component {
         }
       >
         <div className="cellData">
-          {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
-          {formatValue(value, {
-            column: column,
-            type: "cell",
-            jsx: true,
-            rich: true,
-          })}
+          {columnSettings["show_mini_bar"] ? (
+            <MiniBar
+              value={value}
+              options={columnSettings}
+              extent={getColumnExtent(data.cols, data.rows, columnIndex)}
+              cellHeight={ROW_HEIGHT}
+            />
+          ) : (
+            /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
+            formatValue(value, {
+              ...columnSettings,
+              type: "cell",
+              jsx: true,
+              rich: true,
+            })
+          )}
         </div>
       </div>
     );
@@ -388,7 +422,6 @@ export default class TableInteractive extends Component {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
-    // $FlowFixMe: inner indexes.splice should always return an index
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
     const lefts = indexes.map(index => {
@@ -410,12 +443,12 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted } = this.props;
-    // $FlowFixMe: not sure why flow has a problem with this
+    const { sort, isPivoted, settings } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle = formatColumn(column);
+    let columnTitle =
+      settings.column(column).column_title || formatColumn(column);
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
     }
@@ -439,7 +472,7 @@ export default class TableInteractive extends Component {
     // the column id is in `["field-id", fieldId]` format
     const isSorted =
       sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
-    const isAscending = sort && sort[0] && sort[0][1] === "ascending";
+    const isAscending = sort && sort[0] && sort[0][0] === "asc";
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */

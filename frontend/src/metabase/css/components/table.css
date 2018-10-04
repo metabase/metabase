@@ -1,6 +1,6 @@
 :root {
-  --table-border-color: rgba(213, 213, 213, 0.3);
-  --table-alt-bg-color: rgba(0, 0, 0, 0.02);
+  --table-border-color: color(var(--color-border) alpha(-70%));
+  --table-alt-bg-color: color(var(--color-bg-black) alpha(-98%));
 
   --entity-image-small-size: 24px;
   --entity-image-large-size: 64px;
@@ -29,21 +29,21 @@ th {
 }
 
 .Table--bordered {
-  border: 1px solid var(--table-border-color);
+  border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .Table tr {
-  border-bottom: 1px solid var(--table-border-color);
+  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .Table tr:nth-child(even) {
-  background-color: var(--table-alt-bg-color);
+  background-color: color(var(--color-bg-black) alpha(-98%));
 }
 
 .Table th,
 .Table td {
   padding: 1em;
-  border: 1px solid var(--table-border-color);
+  border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .ComparisonTable {
@@ -53,5 +53,5 @@ th {
 
 .ComparisonTable th,
 .ComparisonTable td {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-border);
 }

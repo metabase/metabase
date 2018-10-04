@@ -1,0 +1,15 @@
+title: A look at your [[this]]
+transient_title: Here's an overview of your [[this]]
+description: How [[this]] is distributed and more.
+applies_to: GenericTable.State
+metrics:
+- Count: [count]
+cards:
+  - Distribution:
+      title: How [[this]] is distributed
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      metrics: Count
+      dimensions: this

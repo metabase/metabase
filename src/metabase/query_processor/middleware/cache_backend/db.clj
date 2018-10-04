@@ -1,11 +1,8 @@
 (ns metabase.query-processor.middleware.cache-backend.db
-  (:require [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.util.date :as du]
-            [metabase.models
+  (:require [metabase.models
              [interface :as models]
              [query-cache :refer [QueryCache]]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.util.date :as du]
             [toucan.db :as db]))

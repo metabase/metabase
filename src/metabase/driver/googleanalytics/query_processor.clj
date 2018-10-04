@@ -1,10 +1,12 @@
 (ns metabase.driver.googleanalytics.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format.
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util :as u]
             [metabase.util.date :as du])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
@@ -49,8 +51,8 @@
   (into {} (for [c chars-to-escape]
              {c (str "\\" c)})))
 
-(def ^:private ^{:arglists '([s])} escape-for-regex         (u/rpartial s/escape (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
-(def ^:private ^{:arglists '([s])} escape-for-filter-clause (u/rpartial s/escape (char-escape-map ",;\\")))
+(def ^:private ^{:arglists '([s])} escape-for-regex         (u/rpartial str/escape (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+(def ^:private ^{:arglists '([s])} escape-for-filter-clause (u/rpartial str/escape (char-escape-map ",;\\")))
 
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
@@ -58,9 +60,9 @@
 
 ;;; ### source-table
 
-(defn- handle-source-table [{{source-table-name :name} :source-table}]
-  {:pre [((some-fn keyword? string?) source-table-name)]}
-  {:ids (str "ga:" source-table-name)})
+(defn- handle-source-table [{source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    {:ids (str "ga:" source-table-name)}))
 
 
 ;;; ### breakout
@@ -88,10 +90,10 @@
 (defn- handle-breakout [{breakout-clause :breakout}]
   {:dimensions (if-not breakout-clause
                  ""
-                 (s/join "," (for [breakout-field breakout-clause]
-                               (if (instance? DateTimeField breakout-field)
-                                 (unit->ga-dimension (:unit breakout-field))
-                                 (->rvalue breakout-field)))))})
+                 (str/join "," (for [breakout-field breakout-clause]
+                                 (if (instance? DateTimeField breakout-field)
+                                   (unit->ga-dimension (:unit breakout-field))
+                                   (->rvalue breakout-field)))))})
 
 
 ;;; ### filter
@@ -123,15 +125,15 @@
 
 (defn- parse-filter-clause:filters ^String [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (s/join ";" (remove nil? (map parse-filter-clause:filters subclauses)))
-    :or  (s/join "," (remove nil? (map parse-filter-clause:filters subclauses)))
+    :and (str/join ";" (remove nil? (map parse-filter-clause:filters subclauses)))
+    :or  (str/join "," (remove nil? (map parse-filter-clause:filters subclauses)))
     :not (parse-filter-subclause:filters subclause :negate)
     nil  (parse-filter-subclause:filters clause)))
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
     (let [filter (parse-filter-clause:filters filter-clause)]
-      (when-not (s/blank? filter)
+      (when-not (str/blank? filter)
         {:filters filter}))))
 
 (defn- parse-filter-subclause:interval [{:keys [filter-type field value], :as filter} & [negate?]]
@@ -171,7 +173,7 @@
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
-    {:sort (s/join "," (for [{:keys [field direction]} order-by]
+    {:sort (str/join "," (for [{:keys [field direction]} order-by]
                          (str (case direction
                                 :ascending  ""
                                 :descending "-")
@@ -203,7 +205,7 @@
    :mbql? true})
 
 (defn- parse-number [s]
-  (edn/read-string (s/replace s #"^0+(.+)$" "$1")))
+  (edn/read-string (str/replace s #"^0+(.+)$" "$1")))
 
 (def ^:private ga-dimension->date-format-fn
   {"ga:minute"         parse-number
@@ -257,7 +259,7 @@
 (defn- built-in-metrics
   [{query :query}]
   (when-let [ags (seq (aggregations query))]
-    (s/join "," (for [[aggregation-type metric-name] ags
+    (str/join "," (for [[aggregation-type metric-name] ags
                       :when (and aggregation-type
                                  (= :metric (qputil/normalize-token aggregation-type))
                                  (string? metric-name))]
@@ -310,10 +312,12 @@
       (when (> (count filter-clause) 1)
         (vec filter-clause)))))
 
-(defn- handle-built-in-segments [query]
-  (-> query
-      (assoc-in [:ga :segment] (built-in-segments query))
-      (update-in [:query :filter] remove-built-in-segments)))
+(defn- handle-built-in-segments [{{filters :filter} :query, :as query}]
+  (let [query   (assoc-in query [:ga :segment] (built-in-segments query))
+        filters (remove-built-in-segments filters)]
+    (if (seq filters)
+      (assoc-in    query [:query :filter] filters)
+      (m/dissoc-in query [:query :filter]))))
 
 
 ;;; public

@@ -1,3 +1,5 @@
+/* eslint-disable no-color-literals */
+
 import React, { Component } from "react";
 import { t } from "c-3po";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
@@ -30,6 +32,7 @@ import _ from "underscore";
 // ];
 // const HEAT_MAP_ZERO_COLOR = '#CCC';
 
+// TODO COLOR
 const HEAT_MAP_COLORS = [
   // "#E2F2FF",
   "#C4E4FF",
@@ -61,7 +64,7 @@ export default class ChoroplethMap extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length > 1 && isString(cols[0]);
   }
 

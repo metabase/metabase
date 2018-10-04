@@ -11,7 +11,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
-import Input from "metabase/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Select from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -39,6 +39,7 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 import { has_field_values_options } from "metabase/lib/core";
+import colors from "metabase/lib/colors";
 
 const SelectClasses =
   "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
@@ -276,14 +277,14 @@ export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
-    style={{ backgroundColor: "#8091AB" }}
+    style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>
 );
 
 const SelectSeparator = () => (
-  <Icon name="chevronright" size={12} className="mx2 text-grey-3" />
+  <Icon name="chevronright" size={12} className="mx2 text-medium" />
 );
 
 export class FieldHeader extends Component {
@@ -320,13 +321,13 @@ export class FieldHeader extends Component {
   render() {
     return (
       <div>
-        <Input
+        <InputBlurChange
           className="h1 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
-        <Input
+        <InputBlurChange
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}
@@ -449,7 +450,7 @@ export class FieldValueMapping extends Component {
     return (
       <div className="flex align-center">
         <h3>{original}</h3>
-        <Input
+        <InputBlurChange
           className="AdminInput input ml-auto"
           value={mapped}
           onChange={this.onInputChange}
@@ -468,7 +469,7 @@ export const SectionHeader = ({ title, description }) => (
   <div className="border-bottom py2 mb2">
     <h2 className="text-italic">{title}</h2>
     {description && (
-      <p className="mb0 text-grey-4 mt1 text-paragraph text-measure">
+      <p className="mb0 text-medium mt1 text-paragraph text-measure">
         {description}
       </p>
     )}
@@ -492,11 +493,19 @@ export class FieldRemapping extends Component {
   }
 
   getMappingTypeForField = field => {
-    if (this.state.isChoosingInitialFkTarget) return MAP_OPTIONS.foreign;
+    if (this.state.isChoosingInitialFkTarget) {
+      return MAP_OPTIONS.foreign;
+    }
 
-    if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
-    if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
-    if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
+    if (_.isEmpty(field.dimensions)) {
+      return MAP_OPTIONS.original;
+    }
+    if (field.dimensions.type === "external") {
+      return MAP_OPTIONS.foreign;
+    }
+    if (field.dimensions.type === "internal") {
+      return MAP_OPTIONS.custom;
+    }
 
     throw new Error(t`Unrecognized mapping type`);
   };
@@ -718,7 +727,7 @@ export class FieldRemapping extends Component {
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-grey-1">{t`Choose a field`}</span>
+                  <span className="text-light">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }

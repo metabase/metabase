@@ -1,7 +1,7 @@
 :root {
   --indicator-size: 3em; /* ~ 42 px */
   --indicator-border-radius: 99px;
-  --setup-border-color: #d7d7d7;
+  --setup-border-color: var(--color-border);
 }
 
 .SetupSteps {
@@ -9,7 +9,7 @@
 }
 
 .SetupNav {
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .Setup-brandWordMark {
@@ -18,21 +18,21 @@
 
 .SetupStep {
   margin-bottom: 1.714rem;
-  border: 1px solid var(--setup-border-color);
+  border: 1px solid var(--color-border);
   flex: 1;
 }
 
 .SetupStep.SetupStep--active {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .SetupStep.SetupStep--completed {
-  color: var(--success-color);
+  color: var(--color-accent1);
 }
 
 .SetupStep.SetupStep--todo {
-  color: var(--brand-color);
-  background-color: #edf2f8;
+  color: var(--color-brand);
+  background-color: var(--color-bg-medium);
   border-style: dashed;
 }
 
@@ -41,15 +41,15 @@
   width: var(--indicator-size);
   height: var(--indicator-size);
   border-radius: var(--indicator-border-radius);
-  border-color: color(var(--base-grey) shade(20%));
+  border-color: var(--color-border);
   font-weight: bold;
   line-height: 1;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   margin-top: -3px;
 }
 
 .SetupStep-check {
-  color: #fff;
+  color: var(--color-text-white);
   display: none;
 }
 
@@ -58,12 +58,12 @@
 }
 
 .SetupStep.SetupStep--active .SetupStep-indicator {
-  color: var(--brand-color);
+  color: var(--color-brand);
 }
 
 .SetupStep.SetupStep--completed .SetupStep-indicator {
-  border-color: #9cc177;
-  background-color: #c8e1b0;
+  border-color: var(--color-accent1);
+  background-color: var(--color-accent1);
 }
 
 .SetupStep.SetupStep--completed .SetupStep-check {
@@ -84,5 +84,5 @@
 }
 
 .SetupHelp {
-  color: var(--body-text-color);
+  color: var(--color-text-medium);
 }

@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -18,7 +19,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom",
+    icon: "zoom-in",
   },
   records: {
     icon: "table2",
@@ -50,6 +51,9 @@ const SECTIONS = {
   auto: {
     icon: "bolt",
   },
+  Formatting: {
+    icon: "pencil",
+  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
@@ -71,6 +75,7 @@ type State = {
   popoverAction: ?ClickAction,
 };
 
+@connect()
 export default class ChartClickActions extends Component {
   props: Props;
   state: State = {
@@ -86,7 +91,14 @@ export default class ChartClickActions extends Component {
 
   handleClickAction = (action: ClickAction) => {
     const { onChangeCardAndRun } = this.props;
-    if (action.popover) {
+    if (action.action) {
+      const reduxAction = action.action();
+      if (reduxAction) {
+        // $FlowFixMe: dispatch provided by @connect
+        this.props.dispatch(reduxAction);
+      }
+      this.props.onClose();
+    } else if (action.popover) {
       MetabaseAnalytics.trackEvent(
         "Actions",
         "Open Click Action Popover",
@@ -164,7 +176,7 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-grey-3">
+          <div className="text-bold text-medium">
             {sections.map(([key, actions]) => (
               <div
                 key={key}
@@ -203,7 +215,7 @@ export const ChartClickAction = ({
 }) => {
   const className = cx(
     "text-brand-hover cursor-pointer no-decoration",
-    isLastItem ? "pr2" : "pr4",
+    isLastItem ? "pr2" : "pr3",
   );
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through

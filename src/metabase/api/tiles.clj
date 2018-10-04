@@ -1,14 +1,15 @@
 (ns metabase.api.tiles
   "`/api/tiles` endpoints."
   (:require [cheshire.core :as json]
-            [clojure.core.match :refer [match]]
             [compojure.core :refer [GET]]
             [metabase
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]])
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
@@ -51,12 +52,14 @@
   [details lat-field-id lon-field-id x y zoom]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
-        inside-filter ["INSIDE" lat-field-id lon-field-id (top-left :lat) (top-left :lon) (bottom-right :lat) (bottom-right :lon)]]
-    (update details :filter
-      #(match %
-         ["AND" & _]              (conj % inside-filter)
-         [(_ :guard string?) & _] (conj ["AND"] % inside-filter)
-         :else                    inside-filter))))
+        inside-filter [:inside
+                       [:field-id lat-field-id]
+                       [:field-id lon-field-id]
+                       (top-left :lat)
+                       (top-left :lon)
+                       (bottom-right :lat)
+                       (bottom-right :lon)]]
+    (update details :filter mbql.u/combine-filter-clauses inside-filter)))
 
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------

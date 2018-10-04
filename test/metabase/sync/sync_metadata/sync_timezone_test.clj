@@ -17,14 +17,21 @@
 ;; sync happens automatically, so this test removes it first to ensure
 ;; that it gets set when missing
 (datasets/expect-with-engines #{:h2 :postgres}
-  [{:timezone-id "UTC"} true true true]
+  (concat
+   (repeat 2 {:timezone-id "UTC"})
+   [true true true])
   (data/dataset test-data
-    (let [db              (db/select-one Database [:name "test-data"])
-          tz-on-load      (db-timezone db)
-          _               (db/update! Database (:id db) :timezone nil)
-          tz-after-update (db-timezone db)]
+    (let [db                               (data/db)
+          tz-on-load                       (db-timezone db)
+          _                                (db/update! Database (:id db) :timezone nil)
+          tz-after-update                  (db-timezone db)
+          ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
+          ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
+          _                                (tu/clear-connection-pool db)
+          {:keys [step-info task-history]} (sut/sync-database! "sync-timezone" db)]
 
-      [(sut/only-step-keys (sut/sync-database! "sync-timezone" db))
+      [(sut/only-step-keys step-info)
+       (:task_details task-history)
        ;; On startup is the timezone specified?
        (boolean (time/time-zone-for-id tz-on-load))
        ;; Check to make sure the test removed the timezone
@@ -35,7 +42,7 @@
 (datasets/expect-with-engines #{:postgres}
   ["UTC" "UTC"]
   (data/dataset test-data
-    (let [db (db/select-one Database [:name "test-data"])]
+    (let [db (data/db)]
       (sync-tz/sync-timezone! db)
       [(db-timezone db)
        ;; This call fails as the dates on PostgreSQL return 'AEST'

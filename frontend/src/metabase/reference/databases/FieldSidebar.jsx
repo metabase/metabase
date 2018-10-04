@@ -9,14 +9,7 @@ import SidebarItem from "metabase/components/SidebarItem.jsx";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const FieldSidebar = ({
-  database,
-  table,
-  field,
-  style,
-  className,
-  showXray,
-}) => (
+const FieldSidebar = ({ database, table, field, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -63,7 +56,6 @@ FieldSidebar.propTypes = {
   field: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  showXray: PropTypes.bool,
 };
 
 export default pure(FieldSidebar);

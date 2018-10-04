@@ -1,9 +1,7 @@
 (ns metabase.events.last-login
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [util :as u]]
+            [metabase.events :as events]
             [metabase.models.user :refer [User]]
             [metabase.util.date :as du]
             [toucan.db :as db]))

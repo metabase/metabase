@@ -1,5 +1,6 @@
 /*global ace*/
-/* eslint "import/no-commonjs": 0 */
+/* eslint-disable import/no-commonjs */
+/* eslint-disable no-color-literals */
 ace.define(
   "ace/theme/metabase",
   ["require", "exports", "module", "ace/lib/dom"],

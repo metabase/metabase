@@ -1,4 +1,5 @@
 (ns metabase.api.database-test
+  "Tests for /api/database endpoints."
   (:require [expectations :refer :all]
             [metabase
              [driver :as driver]
@@ -10,6 +11,8 @@
              [database :as database :refer [Database]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.sync
              [analyze :as analyze]
@@ -48,14 +51,16 @@
         (db/delete! Database :id (:id db))))))
 
 (defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
-  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
-  ;; to generate function names it will treat every usage this as the same test and only a single one will end up being ran
+  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since
+  ;; expectations hashes its body to generate function names it will treat every usage this as the same test and only
+  ;; a single one will end up being ran
   (let [result (gensym "result-")]
     `(let [~result (delay (do-with-temp-db-created-via-api ~options (fn [~binding]
                                                                       [~expected
                                                                        ~actual])))]
        (expect
-         (u/ignore-exceptions (first @~result)) ; in case @result# barfs we don't want the test to succeed (Exception == Exception for expectations)
+         ;; in case @result# barfs we don't want the test to succeed (Exception == Exception for expectations)
+         (u/ignore-exceptions (first @~result))
          (second @~result)))))
 
 (def ^:private default-db-details
@@ -172,14 +177,13 @@
                 :active          $
                 :id              $
                 :db_id           $
-                :raw_table_id    $
                 :created_at      $
                 :fields_hash     $}))
       (update :entity_type (comp (partial str "entity/") name))))
 
 
-;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
-;; If you're writing a NEW test that needs this, fix your brain and your test!
+;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One
+;; day we should be able to remove this! If you're writing a NEW test that needs this, fix your brain and your test!
 ;; To reïterate, this is BAD BAD BAD BAD BAD BAD! It will break tests if you use it! Don't use it!
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
@@ -191,9 +195,9 @@
                                 :when  id]
                             id))]
     (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
-      (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+      (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
                                          "WARNING: deleting randomly created databases:\n%s"
-                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
+                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
                  (u/pprint-to-str (for [db dbs]
                                     (dissoc db :features))))))
     (db/delete! Database :id [:not-in ids-to-skip])))
@@ -279,7 +283,6 @@
    (match-$ field
      {:updated_at          $
       :id                  $
-      :raw_column_id       $
       :created_at          $
       :last_analyzed       $
       :fingerprint         $
@@ -325,7 +328,6 @@
                                    :rows         nil
                                    :updated_at   $
                                    :id           (data/id :categories)
-                                   :raw_table_id $
                                    :db_id        (data/id)
                                    :created_at   $
                                    :fields_hash  $}))]}))
@@ -577,13 +579,14 @@
 
 ;; Can we RESCAN all the FieldValues for a DB?
 (expect
-  (let [update-field-values-called? (atom false)]
+  :sync-called
+  (let [update-field-values-called? (promise)]
     (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
       (with-redefs [field-values/update-field-values! (fn [synced-db]
                                                         (when (= (u/get-id synced-db) (u/get-id db))
-                                                          (reset! update-field-values-called? true)))]
+                                                          (deliver update-field-values-called? :sync-called)))]
         ((user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
-        @update-field-values-called?))))
+        (deref update-field-values-called? long-timeout :sync-never-called)))))
 
 ;; (Non-admins should not be allowed to trigger re-scan)
 (expect
@@ -649,3 +652,137 @@
   (with-redefs [database-api/test-database-connection test-database-connection]
     ((user->client :crowberto) :post 200 "database/validate"
      {:details {:engine :h2, :details {:db "ABC"}}})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Tests for GET /api/database/:id/schemas: should work if user has full DB perms...
+(expect
+  ["schema1"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [_           {:db_id db-id, :schema "schema1"}]
+                  Table    [_           {:db_id db-id, :schema "schema1"}]]
+    ((user->client :rasta) :get 200 (format "database/%d/schemas" db-id))))
+
+;; ...or full schema perms...
+(expect
+  ["schema1"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [_           {:db_id db-id, :schema "schema1"}]
+                  Table    [_           {:db_id db-id, :schema "schema1"}]]
+    (perms/revoke-permissions! (perms-group/all-users) db-id)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
+    ((user->client :rasta) :get 200 (format "database/%d/schemas" db-id))))
+
+;; ...or just table read perms...
+(expect
+  ["schema1"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [t1          {:db_id db-id, :schema "schema1"}]
+                  Table    [t2          {:db_id db-id, :schema "schema1"}]]
+    (perms/revoke-permissions! (perms-group/all-users) db-id)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t2)
+    ((user->client :rasta) :get 200 (format "database/%d/schemas" db-id))))
+
+;; Multiple schemas are ordered by name
+(expect
+  ["schema1" "schema2" "schema3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [_ {:db_id db-id, :schema "schema3"}]
+                  Table    [_ {:db_id db-id, :schema "schema2"}]
+                  Table    [_ {:db_id db-id, :schema "schema1"}]]
+    ((user->client :rasta) :get 200 (format "database/%d/schemas" db-id))))
+
+;; Can we fetch the Tables in a Schema? (If we have full DB perms)
+(expect
+  ["t1" "t3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [_ {:db_id db-id, :schema "schema1", :name "t1"}]
+                  Table    [_ {:db_id db-id, :schema "schema2"}]
+                  Table    [_ {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (map :name ((user->client :rasta) :get 200 (format "database/%d/schema/%s" db-id "schema1")))))
+
+;; Can we fetch the Tables in a Schema? (If we have full schema perms)
+(expect
+  ["t1" "t3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [_ {:db_id db-id, :schema "schema1", :name "t1"}]
+                  Table    [_ {:db_id db-id, :schema "schema2"}]
+                  Table    [_ {:db_id db-id, :schema "schema1", :name "t3"}]]
+    (perms/revoke-permissions! (perms-group/all-users) db-id)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
+    (map :name ((user->client :rasta) :get 200 (format "database/%d/schema/%s" db-id "schema1")))))
+
+;; Can we fetch the Tables in a Schema? (If we have full Table perms)
+(expect
+  ["t1" "t3"]
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
+                  Table    [_  {:db_id db-id, :schema "schema2"}]
+                  Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+        (perms/revoke-permissions! (perms-group/all-users) db-id)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
+    (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t3)
+    (map :name ((user->client :rasta) :get 200 (format "database/%d/schema/%s" db-id "schema1")))))
+
+;; GET /api/database/:id/schemas should return a 403 for a user that doesn't have read permissions
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [_ {:db_id database-id, :schema "test"}]]
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
+    ((user->client :rasta) :get 403 (format "database/%s/schemas" database-id))))
+
+;; GET /api/database/:id/schemas should exclude schemas for which the user has no perms
+(expect
+  ["schema-with-perms"]
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
+                  Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
+    (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
+    ((user->client :rasta) :get 200 (format "database/%s/schemas" database-id))))
+
+;; GET /api/database/:id/schema/:schema should return a 403 for a user that doesn't have read permissions FOR THE DB...
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
+    ((user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "test"))))
+
+;; ... or for the SCHEMA
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
+                  Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
+    (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
+    ((user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms"))))
+
+;; Looking for a database that doesn't exist should return a 404
+(expect
+  "Not found."
+  ((user->client :crowberto) :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))
+
+;; Check that a 404 returns if the schema isn't found
+(expect
+  "Not found."
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [{t1-id :id} {:db_id db-id, :schema "schema1"}]]
+    ((user->client :crowberto) :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))
+
+
+;; GET /api/database/:id/schema/:schema should exclude Tables for which the user has no perms
+(expect
+  ["table-with-perms"]
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [table-with-perms {:db_id database-id, :schema "public", :name "table-with-perms"}]
+                  Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
+    (perms/revoke-permissions! (perms-group/all-users) database-id)
+    (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
+    (map :name ((user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))

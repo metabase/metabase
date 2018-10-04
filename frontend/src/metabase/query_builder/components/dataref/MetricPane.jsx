@@ -62,7 +62,7 @@ export default class MetricPane extends Component {
 
   setQueryMetric() {
     let card = this.newCard();
-    card.dataset_query.query.aggregation = ["METRIC", this.props.metric.id];
+    card.dataset_query.query.aggregation = ["metric", this.props.metric.id];
     this.props.setCardAndRun(card);
   }
 
