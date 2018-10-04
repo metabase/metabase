@@ -65,12 +65,22 @@ export default class LegendHeader extends Component {
     const showDots = series.length > 1;
     const isNarrow = this.state.width < 150;
     const showTitles = !showDots || !isNarrow;
-    const colors = settings["graph.colors"] || DEFAULT_COLORS;
-    const customTitles = settings["graph.series_labels"];
-    const titles =
-      customTitles && customTitles.length === series.length
-        ? customTitles
-        : series.map(thisSeries => thisSeries.card.name);
+    // const colors = settings["graph.colors"] || DEFAULT_COLORS;
+    // const customTitles = settings["graph.series_labels"];
+    // const titles =
+    //   customTitles && customTitles.length === series.length
+    //     ? customTitles
+    //     : series.map(thisSeries => thisSeries.card.name);
+
+    const seriesSettings =
+      settings.series && series.map(single => settings.series(single));
+
+    const colors = seriesSettings
+      ? seriesSettings.map(s => s.color)
+      : DEFAULT_COLORS;
+    const titles = seriesSettings
+      ? seriesSettings.map(s => s.title)
+      : series.map(single => single.card.name);
 
     return (
       <div

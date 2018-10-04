@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
   "graph.colors": ["#000000"],
+  series: () => ({ display: "scatter" }),
 };
 
 describe("LineAreaBarRenderer-scatter", () => {
@@ -35,6 +36,7 @@ describe("LineAreaBarRenderer-scatter", () => {
       chartType: "scatter",
       series: [
         {
+          card: {},
           data: {
             cols: [
               NumberColumn({ display_name: "A", source: "breakout" }),
@@ -64,6 +66,7 @@ describe("LineAreaBarRenderer-scatter", () => {
       chartType: "scatter",
       series: [
         {
+          card: {},
           data: {
             cols: [
               NumberColumn({ display_name: "A", source: "breakout" }),

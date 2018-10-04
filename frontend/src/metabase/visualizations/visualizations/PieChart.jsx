@@ -16,7 +16,7 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { normal, harmony } from "metabase/lib/colors";
+import colors, { getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -82,6 +82,46 @@ export default class PieChart extends Component {
       widget: "number",
       default: SLICE_THRESHOLD * 100,
     },
+    "pie.colors": {
+      section: t`Display`,
+      title: t`Colors`,
+      widget: "colors",
+      getDefault: (series, settings) =>
+        getColorsForValues(settings["pie._dimensionValues"]),
+      getProps: (series, settings) => ({
+        seriesTitles: settings["pie._dimensionValues"],
+      }),
+      readDependencies: ["pie._dimensionValues"],
+    },
+    // this setting recomputes color assignment using pie.colors as the existing
+    // assignments in case the user previous modified pie.colors and a new value
+    // has appeared. Not ideal because those color values will be missing in the
+    // settings UI
+    "pie._colors": {
+      getValue: (series, settings) =>
+        getColorsForValues(
+          settings["pie._dimensionValues"],
+          settings["pie.colors"],
+        ),
+      readDependencies: ["pie._dimensionValues", "pie.colors"],
+    },
+    "pie._metricIndex": {
+      getValue: ([{ data: { cols } }], settings) =>
+        _.findIndex(cols, col => col.name === settings["pie.metric"]),
+      readDependencies: ["pie.metric"],
+    },
+    "pie._dimensionIndex": {
+      getValue: ([{ data: { cols } }], settings) =>
+        _.findIndex(cols, col => col.name === settings["pie.dimension"]),
+      readDependencies: ["pie.dimension"],
+    },
+    "pie._dimensionValues": {
+      getValue: ([{ data: { rows } }], settings) => {
+        const dimensionIndex = settings["pie._dimensionIndex"];
+        return rows.map(row => row[dimensionIndex]);
+      },
+      readDependencies: ["pie._dimensionIndex"],
+    },
   };
 
   componentDidUpdate() {
@@ -107,14 +147,8 @@ export default class PieChart extends Component {
     } = this.props;
 
     const [{ data: { cols, rows } }] = series;
-    const dimensionIndex = _.findIndex(
-      cols,
-      col => col.name === settings["pie.dimension"],
-    );
-    const metricIndex = _.findIndex(
-      cols,
-      col => col.name === settings["pie.metric"],
-    );
+    const dimensionIndex = settings["pie._dimensionIndex"];
+    const metricIndex = settings["pie._metricIndex"];
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
@@ -130,11 +164,8 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    // $FlowFixMe
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
-    // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
-    let sliceColors = Object.values(rows.length > 5 ? harmony : normal);
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
@@ -145,7 +176,7 @@ export default class PieChart extends Component {
         key: row[dimensionIndex],
         value: row[metricIndex],
         percentage: row[metricIndex] / total,
-        color: sliceColors[index % sliceColors.length],
+        color: settings["pie._colors"][row[dimensionIndex]],
       }))
       .partition(d => d.percentage > sliceThreshold)
       .value();
@@ -158,7 +189,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: normal.grey1,
+          color: colors["text-light"],
         };
         slices.push(otherSlice);
       }
@@ -184,7 +215,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: normal.grey1,
+        color: colors["text-light"],
         noHover: true,
       };
       slices.push(otherSlice);

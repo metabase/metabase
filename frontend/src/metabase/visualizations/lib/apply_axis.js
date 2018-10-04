@@ -324,7 +324,9 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       axis.label(axis.setting("title_text"), Y_LABEL_PADDING);
     } else {
       // only use the column name if all in the series are the same
-      const labels = _.uniq(series.map(s => getFriendlyName(s.data.cols[1])));
+      const labels = _.uniq(
+        series.map(single => chart.settings.series(single).title),
+      );
       if (labels.length === 1) {
         axis.label(labels[0], Y_LABEL_PADDING);
       }
