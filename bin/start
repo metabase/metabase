@@ -7,7 +7,8 @@ set -e
 
 # Translate various Heroku environment variables to Metabase equivalents
 
-if [ "$PORT" ]; then
+# if MB_JETTY_PORT is already set, don't override it
+if [ -z $MB_JETTY_PORT ] && [ "$PORT" ]; then
     export MB_JETTY_PORT="$PORT"
 fi
 
