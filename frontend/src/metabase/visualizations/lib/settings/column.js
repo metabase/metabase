@@ -192,13 +192,13 @@ export const DATE_COLUMN_SETTINGS = {
     getProps: ({ unit }: Column, settings: ColumnSettings) => {
       const options = [
         { name: t`Off`, value: null },
-        { name: t`Minutes`, value: "minutes" },
+        { name: t`HH:MM`, value: "minutes" },
       ];
       if (!unit || unit === "default" || unit === "second") {
-        options.push({ name: t`Seconds`, value: "seconds" });
+        options.push({ name: t`HH:MM:SS`, value: "seconds" });
       }
       if (!unit || unit === "default") {
-        options.push({ name: t`Milliseconds`, value: "milliseconds" });
+        options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
       }
       if (options.length === 2) {
         options[1].name = t`On`;
