@@ -735,3 +735,40 @@
    {:database 4
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
+
+;; make sure that parameters get normalized/canonicalized correctly. value should not get normalized, but type should;
+;; target should do canonicalization for MBQL clauses
+(expect
+  {:type       :query,
+   :query      {:source-table 1}
+   :parameters [{:type :id, :target [:dimension [:fk-> [:field-id 3265] [:field-id 4575]]], :value ["field-id"]}
+                {:type :date/all-options, :target [:dimension [:field-id 3270]], :value "thismonth"}]}
+  (normalize/normalize
+   {:type       :query
+    :query      {:source-table 1}
+    :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
+                 {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]}))
+
+;; make sure source-metadata gets normalized the way we'd expect (just the type names in this case)
+(expect
+  {:source-metadata
+   [{:name         "name"
+     :display_name "Name"
+     :base_type    :type/Text
+     :special_type :type/Name
+     :fingerprint {:global {:distinct-count 100}
+                   :type   {:type/Text {:percent-json   0.0
+                                        :percent-url    0.0
+                                        :percent-email  0.0
+                                        :average-length 15.63}}}}]}
+  (normalize/normalize
+   {:source-metadata [{:name         "name"
+                       :display_name "Name"
+                       :description  nil
+                       :base_type    "type/Text"
+                       :special_type "type/Name"
+                       :fingerprint  {"global" {"distinct-count" 100}
+                                      "type"   {"type/Text" {"percent-json"   0.0
+                                                             "percent-url"    0.0
+                                                             "percent-email"  0.0
+                                                             "average-length" 15.63}}}}]}))

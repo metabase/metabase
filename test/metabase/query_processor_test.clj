@@ -271,34 +271,30 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type       :type/Integer
-              :special_type    :type/Number
-              :name            "count"
-              :display_name    "count"
-              :id              nil
-              :table_id        nil
-              :description     nil
-              :source          :aggregation
-              :extra_info      {}
-              :target          nil
-              :remapped_from   nil
-              :remapped_to     nil
-              :settings        nil}))
+     :count {:base_type    :type/Integer
+             :special_type :type/Number
+             :name         "count"
+             :display_name "count"
+             :id           nil
+             :table_id     nil
+             :description  nil
+             :settings     nil
+             :source       :aggregation
+             :extra_info   {}
+             :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
-    :special_type  special_type
-    :id            nil
-    :table_id      nil
-    :description   nil
-    :source        :aggregation
-    :extra_info    {}
-    :target        nil
-    :name          (name ag-col-kw)
-    :display_name  (name ag-col-kw)
-    :remapped_from nil
-    :remapped_to   nil
-    :settings      nil}))
+    :special_type special_type
+    :id           nil
+    :table_id     nil
+    :description  nil
+    :settings     nil
+    :source       :aggregation
+    :extra_info   {}
+    :target       nil
+    :name         (name ag-col-kw)
+    :display_name (name ag-col-kw)}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))
@@ -310,7 +306,8 @@
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence

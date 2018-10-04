@@ -163,10 +163,12 @@
 ;; multiple columns with the same name)
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
-   (assoc (aggregate-col :count)
-     :display_name    "Count 2"
-     :name            "count_2"
-     :preview_display true)]
+   (-> (aggregate-col :count)
+       (dissoc :settings)
+       (assoc
+         :display_name    "Count 2"
+         :name            "count_2"
+         :preview_display true))]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
