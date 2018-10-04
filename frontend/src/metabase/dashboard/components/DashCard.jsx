@@ -64,6 +64,7 @@ export default class DashCard extends Component {
       slowCards,
       isEditing,
       isEditingParameter,
+      isFullscreen,
       onAddSeries,
       onRemove,
       navigateToNewCardFromDashboard,
@@ -145,6 +146,7 @@ export default class DashCard extends Component {
           expectedDuration={expectedDuration}
           rawSeries={series}
           showTitle
+          isFullscreen={isFullscreen}
           isDashboard
           isEditing={isEditing}
           gridSize={

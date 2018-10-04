@@ -73,7 +73,7 @@ export default class VisualizationSettings extends React.Component {
                       result &&
                       result.data &&
                       viz.isSensible &&
-                      viz.isSensible(result.data.cols, result.data.rows)
+                      viz.isSensible(result.data)
                     ),
                     hide: viz.hidden,
                   },
