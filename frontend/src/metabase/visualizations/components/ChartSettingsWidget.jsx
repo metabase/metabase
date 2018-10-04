@@ -23,7 +23,7 @@ const ChartSettingsWidget = ({
   return (
     <div
       className={cx({
-        mb2: !hidden,
+        mb3: !hidden,
         mx4: !noPadding,
         hide: hidden,
         disable: disabled,
@@ -37,7 +37,8 @@ const ChartSettingsWidget = ({
             className={cx("ml1 text-light text-medium-hover cursor-pointer", {
               hidden: !set,
             })}
-            name="close"
+            name="refresh"
+            tooltip="Reset to default"
             onClick={() => onChange(undefined)}
           />
         </h4>

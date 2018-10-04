@@ -166,7 +166,7 @@ function timeStyleOption(style: TimeStyle, description?: ?string) {
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
-    widget: "radio",
+    widget: "select",
     default: DEFAULT_DATE_STYLE,
     getProps: ({ unit }: Column, settings: ColumnSettings) => ({
       options: getDateStyleOptionsForUnit(unit, settings["date_abbreviate"]),
@@ -258,7 +258,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["number_style"],
   },
   currency_style: {
-    title: t`Currency Style`,
+    title: t`Currency label style`,
     widget: "radio",
     props: {
       options: [
@@ -273,8 +273,14 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["number_style"],
   },
   currency_in_header: {
-    title: t`Show currency in header`,
-    widget: "toggle",
+    title: t`Where to display the unit of currency`,
+    widget: "radio",
+    props: {
+      options: [
+        { name: "In the column heading", value: true },
+        { name: "In every table cell", value: false },
+      ],
+    },
     default: true,
     getHidden: (column: Column, settings: ColumnSettings, { series }) =>
       settings["number_style"] !== "currency" ||
@@ -283,19 +289,19 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   locale: {
     title: t`Separator style`,
-    widget: "radio",
+    widget: "select",
     props: {
       options: [
-        { name: "100000.00", value: null },
         { name: "100,000.00", value: "en" },
         { name: "100 000,00", value: "fr" },
         { name: "100.000,00", value: "de" },
+        { name: "100000.00", value: null },
       ],
     },
     default: "en",
   },
   decimals: {
-    title: t`Number of decimal places`,
+    title: t`Minimum number of decimal places`,
     widget: "number",
   },
   scale: {

@@ -6,16 +6,16 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 const SETTING_TYPES = [
   {
-    name: "Date and Time",
+    name: "Dates and Times",
     type: TYPE.DateTime,
-    settings: ["date_style", "date_abbreviate", "time_style"],
+    settings: ["date_style", "date_abbreviate", "time_enabled", "time_style"],
     column: {
       special_type: TYPE.DateTime,
       unit: "second",
     },
   },
   {
-    name: "Number",
+    name: "Numbers",
     type: TYPE.Number,
     settings: ["locale"],
     column: {
@@ -26,7 +26,7 @@ const SETTING_TYPES = [
   {
     name: "Currency",
     type: TYPE.Currency,
-    settings: ["currency_style", "currency"],
+    settings: ["currency_style", "currency", "currency_in_header"],
     column: {
       base_type: TYPE.Number,
       special_type: TYPE.Currency,
@@ -39,13 +39,13 @@ class FormattingWidget extends React.Component {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;
     return (
-      <div className="flex flex-full mt2">
+      <div className="mt2">
         {SETTING_TYPES.map(({ type, name, column, settings }) => (
           <div
-            className="border-column-divider pr4 mr4 flex-full"
-            style={{ maxWidth: 300 }}
+            className="border-bottom pb2 mb4 flex-full"
+            style={{ minWidth: 400 }}
           >
-            <h3 className="mb2">{name}</h3>
+            <h3 className="mb3">{name}</h3>
             <ColumnSettings
               value={value[type]}
               onChange={settings => onChange({ ...value, [type]: settings })}
