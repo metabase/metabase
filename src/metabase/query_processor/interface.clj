@@ -65,36 +65,7 @@
 ;; 2. Relevant Fields and Tables are fetched from the DB, and the placeholder objects are "resolved"
 ;;    and replaced with objects like Field, Value, etc.
 
-;;; ------------------------------------------------ JOINING OBJECTS -------------------------------------------------
-
-;; These are just used by the QueryExpander to record information about how joins should occur.
-
-(s/defrecord ^:deprecated JoinTableField [field-id   :- su/IntGreaterThanZero
-                                          field-name :- su/NonBlankString]
-  nil
-  :load-ns true)
-
-(s/defrecord ^:deprecated JoinTable [source-field :- JoinTableField
-                                     pk-field     :- JoinTableField
-                                     table-id     :- su/IntGreaterThanZero
-                                     table-name   :- su/NonBlankString
-                                     schema       :- (s/maybe su/NonBlankString)
-                                     join-alias   :- su/NonBlankString]
-  nil
-  :load-ns true)
-
 (declare Query)
-
-;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
-(s/defrecord ^:deprecated JoinQuery [source-field :- JoinTableField
-                                     pk-field     :- JoinTableField
-                                     table-id     :- su/IntGreaterThanZero
-                                     schema       :- (s/maybe su/NonBlankString)
-                                     join-alias   :- su/NonBlankString
-                                     query        :- {s/Any  s/Any
-                                                      :query Query}]
-  nil
-  :load-ns true)
 
 ;;; --------------------------------------------------- PROTOCOLS ----------------------------------------------------
 
@@ -554,6 +525,37 @@
      (s/optional-key :template-tags) s/Any}
     (s/recursive #'Query)))
 
+
+;;; ------------------------------------------------ JOINING OBJECTS -------------------------------------------------
+
+;; These are just used by the QueryExpander to record information about how joins should occur.
+
+(s/defrecord ^:deprecated JoinTableField [field-id   :- su/IntGreaterThanZero
+                                          field-name :- su/NonBlankString
+                                          parent-id  :- su/IntGreaterThanZero
+                                          parent     :- s/Any]
+  nil
+  :load-ns true)
+
+(s/defrecord ^:deprecated JoinTable [source-field :- JoinTableField
+                                     pk-field     :- JoinTableField
+                                     table-id     :- su/IntGreaterThanZero
+                                     table-name   :- su/NonBlankString
+                                     schema       :- (s/maybe su/NonBlankString)
+                                     join-alias   :- su/NonBlankString]
+  nil
+  :load-ns true)
+
+;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
+(s/defrecord ^:deprecated JoinQuery [source-field :- JoinTableField
+                                     pk-field     :- JoinTableField
+                                     table-id     :- su/IntGreaterThanZero
+                                     schema       :- (s/maybe su/NonBlankString)
+                                     join-alias   :- su/NonBlankString
+                                     query        :- {s/Any  s/Any
+                                                      :query Query}]
+  nil
+  :load-ns true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     QUERY                                                      |

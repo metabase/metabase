@@ -350,7 +350,9 @@
   (when (seq fk-field-ids)
     (db/query {:select    [[:source-fk.name      :source-field-name]
                            [:source-fk.id        :source-field-id]
+                           [:source-fk.parent_id :source-field-parent-id]
                            [:target-pk.id        :target-field-id]
+                           [:target-pk.parent_id :target-field-parent-id]
                            [:target-pk.name      :target-field-name]
                            [:target-table.id     :target-table-id]
                            [:target-table.name   :target-table-name]
@@ -367,14 +369,19 @@
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
     (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id
-                       target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
-           (i/map->JoinTable {:table-id     target-table-id
+                       target-table-name target-table-schema target-field-parent-id source-field-parent-id]}
+               (fk-field-ids->info source-table-id fk-field-ids)]
+               (i/map->JoinTable {:table-id     target-table-id
                               :table-name   target-table-name
                               :schema       target-table-schema
-                              :pk-field     (i/map->JoinTableField {:field-id   target-field-id
-                                                                    :field-name target-field-name})
-                              :source-field (i/map->JoinTableField {:field-id   source-field-id
-                                                                    :field-name source-field-name})
+                              :pk-field     (assoc (i/map->JoinTableField {:field-id    target-field-id
+                                                                    :field-name  target-field-name
+                                                                    :parent-id   target-field-parent-id})
+                                                                    :parent  (:parent (add-parent-placeholder-if-needed {:parent-id   target-field-parent-id})))
+                              :source-field (assoc (i/map->JoinTableField {:field-id    source-field-id
+                                                                    :field-name  source-field-name
+                                                                    :parent-id   source-field-parent-id})
+                                                                    :parent  (:parent (add-parent-placeholder-if-needed {:parent-id   source-field-parent-id})))
                               ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take
                               ;; the first 30 here
                               :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
@@ -478,9 +485,9 @@
   [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
+          resolve-tables
           resolve-fields
-          resolve-field-literals
-          resolve-tables))
+          resolve-field-literals))
 
 (defn resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
