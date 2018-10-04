@@ -2,7 +2,7 @@
 
 import { t } from "c-3po";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
-import { lineRenderer } from "../lib/LineAreaBarRenderer";
+import { comboRenderer } from "../lib/LineAreaBarRenderer";
 
 import {
   GRAPH_DATA_SETTINGS,
@@ -13,10 +13,10 @@ import {
 } from "../lib/settings/graph";
 
 export default class LineChart extends LineAreaBarChart {
-  static uiName = t`Line`;
-  static identifier = "line";
-  static iconName = "line";
-  static noun = t`line chart`;
+  static uiName = t`Line + Bar`;
+  static identifier = "combo";
+  static iconName = "lineandbar";
+  static noun = t`line and bar chart`;
 
   static settings = {
     ...GRAPH_DATA_SETTINGS,
@@ -26,5 +26,5 @@ export default class LineChart extends LineAreaBarChart {
     ...GRAPH_AXIS_SETTINGS,
   };
 
-  static renderer = lineRenderer;
+  static renderer = comboRenderer;
 }

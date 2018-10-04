@@ -374,7 +374,7 @@ export const pivot = (
     );
   }
 
-  guessVisualization(newCard, tableMetadata);
+  guessVisualization(newCard, tableMetadata, card.display);
 
   return newCard;
 };
@@ -389,7 +389,19 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: Table) => {
+const VISUALIZATIONS_LINE_AREA_BAR = new Set(["bar", "line", "area"]);
+
+// helper to preserve existing display if it's a line/area/bar, otherwise use default
+const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
+  VISUALIZATIONS_LINE_AREA_BAR.has(existingDisplay)
+    ? existingDisplay
+    : defaultDisplay;
+
+const guessVisualization = (
+  card: CardObject,
+  tableMetadata: Table,
+  existingDisplay: ?string = null,
+) => {
   const query = Card.getQuery(card);
   if (!query) {
     return;
@@ -412,14 +424,14 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
       card.visualization_settings["map.type"] = "region";
       card.visualization_settings["map.region"] = "world_countries";
     } else if (isDate(breakoutFields[0])) {
-      card.display = "line";
+      card.display = getLineAreaBarDisplay("line", existingDisplay);
     } else {
-      card.display = "bar";
+      card.display = getLineAreaBarDisplay("bar", existingDisplay);
     }
   } else if (aggregations.length === 1 && breakoutFields.length === 2) {
     if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
       if (isDate(breakoutFields[0])) {
-        card.display = "line";
+        card.display = getLineAreaBarDisplay("line", existingDisplay);
       } else if (_.all(breakoutFields, isCoordinate)) {
         card.display = "map";
         card.visualization_settings["map.type"] = "grid";

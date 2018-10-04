@@ -5,8 +5,6 @@ import d3 from "d3";
 import { t } from "c-3po";
 import crossfilter from "crossfilter";
 
-import { harmony } from "metabase/lib/colors";
-
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
@@ -72,10 +70,10 @@ function generateSplits(list, left = [], right = []) {
   }
 }
 
-function cost(seriesExtents) {
+function axisCost(seriesExtents, favorUnsplit = true) {
   let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
   let axisRange = axisExtent[1] - axisExtent[0];
-  if (seriesExtents.length === 0) {
+  if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
     return 0;
@@ -92,19 +90,35 @@ function cost(seriesExtents) {
   }
 }
 
-export function computeSplit(extents) {
+export function computeSplit(extents, left = [], right = []) {
+  const unassigned = extents
+    .map((e, i) => i)
+    .filter(i => left.indexOf(i) < 0 && right.indexOf(i) < 0);
+
+  // if any are assigned to right we have decided to split so don't favor unsplit
+  const favorUnsplit = right.length > 0;
+
+  const cost = split =>
+    axisCost(split[0].map(i => extents[i]), favorUnsplit) +
+    axisCost(split[1].map(i => extents[i]), favorUnsplit);
+
+  const splits = generateSplits(unassigned, left, right);
+
   let best, bestCost;
-  let splits = generateSplits(extents.map((e, i) => i)).map(split => [
-    split,
-    cost(split[0].map(i => extents[i])) + cost(split[1].map(i => extents[i])),
-  ]);
-  for (let [split, splitCost] of splits) {
+  for (const split of splits) {
+    const splitCost = cost(split);
     if (!best || splitCost < bestCost) {
       best = split;
       bestCost = splitCost;
     }
   }
-  return best && best.sort((a, b) => a[0] - b[0]);
+
+  // don't sort if we provided an initial left/right
+  if (left.length > 0 || right.length > 0) {
+    return best;
+  } else {
+    return best && best.sort((a, b) => a[0] - b[0]);
+  }
 }
 
 const FRIENDLY_NAME_MAP = {
@@ -115,7 +129,7 @@ const FRIENDLY_NAME_MAP = {
   stddev: t`Standard Deviation`,
 };
 
-export function getXValues(datas, chartType) {
+export function getXValues(datas) {
   let xValues = _.chain(datas)
     .map(data => _.pluck(data, "0"))
     .flatten(true)
@@ -158,23 +172,6 @@ export function getFriendlyName(column) {
       column.name
     );
   }
-}
-
-export function getCardColors(card) {
-  let settings = card.visualization_settings;
-  let chartColor, chartColorList;
-  if (card.display === "bar" && settings.bar) {
-    chartColor = settings.bar.color;
-    chartColorList = settings.bar.colors;
-  } else if (card.display !== "bar" && settings.line) {
-    chartColor = settings.line.lineColor;
-    chartColorList = settings.line.colors;
-  }
-  return _.uniq(
-    [chartColor || Object.values(harmony)[0]].concat(
-      chartColorList || Object.values(harmony),
-    ),
-  );
 }
 
 export function isSameSeries(seriesA, seriesB) {

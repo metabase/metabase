@@ -32,7 +32,7 @@ type NestedSettingDef = SettingDef & {
   getInheritedSettingsForObject?: (
     object: NestedObject,
   ) => { [key: string]: any },
-  component: React$Component<any, any, any>,
+  component: Class<React$Component<any, any, any>>,
   id?: SettingId,
 };
 

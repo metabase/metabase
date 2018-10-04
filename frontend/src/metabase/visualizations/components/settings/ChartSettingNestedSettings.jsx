@@ -24,6 +24,10 @@ export type NestedSettingComponentProps = {
   object: ?NestedObject,
   objectSettingsWidgets: ?(WidgetDef[]),
   onChangeEditingObject: (editingObject: ?NestedObject) => void,
+  onChangeObjectSettings: (object: NestedObject, newSettings: Settings) => void,
+  getObjectKey: NestedObjectKeyGetter,
+  settings: Settings,
+  allComputedSettings: Settings,
 };
 type NestedSettingComponent = Class<
   React$Component<NestedSettingComponentProps, *, *>,
