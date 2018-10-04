@@ -16,8 +16,8 @@ import {
   DIMENSION_METRIC_METRIC,
 } from "metabase/visualizations/lib/utils";
 
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
