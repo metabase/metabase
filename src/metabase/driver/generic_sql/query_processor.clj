@@ -322,12 +322,12 @@
   a `JoinQuery`"
   [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
   (let [source-table-id                                  (mbql.u/query->source-table-id *query*)
-        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
+        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)
+        field-info-list (get-field-hierarchy source-table-id)]
     [[table-or-query-expr (keyword join-alias)]
      [:=
-      (let [name (get-qualified-name (get-field-hierarchy source-table-id) source-field)
-      (hx/qualify-and-escape-dots source-schema source-table-name name)
-      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))])]]))
+      (apply hx/qualify-and-escape-dots source-schema source-table-name (get-qualified-name field-info-list source-field))
+      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
 
 (defmethod ->honeysql [Object JoinTable]
   ;; Returns a seq of clauses used in a honeysql join clause
