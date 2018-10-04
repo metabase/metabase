@@ -35,7 +35,10 @@ export default class ChartNestedSettingSeries extends React.Component {
           const key = getObjectKey(single);
           const settings = allComputedSettings[key] || {};
           return (
-            <div key={key} className="pl4 pr2 pb2 mb2 border-bottom">
+            <div
+              key={key}
+              className="pl4 pr2 pb2 mb2 border-bottom align-self-stretch"
+            >
               <div className="flex align-center">
                 <ColorPicker
                   value={settings.color}
@@ -45,7 +48,9 @@ export default class ChartNestedSettingSeries extends React.Component {
                   }
                 />
                 <input
-                  className="input flex-full ml1"
+                  className="input flex-full ml1 align-self-stretch"
+                  // set vertical padding to 0 and use align-self-stretch to match siblings
+                  style={{ paddingTop: 0, paddingBottom: 0 }}
                   size={1}
                   value={settings.title}
                   onChange={e =>
@@ -54,7 +59,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                 />
                 {!isStacked ? (
                   <ButtonGroup
-                    className="ml1"
+                    className="ml1 align-self-stretch"
                     value={settings.display}
                     options={["line", "area", "bar"]}
                     optionValueFn={o => o}
@@ -69,9 +74,13 @@ export default class ChartNestedSettingSeries extends React.Component {
                     <Icon
                       className="text-medium cursor-pointer text-brand-hover"
                       name={isSelected(single) ? "chevronup" : "chevrondown"}
-                      tooltip={isSelected(single) ? "Hide options" : "More options"}
+                      tooltip={
+                        isSelected(single) ? "Hide options" : "More options"
+                      }
                       onClick={() =>
-                        onChangeEditingObject(isSelected(single) ? null : single)
+                        onChangeEditingObject(
+                          isSelected(single) ? null : single,
+                        )
                       }
                     />
                   </IconWrapper>
