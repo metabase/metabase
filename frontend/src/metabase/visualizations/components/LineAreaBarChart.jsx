@@ -390,8 +390,9 @@ function transformSingleSeries(s, series, seriesIndex) {
       const name = [
         // show series title if it's multiseries
         series.length > 1 && card.name,
-        // show column name if there are multiple metrics
-        metricColumnIndexes.length > 1 && getFriendlyName(col),
+        // show column name if there are multiple metrics or sigle series
+        (metricColumnIndexes.length > 1 || series.length === 1) &&
+          getFriendlyName(col),
       ]
         .filter(n => n)
         .join(": ");
