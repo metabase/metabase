@@ -3,7 +3,7 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale } from "metabase/lib/colors";
+import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -149,14 +149,14 @@ function compileFormatter(
 
     const min =
       format.min_type === "custom"
-        ? format.min_value
+        ? parseFloat(format.min_value)
         : format.min_type === "all"
           ? // $FlowFixMe
             Math.min(...format.columns.map(columnMin))
           : columnMin(columnName);
     const max =
       format.max_type === "custom"
-        ? format.max_value
+        ? parseFloat(format.max_value)
         : format.max_type === "all"
           ? // $FlowFixMe
             Math.max(...format.columns.map(columnMax))
@@ -167,10 +167,11 @@ function compileFormatter(
       return () => null;
     }
 
-    return getColorScale(
+    const scale = getColorScale(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
+    return value => roundColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
