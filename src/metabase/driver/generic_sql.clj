@@ -323,7 +323,7 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (get-tables metadata nil))]
+                           (get-tables metadata nil (table-types driver)))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
