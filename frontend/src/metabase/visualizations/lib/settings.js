@@ -12,6 +12,8 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 export type SettingId = string;
 
 export type Settings = {
@@ -238,4 +240,24 @@ export function getPersistableDefaultSettings(
     }
   }
   return persistableDefaultSettings;
+}
+
+export function updateSettings(
+  storedSettings: Settings,
+  changedSettings: Settings,
+): Settings {
+  for (const key of Object.keys(changedSettings)) {
+    MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+  }
+  const newSettings = {
+    ...storedSettings,
+    ...changedSettings,
+  };
+  // remove undefined settings
+  for (const [key, value] of Object.entries(changedSettings)) {
+    if (value === undefined) {
+      delete newSettings[key];
+    }
+  }
+  return newSettings;
 }

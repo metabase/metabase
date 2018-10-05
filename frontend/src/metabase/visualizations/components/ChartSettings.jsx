@@ -17,6 +17,7 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 
 const DEFAULT_TAB_PRIORITY = ["Display"];
 
@@ -63,23 +64,11 @@ class ChartSettings extends Component {
     });
   };
 
-  handleChangeSettings = newSettings => {
-    for (const key of Object.keys(newSettings)) {
-      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
-    }
-    const settings = {
-      ...this.state.settings,
-      ...newSettings,
-    };
-    // remove undefined settings
-    for (const [key, value] of Object.entries(newSettings)) {
-      if (value === undefined) {
-        delete settings[key];
-      }
-    }
+  handleChangeSettings = changedSettings => {
+    const newSettings = updateSettings(this.state.settings, changedSettings);
     this.setState({
-      settings: settings,
-      series: this._getSeries(this.props.series, settings),
+      settings: newSettings,
+      series: this._getSeries(this.props.series, newSettings),
     });
   };
 
