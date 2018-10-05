@@ -135,7 +135,8 @@
   {:columns ["id" "dotted.name"]
    :rows    [[1 "toucan_cage"]
              [2 "four_loko"]
-             [3 "ouija_board"]]}
+             [3 "ouija_board"]]
+   :insights nil}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
       :data (dissoc :cols :native_form :results_metadata)))
@@ -153,8 +154,9 @@
     [["Cam" 1]]]])
 
 (expect-with-engine :postgres
-  {:columns ["name" "name_2"]
-   :rows    [["Cam" "Rasta"]]}
+  {:columns  ["name" "name_2"]
+   :rows     [["Cam" "Rasta"]]
+   :insights nil}
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))

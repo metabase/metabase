@@ -100,7 +100,8 @@
                                    {:name "venue_price", :display_name "Venue Price"}
                                    {:name "venue_name",  :display_name "Venue Name"}
                                    {:name "count",       :display_name "Count", :base_type :type/Integer}])
-               :native_form {:query native-query-1}}}
+               :native_form {:query native-query-1}
+               :insights    nil}}
   (process-native-query native-query-1))
 
 
