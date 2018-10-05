@@ -51,6 +51,7 @@ class FormattingWidget extends React.Component {
               onChange={settings => onChange({ ...value, [type]: settings })}
               column={column}
               whitelist={new Set(settings)}
+              noReset
             />
           </div>
         ))}
