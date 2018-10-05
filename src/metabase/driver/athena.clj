@@ -50,7 +50,7 @@
     :seconds      (hsql/call :from_unixtime expr)
     :milliseconds (recur (hx// expr 1000.0) :seconds)))
 
-(defn mbql->native
+(defn- mbql->native
   "Transpile MBQL query into a native SQL statement."
   [driver {inner-query :query, database :database, :as outer-query}]
   (binding [sqlqp/*query* outer-query]
