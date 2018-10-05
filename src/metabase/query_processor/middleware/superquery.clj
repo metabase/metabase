@@ -19,7 +19,7 @@
       (-> query
           (#(dissoc % :native :super-query :parameters))
           (#(assoc % :query new-query :type :query :nested? true))
-          (#(assoc-in % [:info :query-type] :MBQL))
+          (#(assoc-in % [:info :query-type] "MBQL"))
           (#(assoc-in % [:info :nested?] true))
           (#(if-let [params (:params sub-query)]
              (assoc % :params params)
