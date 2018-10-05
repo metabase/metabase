@@ -138,7 +138,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata)))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -158,7 +158,7 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))
-      :data (dissoc :cols :native_form :results_metadata)))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;;; Check support for `inet` columns
