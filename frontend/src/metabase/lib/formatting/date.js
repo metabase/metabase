@@ -80,7 +80,7 @@ export function getDateFormatFromStyle(
   return style;
 }
 
-const UNITS_WITH_HOUR: DatetimeUnit[] = ["default", "minute", "hour"];
+const UNITS_WITH_HOUR: DatetimeUnit[] = ["default", "second", "minute", "hour"];
 const UNITS_WITH_DAY: DatetimeUnit[] = [
   "default",
   "minute",
