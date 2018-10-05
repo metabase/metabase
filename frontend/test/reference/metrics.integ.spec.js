@@ -22,7 +22,7 @@ import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContai
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 
-// NOTE: database/table_id/source_table are hard-coded, this might be a problem at some point
+// NOTE: database/table_id/source-table are hard-coded, this might be a problem at some point
 
 describe("The Reference Section", () => {
   // Test data
@@ -31,7 +31,7 @@ describe("The Reference Section", () => {
     description: "I did it!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: [["count"]] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const anotherMetricDef = {
@@ -39,7 +39,7 @@ describe("The Reference Section", () => {
     description: "I did it again!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: [["count"]] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const metricCardDef = {
@@ -47,9 +47,8 @@ describe("The Reference Section", () => {
     display: "scalar",
     dataset_query: {
       database: 1,
-      table_id: 1,
       type: "query",
-      query: { source_table: 1, aggregation: [["metric", 1]] },
+      query: { "source-table": 1, aggregation: [["metric", 1]] },
     },
     visualization_settings: {},
   };

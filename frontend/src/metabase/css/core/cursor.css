@@ -3,6 +3,11 @@
   cursor: pointer;
 }
 
+.cursor-grab,
+:local(.cursor-grab) {
+  cursor: grab;
+}
+
 .cursor-default,
 :local(.cursor-default) {
   cursor: default;

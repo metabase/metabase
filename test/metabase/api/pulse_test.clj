@@ -759,7 +759,7 @@
                   Card      [card  {:dataset_query {:database (u/get-id db)
                                                     :type     "query"
                                                     :query    {:source-table (u/get-id table)
-                                                               :aggregation  {:aggregation-type "count"}}}}]
+                                                               :aggregation  [[:count]]}}}]
                   Pulse     [pulse {:name "Daily Sad Toucans"}]
                   PulseCard [_     {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
     (with-pulses-in-readable-collection [pulse]
@@ -862,7 +862,7 @@
                           Card       [card  {:dataset_query {:database (u/get-id db)
                                                              :type     "query"
                                                              :query    {:source-table (u/get-id table),
-                                                                        :aggregation  {:aggregation-type "count"}}}}]]
+                                                                        :aggregation  [[:count]]}}}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (card-api-test/with-cards-in-readable-collection [card]
               (array-map

@@ -26,7 +26,7 @@ function getQueryColumns(card, databases) {
   let table =
     databases &&
     databases[dbId] &&
-    databases[dbId].tables_lookup[query.source_table];
+    databases[dbId].tables_lookup[query["source-table"]];
   if (!table) {
     return null;
   }

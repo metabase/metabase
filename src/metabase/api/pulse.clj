@@ -19,9 +19,9 @@
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [i18n :refer [tru]]
              [schema :as su]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]

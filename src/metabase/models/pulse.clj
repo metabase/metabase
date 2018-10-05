@@ -27,8 +27,9 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]

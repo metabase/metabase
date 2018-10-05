@@ -5,9 +5,7 @@ describe("Query", () => {
     it("should return true for all bare rows variation", () => {
       expect(Query.isBareRows({})).toBe(true);
       expect(Query.isBareRows({ aggregation: null })).toBe(true); // deprecated
-      expect(Query.isBareRows({ aggregation: ["rows"] })).toBe(true); // deprecated
       expect(Query.isBareRows({ aggregation: [] })).toBe(true); // deprecated
-      expect(Query.isBareRows({ aggregation: [["rows"]] })).toBe(true); // deprecated
     });
     it("should return false for other aggregations", () => {
       expect(Query.isBareRows({ aggregation: [["count"]] })).toBe(false);
@@ -88,17 +86,11 @@ describe("Query", () => {
   describe("removeBreakout", () => {
     it("should remove sort as well", () => {
       expect(
-        Query.removeBreakout(
-          { breakout: [1], order_by: [[1, "ascending"]] },
-          0,
-        ),
+        Query.removeBreakout({ breakout: [1], "order-by": [["asc", 1]] }, 0),
       ).toEqual({});
       expect(
-        Query.removeBreakout(
-          { breakout: [2, 1], order_by: [[1, "ascending"]] },
-          0,
-        ),
-      ).toEqual({ breakout: [1], order_by: [[1, "ascending"]] });
+        Query.removeBreakout({ breakout: [2, 1], "order-by": [["asc", 1]] }, 0),
+      ).toEqual({ breakout: [1], "order-by": [["asc", 1]] });
     });
     it("should not remove aggregation sorts", () => {
       expect(
@@ -106,14 +98,14 @@ describe("Query", () => {
           {
             aggregation: [["count"]],
             breakout: [2, 1],
-            order_by: [[["aggregation", 0], "ascending"]],
+            "order-by": [["asc", ["aggregation", 0]]],
           },
           0,
         ),
       ).toEqual({
         aggregation: [["count"]],
         breakout: [1],
-        order_by: [[["aggregation", 0], "ascending"]],
+        "order-by": [["asc", ["aggregation", 0]]],
       });
     });
   });

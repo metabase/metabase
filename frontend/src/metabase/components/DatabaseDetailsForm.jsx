@@ -237,14 +237,11 @@ export default class DatabaseDetailsForm extends Component {
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
-                onChange={val =>
-                  this.onChange("use-jvm-timezone", val)
-                }
+                onChange={val => this.onChange("use-jvm-timezone", val)}
               />
             </div>
             <div className="px2">
-              <h3
-              >{t`Use the Java Virtual Machine (JVM) timezone`}</h3>
+              <h3>{t`Use the Java Virtual Machine (JVM) timezone`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
                 {t`We suggest you leave this off unless you're doing manual timezone casting in
                                 many or most of your queries with this data.`}

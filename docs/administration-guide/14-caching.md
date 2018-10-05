@@ -19,3 +19,8 @@ Instead of setting an absolute number of minutes or seconds for a cached result 
 
 #### Max cache entry size
 Lastly, you can set the maximum size of each question's cache in kilobytes, to prevent them from taking up too much space on your server.
+
+---
+
+## Next: customize how Metabase looks
+With just a few clicks, you can [change Metabase's color palette, logo, and more](15-whitelabeling.md).

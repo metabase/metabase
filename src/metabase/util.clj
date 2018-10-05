@@ -10,7 +10,7 @@
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
             [metabase.config :as config]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]))

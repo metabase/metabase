@@ -15,8 +15,8 @@
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -82,7 +82,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ex-info (tru "You cannot create or revoke permissions for the 'Admin' group.")
+    (throw (ui18n/ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -92,7 +92,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
+    (throw (ui18n/ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -558,8 +558,8 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
-                         (tru "Please fetch new data and try again."))
+    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                               (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

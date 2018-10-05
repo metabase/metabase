@@ -14,8 +14,9 @@
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
@@ -75,9 +76,10 @@
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not tst
-       (throw (if (map? message)
-                (ex-info (:message message) (assoc message :status-code code))
-                (ex-info message            {:status-code code}))))
+       (throw (if (and (map? message)
+                       (not (ui18n/localized-string? message)))
+                (ui18n/ex-info (:message message) (assoc message :status-code code))
+                (ui18n/ex-info message            {:status-code code}))))
      (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
@@ -100,7 +102,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -216,23 +218,23 @@
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
-(def ^:private generic-403
+(defn- generic-403 []
   [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
   "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
-  (check arg generic-403))
+  (check arg (generic-403)))
 (defmacro let-403
   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
   {:style/indent 1}
   [& body]
-  `(api-let ~generic-403 ~@body))
+  `(api-let (generic-403) ~@body))
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   []
-  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
@@ -496,11 +498,6 @@
     (check-404 object)
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
-
-(defn with-current-user-info
-  "Associates the login-attributes of the current users to `m`"
-  [m]
-  (assoc m :user @*current-user*))
 
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the

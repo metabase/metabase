@@ -23,11 +23,12 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [annotate :as annotate]
+             [store :as qp.store]
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [tru]]
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
@@ -468,24 +469,25 @@
 (defn apply-source-table
   "Copy of the Generic SQL implementation of `apply-source-table` that prepends the current dataset ID to the table
   name."
-  [honeysql-form {{table-name :name} :source-table}]
-  {:pre [(seq table-name)]}
-  (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name})))
+  [honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name} (qp.store/table source-table-id)]
+    (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name}))))
 
 (defn- apply-join-tables
   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends the current dataset ID to join-alias."
-  [honeysql-form {join-tables :join-tables, {source-table-name :name} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
-    (let [honeysql-form
-          (h/merge-left-join honeysql-form
-            [(map->BigQueryIdentifier {:table-name table-name})
-             (map->BigQueryIdentifier {:table-name join-alias})]
-            [:=
-             (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
-             (map->BigQueryIdentifier {:table-name join-alias,        :field-name (:field-name pk-field)})])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
+      (let [honeysql-form
+            (h/merge-left-join honeysql-form
+              [(map->BigQueryIdentifier {:table-name table-name})
+               (map->BigQueryIdentifier {:table-name join-alias})]
+              [:=
+               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
+               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:field-name pk-field)})])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn- apply-order-by [driver honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
@@ -515,10 +517,11 @@
      *  Incldues `table-name` in the resulting map (do not remember why we are doing so, perhaps it is needed to run the
         query)"
   [{{{:keys [dataset-id]} :details, :as database} :database
-    {{table-name :name} :source-table}            :query
+    {source-table-id :source-table}               :query
     :as                                           outer-query}]
-  {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [aliased-query (pre-alias-aggregations outer-query)]
+  {:pre [(map? database) (seq dataset-id)]}
+  (let [aliased-query      (pre-alias-aggregations outer-query)
+        {table-name :name} (qp.store/table source-table-id)]
     (binding [sqlqp/*query* aliased-query]
       {:query      (->> aliased-query
                        (sqlqp/build-honeysql-form bq-driver)

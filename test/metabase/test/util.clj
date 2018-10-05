@@ -1,6 +1,10 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clj-time
+             [coerce :as tcoerce]
+             [core :as time]]
+            [clojure.string :as s]
             [clj-time.core :as time]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -29,8 +33,8 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
@@ -44,6 +48,7 @@
            org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -113,7 +118,8 @@
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
                            :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
-                         #(.endsWith (name %) "_id")))
+                         #(s/ends-with? % "_id")
+                         #(s/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -226,6 +232,17 @@
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class TaskHistory)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_]
+                         (let [started (time/now)
+                               ended   (time/plus started (time/millis 10))]
+                           {:db_id      (data/id)
+                            :task       (random-name)
+                            :started_at (du/->Timestamp started)
+                            :ended_at   (du/->Timestamp ended)
+                            :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
   test/WithTempDefaults
@@ -578,8 +595,8 @@
           pause-query                (promise)
           before-query-called-cancel (realized? called-cancel?)
           before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-query checkins
-                                              (ql/aggregation (ql/count))))
+          query-thunk                (fn [] (data/run-mbql-query checkins
+                                              {:aggregation [[:count]]}))
           ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
           ;; which should cause an interrupt
           query-future               (f query-thunk called-query? called-cancel? pause-query)]

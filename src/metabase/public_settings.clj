@@ -8,9 +8,8 @@
              [setting :as setting :refer [defsetting]]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util
-             [i18n :refer [available-locales-with-names set-locale]]
+             [i18n :refer [available-locales-with-names set-locale tru]]
              [password :as password]]
-            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
   (:import [java.util TimeZone UUID]))
 

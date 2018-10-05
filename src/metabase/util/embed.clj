@@ -9,7 +9,7 @@
             [hiccup.core :refer [html]]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [ring.util.codec :as codec]))
 
 ;;; ------------------------------------------------------------ PUBLIC LINKS UTIL FNS ------------------------------------------------------------

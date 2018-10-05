@@ -18,7 +18,7 @@ function getActionPropsForTimeseriesClick(unit, value) {
     question: question
       .query()
       .setQuery({
-        source_table: ORDERS_TABLE_ID,
+        "source-table": ORDERS_TABLE_ID,
         aggregation: [["count"]],
         breakout: [
           [
@@ -54,7 +54,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(actions).toHaveLength(1);
     const q = actions[0].question();
     expect(q.query().query()).toEqual({
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       filter: [
         "=",
         [
@@ -87,7 +87,7 @@ describe("UnderlyingRecordsDrill", () => {
       null,
     );
     expect(queryWithoutFilterValue).toEqual({
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       filter: [
         "=",
         [

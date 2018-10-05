@@ -44,7 +44,7 @@ type State = {
   pageSize: number,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableSimpleSummary extends Component {
   props: Props;
   state: State;

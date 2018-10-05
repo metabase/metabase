@@ -24,12 +24,13 @@
              [params :as params]]
             [metabase.util
              [embed :as embed]
+             [i18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.mbql.normalize :as normalize]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -42,7 +43,7 @@
   [card]
   (card/map->CardInstance
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
-                               [:dataset_query :type [:native :template_tags]]])))
+                               [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value CONDITIONS, removing all columns that should not be visible to the general
@@ -192,7 +193,8 @@
           slug->dashboard-param   (u/key-by :slug dashboard-params)
           dashcard-param-mappings (dashboard->dashcard-param-mappings dashboard-id)]
       (for [{slug :slug, target :target, :as query-param} query-params
-            :let [dashboard-param
+            :let [target (normalize/normalize-tokens target :ignore-path)
+                  dashboard-param
                   (or
                    ;; try to match by slug...
                    (slug->dashboard-param slug)

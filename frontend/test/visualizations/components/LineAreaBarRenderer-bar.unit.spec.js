@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS = {
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
   "graph.colors": ["#00FF00", "#FF0000"],
+  series: () => ({ display: "bar" }),
 };
 
 describe("LineAreaBarRenderer-bar", () => {

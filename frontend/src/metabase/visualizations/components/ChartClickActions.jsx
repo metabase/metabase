@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -50,6 +51,9 @@ const SECTIONS = {
   auto: {
     icon: "bolt",
   },
+  Formatting: {
+    icon: "pencil",
+  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
@@ -71,6 +75,7 @@ type State = {
   popoverAction: ?ClickAction,
 };
 
+@connect()
 export default class ChartClickActions extends Component {
   props: Props;
   state: State = {
@@ -86,7 +91,14 @@ export default class ChartClickActions extends Component {
 
   handleClickAction = (action: ClickAction) => {
     const { onChangeCardAndRun } = this.props;
-    if (action.popover) {
+    if (action.action) {
+      const reduxAction = action.action();
+      if (reduxAction) {
+        // $FlowFixMe: dispatch provided by @connect
+        this.props.dispatch(reduxAction);
+      }
+      this.props.onClose();
+    } else if (action.popover) {
       MetabaseAnalytics.trackEvent(
         "Actions",
         "Open Click Action Popover",

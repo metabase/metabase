@@ -33,8 +33,9 @@
              [cache :as cache]
              [results-metadata :as results-metadata]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -563,7 +564,7 @@
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
-    (assoc query :cache_ttl ttl)))
+    (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."

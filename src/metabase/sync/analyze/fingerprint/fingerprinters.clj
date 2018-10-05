@@ -7,8 +7,9 @@
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
            org.joda.time.DateTime))
@@ -123,7 +124,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
+         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))
@@ -149,8 +150,8 @@
        acc)
      acc)))
 
-(defprotocol ^:private IDateCoercible
-  "Protocol for converting objects to `java.util.Date`"
+(defprotocol IDateCoercible
+  "Protocol for converting objects in resultset to `java.util.Date`"
   (->date ^java.util.Date [this]
     "Coerce object to a `java.util.Date`."))
 
@@ -192,6 +193,6 @@
   (apply col-wise (for [field fields]
                     (fingerprinter
                      (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with  on first sync
+                       ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :special_type :last_analyzed) field))
                        (assoc :special_type (classify.name/infer-special-type field)))))))
