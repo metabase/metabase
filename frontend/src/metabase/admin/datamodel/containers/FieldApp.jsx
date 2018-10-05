@@ -215,93 +215,89 @@ export default class FieldApp extends Component {
                 />
               </div>
 
-              {this.state.tab === "formatting" ? (
-                <Section>
-                  <ColumnSettings
-                    value={(field && field.settings) || {}}
-                    onChange={this.onUpdateFieldSettings}
-                    column={field}
-                    blacklist={new Set(["column_title"])}
-                    inheritedSettings={getGlobalSettingsForColumn(field)}
-                  />
-                </Section>
-              ) : (
-                <div>
-                  <Section>
-                    <FieldHeader
-                      field={field}
-                      updateFieldProperties={this.onUpdateFieldProperties}
-                      updateFieldDimension={this.onUpdateFieldDimension}
-                    />
-                  </Section>
+              <Section>
+                <FieldHeader
+                  field={field}
+                  updateFieldProperties={this.onUpdateFieldProperties}
+                  updateFieldDimension={this.onUpdateFieldDimension}
+                />
+              </Section>
 
-                  <Section>
-                    <SectionHeader
-                      title={t`Visibility`}
-                      description={t`Where this field will appear throughout Metabase`}
-                    />
-                    <FieldVisibilityPicker
-                      triggerClasses={SelectClasses}
-                      field={field.getPlainObject()}
-                      updateField={this.onUpdateField}
-                    />
-                  </Section>
+              <Section>
+                <SectionHeader
+                  title={t`Visibility`}
+                  description={t`Where this field will appear throughout Metabase`}
+                />
+                <FieldVisibilityPicker
+                  triggerClasses={SelectClasses}
+                  field={field.getPlainObject()}
+                  updateField={this.onUpdateField}
+                />
+              </Section>
 
-                  <Section>
-                    <SectionHeader title={t`Type`} />
-                    <SpecialTypeAndTargetPicker
-                      triggerClasses={SelectClasses}
-                      field={field.getPlainObject()}
-                      updateField={this.onUpdateField}
-                      idfields={idfields}
-                      selectSeparator={<SelectSeparator />}
-                    />
-                  </Section>
+              <Section>
+                <SectionHeader title={t`Type`} />
+                <SpecialTypeAndTargetPicker
+                  triggerClasses={SelectClasses}
+                  field={field.getPlainObject()}
+                  updateField={this.onUpdateField}
+                  idfields={idfields}
+                  selectSeparator={<SelectSeparator />}
+                />
+              </Section>
 
-                  <Section>
-                    <SectionHeader
-                      title={t`Filtering on this field`}
-                      description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
-                    />
-                    <Select
-                      triggerClasses={SelectClasses}
-                      value={_.findWhere(has_field_values_options, {
-                        value: field.has_field_values,
-                      })}
-                      onChange={option =>
-                        this.onUpdateFieldProperties({
-                          has_field_values: option.value,
-                        })
-                      }
-                      options={has_field_values_options}
-                    />
-                  </Section>
+              <Section>
+                <SectionHeader
+                  title={t`Filtering on this field`}
+                  description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
+                />
+                <Select
+                  triggerClasses={SelectClasses}
+                  value={_.findWhere(has_field_values_options, {
+                    value: field.has_field_values,
+                  })}
+                  onChange={option =>
+                    this.onUpdateFieldProperties({
+                      has_field_values: option.value,
+                    })
+                  }
+                  options={has_field_values_options}
+                />
+              </Section>
 
-                  <Section>
-                    <FieldRemapping
-                      field={field}
-                      table={table}
-                      fields={metadata.fields}
-                      updateFieldProperties={this.onUpdateFieldProperties}
-                      updateFieldValues={this.onUpdateFieldValues}
-                      updateFieldDimension={this.onUpdateFieldDimension}
-                      deleteFieldDimension={this.onDeleteFieldDimension}
-                      fetchTableMetadata={fetchTableMetadata}
-                    />
-                  </Section>
+              <Section>
+                <FieldRemapping
+                  field={field}
+                  table={table}
+                  fields={metadata.fields}
+                  updateFieldProperties={this.onUpdateFieldProperties}
+                  updateFieldValues={this.onUpdateFieldValues}
+                  updateFieldDimension={this.onUpdateFieldDimension}
+                  deleteFieldDimension={this.onDeleteFieldDimension}
+                  fetchTableMetadata={fetchTableMetadata}
+                />
+              </Section>
 
-                  <Section>
-                    <UpdateCachedFieldValues
-                      rescanFieldValues={() =>
-                        this.props.rescanFieldValues(field.id)
-                      }
-                      discardFieldValues={() =>
-                        this.props.discardFieldValues(field.id)
-                      }
-                    />
-                  </Section>
-                </div>
-              )}
+              <Section>
+                <UpdateCachedFieldValues
+                  rescanFieldValues={() =>
+                    this.props.rescanFieldValues(field.id)
+                  }
+                  discardFieldValues={() =>
+                    this.props.discardFieldValues(field.id)
+                  }
+                />
+              </Section>
+
+              <Section>
+                <ColumnSettings
+                  value={(field && field.settings) || {}}
+                  onChange={this.onUpdateFieldSettings}
+                  column={field}
+                  blacklist={new Set(["column_title"])}
+                  inheritedSettings={getGlobalSettingsForColumn(field)}
+                />
+              </Section>
             </div>
           </div>
         )}
