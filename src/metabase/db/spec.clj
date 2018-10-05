@@ -2,7 +2,8 @@
   "Functions for creating JDBC DB specs for a given engine.
   Only databases that are supported as application DBs should have functions in this namespace;
   otherwise, similar functions are only needed by drivers, and belong in those namespaces."
-  (:require [ring.util.codec :as codec]))
+  (:require [clojure.string :as str]
+            [ring.util.codec :as codec]))
 
 
 (defn h2
@@ -16,6 +17,15 @@
           :subname     db}
          (dissoc opts :db)))
 
+(defn- remove-required-keys [db-spec & more-keys]
+  (apply dissoc db-spec (concat [:host :port :db :user :password :additional-options]
+                                more-keys)))
+
+(defn- make-subname [host port db extra-connection-params]
+  (let [query-params (codec/form-encode extra-connection-params)]
+    (str "//" host ":" port "/" db (when-not (str/blank? query-params)
+                                     (str "?" query-params)))))
+
 (defn postgres
   "Create a database specification for a postgres database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
@@ -23,11 +33,13 @@
   [{:keys [host port db]
     :or   {host "localhost", port 5432, db ""}
     :as   opts}]
-  (let [query-params (codec/form-encode (merge (dissoc opts :host :port :db :user :password :additional-options :sslfactory) {:OpenSourceSubProtocolOverride true}))]
-     (merge {:classname   "org.postgresql.Driver"
-             :subprotocol "postgresql"
-             :subname     (str "//" host ":" port "/" db "?" query-params)}
-        (dissoc opts :host :port :db))))
+  (let [extra-conn-params (-> opts
+                              (remove-required-keys :sslfactory)
+                              (merge {:OpenSourceSubProtocolOverride true}))]
+    (merge {:classname   "org.postgresql.Driver"
+            :subprotocol "postgresql"
+            :subname     (make-subname host port db extra-conn-params)}
+           (dissoc opts :host :port :db))))
 
 (defn mysql
   "Create a database specification for a mysql database. Opts should include keys
@@ -36,11 +48,12 @@
   [{:keys [host port db]
     :or   {host "localhost", port 3306, db ""}
     :as   opts}]
-  (merge {:classname   "com.mysql.jdbc.Driver"
-          :subprotocol "mysql"
-          :subname     (str "//" host ":" port "/" db)
-          :delimiters  "`"}
-         (dissoc opts :host :port :db)))
+  (let [extra-connection-params (remove-required-keys opts)]
+    (merge {:classname   "com.mysql.jdbc.Driver"
+            :subprotocol "mysql"
+            :subname     (make-subname host port db extra-connection-params)
+            :delimiters  "`"}
+           (dissoc opts :host :port :db))))
 
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
