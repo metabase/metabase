@@ -80,7 +80,10 @@ const ColumnSettings = ({
           />
         ))
       ) : (
-        <EmptyState title={t`No formatting settings`} />
+        <EmptyState
+          title={t`No formatting settings`}
+          illustrationElement={<img src="../app/assets/img/no_results.svg" />}
+        />
       )}
     </div>
   );
