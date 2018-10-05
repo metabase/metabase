@@ -1,7 +1,13 @@
 import React from "react";
 
-const Section = ({ children }) => (
-  <section className="my4 pb4 border-bottom">{children}</section>
+import cx from "classnames";
+
+const Section = ({ children, first, last }) => (
+  <section
+    className={cx("pb4", first ? "mb4" : "my4", { "border-bottom": !last })}
+  >
+    {children}
+  </section>
 );
 
 export const SectionHeader = ({ title, description }) => (

@@ -1,3 +1,5 @@
+/* @flow */
+
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
@@ -11,39 +13,45 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "c-3po";
 
+// COMPONENTS
+
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Radio from "metabase/components/Radio";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import * as metadataActions from "metabase/redux/metadata";
-import * as datamodelActions from "../datamodel";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  FieldVisibilityPicker,
-  SpecialTypeAndTargetPicker,
-} from "metabase/admin/datamodel/components/database/ColumnItem";
 
+import AdminLayout from "metabase/components/AdminLayout.jsx";
+import {
+  LeftNavPane,
+  LeftNavPaneItem,
+} from "metabase/components/LeftNavPane.jsx";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 
+import {
+  FieldVisibilityPicker,
+  SpecialTypeAndTargetPicker,
+} from "../components/database/ColumnItem";
 import FieldRemapping from "../components/FieldRemapping";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
-
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
+// SELECTORS
+import { getMetadata } from "metabase/selectors/metadata";
 import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 
+// ACTIONS
+import * as metadataActions from "metabase/redux/metadata";
+import * as datamodelActions from "../datamodel";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
+// LIB
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
 import colors from "metabase/lib/colors";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -168,7 +176,11 @@ export default class FieldApp extends React.Component {
       databaseId,
       tableId,
       idfields,
+      rescanFieldValues,
+      discardFieldValues,
       fetchTableMetadata,
+      location,
+      params: { section },
     } = this.props;
 
     const db = metadata.databases[databaseId];
@@ -180,141 +192,190 @@ export default class FieldApp extends React.Component {
     return (
       <LoadingAndErrorWrapper loading={isLoading} error={null} noWrapper>
         {() => (
-          <div className="relative">
-            <div className="wrapper wrapper--trim">
-              <BackButton databaseId={databaseId} tableId={tableId} />
-              <div className="my4 py1 ml-auto mr-auto">
-                <Breadcrumbs
-                  crumbs={[
-                    [db.name, `/admin/datamodel/database/${db.id}`],
-                    [
-                      table.display_name,
-                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                    ],
-                    t`${field.display_name} – Field Settings`,
-                  ]}
-                />
+          <AdminLayout
+            sidebar={
+              <div>
+                <Header>
+                  <BackButton databaseId={databaseId} tableId={tableId} />
+                </Header>
+                <LeftNavPane>
+                  <LeftNavPaneItem
+                    name={t`General`}
+                    path={location.pathname.replace(/[^/]+$/, "general")}
+                    index
+                  />
+                  <LeftNavPaneItem
+                    name={t`Formatting`}
+                    path={location.pathname.replace(/[^/]+$/, "formatting")}
+                  />
+                </LeftNavPane>
               </div>
-              <div className="absolute top right mt4 mr4">
-                <SaveStatus ref={ref => (this.saveStatus = ref)} />
-              </div>
-
-              <div className="border-bottom">
-                <Radio
-                  value={this.state.tab}
-                  onChange={tab => this.setState({ tab })}
-                  options={[
-                    { name: t`General`, value: "general" },
-                    { name: t`Formatting`, value: "formatting" },
-                  ]}
-                  underlined
-                />
-              </div>
-
-              <Section>
-                <FieldHeader
-                  field={field}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldDimension={this.onUpdateFieldDimension}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Visibility`}
-                  description={t`Where this field will appear throughout Metabase`}
-                />
-                <div style={{ maxWidth: 400 }}>
-                  <FieldVisibilityPicker
-                    field={field.getPlainObject()}
-                    updateField={this.onUpdateField}
+            }
+          >
+            <div className="wrapper">
+              <Header>
+                <div className="mb4 py1 ml-auto mr-auto">
+                  <Breadcrumbs
+                    crumbs={[
+                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [
+                        table.display_name,
+                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                      ],
+                      t`${field.display_name} – Field Settings`,
+                    ]}
                   />
                 </div>
-              </Section>
+                <div className="absolute top right mt4 mr4">
+                  <SaveStatus ref={ref => (this.saveStatus = ref)} />
+                </div>
+              </Header>
 
-              <Section>
-                <SectionHeader title={t`Field Type`} />
-                <SpecialTypeAndTargetPicker
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                  idfields={idfields}
-                  selectSeparator={<SelectSeparator />}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Filtering on this field`}
-                  description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
-                />
-                <Select
-                  value={_.findWhere(has_field_values_options, {
-                    value: field.has_field_values,
-                  })}
-                  onChange={option =>
-                    this.onUpdateFieldProperties({
-                      has_field_values: option.value,
-                    })
-                  }
-                  options={has_field_values_options}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Display values`}
-                  description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
-                />
-                <FieldRemapping
+              {section == null || section === "general" ? (
+                <FieldGeneralPane
                   field={field}
+                  idfields={idfields}
                   table={table}
-                  fields={metadata.fields}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldValues={this.onUpdateFieldValues}
-                  updateFieldDimension={this.onUpdateFieldDimension}
-                  deleteFieldDimension={this.onDeleteFieldDimension}
+                  metadata={metadata}
+                  onUpdateField={this.onUpdateField}
+                  onUpdateFieldValues={this.onUpdateFieldValues}
+                  onUpdateFieldProperties={this.onUpdateFieldProperties}
+                  onUpdateFieldDimension={this.onUpdateFieldDimension}
+                  onDeleteFieldDimension={this.onDeleteFieldDimension}
+                  rescanFieldValues={rescanFieldValues}
+                  discardFieldValues={discardFieldValues}
                   fetchTableMetadata={fetchTableMetadata}
                 />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Cached field values`}
-                  description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+              ) : section === "formatting" ? (
+                <FieldSettingsPane
+                  field={field}
+                  onUpdateFieldSettings={this.onUpdateFieldSettings}
                 />
-                <UpdateCachedFieldValues
-                  rescanFieldValues={() =>
-                    this.props.rescanFieldValues(field.id)
-                  }
-                  discardFieldValues={() =>
-                    this.props.discardFieldValues(field.id)
-                  }
-                />
-              </Section>
-
-              <Section>
-                <ColumnSettings
-                  value={(field && field.settings) || {}}
-                  onChange={this.onUpdateFieldSettings}
-                  column={field}
-                  blacklist={new Set(["column_title"])}
-                  inheritedSettings={getGlobalSettingsForColumn(field)}
-                />
-              </Section>
+              ) : null}
             </div>
-          </div>
+          </AdminLayout>
         )}
       </LoadingAndErrorWrapper>
     );
   }
 }
 
+const Header = ({ children, height = 50 }) => (
+  <div style={{ height }}>{children}</div>
+);
+
+const FieldGeneralPane = ({
+  field,
+  idfields,
+  table,
+  metadata,
+  onUpdateField,
+  onUpdateFieldValues,
+  onUpdateFieldProperties,
+  onUpdateFieldDimension,
+  onDeleteFieldDimension,
+  rescanFieldValues,
+  discardFieldValues,
+  fetchTableMetadata,
+}) => (
+  <div>
+    <Section first>
+      <FieldHeader
+        field={field}
+        updateFieldProperties={onUpdateFieldProperties}
+        updateFieldDimension={onUpdateFieldDimension}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Visibility`}
+        description={t`Where this field will appear throughout Metabase`}
+      />
+      <div style={{ maxWidth: 400 }}>
+        <FieldVisibilityPicker
+          field={field.getPlainObject()}
+          updateField={onUpdateField}
+        />
+      </div>
+    </Section>
+
+    <Section>
+      <SectionHeader title={t`Field Type`} />
+      <SpecialTypeAndTargetPicker
+        field={field.getPlainObject()}
+        updateField={onUpdateField}
+        idfields={idfields}
+        selectSeparator={<SelectSeparator />}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Filtering on this field`}
+        description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
+      />
+      <Select
+        value={_.findWhere(has_field_values_options, {
+          value: field.has_field_values,
+        })}
+        onChange={option =>
+          onUpdateFieldProperties({
+            has_field_values: option.value,
+          })
+        }
+        options={has_field_values_options}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Display values`}
+        description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
+      />
+      <FieldRemapping
+        field={field}
+        table={table}
+        fields={metadata.fields}
+        updateFieldProperties={onUpdateFieldProperties}
+        updateFieldValues={onUpdateFieldValues}
+        updateFieldDimension={onUpdateFieldDimension}
+        deleteFieldDimension={onDeleteFieldDimension}
+        fetchTableMetadata={fetchTableMetadata}
+      />
+    </Section>
+
+    <Section last>
+      <SectionHeader
+        title={t`Cached field values`}
+        description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+      />
+      <UpdateCachedFieldValues
+        rescanFieldValues={() => rescanFieldValues(field.id)}
+        discardFieldValues={() => discardFieldValues(field.id)}
+      />
+    </Section>
+  </div>
+);
+
+const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
+  <Section last>
+    <ColumnSettings
+      value={(field && field.settings) || {}}
+      onChange={onUpdateFieldSettings}
+      column={field}
+      blacklist={new Set(["column_title"])}
+      inheritedSettings={getGlobalSettingsForColumn(field)}
+    />
+  </Section>
+);
+
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
 export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
+    className="circle text-white p2 flex align-center justify-center inline"
     style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />

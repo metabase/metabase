@@ -2,6 +2,10 @@
 
 import React from "react";
 
+import { t } from "c-3po";
+
+import EmptyState from "metabase/components/EmptyState";
+
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
 import {
   getSettingsWidgets,
@@ -53,25 +57,28 @@ const ColumnSettings = ({
       onChange({ ...storedSettings, ...changedSettings });
     },
     { series },
+  ).filter(
+    widget =>
+      (!whitelist || whitelist.has(widget.id)) &&
+      (!blacklist || !blacklist.has(widget.id)),
   );
 
   return (
     <div>
-      {widgets
-        .filter(
-          widget =>
-            (!whitelist || whitelist.has(widget.id)) &&
-            (!blacklist || !blacklist.has(widget.id)),
-        )
-        .map(widget => (
+      {widgets.length > 0 ? (
+        widgets.map(widget => (
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
+            // FIXME: this is to force all settings to be visible but causes irrelevant settings to be shown
             hidden={false}
             unset={storedSettings[widget.id] === undefined}
             noPadding
           />
-        ))}
+        ))
+      ) : (
+        <EmptyState title={t`No formatting settings`} />
+      )}
     </div>
   );
 };
