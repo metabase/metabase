@@ -109,6 +109,7 @@
           :column->base-type         (u/drop-first-arg column->base-type)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :date                      (u/drop-first-arg date)
+          :table-types               (constantly ["EXTERNAL_TABLE", "TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"])
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :athena (AthenaDriver.))
