@@ -3,6 +3,8 @@
   (:require [metabase.driver :as driver]
             [metabase.util :as u]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [honeysql
              [core :as hsql]]
             [metabase.util
@@ -22,10 +24,39 @@
    :password    password
    :s3_staging_dir s3_staging_dir})
 
+; https://docs.aws.amazon.com/athena/latest/ug/data-types.html
+(defn- column->base-type [column-type]
+  ({:boolean    :type/Boolean
+    :tinyint    :type/Integer
+    :smallint   :type/Integer
+    :int        :type/Integer
+    :integer    :type/Integer
+    :bigint     :type/BigInteger
+    :double     :type/Float
+    :float      :type/Float
+    :decimal    :type/Decimal
+    :char       :type/Text
+    :varchar    :type/Text
+    :string     :type/Text
+    :binary     :type/*
+    :date       :type/Date
+    :timestamp  :type/DateTime
+    :array      :type/Array
+    :map        :type/Dictionary
+    :struct     :type/Dictionary} (keyword column-type)))
+
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :from_unixtime expr)
     :milliseconds (recur (hx// expr 1000.0) :seconds)))
+
+(defn mbql->native
+  "Transpile MBQL query into a native SQL statement."
+  [driver {inner-query :query, database :database, :as outer-query}]
+  (binding [sqlqp/*query* outer-query]
+    (let [honeysql-form (sqlqp/build-honeysql-form driver outer-query)
+          [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
+      {:query  (if (seq args) (unprepare/unprepare (cons sql args) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp) sql)})))
 
 (defn- date [unit expr]
   (case unit
@@ -49,6 +80,9 @@
     :quarter-of-year (hsql/call :quarter expr)
     :year            (hsql/call :year expr)))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
 (u/strict-extend AthenaDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
@@ -67,12 +101,13 @@
                                         :display-name "AWS secret key"
                                         :type         :password
                                         :placeholder  "AWS_SECRET_ACCESS_KEY"
-                                        :required     true}])})
+                                        :required     true}])
+          :mbql->native              mbql->native})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-        {:connection-details->spec   (u/drop-first-arg connection-details->spec)
-          :column->base-type         (constantly nil)
-          :string-length-fn          (constantly nil)
+         {:connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :column->base-type         (u/drop-first-arg column->base-type)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :date                      (u/drop-first-arg date)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
