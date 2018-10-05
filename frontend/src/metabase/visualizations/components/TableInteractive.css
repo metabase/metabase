@@ -100,3 +100,9 @@
 .TableInteractive-cellWrapper:hover {
   background-color: color(var(--color-brand) alpha(-90%));
 }
+
+.TableInteractive--PK .cellData {
+  background-color: color(var(--color-brand) alpha(-80%));
+  padding: 0.25em 0.65em;
+  border-radius: 99px;
+}
