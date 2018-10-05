@@ -135,9 +135,9 @@ function compileFormatter(
       case ">":
         return v => (v > value ? color : null);
       case "=":
-        return v => (v === value ? color : null);
+        return v => (v == value ? color : null);
       case "!=":
-        return v => (v !== value ? color : null);
+        return v => (v != value ? color : null);
     }
   } else if (format.type === "range") {
     const columnMin = name =>
