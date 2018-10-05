@@ -79,7 +79,8 @@
                :columns     ["count"]
                :cols        [{:name "count", :display_name "Count", :base_type :type/Integer}]
                :native_form {:collection "venues"
-                             :query      native-query}}}
+                             :query      native-query}
+               :insights  nil}}
   (-> (qp/process-query {:native   {:query      native-query
                                     :collection "venues"}
                          :type     :native
