@@ -8,7 +8,13 @@ const SETTING_TYPES = [
   {
     name: "Dates and Times",
     type: TYPE.DateTime,
-    settings: ["date_style", "date_abbreviate", "time_enabled", "time_style"],
+    settings: [
+      "date_style",
+      "date_separator",
+      "date_abbreviate",
+      "time_enabled",
+      "time_style",
+    ],
     column: {
       special_type: TYPE.DateTime,
       unit: "second",
@@ -17,7 +23,7 @@ const SETTING_TYPES = [
   {
     name: "Numbers",
     type: TYPE.Number,
-    settings: ["locale"],
+    settings: ["number_separators"],
     column: {
       base_type: TYPE.Number,
       special_type: TYPE.Number,

@@ -41,6 +41,11 @@ const ColumnSettings = ({
   // fake series
   const series = [{ card: {}, data: { rows: [], cols: [] } }];
 
+  // add a "unit" to make certain settings work
+  if (column.unit == null) {
+    column = { ...column, unit: "millisecond" };
+  }
+
   const settingsDefs = getSettingDefintionsForColumn(series, column);
 
   const computedSettings = getComputedSettings(

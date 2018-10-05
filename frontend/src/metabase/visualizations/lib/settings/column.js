@@ -2,6 +2,7 @@
 
 import { t } from "c-3po";
 import moment from "moment";
+import _ from "underscore";
 
 import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
@@ -101,28 +102,32 @@ const EXAMPLE_DATE = moment("2018-01-07 17:24");
 function getDateStyleOptionsForUnit(
   unit: ?DatetimeUnit,
   abbreviate?: boolean = false,
+  separator?: string = null,
 ) {
   const options = [
-    dateStyleOption("MMMM D, YYYY", unit, null, abbreviate),
-    dateStyleOption("D MMMM, YYYY", unit, null, abbreviate),
-    dateStyleOption("dddd, MMMM D, YYYY", unit, null, abbreviate),
+    dateStyleOption("MMMM D, YYYY", unit, null, abbreviate, separator),
+    dateStyleOption("D MMMM, YYYY", unit, null, abbreviate, separator),
+    dateStyleOption("dddd, MMMM D, YYYY", unit, null, abbreviate, separator),
     dateStyleOption(
       "M/D/YYYY",
       unit,
       hasDay(unit) ? "month, day, year" : null,
       abbreviate,
+      separator,
     ),
     dateStyleOption(
       "D/M/YYYY",
       unit,
       hasDay(unit) ? "day, month, year" : null,
       abbreviate,
+      separator,
     ),
     dateStyleOption(
       "YYYY/M/D",
       unit,
       hasDay(unit) ? "year, month, day" : null,
       abbreviate,
+      separator,
     ),
   ];
   const seen = new Set();
@@ -142,8 +147,9 @@ function dateStyleOption(
   unit: ?DatetimeUnit,
   description?: ?string,
   abbreviate?: boolean = false,
+  separator?: string = null,
 ) {
-  let format = getDateFormatFromStyle(style, unit);
+  let format = getDateFormatFromStyle(style, unit, separator);
   if (abbreviate) {
     format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
   }
@@ -168,11 +174,38 @@ export const DATE_COLUMN_SETTINGS = {
     title: t`Date style`,
     widget: "select",
     default: DEFAULT_DATE_STYLE,
+    isValid: ({ unit }: Column, settings: ColumnSettings) => {
+      const options = getDateStyleOptionsForUnit(unit);
+      return !!_.findWhere(options, { value: settings["date_style"] });
+    },
     getProps: ({ unit }: Column, settings: ColumnSettings) => ({
-      options: getDateStyleOptionsForUnit(unit, settings["date_abbreviate"]),
+      options: getDateStyleOptionsForUnit(
+        unit,
+        settings["date_abbreviate"],
+        settings["date_separator"],
+      ),
     }),
     getHidden: ({ unit }: Column) =>
       getDateStyleOptionsForUnit(unit).length < 2,
+  },
+  date_separator: {
+    title: t`Date separator`,
+    widget: "buttonGroup",
+    default: "/",
+    getProps: (column: Column, settings: ColumnSettings) => {
+      const style = /\//.test(settings["date_style"])
+        ? settings["date_style"]
+        : "M/D/YYYY";
+      return {
+        options: [
+          { name: style, value: "/" },
+          { name: style.replace(/\//g, "-"), value: "-" },
+          { name: style.replace(/\//g, "."), value: "." },
+        ],
+      };
+    },
+    getHidden: ({ unit }: Column, settings: ColumnSettings) =>
+      !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
     title: t`Abbreviate names of days and months`,
@@ -287,18 +320,19 @@ export const NUMBER_COLUMN_SETTINGS = {
       series[0].card.display !== "table",
     readDependencies: ["number_style"],
   },
-  locale: {
+  number_separators: {
+    // uses 1-2 character string to represent decimal and thousands separators
     title: t`Separator style`,
     widget: "select",
     props: {
       options: [
-        { name: "100,000.00", value: "en" },
-        { name: "100 000,00", value: "fr" },
-        { name: "100.000,00", value: "de" },
-        { name: "100000.00", value: null },
+        { name: "100,000.00", value: ".," },
+        { name: "100 000,00", value: ", " },
+        { name: "100.000,00", value: ",." },
+        { name: "100000.00", value: "." },
       ],
     },
-    default: "en",
+    default: ".,",
   },
   decimals: {
     title: t`Minimum number of decimal places`,
@@ -328,7 +362,6 @@ export const NUMBER_COLUMN_SETTINGS = {
       "number_style",
       "currency_style",
       "currency",
-      "locale",
       "decimals",
     ],
   },
@@ -339,7 +372,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         settings["currency_in_header"]
       ) {
         return (0)
-          .toLocaleString(settings["locale"] || "en", {
+          .toLocaleString("en", {
             style: "currency",
             currency: settings["currency"],
             currencyDisplay: settings["currency_style"],
@@ -354,7 +387,6 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency",
       "currency_style",
       "currency_header_only",
-      "locale",
     ],
   },
   _column_title_full: {
