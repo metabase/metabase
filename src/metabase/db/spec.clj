@@ -1,7 +1,9 @@
 (ns metabase.db.spec
   "Functions for creating JDBC DB specs for a given engine.
   Only databases that are supported as application DBs should have functions in this namespace;
-  otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
+  otherwise, similar functions are only needed by drivers, and belong in those namespaces."
+  (:require [ring.util.codec :as codec]))
+
 
 (defn h2
   "Create a database specification for a h2 database. Opts should include a key
@@ -21,10 +23,11 @@
   [{:keys [host port db]
     :or   {host "localhost", port 5432, db ""}
     :as   opts}]
-  (merge {:classname   "org.postgresql.Driver"
-          :subprotocol "postgresql"
-          :subname     (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
-         (dissoc opts :host :port :db)))
+  (let [query-params (codec/form-encode (merge (dissoc opts :host :port :db :user :password :additional-options :sslfactory) {:OpenSourceSubProtocolOverride true}))]
+     (merge {:classname   "org.postgresql.Driver"
+             :subprotocol "postgresql"
+             :subname     (str "//" host ":" port "/" db "?" query-params)}
+        (dissoc opts :host :port :db))))
 
 (defn mysql
   "Create a database specification for a mysql database. Opts should include keys
