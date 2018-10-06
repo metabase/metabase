@@ -257,6 +257,17 @@ export const DATE_COLUMN_SETTINGS = {
   },
 };
 
+function getCurrency(currency, currencyStyle) {
+  return (0)
+    .toLocaleString("en", {
+      style: "currency",
+      currency: currency,
+      currencyDisplay: currencyStyle,
+    })
+    .replace(/0([.,]0+)?/, "")
+    .trim(); // strip off actual number
+}
+
 export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
     title: t`Style`,
@@ -293,12 +304,15 @@ export const NUMBER_COLUMN_SETTINGS = {
   currency_style: {
     title: t`Currency label style`,
     widget: "radio",
-    props: {
-      options: [
-        { name: "Symbol ($)", value: "symbol" },
-        { name: "Code (USD)", value: "code" },
-        { name: "Name (US dollars)", value: "name" },
-      ],
+    getProps: (column: Column, settings: ColumnSettings) => {
+      const c = settings["currency"] || "USD";
+      return {
+        options: [
+          { name: `Symbol (${getCurrency(c, "symbol")})`, value: "symbol" },
+          { name: `Code (${getCurrency(c, "code")})`, value: "code" },
+          { name: `Name (${getCurrency(c, "name")})`, value: "name" },
+        ],
+      };
     },
     default: "symbol",
     getHidden: (column: Column, settings: ColumnSettings) =>
@@ -371,14 +385,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         settings["number_style"] === "currency" &&
         settings["currency_in_header"]
       ) {
-        return (0)
-          .toLocaleString("en", {
-            style: "currency",
-            currency: settings["currency"],
-            currencyDisplay: settings["currency_style"],
-          })
-          .replace(/0([.,]0+)?/, "")
-          .trim(); // strip off actual number
+        return getCurrency(settings["currency"], settings["currency_style"]);
       }
       return null;
     },
