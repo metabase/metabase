@@ -15,6 +15,7 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.models.field :refer [Field]]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [store :as qp.store]
@@ -23,8 +24,7 @@
              [honeysql-extensions :as hx]
              [i18n :refer [trs tru]]])
   (:import clojure.lang.Reflector
-           java.sql.DriverManager
-           metabase.query_processor.interface.Field))
+           java.sql.DriverManager))
 
 (defrecord SparkSQLDriver []
   :load-ns true
@@ -46,14 +46,17 @@
                                         (filter #(and (= schema-name (:schema %))
                                                       (= table-name (:table-name %))))
                                         first)]
-        (-> (assoc field :schema-name nil)
-            (assoc :table-name (:join-alias matching-join-table)))
+        (-> (assoc field :schema_name nil)
+            (assoc :table_name (:join-alias matching-join-table)))
         field))))
 
-(defmethod  sqlqp/->honeysql [SparkSQLDriver Field]
+(defmethod  sqlqp/->honeysql [SparkSQLDriver (class Field)]
   [driver field-before-aliasing]
-  (let [{:keys [schema-name table-name special-type field-name] :as foo} (resolve-table-alias field-before-aliasing)
-        field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
+  (let [{schema-name  :schema_name
+         table-name   :tabe_name
+         special-type :special_type
+         field-name   :name} (resolve-table-alias field-before-aliasing)
+        field                (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
       (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)

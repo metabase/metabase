@@ -25,8 +25,7 @@
              [i18n :refer [tru]]
              [ssh :as ssh]])
   (:import java.sql.Time
-           java.util.Date
-           metabase.query_processor.interface.TimeValue))
+           java.util.Date))
 
 (defrecord PrestoDriver []
   :load-ns true
@@ -220,6 +219,10 @@
   [_ date]
   (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
 
+(defmethod sqlqp/->honeysql [PrestoDriver :stddev]
+  [driver [_ field]]
+  (hsql/call :stddev_samp (sqlqp/->honeysql driver field)))
+
 (def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
 
 (defn- time->str
@@ -229,11 +232,11 @@
    (let [tz (time/time-zone-for-id tz-id)]
      (tformat/unparse (tformat/with-zone time-format tz) (tcoerce/to-date-time t)))))
 
-(defmethod sqlqp/->honeysql [PrestoDriver TimeValue]
+#_(defmethod sqlqp/->honeysql [PrestoDriver TimeValue]
   [_ {:keys [value timezone-id]}]
   (hx/cast :time (time->str value timezone-id)))
 
-(defmethod sqlqp/->honeysql [PrestoDriver Time]
+#_(defmethod sqlqp/->honeysql [PrestoDriver Time]
   [_ {:keys [value]}]
   (hx/->time (time->str value)))
 
@@ -359,7 +362,6 @@
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
           :quote-style               (constantly :ansi)
-          :stddev-fn                 (constantly :stddev_samp)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 

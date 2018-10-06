@@ -14,16 +14,16 @@
              [add-implicit-clauses :as implicit-clauses]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
-             [annotate-and-sort :as annotate-and-sort]
+             [annotate :as annotate]
              [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
+             [desugar :as desugar]
              [dev :as dev]
              [driver-specific :as driver-specific]
-             [expand :as expand]
              [expand-macros :as expand-macros]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
@@ -33,13 +33,14 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
-             [resolve :as resolve]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
+             [resolve-joined-tables :as resolve-joined-tables]
+             [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
-             [source-table :as source-table]
              [store :as store]
-             [validate :as validate]]
+             [validate :as validate]
+             [wrap-value-literals :as wrap-value-literals]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [date :as du]
@@ -95,21 +96,22 @@
   (-> f
       dev/guard-multiple-calls
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
-      annotate-and-sort/annotate-and-sort
+      wrap-value-literals/wrap-value-literals
+      desugar/desugar
+      annotate/add-column-info
       perms/check-query-permissions
+      resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
-      resolve/resolve-middleware
-      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       binning/update-binning-strategy
       resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       bucket-datetime/auto-bucket-datetime-breakouts
-      source-table/resolve-source-table-middleware
+      resolve-source-table/resolve-source-table
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros
@@ -119,6 +121,11 @@
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       store/initialize-store
+      ((fn [qp]
+         (fn [query]
+           (when-not (environ.core/env :quiet)
+             (println "NORMALIZED QUERY:" (u/pprint-to-str 'green query))) ; NOCOMMIT
+           (qp query))))
       log-query/log-initial-query
       ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
@@ -149,9 +156,7 @@
   "Expand a QUERY the same way it would normally be done as part of query processing.
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
   (->> identity
-       resolve/resolve-middleware
-       expand/expand-middleware
-       source-table/resolve-source-table-middleware
+       resolve-source-table/resolve-source-table
        parameters/substitute-parameters
        expand-macros/expand-macros
        driver-specific/process-query-in-context

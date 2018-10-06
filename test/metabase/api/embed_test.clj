@@ -64,9 +64,14 @@
 (defn successful-query-results
   ([]
    {:data       {:columns ["count"]
-                 :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count",
-                            :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
-                            :base_type "type/Integer"}]
+                 :cols    [{:base_type    "type/Integer"
+                            :special_type "type/Number"
+                            :name         "count"
+                            :display_name "count"
+                            :id           nil
+                            :table_id     nil
+                            :description  nil
+                            :target       nil}]
                  :rows    [[100]]}
     :json_query {:parameters nil}
     :status     "completed"})

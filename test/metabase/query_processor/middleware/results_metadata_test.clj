@@ -27,7 +27,7 @@
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/get-id card)))
 
-(defn- round-all-decimals'
+(defn- round-to-2-decimals
   "Defaults `tu/round-all-decimals` to 2 digits"
   [data]
   (tu/round-all-decimals 2 data))
@@ -56,7 +56,7 @@
     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                         :info {:card-id    (u/get-id card)
                                :query-hash (qputil/query-hash {})}))
-    (round-all-decimals' (card-metadata card))))
+    (round-to-2-decimals (card-metadata card))))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
 (expect
@@ -104,7 +104,7 @@
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
-      round-all-decimals'))
+      round-to-2-decimals))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
 ;; do datetime breakouts on years
@@ -130,4 +130,4 @@
                                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
                        :info     {:card-id    (u/get-id card)
                                   :query-hash (qputil/query-hash {})}})
-    (round-all-decimals' (card-metadata card))))
+    (round-to-2-decimals (card-metadata card))))

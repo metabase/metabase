@@ -5,7 +5,10 @@
              [walk :as walk]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]))
 
 (s/defn normalize-token :- s/Keyword
@@ -96,7 +99,9 @@
     ;; -> {:filter [:= 200 100], :breakout [:field-id 100]}"
   {:style/indent 3}
   [query keypath k-or-ks f]
-  (update-in query keypath #(replace-clauses % k-or-ks f)))
+  (if-not (seq (get-in query keypath))
+    query
+    (update-in query keypath #(replace-clauses % k-or-ks f))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -178,8 +183,27 @@
     :else
     source-table-id))
 
+(s/defn unwrap-field-clause :- (s/if (partial is-clause? :field-id)
+                                 mbql.s/field-id
+                                 mbql.s/field-literal)
+  "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
+  [[clause-name x y, :as clause] :- mbql.s/Field]
+  (case clause-name
+    :field-id         clause
+    :fk->             (recur y)
+    :field-literal    clause
+    :datetime-field   (recur x)
+    :binning-strategy (recur x)))
 
-(defn field-clause->id-or-literal
+(defn maybe-unwrap-field-clause
+  "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
+  `:field-literal`). Otherwise return `clause` as-is."
+  [clause]
+  (if (is-clause? #{:field-id :fk-> :field-literal :datetime-field :binning-strategy} clause)
+    (unwrap-field-clause clause)
+    clause))
+
+(s/defn field-clause->id-or-literal :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString)
   "Get the actual Field ID or literal name this clause is referring to. Useful for seeing if two Field clauses are
   referring to the same thing, e.g.
 
@@ -188,24 +212,72 @@
 
   For expressions (or any other clauses) this returns the clause as-is, so as to facilitate the primary use case of
   comparing Field clauses."
-  [[clause-name x y, :as clause]]
-  (case clause-name
-    :field-id         x
-    :fk->             (recur y)
-    :field-literal    x
-    :datetime-field   (recur x)
-    :binning-strategy (recur x)
-    ;; for anything else, including expressions and ag clause references, just return the clause as-is
-    clause))
+  [clause :- mbql.s/Field]
+  (second (unwrap-field-clause clause)))
 
 (s/defn add-order-by-clause :- mbql.s/Query
   "Add a new `:order-by` clause to an MBQL query. If the new order-by clause references a Field that is already being
   used in another order-by clause, this function does nothing."
-  [outer-query :- mbql.s/Query, order-by-clause :- mbql.s/OrderBy]
-  (let [existing-clauses (set (map (comp field-clause->id-or-literal second)
-                                   (-> outer-query :query :order-by)))]
-    (if (existing-clauses (field-clause->id-or-literal (second order-by-clause)))
+  [outer-query :- mbql.s/Query, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-fields (set (for [[_ existing-field] (-> outer-query :query :order-by)]
+                               (maybe-unwrap-field-clause existing-field)))]
+    (if (existing-fields (maybe-unwrap-field-clause field))
       ;; Field already referenced, nothing to do
       outer-query
       ;; otherwise add new clause at the end
       (update-in outer-query [:query :order-by] (comp vec conj) order-by-clause))))
+
+
+(s/defn add-datetime-units :- mbql.s/DateTimeValue
+  "Return a `relative-datetime` clause with `n` units added to it."
+  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+   n                             :- s/Num]
+  (if (is-clause? :relative-datetime absolute-or-relative-datetime)
+    (let [[_ original-n unit] absolute-or-relative-datetime]
+      [:relative-datetime (+ n original-n) unit])
+    (let [[_ timestamp unit] absolute-or-relative-datetime]
+      (du/relative-date unit n timestamp))))
+
+
+(defn dispatch-by-clause-name-or-class
+  "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
+  clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
+  [x]
+  (if (mbql-clause? x)
+    (first x)
+    (class x)))
+
+
+(s/defn fk-clause->join-info :- (s/maybe mbql.s/JoinInfo)
+  "Return the matching info about the JOINed for the 'destination' Field in an `fk->` clause.
+
+     (fk-clause->join-alias [:fk-> [:field-id 1] [:field-id 2]])
+     ;; -> \"orders__via__order_id\""
+  [query :- mbql.s/Query, [_ source-field-clause] :- mbql.s/fk->]
+  (let [source-field-id (field-clause->id-or-literal source-field-clause)]
+    (some (fn [{:keys [fk-field-id], :as info}]
+            (when (= fk-field-id source-field-id)
+              info))
+          (-> query :query :join-tables))))
+
+
+(s/defn expression-with-name :- mbql.s/ExpressionDef
+  "Return the `Expression` referenced by a given `expression-name`."
+  [query :- mbql.s/Query, expression-name :- su/NonBlankString]
+  (or (get-in query, [:query :expressions (keyword expression-name)])
+      (throw (Exception. (str (tru "No expression named ''{0}''" (name expression-name)))))))
+
+
+(s/defn aggregation-at-index :- mbql.s/Aggregation
+  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
+   This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
+   support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
+   number to as optional arg `nesting-level` to make sure you reference aggregations at the right level of nesting."
+  ([query index]
+   (aggregation-at-index query index 0))
+  ([query :- mbql.s/Query, index :- su/NonNegativeInt, nesting-level :- su/NonNegativeInt]
+   (if (zero? nesting-level)
+     (or (nth (get-in query [:query :aggregation]) index)
+         (throw (Exception. (str (tru "No aggregation at index: {0} (nesting level: {1})" index nesting-level)))))
+     ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
+     (recur (get-in query [:query :source-query]) index (dec nesting-level)))))

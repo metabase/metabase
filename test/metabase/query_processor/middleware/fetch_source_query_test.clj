@@ -50,23 +50,18 @@
 (defn- expand-and-scrub [query-map]
   (-> query-map
       qp/expand
-      (m/dissoc-in [:database :features])
-      (m/dissoc-in [:database :details])
-      (m/dissoc-in [:database :timezone])
       (dissoc :driver)))
 
 (defn default-expanded-results [query]
-  {:database     {:name "test-data", :id (data/id), :engine :h2}
+  {:database     (data/id)
    :type         :query
-   :fk-field-ids #{}
    :query        query})
 
 ;; test that the `metabase.query-processor/expand` function properly handles nested queries (this function should call
 ;; `fetch-source-query`)
 (expect
   (default-expanded-results
-   {:source-query {:source-table (data/id :venues)
-                   :join-tables  nil}})
+   {:source-query {:source-table (data/id :venues)}})
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :venues)}}}]
@@ -82,14 +77,8 @@
                             :binning-opts     nil
                             :fingerprint      nil}]
     (default-expanded-results
-     {:source-query {:source-table (data/id :checkins)
-                     :join-tables  nil}
-      :filter       {:filter-type :between,
-                     :field       date-field-literal
-                     :min-val     {:value (tcoerce/to-timestamp (du/str->date-time "2015-01-01"))
-                                   :field {:field date-field-literal, :unit :default}},
-                     :max-val     {:value (tcoerce/to-timestamp (du/str->date-time "2015-02-01"))
-                                   :field {:field date-field-literal, :unit :default}}}}))
+     {:source-query {:source-table (data/id :checkins)}
+      :filter       [:between [:field-literal "date" :type/Date] "2015-01-01" "2015-02-01"]}))
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :checkins)}}}]
@@ -121,8 +110,7 @@
    {:limit        25
     :source-query {:limit 50
                    :source-query {:source-table (data/id :venues)
-                                  :limit        100
-                                  :join-tables  nil}}})
+                                  :limit        100}}})
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues), :limit 100}}}]

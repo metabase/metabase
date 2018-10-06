@@ -30,7 +30,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [metabase.mbql.normalize :as normalize]))
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.util :as mbql.u]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -263,18 +264,10 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (let [field-ids (atom [])]
-    (walk/postwalk
-     (fn [x]
-       (if (instance? metabase.query_processor.interface.Field x)
-         (swap! field-ids conj (:field-id x))
-         x))
-     (qp/expand query))
-    @field-ids))
+  (map second (mbql.u/clause-instances :field-id (:query query))))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template

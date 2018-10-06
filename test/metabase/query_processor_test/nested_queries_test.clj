@@ -143,7 +143,7 @@
         {:database (data/id)
          :type     :query
          :query    {:source-query {:source-table (data/id :checkins)
-                                   :filter [:> (data/id :checkins :date) "2014-01-01"]}
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
                     :aggregation  [:count]
                     :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
                     :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))

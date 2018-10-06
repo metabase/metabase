@@ -85,7 +85,7 @@
 (expect
   (ga-query {:metrics    "ga:users"
              :dimensions "ga:browser"})
-  (mbql->native {:query {:breakout [(qpi/map->Field {:field-name "ga:browser"})]}
+  (mbql->native {:query {:breakout [[:field-literal "ga:browser"]]}
                  :ga    {:metrics "ga:users"}}))
 
 
@@ -98,81 +98,53 @@
 ;; query w/ non-segment filter
 (expect
   (ga-query {:filters "ga:continent==North America"})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (qpi/map->Field {:field-name "ga:continent"})
-                                  :value       (qpi/map->Value {:value "North America"})}}}))
+  (mbql->native {:query {:filter [:= [:field-literal "ga:continent"] [:value "North America"]]}}))
 
 ;; query w/ segment & non-segment filter
 (expect
   (ga-query {:filters "ga:continent==North America"
              :segment "gaid::-4"})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (qpi/map->Field {:field-name "ga:continent"})
-                                  :value       (qpi/map->Value {:value "North America"})}}
+  (mbql->native {:query {:filter [:= [:field-literal "ga:continent"] [:value "North America"]]}
                  :ga    {:segment "gaid::-4"}}))
 
 ;; query w/ date filter
 (defn- ga-date-field [unit]
-  (qpi/map->DateTimeField {:field (qpi/map->Field {:field-name "ga:date"})
-                           :unit unit}))
+  [:datetime-field [:field-literal "ga:date"] unit])
 
 ;; absolute date
 (expect
   (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :day)
-                                  :value       (qpi/map->DateTimeValue {:value #inst "2016-11-08"
-                                                                        :field (ga-date-field :day)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
 
 ;; relative date -- last month
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month -1))
              :end-date   (du/format-date "yyyy-MM-01")})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :month)
-                                  :value       (qpi/map->RelativeDateTimeValue {:amount -1
-                                                                                :unit   :month
-                                                                                :field  (ga-date-field :month)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime -1 :month]]}}))
 
 ;; relative date -- this month
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01")
              :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 1))})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :month)
-                                  :value       (qpi/map->RelativeDateTimeValue {:amount 0
-                                                                                :unit   :month
-                                                                                :field  (ga-date-field :month)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 0 :month]]}}))
 
 ;; relative date -- next month
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 1))
              :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 2))})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :month)
-                                  :value       (qpi/map->RelativeDateTimeValue {:amount 1
-                                                                                :unit   :month
-                                                                                :field  (ga-date-field :month)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 1 :month]]}}))
 
 ;; relative date -- 2 months from now
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month 2))
              :end-date   (du/format-date "yyyy-MM-01" (du/relative-date :month 3))})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :month)
-                                  :value       (qpi/map->RelativeDateTimeValue {:amount 2
-                                                                                :unit   :month
-                                                                                :field  (ga-date-field :month)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 2 :month]]}}))
 
 ;; relative date -- last year
 (expect
   (ga-query {:start-date (du/format-date "yyyy-01-01" (du/relative-date :year -1))
              :end-date   (du/format-date "yyyy-01-01")})
-  (mbql->native {:query {:filter {:filter-type :=
-                                  :field       (ga-date-field :year)
-                                  :value       (qpi/map->RelativeDateTimeValue {:amount -1
-                                                                                :unit   :year
-                                                                                :field  (ga-date-field :year)})}}}))
+  (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))
 
 ;; limit
 (expect

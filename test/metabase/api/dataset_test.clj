@@ -52,17 +52,22 @@
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
   [ ;; API call response
-   {:data                   {:rows    [[1000]]
-                             :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count",
-                                        :display_name "count", :id nil, :table_id nil, :description nil, :target nil,
-                                        :extra_info {}, :source "aggregation"}]
+   {:data                   {:rows        [[1000]]
+                             :columns     ["count"]
+                             :cols        [{:base_type    "type/Integer"
+                                            :special_type "type/Number"
+                                            :name         "count"
+                                            :display_name "count"
+                                            :id           nil
+                                            :table_id     nil
+                                            :description  nil
+                                            :target       nil}]
                              :native_form true}
     :row_count              1
     :status                 "completed"
     :context                "ad-hoc"
     :json_query             (-> (data/mbql-query checkins
-                                  {:aggregation [[:count]]})
+                                                 {:aggregation [[:count]]})
                                 (assoc :type "query")
                                 (assoc-in [:query :aggregation] [["count"]])
                                 (assoc :constraints qp/default-query-constraints))
@@ -84,7 +89,7 @@
     :started_at   true
     :running_time true}]
   (let [result ((user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
-                                                            {:aggregation [[:count]]}))]
+                                                                           {:aggregation [[:count]]}))]
     [(format-response result)
      (format-response (most-recent-query-execution))]))
 

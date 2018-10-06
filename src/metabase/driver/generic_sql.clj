@@ -26,8 +26,7 @@
            honeysql.types.SqlCall
            [java.sql DatabaseMetaData ResultSet]
            [java.util Date Map]
-           metabase.models.field.FieldInstance
-           [metabase.query_processor.interface Field Value]))
+           metabase.models.field.FieldInstance))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -86,9 +85,9 @@
      dataset name as well. (At the time of this writing, this is only used by the SQL parameters implementation; in
      the future it will probably be used in more places as well.)")
 
-  (field->alias ^String [this, ^Field field]
+  (field->alias ^String [this, ^FieldInstance field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation
-     calls `name`, which returns the *unqualified* name of `Field`.
+     calls `:name`, which returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
 
@@ -104,10 +103,6 @@
      current transaction. The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.`
 
        \"SET @@session.timezone = %s;\"")
-
-  (stddev-fn ^clojure.lang.Keyword [this]
-    "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults
-     to `:STDDEV`.")
 
   (string-length-fn ^clojure.lang.Keyword [this, ^Keyword field-key]
     "Return a HoneySQL form appropriate for getting the length of a `Field` identified by fully-qualified FIELD-KEY.
@@ -133,7 +128,8 @@
 
 (defn- create-connection-pool
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
-  [{:keys [id engine details]}]
+  [{:keys [id engine details], :as database}]
+  {:pre [(map? database)]}
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
@@ -161,17 +157,19 @@
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
-  [{:keys [id], :as database}]
-  (if (contains? @database-id->connection-pool id)
+  [database]
+  {:pre [(map? database)]}
+  (if (contains? @database-id->connection-pool (u/get-id database))
     ;; we have an existing pool for this database, so use it
-    (get @database-id->connection-pool id)
+    (get @database-id->connection-pool (u/get-id database))
     ;; create a new pool and add it to our cache, then return it
     (u/prog1 (create-connection-pool database)
-      (swap! database-id->connection-pool assoc id <>))))
+      (swap! database-id->connection-pool assoc (u/get-id database) <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
   [{:keys [engine details], :as database}]
+  {:pre [(map? database)]}
   (db->pooled-connection-spec database))
 
 (defn handle-additional-options
@@ -461,10 +459,9 @@
    :current-datetime-fn  (constantly :%now)
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
-   :field->alias         (u/drop-first-arg name)
+   :field->alias         (u/drop-first-arg :name)
    :quote-style          (constantly :ansi)
-   :set-timezone-sql     (constantly nil)
-   :stddev-fn            (constantly :STDDEV)})
+   :set-timezone-sql     (constantly nil)})
 
 
 (defn IDriverSQLDefaultsMixin

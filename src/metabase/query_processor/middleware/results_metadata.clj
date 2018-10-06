@@ -14,8 +14,8 @@
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
-;; metadata as part of the query context so we can compare for changes
+;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
+;; Card metadata as part of the query context so we can compare for changes
 (defn- record-metadata! [card-id metadata]
   (when metadata
     (db/update! 'Card card-id

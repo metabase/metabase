@@ -53,9 +53,9 @@
                      (map #(mapv % col-indexes) rows))))))
 
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
-  {:rows        [["20th Century Cafe" 2 "Café"]
-                 ["25°" 2 "Burger"]
-                 ["33 Taps" 2 "Bar"]
+  {:rows        [["20th Century Cafe"               2 "Café"]
+                 ["25°"                             2 "Burger"]
+                 ["33 Taps"                         2 "Bar"]
                  ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
    :columns     [(:name (venues-col :name))
                  (:name (venues-col :price))
@@ -63,11 +63,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")
@@ -78,13 +77,13 @@
          (format-rows-by [int str int double double int str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
-         :data)))
+         data)))
 
 ;; Check that we can have remappings when we include a `:fields` clause that restricts the query fields returned
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
-  {:rows        [["20th Century Cafe" 2 "Café"]
-                 ["25°" 2 "Burger"]
-                 ["33 Taps" 2 "Bar"]
+  {:rows        [["20th Century Cafe"               2 "Café"]
+                 ["25°"                             2 "Burger"]
+                 ["33 Taps"                         2 "Bar"]
                  ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
    :columns     [(:name (venues-col :name))
                  (:name (venues-col :price))
@@ -92,11 +91,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")

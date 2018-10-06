@@ -21,24 +21,24 @@
              [google :as google]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor
-             [annotate :as annotate]
              [store :as qp.store]
              [util :as qputil]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
            java.sql.Time
-           [java.util Collections Date]
-           [metabase.query_processor.interface AggregationWithField AggregationWithoutField Expression Field TimeValue]))
+           [java.util Collections Date]))
 
 (defrecord BigQueryDriver []
   :load-ns true
@@ -360,10 +360,8 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(defn- agg-or-exp? [x]
-  (or (instance? Expression x)
-      (instance? AggregationWithField x)
-      (instance? AggregationWithoutField x)))
+(def ^:private ^{:arglists '([x])} agg-or-exp?
+  (complement (partial s/check mbql.s/Aggregation)))
 
 (defn- bg-aggregate-name [aggregate]
   (-> aggregate annotate/aggregation-name format-custom-field-name))
@@ -404,20 +402,22 @@
   [_ date]
   (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
+#_(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
   [driver {:keys [value]}]
   (->> value
        (unparse-bigquery-time *bigquery-timezone*)
        (sqlqp/->honeysql driver)
        hx/->time))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver Field]
-  [_ {:keys [table-name field-name special-type] :as field}]
-  (let [field (map->BigQueryIdentifier {:table-name table-name, :field-name field-name})]
+(defmethod sqlqp/->honeysql [BigQueryDriver :field-id]
+  [driver [_ field-id]]
+  (let [field (qp.store/field field-id)
+        table (qp.store/table (:table_id field))
+        field (keyword (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field)))]
     (cond
-      (isa? special-type :type/UNIXTimestampSeconds)      (unix-timestamp->timestamp field :seconds)
-      (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
-      :else                                               field)))
+      (isa? (:special_type field) :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
+      (isa? (:special_type field) :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
+      :else                                                        field)))
 
 (defn- field->alias
   "Generate an appropriate alias for a `field`. This will normally be something like `tableName___fieldName` (done this
@@ -431,13 +431,13 @@
   (cond
     field (recur driver field) ; type/DateTime
     index (let [{{aggregations :aggregation} :query} sqlqp/*query*
-                {ag-type :aggregation-type :as agg}  (nth aggregations index)]
+                [ag-type :as ag]                     (nth aggregations index)]
             (cond
               (= ag-type :distinct)
               "count"
 
-              (instance? Expression agg)
-              (:custom-name agg)
+              (= ag-type :expression)
+              (second ag)
 
               :else
               (name ag-type)))

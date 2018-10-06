@@ -4,13 +4,15 @@
   (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
             [metabase.util :as u]
-            [metabase.util.date :as du])
-  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]])
+  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
@@ -27,22 +29,27 @@
    "US_CURRENCY" :type/Float})
 
 
-(defprotocol ^:private IRValue
-  (^:private ->rvalue [this]))
+(defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
 
-(extend-protocol IRValue
-  nil                   (->rvalue [_] nil)
-  Object                (->rvalue [this] this)
-  Field                 (->rvalue [this] (:field-name this))
-  DateTimeField         (->rvalue [this] (->rvalue (:field this)))
-  Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (du/format-date "yyyy-MM-dd" (du/date-trunc unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]
-                          (cond
-                            (and (= unit :day) (= amount 0))  "today"
-                            (and (= unit :day) (= amount -1)) "yesterday"
-                            (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-                            :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount))))))
+(defmethod ->rvalue nil [_] nil)
+
+(defmethod ->rvalue Object [this] this)
+
+(defmethod ->rvalue :field-id [[_ field-id]]
+  (:name (qp.store/field field-id)))
+
+(defmethod ->rvalue :datetime-field [[_ field]]
+  (->rvalue field))
+
+(defmethod ->rvalue :absolute-datetime [[_ timestamp unit]]
+  (du/format-date "yyyy-MM-dd" (du/date-trunc unit timestamp)))
+
+(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+  (cond
+    (and (= unit :day) (= amount 0))  "today"
+    (and (= unit :day) (= amount -1)) "yesterday"
+    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
+    :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
 
 
 (defn- char-escape-map
@@ -91,7 +98,7 @@
   {:dimensions (if-not breakout-clause
                  ""
                  (str/join "," (for [breakout-field breakout-clause]
-                                 (if (instance? DateTimeField breakout-field)
+                                 (if (mbql.u/is-clause? :datetime-field breakout-field)
                                    (unit->ga-dimension (:unit breakout-field))
                                    (->rvalue breakout-field)))))})
 
@@ -106,7 +113,7 @@
    (str (when negate? "!") (parse-filter-subclause:filters filter-clause)))
 
   (^String [{:keys [filter-type field value case-sensitive?], :as filter-clause}]
-   (when-not (instance? DateTimeField field)
+   (when-not (mbql.u/is-clause? :datetime-field field)
      (let [field (when field (->rvalue field))
            value (when value (->rvalue value))]
        (case filter-type
@@ -136,21 +143,31 @@
       (when-not (str/blank? filter)
         {:filters filter}))))
 
-(defn- parse-filter-subclause:interval [{:keys [filter-type field value], :as filter} & [negate?]]
+(defn- parse-filter-subclause:interval [[filter-type field value :as filter-clause] & [negate?]]
   (when negate?
-    (throw (Exception. ":not is :not yet implemented")))
-  (when (instance? DateTimeField field)
+    (throw (Exception. (str (tru ":not is :not yet implemented")))))
+  (when (mbql.u/is-clause? :datetime-field field)
     (case filter-type
-      :between {:start-date (->rvalue (:min-val filter))
-                :end-date   (->rvalue (:max-val filter))}
-      :>       {:start-date (->rvalue (:value filter))
-                :end-date   latest-date}
-      :<       {:start-date earliest-date
-                :end-date   (->rvalue (:value filter))}
-      :=       {:start-date (->rvalue (:value filter))
-                :end-date   (condp instance? (:value filter)
-                              DateTimeValue         (->rvalue (:value filter))
-                              RelativeDateTimeValue (->rvalue (update (:value filter) :amount inc)))}))) ;; inc the end date so we'll get a proper date range once everything is bucketed
+      :between
+      (let [[_ field min-val max-val] filter-clause]
+        {:start-date min-val, :end-date max-val})
+
+      :>
+      {:start-date (->rvalue value), :end-date latest-date}
+
+      :<
+      {:start-date earliest-date, :end-date (->rvalue value)}
+
+      :=
+      {:start-date (->rvalue value)
+       :end-date   (case (first value)
+                     :absolute-datetime
+                     (let [[_ timestamp] value]
+                       (->rvalue timestamp))
+
+                     ;; inc the end date so we'll get a proper date range once everything is bucketed
+                     :relative-datetime
+                     (->rvalue (mbql.u/add-datetime-units value 1)))})))
 
 (defn- parse-filter-clause:interval [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
@@ -160,27 +177,38 @@
     nil  (remove nil? [(parse-filter-subclause:interval clause)])))
 
 (defn- handle-filter:interval
-  "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the `handle-builtin-segment` logic)."
+  "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
+  `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
   (let [date-filters (when filter-clause
                        (parse-filter-clause:interval filter-clause))]
     (case (count date-filters)
       0 {:start-date earliest-date, :end-date latest-date}
       1 (first date-filters)
-      (throw (Exception. "Multiple date filters are not supported")))))
+      (throw (Exception. (str (tru "Multiple date filters are not supported")))))))
 
 ;;; ### order-by
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
-    {:sort (str/join "," (for [{:keys [field direction]} order-by]
-                         (str (case direction
-                                :ascending  ""
-                                :descending "-")
-                              (cond
-                                (instance? DateTimeField field) (unit->ga-dimension (:unit field))
-                                (instance? AgFieldRef field)    (second (nth (aggregations query) (:index field))) ; aggregation is of format [ag-type metric-name]; get the metric-name
-                                :else                           (->rvalue field)))))}))
+    {:sort (str/join
+            ","
+            (for [[direction field] order-by]
+              (str (case direction
+                     :asc  ""
+                     :desc "-")
+                   (cond
+                     (mbql.u/is-clause? :datetime-field field)
+                     (let [[_ _ unit] field]
+                       (unit->ga-dimension unit))
+
+                     ;; aggregation is of format [ag-type metric-name]; get the metric-name
+                     (mbql.u/is-clause? :aggregation field)
+                     (let [[_ index] field]
+                       (second (nth (aggregations query) index)))
+
+                     :else
+                     (->rvalue field)))))}))
 
 ;;; ### limit
 

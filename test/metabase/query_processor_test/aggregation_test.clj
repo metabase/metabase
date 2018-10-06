@@ -160,10 +160,7 @@
 ;; multiple columns with the same name)
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
-   (assoc (aggregate-col :count)
-     :display_name    "Count 2"
-     :name            "count_2"
-     :preview_display true)]
+   (aggregate-col :count)]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
@@ -202,7 +199,7 @@
                  [15 120]]
    :columns     [(data/format-name "id")
                  "sum"]
-   :cols        [(breakout-col (users-col :id))
+   :cols        [(users-col :id)
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -231,7 +228,7 @@
                  ["Szymon Theutrich"    120]]
    :columns     [(data/format-name "name")
                  "sum"]
-   :cols        [(breakout-col (users-col :name))
+   :cols        [(users-col :name)
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -246,7 +243,7 @@
 (qp-expect-with-all-engines
   {:columns     [(data/format-name "price")
                  "sum"]
-   :cols        [(breakout-col (venues-col :price))
+   :cols        [(venues-col :price)
                  (aggregate-col :sum (venues-col :id))]
    :rows        [[1 1211]
                  [2 4066]
@@ -297,7 +294,7 @@
                  ["Szymon Theutrich"    15]]
    :columns     [(data/format-name "name")
                  "count"]
-   :cols        [(breakout-col (users-col :name))
+   :cols        [(users-col :name)
                  (cumulative-count-col users-col :id)]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -312,7 +309,7 @@
 (qp-expect-with-all-engines
   {:columns     [(data/format-name "price")
                  "count"]
-   :cols        [(breakout-col (venues-col :price))
+   :cols        [(venues-col :price)
                  (cumulative-count-col venues-col :id)]
    :rows        [[1 22]
                  [2 81]

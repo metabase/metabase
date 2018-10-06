@@ -9,18 +9,21 @@
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor
-             [annotate :as annotate]
              [interface :as i]
              [store :as qp.store]]
             [metabase.util :as u]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]]
             [monger
              [collection :as mc]
              [operators :refer :all]])
   (:import java.sql.Timestamp
            [java.util Date TimeZone]
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field FieldLiteral RelativeDateTimeValue Value]
+           metabase.models.field.FieldInstance
            org.bson.types.ObjectId
            org.joda.time.DateTime))
 
@@ -42,7 +45,7 @@
 
 (defn- log-monger-form [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
+    (log/debug (u/format-color 'green (str "\n" (tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
                  (->> form
                       ;; strip namespace qualifiers from Monger form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
@@ -61,22 +64,27 @@
 ;; Escaped:
 ;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
 
-(defprotocol ^:private IRValue
-  (^:private ->rvalue [this]
-    "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. by adding `$` to a
-    `Field`'s name"))
+(defmulti ^:private ^{:doc (str "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. "
+                                "by adding `$` to a `Field`'s name")}
+  ->rvalue
+  mbql.u/dispatch-by-clause-name-or-class)
 
-(defprotocol ^:private IField
-  (^:private ->lvalue ^String [this]
-    "Return an escaped name that can be used as the name of a given Field.")
-  (^:private ->initial-rvalue [this]
-    "Return the rvalue that should be used in the *initial* projection for this `Field`."))
+(defmulti ^:private ^{:doc "Return an escaped name that can be used as the name of a given Field."}
+  ^String ->lvalue
+  mbql.u/dispatch-by-clause-name-or-class)
+
+(defmulti ^:private ^{:doc "Return the rvalue that should be used in the *initial* projection for this `Field`."}
+  ->initial-rvalue
+  mbql.u/dispatch-by-clause-name-or-class)
 
 
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
-  ^String [^Field field, ^String separator]
-  (s/join separator (rest (i/qualified-name-components field))))
+  ^String [^FieldInstance field, ^String separator]
+  (if-let [parent-id (:parent_id field)]
+    (s/join separator [(field->name (qp.store/field parent-id))
+                       (:name field)])
+    (:name field)))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -93,41 +101,48 @@
       "count"
       (name ag-type))))
 
-(extend-protocol IField
-  Field
-  (->lvalue [this]
-    (field->name this "___"))
+(defmethod ->lvalue (class Field) [this]
+  (field->name this "___"))
 
-  (->initial-rvalue [this]
-    (str \$ (field->name this ".")))
+(defmethod ->initial-rvalue (class Field) [this]
+  (str \$ (field->name this ".")))
 
-  FieldLiteral
-  (->lvalue [this]
-    (field->name this "___"))
 
-  (->initial-rvalue [this]
-    (str \$ (field->name this ".")))
+(defmethod ->lvalue :field-id [[_ field-id]]
+  (->lvalue (qp.store/field field-id)))
 
-  AgFieldRef
-  (->lvalue [{:keys [index]}]
-    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
-      (ag-type->field-name aggregation-type)))
+(defmethod ->initial-rvalue :field-id [this]
+  (->initial-rvalue (qp.store/field this)))
 
-  DateTimeField
-  (->lvalue [{unit :unit, ^Field field :field}]
-    (str (->lvalue field) "~~~" (name unit)))
 
-  (->initial-rvalue [{unit :unit, {:keys [special-type], :as ^Field field} :field}]
-    (mongo-let [field (as-> field <>
-                        (->initial-rvalue <>)
+(defmethod ->lvalue :field-literal [[_ field-name]]
+  (name field-name))
+
+(defmethod ->initial-rvalue :field-literal [[_ field-name]]
+  (str \$ (name field-name)))
+
+
+(defmethod ->lvalue :aggregation [[_ index]]
+  (let [[aggregation-type] (get-in *query* [:query :aggregation index])]
+    (ag-type->field-name aggregation-type)))
+
+
+(defmethod ->lvalue :datetime-field [[_ field-clause unit]]
+  (str (->lvalue field-clause) "~~~" (name unit)))
+
+(defmethod ->initial-rvalue :datetime-field [[_ field-clause unit]]
+  (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
+        field    (when (integer? field-id)
+                   (qp.store/field field-id))]
+    (mongo-let [field (let [initial-rvalue (->initial-rvalue field-clause)]
                         (cond
-                          (isa? special-type :type/UNIXTimestampMilliseconds)
-                          {$add [(java.util.Date. 0) <>]}
+                          (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
+                          {$add [(java.util.Date. 0) initial-rvalue]}
 
-                          (isa? special-type :type/UNIXTimestampSeconds)
-                          {$add [(java.util.Date. 0) {$multiply [<> 1000]}]}
+                          (isa? (:special_type field) :type/UNIXTimestampSeconds)
+                          {$add [(java.util.Date. 0) {$multiply [initial-rvalue 1000]}]}
 
-                          :else <>))]
+                          :else initial-rvalue))]
       (let [stringify (fn stringify
                         ([format-string]
                          (stringify format-string field))
@@ -168,25 +183,19 @@
           :year            {$year field})))))
 
 
-(extend-protocol IRValue
-  nil (->rvalue [_] nil)
+(defmethod ->rvalue nil [_] nil)
 
-  Field
-  (->rvalue [this]
-    (str \$ (->lvalue this)))
+(defmethod ->rvalue :datetime-field [[_ field-clause]]
+  (str \$ (->lvalue field-clause)))
 
-  DateTimeField
-  (->rvalue [this]
-    (str \$ (->lvalue this)))
 
-  Value
-  (->rvalue [{value :value, {:keys [base-type]} :field}]
-    (if (isa? base-type :type/MongoBSONID)
-      (ObjectId. (str value))
-      value))
+#_(defmethod ->rvalue Value [{value :value, {:keys [base-type]} :field}]
+  (if (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+    value))
 
-  DateTimeValue
-  (->rvalue [{^java.sql.Timestamp value :value, {:keys [unit]} :field}]
+
+(defmethod ->rvalue :absolute-datetime [[_ ^java.sql.Timestamp value, unit]]
     (let [stringify (fn stringify
                       ([format-string]
                        (stringify format-string value))
@@ -211,18 +220,20 @@
         :quarter-of-year (extract :quarter-of-year)
         :year            (extract :year))))
 
-  RelativeDateTimeValue
-  (->rvalue [{:keys [amount unit field]}]
-    (->rvalue (i/map->DateTimeValue {:value (du/relative-date (or unit :day) amount)
-                                     :field field}))))
+
+(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+  (->rvalue [:absolute-datetime (du/relative-date (or unit :day) amount) unit]))
 
 
-;;; ## CLAUSE APPLICATION
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               CLAUSE APPLICATION                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ### initial projection
+
+;;; ----------------------------------------------- initial projection -----------------------------------------------
 
 (defn- add-initial-projection [query pipeline-ctx]
-  (let [all-fields (distinct (annotate/collect-fields query :keep-date-time-fields))]
+  (let [all-fields (distinct (mbql.u/clause-instances #{:field-id :datetime-field} (:query query)))]
     (if-not (seq all-fields)
       pipeline-ctx
       (let [projections (for [field all-fields]
@@ -232,43 +243,62 @@
             (update :query conj {$project (into (hash-map) projections)}))))))
 
 
-;;; ### filter
+;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-(defn- parse-filter-subclause [{:keys [filter-type field value case-sensitive?] :as filter} & [negate?]]
-  (let [field (when field (->lvalue field))
-        value (when value (->rvalue value))
-        v     (case filter-type
-                :between     {$gte (->rvalue (:min-val filter))
-                              $lte (->rvalue (:max-val filter))}
-                :contains    (re-pattern (str (when-not case-sensitive? "(?i)")    value))
-                :starts-with (re-pattern (str (when-not case-sensitive? "(?i)") \^ value))
-                :ends-with   (re-pattern (str (when-not case-sensitive? "(?i)")    value \$))
-                :=           {"$eq" value}
-                :!=          {$ne  value}
-                :<           {$lt  value}
-                :>           {$gt  value}
-                :<=          {$lte value}
-                :>=          {$gte value})]
-    {field (if negate?
-             {$not v}
-             v)}))
+(defmulti ^:private parse-filter first)
 
-(defn- parse-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and {$and (mapv parse-filter-clause subclauses)}
-    :or  {$or  (mapv parse-filter-clause subclauses)}
-    :not (parse-filter-subclause subclause :negate)
-    nil  (parse-filter-subclause clause)))
+(defmethod parse-filter :between [[_ field min-val max-val]]
+  {(->lvalue field) {$gte (->rvalue min-val)
+                     $lte (->rvalue max-val)}})
+
+(defmethod parse-filter :contains [[_ field value options]]
+  (let [case-sensitive? (get options :case-sensitive true)]
+    {(->lvalue field) (re-pattern (str (when-not case-sensitive? "(?i)") (->rvalue value)))}))
+
+(defmethod parse-filter :starts-with [[_ field value options]]
+  (let [case-sensitive? (get options :case-sensitive true)]
+    {(->lvalue field) (re-pattern (str (when-not case-sensitive? "(?i)") \^ (->rvalue value)))}))
+
+(defmethod parse-filter :ends-with [[_ field value options]]
+  (let [case-sensitive? (get options :case-sensitive true)]
+    {(->lvalue field) (re-pattern (str (when-not case-sensitive? "(?i)") (->rvalue value) \$))}))
+
+(defmethod parse-filter := [[_ field value]]
+  {(->lvalue field) {"$eq" (->rvalue value)}})
+
+(defmethod parse-filter :!= [[_ field value]]
+  {(->lvalue field) {$ne (->rvalue value)}})
+
+(defmethod parse-filter :< [[_ field value]]
+  {(->lvalue field) {$lt (->rvalue value)}})
+
+(defmethod parse-filter :> [[_ field value]]
+  {(->lvalue field) {$gt (->rvalue value)}})
+
+(defmethod parse-filter :<= [[_ field value]]
+  {(->lvalue field) {$lte (->rvalue value)}})
+
+(defmethod parse-filter :>= [[_ field value]]
+  {(->lvalue field) {$gte (->rvalue value)}})
+
+(defmethod parse-filter :and [[_ & args]]
+  {$and (mapv parse-filter args)})
+
+(defmethod parse-filter :or [[_ & args]]
+  {$or (mapv parse-filter args)})
+
+(defmethod parse-filter :not [[_ subclause]]
+  {$not (parse-filter subclause)})
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
-    (update pipeline-ctx :query conj {$match (parse-filter-clause filter-clause)})))
+    (update pipeline-ctx :query conj {$match (parse-filter filter-clause)})))
 
 
-;;; ### aggregation
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregation->rvalue [{:keys [aggregation-type field]}]
+(defn- aggregation->rvalue [[aggregation-type field]]
   {:pre [(keyword? aggregation-type)]}
   (if-not field
     (case aggregation-type
@@ -338,7 +368,7 @@
           (update :query into (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations))))))
 
 
-;;; ### order-by
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
   (if-not (seq order-by)
@@ -349,7 +379,7 @@
                                                                         :ascending   1
                                                                         :descending -1)]))})))
 
-;;; ### fields
+;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
@@ -361,7 +391,7 @@
           (update :query conj {$project (merge {"_id" false}
                                                (into (hash-map) new-projections))})))))
 
-;;; ### limit
+;;; ----------------------------------------------------- limit ------------------------------------------------------
 
 (defn- handle-limit [{:keys [limit]} pipeline-ctx]
   (if-not limit
@@ -369,7 +399,7 @@
     (update pipeline-ctx :query conj {$limit limit})))
 
 
-;;; ### page
+;;; ------------------------------------------------------ page ------------------------------------------------------
 
 (defn- handle-page [{{page-num :page items-per-page :items, :as page-clause} :page} pipeline-ctx]
   (if-not page-clause
@@ -378,7 +408,9 @@
                                       {$limit items-per-page}])))
 
 
-;;; # process + run
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Process & Run                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- generate-aggregation-pipeline
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
@@ -502,7 +534,9 @@
              more))))
 
 
-;;; ------------------------------------------------ Query Execution -------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Query Execution                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn mbql->native
   "Process and run an MBQL query."

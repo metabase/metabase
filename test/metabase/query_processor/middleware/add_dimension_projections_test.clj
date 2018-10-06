@@ -44,7 +44,6 @@
 (def ^:private col-defaults
   {:description     nil
    :source          :fields
-   :extra_info      {}
    :fk_field_id     nil
    :visibility_type :normal
    :target          nil
@@ -80,7 +79,6 @@
     :schema_name  "PUBLIC"
     :special_type :type/FK
     :name         "CATEGORY_ID"
-    :extra_info   {:target_table_id 1}
     :id           11
     :display_name "Category ID"
     :base_type    :type/Integer}))
@@ -102,9 +100,7 @@
    :table_id        nil
    :name            "Foo"
    :expression-name "Foo"
-   :source          :fields
    :remapped_from   "CATEGORY_ID"
-   :extra_info      {}
    :remapped_to     nil
    :id              nil
    :target          nil
@@ -150,8 +146,6 @@
     :schema_name     nil
     :special_type    :type/Category
     :name            "CATEGORY"
-    :source          :fields
-    :extra_info      {}
     :fk_field_id     32
     :id              27
     :visibility_type :normal
