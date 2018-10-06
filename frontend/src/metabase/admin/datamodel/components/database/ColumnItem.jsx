@@ -11,6 +11,7 @@ import { titleize, humanize } from "metabase/lib/formatting";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
 import currency from "metabase/lib/currency";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -236,27 +237,33 @@ export class SpecialTypeAndTargetPicker extends Component {
           onChange={this.onSpecialTypeChange}
           triggerClasses={this.props.triggerClasses}
         />
+        {showCurrencyTypeSelect && selectSeparator}
         {// TODO - now that we have multiple "nested" options like choosing a
         // FK table and a currency type we should make this more generic and
         // handle a "secondary" input more elegantly
         showCurrencyTypeSelect && (
           <Select
-            className={cx("TableEditor-field-target", className)}
+            className={cx(
+              "TableEditor-field-target",
+              "inline-block",
+              className,
+            )}
             triggerClasses={this.props.triggerClasses}
             placeholder={t`Select a currency type`}
             onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
             searchProp="name"
-            defaultValue="USD"
-            value={field.settings && field.settings.currency}
-            searchCaseSensitive="false"
+            value={
+              (field.settings && field.settings.currency) ||
+              getGlobalSettingsForColumn(field).currency ||
+              "USD"
+            }
+            searchCaseSensitive={false}
           >
             {Object.values(currency).map(c => (
               <Option name={c.name} value={c.code}>
                 <span className="flex full align-center">
-                  {c.name}{" "}
-                  <span className="text-bold text-light ml-auto">
-                    {c.symbol}
-                  </span>
+                  <span>{c.name}</span>
+                  <span className="text-bold text-light ml1">{c.symbol}</span>
                 </span>
               </Option>
             ))}
