@@ -53,7 +53,7 @@ class ChartSettings extends Component {
   }
 
   handleSelectTab = tab => {
-    this.setState({ currentTab: tab });
+    this.setState({ currentTab: tab, showWidget: null });
   };
 
   handleResetSettings = () => {

@@ -1,5 +1,7 @@
 import { isDimension, isMetric } from "metabase/lib/schema_metadata";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { keyForColumn } from "metabase/lib/dataset";
+import _ from "underscore";
 
 export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
@@ -104,16 +106,26 @@ const DEFAULT_FIELD_FILTER = () => true;
 
 export function fieldSetting(
   id,
-  { fieldFilter = DEFAULT_FIELD_FILTER, ...def } = {},
+  { fieldFilter = DEFAULT_FIELD_FILTER, columnSetting, ...def } = {},
 ) {
   return {
     [id]: {
-      widget: "select",
+      widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getProps: ([{ card, data: { cols } }]) => ({
-        options: cols.filter(fieldFilter).map(getOptionFromColumn),
-      }),
+      getProps: ([{ card, data: { cols } }], vizSettings) => {
+        let currentColumnKey;
+        if (columnSetting && vizSettings[id]) {
+          const column = _.findWhere(cols, { name: vizSettings[id] });
+          if (column) {
+            currentColumnKey = keyForColumn(column);
+          }
+        }
+        return {
+          options: cols.filter(fieldFilter).map(getOptionFromColumn),
+          currentColumnKey,
+        };
+      },
       ...def,
     },
   };

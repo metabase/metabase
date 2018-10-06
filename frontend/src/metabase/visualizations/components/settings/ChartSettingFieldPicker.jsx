@@ -10,7 +10,9 @@ const ChartSettingFieldPicker = ({
   options,
   onChange,
   onRemove,
+  onShowWidget,
   className,
+  currentColumnKey,
 }) => (
   <div className={cx(className, "flex align-center")}>
     <ChartSettingSelect
@@ -21,6 +23,20 @@ const ChartSettingFieldPicker = ({
       placeholderNoOptions={t`No valid fields`}
       isInitiallyOpen={value === undefined}
     />
+    {currentColumnKey && (
+      <Icon
+        name="gear"
+        className="ml1 text-medium text-brand-hover cursor-pointer"
+        onClick={() => {
+          onShowWidget({
+            id: "column_settings",
+            props: {
+              initialKey: currentColumnKey,
+            },
+          });
+        }}
+      />
+    )}
     <Icon
       name="close"
       className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
