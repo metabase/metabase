@@ -1,6 +1,8 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
-  (:require [clojure
+  (:refer-clojure :exclude [replace])
+  (:require [clojure.core.match :as match]
+            [clojure
              [string :as str]
              [walk :as walk]]
             [metabase.mbql.schema :as mbql.s]
@@ -39,7 +41,89 @@
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
 
-(defn clause-instances
+(defn recursive-match [match-fn form]
+  (cond
+    (map? form)
+    (mapcat match-fn (vals form))
+
+    (sequential? form)
+    (mapcat match-fn form)))
+
+(defmacro match
+  ([query pattern]
+   `(match ~query ~pattern nil))
+  ([query pattern result]
+   (if (map? pattern)
+     (let [query-symb (gensym "query")]
+       `(let [~query-symb ~query]
+          (concat ~@(for [[k v] pattern]
+                      `(match (get ~query-symb ~k) ~(get pattern k) ~result)))))
+     `((fn match-fn# [form#]
+         (match/match [form#]
+           ~@(if result
+               `[[(~pattern :seq)] [~result]]
+               `[[(~pattern :seq) :as match#] [match#]])
+           :else (recursive-match match-fn# form#)))
+       ~query))))
+
+#_(match {:breakout [[:field-id 10]
+                   [:field-id 20]
+                   [:field-literal "Wow"]
+                   [:fk->
+                    [:field-id 30]
+                    [:field-id 40]]]}
+    [(_ :guard #{:field-id :field-literal}) _])
+
+(def %query%
+  {:breakout [[:field-id 10]
+              [:field-id 20]
+              [:field-literal "Wow"]]
+   :fields   [[:fk->
+               [:field-id 30]
+               [:field-id 40]]]})
+
+(match %query%
+  {:breakout [(_ :guard #{:field-id :field-literal}) _]})
+
+(match %query%
+  {:fields [:field-id & _]})
+
+(match %query% [:fk-> _ [:field-id dest-id]] dest-id)
+
+(match %query%
+  {:fields ([:field-id & _] :seq)})
+
+(defn recursive-replace [replace-fn form]
+  (cond
+    (map? form)
+    (into form (for [[k v] form]
+                 [k (replace-fn v)]))
+
+    (sequential? form)
+    (mapv replace-fn form)
+
+    :else
+    form))
+
+(defmacro replace [query pattern result]
+  (if (map? pattern)
+    `(-> ~query
+         ~@(for [[k] pattern]
+             `(update ~k #(replace % ~(get pattern k) ~result))))
+    `((fn replace-fn# [form#]
+        (match/match [form#]
+          [~pattern] ~result
+          :else (recursive-replace replace-fn# form#)))
+      ~query)))
+
+(replace %query% [:fk-> source [:field-id 40]] [:fk-> source [:field-id 100]])
+
+(replace {:query {:fields [[:fk-> 1 2]
+                           [:fk-> [:field-id 3] [:field-id 4]]]}}
+         {:query {:fields [:fk-> (source :guard integer?) (dest :guard integer?)]}}
+         [:fk-> [:field-id source] [:field-id dest]])
+
+(defn ^:deprecated clause-instances
   "Return a sequence of all the instances of clause(s) in `x`. Like `is-clause?`, you can either look for instances of a
   single clause by passing a single keyword or for instances of multiple clauses by passing a set of keywords. Returns
   `nil` if no instances were found.
@@ -76,7 +160,7 @@
      x)
     (seq @instances)))
 
-(defn replace-clauses
+(defn ^:deprecated replace-clauses
   "Walk a query looking for clauses named by keyword or set of keywords `k-or-ks` and replace them the results of a call
   to `(f clause)`.
 
@@ -91,7 +175,7 @@
        clause))
    query))
 
-(defn replace-clauses-in
+(defn ^:deprecated replace-clauses-in
   "Replace clauses only in a subset of `query`, defined by `keypath`.
 
     (replace-clauses-in {:filter [:= [:field-id 10] 100], :breakout [:field-id 100]} [:filter] :field-id
