@@ -159,7 +159,7 @@ class Api extends EventEmitter {
           throw e;
         }
       }
-      // $FlowFixMe
+      // $FlowFixMe: fails with our old version of flow but not newer versions
     } while (retryCount < maxAttempts);
   }
 

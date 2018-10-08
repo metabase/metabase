@@ -78,9 +78,9 @@
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
-  [throttler key]
+  [throttler throttle-key]
   (when-not throttling-disabled?
-    (throttle/check throttler key)))
+    (throttle/check throttler throttle-key)))
 
 (api/defendpoint POST "/"
   "Login."

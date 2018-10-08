@@ -80,9 +80,9 @@ describe("api", () => {
 
   it("GET should succeed if the last attempt succeeds", async () => {
     expect.assertions(1);
-    mock.get("/hello", once({ status: 503 }));
-    mock.get("/hello", once({ status: 503 }));
-    mock.get("/hello", once({ status: 503 }));
+    mock.get("/hello", once(capacityResponse));
+    mock.get("/hello", once(capacityResponse));
+    mock.get("/hello", once(capacityResponse));
     mock.get("/hello", once(successResponse));
     const limitedRetryGET = api._makeMethod("GET", RETRY_THREE_TIMES);
     const hello = limitedRetryGET("/hello", { retry: true });

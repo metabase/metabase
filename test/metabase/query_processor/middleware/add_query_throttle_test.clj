@@ -15,6 +15,10 @@
         :msg      (.getMessage e#)
         :data     (ex-data e#)})))
 
+(defmacro ^:private with-query-wait-time-in-seconds [time-in-seconds & body]
+  `(with-redefs [throttle/max-query-wait-time-in-millis ~(* 1000 time-in-seconds)]
+     ~@body))
+
 ;; Check that the middleware will throw an exception and return a 503 if there are no tickets available in the
 ;; semaphore after waiting the timeout period
 (expect
@@ -22,7 +26,7 @@
    :msg      "Max concurrent query limit reached"
    :data     {:status-code 503
               :type        ::throttle/concurrent-query-limit-reached}}
-  (with-redefs [throttle/max-query-wait-time-in-seconds 1]
+  (with-query-wait-time-in-seconds 1
     (exception-and-message
      (let [semaphore (Semaphore. 5)]
        (.acquire semaphore 5)
@@ -35,7 +39,7 @@
    :msg      "Max concurrent query limit reached"
    :data     {:status-code 503
               :type        ::throttle/concurrent-query-limit-reached}}
-  (with-redefs [throttle/max-query-wait-time-in-seconds 1]
+  (with-query-wait-time-in-seconds 1
     (exception-and-message
      (let [semaphore (Semaphore. 5)
            my-qp     (->> identity
@@ -48,7 +52,7 @@
 (expect
   {:before-semaphore-release ::no-result
    :after-semaphore-release  {:query "map"}}
-  (with-redefs [throttle/max-query-wait-time-in-seconds 120]
+  (with-query-wait-time-in-seconds 120
     (let [semaphore    (Semaphore. 5)
           _            (.acquire semaphore 5)
           query-future (future ((#'throttle/throttle-queries semaphore identity) {:query "map"}))]
@@ -63,7 +67,7 @@
    :before-failure-permits 4
    :query-result           {:query "map"}
    :after-success-permits  5}
-  (with-redefs [throttle/max-query-wait-time-in-seconds 5]
+  (with-query-wait-time-in-seconds 5
     (let [semaphore                 (Semaphore. 5)
           start-middleware-promise  (promise)
           finish-middleware-promise (promise)
@@ -88,7 +92,7 @@
   {:beinning-permits       5
    :before-failure-permits 4
    :after-failure-permits  5}
-  (with-redefs [throttle/max-query-wait-time-in-seconds 5]
+  (with-query-wait-time-in-seconds 5
     (let [semaphore                 (Semaphore. 5)
           start-middleware-promise  (promise)
           finish-middleware-promise (promise)
@@ -99,7 +103,7 @@
                                        (throw (Exception. "failure")))
           query-future              (future
                                       (u/ignore-exceptions
-                                        ((#'throttle/throttle-queries semaphore coordinate-then-fail) {:query "map"})))]
+                                       ((#'throttle/throttle-queries semaphore coordinate-then-fail) {:query "map"})))]
       {:beinning-permits       begin-num-permits
        :before-failure-permits (do
                                  @start-middleware-promise
