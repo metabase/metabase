@@ -37,7 +37,7 @@
   {:user        "camsaul"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
-   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"
+   :subname     "//localhost:5432/bird_sightings?sslmode=disable&OpenSourceSubProtocolOverride=true"
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -53,7 +53,7 @@
    :subprotocol "postgresql"
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
-   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"}
+   :subname     "//localhost:5432/bird_sightings?ssl=true&sslmode=require&OpenSourceSubProtocolOverride=true"}
   (sql/connection-details->spec pg-driver {:ssl    true
                                            :host   "localhost"
                                            :port   5432
@@ -138,7 +138,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata)))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -158,7 +158,7 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))
-      :data (dissoc :cols :native_form :results_metadata)))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;;; Check support for `inet` columns
@@ -285,7 +285,7 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:5432/cool?OpenSourceSubProtocolOverride=true&prepareThreshold=0"
+  "//localhost:5432/cool?sslmode=disable&OpenSourceSubProtocolOverride=true&prepareThreshold=0"
   (:subname (sql/connection-details->spec pg-driver {:host               "localhost"
                                                      :port               "5432"
                                                      :dbname             "cool"

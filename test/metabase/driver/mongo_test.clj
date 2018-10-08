@@ -84,7 +84,8 @@
                                     :collection "venues"}
                          :type     :native
                          :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 ;; ## Tests for individual syncing functions
 
