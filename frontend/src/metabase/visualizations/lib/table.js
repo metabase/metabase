@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
+import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { ClickObject } from "metabase/meta/types/Visualization";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
@@ -49,6 +49,3 @@ export function getTableCellClickedObject(
 export function isColumnRightAligned(column: Column) {
   return isNumber(column) || isCoordinate(column);
 }
-
-
-
