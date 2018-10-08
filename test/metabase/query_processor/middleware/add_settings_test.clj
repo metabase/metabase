@@ -1,11 +1,16 @@
 (ns metabase.query-processor.middleware.add-settings-test
   (:require [expectations :refer [expect]]
+            [metabase.driver :as driver]
             [metabase.models.setting :as setting]
             [metabase.query-processor.middleware.add-settings :as add-settings]))
 
 (defrecord ^:private TestDriver []
   clojure.lang.Named
   (getName [_] "TestDriver"))
+
+(extend TestDriver
+  driver/IDriver
+  {:features (constantly #{:set-timezone})})
 
 (expect
   [{:settings {}}
