@@ -52,6 +52,7 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
 import colors from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { isCurrency } from "metabase/lib/schema_metadata";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -364,7 +365,11 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
       value={(field && field.settings) || {}}
       onChange={onUpdateFieldSettings}
       column={field}
-      blacklist={new Set(["column_title"])}
+      blacklist={
+        new Set(
+          ["column_title"].concat(isCurrency(field) ? ["number_style"] : []),
+        )
+      }
       inheritedSettings={getGlobalSettingsForColumn(field)}
     />
   </Section>
