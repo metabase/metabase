@@ -296,7 +296,7 @@ const enrichColumns = ({ columnsSource,
   };
 };
 
-const enrichMetadata = ({groupsSources, columnsSource, columnNameToMetadata}, sortOverride) => {
+const enrichMetadata = ({groupsSources, columnsSource}, columnNameToMetadata, sortOverride) => {
   const fatColumns = [...groupsSources, ...columnsSource];
   const getMetadata = getMetadataBuilder(columnNameToMetadata, sortOverride);
   return fatColumns.reduce(
@@ -319,8 +319,7 @@ export const enrichSettings = (
   const stateNormalized = { ...emptyStateSerialized, ...stateSerialized };
 
   const partColumns = enrichColumns(stateNormalized, cols, columns);
-  const columnNameToMetadata = enrichMetadata(stateNormalized, sortOverride);
-
+  const columnNameToMetadata = enrichMetadata(partColumns, stateNormalized.columnNameToMetadata, sortOverride);
   return {...partColumns, columnNameToMetadata};
 };
 
