@@ -40,21 +40,17 @@
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
-  [^ResultSet rs]
-  {:name (string/trim (.getString rs 1))
-    :type (string/trim (.getString rs 2))})
+  [rs]
+  {:name (string/trim (:col_name rs))
+    :type (string/trim (:data_type rs))})
 
-(defn- describe-all-database->clj
-  [^ResultSet rs]
-  (loop [result [] more (.next rs)]
-    (if-not more
-      (->> result
-        (remove #(= (:name %) ""))
-        (remove #(string/starts-with? (:name %) "#")) ; remove comment
-        (distinct)) ; driver can return twice the partitioning fields
-      (recur
-       (conj result (describe-database->clj rs))
-       (.next rs)))))
+(defn describe-all-database->clj
+  [result]
+  (->> result
+       (remove #(= (:col_name %) ""))
+       (remove #(string/starts-with? (:col_name %) "#")) ; remove comment
+       (distinct) ; driver can return twice the partitioning fields
+       (map describe-database->clj)))
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
@@ -132,6 +128,7 @@
 
 (defn- describe-table-fields [db {:keys [name schema]}]
   (->> (run-query db (str "DESCRIBE `" schema "`.`" name "`;"))
+       (describe-all-database->clj)
        (map schema-parser/parse-schema)
        (set)))
 
