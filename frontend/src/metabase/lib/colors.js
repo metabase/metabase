@@ -134,7 +134,7 @@ export const getColorScale = (
 
 // HACK: d3 may return rgb values with decimals but certain rendering engines
 // don't support that (e.x. Safari and CSSBox)
-export function roundColor(color) {
+export function roundColor(color: ColorString): ColorString {
   return color.replace(
     /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
     (_, r, g, b, a) =>
