@@ -21,8 +21,8 @@ type SingleFormat = {
   type: "single",
   columns: ColumnName[],
   color: Color,
-  operator: "<" | ">" | "<=" | ">=" | "=" | "!=",
-  value: number,
+  operator: "<" | ">" | "<=" | ">=" | "=" | "!=" | "is-null" | "not-null",
+  value: number | string,
   highlight_row: boolean,
 };
 
@@ -127,17 +127,21 @@ function compileFormatter(
     }
     switch (operator) {
       case "<":
-        return v => (v < value ? color : null);
+        return v => (typeof value === "number" && v < value ? color : null);
       case "<=":
-        return v => (v <= value ? color : null);
+        return v => (typeof value === "number" && v <= value ? color : null);
       case ">=":
-        return v => (v >= value ? color : null);
+        return v => (typeof value === "number" && v >= value ? color : null);
       case ">":
-        return v => (v > value ? color : null);
+        return v => (typeof value === "number" && v > value ? color : null);
       case "=":
         return v => (v === value ? color : null);
       case "!=":
         return v => (v !== value ? color : null);
+      case "is-null":
+        return v => (v === null ? color : null);
+      case "not-null":
+        return v => (v !== null ? color : null);
     }
   } else if (format.type === "range") {
     const columnMin = name =>
