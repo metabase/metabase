@@ -24,24 +24,17 @@
              "X-Permitted-Cross-Domain-Policies" "none"
              "X-XSS-Protection"                  "1; mode=block"}})
 
-(defn- mock-api-fn [response-fn]
-  ((-> response-fn
-       mb-middleware/catch-api-exceptions
-       mb-middleware/add-content-type)
-   {:uri "/api/my_fake_api_call"}))
-
-(defn- my-mock-api-fn []
-  (mock-api-fn
-   (fn [_]
-     (check-404 @*current-user*)
-     {:status 200
-      :body   @*current-user*})))
+(defn ^:private my-mock-api-fn []
+  ((mb-middleware/catch-api-exceptions
+    (fn [_]
+      (check-404 @*current-user*)
+      {:status 200
+       :body   @*current-user*}))
+   nil))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
-(expect
-  {:status  200
-   :body    "Cam Saul"
-   :headers {"Content-Type" "text/plain"}}
+(expect {:status 200
+         :body "Cam Saul"}
   (binding [*current-user* (atom "Cam Saul")]
     (my-mock-api-fn)))
 
@@ -54,10 +47,11 @@
 ;;let-404 should return nil if test fails
 (expect
   four-oh-four
-  (-> (mock-api-fn
-       (fn [_]
-         (let-404 [user nil]
-           {:user user})))
+  (-> ((mb-middleware/catch-api-exceptions
+        (fn [_]
+          (let-404 [user nil]
+            {:user user})))
+       nil)
       (update-in [:headers "Last-Modified"] string?)))
 
 ;; otherwise let-404 should bind as expected
