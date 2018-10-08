@@ -78,7 +78,7 @@ describe("summary table result provider", () => {
     });
   });
 
-  fdescribe("given result provider initialized by main and totals results", () => {
+  describe("given result provider initialized by main and totals results", () => {
     const rawResults = buildData(allRows, allColumns);
     const mainResults = buildData(allRows, allColumns.map(col => addSource(col)));
 
@@ -109,7 +109,7 @@ describe("summary table result provider", () => {
       expect(resultsProvider(totalsKey)).toBe(totalsResults);
     });
 
-    fit("results provider should compute results for totals on C2", () => {
+    it("results provider should compute results for totals on C2", () => {
       const totalsKey = createKey(["C2"], ["C3"]);
       const resRows = [
         [4, "a"],

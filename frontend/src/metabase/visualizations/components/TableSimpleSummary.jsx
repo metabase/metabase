@@ -195,9 +195,8 @@ export default class TableSimpleSummary extends Component {
               <tbody>
                 {groupedIndexes.map((row, i) =>
                   (<tr key={`row-${i}`}>
-                    {row.map(arg => {
-
-                      const {columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex} =arg;
+                    {row.map(cellInfo => {
+                      const {columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex} = cellInfo;
                         const column = cols[columnStartIndex];
                         const row = rows[rowStartIndex];
                         let cell = column.getValue(row);
@@ -272,7 +271,7 @@ export default class TableSimpleSummary extends Component {
                             })}
                             rowSpan={rowSpan}
                             colSpan={colSpan}
-                            key={createKey(arg)}
+                            key={createKey(cellInfo)}
                           >
                             <span
                               className={cx({

@@ -18,7 +18,7 @@ import partition from "lodash.partition";
 import _ from "lodash";
 import { Set } from "immutable";
 import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
-import {getAggregationQueries} from "metabase-lib/lib/SummaryTableQueryBuilder";
+import { getAggregationQueries } from "metabase/visualizations/lib/summary_table";
 import {
   fetchDataOrError, getDashboardType
 } from "metabase/dashboard/dashboard";

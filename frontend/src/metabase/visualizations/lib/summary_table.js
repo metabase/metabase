@@ -2,6 +2,13 @@ import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
 
 import range from 'lodash.range';
 import flatMap from 'lodash.flatmap';
+import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
+import type {DatasetQuery} from "metabase/meta/types/Card";
+import {
+  canTotalizeByType,
+  getAllAggregationKeysFlatten,
+  getQueryPlan
+} from "metabase/visualizations/lib/settings/summary_table";
 
 const buildStyleBuilder = ({rowSizeAndPositionManager, columnSizeAndPositionManager, horizontalOffsetAdjustment, verticalOffsetAdjustment}) =>
   ({rowStartIndex, rowStopIndex, columnStartIndex, columnStopIndex}) => {
@@ -162,3 +169,27 @@ export function getTableCellClickedObjectForSummary(
     return { value, column };
   }
 }
+
+export const getAggregationQueries = (settings : SummaryTableSettings,  cols : Column[]): DatasetQuery[] => {
+
+  const nameToTypeMap = getNameToTypeMap(cols);
+
+  const createLiteral = name => ["field-literal", name, nameToTypeMap[name]];
+  const createTotal = name => ["named", ["sum", createLiteral(name)], name];
+
+  const queryPlan = getQueryPlan(settings, p =>
+    canTotalizeByType(nameToTypeMap[p]));
+  const allKeys = getAllAggregationKeysFlatten(queryPlan);
+
+  return allKeys.map(([groupings, aggregations]) => ({
+    aggregation: aggregations.toArray().map(createTotal),
+    breakout: groupings.toArray().map(createLiteral),
+  }));
+};
+
+const getNameToTypeMap = columns => {
+  return columns.reduce(
+    (acc, column) => ({ ...acc, [column.name]: column.base_type }),
+    {},
+  );
+};
