@@ -9,7 +9,7 @@ import "./TableInteractive.css";
 import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isID } from "metabase/lib/schema_metadata";
+import { isID, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
@@ -353,6 +353,7 @@ export default class TableInteractive extends Component {
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
           "TableInteractive--PK": isID(column),
+          "TableInteractive--FK": isFK(column),
           link: isClickable && isID(column),
         })}
         onMouseUp={

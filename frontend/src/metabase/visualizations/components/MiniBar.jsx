@@ -3,7 +3,7 @@ import React from "react";
 import colors, { alpha } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
-const BAR_HEIGHT = 11;
+const BAR_HEIGHT = 8;
 const BAR_WIDTH = 70;
 const BORDER_RADIUS = 3;
 

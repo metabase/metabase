@@ -4,21 +4,12 @@
 
 .TableInteractive {
   color: #4f575d;
-  border-radius: var(--table-border-radius);
   overflow: hidden;
 }
 
 .TableInteractive-headerCellData .cellData {
   font-weight: 900;
   font-size: 10px;
-}
-
-.TableInteractive-headerCellData.TableInteractive-cellWrapper--firstColumn {
-  border-top-left-radius: var(--table-border-radius);
-}
-
-.TableInteractive-headerCellData.TableInteractive-cellWrapper--lastColumn {
-  border-top-right-radius: var(--table-border-radius);
 }
 
 .TableInteractive-headerCellData .Icon {
@@ -97,6 +88,7 @@
 }
 
 .TableInteractive--PK .cellData {
+  border: 1px solid color(var(--color-brand) alpha(-86%));
   background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
   border-radius: 99px;
