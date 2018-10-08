@@ -19,7 +19,7 @@ const colors = {
   accent2: "#A989C5",
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
-  accent5: "#F1B556",
+  accent5: "#F2A86F",
   accent6: "#A6E7F3",
   accent7: "#7172AD",
   white: "#FFFFFF",
