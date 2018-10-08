@@ -11,41 +11,33 @@ type TransformFn = (o: any) => any;
 export type Options = {
   noEvent?: boolean,
   retry?: boolean,
+  retryCount?: number,
+  retryDelayIntervals?: number[],
   transformResponse?: TransformFn,
   cancelled?: Promise<any>,
   raw?: { [key: string]: boolean },
-};
-
-export type RetryOptions = {
-  maxRetries: number,
-  retryDelayIntervals?: Array<number>,
-};
-
-const NO_RETRY: RetryOptions = {
-  maxRetries: 0,
-  retryDelayIntervals: [],
+  hasBody?: boolean,
 };
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
-
-const DEFAULT_RETRY: RetryOptions = {
-  maxRetries: MAX_RETRIES,
-  // Creates an array with exponential backoff in millis
-  // i.e. [1000, 2000, 4000, 8000...]
-  retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys())
-    .map(x => ONE_SECOND * Math.pow(2, x))
-    .reverse(),
-};
 
 export type Data = {
   [key: string]: any,
 };
 
 const DEFAULT_OPTIONS: Options = {
+  hasBody: false,
   noEvent: false,
   transformResponse: o => o,
   raw: {},
+  retry: false,
+  retryCount: MAX_RETRIES,
+  // Creates an array with exponential backoff in millis
+  // i.e. [1000, 2000, 4000, 8000...]
+  retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys())
+    .map(x => ONE_SECOND * Math.pow(2, x))
+    .reverse(),
 };
 
 export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
@@ -61,17 +53,13 @@ class Api extends EventEmitter {
 
   constructor() {
     super();
-    this.GET = this._makeMethod("GET", DEFAULT_RETRY);
-    this.DELETE = this._makeMethod("DELETE", NO_RETRY);
-    this.POST = this._makeMethod("POST", DEFAULT_RETRY, true);
-    this.PUT = this._makeMethod("PUT", NO_RETRY, true);
+    this.GET = this._makeMethod("GET", { retry: true });
+    this.DELETE = this._makeMethod("DELETE", {});
+    this.POST = this._makeMethod("POST", { hasBody: true, retry: true });
+    this.PUT = this._makeMethod("PUT", { hasBody: true });
   }
 
-  _makeMethod(
-    method: string,
-    retryOptions: RetryOptions,
-    hasBody: boolean = false,
-  ): APICreator {
+  _makeMethod(method: string, creatorOptions?: Options = {}): APICreator {
     return (
       urlTemplate: string,
       methodOptions?: Options | TransformFn = {},
@@ -80,7 +68,12 @@ class Api extends EventEmitter {
         methodOptions = { transformResponse: methodOptions };
       }
 
-      const defaultOptions = { ...DEFAULT_OPTIONS, ...methodOptions };
+      const defaultOptions = {
+        ...DEFAULT_OPTIONS,
+        ...creatorOptions,
+        ...methodOptions,
+      };
+
       return async (
         data?: Data,
         invocationOptions?: Options = {},
@@ -113,7 +106,7 @@ class Api extends EventEmitter {
         };
 
         let body;
-        if (hasBody) {
+        if (options.hasBody) {
           headers["Content-Type"] = "application/json";
           body = JSON.stringify(data);
         } else {
@@ -123,33 +116,28 @@ class Api extends EventEmitter {
           }
         }
 
-        return this._makeRequestWithRetries(
-          method,
-          url,
-          headers,
-          body,
-          data,
-          options,
-          options.retry === false ? NO_RETRY : retryOptions,
-        );
+        if (options.retry) {
+          return this._makeRequestWithRetries(
+            method,
+            url,
+            headers,
+            body,
+            data,
+            options,
+          );
+        } else {
+          return this._makeRequest(method, url, headers, body, data, options);
+        }
       };
     };
   }
 
-  async _makeRequestWithRetries(
-    method,
-    url,
-    headers,
-    body,
-    data,
-    options,
-    retryOptions,
-  ) {
+  async _makeRequestWithRetries(method, url, headers, body, data, options) {
     // Get a copy of the delay intervals that we can remove items from as we retry
-    let retryDelays = retryOptions.retryDelayIntervals.slice();
+    let retryDelays = options.retryDelayIntervals.slice();
     let retryCount: number = 0;
     // maxAttempts is the first attempt followed by the number of retries
-    let maxAttempts: number = retryOptions.maxRetries + 1;
+    let maxAttempts: number = options.retryCount + 1;
     // Make the first attempt for the request, then loop incrementing the retryCount
     do {
       try {
@@ -171,6 +159,7 @@ class Api extends EventEmitter {
           throw e;
         }
       }
+      // $FlowFixMe
     } while (retryCount < maxAttempts);
   }
 

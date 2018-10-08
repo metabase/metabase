@@ -58,12 +58,12 @@ describe("api", () => {
     expect(response).toEqual({ status: "ok" });
   });
 
-  const RETRY_THREE_TIMES: RetryOptions = {
-    maxRetries: 3,
+  const RETRY_THREE_TIMES = {
+    retryCount: 3,
     retryDelayIntervals: [1, 1, 1],
   };
 
-  it("GET should fail if after maxRetries it still returns 503", async () => {
+  it("GET should fail if after retryCount it still returns 503", async () => {
     expect.assertions(1);
     mock.get("/hello", once(capacityResponse));
     mock.get("/hello", once(capacityResponse));
