@@ -41,10 +41,10 @@ const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
         };
 
   return (
-    <div className="flex align-center justify-end relative">
+    <div className="flex align-center currentcolor justify-end relative">
       {/* TEXT VALUE */}
       <div
-        className="text-ellipsis text-small text-bold text-medium text-right"
+        className="text-ellipsis text-bold text-right flex-full"
         style={{ minWidth: LABEL_MIN_WIDTH }}
       >
         {formatValue(value, { ...options, jsx: true })}

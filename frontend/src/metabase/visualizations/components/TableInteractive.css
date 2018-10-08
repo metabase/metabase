@@ -91,18 +91,28 @@
   background-color: var(--color-brand);
   color: white !important;
 }
-/*
-.TableInteractive-emptyCell {
-  background-color: var(--color-bg-light);
-}
-*/
 
 .TableInteractive-cellWrapper:hover {
   background-color: color(var(--color-brand) alpha(-90%));
 }
 
 .TableInteractive--PK .cellData {
-  background-color: color(var(--color-brand) alpha(-80%));
+  background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
   border-radius: 99px;
+}
+
+.TableInteractive--PK.TableInteractive-cellWrapper:hover,
+.TableInteractive--PK.TableInteractive-cellWrapper.tether-enabled {
+  background-color: transparent;
+}
+
+.TableInteractive--PK.TableInteractive-cellWrapper:hover .cellData,
+.TableInteractive--PK.TableInteractive-cellWrapper.tether-enabled .cellData {
+  background-color: var(--color-brand);
+  color: white;
+}
+
+.TableInteractive-headerCellData--sorted {
+  color: var(--color-brand);
 }

@@ -533,7 +533,7 @@ export default class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium",
+            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
               "TableInteractive-cellWrapper--lastColumn":
