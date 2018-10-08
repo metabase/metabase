@@ -194,7 +194,7 @@ export default class TagEditorParam extends Component {
             </div>
           )}
 
-        {tag.type !== "dimension" && (
+	{(
           <div className="flex align-center pb1">
             <h5 className="text-normal mr1">{t`Required?`}</h5>
             <Toggle

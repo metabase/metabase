@@ -160,6 +160,8 @@
 (s/defn ^:private default-value-for-dimension :- (s/maybe DimensionValue)
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
+  (when (:required tag)
+    (throw (Exception. (str (tru "''{0}'' is a required param." (:display_name tag))))))
   (when-let [default (:default tag)]
     {:type   (:widget_type tag "dimension")             ; widget_type is the actual type of the default value if set
      :target ["dimension" ["template-tag" (:name tag)]]
