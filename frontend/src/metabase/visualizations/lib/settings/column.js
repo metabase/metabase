@@ -189,8 +189,8 @@ export const DATE_COLUMN_SETTINGS = {
       getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_separator: {
-    title: t`Date separator`,
-    widget: "buttonGroup",
+    title: t`Date separators`,
+    widget: "radio",
     default: "/",
     getProps: (column: Column, settings: ColumnSettings) => {
       const style = /\//.test(settings["date_style"])
@@ -219,7 +219,7 @@ export const DATE_COLUMN_SETTINGS = {
   },
   time_enabled: {
     title: t`Show the time`,
-    widget: "buttonGroup",
+    widget: "radio",
     isValid: ({ unit }: Column, settings: ColumnSettings) =>
       !settings["time_enabled"] || hasHour(unit),
     getProps: ({ unit }: Column, settings: ColumnSettings) => {
@@ -271,7 +271,7 @@ function getCurrency(currency, currencyStyle) {
 export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
     title: t`Style`,
-    widget: "radio",
+    widget: "select",
     props: {
       options: [
         { name: "Normal", value: "decimal" },
@@ -287,7 +287,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       isCurrency(column) && settings["number_style"] === "currency",
   },
   currency: {
-    title: t`Currency`,
+    title: t`Unit of currency`,
     widget: "select",
     props: {
       // FIXME: rest of these options
