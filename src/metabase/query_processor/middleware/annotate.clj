@@ -50,9 +50,10 @@
   [field-clause :- mbql.s/Field, field-id :- su/IntGreaterThanZero]
   (merge
    (dissoc (qp.store/field field-id) :database_type)
-   (when-let [[[_ [_ source-field-id]]] (mbql.u/clause-instances :fk-> field-clause)]
+   (when-let [source-field-id (mbql.u/match-one [:fk-> [:field-id source-field-id] _] field-clause
+                                source-field-id)]
      {:fk_field_id source-field-id})
-   (when-let [[[_ _ unit]] (mbql.u/clause-instances :datetime-field field-clause)]
+   (when-let [unit (mbql.u/match-one [:datetime-field _ unit] field-clause unit)]
      {:unit unit})))
 
 (s/defn ^:private col-info-for-field-literal :- su/Map

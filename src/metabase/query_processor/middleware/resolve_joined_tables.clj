@@ -106,7 +106,7 @@
 
 (defn- resolve-joined-tables* [query]
   (let [source-table-id (mbql.u/query->source-table-id query)
-        fk-clauses      (filter both-args-are-field-id-clauses? (mbql.u/clause-instances :fk-> (:query query)))]
+        fk-clauses      (mbql.u/match {:query [:fk-> [:field-id _] [:field-id _]]} query)]
 
     (if-not (and (seq fk-clauses) source-table-id)
       query

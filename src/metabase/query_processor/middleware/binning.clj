@@ -25,8 +25,8 @@
   (reduce
    (partial merge-with concat)
    {}
-   (for [filter-clause (mbql.u/clause-instances #{:between :< :<= :> :>=} filter-clause)
-         [_ field-id]  (mbql.u/clause-instances #{:field-id} filter-clause)]
+   (for [filter-clause (mbql.u/match #{:between :< :<= :> :>=} filter-clause)
+         field-id      (mbql.u/match [:field-id field-id] filter-clause)]
      {field-id [filter-clause]})))
 
 (s/defn ^:private extract-bounds :- {:min-value s/Num, :max-value s/Num}
@@ -187,7 +187,8 @@
 
 (defn- update-binning-strategy* [query]
   (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
-    (mbql.u/replace-clauses-in query [:query] :binning-strategy (partial update-binned-field query field-id->filters))))
+    (mbql.u/replace {:query :binning-strategy} query
+      (update-binned-field query field-id->filters &match))))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of

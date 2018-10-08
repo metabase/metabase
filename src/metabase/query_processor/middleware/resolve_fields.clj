@@ -6,9 +6,9 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(defn- resolve-fields* [{mbql-inner-query :query, :as query}]
+(defn- resolve-fields* [query]
   (u/prog1 query
-    (when-let [field-ids (seq (map second (mbql.u/clause-instances :field-id mbql-inner-query)))]
+    (when-let [field-ids (mbql.u/match {:query [:field-id id]} query id)]
       (doseq [field (db/select (vec (cons Field qp.store/field-columns-to-fetch)) :id [:in (set field-ids)])]
         (qp.store/store-field! field)))))
 

@@ -62,6 +62,20 @@
                (for [n (range 100000)]
                  [n]))))
 
+;; does replacing cumaulate ags work correctly?
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :breakout     [[:field-id 1]]
+              :aggregation  [[:sum [:field-id 1]]]}}
+  (#'cumulative-aggregations/replace-cumulative-ags
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :breakout     [[:field-id 1]]
+               :aggregation  [[:cum-sum [:field-id 1]]]}}))
+
 
 ;; make sure we take breakout fields into account
 (expect

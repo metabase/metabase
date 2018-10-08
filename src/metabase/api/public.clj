@@ -267,7 +267,7 @@
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (map second (mbql.u/clause-instances :field-id (:query query))))
+  (mbql.u/match {:query [:field-id id]} query id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template

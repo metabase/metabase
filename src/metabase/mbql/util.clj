@@ -6,12 +6,14 @@
              [string :as str]
              [walk :as walk]]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util.match :as mbql.match]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [medley.core :as m]))
 
 (s/defn normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -41,151 +43,122 @@
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
 
-(defn recursive-match [match-fn form]
-  (cond
-    (map? form)
-    (mapcat match-fn (vals form))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Match & Replace                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-    (sequential? form)
-    (mapcat match-fn form)))
+;; Actual implementation of these macros is in `mbql.util.match`. They're in a seperate namespace because they have
+;; lots of other functions and macros they use for their implementation that we would like to discourage you from
+;; using directly. implementation of
 
 (defmacro match
-  ([query pattern]
-   `(match ~query ~pattern nil))
-  ([query pattern result]
-   (if (map? pattern)
-     (let [query-symb (gensym "query")]
-       `(let [~query-symb ~query]
-          (concat ~@(for [[k v] pattern]
-                      `(match (get ~query-symb ~k) ~(get pattern k) ~result)))))
-     `((fn match-fn# [form#]
-         (match/match [form#]
-           ~@(if result
-               `[[(~pattern :seq)] [~result]]
-               `[[(~pattern :seq) :as match#] [match#]])
-           :else (recursive-match match-fn# form#)))
-       ~query))))
+  "Return a sequence of things that match a `pattern` inside `x`, presumably a query, or `nil` if there are no matches.
+  Recurses through maps and sequences. `pattern` can be one of several things:
 
-#_(match {:breakout [[:field-id 10]
-                   [:field-id 20]
-                   [:field-literal "Wow"]
-                   [:fk->
-                    [:field-id 30]
-                    [:field-id 40]]]}
-    [(_ :guard #{:field-id :field-literal}) _])
+  *  Keyword name of an MBQL clause
+  *  Set of keyword names of MBQL clauses. Matches any clauses with those names
+  *  A `core.match` pattern
+  *  A symbol naming a class.
+  *  A symbol naming a predicate function
+  *  A map whose keys represent that path to look for matches in, with one of the other pattern types as a val
 
-(def %query%
-  {:breakout [[:field-id 10]
-              [:field-id 20]
-              [:field-literal "Wow"]]
-   :fields   [[:fk->
-               [:field-id 30]
-               [:field-id 40]]]})
+  Examples:
 
-(match %query%
-  {:breakout [(_ :guard #{:field-id :field-literal}) _]})
+    ;; keyword pattern
+    (match :field-id {:fields [[:field-id 10]]}) ; -> [[:field-id 10]]
 
-(match %query%
-  {:fields [:field-id & _]})
+    ;; set of keywords
+    (match #{:field-id :fk->} some-query) ; -> [[:field-id 10], [:fk-> [:field-id 10] [:field-id 20]], ...]
 
-(match %query% [:fk-> _ [:field-id dest-id]] dest-id)
+    ;; `core.match` pattern
+    (match [:field-id (_ :guard #(> % 100))] some-query) ; -> [[:field-id 200], ...]
 
-(match %query%
-  {:fields ([:field-id & _] :seq)})
+    ;; symbol naming a Class
+    (match java.util.Date some-query) ; -> [[#inst \"2018-10-08\", ...]
 
-(defn recursive-replace [replace-fn form]
-  (cond
-    (map? form)
-    (into form (for [[k v] form]
-                 [k (replace-fn v)]))
+    ;; symbol naming a predicate function
+    (match even? some-query) ; -> [2 4 6 8]
 
-    (sequential? form)
-    (mapv replace-fn form)
+    ;; pattern nested in a map
+    ;; look for field-id clauses within `filter`
+    (match {:query {:filter :field-id}} some-query) ; -> [[:field-id 10] [:field-id 20]]
 
-    :else
-    form))
+  ### Using `core.match` patterns
 
-(defmacro replace [query pattern result]
-  (if (map? pattern)
-    `(-> ~query
-         ~@(for [[k] pattern]
-             `(update ~k #(replace % ~(get pattern k) ~result))))
-    `((fn replace-fn# [form#]
-        (match/match [form#]
-          [~pattern] ~result
-          :else (recursive-replace replace-fn# form#)))
-      ~query)))
+  See [`core.match` documentation](`https://github.com/clojure/core.match/wiki/Overview`) for more details.
 
-(replace %query% [:fk-> source [:field-id 40]] [:fk-> source [:field-id 100]])
+  For patterns that are not vectors, you'll need to name the match and use a `result-body` (discussed below) to return
+  it:
 
-(replace {:query {:fields [[:fk-> 1 2]
-                           [:fk-> [:field-id 3] [:field-id 4]]]}}
-         {:query {:fields [:fk-> (source :guard integer?) (dest :guard integer?)]}}
-         [:fk-> [:field-id source] [:field-id dest]])
+    (match (my-match :guard #(and (pred1? %) (pred2? %)) some-query my-match) ; -> [:x :y :z]
 
-(defn ^:deprecated clause-instances
-  "Return a sequence of all the instances of clause(s) in `x`. Like `is-clause?`, you can either look for instances of a
-  single clause by passing a single keyword or for instances of multiple clauses by passing a set of keywords. Returns
-  `nil` if no instances were found.
+  (`&match`, also discussed below, is the default `result-body`; if you name your non-vector pattern `&match`, you
+  don't need to specifiy a `result-body`.)
 
-    ;; look for :field-id clauses
-    (clause-instances :field-id {:query {:filter [:= [:field-id 10] 20]}})
-    ;;-> [[:field-id 10]]
+  ### Returing something other than the exact match with `result-body`
 
-    ;; look for :+ or :- clauses
-    (clause-instances #{:+ :-} ...)
+  By default, `match` returns whatever matches the pattern you pass in. But what if you only want to return part of
+  the match? You can, using `core.match` binding facilities. Bind relevant things in your pattern and pass in the
+  optional `result-body`. Whatever `result-body` returns will be returned by `match`:
 
-  By default, this will not include subclauses of any clauses it finds, but you can toggle this behavior with the
-  `include-subclauses?` option:
+     ;; just return the IDs of Field ID clauses
+     (match [:field-id id] some-query id) ; -> [1 2 3]
 
-    (clause-instances #{:field-id :fk->} [[:field-id 1] [:fk-> [:field-id 2] [:field-id 3]]])
-    ;; -> [[:field-id 1]
-           [:fk-> [:field-id 2] [:field-id 3]]]
+  You can also use `result-body` to results, and any `nil` values will be skipped:
 
-    (clause-instances #{:field-id :fk->} [[:field-id 1] [:fk-> [:field-id 2] [:field-id 3]]], :include-subclauses? true)
-    ;; -> [[:field-id 1]
-           [:fk-> [:field-id 2] [:field-id 3]]
-           [:field-id 2]
-           [:field-id 3]]"
-  {:style/indent 1}
-  [k-or-ks x & {:keys [include-subclauses?], :or {include-subclauses? false}}]
-  (let [instances (atom [])]
-    (walk/prewalk
-     (fn [clause]
-       (if (is-clause? k-or-ks clause)
-         (do (swap! instances conj clause)
-             (when include-subclauses?
-               clause))
-         clause))
-     x)
-    (seq @instances)))
+    (match [:field-id id] some-query
+      (when (even? id)
+        id))
+    ;; -> [2 4 6 8]
 
-(defn ^:deprecated replace-clauses
-  "Walk a query looking for clauses named by keyword or set of keywords `k-or-ks` and replace them the results of a call
-  to `(f clause)`.
+  Of course, it's probably more efficient to let `core.match` compile an efficient matching function, so prefer using
+  patterns with `:guard` where possible.
 
-    (replace-clauses {:filter [:= [:field-id 10] 100]} :field-id (constantly 200))
-    ;; -> {:filter [:= 200 100]}"
+  ### `&match` and `&parents` anaphors
+
+  For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
+  `match` binds a pair of anaphors inside the `result-body` for your convenience. `&match` is bound to the entire
+  match, regardless of how you may have destructured it; `&parents` is bound to a sequence of keywords naming the
+  parent top-level keys and clauses of the match.
+
+    (mbql.u/match :field-id {:fields [[:datetime-field [:fk-> [:field-id 1] [:field-id 2]] :day]]}
+      ;; &parents will be [:fields :datetime-field :fk->]
+      (when (contains? (set &parents) :datetime-field)
+        &match))
+    ;; -> [[:field-id 1] [:field-id 2]]"
   {:style/indent 2}
-  [query k-or-ks f]
-  (walk/postwalk
-   (fn [clause]
-     (if (is-clause? k-or-ks clause)
-       (f clause)
-       clause))
-   query))
+  [pattern x & result-body]
+  `(mbql.match/match ~pattern ~x ~(when (seq result-body)
+                                    `(do ~@result-body))))
 
-(defn ^:deprecated replace-clauses-in
-  "Replace clauses only in a subset of `query`, defined by `keypath`.
+(defmacro match-one
+  "Like `match` but returns a single match rather than a sequence of matches."
+  {:style/indent 2}
+  [pattern x & result-body]
+  `(first (match ~pattern ~x ~@result-body)))
 
-    (replace-clauses-in {:filter [:= [:field-id 10] 100], :breakout [:field-id 100]} [:filter] :field-id
-      (constantly 200))
-    ;; -> {:filter [:= 200 100], :breakout [:field-id 100]}"
-  {:style/indent 3}
-  [query keypath k-or-ks f]
-  (if-not (seq (get-in query keypath))
-    query
-    (update-in query keypath #(replace-clauses % k-or-ks f))))
+(defmacro match-including-subclauses
+  "Same as `match`, but includes clauses inside matches in results as well.
+
+     (match #{:field-id :fk->} [:fk-> [:field-id 1] [:field-id 2]])
+     ;; -> [[:fk-> [:field-id 1] [:field-id 2]]]
+
+     (match-including-subclauses #{:field-id :fk->} [:fk-> [:field-id 1] [:field-id 2]])
+     ;; -> [[:fk-> [:field-id 1] [:field-id 2]]
+            [:field-id 1]
+            [:field-id 2]]"
+  {:style/indent 2}
+  [pattern x & result-body]
+  `(mbql.match/match-including-subclauses ~pattern ~x ~(when (seq result-body)
+                                                         `(do ~@result-body))))
+
+(defmacro replace
+  "Like `match`, but replace matches in `x` with the results of `result-body`. The same pattern options are supported,
+  and `&parents` and `&match` anaphors are available in the same way. (`&match` is particularly useful here if you
+  want to use keywords or sets of keywords as patterns.)"
+  {:style/indent 2}
+  [x pattern & result-body]
+  `(mbql.match/replace ~x ~pattern (do ~@result-body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -365,3 +338,17 @@
          (throw (Exception. (str (tru "No aggregation at index: {0} (nesting level: {1})" index nesting-level)))))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur (get-in query [:query :source-query]) index (dec nesting-level)))))
+
+(defn ga-id?
+  "Is this ID (presumably of a Metric or Segment) a GA one?"
+  [id]
+  (boolean
+   (when ((some-fn string? keyword?) id)
+     (re-find #"^ga(id)?:" (name id)))))
+
+(defn ga-metric-or-segment?
+  "Is this metric or segment clause not a Metabase Metric or Segment, but rather a GA one? E.g. something like `[:metric
+  ga:users]`. We want to ignore those because they're not the same thing at all as MB Metrics/Segments and don't
+  correspond to objects in our application DB."
+  [[_ id]]
+  (ga-id? id))

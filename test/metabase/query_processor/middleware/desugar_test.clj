@@ -61,7 +61,22 @@
 
 ;; TODO - test `does-not-contain`
 
-;; TODO - test `=` with extra args
+;;; ------------------------------------------ `=` and `!=` with extra args ------------------------------------------
+
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:or
+                             [:= [:field-id 1] 2]
+                             [:= [:field-id 1] 3]
+                             [:= [:field-id 1] 4]
+                             [:= [:field-id 1] 5]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:= [:field-id 1] 2 3 4 5]}}))
 
 ;; TODO - test `!=` with extra args
 

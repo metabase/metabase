@@ -233,7 +233,7 @@
 ;;; ----------------------------------------------- initial projection -----------------------------------------------
 
 (defn- add-initial-projection [query pipeline-ctx]
-  (let [all-fields (distinct (mbql.u/clause-instances #{:field-id :datetime-field} (:query query)))]
+  (let [all-fields (distinct (mbql.u/match {:query #{:field-id :datetime-field}} query))]
     (if-not (seq all-fields)
       pipeline-ctx
       (let [projections (for [field all-fields]

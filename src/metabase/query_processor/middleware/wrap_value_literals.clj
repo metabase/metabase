@@ -106,9 +106,8 @@
 
 (s/defn ^:private wrap-value-literals* :- mbql.s/Query
   [query]
-  (mbql.u/replace-clauses-in query [:query :filter] #{:= :!= :< :> :<= :>= :between
-                                                      :starts-with :ends-with :contains}
-    wrap-literals-in-clause))
+  (mbql.u/replace query {:query {:filter #{:= :!= :< :> :<= :>= :between :starts-with :ends-with :contains}}}
+    (wrap-literals-in-clause &match)))
 
 (defn wrap-value-literals [qp]
   (comp qp wrap-value-literals*))
