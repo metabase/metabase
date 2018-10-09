@@ -1,5 +1,7 @@
 /* @flow */
 
+import type { DateSeparator } from "metabase/lib/formatting";
+
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 
 export type DateStyle =
@@ -84,17 +86,9 @@ export function getDateFormatFromStyle(
   return replaceSeparators(style);
 }
 
-const UNITS_WITH_HOUR: DatetimeUnit[] = [
-  "default",
-  "millisecond",
-  "second",
-  "minute",
-  "hour",
-];
+const UNITS_WITH_HOUR: DatetimeUnit[] = ["default", "minute", "hour"];
 const UNITS_WITH_DAY: DatetimeUnit[] = [
   "default",
-  "millisecond",
-  "second",
   "minute",
   "hour",
   "day",

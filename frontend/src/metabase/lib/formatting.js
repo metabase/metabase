@@ -45,10 +45,10 @@ import type {
 } from "metabase/lib/formatting/date";
 
 // a one or two character string specifying the decimal and grouping separator characters
-type NumberSeparators = ".," | ", " | ",." | ".";
+export type NumberSeparators = ".," | ", " | ",." | ".";
 
 // single character string specifying date separators
-type DateSeparator = "/" | "-" | ".";
+export type DateSeparator = "/" | "-" | ".";
 
 export type FormattingOptions = {
   // GENERIC
@@ -455,8 +455,8 @@ export function formatDateTimeWithUnit(
   let timeFormat = options.time_format;
 
   if (!dateFormat) {
-    // $FlowFixMe: date_style default set above
     dateFormat = getDateFormatFromStyle(
+      // $FlowFixMe: date_style default set above
       options["date_style"],
       unit,
       options["date_separator"],

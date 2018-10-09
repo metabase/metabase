@@ -46,7 +46,7 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
 }
 
 export function getStoredSettingsForSeries(series: ?Series): Settings {
-  return series[0].card.visualization_settings || {};
+  return (series && series[0] && series[0].card.visualization_settings) || {};
 }
 
 export function getComputedSettingsForSeries(series: ?Series): Settings {

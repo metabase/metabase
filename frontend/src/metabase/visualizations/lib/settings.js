@@ -45,6 +45,7 @@ export type SettingDef = {
   widget?: string | React$Component<any, any, any>,
   writeDependencies?: SettingId[],
   readDependencies?: SettingId[],
+  noReset?: boolean,
 };
 
 export type WidgetDef = {
@@ -54,6 +55,7 @@ export type WidgetDef = {
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
+  noReset?: boolean,
   // $FlowFixMe
   widget?: React$Component<any, any, any>,
   onChange: (value: any) => void,

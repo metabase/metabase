@@ -72,13 +72,14 @@ export function columnSettings({
 import MetabaseSettings from "metabase/lib/settings";
 import { isa } from "metabase/lib/types";
 
-export function getGlobalSettingsForColumn(column) {
+export function getGlobalSettingsForColumn(column: Column) {
   let settings = {};
 
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
     if (isa(column.special_type, type)) {
+      // $FlowFixMe
       Object.assign(settings, globalSettings);
     }
   }
@@ -86,11 +87,11 @@ export function getGlobalSettingsForColumn(column) {
   return settings;
 }
 
-function getLocalSettingsForColumn(column) {
+function getLocalSettingsForColumn(column: Column): Settings {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column) {
+function getInhertiedSettingsForColumn(column: Column): Settings {
   return {
     ...getGlobalSettingsForColumn(column),
     ...getLocalSettingsForColumn(column),
@@ -102,7 +103,7 @@ const EXAMPLE_DATE = moment("2018-01-07 17:24");
 function getDateStyleOptionsForUnit(
   unit: ?DatetimeUnit,
   abbreviate?: boolean = false,
-  separator?: string = null,
+  separator?: string,
 ) {
   const options = [
     dateStyleOption("MMMM D, YYYY", unit, null, abbreviate, separator),
@@ -147,7 +148,7 @@ function dateStyleOption(
   unit: ?DatetimeUnit,
   description?: ?string,
   abbreviate?: boolean = false,
-  separator?: string = null,
+  separator?: string,
 ) {
   let format = getDateFormatFromStyle(style, unit, separator);
   if (abbreviate) {
@@ -280,10 +281,10 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "Currency", value: "currency" },
       ],
     },
-    getDefault: (column, settings) =>
+    getDefault: (column: Column, settings: ColumnSettings) =>
       isCurrency(column) && settings["currency"] ? "currency" : "decimal",
     // hide this for currency
-    getHidden: (column, settings) =>
+    getHidden: (column: Column, settings: ColumnSettings) =>
       isCurrency(column) && settings["number_style"] === "currency",
   },
   currency: {
@@ -291,10 +292,13 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: Object.values(currency).map(currency => ({
-        name: currency.name,
-        value: currency.code,
-      })),
+      options: Object.values(currency).map(
+        // $FlowFixMe
+        (currency: { name: string, code: string }) => ({
+          name: currency.name,
+          value: currency.code,
+        }),
+      ),
       searchProp: "name",
       searchCaseSensitive: false,
     },
@@ -331,7 +335,11 @@ export const NUMBER_COLUMN_SETTINGS = {
       ],
     },
     default: true,
-    getHidden: (column: Column, settings: ColumnSettings, { series }) =>
+    getHidden: (
+      column: Column,
+      settings: ColumnSettings,
+      { series }: { series: Series },
+    ) =>
       settings["number_style"] !== "currency" ||
       series[0].card.display !== "table",
     readDependencies: ["number_style"],
@@ -399,7 +407,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     ],
   },
   _column_title_full: {
-    getValue: (column, settings) => {
+    getValue: (column: Column, settings: ColumnSettings) => {
       let columnTitle = settings["column_title"];
       const headerUnit = settings["_header_unit"];
       if (headerUnit) {

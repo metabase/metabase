@@ -54,6 +54,11 @@ import colors from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
+import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { TableId } from "metabase/meta/types/Table";
+import type { FieldId } from "metabase/meta/types/Field";
+
 const mapStateToProps = (state, props) => {
   return {
     databaseId: parseInt(props.params.databaseId),
@@ -86,9 +91,9 @@ export default class FieldApp extends React.Component {
   saveStatus: null;
 
   props: {
-    databaseId: number,
-    tableId: number,
-    fieldId: number,
+    databaseId: DatabaseId,
+    tableId: TableId,
+    fieldId: FieldId,
     metadata: Metadata,
     idfields: Object[],
 
@@ -97,11 +102,18 @@ export default class FieldApp extends React.Component {
     fetchFieldValues: number => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
-    updateFieldDimension: any => Promise<void>,
-    deleteFieldDimension: any => Promise<void>,
-    fetchDatabaseIdfields: number => Promise<void>,
+    updateFieldDimension: (FieldId, any) => Promise<void>,
+    deleteFieldDimension: FieldId => Promise<void>,
+    fetchDatabaseIdfields: DatabaseId => Promise<void>,
+
+    rescanFieldValues: FieldId => Promise<void>,
+    discardFieldValues: FieldId => Promise<void>,
+
+    location: any,
+    params: any,
   };
 
+  // $FlowFixMe
   async componentWillMount() {
     const {
       databaseId,
@@ -131,11 +143,11 @@ export default class FieldApp extends React.Component {
     await fetchDatabaseIdfields(databaseId);
   }
 
-  linkWithSaveStatus = saveMethod => {
+  linkWithSaveStatus = (saveMethod: Function) => {
     const self = this;
-    return async (...params) => {
+    return async (...args: any[]) => {
       self.saveStatus && self.saveStatus.setSaving();
-      await saveMethod(...params);
+      await saveMethod(...args);
       self.saveStatus && self.saveStatus.setSaved();
     };
   };
@@ -166,7 +178,8 @@ export default class FieldApp extends React.Component {
     this.props.deleteFieldDimension,
   );
 
-  onUpdateFieldSettings = settings => {
+  // $FlowFixMe
+  onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
     return this.onUpdateFieldProperties({ settings });
   };
 
@@ -377,7 +390,13 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({ databaseId, tableId }) => (
+export const BackButton = ({
+  databaseId,
+  tableId,
+}: {
+  databaseId: DatabaseId,
+  tableId: TableId,
+}) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 flex align-center justify-center inline"
@@ -388,10 +407,10 @@ export const BackButton = ({ databaseId, tableId }) => (
 );
 
 export class FieldHeader extends React.Component {
-  onNameChange = e => {
+  onNameChange = (e: { target: HTMLInputElement }) => {
     this.updateNameDebounced(e.target.value);
   };
-  onDescriptionChange = e => {
+  onDescriptionChange = (e: { target: HTMLInputElement }) => {
     this.updateDescriptionDebounced(e.target.value);
   };
 

@@ -46,6 +46,7 @@ const ColumnSettings = ({
     column = { ...column, unit: "millisecond" };
   }
 
+  // $FlowFixMe
   const settingsDefs = getSettingDefintionsForColumn(series, column);
 
   const computedSettings = getComputedSettings(
@@ -86,7 +87,7 @@ const ColumnSettings = ({
         ))
       ) : (
         <EmptyState
-          title={t`No formatting settings`}
+          message={t`No formatting settings`}
           illustrationElement={<img src="../app/assets/img/no_results.svg" />}
         />
       )}
