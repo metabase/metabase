@@ -10,6 +10,7 @@
             [hiccup
              [core :refer [h html]]
              [util :as hutil]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.color :as color]
             [metabase.util :as u]
             [metabase.util
@@ -124,11 +125,6 @@
    (or (ui-logic/y-axis-rowfn card data)
        second)])
 
-(defn- datetime-field?
-  [field]
-  (or (isa? (:base_type field)    :type/DateTime)
-      (isa? (:special_type field) :type/DateTime)))
-
 (defn- number-field?
   [field]
   (or (isa? (:base_type field)    :type/Number)
@@ -146,17 +142,17 @@
     (cond
       (or (zero? row-count)
           ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-          (= [[nil]] (-> data :rows)))                             :empty
-      (contains? #{:pin_map :state :country} (:display card))      nil
+          (= [[nil]] (-> data :rows)))                        :empty
+      (contains? #{:pin_map :state :country} (:display card)) nil
       (and (= col-count 1)
-           (= row-count 1))                                        :scalar
+           (= row-count 1))                                   :scalar
       (and (= col-count 2)
            (> row-count 1)
-           (datetime-field? col-1)
-           (number-field? col-2))                                  :sparkline
+           (mbql.u/datetime-field? col-1)
+           (number-field? col-2))                             :sparkline
       (and (= col-count 2)
-           (number-field? col-2))                                  :bar
-      :else                                                        :table)))
+           (number-field? col-2))                             :bar
+      :else                                                   :table)))
 
 (defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
   (and (not (isa? special_type :type/Description))
@@ -264,9 +260,9 @@
 (defn- format-cell
   [timezone value col]
   (cond
-    (datetime-field? col) (format-timestamp timezone value col)
-    (and (number? value) (not (datetime-field? col))) (format-number value)
-    :else (str value)))
+    (mbql.u/datetime-field? col)                             (format-timestamp timezone value col)
+    (and (number? value) (not (mbql.u/datetime-field? col))) (format-number value)
+    :else                                                    (str value)))
 
 (defn- render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"
@@ -653,34 +649,34 @@
 (s/defn ^:private render:sparkline :- RenderedPulseCard
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
-        ft-row (if (datetime-field? (x-axis-rowfn cols))
-                 #(.getTime ^Date (du/->Timestamp % timezone))
-                 identity)
-        rows   (non-nil-rows x-axis-rowfn y-axis-rowfn
-                (if (> (ft-row (x-axis-rowfn (first rows)))
-                       (ft-row (x-axis-rowfn (last rows))))
-                  (reverse rows)
-                  rows))
-        xs     (map (comp ft-row x-axis-rowfn) rows)
-        xmin   (apply min xs)
-        xmax   (apply max xs)
-        xrange (- xmax xmin)
-        xs'    (map #(/ (double (- % xmin)) xrange) xs)
-        ys     (map y-axis-rowfn rows)
-        ymin   (apply min ys)
-        ymax   (apply max ys)
-        yrange (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
-        ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
-        rows'  (reverse (take-last 2 rows))
-        values (map (comp format-number y-axis-rowfn) rows')
-        labels (format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
-        image-bundle (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
+        ft-row                      (if (mbql.u/datetime-field? (x-axis-rowfn cols))
+                                      #(.getTime ^Date (du/->Timestamp % timezone))
+                                      identity)
+        rows                        (non-nil-rows x-axis-rowfn y-axis-rowfn
+                                                  (if (> (ft-row (x-axis-rowfn (first rows)))
+                                                         (ft-row (x-axis-rowfn (last rows))))
+                                                    (reverse rows)
+                                                    rows))
+        xs                          (map (comp ft-row x-axis-rowfn) rows)
+        xmin                        (apply min xs)
+        xmax                        (apply max xs)
+        xrange                      (- xmax xmin)
+        xs'                         (map #(/ (double (- % xmin)) xrange) xs)
+        ys                          (map y-axis-rowfn rows)
+        ymin                        (apply min ys)
+        ymax                        (apply max ys)
+        yrange                      (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
+        ys'                         (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
+        rows'                       (reverse (take-last 2 rows))
+        values                      (map (comp format-number y-axis-rowfn) rows')
+        labels                      (format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
+        image-bundle                (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
     {:attachments (when image-bundle
                     (image-bundle->attachment image-bundle))
      :content     [:div
                    [:img {:style (style {:display :block
-                                         :width :100%})
+                                         :width   :100%})
                           :src   (:image-src image-bundle)}]
                    [:table
                     [:tr

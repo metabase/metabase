@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]]
@@ -223,33 +223,31 @@
                 "FROM \"PUBLIC\".\"VENUES\" "
                 "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
    :params nil}
-  (let [outer-query (-> (data/mbql-query venues
-                          {:aggregation [[:count]]})
-                        (assoc :parameters [{:name   "price"
-                                             :type   :category
-                                             :target [:field-id (data/id :venues :price)]
-                                             :value  [3 4]}]))]
-    (-> (qp/process-query outer-query)
-        :data :native_form)))
+  (let [query (-> (data/mbql-query venues
+                    {:aggregation [[:count]]})
+                  (assoc :parameters [{:name   "price"
+                                       :type   :category
+                                       :target [:field-id (data/id :venues :price)]
+                                       :value  [3 4]}]))]
+    (-> query qp/process-query :data :native_form)))
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (datasets/expect-with-engine :h2
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
-                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+                "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"
+                " OR \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?)")
    :params [(du/->Timestamp #inst "2014-06-01")
             (du/->Timestamp #inst "2014-06-30")
             (du/->Timestamp #inst "2015-06-01")
             (du/->Timestamp #inst "2015-06-30")]}
-  (let [outer-query (-> (data/mbql-query checkins
-                          {:aggregation [[:count]]})
-                        (assoc :parameters [{:name   "date"
-                                             :type   "date/month"
-                                             :target [:field-id (data/id :checkins :date)]
-                                             :value  ["2014-06" "2015-06"]}]))]
-    (-> (qp/process-query outer-query)
-        :data :native_form)))
+  (let [query (-> (data/mbql-query checkins
+                    {:aggregation [[:count]]})
+                  (assoc :parameters [{:name   "date"
+                                       :type   "date/month"
+                                       :target [:field-id (data/id :checkins :date)]
+                                       :value  ["2014-06" "2015-06"]}]))]
+    (-> query qp/process-query :data :native_form)))
 
 ;; make sure that "ID" type params get converted to numbers when appropriate
 (expect

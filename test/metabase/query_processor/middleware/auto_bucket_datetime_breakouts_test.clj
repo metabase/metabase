@@ -3,7 +3,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.auto-bucket-datetime-breakouts :as auto-bucket-datetime-breakouts]
             [metabase.util :as u]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.test.data :as data]))
 
 (defn- auto-bucket [query]
   ((auto-bucket-datetime-breakouts/auto-bucket-datetime-breakouts identity)
@@ -65,3 +66,14 @@
   (auto-bucket-mbql
    {:source-table 1
     :breakout     [[:field-id Integer/MAX_VALUE]]}))
+
+;; do UNIX TIMESTAMP datetime fields get auto-bucketed?
+(defn- x []
+  (data/dataset sad-toucan-incidents
+    {:database (data/id)
+     :type     :query
+     :query    (data/$ids incidents
+                 {:source-table (data/id :incidents)
+                  :filter       [:and
+                                 [:> [:field-id $timestamp] "2015-06-01"]
+                                 [:< [:field-id $timestamp] "2015-06-03"]]})}))

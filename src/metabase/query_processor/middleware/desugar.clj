@@ -2,8 +2,7 @@
   (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [schema.core :as s]
-            [metabase.util :as u]))
+            [schema.core :as s]))
 
 (defn- desugar-inside [query]
   (mbql.u/replace-in query [:query :filter]
@@ -16,8 +15,6 @@
   (mbql.u/replace-in query [:query :filter]
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
-
-(defn- wrap-field-in [field ])
 
 (defn- desugar-time-interval [query]
   (mbql.u/replace-in query [:query :filter]

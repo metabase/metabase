@@ -20,10 +20,6 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- datetime-field? [{:keys [base_type special_type]}]
-  (or (isa? base_type :type/DateTime)
-      (isa? special_type :type/DateTime)))
-
 (s/defn ^:private sorted-implicit-fields-for-table :- [mbql.s/Field]
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
@@ -48,7 +44,7 @@
                              :asc]
                             ;; 4C. name
                             [:%lower.name :asc]]})]
-    (if (datetime-field? field)
+    (if (mbql.u/datetime-field? field)
       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
       ;; default bucketing of `:day`
       [:datetime-field [:field-id (u/get-id field)] :default]

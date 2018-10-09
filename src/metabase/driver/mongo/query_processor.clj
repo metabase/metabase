@@ -82,7 +82,7 @@
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^FieldInstance field, ^String separator]
   (if-let [parent-id (:parent_id field)]
-    (s/join separator [(field->name (qp.store/field parent-id))
+    (s/join separator [(field->name (qp.store/field parent-id) separator)
                        (:name field)])
     (:name field)))
 

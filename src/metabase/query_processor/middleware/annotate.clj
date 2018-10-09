@@ -13,8 +13,7 @@
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [metabase.util :as u]))
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -136,15 +135,14 @@
      (select-keys (col-info-for-field-clause query x) [:base_type :special_type]))
    ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
    ;; wacky like a BigDecimal or Float
-   (when (contains? #{:count :distinct} ag-type)
+   (when (#{:count :distinct} ag-type)
      {:base_type    :type/Integer
       :special_type :type/Number})
    ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
    ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
    ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
    ;; for the purposes of a patch release.
-   (when (or (mbql.u/is-clause? :expression x)
-             (mbql.u/is-clause? #{:+ :- :/ :*} x))
+   (when (mbql.u/is-clause? #{:expression :+ :- :/ :*} x)
      {:base_type    :type/Float
       :special_type :type/Number})))
 
@@ -195,7 +193,7 @@
 ;;; |                                               GENERAL MIDDLEWARE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn add-column-info* [{query-type :type, :as query} results]
+(defn- add-column-info* [{query-type :type, :as query} results]
   (if-not (or (= query-type :query)
               (:annotate? results))
     (add-native-column-info results)

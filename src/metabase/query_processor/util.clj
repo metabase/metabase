@@ -16,13 +16,6 @@
   [query]
   (= :query (keyword (:type query))))
 
-(defn ^:deprecated datetime-field?
-  "Is FIELD a `DateTime` field?
-   (DEPRECATED because this only works for expanded queries.)"
-  [{:keys [base-type special-type]}]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
-
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
   [{{aggregations :aggregation, :keys [limit page]} :query}]

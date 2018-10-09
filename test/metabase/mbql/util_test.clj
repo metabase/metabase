@@ -160,6 +160,14 @@
     [:time-interval field :current unit] (recur [:time-interval field 0 unit])
     [:time-interval _     n        unit] [n unit]))
 
+;; can we short-circut a match to prevent recursive matching?
+(expect
+  [10]
+  (mbql.u/match [[:field-id 10]
+                 [:datetime-field [:field-id 20] :day]]
+    [:field-id id] id
+    [_ [:field-id & _] & _] nil))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    replace                                                     |
@@ -282,6 +290,24 @@
                     [:absolute-datetime #inst "2016-11-08T00:00:00.000-00:00" :day]]
                    [:= [:field-id 100] 20]]
     [_ [:datetime-field & _] & _] nil))
+
+;; can we use short-circuting patterns to do something tricky like only replace `:field-id` clauses that aren't
+;; wrapped by other clauses?
+(expect
+  [[:datetime-field [:field-id 10] :day]
+   [:datetime-field [:field-id 20] :day]
+   [:field-id 30]]
+  (let [id-is-datetime-field? #{10}]
+    (mbql.u/replace [[:field-id 10]
+                     [:datetime-field [:field-id 20] :month]
+                     [:field-id 30]]
+      ;; don't replace anything that's already wrapping a `field-id`
+      [_ [:field-id & _] & _]
+      &match
+
+      [:field-id (_ :guard id-is-datetime-field?)]
+      [:datetime-field &match :day])))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Other Fns                                                    |

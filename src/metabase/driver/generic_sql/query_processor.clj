@@ -638,7 +638,15 @@
   "Process and run a native (raw SQL) QUERY."
   [driver {settings :settings, database-id :database, query :native, :as outer-query}]
   (let [query (assoc query :remark (qputil/query->remark outer-query))]
-    (when-not (:quiet environ.core/env) (println "NATIVE QUERY:" (u/format-color 'blue (:query query)))) ; NOCOMMIT
+    (when-not (:quiet environ.core/env) ; NOCOMMIT
+      (println "NATIVE QUERY:"
+               (u/format-color 'blue "\n%s\n%s"
+                 (str (loop [sql (:query query), [k & more] ["FROM" "WHERE" "ORDER BY" "LIMIT" "AND"]]
+                        (if-not k
+                          sql
+                          (recur (str/replace sql (re-pattern (str "\\s" k)) (str "\n" k))
+                                 more))))
+                 (u/pprint-to-str (:params query)))))
     (do-with-try-catch
       (fn []
         (let [db-connection (sql/db->jdbc-connection-spec (Database (u/get-id database-id)))]

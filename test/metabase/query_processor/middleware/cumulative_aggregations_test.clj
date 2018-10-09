@@ -72,17 +72,42 @@
                :breakout     [[:field-id 1]]
                :aggregation  [[:cum-sum [:field-id 1]]]}}))
 
+;; ...even inside expression aggregations?
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1, :aggregation [[:* [:count] 1]]}}
+  (#'cumulative-aggregations/replace-cumulative-ags
+   {:database 1
+    :type     :query
+    :query    {:source-table 1, :aggregation [[:* [:cum-count] 1]]}}))
+
+
+(def ^:private ^{:arglists '([])} return-some-rows
+  (constantly
+   {:rows [[1 1]
+           [2 2]
+           [3 3]
+           [4 4]
+           [5 5]]}))
 
 ;; make sure we take breakout fields into account
 (expect
   {:rows [[1 1] [2 3] [3 6] [4 10] [5 15]]}
-  ((cumulative-aggregations/handle-cumulative-aggregations (constantly {:rows [[1 1]
-                                                                               [2 2]
-                                                                               [3 3]
-                                                                               [4 4]
-                                                                               [5 5]]}))
+  ((cumulative-aggregations/handle-cumulative-aggregations return-some-rows)
    {:database 1
     :type     :query
     :query    {:source-table 1
                :breakout     [[:field-id 1]]
                :aggregation  [[:cum-sum [:field-id 1]]]}}))
+
+;; make sure we sum up cumulative aggregations inside expressions correctly
+(expect
+  ;; we shouldn't be doing anything special with the expressions, let the database figure that out. We will just SUM
+  {:rows [[1 1] [2 3] [3 6] [4 10] [5 15]]}
+  ((cumulative-aggregations/handle-cumulative-aggregations return-some-rows)
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :breakout     [[:field-id 1]]
+               :aggregation  [[:+ [:cum-count] 1]]}}))

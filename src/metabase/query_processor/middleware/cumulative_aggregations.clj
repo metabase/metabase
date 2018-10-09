@@ -19,10 +19,10 @@
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
   (mbql.u/replace-in query [:query :aggregation]
-    [(ag-type :guard #{:cum-sum :cum-count}) ag-field]
-    [(case ag-type
-       :cum-sum   :sum
-       :cum-count :count) ag-field]))
+    ;; cumulative count doesn't neccesarily have a field-id arg
+    [:cum-count]       [:count]
+    [:cum-count field] [:count field]
+    [:cum-sum field]   [:sum field]))
 
 (defn- add-rows
   "Update values in `row` by adding values from `last-row` for a set of specified indexes.

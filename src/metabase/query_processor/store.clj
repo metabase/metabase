@@ -24,7 +24,7 @@
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
-  (atom nil))
+  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
 
 (defn do-with-new-store
   "Execute `f` with a freshly-bound `*store*`."

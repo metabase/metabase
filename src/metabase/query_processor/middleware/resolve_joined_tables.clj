@@ -115,5 +115,9 @@
         (store-join-table-pk-fields! pk-info)
         (add-join-info-to-query query fk-clauses pk-info)))))
 
-(defn resolve-joined-tables [qp]
+(defn resolve-joined-tables
+  "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
+  `:join-tables` key inside the MBQL inner query dictionary containing information about the `JOIN`s (or equivalent)
+  that need to be performed for these tables."
+  [qp]
   (comp qp resolve-joined-tables*))

@@ -5,8 +5,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.date :as du]
-            [schema.core :as s]
-            [metabase.util :as u]))
+            [schema.core :as s]))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
@@ -20,7 +19,13 @@
 (defmethod type-info :default [_] nil)
 
 (defmethod type-info (class Field) [this]
-  (select-keys this [:base_type :special_type :database_type]))
+  (let [field-info (select-keys this [:base_type :special_type :database_type])]
+    (merge
+     field-info
+     ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
+     ;; its presence. It will get replaced by `:datetime-field` unit if we're wrapped by one
+     (when (mbql.u/datetime-field? field-info)
+       {:unit :default}))))
 
 (defmethod type-info :field-id [[_ field-id]]
   (type-info (qp.store/field field-id)))
@@ -44,18 +49,17 @@
   [:value this info])
 
 (defmethod add-type-info java.util.Date [this info & _]
-  [:absolute-datetime (du/->Timestamp this) (or (:unit info) :default)])
+  [:absolute-datetime (du/->Timestamp this) (get info :unit :default)])
 
 (defmethod add-type-info java.sql.Timestamp [this info & _]
-  [:absolute-datetime this (or (:unit info) :default)])
+  [:absolute-datetime this (get info :unit :default)])
 
 (defmethod add-type-info String [this info & [{:keys [parse-datetime-strings?]
                                                :or   {parse-datetime-strings? true}}]]
-  (if (and
-       (:unit info)
-       (du/date-string? this)
-       parse-datetime-strings?)
-    [:absolute-datetime (du/->Timestamp this) (:unit info)] ; TODO - what about timezone ?!
+  (if-let [unit (when (and (du/date-string? this)
+                           parse-datetime-strings?)
+                  (:unit info))]
+    [:absolute-datetime (du/->Timestamp this) unit] ; TODO - what about timezone ?!
     [:value this info]))
 
 

@@ -62,13 +62,16 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
-    (vec (for [field fields
-               :when (mbql.u/is-clause? :field-id field)
-               :let  [dimension (field-id->remapping-dimension (second field))]
-               :when dimension]
-           [field
-            [:fk-> field [:field-id (:human_readable_field_id dimension)]]
-            dimension]))))
+    (vec
+     (mbql.u/match fields
+       ;; don't match Field IDs nested in other clauses
+       [(_ :guard keyword?) [:field-id _] & _] nil
+
+       [:field-id (id :guard field-id->remapping-dimension)]
+       (let [dimension (field-id->remapping-dimension id)]
+         [&match
+          [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
+          dimension])))))
 
 (s/defn ^:private update-remapped-order-by :- [mbql.s/OrderBy]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
@@ -139,7 +142,6 @@
   {:description   nil
    :id            nil
    :table_id      nil
-   :source        :fields
    :name          col-name
    :display_name  col-name
    :target        nil

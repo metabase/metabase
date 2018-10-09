@@ -59,6 +59,40 @@
       {:source-table (data/id :checkins)
        :filter       [:= [:datetime-field [:field-id $date] :month] "2018-10-01"]})))
 
+;; even if the Field in question is not wrapped in a datetime-field clause, we should still auto-bucket the value, but
+;; we should give it a `:default` unit
+(expect
+  (data/$ids checkins
+    {:source-table (data/id :checkins)
+     :filter       [:=
+                    [:field-id $date]
+                    [:absolute-datetime (du/->Timestamp "2018-10-01" "UTC") :default]]})
+  (data/$ids checkins
+    (wrap-value-literals [$date]
+      {:source-table (data/id :checkins)
+       :filter       [:= [:field-id $date] "2018-10-01"]})))
+
+;; should also apply if the Fields are UNIX timestamps or other things with special type of :type/Datetime
+(expect
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      {:source-table (data/id :incidents)
+       :filter       [:and
+                      [:>
+                       [:datetime-field [:field-id $timestamp] :day]
+                       [:absolute-datetime #inst "2015-06-01T00:00:00.000000000-00:00" :day]]
+                      [:<
+                       [:datetime-field [:field-id $timestamp] :day]
+                       [:absolute-datetime #inst "2015-06-03T00:00:00.000000000-00:00" :day]]]}))
+
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      (wrap-value-literals [$timestamp]
+        {:source-table (data/id :incidents)
+         :filter       [:and
+                        [:> [:datetime-field [:field-id $timestamp] :day] "2015-06-01"]
+                        [:< [:datetime-field [:field-id $timestamp] :day] "2015-06-03"]]}))))
+
 ;; string filters like `starts-with` should not parse datetime strings for obvious reasons
 (expect
   (data/$ids checkins
@@ -68,8 +102,7 @@
                      [:value "2018-10-01" {:base_type     :type/Date
                                            :special_type  nil
                                            :database_type "DATE"
-                                           :unit          :month}]
-                     nil]})
+                                           :unit          :month}]]})
   (data/$ids checkins
     (wrap-value-literals [$date]
       {:source-table (data/id :checkins)

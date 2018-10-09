@@ -78,6 +78,12 @@
 
   See [`core.match` documentation](`https://github.com/clojure/core.match/wiki/Overview`) for more details.
 
+  Pattern-matching works almost exactly the way it does when using `core.match/match` directly (after things like
+  keywords and predicate functions are transformed into appropriate patterns) with the biggest difference being that
+  this macro automatically recurses through sequences and maps as a final `:else` clause. If you don't want to
+  automatically recurse, use a catch-all pattern and return nil, which will prevent `core.match` from reaching the
+  `:else` clause.
+
   ### Returing something other than the exact match with result body
 
   By default, `match` returns whatever matches the pattern you pass in. But what if you only want to return part of
@@ -97,8 +103,8 @@
   Of course, it's probably more efficient to let `core.match` compile an efficient matching function, so prefer using
   patterns with `:guard` where possible.
 
-  One more thing to know about result bodies: you can call `recur` inside them, and use the same matching logic
-  against a different value.
+  You can also call `recur` inside result bodies, to use the same matching logic against a different value.
+
 
   ### `&match` and `&parents` anaphors
 
@@ -333,3 +339,9 @@
   correspond to objects in our application DB."
   [[_ id]]
   (ga-id? id))
+
+(defn datetime-field?
+  "Does `field` have a base type or special type that derives from `:type/DateTime`?"
+  [field]
+  (or (isa? (:base_type field)    :type/DateTime)
+      (isa? (:special_type field) :type/DateTime)))
