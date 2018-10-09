@@ -2,7 +2,6 @@ import React from "react";
 
 import Select, { Option } from "metabase/components/Select.jsx";
 
-import _ from "underscore";
 import cx from "classnames";
 
 const ChartSettingSelect = ({
