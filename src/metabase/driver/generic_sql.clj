@@ -310,19 +310,25 @@
   (with-resultset-open [rs-seq (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem rs-seq))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema     schemas
-                 table-name (mapv :table_name (get-tables metadata schema))]
-             {:name   table-name
-              :schema schema})))))
+      (set (for [schema schemas
+                 table  (get-tables metadata schema)]
+             (let [remarks (:remarks table)]
+               {:name        (:table_name table)
+                :schema      schema
+                :description (when-not (str/blank? remarks)
+                               remarks)}))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
-  (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (get-tables metadata nil))]
-         {:name   (:table_name table)
-          :schema (:table_schem table)})))
+  (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                             (get-tables metadata nil))]
+         (let [remarks (:remarks table)]
+           {:name        (:table_name  table)
+            :schema      (:table_schem table)
+            :description (when-not (str/blank? remarks)
+                           remarks)}))))
 
 (defn- database-type->base-type
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
@@ -342,10 +348,12 @@
 
 (defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
   (with-resultset-open [rs-seq (.getColumns metadata nil schema table-name nil)]
-    (set (for [{database-type :type_name, column-name :column_name} rs-seq]
+    (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} rs-seq]
            (merge {:name          column-name
                    :database-type database-type
                    :base-type     (database-type->base-type driver database-type)}
+                  (when (not (str/blank? remarks))
+                    {:field-comment remarks})
                   (when-let [special-type (calculated-special-type driver column-name database-type)]
                     {:special-type special-type}))))))
 
