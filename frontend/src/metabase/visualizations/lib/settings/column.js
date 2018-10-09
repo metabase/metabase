@@ -295,6 +295,8 @@ export const NUMBER_COLUMN_SETTINGS = {
         name: currency.name,
         value: currency.code,
       })),
+      searchProp: "name",
+      searchCaseSensitive: false,
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>

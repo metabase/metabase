@@ -249,14 +249,14 @@ export class SpecialTypeAndTargetPicker extends Component {
               className,
             )}
             triggerClasses={this.props.triggerClasses}
-            placeholder={t`Select a currency type`}
-            onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
-            searchProp="name"
             value={
               (field.settings && field.settings.currency) ||
               getGlobalSettingsForColumn(field).currency ||
               "USD"
             }
+            onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
+            placeholder={t`Select a currency type`}
+            searchProp="name"
             searchCaseSensitive={false}
           >
             {Object.values(currency).map(c => (
