@@ -4988,3 +4988,80 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_field
             columnName: raw_column_id
+
+# Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
+  - changeSet:
+      id: 94
+      author: senior
+      comment: 'Added 0.31.0'
+      changes:
+        - createTable:
+            tableName: task_history
+            remarks: 'Timing and metadata info about background/quartz processes'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: task
+                  type: VARCHAR(254)
+                  remarks: 'Name of the task'
+                  constraints:
+                    nullable: false
+              # The sync tasks all have a db_id, but there are others that won't, such as the pulses
+              # task or task history cleanup. The way around this is to create a join table between
+              # TASK_HISTORY and METABASE_DATABASE, but that doesn't seem worth it right now.
+              - column:
+                  name: db_id
+                  type: integer
+              - column:
+                  name: started_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_details
+                  remarks: 'JSON string with additional info on the task'
+                  type: text
+        - createIndex:
+            indexName: idx_task_history_end_time
+            tableName: task_history
+            columns:
+              - column:
+                  name: ended_at
+        - createIndex:
+            indexName: idx_task_history_db_id
+            tableName: task_history
+            columns:
+              - column:
+                  name: db_id
+# Before this changeset, the databasechangelog table didn't include any uniqueness constraing for the databasechangelog
+# table. Not having anything that uniquely identifies a row can cause issues for database replication. In earlier
+# versions of Liquibase the uniquenes constraint was (ID, AUTHOR, FILENAME) but that was dropped
+# (https://liquibase.jira.com/browse/CORE-1909) as some as the combination of the three columns caused issues on some
+# databases. We only support PostgreSQL, MySQL and H2 which doesn't have that issue. This changeset puts back that
+# uniqueness constraint since the issue shouldn't affect us and it will allow replication without the user needed to
+# add their own constraint.
+  - changeSet:
+      id: 95
+      author: senior
+      comment: 'Added 0.31.0'
+      changes:
+        - addUniqueConstraint:
+            columnNames: id, author, filename
+            constraintName: idx_databasechangelog_id_author_filename
+            tableName: DATABASECHANGELOG

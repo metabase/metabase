@@ -35,7 +35,7 @@
   ;; TODO - use the `rows` function from `metabse.query-processor-test`. Preferrably after it's moved to some sort of
   ;; shared test util namespace
   (-> (data/dataset metabase.driver.mysql-test/all-zero-dates
-        (data/run-query exciting-moments-in-history))
+        (data/run-mbql-query exciting-moments-in-history))
       :data :rows))
 
 
@@ -86,7 +86,7 @@
       (db->fields db))))
 
 (expect-with-engine :mysql
-  "America/Los_Angeles"
+  "UTC"
   (tu/db-timezone-id))
 
 (expect-with-engine :mysql
@@ -147,11 +147,11 @@
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))
           (qp/process-query
-           {:database (data/id),
-            :type :native,
-            :settings {:report-timezone "UTC"}
-            :native     {:query "SELECT cast({{date}} as date)"
-                         :template_tags {:date {:name "date" :display_name "Date" :type "date" }}}
+           {:database   (data/id)
+            :type       :native
+            :settings   {:report-timezone "UTC"}
+            :native     {:query         "SELECT cast({{date}} as date)"
+                         :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
             :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
 
 ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone is in Los
@@ -174,5 +174,5 @@
              :type :native,
              :settings {:report-timezone "UTC"}
              :native     {:query "SELECT cast({{date}} as date)"
-                          :template_tags {:date {:name "date" :display_name "Date" :type "date" }}}
+                          :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
              :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))

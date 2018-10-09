@@ -5,11 +5,13 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models
              [interface :as i]
-             [permissions :as perms]]
+             [permissions :as perms]
+             [table :refer [Table]]]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -31,7 +33,7 @@
 ;;          tables->permissions-path-set   source-card-read-perms
 
 (defn- query->source-and-join-tables
-  "Return a sequence of all Tables (as TableInstance maps) referenced by QUERY."
+  "Return a sequence of all Tables (as TableInstance maps, or IDs) referenced by `query`."
   [{:keys [source-table join-tables source-query native], :as query}]
   (cond
     ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native
@@ -45,14 +47,24 @@
 (s/defn ^:private tables->permissions-path-set :- #{perms/ObjectPath}
   "Given a sequence of `tables` referenced by a query, return a set of required permissions."
   [database-or-id tables]
-  (set (for [table tables]
-         (if (= ::native table)
-           ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
-           (perms/adhoc-native-query-path database-or-id)
-           ;; anything else (i.e., a normal table) just gets normal table permissions
-           (perms/object-path (u/get-id database-or-id)
-                              (:schema table)
-                              (or (:id table) (:table-id table)))))))
+  (let [table-ids        (filter integer? tables)
+        table-id->schema (when (seq table-ids)
+                           (db/select-id->field :schema Table :id [:in table-ids]))]
+    (set (for [table tables]
+           (cond
+             ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
+             (= ::native table)
+             (perms/adhoc-native-query-path database-or-id)
+
+             ;; If Table is an ID then fetch its schema from the DB and require normal table perms
+             (integer? table)
+             (perms/object-path (u/get-id database-or-id) (table-id->schema table) table)
+
+             ;; for a TableInstance require normal table perms
+             :else
+             (perms/object-path (u/get-id database-or-id)
+                                (:schema table)
+                                (or (:id table) (:table-id table))))))))
 
 (s/defn ^:private source-card-read-perms :- #{perms/ObjectPath}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source

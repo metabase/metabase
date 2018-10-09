@@ -124,16 +124,16 @@ describe("LineAreaBarRenderer", () => {
               formatValue(rows[0][0], {
                 column: DateTimeColumn({ unit: "hour" }),
               }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
             expect(
               formatValue(hover.data[0].value, { column: hover.data[0].col }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
 
             expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-              "1 AM - January 1, 2016",
-              "2 AM - January 1, 2016",
-              "3 AM - January 1, 2016",
-              "4 AM - January 1, 2016",
+              "January 1, 2016, 1:00 AM",
+              "January 1, 2016, 2:00 AM",
+              "January 1, 2016, 3:00 AM",
+              "January 1, 2016, 4:00 AM",
             ]);
 
             resolve();
@@ -226,6 +226,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": 30,
+          "graph.goal_label": "Goal",
         },
       });
 
@@ -243,6 +244,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": goalValue,
+          "graph.goal_label": "Goal",
         },
         onHoverChange: hover => {
           expect(hover.data[0].value).toEqual(goalValue);
@@ -279,6 +281,7 @@ describe("LineAreaBarRenderer", () => {
         "graph.x_axis.scale": "timeseries",
         "graph.x_axis.axis_enabled": true,
         "graph.colors": ["#000000"],
+        series: () => ({ display: "line" }),
         ...settings,
       },
       onHoverChange,
@@ -302,6 +305,7 @@ describe("LineAreaBarRenderer", () => {
         "graph.x_axis.axis_enabled": true,
         "graph.x_axis.scale": "ordinal",
         "graph.x_axis._is_numeric": false,
+        series: () => ({ display: "bar" }),
       },
       onHoverChange,
     });

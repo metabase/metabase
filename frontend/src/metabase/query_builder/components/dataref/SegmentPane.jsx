@@ -64,7 +64,7 @@ export default class SegmentPane extends Component {
         query = query.clearAggregations();
       }
 
-      query = query.addFilter(["SEGMENT", this.props.segment.id]);
+      query = query.addFilter(["segment", this.props.segment.id]);
 
       this.props.updateQuestion(query.question());
       this.props.runQuestionQuery();
@@ -88,14 +88,14 @@ export default class SegmentPane extends Component {
   setQueryFilteredBy() {
     let card = this.newCard();
     card.dataset_query.query.aggregation = ["rows"];
-    card.dataset_query.query.filter = ["SEGMENT", this.props.segment.id];
+    card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
   setQueryCountFilteredBy() {
     let card = this.newCard();
     card.dataset_query.query.aggregation = ["count"];
-    card.dataset_query.query.filter = ["SEGMENT", this.props.segment.id];
+    card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
@@ -111,7 +111,7 @@ export default class SegmentPane extends Component {
     if (
       query instanceof StructuredQuery &&
       query.tableId() === segment.table_id &&
-      !_.findWhere(query.filters(), { [0]: "SEGMENT", [1]: segment.id })
+      !_.findWhere(query.filters(), { [0]: "segment", [1]: segment.id })
     ) {
       useForCurrentQuestion.push(
         <UseForButton

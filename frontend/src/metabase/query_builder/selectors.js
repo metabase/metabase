@@ -5,7 +5,7 @@ import _ from "underscore";
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { getSettings as _getVisualizationSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
@@ -56,7 +56,7 @@ export const getDatabaseId = createSelector(
 );
 
 export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source_table"]),
+  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;
@@ -250,5 +250,5 @@ export const getTransformedSeries = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  series => series && _getVisualizationSettings(series),
+  series => series && getComputedSettingsForSeries(series),
 );

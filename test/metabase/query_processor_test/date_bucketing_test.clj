@@ -7,7 +7,6 @@
              [driver :as driver]
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -51,10 +50,10 @@
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
    (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-          (data/run-query incidents
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/datetime-field $timestamp unit))
-            (ql/limit 10)))
+          (data/run-mbql-query incidents
+            {:aggregation [[:count]]
+             :breakout    [[:datetime-field $timestamp unit]]
+             :limit       10}))
         rows (format-rows-by [->long-if-number int])))
   ([unit tz]
    (tu/with-temporary-setting-values [report-timezone (.getID tz)]
@@ -315,13 +314,13 @@
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
   (-> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-        (data/run-query incidents
-          (ql/aggregation (ql/count))
-          (ql/breakout (ql/datetime-field $timestamp :day))
-          (ql/filter
-           (ql/between (ql/datetime-field $timestamp :default)
-                       start-date-str
-                       end-date-str))))
+        (data/run-mbql-query incidents
+          {:aggregation [[:count]]
+           :breakout    [[:datetime-field $timestamp :day]]
+           :filter      [:between
+                         [:datetime-field $timestamp :default]
+                         start-date-str
+                         end-date-str]}))
       rows
       first
       second
@@ -804,10 +803,11 @@
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
   (-> (data/with-temp-db [_ db]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/= (ql/datetime-field $timestamp field-grouping)
-                           (apply ql/relative-datetime relative-datetime-args)))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:=
+                         [:datetime-field $timestamp field-grouping]
+                         (cons :relative-datetime relative-datetime-args)]}))
       first-row first int))
 
 ;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran
@@ -835,17 +835,17 @@
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   1
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/time-interval $timestamp :current :day))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:time-interval $timestamp :current :day]}))
       first-row first int))
 
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   7
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/time-interval $timestamp :last :week))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:time-interval $timestamp :last :week]}))
       first-row first int))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
@@ -854,10 +854,10 @@
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
                                         :or   {with-interval :current}}]
   (let [results (data/with-temp-db [_ (checkins:1-per-day)]
-                  (data/run-query checkins
-                    (ql/aggregation (ql/count))
-                    (ql/breakout (ql/datetime-field $timestamp breakout-by))
-                    (ql/filter (ql/time-interval $timestamp with-interval filter-by))))]
+                  (data/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [[:datetime-field $timestamp breakout-by]]
+                     :filter      [:time-interval $timestamp with-interval filter-by]}))]
     {:rows (or (-> results :row_count)
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))

@@ -28,7 +28,7 @@ describe("Question", () => {
         database: DATABASE_ID,
         native: {
           query: `SELECT SUBTOTAL FROM ORDERS WHERE id = {{${templateTagName}}}`,
-          template_tags: {
+          "template-tags": {
             [templateTagName]: {
               id: templateTagId,
               name: templateTagName,
@@ -61,7 +61,7 @@ describe("Question", () => {
         database: DATABASE_ID,
         native: {
           query: `SELECT SUBTOTAL FROM ORDERS [[WHERE id = {{${templateTagName}}}]]`,
-          template_tags: {
+          "template-tags": {
             [templateTagName]: {
               id: templateTagId,
               name: templateTagName,

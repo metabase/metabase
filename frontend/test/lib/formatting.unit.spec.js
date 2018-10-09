@@ -40,6 +40,18 @@ describe("formatting", () => {
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
     });
+    it("should format to correct number of decimal places", () => {
+      expect(formatNumber(0.1)).toEqual("0.1");
+      expect(formatNumber(0.11)).toEqual("0.11");
+      expect(formatNumber(0.111)).toEqual("0.11");
+      expect(formatNumber(0.01)).toEqual("0.01");
+      expect(formatNumber(0.011)).toEqual("0.011");
+      expect(formatNumber(0.0111)).toEqual("0.011");
+      expect(formatNumber(1.1)).toEqual("1.1");
+      expect(formatNumber(1.11)).toEqual("1.11");
+      expect(formatNumber(1.111)).toEqual("1.11");
+      expect(formatNumber(111.111)).toEqual("111.11");
+    });
   });
 
   describe("formatValue", () => {

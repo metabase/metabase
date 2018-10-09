@@ -29,8 +29,8 @@ function getDefaultQuestionForTable(table) {
           database: table.db_id,
           type: "query",
           query: {
-            source_table: table.id,
-            aggregation: [["METRIC", "ga:users"], ["METRIC", "ga:pageviews"]],
+            "source-table": table.id,
+            aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
             breakout: [
               ["datetime-field", ["field-id", dateField.id], "as", "week"],
             ],
@@ -103,6 +103,7 @@ export class SchemaBrowser extends React.Component {
                         mb={1}
                         hover={{ color: normal.purple }}
                         data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
+                        className="overflow-hidden"
                       >
                         <Card hoverable px={1}>
                           <Flex align="center">
@@ -173,6 +174,7 @@ export class TableBrowser extends React.Component {
                               ml={1}
                               hover={{ color: normal.purple }}
                               data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                              className="overflow-hidden"
                             >
                               <EntityItem
                                 item={table}

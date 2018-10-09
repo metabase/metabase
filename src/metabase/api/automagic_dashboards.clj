@@ -17,8 +17,9 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 

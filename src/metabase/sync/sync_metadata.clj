@@ -15,7 +15,7 @@
              [metabase-metadata :as metabase-metadata]
              [sync-timezone :as sync-tz]
              [tables :as sync-tables]]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
 (defn- sync-fields-summary [{:keys [total-fields updated-fields] :as step-info}]

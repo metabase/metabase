@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn } from "icepick";
+import { updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -62,7 +62,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
+import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
@@ -311,19 +311,19 @@ export const initializeQB = (location, params) => {
 
       // initialize parts of the query based on optional parameters supplied
       if (options.table != undefined && card.dataset_query.query) {
-        card.dataset_query.query.source_table = parseInt(options.table);
+        card.dataset_query.query["source-table"] = parseInt(options.table);
       }
 
       if (options.segment != undefined && card.dataset_query.query) {
         card.dataset_query.query.filter = [
-          "AND",
-          ["SEGMENT", parseInt(options.segment)],
+          "and",
+          ["segment", parseInt(options.segment)],
         ];
       }
 
       if (options.metric != undefined && card.dataset_query.query) {
         card.dataset_query.query.aggregation = [
-          "METRIC",
+          "metric",
           parseInt(options.metric),
         ];
       }
@@ -644,10 +644,11 @@ export const updateTemplateTag = createThunkAction(
         delete updatedCard.description;
       }
 
-      return assocIn(
+      // using updateIn instead of assocIn due to not preserving order of keys
+      return updateIn(
         updatedCard,
-        ["dataset_query", "native", "template_tags", templateTag.name],
-        templateTag,
+        ["dataset_query", "native", "template-tags"],
+        tags => ({ ...tags, [templateTag.name]: templateTag }),
       );
     };
   },
@@ -989,8 +990,8 @@ export const setQueryDatabase = createThunkAction(
         let updatedCard = startNewCard(card.dataset_query.type, databaseId);
         if (existingQuery) {
           updatedCard.dataset_query.native.query = existingQuery;
-          updatedCard.dataset_query.native.template_tags =
-            card.dataset_query.native.template_tags;
+          updatedCard.dataset_query.native["template-tags"] =
+            card.dataset_query.native["template-tags"];
         }
 
         // set the initial collection for the query if this is a native query
@@ -1017,8 +1018,8 @@ export const setQueryDatabase = createThunkAction(
         );
         if (existingQuery) {
           updatedCard.dataset_query.native.query = existingQuery;
-          updatedCard.dataset_query.native.template_tags =
-            card.dataset_query.native.template_tags;
+          updatedCard.dataset_query.native["template-tags"] =
+            card.dataset_query.native["template-tags"];
         }
 
         dispatch(loadMetadataForCard(updatedCard));
@@ -1044,7 +1045,7 @@ export const setQuerySourceTable = createThunkAction(
       const tableId = sourceTable.id || sourceTable;
 
       // if the table didn't actually change then nothing is modified
-      if (tableId === card.dataset_query.query.source_table) {
+      if (tableId === card.dataset_query.query["source-table"]) {
         return card;
       }
 
@@ -1251,7 +1252,9 @@ export const getDisplayTypeForCard = (card, queryResults) => {
   // try a little logic to pick a smart display for the data
   // TODO: less hard-coded rules for picking chart type
   const isScalarVisualization =
-    card.display === "scalar" || card.display === "progress";
+    card.display === "scalar" ||
+    card.display === "progress" ||
+    card.display === "gauge";
   if (
     !isScalarVisualization &&
     queryResult.data.rows &&
@@ -1296,7 +1299,7 @@ const getQuestionWithDefaultVisualizationSettings = (question, series) => {
   const oldVizSettings = question.visualizationSettings();
   const newVizSettings = {
     ...oldVizSettings,
-    ...getPersistableDefaultSettings(series),
+    ...getPersistableDefaultSettingsForSeries(series),
   };
 
   // Don't update the question unnecessarily
@@ -1357,10 +1360,10 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     // action is on an FK column
     let newCard = startNewCard("query", card.dataset_query.database);
 
-    newCard.dataset_query.query.source_table = fk.origin.table.id;
+    newCard.dataset_query.query["source-table"] = fk.origin.table.id;
     newCard.dataset_query.query.aggregation = ["rows"];
     newCard.dataset_query.query.filter = [
-      "AND",
+      "and",
       ["=", fk.origin.id, originValue],
     ];
 
@@ -1391,10 +1394,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
       async function getFKCount(card, queryResult, fk) {
         let fkQuery = createQuery("query");
         fkQuery.database = card.dataset_query.database;
-        fkQuery.query.source_table = fk.origin.table_id;
+        fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
         fkQuery.query.filter = [
-          "AND",
+          "and",
           ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data)],
         ];
 
@@ -1530,6 +1533,9 @@ export const viewPreviousObjectDetail = () => {
     dispatch(runQuestionQuery());
   };
 };
+
+export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
+export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

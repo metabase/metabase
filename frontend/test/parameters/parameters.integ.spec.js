@@ -106,38 +106,38 @@ describe("parameters", () => {
         native: {
           query:
             "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */",
-          template_tags: {
+          "template-tags": {
             id: {
               id: "1",
               name: "id",
-              display_name: "ID",
+              "display-name": "ID",
               type: "dimension",
               dimension: ["field-id", PEOPLE_ID_FIELD_ID],
-              widget_type: "id",
+              "widget-type": "id",
             },
             name: {
               id: "2",
               name: "name",
-              display_name: "Name",
+              "display-name": "Name",
               type: "dimension",
               dimension: ["field-id", PEOPLE_NAME_FIELD_ID],
-              widget_type: "category",
+              "widget-type": "category",
             },
             source: {
               id: "3",
               name: "source",
-              display_name: "Source",
+              "display-name": "Source",
               type: "dimension",
               dimension: ["field-id", PEOPLE_SOURCE_FIELD_ID],
-              widget_type: "category",
+              "widget-type": "category",
             },
             user_id: {
               id: "4",
               name: "user_id",
-              display_name: "User",
+              "display-name": "User",
               type: "dimension",
               dimension: ["field-id", ORDER_USER_ID_FIELD_ID],
-              widget_type: "id",
+              "widget-type": "id",
             },
           },
         },

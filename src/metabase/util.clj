@@ -10,7 +10,7 @@
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
             [metabase.config :as config]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]))
@@ -549,9 +549,8 @@
 
 (defn is-java-9-or-higher?
   "Are we running on Java 9 or above?"
-  []
-  (when-let [java-major-version (some-> (System/getProperty "java.version")
-                                        (s/split #"\.")
-                                        first
-                                        Integer/parseInt)]
-    (>= java-major-version 9)))
+  ([]
+   (is-java-9-or-higher? (System/getProperty "java.version")))
+  ([java-version-str]
+   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
+     (>= (Integer/parseInt java-major-version-str) 9))))

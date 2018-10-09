@@ -4,6 +4,7 @@ import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { Field, FieldId } from "metabase/meta/types/Field";
+import type { ReduxAction } from "metabase/meta/types/redux";
 import Question from "metabase-lib/lib/Question";
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[];
@@ -44,6 +45,7 @@ export type ClickAction = {
   popover?: (props: ClickActionPopoverProps) => any, // React Element
   question?: () => ?Question,
   url?: () => string,
+  action?: () => ?ReduxAction,
   section?: string,
   name?: string,
 };
@@ -81,9 +83,13 @@ export type VisualizationProps = {
     height: number,
   },
 
+  width: number,
+  height: number,
+
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isSettings: boolean,
   actionButtons: Node,
 
   onRender: ({

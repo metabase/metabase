@@ -12,7 +12,7 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import [org.quartz JobDetail JobKey Scheduler Trigger TriggerKey]))
 

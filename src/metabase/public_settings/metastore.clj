@@ -8,8 +8,9 @@
              [config :as config]
              [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]))
 
 (def ^:private ValidToken
@@ -48,15 +49,15 @@
                   ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
                   ;; 'Not Found' message
                   (catch java.io.FileNotFoundException e
-                    {:valid false, :status (tru "Unable to validate token.")})
+                    {:valid false, :status (str (tru "Unable to validate token."))})
                   ;; if there was any other error fetching the token, log it and return a generic message about the
                   ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
                   ;; we do not want something complicated
                   (catch Throwable e
                     (log/error e (trs "Error fetching token status:"))
-                    {:valid false, :status (tru "There was an error checking whether this token was valid.")})))
+                    {:valid false, :status (str (tru "There was an error checking whether this token was valid."))})))
            fetch-token-status-timeout-ms
-           {:valid false, :status (tru "Token validation timed out.")})))
+           {:valid false, :status (str (tru "Token validation timed out."))})))
 
 (defn- check-embedding-token-is-valid* [token]
   (when (s/check ValidToken token)

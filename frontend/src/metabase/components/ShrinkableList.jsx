@@ -16,7 +16,7 @@ type State = {
   isShrunk: ?boolean,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class ShrinkableList extends Component {
   props: Props;
   state: State = {

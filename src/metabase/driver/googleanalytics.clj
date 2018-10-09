@@ -7,7 +7,7 @@
             [metabase.driver.google :as google]
             [metabase.driver.googleanalytics.query-processor :as qp]
             [metabase.models.database :refer [Database]]
-            [puppetlabs.i18n.core :refer [tru]])
+            [metabase.util.i18n :refer [tru]])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
@@ -228,8 +228,8 @@
   ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
   ;; how we need to enable the API
   (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
-    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
-         enable-api-url)
+    (str (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+              enable-api-url))
     message))
 
 

@@ -18,7 +18,6 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -59,7 +58,7 @@
         {:database (data/id)
          :type     :query
          :query    {:source-query {:source-table (data/id :venues)
-                                   :order-by     [:asc (data/id :venues :id)]
+                                   :order-by     [[:asc (data/id :venues :id)]]
                                    :limit        10}
                     :limit        5}}))))
 
@@ -109,7 +108,7 @@
                                                    (quoted-identifier :venues :name)
                                                    (quoted-identifier :venues :latitude)
                                                    (quoted-identifier :venues))}
-                    :order-by     [:asc [:field-literal (keyword (data/format-name :id)) :type/Integer]]
+                    :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
                     :limit        5}}))))
 
 
@@ -143,11 +142,11 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:source_table (data/id :checkins)
-                                   :filter [">" (data/id :checkins :date) "2014-01-01"]}
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter [:> (data/id :checkins :date) "2014-01-01"]}
                     :aggregation  [:count]
-                    :order-by     [[:asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))]]
-                    :breakout     [(ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))]}}))))
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
 
 ;; Test two breakout columns from the nested query, both following an FK
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
@@ -164,21 +163,21 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:source_table (data/id :checkins)
-                                   :filter [">" (data/id :checkins :date) "2014-01-01"]}
-                    :filter [["<" (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)) 34]]
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
+                    :filter       [:< [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)] 34]
                     :aggregation  [:count]
-                    :order-by     [[:asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))]]
-                    :breakout     [(ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))
-                                   (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :latitude))]}}))))
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
+                                   [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)]]}}))))
 
 ;; Test two breakout columns from the nested query, one following an FK the other from the source table
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
-  {:rows  [[1 1 6]
-           [1 2 14]
-           [1 3 13]
-           [1 4 8]
-           [1 5 10]],
+  {:rows [[1 1 6]
+          [1 2 14]
+          [1 3 13]
+          [1 4 8]
+          [1 5 10]],
    :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "user_id", :base_type :type/Integer}
           {:name "count", :base_type :type/Integer}]}
@@ -187,12 +186,12 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:source_table (data/id :checkins)
-                                   :filter [">" (data/id :checkins :date) "2014-01-01"]}
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
                     :aggregation  [:count]
-                    :filter       [["=" (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price)) 1]]
-                    :order-by     [[:asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))]]
-                    :breakout     [(ql/fk-> (data/id :checkins :venue_id) (data/id :venues :price))
+                    :filter       [:= [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)] 1]
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
                                    [:field-literal (keyword (data/format-name :user_id)) :type/Integer]]
                     :limit        5}}))))
 
@@ -231,9 +230,9 @@
    :query    (merge {:source-table (str "card__" (u/get-id card))}
                     additional-clauses)})
 
-;; Make sure we can run queries using source table `card__id` format. This is the format that is actually used by the frontend;
-;; it gets translated to the normal `source-query` format by middleware. It's provided as a convenience so only minimal changes
-;; need to be made to the frontend.
+;; Make sure we can run queries using source table `card__id` format. This is the format that is actually used by the
+;; frontend; it gets translated to the normal `source-query` format by middleware. It's provided as a convenience so
+;; only minimal changes need to be made to the frontend.
 (expect
   breakout-results
   (tt/with-temp Card [card (venues-mbql-card-def)]
@@ -346,7 +345,7 @@
      :query    {:source-query {:source-table (data/id :venues)
                                :aggregation  [[:stddev [:field-id (data/id :venues :id)]]]
                                :breakout     [[:field-id (data/id :venues :price)]]
-                               :order-by     [[[:aggregate-field 0] :descending]]}
+                               :order-by     [[[:aggregation 0] :descending]]}
                 :aggregation  [[:avg [:field-literal "stddev" :type/Integer]]]}}))
 
 (def ^:private ^:const ^String venues-source-with-category-sql
@@ -363,7 +362,7 @@
     {:database (data/id)
      :type     :query
      :query    {:source-query {:source-table (data/id :venues)}
-                :breakout     [:field-id [:field-literal "category_id" :type/Integer]]
+                :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
                 :limit        10}}))
 
 ;; Make sure we can filter by string fields
@@ -393,7 +392,7 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
-                                                       :template_tags {:category {:name         "category"
+                                                       :template-tags {:category {:name         "category"
                                                                                   :display_name "Category"
                                                                                   :type         "text"
                                                                                   :required     true
@@ -565,7 +564,7 @@
         rows)))
 
 
-;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*
+;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*1337
 ;; permissions (#6845)
 
 ;; Check that perms for a Card with a source query require that you have read permissions for its Collection!

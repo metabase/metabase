@@ -8,7 +8,6 @@
              [interface :as mi]
              [permissions :as perms]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
@@ -123,15 +122,9 @@
 
 ;;; ------------------------------------------------- MBQL w/o JOIN --------------------------------------------------
 
-(defn- mbql [query]
-  {:database (data/id)
-   :type     :query
-   :query    query})
-
 (expect
   #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
-  (query-perms/perms-set (mbql (ql/query
-                                 (ql/source-table (data/id :venues))))))
+  (query-perms/perms-set (data/mbql-query venues)))
 
 
 ;;; -------------------------------------------------- MBQL w/ JOIN --------------------------------------------------
@@ -141,15 +134,14 @@
   #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
     (perms/object-path (data/id) "PUBLIC" (data/id :venues))}
   (query-perms/perms-set
-   (mbql (ql/query
-           (ql/source-table (data/id :checkins))
-           (ql/order-by (ql/asc (ql/fk-> (data/id :checkins :venue_id) (data/id :venues :name))))))))
+   (data/mbql-query checkins
+     {:order-by [[:asc $checkins.venue_id->venues.name]]})))
 
 
 ;;; ------------------------------------------- MBQL w/ nested MBQL query --------------------------------------------
 
 (defn- query-with-source-card [card]
-  {:database database/virtual-id, :type "query", :query {:source_table (str "card__" (u/get-id card))}})
+  {:database database/virtual-id, :type "query", :query {:source-table (str "card__" (u/get-id card))}})
 
 ;; if source card is *not* in a Collection, we require Root Collection read perms
 (expect
@@ -207,4 +199,5 @@
 ;; invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it
 (expect
   #{"/db/0/"}
-  (query-perms/perms-set (mbql {:filter [:WOW 100 200]})))
+  (query-perms/perms-set (data/mbql-query venues
+                           {:filter [:WOW 100 200]})))

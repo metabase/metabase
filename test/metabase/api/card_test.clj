@@ -57,8 +57,8 @@
    (mbql-count-query (data/id) (data/id :venues)))
   ([db-or-id table-or-id]
    {:database (u/get-id db-or-id)
-    :type     "query"
-    :query    {:source-table (u/get-id table-or-id), :aggregation {:aggregation-type "count"}}}))
+    :type     :query
+    :query    {:source-table (u/get-id table-or-id), :aggregation [[:count]]}}))
 
 (defn- card-with-name-and-query
   ([]
@@ -124,7 +124,7 @@
                         {:database (u/get-id db)
                          :type     :native
                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                    :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                    :template-tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
                                                                :name         "category"
                                                                :display_name "Category"
                                                                :type         "number"
@@ -402,7 +402,7 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})
             :updated_at             $
-            :dataset_query          $
+            :dataset_query          (tu/obj->json->obj (:dataset_query card))
             :read_permissions       nil
             :id                     $
             :display                "table"
@@ -590,6 +590,7 @@
       ((user->client :rasta) :put 403 (str "card/" (u/get-id card))
        {:collection_position nil})
       (db/select-one-field :collection_position Card :id (u/get-id card)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      UPDATING THE POSITION OF A CARDS                                          |
@@ -856,6 +857,7 @@
         ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
          {:collection_position 1, :collection_id (u/get-id collection)})
         (name->position ((user->client :rasta) :get 200 (format "collection/%s/items" (u/get-id collection))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
