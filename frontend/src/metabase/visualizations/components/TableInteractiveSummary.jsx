@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import "./TableInteractive.css";
+import "./TableInteractiveSummary.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -22,7 +22,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
-const HEADER_HEIGHT = 36;
+const HEADER_HEIGHT = 30;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -108,7 +108,7 @@ export default class TableInteractiveSummary extends Component {
   componentWillMount() {
     // for measuring cells:
     this._div = document.createElement("div");
-    this._div.className = "TableInteractive";
+    this._div.className = "TableInteractiveSummary";
     this._div.style.display = "inline-block";
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
@@ -302,9 +302,6 @@ export default class TableInteractiveSummary extends Component {
   ) => {
     const groupingManager = this.props.data;
 
-    // if (!groupingManager.isVisible(rowIndex, columnIndex, visibleRowIndices)) {
-    //   return null;
-    // }
     const { data, onVisualizationClick, visualizationIsClickable } = this.props;
     const { rows, cols } = data;
     const column = cols[columnIndex];
@@ -336,44 +333,23 @@ export default class TableInteractiveSummary extends Component {
     onVisualizationClick,
     visualizationIsClickable,
   ): (RenderCellType => void) => {
-    const groupingManager = this.props.data;
     let value = column.getValue(row);
 
-    const isTotal = row.isTotalColumnIndex === columnIndex + 1;
+    const isTotalCell = row.isTotalColumnIndex === columnIndex + 1;
+    const isTotalRow = Number.isInteger(row.isTotalColumnIndex);
+    const isGrandTotalCell = isGrandTotal && columnIndex === 0;
 
-    let formatedRes = formatValue(value, {
+    let formattedRes = formatValue(value, {
       column: column,
       type: "cell",
       jsx: true,
       rich: true,
-      isTotal: isTotal,
     });
 
-    if (isGrandTotal && columnIndex === 0) formatedRes = "Grand totals";
-
-    let mappedStyle = groupingManager.mapStyle(
-        rowIndex,
-        columnIndex,
-        style,
-      );
-
-    if (isGrandTotal)
-      mappedStyle = {
-        ...mappedStyle,
-        background: "#509ee3",
-        color: "white",
-        fontWeight: "bold",
-      };
-    else if (
-      row.isTotalColumnIndex &&
-      row.isTotalColumnIndex <= columnIndex + 1
-    )
-      mappedStyle = {
-        ...mappedStyle,
-        background: "#EDEFF0",
-        color: "#6E757C",
-        fontWeight: "bold",
-      };
+    if (isGrandTotalCell)
+      formattedRes = "Grand totals";
+    if (isTotalCell && typeof formattedRes === "string")
+      formattedRes = "Totals for " + formattedRes;
 
     const clicked = getTableCellClickedObjectForSummary(
       this.props.data.cols,
@@ -385,17 +361,17 @@ export default class TableInteractiveSummary extends Component {
     const isClickable =
       onVisualizationClick && visualizationIsClickable(clicked);
 
-    if (isTotal && typeof formatedRes === "string")
-      formatedRes = "Totals for " + formatedRes;
-
     return (
       <div
         key={key}
-        style={mappedStyle}
-        className={cx("TableInteractive-cellWrapper", {
-          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          "TableInteractive-cellWrapper--lastColumn":
+        style={style}
+        className={cx("TableInteractiveSummary-cellWrapper", {
+          "TableInteractiveSummary-cellWrapper--firstColumn": columnIndex === 0,
+          "TableInteractiveSummary-cellWrapper--lastColumn":
             columnIndex === this.props.data.cols.length - 1,
+          "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
+          "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
+          "TableInteractiveSummary-cellWrapper-normal" : !isTotalRow && !isGrandTotal,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
           link: isClickable && isID(column),
@@ -410,7 +386,7 @@ export default class TableInteractiveSummary extends Component {
       >
         <div className="cellData">
           {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
-          {formatedRes}
+          {formattedRes}
         </div>
       </div>
     );
@@ -477,71 +453,76 @@ export default class TableInteractiveSummary extends Component {
     const isRightAligned =  columnSpan > 1 || isColumnRightAligned(cols[columnIndex]);
 
     return (
-      <div
-        key={key}
-        style={{
-          ...style,
-          overflow: "visible" /* ensure resize handle is visible */,
-        }}
-        className={cx(
-          "TableInteractive-cellWrapper TableInteractive-headerCellData",
-          {
-            "TableInteractive-headerCellData--sorted": !!sortOrder,
-            "cursor-pointer": isClickable,
-            "justify-end": isRightAligned,
-          },
-        )}
-        // use onMouseUp instead of onClick since we can stopPropation when resizing headers
-        onMouseUp={
-          isClickable
-            ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
-            : undefined
-        }
-      >
-        <div className="cellData">
-          {isSortable &&
-            isRightAligned && (
-              <Icon
-                className="Icon mr1"
-                name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            )}
-          {columnTitle}
-          {isSortable &&
-          !isRightAligned &&
-            <Icon
-                className="Icon ml1"
-                name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
-                size={8}
-              />
-            }
-        </div>
-        <Draggable
-          axis="x"
-          bounds={{ left: RESIZE_HANDLE_WIDTH }}
-          position={{ x: style.width, y: 0 }}
-          onStop={(e, { x }) => {
-            // prevent onVisualizationClick from being fired
-            e.stopPropagation();
-            this.onColumnResize(columnIndex, columnSpan, x);
+      <div>
+        <div
+          key={key}
+          style={{
+            ...style,
+            overflow: "visible" /* ensure resize handle is visible */,
           }}
+          className={cx(
+            "TableInteractiveSummary-headerCellWrapper TableInteractiveSummary-headerCellData",
+            {
+              "TableInteractiveSummary-headerCellData--sorted": !!sortOrder,
+              "cursor-pointer": isClickable,
+              "justify-end": isRightAligned,
+              "TableInteractiveSummary-mergedHeaderMarker":columnSpan > 1,
+            },
+          )}
+          // use onMouseUp instead of onClick since we can stopPropation when resizing headers
+          onMouseUp={
+            isClickable
+              ? e => {
+                  onVisualizationClick({ ...clicked, element: e.currentTarget });
+                }
+              : undefined
+          }
         >
-          <div
-            className="bg-brand-hover bg-brand-active"
-            style={{
-              zIndex: 99,
-              position: "absolute",
-              width: RESIZE_HANDLE_WIDTH,
-              top: 0,
-              bottom: 0,
-              left: -RESIZE_HANDLE_WIDTH - 1,
-              cursor: "ew-resize",
+          <div className={cx("cellData", {})}>
+            {isSortable &&
+              isRightAligned && (
+                <Icon
+                  className="Icon mr1"
+                  name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
+            {columnTitle}
+            {isSortable &&
+            !isRightAligned &&
+              <Icon
+                  className="Icon ml1"
+                  name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              }
+          </div>
+          <Draggable
+            axis="x"
+            bounds={{ left: RESIZE_HANDLE_WIDTH }}
+            position={{ x: style.width, y: 0 }}
+            onStop={(e, { x }) => {
+              // prevent onVisualizationClick from being fired
+              e.stopPropagation();
+              this.onColumnResize(columnIndex, columnSpan, x);
             }}
-          />
-        </Draggable>
+          >
+            <div
+              className="bg-brand-hover bg-brand-active"
+              style={{
+                zIndex: 99,
+                position: "absolute",
+                width: RESIZE_HANDLE_WIDTH,
+                top: 0,
+                bottom: 0,
+                left: -RESIZE_HANDLE_WIDTH - 1,
+                cursor: "ew-resize",
+              }}
+            />
+          </Draggable>
+
+        </div>
+        {/*{don't remove it, it is bottom border}*/}
       </div>
     );
   };
@@ -579,12 +560,8 @@ export default class TableInteractiveSummary extends Component {
           scrollLeft,
         }) => (
           <div
-            className={cx(className, "TableInteractive relative", {
-              "TableInteractive--pivot": this.props.isPivoted,
-              "TableInteractive--ready": this.state.contentWidths,
-            })}
+            className={cx(className, "TableInteractiveSummary relative", this.state.contentWidths && "TableInteractiveSummary--ready")}
           >
-            <label style={{width:'200px', height:'300px', background:'red'}}>{this.props.sort.toString()}</label>
             <canvas
               className="spread"
               style={{ pointerEvents: "none", zIndex: 999 }}
@@ -600,7 +577,7 @@ export default class TableInteractiveSummary extends Component {
                 position: "absolute",
                 overflow: "hidden",
               }}
-              className="TableInteractive-header scroll-hide-all"
+              className="TableInteractiveSummary-header scroll-hide-all"
               width={width || 0}
               height={headerHeight}
               rowCount={columnsHeaders.length}
