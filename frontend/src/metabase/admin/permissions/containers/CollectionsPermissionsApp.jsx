@@ -3,44 +3,66 @@ import { connect } from "react-redux";
 
 import PermissionsEditor from "../components/PermissionsEditor.jsx";
 import PermissionsApp from "./PermissionsApp.jsx";
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";
+import Collections from "metabase/entities/collections";
 
-import { getCollectionsPermissionsGrid, getIsDirty, getSaveError, getDiff } from "../selectors";
-import { updatePermission, savePermissions, loadCollections } from "../permissions";
-import { goBack, push } from "react-router-redux";
+import {
+  getCollectionsPermissionsGrid,
+  getIsDirty,
+  getSaveError,
+  getDiff,
+} from "../selectors";
+import {
+  updatePermission,
+  savePermissions,
+  loadPermissions,
+} from "../permissions";
+import { push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {
-    return {
-        grid: getCollectionsPermissionsGrid(state, props),
-        isDirty: getIsDirty(state, props),
-        saveError: getSaveError(state, props),
-        diff: getDiff(state, props)
-    }
-}
+  return {
+    grid: getCollectionsPermissionsGrid(state, props),
+    isDirty: getIsDirty(state, props),
+    saveError: getSaveError(state, props),
+    diff: getDiff(state, props),
+    tab: "collections",
+  };
+};
 
 const mapDispatchToProps = {
-    onUpdatePermission: updatePermission,
-    onSave: savePermissions,
-    onCancel: () => window.history.length > 1 ? goBack() : push("/questions")
+  onUpdatePermission: updatePermission,
+  onSave: savePermissions,
+  onCancel: loadPermissions,
+  onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
 const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
 
-@connect(null, { loadCollections })
+@connect(null, {
+  loadCollections: Collections.actions.fetchList,
+  push,
+})
+@fitViewport
 export default class CollectionsPermissionsApp extends Component {
-    componentWillMount() {
-        this.props.loadCollections();
-    }
-    render() {
-        return (
-            <PermissionsApp
-                {...this.props}
-                load={CollectionsApi.graph}
-                save={CollectionsApi.updateGraph}
-            >
-                <Editor {...this.props} modal confirmCancel={false} />
-            </PermissionsApp>
-        )
-    }
+  componentWillMount() {
+    this.props.loadCollections();
+  }
+  render() {
+    return (
+      <PermissionsApp
+        {...this.props}
+        load={CollectionsApi.graph}
+        save={CollectionsApi.updateGraph}
+        fitClassNames={this.props.fitClassNames + " flex-column"}
+      >
+        <Editor
+          {...this.props}
+          collectionId={this.props.params.collectionId}
+          confirmCancel={false}
+        />
+      </PermissionsApp>
+    );
+  }
 }

@@ -6,12 +6,12 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows]]]
+            [metabase.automagic-dashboards.core :as magic]
             [metabase.driver.mongo :as mongo]
             [metabase.driver.mongo.query-processor :as mongo-qp]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -77,15 +77,15 @@
    :row_count 1
    :data      {:rows        [[1]]
                :columns     ["count"]
-               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer
-                              :remapped_to nil, :remapped_from nil}]
+               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query
                                     :collection "venues"}
                          :type     :native
                          :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 ;; ## Tests for individual syncing functions
 
@@ -122,6 +122,24 @@
               :pk?           true}}}
   (driver/describe-table (MongoDriver.) (data/db) (Table (data/id :venues))))
 
+;; Make sure that all-NULL columns work and are synced correctly (#6875)
+(i/def-database-definition ^:private all-null-columns
+  [["bird_species"
+     [{:field-name "name", :base-type :type/Text}
+      {:field-name "favorite_snack", :base-type :type/Text}]
+     [["House Finch" nil]
+      ["Mourning Dove" nil]]]])
+
+(datasets/expect-with-engine :mongo
+  [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
+   {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
+   {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
+  (data/dataset metabase.driver.mongo-test/all-null-columns
+    (map (partial into {})
+         (db/select [Field :name :database_type :base_type :special_type]
+           :table_id (data/id :bird_species)
+           {:order-by [:name]}))))
+
 
 ;;; table-rows-sample
 (datasets/expect-with-engine :mongo
@@ -141,11 +159,11 @@
 
 ;; Test that Tables got synced correctly, and row counts are correct
 (datasets/expect-with-engine :mongo
-  [{:rows 75,   :active true, :name "categories"}
-   {:rows 1000, :active true, :name "checkins"}
-   {:rows 15,   :active true, :name "users"}
-   {:rows 100,  :active true, :name "venues"}]
-  (for [field (db/select [Table :name :active :rows]
+  [{:active true, :name "categories"}
+   {:active true, :name "checkins"}
+   {:active true, :name "users"}
+   {:active true, :name "venues"}]
+  (for [field (db/select [Table :name :active]
                 :db_id (data/id)
                 {:order-by [:name]})]
     (into {} field)))
@@ -157,7 +175,7 @@
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type nil,             :base_type :type/DateTime, :name "date"}
     {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
-    {:special_type :type/Category,  :base_type :type/Integer,  :name "venue_id"}]
+    {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type nil,             :base_type :type/DateTime, :name "last_login"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
@@ -187,8 +205,8 @@
 (datasets/expect-with-engine :mongo
   [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
   (rows (data/dataset metabase.driver.mongo-test/with-bson-ids
-          (data/run-query birds
-            (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))
+          (data/run-mbql-query birds
+            {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -249,3 +267,12 @@
 (expect
   nil
   (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
+
+
+;; make sure x-rays don't use features that the driver doesn't support
+(datasets/expect-with-engine :mongo
+  true
+  (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
+       :ordered_cards
+       (mapcat (comp :breakout :query :dataset_query :card))
+       (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))

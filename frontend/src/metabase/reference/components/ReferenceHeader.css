@@ -1,46 +1,46 @@
 :root {
-    --title-color: #606E7B;
-    --icon-width: calc(48px + 1rem);
+  --title-color: var(--color-text-medium);
+  --icon-width: calc(48px + 1rem);
 }
 
 :local(.headerBody) {
-    composes: flex flex-full border-bottom text-dark text-bold from "style";
-    overflow: hidden;
-    align-items: center;
-    border-color: #EDF5FB;
+  composes: flex flex-full border-bottom text-dark text-bold from "style";
+  overflow: hidden;
+  align-items: center;
+  border-color: var(--color-border);
 }
 
 :local(.headerTextInput) {
-    composes: input p1 pl2 pr2 from "style";
-    font-size: 18px;
-    color: var(--title-color);
-    width: 100%;
-    max-width: 550px;
+  composes: input p1 pl2 pr2 from "style";
+  font-size: 18px;
+  color: var(--title-color);
+  width: 100%;
+  max-width: 550px;
 }
 
 :local(.subheader) {
-    composes: mt1 mb2 from "style";
+  composes: mt1 mb2 from "style";
 }
 
 :local(.subheaderBody) {
-    composes: text-dark from "style";
-    margin-left: var(--icon-width);
-    font-size: 16px;
+  composes: text-dark from "style";
+  margin-left: var(--icon-width);
+  font-size: 16px;
 }
 
 :local(.subheaderLink) {
-    color: var(--primary-button-bg-color);
-    text-decoration: none;
+  color: var(--color-brand);
+  text-decoration: none;
 }
 
 :local(.subheaderLink):hover {
-    color: color(var(--primary-button-border-color) shade(10%));
-    transition: color .3s linear;
+  color: var(--color-brand);
+  transition: color 0.3s linear;
 }
 
 :local(.headerSchema) {
-    composes: text-grey-2 absolute from "style";
-    left: var(--icon-width);
-    top: -10px;
-    font-size: 12px;
+  composes: text-light absolute from "style";
+  left: var(--icon-width);
+  top: -10px;
+  font-size: 12px;
 }

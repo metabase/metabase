@@ -1,15 +1,16 @@
 :root {
-  --default-link-color: #4A90E2;
+  --default-link-color: var(--color-brand);
 }
 
-.no-decoration, :local(.no-decoration) {
-    text-decoration: none;
+.no-decoration,
+:local(.no-decoration) {
+  text-decoration: none;
 }
 
 .link {
   cursor: pointer;
   text-decoration: none;
-  color: var(--default-link-color);
+  color: var(--color-brand);
 }
 .link:hover {
   text-decoration: underline;

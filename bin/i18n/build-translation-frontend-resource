@@ -7,30 +7,66 @@ const fs = require("fs");
 const _ = require("underscore");
 const gParser = require("gettext-parser");
 
+// NOTE: this function replace xgettext "{0}" style references with c-3po "${ 0 }" style references
+function replaceReferences(str) {
+  return str.replace(/\{ *(\d+) *\}/g, "${ $1 }");
+}
+
 if (process.argv.length !== 4) {
-  console.log("USAGE: build-translation-frontend-resource input.po output.json");
+  console.log(
+    "USAGE: build-translation-frontend-resource input.po output.json"
+  );
   process.exit(1);
 }
 
 const inputFile = process.argv[2];
 const outputFile = process.argv[3];
 
+console.log(`Compiling ${inputFile} for frontend...`);
+
 const translationObject = gParser.po.parse(fs.readFileSync(inputFile, "utf-8"));
 
 // NOTE: unsure why the headers are duplicated in a translation for "", but we don't need it
-delete translationObject.translations[""][""]
+delete translationObject.translations[""][""];
 
+let fuzzyCount = 0;
+let emptyCount = 0;
 for (const id in translationObject.translations[""]) {
   const translation = translationObject.translations[""][id];
-  if (!translation.comments.reference || _.any(translation.comments.reference.split("\n"), reference => reference.startsWith("frontend/"))) {
-    // remove comments:
-    delete translation.comments;
-    // NOTE: would be nice if we could remove the message id since it's redundant:
-    // delete translation.msgid;
-  } else {
-    // remove strings that aren't in the frontend
-    delete translationObject.translations[""][id];
+  const { reference, flag } = translation.comments || {};
+  // delete the translation, we'll add it back in if needed
+  delete translationObject.translations[""][id];
+  if (
+    // only include translations used on the frontend
+    !/(^|\n)frontend\//.test(reference)
+  ) {
+    continue;
   }
+  // don't include empty translations
+  if (_.isEqual(translation.msgstr, [""])) {
+    emptyCount++;
+    continue;
+  }
+  // don't include fuzzy translations
+  if (flag === "fuzzy") {
+    fuzzyCount++;
+    continue;
+  }
+  // remove comments
+  delete translation.comments;
+  // delete msgid since it's redundant, we have to add it back in on the frontend though
+  delete translation.msgid;
+  // replace references in translations
+  translation.msgstr = translation.msgstr.map(str => replaceReferences(str));
+  // replace references in msgid
+  translationObject.translations[""][replaceReferences(id)] = translation;
 }
 
-fs.writeFileSync(outputFile, JSON.stringify(translationObject, null, 2), "utf-8");
+if (emptyCount > 0) {
+  console.warn(`+ Warning: removed ${emptyCount} empty translations`);
+}
+if (fuzzyCount > 0) {
+  console.warn(`+ Warning: removed ${fuzzyCount} fuzzy translations`);
+}
+
+fs.writeFileSync(outputFile, JSON.stringify(translationObject), "utf-8");

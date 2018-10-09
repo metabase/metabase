@@ -1,10 +1,12 @@
 (ns metabase.driver.crate.util
   (:refer-clojure :exclude [second])
-  (:require (honeysql [core :as hsql]
-                      [format :as hformat])
+  (:require [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [metabase.driver.generic-sql.query-processor :as qp]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
   (:import java.sql.Timestamp))
 
 ;; register the try_cast function with HoneySQL
@@ -59,7 +61,7 @@
   "ISQLDriver `date` implementation"
   [_ unit expr]
   (let [v (if (instance? Timestamp expr)
-            (hx/literal (u/date->iso-8601 expr))
+            (hx/literal (du/date->iso-8601 expr))
             expr)]
     (case unit
       :default         (date-format (str "%Y-%m-%d %H:%i:%s") v)

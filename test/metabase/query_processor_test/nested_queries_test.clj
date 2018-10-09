@@ -9,13 +9,22 @@
              [util :as u]]
             [metabase.driver.generic-sql :as generic-sql]
             [metabase.models
-             [card :refer [Card]]
-             [database :as database]
+             [card :as card :refer [Card]]
+             [collection :as collection :refer [Collection]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as group]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.models.query.permissions :as query-perms]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]
+             [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -49,7 +58,7 @@
         {:database (data/id)
          :type     :query
          :query    {:source-query {:source-table (data/id :venues)
-                                   :order-by     [:asc (data/id :venues :id)]
+                                   :order-by     [[:asc (data/id :venues :id)]]
                                    :limit        10}
                     :limit        5}}))))
 
@@ -99,7 +108,7 @@
                                                    (quoted-identifier :venues :name)
                                                    (quoted-identifier :venues :latitude)
                                                    (quoted-identifier :venues))}
-                    :order-by     [:asc [:field-literal (keyword (data/format-name :id)) :type/Integer]]
+                    :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
                     :limit        5}}))))
 
 
@@ -122,6 +131,69 @@
          :query    {:source-query {:source-table (data/id :venues)}
                     :aggregation  [:count]
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
+
+;; Test including a breakout of a nested query column that follows an FK
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  {:rows [[1 174] [2 474] [3 78] [4 39]]
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "count", :base_type :type/Integer}]}
+  (rows+cols
+    (format-rows-by [int int]
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter [:> (data/id :checkins :date) "2014-01-01"]}
+                    :aggregation  [:count]
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
+
+;; Test two breakout columns from the nested query, both following an FK
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  {:rows [[2 33.7701 7]
+          [2 33.8894 8]
+          [2 33.9997 7]
+          [3 10.0646 2]
+          [4 33.983 2]],
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "latitude", :base_type :type/Float}
+          {:name "count", :base_type :type/Integer}]}
+  (rows+cols
+    (format-rows-by [int (partial u/round-to-decimals 4) int]
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
+                    :filter       [:< [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)] 34]
+                    :aggregation  [:count]
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
+                                   [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)]]}}))))
+
+;; Test two breakout columns from the nested query, one following an FK the other from the source table
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  {:rows [[1 1 6]
+          [1 2 14]
+          [1 3 13]
+          [1 4 8]
+          [1 5 10]],
+   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "user_id", :base_type :type/Integer}
+          {:name "count", :base_type :type/Integer}]}
+  (rows+cols
+    (format-rows-by [int int int]
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :checkins)
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
+                    :aggregation  [:count]
+                    :filter       [:= [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)] 1]
+                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
+                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
+                                   [:field-literal (keyword (data/format-name :user_id)) :type/Integer]]
+                    :limit        5}}))))
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
@@ -158,9 +230,9 @@
    :query    (merge {:source-table (str "card__" (u/get-id card))}
                     additional-clauses)})
 
-;; Make sure we can run queries using source table `card__id` format. This is the format that is actually used by the frontend;
-;; it gets translated to the normal `source-query` format by middleware. It's provided as a convenience so only minimal changes
-;; need to be made to the frontend.
+;; Make sure we can run queries using source table `card__id` format. This is the format that is actually used by the
+;; frontend; it gets translated to the normal `source-query` format by middleware. It's provided as a convenience so
+;; only minimal changes need to be made to the frontend.
 (expect
   breakout-results
   (tt/with-temp Card [card (venues-mbql-card-def)]
@@ -177,6 +249,32 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
+;; Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here"}}}]
+    (rows+cols
+      (format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            :aggregation [:count]
+            :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+
+;; Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail
+(expect
+  breakout-results
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES -- small comment here\n"}}}]
     (rows+cols
       (format-rows-by [int int]
         (qp/process-query
@@ -247,18 +345,24 @@
      :query    {:source-query {:source-table (data/id :venues)
                                :aggregation  [[:stddev [:field-id (data/id :venues :id)]]]
                                :breakout     [[:field-id (data/id :venues :price)]]
-                               :order-by     [[[:aggregate-field 0] :descending]]}
+                               :order-by     [[[:aggregation 0] :descending]]}
                 :aggregation  [[:avg [:field-literal "stddev" :type/Integer]]]}}))
+
+(def ^:private ^:const ^String venues-source-with-category-sql
+  (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+       "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", \"category_id\" AS \"category_id\" "
+       "FROM \"PUBLIC\".\"VENUES\") \"source\""))
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
-  {:query  (format "SELECT \"category_id\" AS \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT \"category_id\" AS \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10" venues-source-with-category-sql)
    :params nil}
   (qp/query->native
     {:database (data/id)
      :type     :query
      :query    {:source-query {:source-table (data/id :venues)}
-                :breakout     [:field-id [:field-literal "category_id" :type/Integer]]
+                :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
                 :limit        10}}))
 
 ;; Make sure we can filter by string fields
@@ -288,7 +392,7 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
-                                                       :template_tags {:category {:name         "category"
+                                                       :template-tags {:category {:name         "category"
                                                                                   :display_name "Category"
                                                                                   :type         "text"
                                                                                   :required     true
@@ -458,3 +562,111 @@
           :aggregation [:count])
         qp/process-query
         rows)))
+
+
+;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*1337
+;; permissions (#6845)
+
+;; Check that perms for a Card with a source query require that you have read permissions for its Collection!
+(expect
+  #{(perms/collection-read-path collection/root-collection)}
+  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))
+
+(tt/expect-with-temp [Collection [collection]]
+  #{(perms/collection-read-path collection)}
+  (tt/with-temp Card [card {:collection_id (u/get-id collection)
+                            :dataset_query {:database (data/id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    (query-perms/perms-set (query-with-source-card card :aggregation [:count]))))
+
+;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
+;; permissions for the source query
+(defn- do-with-temp-copy-of-test-db
+  "Run `f` with a temporary Database that copies the details from the standard test database. `f` is invoked as `(f
+  db)`."
+  [f]
+  (data/with-db (data/get-or-create-database! defs/test-data)
+    (create-users-if-needed!)
+    (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
+      (f db))))
+
+(defmacro ^:private with-temp-copy-of-test-db {:style/indent 1} [[db-binding] & body]
+  `(do-with-temp-copy-of-test-db (fn [~(or db-binding '_)]
+                                   ~@body)))
+
+(defn- save-card-via-API-with-native-source-query!
+  "Attempt to save a Card that uses a native source query and belongs to a Collection with `collection-id` via the API
+  using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
+  group."
+  [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
+  (tt/with-temp Card [card {:collection_id (some-> source-collection-or-id-or-nil u/get-id)
+                            :dataset_query {:database (u/get-id db-or-id)
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM VENUES"}}}]
+    ((user->client :rasta) :post expected-status-code "card"
+     {:name                   (tu/random-name)
+      :collection_id          (some-> dest-collection-or-id-or-nil u/get-id)
+      :display                "scalar"
+      :visualization_settings {}
+      :dataset_query          (query-with-source-card card
+                                :aggregation [:count])})))
+
+;; to save a Card that uses another Card as its source, you only need read permissions for the Collection the Source
+;; Card is in, and write permissions for the Collection you're trying to save the new Card in
+(expect
+  :ok
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 200 db source-card-collection dest-card-collection)
+        :ok))))
+
+;; however, if we do *not* have read permissions for the source Card's collection we shouldn't be allowed to save the
+;; query. This API call should fail
+
+;; Card in the Root Collection
+(expect
+  "You don't have permissions to do that."
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp Collection [dest-card-collection]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db nil dest-card-collection)))))
+
+;; Card in a different Collection for which we do not have perms
+(expect
+  "You don't have permissions to do that."
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+
+;; similarly, if we don't have *write* perms for the dest collection it should also fail
+
+;; Try to save in the Root Collection
+(expect
+  "You don't have permissions to do that."
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp Collection [source-card-collection]
+        (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection nil)))))
+
+;; Try to save in a different Collection for which we do not have perms
+(expect
+  "You don't have permissions to do that."
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (with-temp-copy-of-test-db [db]
+      (tt/with-temp* [Collection [source-card-collection]
+                      Collection [dest-card-collection]]
+        (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
+        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))

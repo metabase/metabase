@@ -18,7 +18,7 @@
 (def ^:private generic-sql-engines
   (delay (set (for [engine datasets/all-valid-engines
                     :let   [driver (driver/engine->driver engine)]
-                    :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
+                    :when  (not (contains? #{:bigquery :presto :sparksql} engine))       ; bigquery, presto and sparksql don't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
                 (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
@@ -26,10 +26,8 @@
 
 ;; DESCRIBE-DATABASE
 (expect
-  {:tables #{{:name "CATEGORIES" :schema "PUBLIC"}
-             {:name "VENUES"     :schema "PUBLIC"}
-             {:name "CHECKINS"   :schema "PUBLIC"}
-             {:name "USERS"      :schema "PUBLIC"}}}
+  {:tables (set (map #(hash-map :name % :schema "PUBLIC" :description nil)
+                     ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]))}
   (driver/describe-database (H2Driver.) (db)))
 
 ;; DESCRIBE-TABLE

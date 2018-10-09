@@ -15,13 +15,44 @@
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
-(def ^:const visibility-types
+(def visibility-types
   "Possible values for `Field.visibility_type`."
   #{:normal         ; Default setting.  field has no visibility restrictions.
     :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
     :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
     :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+
+(def has-field-values-options
+  "Possible options for `has_field_values`. This column is used to determine whether we keep FieldValues for a Field,
+  and which type of widget should be used to pick values of this Field when filtering by it in the Query Builder."
+  ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
+  ;;
+  ;; `nil` -- means infer which widget to use based on logic in `with-has-field-values`; this will either return
+  ;; `:search` or `:none`.
+  ;;
+  ;; This is the default state for Fields not marked `auto-list`. Admins cannot explicitly mark a Field as
+  ;; `has_field_values` `nil`. This value is also subject to automatically change in the future if the values of a
+  ;; Field change in such a way that it can now be marked `auto-list`. Fields marked `nil` do *not* have FieldValues
+  ;; objects.
+  ;;
+  #{;; The other automatically-set option. Automatically marked as a 'List' Field based on cardinality and other factors
+    ;; during sync. Store a FieldValues object; use the List Widget. If this Field goes over the distinct value
+    ;; threshold in a future sync, the Field will get switched back to `has_field_values = nil`.
+    :auto-list
+    ;;
+    ;; EXPLICITLY-SET VALUES, SET BY AN ADMIN
+    ;;
+    ;; Admin explicitly marked this as a 'Search' Field, which means we should *not* keep FieldValues, and should use
+    ;; Search Widget.
+    :search
+    ;; Admin explicitly marked this as a 'List' Field, which means we should keep FieldValues, and use the List
+    ;; Widget. Unlike `auto-list`, if this Field grows past the normal cardinality constraints in the future, it will
+    ;; remain `List` until explicitly marked otherwise.
+    :list
+    ;; Admin explicitly marked that this Field shall always have a plain-text widget, neither allowing search, nor
+    ;; showing a list of possible values. FieldValues not kept.
+    :none})
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -92,12 +123,13 @@
 (u/strict-extend (class Field)
   models/IModel
   (merge models/IModelDefaults
-         {:hydration-keys (constantly [:destination :field :origin])
-          :types          (constantly {:base_type       :keyword
-                                       :special_type    :keyword
-                                       :visibility_type :keyword
-                                       :description     :clob
-                                       :fingerprint     :json})
+         {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+          :types          (constantly {:base_type        :keyword
+                                       :special_type     :keyword
+                                       :visibility_type  :keyword
+                                       :description      :clob
+                                       :has_field_values :keyword
+                                       :fingerprint      :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -124,9 +156,12 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
-(defn- keyed-by-field-ids
-  "Queries for `MODEL` instances related by `FIELDS`, returns a map
-  keyed by :field_id"
+(defn- select-field-id->instance
+  "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
+  instance. This only returns a single instance for each Field! Duplicates are discarded!
+
+    (select-field-id->instance [(Field 1) (Field 2)] FieldValues)
+    ;; -> {1 #FieldValues{...}, 2 #FieldValues{...}}"
   [fields model]
   (let [field-ids (set (map :id fields))]
     (u/key-by :field_id (when (seq field-ids)
@@ -136,7 +171,7 @@
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
+  (let [id->field-values (select-field-id->instance fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -144,8 +179,8 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (keyed-by-field-ids (filter fv/field-should-have-field-values? fields)
-                                             [FieldValues :id :human_readable_values :values :field_id])]
+  (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
+                                                    [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -153,9 +188,48 @@
   "Efficiently hydrate the `Dimension` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
+  ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
+  ;; one! This code is obviously wrong! It will either assoc a single Dimension or an empty vector under the
+  ;; `:dimensions` key!!!!
+  ;; TODO - consult with tom and see if fixing this will break any hacks that surely must exist in the frontend to deal
+  ;; with this
+  (let [id->dimensions (select-field-id->instance fields Dimension)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
+
+(defn- is-searchable?
+  "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
+  give it a `has_field_values` value of `search`."
+  [{base-type :base_type}]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see `metabase.api.field/search-values`) doesn't work on anything else
+  (or (isa? base-type :type/Text)
+      (isa? base-type :type/TextLike)))
+
+(defn- infer-has-field-values
+  "Determine the value of `has_field_values` we should return for a `Field` As of 0.29.1 this doesn't require any DB
+  calls! :D"
+  [{has-field-values :has_field_values, :as field}]
+  (or
+   ;; if `has_field_values` is set in the DB, use that value; but if it's `auto-list`, return the value as `list` to
+   ;; avoid confusing FE code, which can remain blissfully unaware that `auto-list` is a thing
+   (when has-field-values
+     (if (= (keyword has-field-values) :auto-list)
+       :list
+       has-field-values))
+   ;; otherwise if it does not have value set in DB we will infer it
+   (if (is-searchable? field)
+     :search
+     :none)))
+
+(defn with-has-field-values
+  "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
+  `has-field-values-options` above for a more detailed explanation of what these values mean."
+  {:batched-hydrate :has_field_values}
+  [fields]
+  (for [field fields]
+    (when field
+      (assoc field :has_field_values (infer-has-field-values field)))))
 
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
@@ -200,3 +274,9 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
+
+(defn unix-timestamp?
+  "Is field a UNIX timestamp?"
+  [{:keys [base_type special_type]}]
+  (and (isa? base_type :type/Integer)
+       (isa? special_type :type/DateTime)))

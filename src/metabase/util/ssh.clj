@@ -82,7 +82,7 @@
           [connection tunnel-entrance-port] (start-ssh-tunnel (assoc details :host host)) ;; don't include L7 protocol in ssh tunnel
           details-with-tunnel (assoc details
                                 :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
-                                :host (str proto (:tunnel-host details))
+                                :host (str proto "localhost")
                                 :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
                                 :tunnel-connection connection)]
       details-with-tunnel)

@@ -1,4 +1,5 @@
 (ns metabase.models.query
+  "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [metabase.db :as mdb]
             [metabase.util.honeysql-extensions :as hx]
             [toucan
@@ -49,10 +50,33 @@
   (or
    ;; if there's already a matching Query update the rolling average
    (update-rolling-average-execution-time! query-hash execution-time-ms)
-   ;; otherwise try adding a new entry. If for some reason there was a race condition and a Query entry was added in the meantime
-   ;; we'll try updating that existing record
+   ;; otherwise try adding a new entry. If for some reason there was a race condition and a Query entry was added in
+   ;; the meantime we'll try updating that existing record
    (try (record-new-execution-time! query-hash execution-time-ms)
         (catch Throwable e
           (or (update-rolling-average-execution-time! query-hash execution-time-ms)
               ;; rethrow e if updating an existing average execution time failed
               (throw e))))))
+
+;; TODO - somewhat confusing that the Ad-hoc queries here use the keys `:table-id` and `:database-id` instead of the
+;; `:database_id` and `:table_id` that come out of the Database. In the automagic dashboards code, for example, we
+;; have special utility functions to account for both possiblities. Should we fix this?
+
+(defn query->database-and-table-ids
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
+   other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
+   normal queries."
+  [{database-id :database, query-type :type, {:keys [source-table]} :query}]
+  (cond
+    (= :native query-type)  {:database-id database-id, :table-id nil}
+    (integer? source-table) {:database-id database-id, :table-id source-table}
+    (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
+                              (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
+                                :id (Integer/parseInt card-id)))))
+
+(defn adhoc-query
+  "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
+  [query]
+  (->> {:dataset_query query}
+       (merge (query->database-and-table-ids query))
+       map->QueryInstance))

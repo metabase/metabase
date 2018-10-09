@@ -1,71 +1,71 @@
 :root {
-    --breadcrumbs-color: #BFC1C2;
-    --breadcrumb-page-color: #636060;
-    --breadcrumb-divider-spacing: 0.75em;
-    /* taken from Sidebar.css, should probably factor them out into variables */
-    --sidebar-breadcrumbs-color: #9CAEBE;
-    --sidebar-breadcrumb-page-color: #2D86D4;
+  --breadcrumbs-color: var(--color-text-light);
+  --breadcrumb-page-color: var(--color-text-dark);
+  --breadcrumb-divider-spacing: 0.75em;
+  /* taken from Sidebar.css, should probably factor them out into variables */
+  --sidebar-breadcrumbs-color: var(--color-text-medium);
+  --sidebar-breadcrumb-page-color: var(--color-brand);
 }
 
 :local(.breadcrumbs) {
-    display: flex;
-    align-items: center;
-    color: var(--breadcrumbs-color);
+  display: flex;
+  align-items: center;
+  color: var(--breadcrumbs-color);
 }
 
 :local(.breadcrumb) {
-    font-size: 0.75rem;
-    font-weight: bold;
-    text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
-
 :local(.breadcrumbDivider) {
-    margin-left: var(--breadcrumb-divider-spacing);
-    margin-right: var(--breadcrumb-divider-spacing);
-    flex-shrink: 0;
+  margin-left: var(--breadcrumb-divider-spacing);
+  margin-right: var(--breadcrumb-divider-spacing);
+  flex-shrink: 0;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
 :local(.breadcrumb.breadcrumbPath) {
-    color: currentColor;
-    transition: color .3s linear;
+  color: currentColor;
+  transition: color 0.3s linear;
 }
 
 :local(.breadcrumb.breadcrumbPath):hover {
-    color: var(--breadcrumb-page-color);
-    transition: color .3s linear;
+  color: var(--breadcrumb-page-color);
+  transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 :local(.breadcrumb.breadcrumbPage) {
-    color: var(--breadcrumb-page-color);
+  color: var(--breadcrumb-page-color);
 }
 
 :local(.sidebarBreadcrumbs) {
-    composes: flex from "style";
-    composes: breadcrumbs;
-    color: var(--sidebar-breadcrumbs-color);
-    max-width: 100%;
+  composes: flex from "style";
+  composes: breadcrumbs;
+  color: var(--sidebar-breadcrumbs-color);
+  max-width: 100%;
 }
 
 :local(.sidebarBreadcrumb) {
-    composes: breadcrumb;
-    height: 15px;
+  composes: breadcrumb;
+  height: 15px;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
 :local(.sidebarBreadcrumb.breadcrumbPath) {
-    color: currentColor;
-    transition: color .3s linear;
+  color: currentColor;
+  transition: color 0.3s linear;
 }
 
 :local(.sidebarBreadcrumb.breadcrumbPath):hover {
-    color: var(--sidebar-breadcrumb-page-color);
-    transition: color .3s linear;
+  color: var(--sidebar-breadcrumb-page-color);
+  transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 :local(.sidebarBreadcrumb.breadcrumbPage) {
-    color: var(--sidebar-breadcrumb-page-color);
+  color: var(--sidebar-breadcrumb-page-color);
 }

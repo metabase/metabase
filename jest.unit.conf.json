@@ -14,6 +14,7 @@
     "<rootDir>/frontend/src"
   ],
   "setupFiles": [
+    "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js"
   ],
   "globals": {
@@ -23,5 +24,6 @@
   },
   "coverageDirectory": "./",
   "coverageReporters": ["text", "json-summary"],
-  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"]
+  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
+  "coveragePathIgnorePatterns": ["/node_modules/", "/frontend/src/metabase/visualizations/lib/errors.js"]
 }

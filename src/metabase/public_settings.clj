@@ -7,11 +7,11 @@
              [common :as common]
              [setting :as setting :refer [defsetting]]]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.util.i18n :refer [available-locales-with-names set-locale]]
-            [metabase.util.password :as password]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [available-locales-with-names set-locale tru]]
+             [password :as password]]
             [toucan.db :as db])
-  (:import [java.util Locale TimeZone UUID]))
+  (:import [java.util TimeZone UUID]))
 
 (defsetting check-for-updates
   (tru "Identify when new versions of Metabase are available.")
@@ -52,7 +52,7 @@
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
-        (tru "This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface."))
+        (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]
              (setting/set-string! :site-locale new-value)
@@ -101,7 +101,7 @@
   :default 1000)
 
 (defsetting query-caching-max-ttl
-  (tru "The absoulte maximum time to keep any cached query results, in seconds.")
+  (tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :integer
   :default (* 60 60 24 100)) ; 100 days
 
@@ -111,7 +111,7 @@
   :default 60)
 
 (defsetting query-caching-ttl-ratio
-  (str (tru "To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here.")
+  (str (tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
        (tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
@@ -158,7 +158,6 @@
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
-   :enable_xrays          (setting/get :enable-xrays)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
@@ -177,6 +176,6 @@
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
-   :types                 (types/types->parents)
-   :version               config/mb-version-info
-   :xray_max_cost         (setting/get :xray-max-cost)})
+   :types                 (types/types->parents :type/*)
+   :entities              (types/types->parents :entity/*)
+   :version               config/mb-version-info})

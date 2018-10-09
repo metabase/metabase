@@ -6,7 +6,7 @@ import PivotByAction from "./PivotByAction";
 import { t } from "c-3po";
 
 export default PivotByAction(
-    t`Category`,
-    "label",
-    field => isCategory(field) && !isAddress(field)
+  t`Category`,
+  "label",
+  field => isCategory(field) && !isAddress(field),
 );

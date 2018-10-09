@@ -8,6 +8,7 @@
              [metric :as metric :refer [Metric]]
              [revision :as revision]
              [table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [toucan
              [db :as db]
@@ -41,7 +42,7 @@
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (as-> (db/select Metric, :is_active true, {:order-by [:%lower.name]}) <>
+  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (add-db-ids <>)
     (filter mi/can-read? <>)))
@@ -112,5 +113,9 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Metric api/read-check related/related))
 
 (api/define-routes)

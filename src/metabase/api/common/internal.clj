@@ -1,14 +1,15 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`.
    These are primarily used as the internal implementation of `defendpoint`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import java.sql.SQLException))
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -52,9 +53,12 @@
   (if-not schema
     ""
     (or (su/api-error-message schema)
-        (log/warn "We don't have a nice error message for schema:"
-                  schema
-                  "Consider wrapping it in `su/with-api-error-message`."))))
+        ;; Don't try to i18n this stuff! It's developer-facing only.
+        (when config/is-dev?
+          (log/warn
+           (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
+                                     "Consider wrapping it in `su/with-api-error-message`.")
+             (u/pprint-to-str schema)))))))
 
 (defn- param-name
   "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
@@ -108,7 +112,7 @@
   [^String value]
   (try (Integer/parseInt value)
        (catch NumberFormatException _
-         (throw (ex-info (format "Not a valid integer: '%s'" value) {:status-code 400})))))
+         (throw (ui18n/ex-info (tru "Not a valid integer: ''{0}''" value) {:status-code 400})))))
 
 (def ^:dynamic *auto-parse-types*
   "Map of `param-type` -> map with the following keys:
@@ -207,62 +211,6 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               EXCEPTION HANDLING                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - this SHOULD all be implemented as middleware instead
-(defn- api-exception-response
-  "Convert an exception from an API endpoint into an appropriate HTTP response."
-  [^Throwable e]
-  (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code)
-        message                         (.getMessage e)]
-    {:status (or status-code 500)
-     :body   (cond
-               ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
-               ;; Return those as is
-               (and status-code
-                    (seq other-info))
-               other-info
-               ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the
-               ;; body.
-               status-code
-               message
-               ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging
-               ;; purposes
-               :else
-               (let [stacktrace (u/filtered-stacktrace e)]
-                 (merge (assoc other-info
-                          :message    message
-                          :type       (class e)
-                          :stacktrace stacktrace)
-                        (when (instance? SQLException e)
-                          {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
-                                                           #"\s*\n\s*")}))))}))
-
-(def ^:dynamic ^Boolean *automatically-catch-api-exceptions*
-  "Should API exceptions automatically be caught? By default, this is `true`, but this can be disabled when we want to
-  catch Exceptions and return something generic to avoid leaking information, e.g. with the `api/public` and
-  `api/embed` endpoints. generic exceptions"
-  true)
-
-(defn do-with-caught-api-exceptions
-  "Execute F with and catch any exceptions, converting them to the appropriate HTTP response."
-  [f]
-  (if-not *automatically-catch-api-exceptions*
-    (f)
-    (try (f)
-         (catch Throwable e
-           (api-exception-response e)))))
-
-(defmacro catch-api-exceptions
-  "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."
-  {:style/indent 0}
-  [& body]
-  `(do-with-caught-api-exceptions (fn [] ~@body)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -271,7 +219,7 @@
   [field-name value schema]
   (try (s/validate schema value)
        (catch Throwable e
-         (throw (ex-info (format "Invalid field: %s" field-name)
+         (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
                   {:status-code 400
                    :errors      {(keyword field-name) (or (su/api-error-message schema)
                                                           (:message (ex-data e))
@@ -305,7 +253,7 @@
   [response]
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
   (when (m/boolean? response)
-    (throw (Exception. "Attempted to return a boolean as an API response. This is not allowed!")))
+    (throw (Exception. (str (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
   (if (and (map? response)
            (contains? response :status)
            (contains? response :body))

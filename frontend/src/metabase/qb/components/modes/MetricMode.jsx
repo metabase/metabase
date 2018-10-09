@@ -14,19 +14,19 @@ import PivotByTimeDrill from "../drill/PivotByTimeDrill";
 import type { QueryMode } from "metabase/meta/types/Visualization";
 
 const MetricMode: QueryMode = {
-    name: "metric",
-    actions: [
-        ...DEFAULT_ACTIONS,
-        PivotByCategoryAction,
-        PivotByLocationAction,
-        PivotByTimeAction
-    ],
-    drills: [
-        ...DEFAULT_DRILLS,
-        PivotByCategoryDrill,
-        PivotByLocationDrill,
-        PivotByTimeDrill
-    ]
+  name: "metric",
+  actions: [
+    ...DEFAULT_ACTIONS,
+    PivotByCategoryAction,
+    PivotByLocationAction,
+    PivotByTimeAction,
+  ],
+  drills: [
+    ...DEFAULT_DRILLS,
+    PivotByCategoryDrill,
+    PivotByLocationDrill,
+    PivotByTimeDrill,
+  ],
 };
 
 export default MetricMode;

@@ -1,38 +1,52 @@
-import React, { Component } from 'react';
+import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import colors from "metabase/lib/colors";
 
 export default class ActivityStory extends Component {
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        this.styles = {
-            borderWidth: '2px',
-            borderColor: '#DFE8EA',
-        }
+    this.styles = {
+      borderWidth: "2px",
+      borderColor: colors["border"],
+    };
+  }
+
+  static propTypes = {
+    story: PropTypes.object.isRequired,
+  };
+
+  render() {
+    const { story } = this.props;
+
+    if (!story.body) {
+      return null;
     }
 
-    static propTypes = {
-        story: PropTypes.object.isRequired
-    }
-
-    render() {
-        const { story } = this.props;
-
-        if (!story.body) {
-            return null;
-        }
-
-        return (
-            <div className="mt1 border-left flex mr2" style={{borderWidth: '3px', marginLeft: '22px', borderColor: '#F2F5F6'}}>
-                <div className="flex full ml4 bordered rounded p2" style={this.styles}>
-                    { story.bodyLink ?
-                        <Link to={story.bodyLink} data-metabase-event={"Activity Feed;Story Clicked;"+story.topic} className="link">{story.body}</Link>
-                    :
-                        <span>{story.body}</span>
-                    }
-                </div>
-            </div>
-        )
-    }
+    return (
+      <div
+        className="mt1 border-left flex mr2"
+        style={{
+          borderWidth: "3px",
+          marginLeft: "22px",
+          borderColor: colors["border"],
+        }}
+      >
+        <div className="flex full ml4 bordered rounded p2" style={this.styles}>
+          {story.bodyLink ? (
+            <Link
+              to={story.bodyLink}
+              data-metabase-event={"Activity Feed;Story Clicked;" + story.topic}
+              className="link"
+            >
+              {story.body}
+            </Link>
+          ) : (
+            <span>{story.body}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 }

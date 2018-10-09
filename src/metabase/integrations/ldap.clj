@@ -8,7 +8,7 @@
              [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db])
   (:import [com.unboundid.ldap.sdk LDAPConnectionPool LDAPException]))
 
@@ -49,15 +49,15 @@
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (tru "Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName')")
+  (tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail")
 
 (defsetting ldap-attribute-firstname
-  (tru "Attribute to use for the user's first name. (usually 'givenName')")
+  (tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName")
 
 (defsetting ldap-attribute-lastname
-  (tru "Attribute to use for the user's last name. (usually 'sn')")
+  (tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn")
 
 (defsetting ldap-group-sync
@@ -66,7 +66,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  (tru "Search base for groups, not required if your LDAP directory provides a 'memberOf' overlay. (Will be searched recursively)"))
+  (tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
@@ -98,7 +98,7 @@
 (defn- escape-value
   "Escapes a value for use in an LDAP filter expression."
   [value]
-  (str/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
+  (str/replace value #"(?:^\s|\s$|[,\\\#\+<>;\"=\*\(\)\\0])" (comp (partial format "\\%02X") int first)))
 
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
@@ -209,10 +209,10 @@
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   [{:keys [first-name last-name email groups]} password]
   (let [user (or (db/select-one [User :id :last_login] :email email)
-             (user/create-new-ldap-auth-user! first-name last-name email password))]
+                 (user/create-new-ldap-auth-user! {:first_name first-name
+                                                   :last_name  last-name
+                                                   :email      email}))]
     (u/prog1 user
-      (when password
-        (user/set-password! (:id user) password))
       (when (ldap-group-sync)
         (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
               current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))

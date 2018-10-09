@@ -1,10 +1,14 @@
 /*global ace*/
-/* eslint "import/no-commonjs": 0 */
-ace.define("ace/theme/metabase",["require","exports","module","ace/lib/dom"], function(require, exports, module) {
-
-exports.isDark = false;
-exports.cssClass = "ace-metabase";
-exports.cssText = "\
+/* eslint-disable import/no-commonjs */
+/* eslint-disable no-color-literals */
+ace.define(
+  "ace/theme/metabase",
+  ["require", "exports", "module", "ace/lib/dom"],
+  function(require, exports, module) {
+    exports.isDark = false;
+    exports.cssClass = "ace-metabase";
+    exports.cssText =
+      '\
 .ace-metabase .ace_gutter {\
 background: rgb(220,236,249);\
 color: #509EE3;\
@@ -99,9 +103,10 @@ width: 1px;\
 background: #e8e8e8;\
 }\
 .ace-metabase .ace_indent-guide {\
-background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==\") right repeat-y;\
-}";
+background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==") right repeat-y;\
+}';
 
-    var dom = require("../lib/dom");
+    let dom = require("../lib/dom");
     dom.importCssString(exports.cssText, exports.cssClass);
-});
+  },
+);

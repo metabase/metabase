@@ -3,89 +3,6 @@
   (:require [expectations :refer :all]
             [metabase.util :refer :all]))
 
-
-;;; Date stuff
-
-(def ^:private ^:const saturday-the-31st   #inst "2005-12-31T19:05:55")
-(def ^:private ^:const sunday-the-1st #inst "2006-01-01T04:18:26")
-
-(expect false (is-temporal? nil))
-(expect false (is-temporal? 123))
-(expect false (is-temporal? "abc"))
-(expect false (is-temporal? [1 2 3]))
-(expect false (is-temporal? {:a "b"}))
-(expect true (is-temporal? saturday-the-31st))
-
-(expect saturday-the-31st (->Timestamp (->Date saturday-the-31st)))
-(expect saturday-the-31st (->Timestamp (->Calendar saturday-the-31st)))
-(expect saturday-the-31st (->Timestamp (->Calendar (.getTime saturday-the-31st))))
-(expect saturday-the-31st (->Timestamp (.getTime saturday-the-31st)))
-(expect saturday-the-31st (->Timestamp "2005-12-31T19:05:55+00:00"))
-
-(expect nil (->iso-8601-datetime nil nil))
-(expect "2005-12-31T19:05:55.000Z" (->iso-8601-datetime saturday-the-31st nil))
-(expect "2005-12-31T11:05:55.000-08:00" (->iso-8601-datetime saturday-the-31st "US/Pacific"))
-(expect "2006-01-01T04:05:55.000+09:00" (->iso-8601-datetime saturday-the-31st "Asia/Tokyo"))
-
-
-(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "UTC"))
-(expect 19   (date-extract :hour-of-day     saturday-the-31st   "UTC"))
-(expect 7    (date-extract :day-of-week     saturday-the-31st   "UTC"))
-(expect 1    (date-extract :day-of-week     sunday-the-1st      "UTC"))
-(expect 31   (date-extract :day-of-month    saturday-the-31st   "UTC"))
-(expect 365  (date-extract :day-of-year     saturday-the-31st   "UTC"))
-(expect 53   (date-extract :week-of-year    saturday-the-31st   "UTC"))
-(expect 12   (date-extract :month-of-year   saturday-the-31st   "UTC"))
-(expect 4    (date-extract :quarter-of-year saturday-the-31st   "UTC"))
-(expect 2005 (date-extract :year            saturday-the-31st   "UTC"))
-
-(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "US/Pacific"))
-(expect 11   (date-extract :hour-of-day     saturday-the-31st   "US/Pacific"))
-(expect 7    (date-extract :day-of-week     saturday-the-31st   "US/Pacific"))
-(expect 7    (date-extract :day-of-week     sunday-the-1st      "US/Pacific"))
-(expect 31   (date-extract :day-of-month    saturday-the-31st   "US/Pacific"))
-(expect 365  (date-extract :day-of-year     saturday-the-31st   "US/Pacific"))
-(expect 53   (date-extract :week-of-year    saturday-the-31st   "US/Pacific"))
-(expect 12   (date-extract :month-of-year   saturday-the-31st   "US/Pacific"))
-(expect 4    (date-extract :quarter-of-year saturday-the-31st   "US/Pacific"))
-(expect 2005 (date-extract :year            saturday-the-31st   "US/Pacific"))
-
-(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "Asia/Tokyo"))
-(expect 4    (date-extract :hour-of-day     saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :day-of-week     saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :day-of-week     sunday-the-1st      "Asia/Tokyo"))
-(expect 1    (date-extract :day-of-month    saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :day-of-year     saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :week-of-year    saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :month-of-year   saturday-the-31st   "Asia/Tokyo"))
-(expect 1    (date-extract :quarter-of-year saturday-the-31st   "Asia/Tokyo"))
-(expect 2006 (date-extract :year            saturday-the-31st   "Asia/Tokyo"))
-
-
-(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "UTC"))
-(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "UTC"))
-(expect #inst "2005-12-31"       (date-trunc :day     saturday-the-31st   "UTC"))
-(expect #inst "2005-12-25"       (date-trunc :week    saturday-the-31st   "UTC"))
-(expect #inst "2006-01-01"       (date-trunc :week    sunday-the-1st      "UTC"))
-(expect #inst "2005-12-01"       (date-trunc :month   saturday-the-31st   "UTC"))
-(expect #inst "2005-10-01"       (date-trunc :quarter saturday-the-31st   "UTC"))
-
-(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "Asia/Tokyo"))
-(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "Asia/Tokyo"))
-(expect #inst "2006-01-01+09:00" (date-trunc :day     saturday-the-31st   "Asia/Tokyo"))
-(expect #inst "2006-01-01+09:00" (date-trunc :week    saturday-the-31st   "Asia/Tokyo"))
-(expect #inst "2006-01-01+09:00" (date-trunc :week    sunday-the-1st      "Asia/Tokyo"))
-(expect #inst "2006-01-01+09:00" (date-trunc :month   saturday-the-31st   "Asia/Tokyo"))
-(expect #inst "2006-01-01+09:00" (date-trunc :quarter saturday-the-31st   "Asia/Tokyo"))
-
-(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "US/Pacific"))
-(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "US/Pacific"))
-(expect #inst "2005-12-31-08:00" (date-trunc :day     saturday-the-31st   "US/Pacific"))
-(expect #inst "2005-12-25-08:00" (date-trunc :week    saturday-the-31st   "US/Pacific"))
-(expect #inst "2005-12-25-08:00" (date-trunc :week    sunday-the-1st      "US/Pacific"))
-(expect #inst "2005-12-01-08:00" (date-trunc :month   saturday-the-31st   "US/Pacific"))
-(expect #inst "2005-10-01-08:00" (date-trunc :quarter saturday-the-31st   "US/Pacific"))
-
 ;;; ## tests for HOST-UP?
 
 (expect true
@@ -204,12 +121,12 @@
   (select-nested-keys {} [:c]))
 
 
-;;; tests for base-64-string?
-(expect (base-64-string? "ABc"))
-(expect (base-64-string? "ABc/+asdasd=="))
-(expect false (base-64-string? 100))
-(expect false (base-64-string? "<<>>"))
-(expect false (base-64-string? "{\"a\": 10}"))
+;;; tests for base64-string?
+(expect (base64-string? "ABc"))
+(expect (base64-string? "ABc/+asdasd=="))
+(expect false (base64-string? 100))
+(expect false (base64-string? "<<>>"))
+(expect false (base64-string? "{\"a\": 10}"))
 
 
 ;;; tests for `occurances-of-substring`
@@ -243,12 +160,44 @@
     :present #{:a :b :c}
     :non-nil #{:d :e :f}))
 
+
+;;; tests for `order-of-magnitude`
+(expect -2 (order-of-magnitude 0.01))
+(expect -1 (order-of-magnitude 0.5))
+(expect 0  (order-of-magnitude 4))
+(expect 1  (order-of-magnitude 12))
+(expect 2  (order-of-magnitude 444))
+(expect 3  (order-of-magnitude 1023))
+(expect 0  (order-of-magnitude 0))
+(expect 3  (order-of-magnitude -1444))
+
+
+;;; tests for `update-when` and `update-in-when`
+(expect {:foo 2}        (update-when {:foo 2} :bar inc))
+(expect {:foo 2 :bar 3} (update-when {:foo 2 :bar 2} :bar inc))
+
+(expect {:foo 2}        (update-in-when {:foo 2} [:foo :bar] inc))
+(expect {:foo {:bar 3}} (update-in-when {:foo {:bar 2}} [:foo :bar] inc))
+
+
+;;; tests for `index-of`
+(expect 2   (index-of pos? [-1 0 2 3]))
+(expect nil (index-of pos? [-1 0 -2 -3]))
+(expect nil (index-of pos? nil))
+(expect nil (index-of pos? []))
+
+
+;; is-java-9-or-higher?
 (expect
-  [-2 -1 0 1 2 3 0 3]
-  (map order-of-magnitude [0.01 0.5 4 12 444 1023 0 -1444]))
+  false
+  (is-java-9-or-higher? "1.8.0_141"))
 
 (expect
-  [{:foo 2}
-   {:foo 2 :bar 3}]
-  [(update-when {:foo 2} :bar inc)
-   (update-when {:foo 2 :bar 2} :bar inc)])
+  (is-java-9-or-higher? "1.9.0_141"))
+
+(expect
+ (is-java-9-or-higher? "10.0.1"))
+
+;; make sure we can parse wacky version strings like `9-internal`: See #8282
+(expect
+  (is-java-9-or-higher? "9-internal"))

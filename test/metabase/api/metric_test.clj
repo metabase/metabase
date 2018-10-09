@@ -26,8 +26,8 @@
    :how_is_this_calculated  nil
    :created_at              true
    :updated_at              true
-   :is_active               true
-   :definition              {}})
+   :archived                false
+   :definition              nil})
 
 (defn- user-details [user]
   (tu/match-$ user
@@ -183,7 +183,7 @@
            :description "Lookin' for a blueberry"
            :creator_id  (user->id :rasta)
            :creator     (user-details (fetch-user :rasta))
-           :is_active   false})]
+           :archived    true})]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:table_id table-id}]]
@@ -232,7 +232,7 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
+                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -245,17 +245,17 @@
                                             :points_of_interest      nil
                                             :how_is_this_calculated  nil
                                             :definition              {:database 123
-                                                                      :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                                                                      :query    {:filter [:= [:field-id 10] 20]}}}]
                   Revision [_              {:model       "Metric"
                                             :model_id    id
                                             :object      {:name "b"
-                                                          :definition {:filter ["AND" [">" 1 25]]}}
+                                                          :definition {:filter [:and [:> 1 25]]}}
                                             :is_creation true}]
                   Revision [_              {:model    "Metric"
                                             :model_id id
                                             :user_id  (user->id :crowberto)
                                             :object   {:name "c"
-                                                       :definition {:filter ["AND" [">" 1 25]]}}
+                                                       :definition {:filter [:and [:> 1 25]]}}
                                             :message  "updated"}]]
     (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
              (dissoc revision :timestamp :id)))))
@@ -306,7 +306,7 @@
      :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
                     :description {:after "One metric to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123
-                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
+                                          :query    {:filter ["=" ["field-id" 10] 20]}}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
@@ -327,7 +327,7 @@
                                                                          :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
-                                                                                                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                                                                                                   :query    {:filter [:= [:field-id 10] 20]}}}}]
                   Revision [{revision-id :id} {:model       "Metric"
                                                :model_id    id
                                                :object      {:creator_id              (user->id :crowberto)
@@ -339,7 +339,7 @@
                                                              :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
-                                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                       :query    {:filter [:= [:field-id 10] 20]}}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Metric"
                                                :model_id id
@@ -353,7 +353,7 @@
                                                           :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
-                                                                                    :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                    :query    {:filter [:= [:field-id 10] 20]}}}
                                                :message  "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
@@ -364,8 +364,14 @@
 
 (tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
                       Metric [metric-2 {:name "Metric B"}]
-                      Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
+                      Metric [_        {:archived true}]] ; inactive metrics shouldn't show up
   (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
                         (assoc metric-2 :database_id (data/id))]
                        :creator))
   ((user->client :rasta) :get 200 "metric/"))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments}
+  (tt/with-temp* [Metric [{metric-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "metric/%s/related" metric-id)) keys set)))

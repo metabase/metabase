@@ -1,0 +1,274 @@
+title: A look at your [[this]]
+transient_title: "It looks like your [[this]] has transactions, so here's a look at them"
+description: Some metrics we found about your transactions.
+metrics:
+- AvgDiscount:
+    metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]
+    name: Average discount %
+- TotalIncome:
+    metric: [sum, [dimension, Income]]
+    name: Total income
+- AvgIncome:
+    metric: [avg, [dimension, Income]]
+    name: Average income per transaction
+- AvgQuantity:
+    metric: [avg, [dimension, Quantity]]
+    name: Average quantity
+- TotalOrders:
+    metric: [count]
+    name: Number of orders
+dimensions:
+- Timestamp:
+    field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
+- Timestamp:
+    field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
+- State:
+    field_type: GenericTable.State
+- Country: GenericTable.Country
+- Income: Income
+- Discount: Discount
+- Quantity:
+    field_type: Quantity
+- SourceSmall:
+    field_type: GenericTable.Source
+    max_cardinality: 5
+- SourceMedium:
+    field_type: GenericTable.Source
+    max_cardinality: 10
+    score: 90
+- SourceLarge:
+    field_type: GenericTable.Source
+- Cohort:
+    field_type: UserTable.JoinTimestamp
+    score: 100
+- Cohort:
+    field_type: UserTable.CreationTimestamp
+    score: 90
+- Cohort:
+    field_type: UserTable.DateTime
+    score: 80
+- ProductMedium:
+    field_type: Product
+    score: 90
+    max_cardinality: 10
+- ProductMedium:
+    field_type: ProductTable.Name
+    max_cardinality: 10
+- ProductMedium:
+    field_type: ProductTable.Title
+    max_cardinality: 10
+- ProductLarge:
+    field_type: Product
+    score: 90
+- ProductLarge:
+    field_type: ProductTable.Name
+- ProductLarge:
+    field_type: ProductTable.Title
+- ProductCategoryMedium:
+    field_type: ProductTable.Category
+    named: category
+    max_cardinality: 10
+    score: 90
+- ProductCategoryLarge:
+    field_type: ProductTable.Category
+    named: category
+- Long: GenericTable.Longitude
+- Lat: GenericTable.Latitude
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      score: 80
+groups:
+  - Overview:
+      title: Overview
+  - Geographical:
+      title: Where these transactions happened
+  - General:
+      title: How these transactions are distributed
+dashboard_filters:
+  - Timestamp
+  - SourceSmall
+  - SourceMedium
+  - Country
+  - State
+  - ProductMedium
+  - ProductCategoryMedium
+cards:
+# Overview
+  - Rowcount:
+      title: Total transactions
+      visualization: scalar
+      metrics: TotalOrders
+      score: 100
+      group: Overview
+      width: 5
+      height: 3
+  - RowcountLast30Days:
+      title: Transactions in the last 30 days
+      visualization: scalar
+      metrics: TotalOrders
+      score: 100
+      filters: Last30Days
+      group: Overview
+      width: 5
+      height: 3
+  - IncomeGrowth:
+      visualization: smartscalar
+      title: Income growth
+      dimensions: Timestamp
+      metrics: TotalIncome
+      width: 5
+      height: 3
+      group: Overview
+  - IncomeByMonth:
+      visualization: line
+      title: Sales per month
+      description: Total income per month
+      dimensions: Timestamp
+      metrics:
+        - TotalIncome
+        - TotalOrders
+      width: 18
+      height: 6
+      group: Overview
+# General
+  - AverageQuantityByMonth:
+      visualization: line
+      title: Average quantity per month
+      description: Average item quantity per month
+      dimensions: Timestamp
+      metrics: AvgQuantity
+      group: General
+  - AverageIncomeByMonth:
+      visualization: line
+      title: Average transaction income per month
+      dimensions: Timestamp
+      metrics: AvgIncome
+      group: General
+  - AverageDiscountByMonth:
+      visualization: line
+      title: Average discount per month
+      dimensions: Timestamp
+      metrics: AvgDiscount
+      score: 70
+      group: General
+  - OrdersByProduct:
+      title: Sales per product
+      visualization: row
+      dimensions:
+        - ProductMedium
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      height: 8
+      group: General
+  - OrdersByProduct:
+      title: Sales per product
+      visualization: table
+      dimensions:
+        - ProductLarge
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      height: 8
+      group: General
+  - OrdersByProductCategory:
+      title: Sales for each product category
+      visualization: row
+      dimensions:
+        - ProductCategoryMedium
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      height: 8
+      group: General
+  - OrdersByProductCategory:
+      title: Sales for each product category
+      visualization: table
+      dimensions:
+        - ProductCategoryLarge
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      height: 8
+      group: General
+  - OrdersBySource:
+      title: Sales per source
+      visualization:
+        area:
+          stackable.stack_type: stacked
+      dimensions:
+        - Timestamp
+        - SourceSmall
+      metrics: TotalOrders
+      width: 12
+      height: 8
+      score: 100
+      group: General
+  - OrdersBySource:
+      title: Sales per source
+      visualization: row
+      dimensions: SourceMedium
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      height: 8
+      group: General
+  - OrdersBySource:
+      title: Sales per source
+      visualization: table
+      dimensions: SourceLarge
+      metrics: TotalOrders
+      order_by:
+        - TotalOrders: descending
+      score: 90
+      group: General
+# Geographical
+  - CountByCountry:
+      title: Sales per country
+      metrics: TotalOrders
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+  - CountByState:
+      title: Sales per state
+      metrics: TotalOrders
+      dimensions: State
+      score: 90
+      height: 10
+      width: 7
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+  - CountByCoords:
+      title: Sales by coordinates
+      metrics: TotalOrders
+      dimensions:
+        - Long:
+            aggregation: default
+        - Lat:
+            aggregation: default
+      visualization: map
+      score: 80
+      height: 10
+      width: 11
+      group: Geographical

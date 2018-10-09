@@ -4,59 +4,59 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
-            [metabase.sync.analyze.fingerprint
-             [global :as global]
-             [number :as number]
-             [sample :as sample]
-             [text :as text]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
+            [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(s/defn ^:private type-specific-fingerprint :- (s/maybe i/TypeSpecificFingerprint)
-  "Return type-specific fingerprint info for FIELD AND. a FieldSample of Values if it has an elligible base type"
-  [field :- i/FieldInstance, values :- i/FieldSample]
-  (condp #(isa? %2 %1) (:base_type field)
-    :type/Text   {:type/Text (text/text-fingerprint values)}
-    :type/Number {:type/Number (number/number-fingerprint values)}
-    nil))
-
-(s/defn ^:private fingerprint :- i/Fingerprint
-  "Generate a 'fingerprint' from a FieldSample of VALUES."
-  [field :- i/FieldInstance, values :- i/FieldSample]
-  (merge
-   (when-let [global-fingerprint (global/global-fingerprint values)]
-     {:global global-fingerprint})
-   (when-let [type-specific-fingerprint (type-specific-fingerprint field values)]
-     {:type type-specific-fingerprint})))
-
-
 (s/defn ^:private save-fingerprint!
-  [field :- i/FieldInstance, fingerprint :- i/Fingerprint]
-  ;; don't bother saving fingerprint if it's completely empty
-  (when (seq fingerprint)
-    (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
-    ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
-    ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
-    ;; latest fingerprints.
-    (db/update! Field (u/get-id field)
-      :fingerprint         fingerprint
-      :fingerprint_version i/latest-fingerprint-version
-      :last_analyzed       nil)))
+  [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
+  (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
+  ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
+  ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
+  ;; latest fingerprints.
+  (db/update! Field (u/get-id field)
+    :fingerprint         fingerprint
+    :fingerprint_version i/latest-fingerprint-version
+    :last_analyzed       nil))
+
+(defn- empty-stats-map [fields-count]
+  {:no-data-fingerprints   0
+   :failed-fingerprints    0
+   :updated-fingerprints   0
+   :fingerprints-attempted fields-count})
 
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (doseq [[field sample] (sample/sample-fields table fields)]
-    (when sample
-      (sync-util/with-error-handling (format "Error generating fingerprint for %s" (sync-util/name-for-logging field))
-        (let [fingerprint (fingerprint field sample)]
-          (save-fingerprint! field fingerprint))))))
+  (transduce identity
+             (redux/post-complete
+              (f/fingerprint-fields fields)
+              (fn [fingerprints]
+                (reduce (fn [count-info [field fingerprint]]
+                          (cond
+                            (instance? Throwable fingerprint)
+                            (update count-info :failed-fingerprints inc)
 
+                            (some-> fingerprint :global :distinct-count zero?)
+                            (update count-info :no-data-fingerprints inc)
+
+                            :else
+                            (do
+                              (save-fingerprint! field fingerprint)
+                              (update count-info :updated-fingerprints inc))))
+                        (empty-stats-map (count fingerprints))
+                        (map vector fields fingerprints))))
+             (driver/table-rows-sample table fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -69,6 +69,7 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
+;;   AND (special_type NOT IN ('type/PK') OR special_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
@@ -129,6 +130,9 @@
   ([]
    {:where [:and
             [:= :active true]
+            [:or
+             [:not (mdb/isa :special_type :type/PK)]
+             [:= :special_type nil]]
             [:not= :visibility_type "retired"]
             (cons :or (versions-clauses))]})
 
@@ -152,5 +156,18 @@
 (s/defn fingerprint-fields!
   "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
   [table :- i/TableInstance]
-  (when-let [fields (fields-to-fingerprint table)]
-    (fingerprint-table! table fields)))
+  (if-let [fields (fields-to-fingerprint table)]
+    (fingerprint-table! table fields)
+    (empty-stats-map 0)))
+
+(s/defn fingerprint-fields-for-db!
+  "Invokes `fingerprint-fields!` on every table in `database`"
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (du/with-effective-timezone database
+    (apply merge-with + (for [table tables
+                              :let [result (fingerprint-fields! table)]]
+                          (do
+                            (log-progress-fn "fingerprint-fields" table)
+                            result)))))

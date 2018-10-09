@@ -6,33 +6,35 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [driver :as driver]
+             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.events.activity-feed :refer [activity-feed-topics]]
             [metabase.models
-             [activity :refer [Activity]]
              [card :refer [Card]]
-             [dashboard-card :refer [DashboardCard]]
+             [collection :as collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
              [database :refer [Database virtual-id]]
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
-             [query-execution :as query-execution :refer [QueryExecution]]
+             [pulse :refer [Pulse]]
              [setting :as setting :refer [Setting]]
-             [table :as table :refer [Table]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]])
+  (:import java.util.UUID))
 
 ;;; # Migration Helpers
 
@@ -50,7 +52,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 
@@ -69,87 +71,6 @@
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   MIGRATIONS                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
-;;
-;; This reads through all saved cards, extracts the JSON from the `:dataset_query`, and tries to populate
-;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
-(defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
-  ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/count Card
-                 :database_id [:not= nil]))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
-      (when type
-        ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/update! Card id, :dataset_query dataset-query)))))
-
-
-;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
-;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
-;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-mongodb-databases-ssl-false
-  (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
-    (db/update! Database id, :details (assoc details :ssl false))))
-
-
-;; Set default values for :schema in existing tables now that we've added the column
-;; That way sync won't get confused next time around
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-default-schemas
-  (doseq [[engine default-schema] [["postgres" "public"]
-                                   ["h2"       "PUBLIC"]]]
-    (when-let [db-ids (db/select-ids Database :engine engine)]
-      (db/update-where! Table {:schema nil
-                               :db_id  [:in db-ids]}
-        :schema default-schema))))
-
-
-;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
-(defmigration ^{:author "agilliland", :added "0.13.0"} set-admin-email
-  (when-not (setting/get :admin-email)
-    (when-let [email (db/select-one-field :email 'User
-                       :is_superuser true
-                       :is_active    true)]
-      (setting/set! :admin-email email))))
-
-
-;; Remove old `database-sync` activity feed entries
-(defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
-  (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/simple-delete! Activity :topic "database-sync")))
-
-
-;; Migrate dashboards to the new grid
-;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
-(defmigration ^{:author "agilliland",:added "0.16.0"} update-dashboards-to-new-grid
-  (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
-    (db/update! DashboardCard id
-      :row   (when row (* row 4))
-      :col   (when col (* col 3))
-      :sizeX (when sizeX (* sizeX 3))
-      :sizeY (when sizeY (* sizeY 4)))))
-
-
-;; migrate data to new visibility_type column on field
-(defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/count Field :visibility_type "unset"))
-    ;; start by marking all inactive fields as :retired
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          false}
-      :visibility_type "retired")
-    ;; if field is active but preview_display = false then it becomes :details-only
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true
-                             :preview_display false}
-      :visibility_type "details-only")
-    ;; everything else should end up as a :normal field
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true}
-      :visibility_type "normal")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -282,40 +203,6 @@
 ;;; |                                           Migrating QueryExecutions                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522
-;; and #4531 for details
-
-;; model definition for the old table to facilitate the data copying process
-(models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
-
-(u/strict-extend (class LegacyQueryExecution)
-  models/IModel
-  (merge models/IModelDefaults
-         {:default-fields (constantly [:executor_id :result_rows :started_at :json_query :error :running_time])
-          :types          (constantly {:json_query :json, :error :clob})}))
-
-(defn- LegacyQueryExecution->QueryExecution
-  "Convert a LegacyQueryExecution to a format suitable for insertion as a new-format QueryExecution."
-  [{query :json_query, :as query-execution}]
-  (-> (assoc query-execution
-        :hash   (qputil/query-hash query)
-        :native (not (qputil/mbql-query? query)))
-      ;; since error is nullable now remove the old blank error message strings
-      (update :error (fn [error-message]
-                       (when-not (str/blank? error-message)
-                         error-message)))
-      (dissoc :json_query)))
-
-;; Migrate entries from the old query execution table to the new one. This might take a few minutes
-(defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
-  ;; migrate the most recent 100,000 entries. Make sure the DB doesn't get snippy by trying to insert too many records
-  ;; at once. Divide the INSERT statements into chunks of 1,000
-  (binding [query-execution/*validate-context* false]
-    (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
-      (db/insert-many! QueryExecution
-        (for [query-execution chunk]
-          (LegacyQueryExecution->QueryExecution query-execution))))))
-
 ;; drop the legacy QueryExecution table now that we don't need it anymore
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
   ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
@@ -338,10 +225,15 @@
 ;; missing those database ids
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
-                                  (db/select [Card :dataset_query :id] :database_id [:= nil]))
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
           :when (not= db-id virtual-id)]
-    (db/update-where! Card {:id [:in (map :id cards)]}
-      :database_id db-id)))
+    (if (and (seq cards)
+             (db/exists? Database :id db-id))
+      (db/update-where! Card {:id [:in (map :id cards)]}
+                        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
 
 ;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
 ;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
@@ -361,3 +253,92 @@
     ;; either way, delete the old value from the DB since we'll never be using it again.
     ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
     (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))
+
+;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
+;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
+;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
+;; directive (although this was already the default). Since we're now defaulting to standard SQL, we'll need to go in
+;; and add a `#legacySQL` directive to all existing BigQuery SQL queries that don't have a directive, so they'll
+;; continue to run as legacy SQL.
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-legacy-sql-directive-to-bigquery-sql-cards
+  ;; For each BigQuery database...
+  (doseq [database-id (db/select-ids Database :engine "bigquery")]
+    ;; For each Card belonging to that BigQuery database...
+    (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
+      ;; If the Card isn't native, ignore it
+      (when (= (keyword (:type query)) :native)
+        (let [sql (get-in query [:native :query])]
+          ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+          (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+            ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+            ;; #legacySQL directive...
+            (let [updated-sql (str "#legacySQL\n" sql)]
+              ;; and save the updated dataset_query map
+              (db/update! Card (u/get-id card-id)
+                :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
+
+;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
+;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
+;; disable passwords for Google authenticated users
+(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
+  (db/transaction
+    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
+      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+
+
+;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
+;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
+;; Else" area where they can currently be saved).
+;;
+;; Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
+;; when users upgrade their instance to 0.30 from a previous version.
+;;
+;; The user feedback we've received points to a UX that would do the following:
+;;
+;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+;;
+;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
+;;    questions."
+;;
+;; 3. The permissions settings for these new collections should be set to No Access for all user groups except
+;;    Administrators.
+;;
+;; 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
+;;    new collections.
+;;
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+    ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
+    ;; perms, and we don't want to put extra entries in there that confuse things
+    (doseq [group-id non-admin-group-ids]
+      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
+    ;; 2. Create the new collections.
+    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
+                                         Pulse     (str (trs "Migrated Pulses"))
+                                         Card      (str (trs "Migrated Questions"))}
+            :when                       (db/exists? model :collection_id nil)
+            :let                        [new-collection (db/insert! Collection
+                                                          :name  new-collection-name
+                                                          :color "#509ee3")]] ; MB brand color
+      ;; 3. make sure the non-admin groups don't have any perms for this Collection.
+      (doseq [group-id non-admin-group-ids]
+        (perms/revoke-collection-permissions! group-id new-collection))
+      ;; 4. move everything not in this Collection to a new Collection
+      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+                     (name model) new-collection-name (u/get-id new-collection)))
+      (db/update-where! model {:collection_id nil}
+        :collection_id (u/get-id new-collection)))))

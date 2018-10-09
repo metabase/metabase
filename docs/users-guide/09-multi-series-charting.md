@@ -43,10 +43,8 @@ Once you have your chart looking how you’d like, hit done and your changes wil
 #### A quick note about SQL based questions.
 Metabase has less information about SQL based questions, so we cannot guarantee if they can be added reliably. You'll see a little warning sign next to SQL questions to indicate this and when you try adding them just be aware it may not work.
 
-###  Combining scalars
-If you need to compare flat numbers and get a sense of how they differ, Metabase also lets you turn multiple scalars into a bar chart. To do this, follow the same process outlined above. While editing a dashboard, click “edit data” on the scalar of your choice and then select the other scalars you’d like to see represented on the bar chart.
-
-At Metabase, we use this to create simple funnel visualizations.
+###  Combining Number charts
+If you need to compare single numbers and get a sense of how they differ, Metabase also lets you turn multiple Number charts into a bar chart. To do this, follow the same process outlined above. While editing a dashboard, click “edit data” on the Number chart of your choice and then select the other saved question(s) you’d like to see represented on the bar chart. (At Metabase, we use this to create simple funnel visualizations.)
 
 ### Creating a multi-series visualization in the query builder.
 If you’re creating a new question in the query builder, you can also view the result as a multi-series visualization. To do this you’ll need to add two dimensions to your question and use an aggregation that isn’t just “raw data.”

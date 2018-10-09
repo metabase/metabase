@@ -1,25 +1,25 @@
 import { click } from "__support__/enzyme_utils";
 
-import React from 'react'
-import PasswordReveal from '../../src/metabase/components/PasswordReveal'
-import CopyButton from 'metabase/components/CopyButton'
+import React from "react";
+import PasswordReveal from "../../src/metabase/components/PasswordReveal";
+import CopyButton from "metabase/components/CopyButton";
 
-import { shallow } from 'enzyme'
+import { shallow } from "enzyme";
 
-describe('password reveal', () => {
-    let wrapper
+describe("password reveal", () => {
+  let wrapper;
 
-    beforeEach(() => {
-        wrapper = shallow(<PasswordReveal />)
-    })
+  beforeEach(() => {
+    wrapper = shallow(<PasswordReveal />);
+  });
 
-    it('should toggle the visibility state when hide / show are clicked', () => {
-        expect(wrapper.state().visible).toEqual(false)
-        click(wrapper.find('a'))
-        expect(wrapper.state().visible).toEqual(true)
-    })
+  it("should toggle the visibility state when hide / show are clicked", () => {
+    expect(wrapper.state().visible).toEqual(false);
+    click(wrapper.find("a"));
+    expect(wrapper.state().visible).toEqual(true);
+  });
 
-    it('should render a copy button', () => {
-        expect(wrapper.find(CopyButton).length).toEqual(1)
-    })
-})
+  it("should render a copy button", () => {
+    expect(wrapper.find(CopyButton).length).toEqual(1);
+  });
+});

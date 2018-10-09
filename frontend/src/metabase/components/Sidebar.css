@@ -1,5 +1,5 @@
 :root {
-    --item-padding: 45px;
+  --item-padding: 45px;
 }
 
 :local(.sidebar-padding) {
@@ -13,33 +13,33 @@
 }
 
 :local(.sidebar) {
-    composes: py2 from "style";
-    width: 345px;
-    background-color: rgb(248, 252, 253);
-    border-right: 1px solid rgb(223, 238, 245);
-    color: #606E7B;
+  composes: py2 from "style";
+  width: 345px;
+  background-color: var(--color-bg-light);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-medium);
 }
 
 :local(.sidebar) a {
-    text-decoration: none;
+  text-decoration: none;
 }
 
 :local(.breadcrumbs) {
-    composes: sidebar-padding;
+  composes: sidebar-padding;
 }
 
 :local(.item),
 :local(.sectionTitle) {
-    composes: flex align-center from "style";
-    composes: py2 from "style";
-    composes: sidebar-padding;
+  composes: flex align-center from "style";
+  composes: py2 from "style";
+  composes: sidebar-padding;
 }
 
 :local(.item) {
-    composes: transition-color from "style";
-    composes: transition-background from "style";
-    font-size: 1em;
-    color: #CFE4F5;
+  composes: transition-color from "style";
+  composes: transition-background from "style";
+  font-size: 1em;
+  color: var(--color-text-light);
 }
 
 :local(.item) :local(.icon) {
@@ -47,45 +47,42 @@
 }
 
 :local(.sectionTitle) {
-    composes: my1 from "style";
-    composes: text-bold from "style";
-    font-size: 16px;
+  composes: my1 from "style";
+  composes: text-bold from "style";
+  font-size: 16px;
 }
-
 
 :local(.item.selected),
 :local(.item.selected) :local(.icon),
 :local(.sectionTitle.selected),
 :local(.item):hover,
-:local(.item):hover :local(.icon),
 :local(.sectionTitle):hover {
-    background-color: #E3F0F9;
-    color: #2D86D4;
+  background-color: var(--color-bg-medium);
+  color: var(--color-brand);
 }
 
 :local(.divider) {
-    composes: my2 from "style";
-    composes: border-bottom from "style";
-    composes: sidebar-margin;
+  composes: my2 from "style";
+  composes: border-bottom from "style";
+  composes: sidebar-margin;
 }
 
 :local(.name) {
-    composes: ml2 text-bold from "style";
-    color: #9CAEBE;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow-x: hidden;
+  composes: ml2 text-bold from "style";
+  color: var(--color-text-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-x: hidden;
 }
 
 :local(.item):hover :local(.name),
 :local(.item.selected) :local(.name) {
-    color: #2D86D4;
+  color: var(--color-brand);
 }
 
 :local(.icon) {
-    composes: flex-no-shrink from "style";
+  composes: flex-no-shrink from "style";
 }
-
 
 :local(.noLabelsMessage) {
   composes: relative from "style";

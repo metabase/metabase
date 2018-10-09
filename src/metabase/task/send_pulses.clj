@@ -63,38 +63,44 @@
   []
   ;; build our job
   (reset! send-pulses-job (jobs/build
-                               (jobs/of-type SendPulses)
-                               (jobs/with-identity (jobs/key send-pulses-job-key))))
+                           (jobs/of-type SendPulses)
+                           (jobs/with-identity (jobs/key send-pulses-job-key))))
   ;; build our trigger
   (reset! send-pulses-trigger (triggers/build
-                                   (triggers/with-identity (triggers/key send-pulses-trigger-key))
-                                   (triggers/start-now)
-                                   (triggers/with-schedule
-                                     ;; run at the top of every hour
-                                     (cron/cron-schedule "0 0 * * * ? *"))))
+                               (triggers/with-identity (triggers/key send-pulses-trigger-key))
+                               (triggers/start-now)
+                               (triggers/with-schedule
+                                 ;; run at the top of every hour
+                                 (cron/cron-schedule "0 0 * * * ? *"))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @send-pulses-job @send-pulses-trigger))
 
 
-;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
+;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
+(defn- log-pulse-exception [pulse-id exception]
+  (log/error "Error sending pulse:" pulse-id exception))
 
 (defn- send-pulses!
-  "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
-   hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
-   that are scheduled to run and send them."
-  [hour weekday monthday monthweek]
-  {:pre [(integer? hour)
-         (and (<= 0 hour) (>= 23 hour))
-         (pulse-channel/day-of-week? weekday)
-         (contains? #{:first :last :mid :other} monthday)
-         (contains? #{:first :last :other} monthweek)]}
-  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
-    (doseq [pulse-id (keys channels-by-pulse)]
-      (try
-        (log/debug (format "Starting Pulse Execution: %d" pulse-id))
-        (when-let [pulse (pulse/retrieve-pulse-or-alert pulse-id)]
-          (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
-        (log/debug (format "Finished Pulse Execution: %d" pulse-id))
-        (catch Throwable e
-          (log/error "Error sending pulse:" pulse-id e))))))
+  "Send any `Pulses` which are scheduled to run in the current day/hour. We use the current time and determine the
+  hour of the day and day of the week according to the defined reporting timezone, or UTC. We then find all `Pulses`
+  that are scheduled to run and send them. The `on-error` function is called if an exception is thrown when sending
+  the pulse. Since this is a background process, the exception is only logged and not surfaced to the user. The
+  `on-error` function makes it easier to test for when an error doesn't occur"
+  ([hour weekday monthday monthweek]
+   (send-pulses! hour weekday monthday monthweek log-pulse-exception))
+  ([hour weekday monthday monthweek on-error]
+   {:pre [(integer? hour)
+          (and (<= 0 hour) (>= 23 hour))
+          (pulse-channel/day-of-week? weekday)
+          (contains? #{:first :last :mid :other} monthday)
+          (contains? #{:first :last :other} monthweek)]}
+   (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
+     (doseq [pulse-id (keys channels-by-pulse)]
+       (try
+         (log/debug (format "Starting Pulse Execution: %d" pulse-id))
+         (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
+           (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
+         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
+         (catch Throwable e
+           (on-error pulse-id e)))))))

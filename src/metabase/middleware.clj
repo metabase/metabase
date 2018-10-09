@@ -1,32 +1,26 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [cheshire
-             [core :as json]
-             [generate :refer [add-encoder encode-nil encode-str]]]
-            [clojure.core.async :as async]
-            [clojure.java.io :as io]
+  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?*]]
-            [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
-            monger.json
-            [ring.core.protocols :as protocols]
-            [ring.util.response :as response]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]]
+            [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator
-           java.io.OutputStream))
+           java.sql.SQLException))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -124,7 +118,10 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
+  (vec (cons User user/admin-or-self-visible-columns)))
+
+(defn- find-user [user-id]
+  (db/select-one current-user-fields, :id user-id))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
@@ -139,7 +136,7 @@
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id*              current-user-id
                 *is-superuser?*                (:is-superuser? request)
-                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user*                 (delay (find-user current-user-id))
                 *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
@@ -178,7 +175,7 @@
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  (u/format-date :rfc822)})
+   "Last-Modified"  (du/format-date :rfc822)})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
@@ -219,8 +216,9 @@
                 (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
-  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
-   See http://mzl.la/1EnfqBf for more information.")
+  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
+       (tru "Specify this to enable HTTP Public Key Pinning.")
+       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 #_(defn- public-key-pins-header []
@@ -232,7 +230,8 @@
          strict-transport-security-header
          #_(public-key-pins-header)))
 
-(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
+(defn- html-page-security-headers [& {:keys [allow-iframes?]
+                                      :or   {allow-iframes? false}}]
   (merge
    (cache-prevention-headers)
    strict-transport-security-header
@@ -313,25 +312,36 @@
 
 ;;; ---------------------------------------------------- LOGGING -----------------------------------------------------
 
-(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
-  (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
+(def ^:private jetty-stats-coll
+  (juxt :min-threads :max-threads :busy-threads :idle-threads :queue-size))
+
+(defn- log-response [jetty-stats-fn {:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
+  (let [log-error #(log/error %)        ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
         log-warn  #(log/warn  %)
-        [error? color log-fn] (cond
-                                (>= status 500) [true  'red   log-error]
-                                (=  status 403) [true  'red   log-warn]
-                                (>= status 400) [true  'red   log-debug]
-                                :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%s) (%d DB calls)"
-                   (.toUpperCase (name request-method)) uri status elapsed-time db-call-count)
+        ;; stats? here is to avoid incurring the cost of collecting the Jetty stats and concatenating the extra
+        ;; strings when they're just going to be ignored. This is automatically handled by the macro , but is bypassed
+        ;; once we wrap it in a function
+        [error? color log-fn stats?] (cond
+                                       (>= status 500) [true  'red   log-error false]
+                                       (=  status 403) [true  'red   log-warn false]
+                                       (>= status 400) [true  'red   log-debug false]
+                                       :else           [false 'green log-debug true])]
+    (log-fn (str (apply u/format-color color (str "%s %s %d (%s) (%d DB calls)."
+                                                  (when stats?
+                                                    " Jetty threads: %s/%s (%s busy, %s idle, %s queued)"))
+                        (.toUpperCase (name request-method)) uri status elapsed-time db-call-count
+                        (when stats?
+                          (jetty-stats-coll (jetty-stats-fn))))
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
                    (str "\n" (u/pprint-to-str body)))))))
 
 (defn log-api-call
-  "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
-  [handler & options]
+  "Takes a handler and a `jetty-stats-fn`. Logs info about request such as status code, number of DB calls, and time
+  taken to complete. `jetty-stats-fn` returns threadpool metadata that is included in the api request log"
+  [handler jetty-stats-fn]
   (fn [{:keys [uri], :as request}]
     (if (or (not (api-call? request))
             (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
@@ -340,10 +350,16 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
-            (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+            (log-response jetty-stats-fn request <> (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
 
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------
+
+(def ^:dynamic ^:private ^Boolean *automatically-catch-api-exceptions*
+  "Should API exceptions automatically be caught? By default, this is `true`, but this can be disabled when we want to
+  catch Exceptions and return something generic to avoid leaking information, e.g. with the `api/public` and
+  `api/embed` endpoints. generic exceptions"
+  true)
 
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
@@ -367,73 +383,48 @@
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
 
+(defn- api-exception-response
+  "Convert an exception from an API endpoint into an appropriate HTTP response."
+  [^Throwable e]
+  (let [{:keys [status-code], :as info} (ex-data e)
+        other-info                      (dissoc info :status-code :schema)
+        message                         (.getMessage e)
+        body                            (cond
+                                          ;; Exceptions that include a status code *and* other info are things like
+                                          ;; Field validation exceptions. Return those as is
+                                          (and status-code
+                                               (seq other-info))
+                                          (ui18n/localized-strings->strings other-info)
+                                          ;; If status code was specified but other data wasn't, it's something like a
+                                          ;; 404. Return message as the (plain-text) body.
+                                          status-code
+                                          (str message)
+                                          ;; Otherwise it's a 500. Return a body that includes exception & filtered
+                                          ;; stacktrace for debugging purposes
+                                          :else
+                                          (let [stacktrace (u/filtered-stacktrace e)]
+                                            (merge (assoc other-info
+                                                     :message    message
+                                                     :type       (class e)
+                                                     :stacktrace stacktrace)
+                                                   (when (instance? SQLException e)
+                                                     {:sql-exception-chain
+                                                      (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                                 #"\s*\n\s*")}))))]
+    {:status  (or status-code 500)
+     :headers (cond-> (html-page-security-headers)
+                (or (string? body)
+                    (ui18n/localized-string? body))
+                (assoc "Content-Type" "text/plain"))
+     :body    body}))
 
-;;; --------------------------------------------------- STREAMING ----------------------------------------------------
-
-(def ^:private ^:const streaming-response-keep-alive-interval-ms
-  "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
-  time to complete."
-  (* 1 1000))
-
-;; Handle ring response maps that contain a core.async chan in the :body key:
-;;
-;; {:status 200
-;;  :body (async/chan)}
-;;
-;; and send each string sent to that queue back to the browser as it arrives
-;; this avoids output buffering in the default stream handling which was not sending
-;; any responses until ~5k characters where in the queue.
-(extend-protocol protocols/StreamableResponseBody
-  clojure.core.async.impl.channels.ManyToManyChannel
-  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/debug (u/format-color 'green "starting streaming request"))
-    (with-open [out (io/writer output-stream)]
-      (loop [chunk (async/<!! output-queue)]
-        (when-not (= chunk ::EOF)
-          (.write out (str chunk))
-          (try
-            (.flush out)
-            (catch org.eclipse.jetty.io.EofException e
-              (log/info (u/format-color 'yellow "connection closed, canceling request %s" (type e)))
-              (async/close! output-queue)
-              (throw e)))
-          (recur (async/<!! output-queue)))))))
-
-(defn streaming-json-response
-  "This midelware assumes handlers fail early or return success Run the handler in a future and send newlines to keep
-  the connection open and help detect when the browser is no longer listening for the response. Waits for one second
-  to see if the handler responds immediately, If it does then there is no need to stream the response and it is sent
-  back directly. In cases where it takes longer than a second, assume the eventual result will be a success and start
-  sending newlines to keep the connection open."
+(defn catch-api-exceptions
+  "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
+  Stacktrace page, which is not so useful for our frontend."
   [handler]
   (fn [request]
-    (let [response            (future (handler request))
-          optimistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
-      (if (= optimistic-response ::no-immediate-response)
-        ;; if we didn't get a normal response in the first poling interval assume it's going to be slow
-        ;; and start sending keepalive packets.
-        (let [output (async/chan 1)]
-          ;; the output channel will be closed by the adapter when the incoming connection is closed.
-          (future
-            (loop []
-              (Thread/sleep streaming-response-keep-alive-interval-ms)
-              (when-not (realized? response)
-                (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
-                ;; a newline padding character is used because it forces output flushing in jetty.
-                ;; if sending this character fails because the connection is closed, the chan will then close.
-                ;; Newlines are no-ops when reading JSON which this depends upon.
-                (when-not (async/>!! output "\n")
-                  (log/info (u/format-color 'yellow "canceled request %s" (future-cancel response)))
-                  (future-cancel response)) ;; try our best to kill the thread running the query.
-                (recur))))
-          (future
-            (try
-              ;; This is the part where we make this assume it's a JSON response we are sending.
-              (async/>!! output (json/encode (:body @response)))
-              (finally
-                (async/>!! output ::EOF)
-                (async/close! response))))
-          ;; here we assume a successful response will be written to the output channel.
-          (assoc (response/response output)
-            :content-type "applicaton/json"))
-          optimistic-response))))
+    (if *automatically-catch-api-exceptions*
+      (try (handler request)
+           (catch Throwable e
+             (api-exception-response e)))
+      (handler request))))

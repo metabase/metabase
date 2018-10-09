@@ -34,7 +34,7 @@
       (pred item) i
       (seq more)  (recur (inc i) more))))
 
-(defn- post-cumulative-aggregation [basic-ag-type ag-field {rows :rows, cols :cols, :as results}]
+(defn- post-cumulative-aggregation [basic-ag-type {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
         field-index (u/prog1 (first-index-satisfying (comp (partial = (name basic-ag-type)) :name)
                                cols)
@@ -54,7 +54,7 @@
         post-cumulative-ag   (partial post-cumulative-aggregation basic-ag-type)]
     (fn [query]
       (if-let [{ag-field :field} (cumulative-ag-clause query)]
-        (post-cumulative-ag ag-field (qp (pre-cumulative-ag ag-field query)))
+        (post-cumulative-ag (qp (pre-cumulative-ag ag-field query)))
         (qp query)))))
 
 

@@ -1,6 +1,5 @@
 (ns metabase.pulse.render
   (:require [clj-time
-             [coerce :as c]
              [core :as t]
              [format :as f]]
             [clojure
@@ -8,12 +7,16 @@
              [string :as str]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [hiccup.core :refer [h html]]
+            [hiccup
+             [core :refer [h html]]
+             [util :as hutil]]
+            [metabase.pulse.color :as color]
             [metabase.util :as u]
             [metabase.util
+             [date :as du]
+             [i18n :refer [trs tru]]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [tru trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -32,62 +35,79 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; # ------------------------------------------------------------ STYLES ------------------------------------------------------------
+;;; ----------------------------------------------------- Styles -----------------------------------------------------
 
 (def ^:private ^:const card-width 400)
-(def ^:private ^:const rows-limit 10)
-(def ^:private ^:const cols-limit 3)
+(def ^:private ^:const rows-limit 20)
+(def ^:private ^:const cols-limit 10)
 (def ^:private ^:const sparkline-dot-radius 6)
 (def ^:private ^:const sparkline-thickness 3)
 (def ^:private ^:const sparkline-pad 8)
 
 ;;; ## STYLES
-(def ^:private ^:const color-brand  "rgb(45,134,212)")
-(def ^:private ^:const color-purple "rgb(135,93,175)")
-(def ^:private ^:const color-gold   "#F9D45C")
-(def ^:private ^:const color-error  "#EF8C8C")
-(def ^:private ^:const color-gray-1 "rgb(248,248,248)")
-(def ^:private ^:const color-gray-2 "rgb(189,193,191)")
-(def ^:private ^:const color-gray-3 "rgb(124,131,129)")
+(def ^:private ^:const color-brand      "rgb(45,134,212)")
+(def ^:private ^:const color-purple     "rgb(135,93,175)")
+(def ^:private ^:const color-gold       "#F9D45C")
+(def ^:private ^:const color-error      "#EF8C8C")
+(def ^:private ^:const color-gray-1     "rgb(248,248,248)")
+(def ^:private ^:const color-gray-2     "rgb(189,193,191)")
+(def ^:private ^:const color-gray-3     "rgb(124,131,129)")
 (def ^:const color-gray-4 "A ~25% Gray color." "rgb(57,67,64)")
+(def ^:private ^:const color-dark-gray  "#616D75")
+(def ^:private ^:const color-row-border "#EDF0F1")
 
-(def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
-(def ^:const section-style
+
+(defn- primary-color []
+  color-brand)
+
+(defn- font-style []
+  {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
+
+(defn section-style
   "CSS style for a Pulse section."
-  font-style)
+  []
+  (font-style))
 
-(def ^:private ^:const header-style
-  (merge font-style {:font-size       :16px
-                     :font-weight     700
-                     :color           color-gray-4
-                     :text-decoration :none}))
+(defn- header-style []
+  (merge (font-style) {:font-size       :16px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :text-decoration :none}))
 
-(def ^:private ^:const scalar-style
-  (merge font-style {:font-size   :24px
-                     :font-weight 700
-                     :color       color-brand}))
+(defn- scalar-style []
+  (merge (font-style) {:font-size   :24px
+                       :font-weight 700
+                       :color       (primary-color)}))
 
-(def ^:private ^:const bar-th-style
-  (merge font-style {:font-size      :10px
-                     :font-weight    400
-                     :color          color-gray-4
-                     :border-bottom  (str "4px solid " color-gray-1)
-                     :padding-top    :0px
-                     :padding-bottom :10px}))
+(defn- bar-th-style []
+  (merge (font-style) {:font-size       :14.22px
+                       :font-weight     700
+                       :color           color-gray-4
+                       :border-bottom   (str "1px solid " color-row-border)
+                       :padding-top     :20px
+                       :padding-bottom  :5px}))
 
-(def ^:private ^:const bar-td-style
-  (merge font-style {:font-size     :16px
-                     :font-weight   400
-                     :text-align    :left
-                     :padding-right :1em
-                     :padding-top   :8px}))
+(defn- bar-td-style []
+  (merge (font-style) {:font-size      :14.22px
+                       :font-weight    400
+                       :text-align     :left
+                       :padding-right  :0.5em
+                       :padding-left   :0.5em
+                       :padding-top    :4px
+                       :padding-bottom :4px}))
+
+(defn- bar-th-style-numeric []
+  (merge (font-style) (bar-th-style) {:text-align :right}))
+
+(defn- bar-td-style-numeric []
+  (merge (font-style) (bar-td-style) {:text-align :right}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   {:attachments (s/maybe {s/Str URL})
    :content [s/Any]})
 
-;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn style
   "Compile one or more CSS style maps into a string.
@@ -98,6 +118,11 @@
                       :let  [v (if (keyword? v) (name v) v)]]
                   (str (name k) ": " v ";"))))
 
+(defn- graphing-columns [card {:keys [cols] :as data}]
+  [(or (ui-logic/x-axis-rowfn card data)
+       first)
+   (or (ui-logic/y-axis-rowfn card data)
+       second)])
 
 (defn- datetime-field?
   [field]
@@ -109,17 +134,68 @@
   (or (isa? (:base_type field)    :type/Number)
       (isa? (:special_type field) :type/Number)))
 
+(defn detect-pulse-card-type
+  "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
+  [card data]
+  (let [col-count                 (-> data :cols count)
+        row-count                 (-> data :rows count)
+        [col-1-rowfn col-2-rowfn] (graphing-columns card data)
+        col-1                     (col-1-rowfn (:cols data))
+        col-2                     (col-2-rowfn (:cols data))
+        aggregation               (-> card :dataset_query :query :aggregation first)]
+    (cond
+      (or (zero? row-count)
+          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+          (= [[nil]] (-> data :rows)))                             :empty
+      (contains? #{:pin_map :state :country} (:display card))      nil
+      (and (= col-count 1)
+           (= row-count 1))                                        :scalar
+      (and (= col-count 2)
+           (> row-count 1)
+           (datetime-field? col-1)
+           (number-field? col-2))                                  :sparkline
+      (and (= col-count 2)
+           (number-field? col-2))                                  :bar
+      :else                                                        :table)))
 
-;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
+(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
+  (and (not (isa? special_type :type/Description))
+       (not (contains? #{:details-only :retired :sensitive} visibility_type))))
+
+(defn include-csv-attachment?
+  "Returns true if this card and resultset should include a CSV attachment"
+  [{:keys [include_csv] :as card} {:keys [cols rows] :as result-data}]
+  (or (:include_csv card)
+      (and (= :table (detect-pulse-card-type card result-data))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (< cols-limit (count cols))
+            (< rows-limit (count rows))))))
+
+(defn count-displayed-columns
+  "Return a count of the number of columns to be included in a table display"
+  [cols]
+  (count (filter show-in-table? cols)))
+
+
+;;; --------------------------------------------------- Formatting ---------------------------------------------------
+
+(defrecord ^:private NumericWrapper [num-str]
+  hutil/ToString
+  (to-str [_] num-str)
+  java.lang.Object
+  (toString [_] num-str))
 
 (defn- format-number
   [n]
-  (cl-format nil (if (integer? n) "~:d" "~,2f") n))
+  (NumericWrapper. (cl-format nil (if (integer? n) "~:d" "~,2f") n)))
 
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
   (f/unparse (f/with-zone (f/formatter new-format-string)
                (DateTimeZone/forTimeZone timezone))
-             (u/str->date-time old-format-timestamp timezone)))
+             (du/str->date-time old-format-timestamp timezone)))
 
 (defn- format-timestamp
   "Formats timestamps with human friendly absolute dates based on the column :unit"
@@ -128,14 +204,15 @@
     :hour          (reformat-timestamp timezone timestamp "h a - MMM YYYY")
     :week          (str "Week " (reformat-timestamp timezone timestamp "w - YYYY"))
     :month         (reformat-timestamp timezone timestamp "MMMM YYYY")
-    :quarter       (let [timestamp-obj (u/str->date-time timestamp timezone)]
+    :quarter       (let [timestamp-obj (du/str->date-time timestamp timezone)]
                      (str "Q"
                           (inc (int (/ (t/month timestamp-obj)
                                        3)))
                           " - "
                           (t/year timestamp-obj)))
 
-    (:year :hour-of-day :day-of-week :week-of-year :month-of-year); TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
     (str timestamp)
 
     (reformat-timestamp timezone timestamp "MMM d, YYYY")))
@@ -154,9 +231,10 @@
                                                                                  3))))))
 
 (defn- format-timestamp-relative
-  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
+  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
+  otherwie returns nil"
   [timezone timestamp, {:keys [unit]}]
-  (let [parsed-timestamp (u/str->date-time timestamp timezone)]
+  (let [parsed-timestamp (du/str->date-time timestamp timezone)]
     (case unit
       :day     (date->interval-name parsed-timestamp
                                     (t/date-midnight (year) (month) (day))
@@ -176,7 +254,8 @@
       nil)))
 
 (defn- format-timestamp-pair
-  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for the second, otherwise absolute timestamps for both"
+  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for
+  the second, otherwise absolute timestamps for both"
   [timezone [a b] col]
   (if-let [a' (format-timestamp-relative timezone a col)]
     [a' (str "Previous " (-> col :unit name))]
@@ -194,7 +273,8 @@
   [img-bytes]
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
-;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
+
+;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -211,6 +291,14 @@
 (defn- card-href
   [card]
   (h (urls/card-url (:id card))))
+
+(defn- write-image
+  [^BufferedImage image ^String format-name ^ByteArrayOutputStream output-stream]
+  (try
+    (ImageIO/write image format-name output-stream)
+    (catch javax.imageio.IIOException iioex
+      (log/error iioex "Error writing image to output stream")
+      (throw iioex))))
 
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png
@@ -238,7 +326,7 @@
       (.setLoadImages true)
       (.setLoadBackgroundImages true))
     (.createLayout content-canvas window-size)
-    (ImageIO/write (.getImage content-canvas) "png" os)))
+    (write-image (.getImage content-canvas) "png" os)))
 
 (s/defn ^:private render-html-to-png :- bytes
   [{:keys [content]} :- RenderedPulseCard
@@ -251,38 +339,60 @@
     (render-to-png html os width)
     (.toByteArray os)))
 
+
+(defn- heading-style-for-type
+  [cell]
+  (if (instance? NumericWrapper cell)
+    (bar-th-style-numeric)
+    (bar-th-style)))
+
+(defn- row-style-for-type
+  [cell]
+  (if (instance? NumericWrapper cell)
+    (bar-td-style-numeric)
+    (bar-td-style)))
+
 (defn- render-table
-  [header+rows]
-  [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
-   (let [{header-row :row bar-width :bar-width} (first header+rows)]
+  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
+  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
+  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
+  create."
+  [color-selector column-names header+rows]
+  (let [{bar-width :bar-width :as header} (first header+rows)]
+    [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
+             :cellpadding "0"
+             :cellspacing "0"}
      [:thead
       [:tr
-       (for [header-cell header-row]
-         [:th {:style (style bar-td-style bar-th-style {:min-width :60px})}
+       (for [header-cell (:row header)]
+         [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
-         [:th {:style (style bar-td-style bar-th-style {:width (str bar-width "%")})}])]])
-   [:tbody
-    (map-indexed (fn [row-idx {:keys [row bar-width]}]
-                   [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
-                    (map-indexed (fn [col-idx cell]
-                                   [:td {:style (style bar-td-style (when (and bar-width (= col-idx 1)) {:font-weight 700}))}
-                                    (h cell)])
-                                 row)
-                    (when bar-width
-                      [:td {:style (style bar-td-style {:width :99%})}
-                       [:div {:style (style {:background-color color-purple
-                                             :max-height       :10px
-                                             :height           :10px
-                                             :border-radius    :2px
-                                             :width            (str bar-width "%")})}
-                        "&#160;"]])])
-                 (rest header+rows))]])
+         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]]
+     [:tbody
+      (map-indexed (fn [row-idx {:keys [row bar-width]}]
+                     [:tr {:style (style {:color color-gray-3})}
+                      (map-indexed (fn [col-idx cell]
+                                     (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
+                                       [:td {:style (style (row-style-for-type cell)
+                                                           (merge {:background-color bg-color}
+                                                                  (when (and bar-width (= col-idx 1))
+                                                                    {:font-weight 700})))}
+                                        (h cell)]))
+                                   row)
+                      (when bar-width
+                        [:td {:style (style (bar-td-style) {:width :99%})}
+                         [:div {:style (style {:background-color color-purple
+                                               :max-height       :10px
+                                               :height           :10px
+                                               :border-radius    :2px
+                                               :width            (str bar-width "%")})}
+                          "&#160;"]])])
+                   (rest header+rows))]]))
 
 (defn- create-remapping-lookup
-  "Creates a map with from column names to a column index. This is
-  used to figure out what a given column name or value should be
-  replaced with"
+  "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
+  should be replaced with"
   [cols]
   (into {}
         (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
@@ -290,28 +400,33 @@
           [remapped_from col-idx])))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `COLS`. These values
-  are strings that are ready to be rendered as HTML"
+  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup cols include-bar?]
   {:row (for [maybe-remapped-col cols
-              :let [col (if (:remapped_to maybe-remapped-col)
-                          (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                          maybe-remapped-col)]
+              :when (show-in-table? maybe-remapped-col)
+              :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
+                                                               (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                                               maybe-remapped-col)
+                    column-name (name (or (:display_name col) (:name col)))]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
-          (str/upper-case (name (or (:display_name col) (:name col)))))
+          (if (or (isa? base_type :type/Number)
+                  (isa? special_type :type/Number))
+            (NumericWrapper. column-name)
+            column-name))
    :bar-width (when include-bar? 99)})
 
 (defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone remapping-lookup cols rows bar-column max-value]
   (for [row rows]
-    {:bar-width (when bar-column
+    {:bar-width (when-let [bar-value (and bar-column (bar-column row))]
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
-                  (float (* 100 (/ (double (bar-column row)) max-value))))
+                  (float (* 100 (/ (double bar-value) max-value))))
      :row (for [[maybe-remapped-col maybe-remapped-row-cell] (map vector cols row)
-                :when (not (:remapped_from maybe-remapped-col))
+                :when (and (not (:remapped_from maybe-remapped-col))
+                           (show-in-table? maybe-remapped-col))
                 :let [[col row-cell] (if (:remapped_to maybe-remapped-col)
                                        [(nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                         (nth row (get remapping-lookup (:name maybe-remapped-col)))]
@@ -319,8 +434,8 @@
             (format-cell timezone row-cell col))}))
 
 (defn- prep-for-html-rendering
-  "Convert the query results (`COLS` and `ROWS`) into a formatted seq
-  of rows (list of strings) that can be rendered as HTML"
+  "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
+  HTML"
   [timezone cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
@@ -328,52 +443,83 @@
      (query-results->header-row remapping-lookup limited-cols bar-column)
      (query-results->row-seq timezone remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
+(defn- strong-limit-text [number]
+  [:strong {:style (style {:color color-gray-3})} (h (format-number number))])
+
 (defn- render-truncation-warning
   [col-limit col-count row-limit row-count]
-  (if (or (> row-count row-limit)
-          (> col-count col-limit))
-    [:div {:style (style {:padding-top :16px})}
-     (cond
-       (> row-count row-limit)
-       [:div {:style (style {:color color-gray-2
-                             :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number row-limit)]
-        " of "     [:strong {:style (style {:color color-gray-3})} (format-number row-count)]
-        " rows."]
+  (let [over-row-limit (> row-count row-limit)
+        over-col-limit (> col-count col-limit)]
+    (when (or over-row-limit over-col-limit)
+      [:div {:style (style {:padding-top :16px})}
+       (cond
 
-       (> col-count col-limit)
-       [:div {:style (style {:color          color-gray-2
-                             :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number col-limit)]
-        " of "     [:strong {:style (style {:color color-gray-3})} (format-number col-count)]
-        " columns."])]))
+         (and over-row-limit over-col-limit)
+         [:div {:style (style {:color color-gray-2
+                               :padding-bottom :10px})}
+          "Showing " (strong-limit-text row-limit)
+          " of "     (strong-limit-text row-count)
+          " rows and " (strong-limit-text col-limit)
+          " of "     (strong-limit-text col-count)
+          " columns."]
+
+         over-row-limit
+         [:div {:style (style {:color color-gray-2
+                               :padding-bottom :10px})}
+          "Showing " (strong-limit-text row-limit)
+          " of "     (strong-limit-text row-count)
+          " rows."]
+
+         over-col-limit
+         [:div {:style (style {:color          color-gray-2
+                               :padding-bottom :10px})}
+          "Showing " (strong-limit-text col-limit)
+          " of "     (strong-limit-text col-count)
+          " columns."])])))
+
+(defn- attached-results-text
+  "Returns hiccup structures to indicate truncated results are available as an attachment"
+  [render-type cols cols-limit rows rows-limit]
+  (when (and (not= :inline render-type)
+             (or (< cols-limit (count-displayed-columns cols))
+                 (< rows-limit (count rows))))
+    [:div {:style (style {:color         color-gray-2
+                          :margin-bottom :16px})}
+     "More results have been included as a file attachment"]))
 
 (s/defn ^:private render:table :- RenderedPulseCard
-  [timezone card {:keys [cols rows] :as data}]
-  {:attachments nil
-   :content     [:div
-                 (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
-                 (render-truncation-warning cols-limit (count cols) rows-limit (count rows))]})
+  [render-type timezone card {:keys [cols rows] :as data}]
+  (let [table-body [:div
+                    (render-table (color/make-color-selector data (:visualization_settings card))
+                                  (mapv :name (:cols data))
+                                  (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
+    {:attachments nil
+     :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
+                    (list results-attached table-body)
+                    (list table-body))}))
 
-(defn- graphing-columns [card {:keys [cols] :as data}]
-  [(or (ui-logic/x-axis-rowfn card data)
-       first)
-   (or (ui-logic/y-axis-rowfn card data)
-       second)])
+(defn- non-nil-rows
+  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
+  [x-axis-fn y-axis-fn rows]
+  (filter (every-pred x-axis-fn y-axis-fn) rows))
 
 (s/defn ^:private render:bar :- RenderedPulseCard
-  [timezone card {:keys [cols rows] :as data}]
+  [timezone card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        rows (non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
-                   (render-truncation-warning 2 (count cols) rows-limit (count rows))]}))
+                   (render-table (color/make-color-selector data (:visualization_settings card))
+                                 (mapv :name cols)
+                                 (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+                   (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard
   [timezone card {:keys [cols rows]}]
   {:attachments nil
-   :content     [:div {:style (style scalar-style)}
+   :content     [:div {:style (style (scalar-style))}
                  (h (format-cell timezone (ffirst rows) (first cols)))]})
 
 (defn- render-sparkline-to-png
@@ -402,7 +548,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No approprate image writer found!")]
+      (let [^String msg (str (tru "No appropriate image writer found!"))]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
@@ -435,7 +581,7 @@
 
 (defmulti ^:private make-image-bundle
   "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
-  `RENDER-TYPE` is `:inline`), or create the hashes/references needed for an attached image (`RENDER-TYPE` of
+  `render-type` is `:inline`), or create the hashes/references needed for an attached image (`render-type` of
   `:attachment`)"
   (fn [render-type url-or-bytes]
     [render-type (class url-or-bytes)]))
@@ -508,12 +654,13 @@
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
         ft-row (if (datetime-field? (x-axis-rowfn cols))
-                 #(.getTime ^Date (u/->Timestamp %))
+                 #(.getTime ^Date (du/->Timestamp % timezone))
                  identity)
-        rows   (if (> (ft-row (x-axis-rowfn (first rows)))
-                      (ft-row (x-axis-rowfn (last rows))))
-                 (reverse rows)
-                 rows)
+        rows   (non-nil-rows x-axis-rowfn y-axis-rowfn
+                (if (> (ft-row (x-axis-rowfn (first rows)))
+                       (ft-row (x-axis-rowfn (last rows))))
+                  (reverse rows)
+                  rows))
         xs     (map (comp ft-row x-axis-rowfn) rows)
         xmin   (apply min xs)
         xmax   (apply max xs)
@@ -563,7 +710,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :104px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "No results"]]}))
@@ -575,7 +722,7 @@
      :content     [:div {:style (style {:text-align :center})}
                    [:img {:style (style {:width :30px})
                           :src   (:image-src image-bundle)}]
-                   [:div {:style (style font-style
+                   [:div {:style (style (font-style)
                                         {:margin-top :8px
                                          :color      color-gray-4})}
                     "This question has been included as a file attachment"]]}))
@@ -583,7 +730,7 @@
 (s/defn ^:private render:unknown :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-gold
                                       :font-weight 700})}
                  "We were unable to display this card."
@@ -593,36 +740,11 @@
 (s/defn ^:private render:error :- RenderedPulseCard
   [_ _]
   {:attachments nil
-   :content     [:div {:style (style font-style
+   :content     [:div {:style (style (font-style)
                                      {:color       color-error
                                       :font-weight 700
                                       :padding     :16px})}
                  "An error occurred while displaying this card."]})
-
-(defn detect-pulse-card-type
-  "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
-  [card data]
-  (let [col-count                 (-> data :cols count)
-        row-count                 (-> data :rows count)
-        [col-1-rowfn col-2-rowfn] (graphing-columns card data)
-        col-1                     (col-1-rowfn (:cols data))
-        col-2                     (col-2-rowfn (:cols data))
-        aggregation               (-> card :dataset_query :query :aggregation first)]
-    (cond
-      (or (zero? row-count)
-          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-          (= [[nil]] (-> data :rows)))                             :empty
-      (or (> col-count 3)
-          (contains? #{:pin_map :state :country} (:display card))) nil
-      (and (= col-count 1)
-           (= row-count 1))                                        :scalar
-      (and (= col-count 2)
-           (> row-count 1)
-           (datetime-field? col-1)
-           (number-field? col-2))                                  :sparkline
-      (and (= col-count 2)
-           (number-field? col-2))                                  :bar
-      :else                                                        :table)))
 
 (s/defn ^:private make-title-if-needed :- (s/maybe RenderedPulseCard)
   [render-type card]
@@ -631,11 +753,14 @@
                          (external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle->attachment image-bundle))
-       :content     [:table {:style (style {:margin-bottom :8px
-                                            :width         :100%})}
+       :content     [:table {:style (style {:margin-bottom   :8px
+                                            :border-collapse :collapse
+                                            :width           :100%})}
                      [:tbody
                       [:tr
-                       [:td [:span {:style (style header-style)}
+                       [:td {:style (style {:padding :0
+                                            :margin  :0})}
+                        [:span {:style (style (header-style))}
                              (-> card :name h)]]
                        [:td {:style (style {:text-align :right})}
                         (when *include-buttons*
@@ -652,19 +777,23 @@
   [render-type timezone card {:keys [data error]}]
   (try
     (when error
-      (let [^String msg (tru "Card has errors: {0}" error)]
+      (let [^String msg (str (tru "Card has errors: {0}" error))]
         (throw (Exception. msg))))
     (case (detect-pulse-card-type card data)
       :empty     (render:empty     render-type card data)
       :scalar    (render:scalar    timezone card data)
       :sparkline (render:sparkline render-type timezone card data)
       :bar       (render:bar       timezone card data)
-      :table     (render:table     timezone card data)
+      :table     (render:table     render-type timezone card data)
       (if (is-attached? card)
         (render:attached render-type card data)
         (render:unknown card data)))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
+      (log/error (trs "Pulse card render error")
+                 (class e)
+                 (.getMessage e)
+                 "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e)))
       (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard
@@ -675,7 +804,7 @@
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
-                       :style  (style section-style
+                       :style  (style (section-style)
                                       {:margin          :16px
                                        :margin-bottom   :16px
                                        :display         :block
@@ -691,19 +820,23 @@
 
 (s/defn render-pulse-section :- RenderedPulseCard
   "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
-  [timezone {:keys [card result]}]
+  [timezone {card :card {:keys [data] :as result} :result}]
   (let [{:keys [attachments content]} (binding [*include-title* true]
                                         (render-pulse-card :attachment timezone card result))]
     {:attachments attachments
-     :content     [:div {:style (style {:margin-top       :10px
-                                        :margin-bottom    :20px
-                                        :border           "1px solid #dddddd"
-                                        :border-radius    :2px
-                                        :background-color :white
-                                        :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
+     :content     [:div {:style (style (merge {:margin-top       :10px
+                                               :margin-bottom    :20px}
+                                              ;; Don't include the border on cards rendered with a table as the table
+                                              ;; will be to larger and overrun the border
+                                              (when-not (= :table (detect-pulse-card-type card data))
+                                                {:border           "1px solid #dddddd"
+                                                 :border-radius    :2px
+                                                 :background-color :white
+                                                 :width            "500px !important"
+                                                 :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
                    content]}))
 
 (defn render-pulse-card-to-png
-  "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
+  "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
   ^bytes [timezone pulse-card result]
   (render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))

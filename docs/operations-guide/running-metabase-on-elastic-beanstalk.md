@@ -26,11 +26,11 @@ The rest of this guide will follow each phase of the Elastic Beanstalk setup ste
 ### New Application
 
 
-You should now see a screen that looks like 
+You should now see a screen that looks like
 
 ![Elastic Beanstalk First Screen](images/EBFirstScreen.png)
 
-NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documenatation [here](running-metabase-on-elastic-beanstalk-old.md)
+NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documentation [here](running-metabase-on-elastic-beanstalk-old.md)
 
 Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
 
@@ -52,7 +52,7 @@ And of course if you don't care about the URL you can simply leave it to whateve
 
 ### New Environment
 
-Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page. 
+Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page.
 
 ![ebnewenv](images/EBWebTier.png)
 
@@ -80,7 +80,7 @@ You will need to enable enhanced health checks for your Beanstalk Monitoring.
 Click on the `modify` link under the Monitoring section as below.
 ![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
 
-Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch. 
+Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch.
 
 ![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
 
@@ -95,7 +95,7 @@ To set the database password from the Beanstalk template, hit "Review and Launch
 
 ![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
-Once there, enter a database username and password. We suggest you hold onto this in a password manager, as it can be useful for things like backups or troubleshooting. 
+Once there, enter a database username and password. We suggest you hold onto this in a password manager, as it can be useful for things like backups or troubleshooting.
 
 ![Elastic Beanstalk Database Settings](images/EBDatabaseSettings.png)
 

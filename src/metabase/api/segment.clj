@@ -7,6 +7,7 @@
              [revision :as revision]
              [segment :as segment :refer [Segment]]
              [table :refer [Table]]]
+            [metabase.related :as related]
             [metabase.util.schema :as su]
             [toucan
              [db :as db]
@@ -33,7 +34,7 @@
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
-  (filter mi/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
+  (filter mi/can-read? (-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]})
                            (hydrate :creator))))
 
 
@@ -82,5 +83,9 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id))
 
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Segment api/read-check related/related))
 
 (api/define-routes)

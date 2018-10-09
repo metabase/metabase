@@ -13,6 +13,7 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -21,8 +22,8 @@
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as sync-field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.util
@@ -50,16 +51,21 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info
+(s/defn ^:private add-native-perms-info :- [{:native_permissions (s/enum :write :none), s/Keyword s/Any}]
   "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
-   native (e.g. SQL) queries. Will be one of `:write`, `:read`, or `:none`."
-  [dbs]
+  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
+  and save new Cards with native queries; `:none` means you can do neither.
+
+  For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
+  permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
+  native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
+  [dbs :- [su/Map]]
   (for [db dbs]
-    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
-      (assoc db :native_permissions (cond
-                                      (user-has-perms? perms/native-readwrite-path) :write
-                                      (user-has-perms? perms/native-read-path)      :read
-                                      :else                                         :none)))))
+    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                        (perms/adhoc-native-query-path (u/get-id db)))
+                                    :write
+                                    :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
@@ -91,14 +97,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (when (seq aggregations)
-    (some (fn [[ag-type]]
-            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
-          ;; over list of aggregations
-          (if-not (sequential? (first aggregations))
-            [aggregations]
-            aggregations))))
+  (seq (mbql.u/clause-instances #{:cum-count :cum-sum} aggregations)))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -142,7 +141,9 @@
       include-cards?  add-virtual-tables-for-saved-cards)))
 
 (api/defendpoint GET "/"
-  "Fetch all `Databases`."
+  "Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
+  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
+  Tables in queries. Default for both is `false`."
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
@@ -193,7 +194,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :values] :segments :metrics])
+      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -502,7 +503,8 @@
   ;; just wrap this in a future so it happens async
   (api/let-404 [db (Database id)]
     (future
-      (sync-metadata/sync-db-metadata! db)))
+      (sync-metadata/sync-db-metadata! db)
+      (analyze/analyze-db! db)))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
@@ -540,6 +542,37 @@
   (api/check-superuser)
   (delete-all-field-values-for-database! id)
   {:status :ok})
+
+
+;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(defn- can-read-schema?
+  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
+  at least some of its tables?)"
+  [database-id schema-name]
+  (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+    (perms/object-path database-id schema-name)))
+
+(api/defendpoint GET "/:id/schemas"
+  "Returns a list of all the schemas found for the database `id`"
+  [id]
+  (api/read-check Database id)
+  (->> (db/select-field :schema Table :db_id id)
+       (filter (partial can-read-schema? id))
+       sort))
+
+
+;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
+
+(api/defendpoint GET "/:id/schema/:schema"
+  "Returns a list of tables for the given database `id` and `schema`"
+  [id schema]
+  (api/read-check Database id)
+  (api/check-403 (can-read-schema? id schema))
+  (->> (db/select Table :db_id id, :schema schema, {:order-by [[:name :asc]]})
+       (filter mi/can-read?)
+       seq
+       api/check-404))
 
 
 (api/define-routes)

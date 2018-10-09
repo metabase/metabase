@@ -1,7 +1,7 @@
 /* @flow weak */
 
 export default class Action {
-    perform() {}
+  perform() {}
 }
 
 export class ActionClick {}

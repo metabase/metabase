@@ -2,33 +2,36 @@
   --border-size: 1px;
   --border-size-med: 2px;
   --border-style: solid;
-  --border-color: #F0F0F0;
+  --border-color: var(--color-border);
 }
 
-.bordered, :local(.bordered) {
-  border: var(--border-size) var(--border-style) var(--border-color);
+.bordered,
+:local(.bordered) {
+  border: var(--border-size) var(--border-style) var(--color-border);
 }
 
-.border-bottom, :local(.border-bottom) {
-  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+.border-bottom,
+:local(.border-bottom) {
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered .border-bottom:last-child {
+.bordered > .border-bottom:last-child {
   border-bottom: none;
 }
 
-.border-top, :local(.border-top) {
-  border-top: var(--border-size) var(--border-style) var(--border-color);
+.border-top,
+:local(.border-top) {
+  border-top: var(--border-size) var(--border-style) var(--color-border);
 }
 
 /* ensure that a border-top item inside of a bordred element won't double up */
-.bordered .border-top:first-child {
+.bordered > .border-top:first-child {
   border-top: none;
 }
 
 .border-column-divider {
-  border-right: var(--border-size) var(--border-style) var(--border-color);
+  border-right: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .border-column-divider:last-child {
@@ -36,7 +39,7 @@
 }
 
 .border-row-divider {
-  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .border-row-divider:last-child {
@@ -44,62 +47,61 @@
 }
 
 .border-right {
-  border-right: var(--border-size) var(--border-style) var(--border-color);
+  border-right: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .border-left {
-  border-left: var(--border-size) var(--border-style) var(--border-color);
+  border-left: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .border-light {
-    border-color: rgba(255,255,255,0.2) !important;
+  border-color: color(var(--color-border) alpha(-80%)) !important;
 }
 
 .border-dark,
 .border-dark-hover:hover {
-    border-color: rgba(0,0,0,0.2) !important;
-}
-
-.border-grey-1 {
-    border-color: var(--grey-1) !important;
-}
-
-.border-green {
-    border-color: var(--green-color) !important;
+  border-color: color(var(--color-accent2) alpha(-80%)) !important;
 }
 
 .border-purple {
-    border-color: var(--purple-color) !important;
+  border-color: var(--color-accent2) !important;
 }
 
-.border-error, :local(.border-error) {
-    border-color: var(--error-color) !important;
+.border-error,
+:local(.border-error) {
+  border-color: var(--color-error) !important;
 }
 
 .border-gold {
-    border-color: var(--gold-color) !important;
+  border-color: var(--color-warning) !important;
 }
 
 .border-success {
-    border-color: var(--success-color) !important;
+  border-color: var(--color-success) !important;
 }
 
-.border-brand, :local(.border-brand) {
-    border-color: var(--brand-color) !important;
+.border-brand,
+:local(.border-brand) {
+  border-color: var(--color-brand) !important;
+}
+
+.border-transparent {
+  border-color: transparent;
 }
 
 .border-brand-hover:hover {
-    border-color: var(--brand-color);
+  border-color: var(--color-brand);
 }
 
 .border-hover:hover {
-  border-color: color(var(--border-color) shade(20%));
+  border-color: var(--color-border);
 }
 
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */
-.borderless, :local(.borderless) {
+.borderless,
+:local(.borderless) {
   border: none !important;
 }
 
@@ -108,5 +110,5 @@
 }
 
 .border-med {
-    border-width: var(--border-size-med);
+  border-width: var(--border-size-med);
 }

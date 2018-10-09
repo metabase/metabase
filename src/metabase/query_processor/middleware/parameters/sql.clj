@@ -4,18 +4,25 @@
    The new implementation uses prepared statement args instead of substituting them directly into the query,
    and is much better-organized and better-documented."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [medley.core :as m]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.expand :as ql]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.text.NumberFormat
+           java.util.regex.Pattern
+           java.util.UUID
            metabase.models.field.FieldInstance))
 
 ;; The Basics:
@@ -35,16 +42,7 @@
 ;;; |                                                      ETC                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Dynamic variables and record types used by the other parts of this namespace.
-
-;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we
-;; can share one used somewhere else instead
-(def ^:private ^:dynamic *driver* nil)
-
-(def ^:private ^:dynamic *timezone* nil)
-
-
-;; various record types below are used as a convenience for differentiating the different param types.
+;; Various record types below are used as a convenience for differentiating the different param types.
 
 ;; "Dimension" here means a "FIELD FILTER", e.g. something that expands to a clause like "some_field BETWEEN 1 AND 10"
 (s/defrecord ^:private Dimension [field :- FieldInstance, param]) ; param is either single param or a vector of params
@@ -62,6 +60,11 @@
 ;; values.
 (defrecord ^:private NoValue [])
 
+(defn- no-value? [x]
+  (instance? NoValue x))
+
+(def ^:private ParamType
+  (s/enum :number :dimension :text :date))
 
 ;; various schemas are used to check that various functions return things in expected formats
 
@@ -69,22 +72,29 @@
 ;; "FieldFilter" clause like Dimensions
 ;;
 ;; Since 'Dimension' (Field Filters) are considered their own `:type`, to *actually* store the type of a Dimension
-;; look at the key `:widget_type`. This applies to things like the default value for a Dimension as well.
+;; look at the key `:widget-type`. This applies to things like the default value for a Dimension as well.
 (def ^:private TagParam
-  "Schema for values passed in as part of the `:template_tags` list."
+  "Schema for values passed in as part of the `:template-tags` list."
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
    :name                         su/NonBlankString
-   :display_name                 su/NonBlankString
-   :type                         (s/enum "number" "dimension" "text" "date")
+   :display-name                 su/NonBlankString
+   :type                         ParamType
    (s/optional-key :dimension)   [s/Any]
-   (s/optional-key :widget_type) su/NonBlankString ; type of the [default] value if `:type` itself is `dimension`
+   (s/optional-key :widget-type) s/Keyword ; type of the [default] value if `:type` itself is `dimension`
    (s/optional-key :required)    s/Bool
    (s/optional-key :default)     s/Any})
 
 (def ^:private DimensionValue
-  {:type                   su/NonBlankString
-   :target                 s/Any
-   (s/optional-key :value) s/Any}) ; not specified if the param has no value. TODO - make this stricter
+  {:type                     s/Keyword ; TODO - what types are allowed? :text, ...?
+   :target                   s/Any
+   ;; not specified if the param has no value. TODO - make this stricter
+   (s/optional-key :value)   s/Any
+   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
+   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
+   (s/optional-key :slug)    su/NonBlankString
+   (s/optional-key :name)    su/NonBlankString
+   (s/optional-key :default) s/Any
+   (s/optional-key :id)      s/Any}) ; used internally by the frontend
 
 (def ^:private SingleValue
   "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
@@ -105,14 +115,10 @@
            "Valid param value(s)"))
 
 (def ^:private ParamValues
-  {s/Keyword ParamValue})
+  {su/NonBlankString ParamValue})
 
 (def ^:private ParamSnippetInfo
-  {(s/optional-key :param-key)               s/Keyword
-   (s/optional-key :original-snippet)        su/NonBlankString
-   (s/optional-key :variable-snippet)        su/NonBlankString
-   (s/optional-key :optional-snippet)        (s/maybe su/NonBlankString)
-   (s/optional-key :replacement-snippet)     s/Str                       ; allowed to be blank if this is an optional param
+  {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
    (s/optional-key :prepared-statement-args) [s/Any]})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -120,14 +126,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; These functions build a map of information about the types and values of the params used in a query.
-;; (These functions don't parse the query itself, but instead look at the values of `:template_tags` and `:parameters`
+;; (These functions don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters`
 ;; passed along with the query.)
 ;;
 ;;     (query->params-map some-query)
-;;     ;; -> {:checkin_date {:field {:name "\date"\, :parent_id nil, :table_id 1375}
-;;                           :param {:type   "\date/range"\
-;;                                   :target ["\dimension"\ ["\template-tag"\ "\checkin_date"\]]
-;;                                   :value  "\2015-01-01~2016-09-01"\}}}
+;;     ;; -> {"checkin_date" {:field {:name "\date"\, :parent_id nil, :table_id 1375}
+;;                            :param {:type   "\date/range"\
+;;                                    :target ["\dimension"\ ["\template-tag"\ "\checkin_date"\]]
+;;                                    :value  "\2015-01-01~2016-09-01"\}}}
 
 (s/defn ^:private param-with-target
   "Return the param in PARAMS with a matching TARGET. TARGET is something like:
@@ -150,8 +156,8 @@
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
   (when-let [default (:default tag)]
-    {:type   (:widget_type tag "dimension")             ; widget_type is the actual type of the default value if set
-     :target ["dimension" ["template-tag" (:name tag)]]
+    {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
+     :target [:dimension [:template-tag (:name tag)]]
      :value  default}))
 
 (s/defn ^:private dimension->field-id :- su/IntGreaterThanZero
@@ -163,11 +169,13 @@
   Filter\" in the Native Query Editor."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (when-let [dimension (:dimension tag)]
-    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id], :id (dimension->field-id dimension))
-                                (throw (Exception. (str "Can't find field with ID: " (dimension->field-id dimension)))))
+    (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id :base_type],
+                                  :id (dimension->field-id dimension))
+                                (throw (Exception. (str (tru "Can't find field with ID: {0}"
+                                                             (dimension->field-id dimension))))))
                      :param (or
                              ;; look in the sequence of params we were passed to see if there's anything that matches
-                             (param-with-target params ["dimension" ["template-tag" (:name tag)]])
+                             (param-with-target params [:dimension [:template-tag (:name tag)]])
                              ;; if not, check and see if we have a default param
                              (default-value-for-dimension tag))})))
 
@@ -175,8 +183,8 @@
 ;;; Non-Dimension Params (e.g. WHERE x = {{x}})
 
 (s/defn ^:private param-value-for-tag [tag :- TagParam, params :- (s/maybe [DimensionValue])]
-  (when (not= (:type tag) "dimension")
-    (:value (param-with-target params ["variable" ["template-tag" (:name tag)]]))))
+  (when (not= (:type tag) :dimension)
+    (:value (param-with-target params [:variable [:template-tag (:name tag)]]))))
 
 (s/defn ^:private default-value-for-tag
   "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-Dimension
@@ -185,7 +193,7 @@
   [{:keys [default display_name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (format "'%s' is a required param." display_name))))))
+        (throw (Exception. (str (tru "''{0}'' is a required param." display_name)))))))
 
 
 ;;; Parsing Values
@@ -197,12 +205,12 @@
   (.parse (NumberFormat/getInstance) ^String s))
 
 (s/defn ^:private value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
-  "Parse a 'numeric' param value. Normally this returns an integer or floating-point number,
-   but as a somewhat undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of
-   the old parameter code that unquestioningly substituted any parameter passed in as a number directly into the SQL.
-   This has long been changed for security purposes (avoiding SQL injection), but since users have come to expect
-   comma-separated numeric values to work we'll allow that (with validation) and return an instance of
-   `CommaSeperatedNumbers`. (That is converted to SQL as a simple comma-separated list.)"
+  "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
+  undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
+  code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
+  changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated numeric
+  values to work we'll allow that (with validation) and return an instance of `CommaSeperatedNumbers`. (That is
+  converted to SQL as a simple comma-separated list.)"
   [value]
   (cond
     ;; if not a string it's already been parsed
@@ -220,21 +228,50 @@
         ;; otherwise just return the single number
         (first parts)))))
 
-(s/defn ^:private parse-value-for-type :- ParamValue
-  [param-type value]
+(s/defn ^:private parse-value-for-field-base-type :- s/Any
+  "Do special parsing for value for a (presumably textual) FieldFilter 'dimension' param (i.e., attempt to parse it as
+  appropriate based on the base-type of the Field associated with it). These are special cases for handling types that
+  do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
+  [base-type :- su/FieldType, value]
   (cond
-    (instance? NoValue value)                        value
-    (= param-type "number")                          (value->number value)
-    (= param-type "date")                            (map->Date {:s value})
-    (and (= param-type "dimension")
-         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] value->number)
-    (sequential? value)                              (map->MultipleValues
-                                                      {:values (for [v value]
-                                                                 (parse-value-for-type param-type v))})
-    :else                                            value))
+    (isa? base-type :type/UUID) (UUID/fromString value)
+    :else                       value))
+
+(s/defn ^:private parse-value-for-type :- ParamValue
+  "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
+  created, `value` here might be a raw value or a map including information about the Field it references as well as a
+  value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
+  additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
+  base type Fields as UUIDs."
+  [param-type :- ParamType, value]
+  (cond
+    (no-value? value)
+    value
+
+    (= param-type :number)
+    (value->number value)
+
+    (= param-type :date)
+    (map->Date {:s value})
+
+    (and (= param-type :dimension)
+         (= (get-in value [:param :type]) :number))
+    (update-in value [:param :value] value->number)
+
+    (sequential? value)
+    (map->MultipleValues {:values (for [v value]
+                                    (parse-value-for-type param-type v))})
+
+    (and (= param-type :dimension)
+         (get-in value [:field :base_type])
+         (string? (get-in value [:param :value])))
+    (update-in value [:param :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+
+    :else
+    value))
 
 (s/defn ^:private value-for-tag :- ParamValue
-  "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS
+  "Given a map TAG (a value in the `:template-tags` dictionary) return the corresponding value from the PARAMS
    sequence. The VALUE is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
@@ -249,10 +286,10 @@
      (query->params-map some-query)
       ->
       {:checkin_date {:field {:name \"date\", :parent_id nil, :table_id 1375}
-                      :param {:type   \"date/range\"
-                              :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
+                      :param {:type   :date/range
+                              :target [:dimension [:template-tag \"checkin_date\"]]
                               :value  \"2015-01-01~2016-09-01\"}}}"
-  [{{tags :template_tags} :native, params :parameters}]
+  [{{tags :template-tags} :native, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]
                  :when   v]
@@ -274,22 +311,20 @@
 (defprotocol ^:private ISQLParamSubstituion
   "Protocol for specifying what SQL should be generated for parameters of various types."
   (^:private ->replacement-snippet-info [this]
-   "Return information about how THIS should be converted to SQL, as a map with keys `:replacement-snippet` and `:prepared-statement-args`.
+   "Return information about how THIS should be converted to SQL, as a map with keys `:replacement-snippet` and
+   `:prepared-statement-args`.
 
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 
 
 (defn- relative-date-param-type? [param-type]
-  (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
-
-(defn- date-param-type? [param-type]
-  (str/starts-with? param-type "date/"))
+  (contains? #{:date/range :date/month-year :date/quarter-year :date/relative :date/all-options} param-type))
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
   ;; TODO - get timezone from query dict
-  (-> (date-params/date-string->range value *timezone*)
+  (-> (date-params/date-string->range value (.getID du/*report-timezone*))
       map->DateRange
       ->replacement-snippet-info))
 
@@ -305,13 +340,13 @@
       (update :replacement-snippet (partial format "IN (%s)"))))
 
 (s/defn ^:private dimension->replacement-snippet-info :- ParamSnippetInfo
-  "Return `[replacement-snippet & prepared-statement-args]` appropriate for a DIMENSION parameter."
+  "Return `[replacement-snippet & prepared-statement-args]` appropriate for a `dimension` parameter."
   [{param-type :type, value :value} :- DimensionValue]
   (cond
     ;; convert relative dates to approprate date range representations
     (relative-date-param-type? param-type) (relative-date-dimension-value->replacement-snippet-info value)
     ;; convert all other dates to `= <date>`
-    (date-param-type? param-type)          (dimension-value->equals-clause-sql (map->Date {:s value}))
+    (date-params/date-type? param-type)    (dimension-value->equals-clause-sql (map->Date {:s value}))
     ;; for sequences of multiple values we want to generate an `IN (...)` clause
     (sequential? value)                    (dimension-multiple-values->in-clause-sql value)
     ;; convert everything else to `= <value>`
@@ -320,7 +355,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*))]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -329,9 +364,9 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the PARAM-TYPE."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* field)]
-                                            (if (date-param-type? param-type)
-                                              ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
+  (-> (honeysql->replacement-snippet-info (let [identifier (sql/field->identifier qp.i/*driver* field)]
+                                            (if (date-params/date-type? param-type)
+                                              (sql/date qp.i/*driver* :day identifier)
                                               identifier)))
       :replacement-snippet))
 
@@ -341,13 +376,24 @@
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
+(defn- create-replacement-snippet [nil-or-obj]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution qp.i/*driver* nil-or-obj)]
+    {:replacement-snippet     sql-string
+     :prepared-statement-args param-values}))
+
+(defn- prepared-ts-subs [operator date-str]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution qp.i/*driver* (du/->Timestamp date-str))]
+    {:replacement-snippet     (str operator " " sql-string)
+     :prepared-statement-args param-values}))
+
 (extend-protocol ISQLParamSubstituion
-  nil     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Object  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
-  Number  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Boolean (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  SqlCall (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  nil     (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Object  (->replacement-snippet-info [this] (create-replacement-snippet (str this)))
+  Number  (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Boolean (->replacement-snippet-info [this] (create-replacement-snippet this))
+  Keyword (->replacement-snippet-info [this] (create-replacement-snippet this))
+  SqlCall (->replacement-snippet-info [this] (create-replacement-snippet this))
+  UUID    (->replacement-snippet-info [this] {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
   NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
 
   CommaSeparatedNumbers
@@ -362,15 +408,24 @@
 
   Date
   (->replacement-snippet-info [{:keys [s]}]
-    (honeysql->replacement-snippet-info (u/->Timestamp s)))
+    (create-replacement-snippet (du/->Timestamp s)))
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
     (cond
-      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
-      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+      (= start end)
+      (prepared-ts-subs \= start)
+
+      (nil? start)
+      (prepared-ts-subs \< end)
+
+      (nil? end)
+      (prepared-ts-subs \> start)
+
+      :else
+      (let [params (map (comp #(sql/->prepared-substitution qp.i/*driver* %) du/->Timestamp) [start end])]
+        {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
+         :prepared-statement-args (vec (mapcat :param-values params))})))
 
   ;; TODO - clean this up if possible!
   Dimension
@@ -387,124 +442,119 @@
       ;; otherwise convert single param to SQL.
       ;; Convert the value to a replacement snippet info map and then tack on the field identifier to the front
       :else
-      (update (dimension->replacement-snippet-info param) :replacement-snippet (partial str (field->identifier field (:type param)) " ")))))
+      (update (dimension->replacement-snippet-info param)
+              :replacement-snippet (partial str (field->identifier field (:type param)) " ")))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         QUERY PARSING / PARAM SNIPPETS                                         |
+;;; |                                            PARSING THE SQL TEMPLATE                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; These functions parse a query and look for param snippets, which look like:
-;;
-;; * {{...}} (required)
-;; * [[...{{...}}...]] (optional)
-;;
-;; and creates a list of these snippets, keeping the original order.
-;;
-;; The details maps returned have the format:
-;;
-;;    {:param-key        :timestamp                           ; name of the param being replaced
-;;     :original-snippet "[[AND timestamp < {{timestamp}}]]"  ; full text of the snippet to be replaced
-;;     :optional-snippet "AND timestamp < {{timestamp}}"      ; portion of the snippet inside [[optional]] brackets, or `nil` if the snippet isn't optional
-;;     :variable-snippet "{{timestamp}}"}                     ; portion of the snippet referencing the variable itself, e.g. {{x}}
+(defrecord ^:private Param [param-key sql-value prepared-statement-args])
 
-(s/defn ^:private param-snippet->param-name :- s/Keyword
-  "Return the keyword name of the param being referenced inside PARAM-SNIPPET.
+(defn- param? [maybe-param]
+  (instance? Param maybe-param))
 
-     (param-snippet->param-name \"{{x}}\") -> :x"
-  [param-snippet :- su/NonBlankString]
-  (keyword (second (re-find #"\{\{\s*(\w+)\s*\}\}" param-snippet))))
+(defn- merge-query-map [query-map node]
+  (cond
+    (string? node)
+    (update query-map :query str node)
 
-(s/defn ^:private sql->params-snippets-info :- [ParamSnippetInfo]
-  "Return a sequence of maps containing information about the param snippets found by paring SQL."
-  [sql :- su/NonBlankString]
-  (for [[param-snippet optional-replacement-snippet] (re-seq #"(?:\[\[(.+?)\]\])|(?:\{\{\s*\w+\s*\}\})" sql)]
-    {:param-key        (param-snippet->param-name param-snippet)
-     :original-snippet  param-snippet
-     :variable-snippet (re-find #"\{\{\s*\w+\s*\}\}" param-snippet)
-     :optional-snippet optional-replacement-snippet}))
+    (param? node)
+    (-> query-map
+        (update :query str (:sql-value node))
+        (update :params concat (:prepared-statement-args node)))
 
+    :else
+    (-> query-map
+        (update :query str (:query node))
+        (update :params concat (:params node)))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              PARAMS DETAILS LIST                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(def ^:private empty-query-map {:query "" :params []})
 
-;; These functions combine the info from the other 3 stages (Param Info Resolution, Param->SQL Substitution, and Query
-;; Parsing) and create a sequence of maps containing param details that has all the information needed to do SQL
-;; substituion. This sequence is returned in the same order as params encountered in the
-;;
-;; original query, making passing prepared statement args simple
-;;
-;; The details maps returned have the format:
-;;
-;;    {:original-snippet        "[[AND timestamp < {{timestamp}}]]"  ; full text of the snippet to be replaced
-;;     :replacement-snippet     "AND timestamp < ?"                  ; full text that the snippet should be replaced with
-;;     :prepared-statement-args [#inst "2016-01-01"]}                ; prepared statement args needed by the replacement snippet
-;;
-;; (Basically these functions take `:param-key`, `:optional-snippet`, and `:variable-snippet` from the Query Parsing stage and the info from the other stages
-;; to add the appropriate info for `:replacement-snippet` and `:prepared-statement-args`.)
+(defn- no-value-param? [maybe-param]
+  (and (param? maybe-param)
+       (no-value? (:sql-value maybe-param))))
 
-(s/defn ^:private snippet-value :- ParamValue
-  "Fetch the value from PARAM-KEY->VALUE for SNIPPET-INFO.
-   If no value is specified, return `NoValue` if the snippet is optional; otherwise throw an Exception."
-  [{:keys [param-key optional-snippet]} :- ParamSnippetInfo, param-key->value :- ParamValues]
-  (u/prog1 (get param-key->value param-key (NoValue.))
-    ;; if ::no-value was specified an the param is not [[optional]], throw an exception
-    (when (and (instance? NoValue <>)
-               (not optional-snippet))
-      (throw (ex-info (format "Unable to substitute '%s': param not specified.\nFound: %s" param-key (keys param-key->value))
-               {:status-code 400})))))
+(defn- quoted-re-pattern [s]
+  (-> s Pattern/quote re-pattern))
 
-(s/defn ^:private handle-optional-snippet :- ParamSnippetInfo
-  "Create the approprate `:replacement-snippet` for PARAM, combining the value of REPLACEMENT-SNIPPET from the Param->SQL Substitution phase
-   with the OPTIONAL-SNIPPET, if any."
-  [{:keys [variable-snippet optional-snippet replacement-snippet prepared-statement-args], :as snippet-info} :- ParamSnippetInfo]
-  (assoc snippet-info
-    :replacement-snippet     (cond
-                               (not optional-snippet)    replacement-snippet                                                 ; if there is no optional-snippet return replacement as-is
-                               (seq replacement-snippet) (str/replace optional-snippet variable-snippet replacement-snippet) ; if replacement-snippet is non blank splice into optional-snippet
-                               :else                     "")                                                                 ; otherwise return blank replacement (i.e. for NoValue)
-    ;; for every thime the `variable-snippet` occurs in the `optional-snippet` we need to supply an additional set of `prepared-statment-args`
-    ;; e.g. [[ AND ID = {{id}} OR USER_ID = {{id}} ]] should have *2* sets of the prepared statement args for {{id}} since it occurs twice
-    :prepared-statement-args (if-let [occurances (u/occurances-of-substring optional-snippet variable-snippet)]
-                               (apply concat (repeat occurances prepared-statement-args))
-                               prepared-statement-args)))
+(defn- split-delimited-string
+  "Interesting parts of the SQL string (vs. parts that are just passed through) are delimited, i.e. {{something}}. This
+  function takes a `delimited-begin` and `delimited-end` regex and uses that to separate the string. Returns a map
+  with the prefix (the string leading up to the first `delimited-begin`) and `:delimited-strings` as a seq of maps
+  where `:delimited-body` is what's in-between the delimited marks (i.e. foo in {{foo}} and then a suffix, which is
+  the characters after the trailing delimiter but before the next occurrence of the `delimited-end`."
+  [delimited-begin delimited-end s]
+  (let [begin-pattern                (quoted-re-pattern delimited-begin)
+        end-pattern                  (quoted-re-pattern delimited-end)
+        [prefix & segmented-strings] (str/split s begin-pattern)]
+    (when-let [^String msg (and (seq segmented-strings)
+                                (not-every? #(str/index-of % delimited-end) segmented-strings)
+                                (str (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
+                                          delimited-begin delimited-end s)))]
+      (throw (IllegalArgumentException. msg)))
+    {:prefix            prefix
+     :delimited-strings (for [segmented-string segmented-strings
+                              :let             [[token-str & rest-of-segment] (str/split segmented-string end-pattern)]]
+                          {:delimited-body token-str
+                           :suffix         (apply str rest-of-segment)})}))
 
-(s/defn ^:private add-replacement-snippet-info :- [ParamSnippetInfo]
-  "Add `:replacement-snippet` and `:prepared-statement-args` info to the maps in PARAMS-SNIPPETS-INFO by looking at
-   PARAM-KEY->VALUE and using the Param->SQL substituion functions."
-  [params-snippets-info :- [ParamSnippetInfo], param-key->value :- ParamValues]
-  (for [snippet-info params-snippets-info]
-    (handle-optional-snippet
-     (merge snippet-info
-            (s/validate ParamSnippetInfo (->replacement-snippet-info (snippet-value snippet-info param-key->value)))))))
+(s/defn ^:private token->param :- Param
+  "Given a `token` and `param-key->value` return a `Param`. If no parameter value is found, return a `NoValue` param"
+  [token :- su/NonBlankString, param-key->value :- ParamValues]
+  (let [val                               (get param-key->value token (NoValue.))
+        {:keys [replacement-snippet
+                prepared-statement-args]} (->replacement-snippet-info val)]
+    (map->Param (merge {:param-key token}
+                       (if (no-value? val)
+                         {:sql-value val, :prepared-statement-args []}
+                         {:sql-value               replacement-snippet
+                          :prepared-statement-args prepared-statement-args})))))
 
+(s/defn ^:private parse-params
+  "Parse `s` for any parameters. Returns a seq of strings and `Param` instances"
+  [s :- s/Str, param-key->value :- ParamValues]
+  (let [{:keys [prefix delimited-strings]} (split-delimited-string "{{" "}}" s)]
+    (cons prefix
+          (mapcat (fn [{:keys [delimited-body suffix]}]
+                    [(-> delimited-body
+                         str/trim
+                         (token->param param-key->value))
+                     suffix])
+                  delimited-strings))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 SUBSTITUITION                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(s/defn ^:private parse-params-or-throw
+  "Same as `parse-params` but will throw an exception if there are any `NoValue` parameters"
+  [s :- s/Str, param-key->value :- ParamValues]
+  (let [results (parse-params s param-key->value)]
+    (if-let [{:keys [param-key]} (m/find-first no-value-param? results)]
+      (throw (ui18n/ex-info (tru "Unable to substitute ''{0}'': param not specified.\nFound: {1}"
+                                 (name param-key) (pr-str (map name (keys param-key->value))))
+               {:status-code 400}))
+      results)))
 
-;; These functions take the information about parameters from the Params Details List functions and then convert the
-;; original SQL Query into a SQL query with appropriate subtitutions and a sequence of prepared statement args
+(def ^:private ParseTemplateResponse
+  {:query  s/Str
+   :params [s/Any]})
 
-(s/defn ^:private substitute-one
-  [sql :- su/NonBlankString, {:keys [original-snippet replacement-snippet]} :- ParamSnippetInfo]
-  (str/replace-first sql original-snippet replacement-snippet))
+(s/defn ^:private parse-optional :- ParseTemplateResponse
+  "Attempts to parse SQL parameter string `s`. Parses any optional clauses or parameters found, returns a query map."
+  [s :- s/Str, param-key->value :- ParamValues]
+  (let [{:keys [prefix delimited-strings]} (split-delimited-string "[[" "]]" s)]
+    (reduce merge-query-map empty-query-map
+            (apply concat (parse-params-or-throw prefix param-key->value)
+                   (for [{:keys [delimited-body suffix]} delimited-strings
+                         :let [optional-clause (parse-params delimited-body param-key->value)]]
+                     (if (some no-value-param? optional-clause)
+                       (parse-params-or-throw suffix param-key->value)
+                       (concat optional-clause (parse-params-or-throw suffix param-key->value))))))))
 
-
-(s/defn ^:private substitute :- {:query su/NonBlankString, :params [s/Any]}
-  "Using the PARAM-SNIPPET-INFO built from the stages above, replace the snippets in SQL and return a vector of
-   `[sql & prepared-statement-params]`."
-  {:style/indent 1}
-  [sql :- su/NonBlankString, param-snippets-info :- [ParamSnippetInfo]]
-  (log/debug (format "PARAM INFO: %s\n%s" (u/emoji "🔥") (u/pprint-to-str 'yellow param-snippets-info)))
-  (loop [sql sql, prepared-statement-args [], [snippet-info & more] param-snippets-info]
-    (if-not snippet-info
-      {:query (str/trim sql), :params (for [arg prepared-statement-args]
-                                        ((resolve 'metabase.driver.generic-sql/prepare-sql-param) *driver* arg))}
-      (recur (substitute-one sql snippet-info)
-             (concat prepared-statement-args (:prepared-statement-args snippet-info))
-             more))))
+(s/defn ^:private parse-template :- ParseTemplateResponse
+  [sql :- s/Str, param-key->value :- ParamValues]
+  (-> sql
+      (parse-optional param-key->value)
+      (update :query str/trim)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -513,12 +563,21 @@
 
 (s/defn ^:private expand-query-params
   [{sql :query, :as native}, param-key->value :- ParamValues]
-  (merge native (when-let [param-snippets-info (seq (add-replacement-snippet-info (sql->params-snippets-info sql) param-key->value))]
-                  (substitute sql param-snippets-info))))
+  (merge native (parse-template sql param-key->value)))
+
+;; TODO - this can probably be taken out since qp.i/*driver* should always be bound...
+(defn- ensure-driver
+  "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
+  the query. If there is no driver, use the database to find the right driver or throw."
+  [{:keys [driver database] :as query}]
+  (or driver
+      (driver/database-id->driver database)
+      (throw (IllegalArgumentException. "Could not resolve driver"))))
 
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
-  (binding [*driver*   (:driver query)
-            *timezone* (get-in query [:settings :report-timezone])]
-    (update query :native expand-query-params (query->params-map query))))
+  (binding [qp.i/*driver* (ensure-driver query)]
+    (if (driver/driver-supports? qp.i/*driver* :native-query-params)
+      (update query :native expand-query-params (query->params-map query))
+      query)))

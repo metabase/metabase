@@ -7,29 +7,27 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
-             [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            metabase.driver.druid
+            [metabase.driver.druid :as druid]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt])
-  (:import metabase.driver.druid.DruidDriver))
+            [metabase.timeseries-query-processor-test.util :as tqpt]
+            [toucan.util.test :as tt]))
 
 ;;; table-rows-sample
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T07:00:00.000Z"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T07:00:00.000Z"]
-   ["100"  "PizzaHacker"                 "2014-07-26T07:00:00.000Z"]
-   ["1000" "Tito's Tacos"                "2014-06-03T07:00:00.000Z"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T07:00:00.000Z"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T07:00:00.000Z"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T07:00:00.000Z"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T07:00:00.000Z"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
   (->> (driver/table-rows-sample (Table (data/id :checkins))
                                  [(Field (data/id :checkins :id))
                                   (Field (data/id :checkins :venue_name))])
@@ -38,11 +36,11 @@
 
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T00:00:00.000-07:00"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T00:00:00.000-07:00"]
-   ["100"  "PizzaHacker"                 "2014-07-26T00:00:00.000-07:00"]
-   ["1000" "Tito's Tacos"                "2014-06-03T00:00:00.000-07:00"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T00:00:00.000-07:00"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T00:00:00.000-07:00"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T00:00:00.000-07:00"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T00:00:00.000-07:00"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T00:00:00.000-07:00"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
@@ -52,11 +50,11 @@
 
 (datasets/expect-with-engine :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" "2014-04-07T02:00:00.000-05:00"]
-   ["10"   "Dal Rae Restaurant"          "2015-08-22T02:00:00.000-05:00"]
-   ["100"  "PizzaHacker"                 "2014-07-26T02:00:00.000-05:00"]
-   ["1000" "Tito's Tacos"                "2014-06-03T02:00:00.000-05:00"]
-   ["101"  "Golden Road Brewing"         "2015-09-04T02:00:00.000-05:00"]]
+  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T02:00:00.000-05:00"]
+   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T02:00:00.000-05:00"]
+   ["100"  "PizzaHacker"                 #inst "2014-07-26T02:00:00.000-05:00"]
+   ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
+   ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
@@ -79,14 +77,14 @@
 
 (defn- process-native-query [query]
   (datasets/with-engine :druid
-    (timeseries-qp-test/with-flattened-dbdef
+    (tqpt/with-flattened-dbdef
       (-> (qp/process-query {:native   {:query query}
                              :type     :native
                              :database (data/id)})
           (m/dissoc-in [:data :results_metadata])))))
 
 (def ^:private col-defaults
-  {:base_type :type/Text, :remapped_from nil, :remapped_to nil})
+  {:base_type :type/Text})
 
 ;; test druid native queries
 (expect-with-engine :druid
@@ -103,7 +101,8 @@
                                    {:name "venue_name",  :display_name "Venue Name"}
                                    {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
-  (process-native-query native-query-1))
+  (-> (process-native-query native-query-1)
+      (m/dissoc-in [:data :insights])))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
@@ -123,16 +122,15 @@
   (:status (process-native-query native-query-2)))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                EXPRESSION AGGREGATIONS                                                 |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            EXPRESSION AGGREGATIONS                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 
 (defmacro ^:private druid-query {:style/indent 0} [& body]
-  `(timeseries-qp-test/with-flattened-dbdef
-     (qp/process-query {:database (data/id)
-                        :type     :query
-                        :query    (data/query ~'checkins
-                                    ~@body)})))
+  `(tqpt/with-flattened-dbdef
+     (qp/process-query (data/mbql-query ~'checkins
+                         ~@body))))
 
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(rows (druid-query ~@body)))
@@ -143,9 +141,9 @@
 (expect-with-engine :druid
   [["2015-10-04T00:00:00.000Z" 9]]
   (druid-query-returning-rows
-    (ql/filter (ql/between (ql/datetime-field $timestamp :day) "2015-10-04" "2015-10-10"))
-    (ql/aggregation (ql/count $id))
-    (ql/breakout (ql/datetime-field $timestamp :week))))
+    {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
+     :aggregation [[:count $id]]
+     :breakout    [[:datetime-field $timestamp :week]]}))
 
 ;; sum, *
 (expect-with-engine :druid
@@ -154,8 +152,8 @@
    ["3" 179661.0]
    ["4"  86284.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/sum (ql/* $id $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:sum [:* $id $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; min, +
 (expect-with-engine :druid
@@ -164,8 +162,8 @@
    ["3"  8.0]
    ["4" 12.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/min (ql/+ $id $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:min [:+ $id $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; max, /
 (expect-with-engine :druid
@@ -174,8 +172,8 @@
    ["3"  332.0]
    ["4"  248.25]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/max (ql// $id $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:max [:/ $id $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; avg, -
 (expect-with-engine :druid
@@ -184,8 +182,8 @@
    ["3" 1562.2695652173913]
    ["4" 1760.8979591836735]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/avg (ql/* $id $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:avg [:* $id $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ 2 args: count + sum
 (expect-with-engine :druid
@@ -194,9 +192,8 @@
    ["3"  460.0]
    ["4"  245.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ (ql/count $id)
-                          (ql/sum $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ 3 args: count + sum + count
 (expect-with-engine :druid
@@ -205,10 +202,11 @@
    ["3"  575.0]
    ["4"  294.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ (ql/count $id)
-                          (ql/sum $venue_price)
-                          (ql/count $venue_price)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+
+                    [:count $id]
+                    [:sum $venue_price]
+                    [:count $venue_price]]]
+     :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ a constant: count * 10
 (expect-with-engine :druid
@@ -217,9 +215,8 @@
    ["3" 1150.0]
    ["4"  490.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/* (ql/count $id)
-                          10))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:* [:count $id] 10]]
+     :breakout    [$venue_price]}))
 
 ;; nested post-aggregation math: count + (count * sum)
 (expect-with-engine :druid
@@ -228,10 +225,10 @@
    ["3"  39790.0]
    ["4"  9653.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ (ql/count $id)
-                          (ql/* (ql/count $id)
-                                (ql/sum $venue_price))))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+
+                    [:count $id]
+                    [:* [:count $id] [:sum $venue_price]]]]
+     :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ avg: count + avg
 (expect-with-engine :druid
@@ -240,9 +237,8 @@
    ["3"  635.7565217391304]
    ["4"  489.2244897959184]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ (ql/count $id)
-                          (ql/avg $id)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+ [:count $id] [:avg $id]]]
+     :breakout    [$venue_price]}))
 
 ;; post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)
 (expect-with-engine :druid
@@ -251,9 +247,10 @@
    ["3" -990.0]
    ["4" -985.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ (ql/max $venue_price)
-                          (ql/min (ql/- $venue_price $id))))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+
+                    [:max $venue_price]
+                    [:min [:- $venue_price $id]]]]
+     :breakout    [$venue_price]}))
 
 ;; aggregation w/o field
 (expect-with-engine :druid
@@ -262,8 +259,8 @@
    ["3" 116.0]
    ["4"  50.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/+ 1 (ql/count)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:+ 1 [:count]]]
+     :breakout    [$venue_price]}))
 
 ;; aggregation with math inside the aggregation :scream_cat:
 (expect-with-engine :druid
@@ -272,8 +269,8 @@
    ["3"  460.0]
    ["4"  245.0]]
   (druid-query-returning-rows
-    (ql/aggregation (ql/sum (ql/+ $venue_price 1)))
-    (ql/breakout $venue_price)))
+    {:aggregation [[:sum [:+ $venue_price 1]]]
+     :breakout    [$venue_price]}))
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
 (expect-with-engine :druid
@@ -285,8 +282,8 @@
              "New Price"]}
   (rows+column-names
     (druid-query
-      (ql/aggregation (ql/named (ql/sum (ql/+ $venue_price 1)) "New Price"))
-      (ql/breakout $venue_price))))
+      {:aggregation [[:named [:sum [:+ $venue_price 1]] "New Price"]]
+       :breakout    [$venue_price]})))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
 (expect-with-engine :druid
@@ -297,38 +294,57 @@
    :columns ["venue_price" "Sum-41"]}
   (rows+column-names
     (druid-query
-      (ql/aggregation (ql/named (ql/- (ql/sum $venue_price) 41) "Sum-41"))
-      (ql/breakout $venue_price))))
+      {:aggregation [[:named [:- [:sum $venue_price] 41] "Sum-41"]]
+       :breakout    [$venue_price]})))
 
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
 (expect-with-engine :druid
   [["2" 1231.0]
    ["3"  346.0]
    ["4" 197.0]]
-  (timeseries-qp-test/with-flattened-dbdef
+  (tqpt/with-flattened-dbdef
     (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (rows (qp/process-query
               {:database (data/id)
                :type     :query
                :query    {:source-table (data/id :checkins)
-                          :aggregation  [:+ ["METRIC" (u/get-id metric)] 1]
-                          :breakout     [(ql/breakout (ql/field-id (data/id :checkins :venue_price)))]}})))))
+                          :aggregation  [:+ [:metric (u/get-id metric)] 1]
+                          :breakout     [[:field-id (data/id :checkins :venue_price)]]}})))))
 
 (expect
   #"com.jcraft.jsch.JSchException:"
   (try
     (let [engine :druid
-      details {:ssl false,
-               :password "changeme",
-               :tunnel-host "localhost",
-               :tunnel-pass "BOGUS-BOGUS",
-               :port 5432,
-               :dbname "test",
-               :host "http://localhost",
-               :tunnel-enabled true,
-               :tunnel-port 22,
-               :tunnel-user "bogus"}]
+          details    {:ssl            false
+                      :password       "changeme"
+                      :tunnel-host    "localhost"
+                      :tunnel-pass    "BOGUS-BOGUS"
+                      :port           5432
+                      :dbname         "test"
+                      :host           "http://localhost"
+                      :tunnel-enabled true
+                      :tunnel-port    22
+                      :tunnel-user    "bogus"}]
       (driver/can-connect-with-details? engine details :rethrow-exceptions))
        (catch Exception e
          (.getMessage e))))
+
+;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
+;; everything works correctly together
+(datasets/expect-with-engine :druid
+  [false ;; Ensure the query promise hasn't fired yet
+   false ;; Ensure the cancellation promise hasn't fired yet
+   true  ;; Was query called?
+   false ;; Cancel should not have been called yet
+   true  ;; Cancel should have been called now
+   true  ;; The paused query can proceed now
+   ]
+  (tu/call-with-paused-query
+   (fn [query-thunk called-query? called-cancel? pause-query]
+     (future
+       ;; stub out the query and delete functions so that we know when one is called vs. the other
+       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
+                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
+         (data/run-mbql-query checkins
+           {:aggregation [[:count]]}))))))

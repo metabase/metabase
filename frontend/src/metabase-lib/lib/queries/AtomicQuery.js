@@ -8,22 +8,22 @@ import type Database from "metabase-lib/lib/metadata/Database";
  * and form a single MBQL / native query clause
  */
 export default class AtomicQuery extends Query {
-    /**
-     * Tables this query could use, if the database is set
-     */
-    tables(): ?(Table[]) {
-        return null;
-    }
+  /**
+   * Tables this query could use, if the database is set
+   */
+  tables(): ?(Table[]) {
+    return null;
+  }
 
-    databaseId(): ?DatabaseId {
-        return null;
-    }
+  databaseId(): ?DatabaseId {
+    return null;
+  }
 
-    database(): ?Database {
-        return null;
-    }
+  database(): ?Database {
+    return null;
+  }
 
-    engine(): ?DatabaseEngine {
-        return null;
-    }
+  engine(): ?DatabaseEngine {
+    return null;
+  }
 }

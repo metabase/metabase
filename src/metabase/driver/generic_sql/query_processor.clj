@@ -5,38 +5,36 @@
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
-             [format :as hformat]
              [helpers :as h]]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [annotate :as annotate]
              [interface :as i]
+             [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import clojure.lang.Keyword
-           [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
+  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
            [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral RelativeDateTimeValue TimeField TimeValue Value]))
+            ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
 
+;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
   "The outer query currently being processed."
   nil)
 
 (def ^:private ^:dynamic *nested-query-level*
   "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
-  find referenced aggregations (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  find referenced aggregations (otherwise something like [:aggregation 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
-
-;; register the function "distinct-count" with HoneySQL
-;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
-(defmethod hformat/fn-handler "distinct-count" [_ field]
-  (str "count(distinct " (hformat/to-sql field) ")"))
-
 
 ;;; ## Formatting
 
@@ -62,7 +60,7 @@
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defn- aggregation-at-index
-  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregate-field 0]).
+  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations."
   ([index]
    (aggregation-at-index index (:query *query*) *nested-query-level*))
@@ -115,7 +113,7 @@
   (->honeysql driver field))
 
 (defmethod ->honeysql [Object BinnedField]
-  [driver {:keys [bin-width min-value max-value field]}]
+  [driver {:keys [bin-width min-value max-value field] :as binned-field}]
   (let [honeysql-field-form (->honeysql driver field)]
     ;;
     ;; Equation is | (value - min) |
@@ -282,17 +280,34 @@
   [driver honeysql-form {clause :filter}]
   (h/where honeysql-form (filter-clause->predicate driver clause)))
 
+(declare build-honeysql-form)
+
+(defn- make-honeysql-join-clauses
+  "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
+  a `JoinQuery`"
+  [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
+  (let [source-table-id                                  (mbql.u/query->source-table-id *query*)
+        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
+    [[table-or-query-expr (keyword join-alias)]
+     [:=
+      (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
+
+(defmethod ->honeysql [Object JoinTable]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [schema table-name] :as jt} ]
+  (make-honeysql-join-clauses (hx/qualify-and-escape-dots schema table-name) jt))
+
+(defmethod ->honeysql [Object JoinQuery]
+  ;; Returns a seq of clauses used in a honeysql join clause
+  [driver {:keys [query] :as jq}]
+  (make-honeysql-join-clauses (build-honeysql-form driver query) jq))
+
 (defn apply-join-tables
-  "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
-  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  "Apply expanded query `join-tables` clause to `honeysql-form`. Default implementation of `apply-join-tables` for SQL
+  drivers."
+  [driver honeysql-form {:keys [join-tables]}]
+  (reduce (partial apply h/merge-left-join) honeysql-form (map #(->honeysql driver %) join-tables)))
 
 (defn apply-limit
   "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
@@ -318,9 +333,12 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-(defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
-  {:pre [table-name]}
-  (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
+(defn apply-source-table
+  "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
+  Override as needed."
+  [_ honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
+    (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name))))
 
 (declare apply-clauses)
 
@@ -338,7 +356,7 @@
   ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
-  [:source-table (u/drop-first-arg apply-source-table)
+  [:source-table #'sql/apply-source-table
    :source-query apply-source-query
    :aggregation  #'sql/apply-aggregation
    :breakout     #'sql/apply-breakout
@@ -387,7 +405,7 @@
   land"
   [^TimeZone tz ^ResultSet rs ^Integer i]
   (let [date-string (.getString rs i)]
-    (if-let [parsed-date (u/str->date-time tz date-string)]
+    (if-let [parsed-date (du/str->date-time date-string tz)]
       parsed-date
       (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
 
@@ -451,16 +469,46 @@
               (jdbc/set-parameter value stmt i)))
           (rest (range)) params)))
 
+(defmacro ^:private with-ensured-connection
+  "In many of the clojure.java.jdbc functions, it checks to see if there's already a connection open before opening a
+  new one. This macro checks to see if one is open, or will open a new one. Will bind the connection to `conn-sym`."
+  [conn-sym db & body]
+  `(let [db# ~db]
+     (if-let [~conn-sym (jdbc/db-find-connection db#)]
+       (do ~@body)
+       (with-open [~conn-sym (jdbc/get-connection db#)]
+         ~@body))))
+
+(defn- cancellable-run-query
+  "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
+  [db sql params opts]
+  (with-ensured-connection conn db
+    ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
+    (with-open [^PreparedStatement stmt (jdbc/prepare-statement conn sql opts)]
+      ;; Need to run the query in another thread so that this thread can cancel it if need be
+      (try
+        (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
+          ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
+          ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
+          ;; we can give up on the query running in the future
+          @query-future)
+        (catch InterruptedException e
+          (log/warn e "Client closed connection, cancelling query")
+          ;; This is what does the real work of cancelling the query. We aren't checking the result of
+          ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
+          (.cancel stmt)
+          (throw e))))))
+
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
-                                                           :read-columns   (read-columns-with-date-handling timezone)
-                                                           :set-parameters (set-parameters-with-timezone timezone)})]
-    {:rows    (or rows [])
-     :columns columns}))
+        [columns & rows] (cancellable-run-query connection sql params {:identifiers    identity, :as-arrays? true
+                                                                       :read-columns   (read-columns-with-date-handling timezone)
+                                                                       :set-parameters (set-parameters-with-timezone timezone)})]
+       {:rows    (or rows [])
+        :columns columns}))
 
 (defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
@@ -468,7 +516,11 @@
            second)             ; so just return the part of the exception that is relevant
       (.getMessage e)))
 
-(defn- do-with-try-catch {:style/indent 0} [f]
+(defn do-with-try-catch
+  "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,
+  and rethrowing the exception as an Exception with a nicely formatted error message."
+  {:style/indent 0}
+  [f]
   (try (f)
        (catch SQLException e
          (log/error (jdbc/print-sql-exception-chain e))
@@ -502,19 +554,21 @@
     (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [driver settings connection query]
+(defn- run-query-without-timezone [_ _ connection query]
   (do-in-transaction connection (partial run-query query nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))
+                                    (run-query query
+                                               (some-> report-timezone TimeZone/getTimeZone)
+                                               transaction-connection)))
     (catch SQLException e
-      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (trs "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error "Failed to set timezone:\n" (.getMessage e))
+      (log/error (trs "Failed to set timezone:") "\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 

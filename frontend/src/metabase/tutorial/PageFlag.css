@@ -4,13 +4,13 @@
   position: relative;
   min-width: 50px;
   height: 24px;
-  background-color: rgb(53,141,248);
+  background-color: var(--color-brand);
   box-sizing: content-box;
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
   border: 3px solid white;
   border-left: 1px solid white;
-  box-shadow: 2px 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 2px 2px 6px var(--color-shadow);
 
   color: white;
   font-weight: bold;
@@ -32,10 +32,11 @@
 }
 
 .PageFlag:after {
+  top: 0;
   left: -12px;
   border-top: 12px solid transparent;
   border-bottom: 12px solid transparent;
-  border-right: 12px solid rgb(53,141,248);
+  border-right: 12px solid var(--color-brand);
 }
 
 .PageFlag:before {
@@ -44,7 +45,7 @@
   left: -16px;
   border-top: 15px solid transparent;
   border-bottom: 15px solid transparent;
-  border-right:15px solid white;
+  border-right: 15px solid white;
 }
 
 .PageFlag--large {
@@ -91,42 +92,42 @@
 
 @keyframes bounceleft {
   0% {
-    transform:translateX(50px);
+    transform: translateX(50px);
   }
   5% {
-    transform:translateX(50px);
+    transform: translateX(50px);
   }
   15% {
-    transform:translateX(0);
+    transform: translateX(0);
   }
   30% {
-    transform:translateX(25px);
+    transform: translateX(25px);
   }
   40% {
-    transform:translateX(0px);
+    transform: translateX(0px);
   }
   50% {
-    transform:translateX(15px);
+    transform: translateX(15px);
   }
   70% {
-    transform:translateX(0px);
+    transform: translateX(0px);
   }
   80% {
-    transform:translateX(7px);
+    transform: translateX(7px);
   }
   90% {
-    transform:translateX(0px);
+    transform: translateX(0px);
   }
   95% {
-    transform:translateX(3px);
+    transform: translateX(3px);
   }
   97% {
-    transform:translateX(0px);
+    transform: translateX(0px);
   }
   99% {
-    transform:translateX(1px);
+    transform: translateX(1px);
   }
   100% {
-    transform:translateX(0);
+    transform: translateX(0);
   }
 }

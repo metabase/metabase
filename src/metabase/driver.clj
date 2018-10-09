@@ -16,21 +16,20 @@
              [format :as tformat]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.models
              [database :refer [Database]]
-             field
-             [setting :refer [defsetting]]
-             table]
+             [setting :refer [defsetting]]]
             [metabase.sync.interface :as si]
-            [metabase.util :as u]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs tru]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            java.text.SimpleDateFormat
-           metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance
-           metabase.models.table.TableInstance
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
@@ -38,15 +37,70 @@
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-   :ssh-tunnel-auth-fail               "We couldn't connect to the ssh tunnel host. Check the username, password"
-   :ssh-tunnel-connection-fail         "We couldn't connect to the ssh tunnel host. Check the hostname and port"
-   :database-name-incorrect            "Looks like the database name is incorrect."
-   :invalid-hostname                   "It looks like your host is invalid. Please double-check it and try again."
-   :password-incorrect                 "Looks like your password is incorrect."
-   :password-required                  "Looks like you forgot to enter your password."
-   :username-incorrect                 "Looks like your username is incorrect."
-   :username-or-password-incorrect     "Looks like the username or password is incorrect."})
+  {:cannot-connect-check-host-and-port (str (tru "Hmm, we couldn''t connect to the database.")
+                                            " "
+                                            (tru "Make sure your host and port settings are correct"))
+   :ssh-tunnel-auth-fail               (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            " "
+                                            (tru "Check the username, password."))
+   :ssh-tunnel-connection-fail         (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            " "
+                                            (tru "Check the hostname and port."))
+   :database-name-incorrect            (tru "Looks like the database name is incorrect.")
+   :invalid-hostname                   (str (tru "It looks like your host is invalid.")
+                                            " "
+                                            (tru "Please double-check it and try again."))
+   :password-incorrect                 (tru "Looks like your password is incorrect.")
+   :password-required                  (tru "Looks like you forgot to enter your password.")
+   :username-incorrect                 (tru "Looks like your username is incorrect.")
+   :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
+
+(def default-host-details
+  "Map of the db host details field, useful for `details-fields` implementations"
+  {:name         "host"
+   :display-name (tru "Host")
+   :default      "localhost"})
+
+(def default-port-details
+  "Map of the db port details field, useful for `details-fields` implementations. Implementations should assoc a
+  `:default` key."
+  {:name         "port"
+   :display-name (tru "Port")
+   :type         :integer})
+
+(def default-user-details
+  "Map of the db user details field, useful for `details-fields` implementations"
+  {:name         "user"
+   :display-name (tru "Database username")
+   :placeholder  (tru "What username do you use to login to the database?")
+   :required     true})
+
+(def default-password-details
+  "Map of the db password details field, useful for `details-fields` implementations"
+  {:name         "password"
+   :display-name (tru "Database password")
+   :type         :password
+   :placeholder  "*******"})
+
+(def default-dbname-details
+  "Map of the db name details field, useful for `details-fields` implementations"
+  {:name         "dbname"
+   :display-name (tru "Database name")
+   :placeholder  (tru "birds_of_the_world")
+   :required     true})
+
+(def default-ssl-details
+  "Map of the db ssl details field, useful for `details-fields` implementations"
+  {:name         "ssl"
+   :display-name (tru "Use a secure connection (SSL)?")
+   :type         :boolean
+   :default      false})
+
+(def default-additional-options-details
+  "Map of the db `additional-options` details field, useful for `details-fields` implementations. Should assoc a
+  `:placeholder` key"
+  {:name         "additional-options"
+   :display-name (tru "Additional JDBC connection string options")})
 
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in
@@ -63,23 +117,23 @@
 
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By
-     default, this returns an `Timestamp` by calling `metabase.util/relative-date`; but when possible drivers should
+     default, this returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should
      return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a
      HoneySQL form to call the appropriate SQL fns:
 
        (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
-  (describe-database ^java.util.Map [this, ^DatabaseInstance database]
+  (describe-database ^java.util.Map [this database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of
      tables. It is expected that this function will be peformant and avoid draining meaningful resources of the
      database. Results should match the `DatabaseMetadata` schema.")
 
-  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^TableInstance table]
+  (describe-table ^java.util.Map [this database table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `TableMetadata` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^TableInstance table]
+  (describe-table-fks ^java.util.Set [this database table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
      Results should match the `FKMetadata` schema.")
 
@@ -183,7 +237,7 @@
        {:query \"-- [Contents of `(query->remark query)`]
                  SELECT * FROM my_table\"}")
 
-  (notify-database-updated [this, ^DatabaseInstance database]
+  (notify-database-updated [this database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed. This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
@@ -198,7 +252,7 @@
          (fn [query]
            (qp query)))")
 
-  (^{:style/indent 2} sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
+  (^{:style/indent 2} sync-in-context [this database ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
@@ -207,7 +261,7 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
+  (table-rows-seq ^clojure.lang.Sequential [this database ^java.util.Map table]
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name`
      and `:schema` keys. (It is guaranteed too satisfy the `DatabaseMetadataTable` schema in
      `metabase.sync.interface`.) Currently, this is only used for iterating over the values in a `_metabase_metadata`
@@ -215,7 +269,7 @@
      table. As such, the results are not expected to be returned lazily. There is no expectation that the results be
      returned in any given order.")
 
-  (current-db-time ^org.joda.time.DateTime [this ^DatabaseInstance database]
+  (current-db-time ^org.joda.time.DateTime [this database]
     "Returns the current time and timezone from the perspective of `DATABASE`.")
 
   (default-to-case-sensitive? ^Boolean [this]
@@ -225,7 +279,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:date-interval                     (u/drop-first-arg u/relative-date)
+  {:date-interval                     (u/drop-first-arg du/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
@@ -243,7 +297,7 @@
 
 ;;; ## CONFIG
 
-(defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
+(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
 
 (defonce ^:private registered-drivers
   (atom {}))
@@ -255,7 +309,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s %s" (u/format-color 'blue engine) (u/emoji "🚚"))))
+  (log/debug (trs "Registered driver {0} {1}" (u/format-color 'blue engine) (u/emoji "🚚"))))
 
 (defn available-drivers
   "Info about available drivers."
@@ -270,7 +324,7 @@
   (require ns-symb)
   (if-let [register-driver-fn (ns-resolve ns-symb '-init-driver)]
     (register-driver-fn)
-    (log/warn (format "No -init-driver function found for '%s'" (name ns-symb)))))
+    (log/warn (trs "No -init-driver function found for ''{0}''" (name ns-symb)))))
 
 (defn find-and-load-drivers!
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the
@@ -313,6 +367,7 @@
 ;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
 ;; date
 (defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+  :load-ns true
   ParseDateTimeString
   (parse [_ date-time-str]
     (let [sdf         (SimpleDateFormat. format-str)
@@ -358,7 +413,7 @@
         (catch Exception e
           (throw
            (Exception.
-            (format "Unable to parse date string '%s' for database engine '%s'"
+            (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
                     time-str (-> database :engine name)) e)))))))
 
 (defn class->base-type
@@ -385,8 +440,9 @@
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
-             [org.postgresql.util.PGobject   :type/*]])
-      (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+             [org.postgresql.util.PGobject   :type/*]
+             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
+      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
 (defn values->base-type
@@ -394,7 +450,7 @@
   [values]
   (->> values
        (take 100)                                   ; take up to 100 values
-       (filter (complement nil?))                   ; filter out `nil` values
+       (remove nil?)                                ; filter out `nil` values
        (group-by (comp class->base-type class))     ; now group by their base-type
        (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
        ffirst))                                     ; take the base-type from the first pair
@@ -460,7 +516,7 @@
       (u/with-timeout can-connect-timeout-ms
         (can-connect? driver details-map))
       (catch Throwable e
-        (log/error "Failed to connect to database:" (.getMessage e))
+        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
         (when rethrow-exceptions
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
@@ -477,10 +533,12 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
   (let [results ((resolve 'metabase.query-processor/process-query)
-                 {:database (:db_id table)
-                  :type     :query
-                  :query    {:source-table (u/get-id table)
-                             :fields       (vec (for [field fields]
-                                                  [:field-id (u/get-id field)]))
-                             :limit        max-sample-rows}})]
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
     (get-in results [:data :rows])))

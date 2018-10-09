@@ -1,0 +1,189 @@
+title: A look at your [[this]] table
+transient_title: "A summary of the events in your [[this]] table"
+description: A look at your events over time and by several categories.
+metrics:
+  - Count: ["count"]
+dimensions:
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      score: 75
+      max_cardinality: 10
+  - GenericCategoryLarge:
+      field_type: GenericTable.Category
+      score: 70
+  - State: GenericTable.State
+  - Country: GenericTable.Country
+  - Long: GenericTable.Longitude
+  - Lat: GenericTable.Latitude
+  - GenericNumber:
+      field_type: GenericTable.Number
+      score: 80
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+groups:
+  - Overview:
+      title: Overview
+  - Periodicity:
+      title: Events over time
+  - Geographical:
+      title: Where these events are happening
+  - General:
+      title: Events by different categories
+dashboard_filters:
+- Timestamp
+- GenericCategoryMedium
+- Country
+- State
+cards:
+# Overview
+  - Rowcount:
+      title: Total events
+      visualization: scalar
+      metrics: Count
+      score: 30
+      group: Overview
+      width: 5
+      height: 3
+  - RowcountLast30Days:
+      title: Events in the last 30 days
+      visualization: scalar
+      metrics: Count
+      score: 25
+      filters: Last30Days
+      group: Overview
+      width: 5
+      height: 3
+  - EventGrowth:
+      visualization: smartscalar
+      title: Event growth
+      dimensions: Timestamp
+      metrics: Count
+      width: 5
+      height: 3
+      group: Overview
+  - EventsByTime:
+      title: Events over time
+      metrics: Count
+      dimensions: Timestamp
+      visualization: line
+      group: Overview
+      width: 18
+      score: 90
+# General
+  - NumberDistribution:
+      title: Events by [[GenericNumber]]
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
+      visualization: bar
+      score: 90
+      group: General
+  - CountByCategoryMedium:
+      title: Events per [[GenericCategoryMedium]]
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: row
+      score: 80
+      height: 8
+      group: General
+      order_by:
+        - Count: descending
+  - CountByCategoryLarge:
+      title: Events per [[GenericCategoryLarge]]
+      dimensions: GenericCategoryLarge
+      metrics: Count
+      visualization: table
+      height: 8
+      score: 70
+      group: General
+      order_by:
+        - Count: descending
+# Geographical
+  - EventsByCountry:
+      title: Events per country
+      metrics: Count
+      dimensions: Country
+      score: 80
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+  - EventsByState:
+      title: Events per state
+      metrics: Count
+      dimensions: State
+      score: 70
+      visualization:
+        map:
+          map.type: region
+          map.region: us_state
+      group: Geographical
+  - EventsByCoords:
+      title: Events by coordinates
+      metrics: Count
+      dimensions:
+        - Lat
+        - Long
+      score: 80
+      visualization: map
+      group: Geographical
+# Periodicity
+  - DayOfWeekTimestamp:
+      title: Events per day of the week
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: Periodicity
+      x_label: "[[Timestamp]] by day of the week"
+  - HourOfDayTimestamp:
+      title: Events per hour of the day
+      visualization: bar
+      dimensions:
+      - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: Periodicity
+      x_label: "[[Timestamp]] by hour of the day"
+  - DayOfMonthTimestamp:
+      title: Events per day of the month
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: Periodicity
+      x_label: "[[Timestamp]] by day of the month"
+  - MonthOfYearTimestamp:
+      title: Events per month of the year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: Periodicity
+      x_label: "[[Timestamp]] by month of the year"
+  - QuerterOfYearTimestamp:
+      title: Events per quarter of the year
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: Periodicity
+      x_label: "[[Timestamp]] by quarter of the year"

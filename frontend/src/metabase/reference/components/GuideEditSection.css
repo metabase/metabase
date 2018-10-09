@@ -1,21 +1,21 @@
 :local(.guideEditSectionCollapsed) {
-    composes: flex flex-full align-center mt4 p3 input text-brand text-bold from "style";
-    font-size: 16px;
+  composes: flex flex-full align-center mt4 p3 input text-brand text-bold from "style";
+  font-size: 16px;
 }
 
 :local(.guideEditSectionDisabled) {
-    composes: text-grey-3 from "style";
+  composes: text-medium from "style";
 }
 
 :local(.guideEditSectionCollapsedIcon) {
-    composes: mr3 from "style";
+  composes: mr3 from "style";
 }
 
 :local(.guideEditSectionCollapsedTitle) {
-    composes: flex-full mr3 from "style";
+  composes: flex-full mr3 from "style";
 }
 
 :local(.guideEditSectionCollapsedLink) {
-    composes: text-brand no-decoration from "style";
-    font-size: 14px;
+  composes: text-brand no-decoration from "style";
+  font-size: 14px;
 }

@@ -24,15 +24,21 @@
                               special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
                               fk              :- (s/maybe s/Keyword)
-                              field-comment   :- (s/maybe su/NonBlankString)])
+                              field-comment   :- (s/maybe su/NonBlankString)]
+  nil
+  :load-ns true)
 
 (s/defrecord TableDefinition [table-name        :- su/NonBlankString
                               field-definitions :- [FieldDefinition]
                               rows              :- [[s/Any]]
-                              table-comment     :- (s/maybe su/NonBlankString)])
+                              table-comment     :- (s/maybe su/NonBlankString)]
+  nil
+  :load-ns true)
 
 (s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]])
+                                 table-definitions :- [TableDefinition]]
+  nil
+  :load-ns true)
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
@@ -186,11 +192,12 @@
   invocation)."
   [table-name-to-update update-table-def-fn update-rows-fn table-def]
   (vec
-   (for [[table-name table-def rows] table-def
-         :when (= table-name table-name-to-update)]
-     [table-name
-      (update-table-def-fn table-def)
-      (update-rows-fn rows)])))
+   (for [[table-name table-def rows :as orig-table-def] table-def]
+     (if (= table-name table-name-to-update)
+       [table-name
+        (update-table-def-fn table-def)
+        (update-rows-fn rows)]
+       orig-table-def))))
 
 (defmacro def-database-definition
   "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."

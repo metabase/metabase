@@ -12,9 +12,9 @@ import PivotByTimeDrill from "../drill/PivotByTimeDrill";
 import type { QueryMode } from "metabase/meta/types/Visualization";
 
 const GeoMode: QueryMode = {
-    name: "geo",
-    actions: [...DEFAULT_ACTIONS, PivotByCategoryAction, PivotByTimeAction],
-    drills: [...DEFAULT_DRILLS, PivotByCategoryDrill, PivotByTimeDrill]
+  name: "geo",
+  actions: [...DEFAULT_ACTIONS, PivotByCategoryAction, PivotByTimeAction],
+  drills: [...DEFAULT_DRILLS, PivotByCategoryDrill, PivotByTimeDrill],
 };
 
 export default GeoMode;

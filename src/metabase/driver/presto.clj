@@ -7,6 +7,7 @@
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -19,13 +20,16 @@
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.query-processor.util :as qputil]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
+             [i18n :refer [tru]]
              [ssh :as ssh]])
   (:import java.sql.Time
            java.util.Date
-           [metabase.query_processor.interface TimeValue]))
+           metabase.query_processor.interface.TimeValue))
 
 (defrecord PrestoDriver []
+  :load-ns true
   clojure.lang.Named
   (getName [_] "Presto"))
 
@@ -47,16 +51,16 @@
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (u/parse-date "HH:mm:ss.SSS ZZ" s))
-      (u/parse-date "HH:mm:ss.SSS ZZZ" s)))
+  (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
+      (du/parse-date "HH:mm:ss.SSS ZZZ" s)))
 
 (defn- parse-timestamp-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
-      (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
+  (or (u/ignore-exceptions (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
+      (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
 (def ^:private presto-date-time-formatter
-  (u/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
+  (du/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (defn- parse-presto-time
   "Parsing time from presto using a specific formatter rather than the
@@ -64,7 +68,7 @@
   performance is important"
   [time-str]
   (->> time-str
-       (u/parse-date :hour-minute-second-ms)
+       (du/parse-date :hour-minute-second-ms)
        tcoerce/to-long
        Time.))
 
@@ -73,7 +77,7 @@
     #"decimal.*"                bigdec
     #"time"                     parse-presto-time
     #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial u/parse-date
+    #"timestamp"                (partial du/parse-date
                                          (if-let [report-tz (and report-timezone
                                                                  (time/time-zone-for-id report-timezone))]
                                            (tformat/with-zone presto-date-time-formatter report-tz)
@@ -102,8 +106,8 @@
 
 (defn- execute-presto-query! [details query]
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                          (assoc (details->request details-with-tunnel) :body query, :as :json))]
+    (let [{{:keys [columns data nextUri error id]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                             (assoc (details->request details-with-tunnel) :body query, :as :json))]
 
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
@@ -112,7 +116,25 @@
                      :rows    rows}]
         (if (nil? nextUri)
           results
-          (fetch-presto-results! details-with-tunnel results nextUri))))))
+          ;; When executing the query, it doesn't return the results, but is geared toward async queries. After
+          ;; issuing the query, the below will ask for the results. Asking in a future so that this thread can be
+          ;; interrupted if the client disconnects
+          (let [results-future (future (fetch-presto-results! details-with-tunnel results nextUri))]
+            (try
+              @results-future
+              (catch InterruptedException e
+                (if id
+                  ;; If we have a query id, we can cancel the query
+                  (try
+                    (http/delete (details->uri details-with-tunnel (str "/v1/query/" id))
+                                 (details->request details-with-tunnel))
+                    ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+                    ;; covering it up with a failed cancel
+                    (catch Exception e
+                      (log/error e (str "Error cancelling query with id " id))))
+                  (log/warn "Client connection closed, no query-id found, can't cancel query"))
+                ;; Propogate the error so that any finalizers can still run
+                (throw e)))))))))
 
 
 ;;; Generic helpers
@@ -196,7 +218,7 @@
 
 (defmethod sqlqp/->honeysql [PrestoDriver Date]
   [_ date]
-  (hsql/call :from_iso8601_timestamp (hx/literal (u/date->iso-8601 date))))
+  (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
 
 (def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
 
@@ -305,29 +327,14 @@
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      8080}
-                                                            {:name         "catalog"
-                                                             :display-name "Database name"
-                                                             :placeholder  "hive"
-                                                             :required     true}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database"
-                                                             :default      "metabase"}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "ssl"
-                                                             :display-name "Use a secure connection (SSL)?"
-                                                             :type         :boolean
-                                                             :default      false}]))
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 8080)
+                                                            (assoc driver/default-dbname-details
+                                                              :name         "catalog"
+                                                              :placeholder  (tru "hive"))
+                                                            driver/default-user-details
+                                                            driver/default-password-details
+                                                            driver/default-ssl-details]))
           :execute-query                     (u/drop-first-arg execute-query)
           :features                          (constantly (set/union #{:set-timezone
                                                                       :basic-aggregations
@@ -335,7 +342,8 @@
                                                                       :expressions
                                                                       :native-parameters
                                                                       :expression-aggregations
-                                                                      :binning}
+                                                                      :binning
+                                                                      :native-query-params}
                                                                     (when-not config/is-test?
                                                                       ;; during unit tests don't treat presto as having FK support
                                                                       #{:foreign-keys})))

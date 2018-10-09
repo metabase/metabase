@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [driver :as driver]
              [util :as u]]
             [metabase.util.ssh :as ssh]
             [monger
@@ -12,18 +11,15 @@
   (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
-  "Number of milliseconds to wait when attempting to establish a Mongo connection.
-   By default, Monger uses a 10-second timeout, which means `can/connect?` can take
-   forever, especially when called with bad details. This translates to our tests
-   taking longer and the DB setup API endpoints seeming sluggish.
+  "Number of milliseconds to wait when attempting to establish a Mongo connection. By default, Monger uses a 10-second
+  timeout, which means `can/connect?` can take forever, especially when called with bad details. This translates to
+  our tests taking longer and the DB setup API endpoints seeming sluggish.
 
-   Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms
-   on *one* occasion."
+  Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms on *one* occasion."
   3000)
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
-  "Connection to a Mongo database.
-   Bound by top-level `with-mongo-connection` so it may be reused within its body."
+  "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
 
 ;; the code below is done to support "additional connection options" the way some of the JDBC drivers do.
@@ -47,8 +43,8 @@
     (.getOptions (MongoClientURI. (str "mongodb://localhost/?" url-params)))))
 
 (defn- client-options->builder
-  "Return a `MongoClientOptions.Builder` for a `MongoClientOptions` CLIENT-OPTIONS.
-   If CLIENT-OPTIONS is `nil`, return a new 'default' builder."
+  "Return a `MongoClientOptions.Builder` for a `MongoClientOptions` `client-options`.
+  If `client-options` is `nil`, return a new 'default' builder."
   ^MongoClientOptions$Builder [^MongoClientOptions client-options]
   ;; We do it tnis way because (MongoClientOptions$Builder. nil) throws a NullPointerException
   (if client-options
@@ -57,9 +53,10 @@
 
 (defn- build-connection-options
   "Build connection options for Mongo.
-   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method doesn't
-   support `.serverSelectionTimeout` or `.sslEnabled`. ADDITIONAL-OPTIONS, a String like `readPreference=nearest`, can be specified
-   as well; when passed, these are parsed into a `MongoClientOptions` that serves as a starting point for the changes made below."
+  We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method
+  doesn't support `.serverSelectionTimeout` or `.sslEnabled`. `additional-options`, a String like
+  `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
+  serves as a starting point for the changes made below."
   ^MongoClientOptions [& {:keys [ssl? additional-options]
                           :or   {ssl? false}}]
   (-> (client-options-for-url-params additional-options)
@@ -70,9 +67,10 @@
       (.sslEnabled ssl?)
       .build))
 
-;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity where you can pass
-;; options and credentials, as we'd like to do. We need to go in and alter the metadata of this function ourselves because otherwise
-;; the Eastwood linter will complain that we're calling the function with the wrong airity :sad: :/
+;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity
+;; where you can pass options and credentials, as we'd like to do. We need to go in and alter the metadata of this
+;; function ourselves because otherwise the Eastwood linter will complain that we're calling the function with the
+;; wrong airity :sad: :/
 (alter-meta! #'mg/connect assoc :arglists '([{:keys [host port uri]}]
                                             [server-address options]
                                             [server-address options credentials]))
@@ -85,7 +83,8 @@
     (string? database)            {:dbname database}
     (:dbname (:details database)) (:details database) ; entire Database obj
     (:dbname database)            database            ; connection details map only
-    :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database))))))
+    :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
+                                                          (:details database))))))
 
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
@@ -118,9 +117,9 @@
                           (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection
-  "Open a new MongoDB connection to DATABASE-OR-CONNECTION-STRING, bind connection to BINDING, execute BODY, and close the connection.
-   The DB connection is re-used by subsequent calls to `with-mongo-connection` within BODY.
-   (We're smart about it: DATABASE isn't even evaluated if `*mongo-connection*` is already bound.)
+  "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and
+  close the connection. The DB connection is re-used by subsequent calls to `with-mongo-connection` within
+  `body`. (We're smart about it: `database` isn't even evaluated if `*mongo-connection*` is already bound.)
 
      ;; delay isn't derefed if *mongo-connection* is already bound
      (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
