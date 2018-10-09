@@ -25,9 +25,9 @@
   (reduce
    (partial merge-with concat)
    {}
-   (for [filter-clause (mbql.u/match #{:between :< :<= :> :>=} filter-clause)
-         field-id      (mbql.u/match [:field-id field-id] filter-clause)]
-     {field-id [filter-clause]})))
+   (for [subclause (mbql.u/match filter-clause #{:between :< :<= :> :>=})
+         field-id  (mbql.u/match subclause [:field-id field-id])]
+     {field-id [subclause]})))
 
 (s/defn ^:private extract-bounds :- {:min-value s/Num, :max-value s/Num}
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
@@ -187,7 +187,8 @@
 
 (defn- update-binning-strategy* [query]
   (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
-    (mbql.u/replace {:query :binning-strategy} query
+    (mbql.u/replace-in query [:query]
+      :binning-strategy
       (update-binned-field query field-id->filters &match))))
 
 (defn update-binning-strategy

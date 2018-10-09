@@ -66,48 +66,25 @@
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
-(defmulti ^:private wrap-literals-in-clause mbql.u/dispatch-by-clause-name-or-class)
-
-(defmethod wrap-literals-in-clause := [[_ field x]]
-  [:= field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :!= [[_ field x]]
-  [:!= field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :< [[_ field x]]
-  [:< field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :> [[_ field x]]
-  [:> field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :<= [[_ field x]]
-  [:<= field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :>= [[_ field x]]
-  [:>= field (add-type-info x (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :between [[_ field min-val max-val]]
-  [:between
-   field
-   (add-type-info min-val (type-info field) {:parse-datetime-strings? true})
-   (add-type-info max-val (type-info field) {:parse-datetime-strings? true})])
-
-(defmethod wrap-literals-in-clause :starts-with [[_ field s options]]
-  [:starts-with field (add-type-info s (type-info field) {:parse-datetime-strings? false}) options])
-
-(defmethod wrap-literals-in-clause :ends-with [[_ field s options]]
-  [:ends-with field (add-type-info s (type-info field) {:parse-datetime-strings? false}) options])
-
-(defmethod wrap-literals-in-clause :contains [[_ field s options]]
-  [:contains field (add-type-info s (type-info field) {:parse-datetime-strings? false}) options])
-
-
-;;; --------------------------------------------------- middleware ---------------------------------------------------
-
 (s/defn ^:private wrap-value-literals* :- mbql.s/Query
   [query]
-  (mbql.u/replace query {:query {:filter #{:= :!= :< :> :<= :>= :between :starts-with :ends-with :contains}}}
-    (wrap-literals-in-clause &match)))
+  (mbql.u/replace-in query [:query :filter]
+    [(clause :guard #{:= :!= :< :> :<= :>=}) field x]
+    [clause field (add-type-info x (type-info field) {:parse-datetime-strings? true})]
 
-(defn wrap-value-literals [qp]
+    [:between field min-val max-val]
+    [:between
+     field
+     (add-type-info min-val (type-info field) {:parse-datetime-strings? true})
+     (add-type-info max-val (type-info field) {:parse-datetime-strings? true})]
+
+    [(clause :guard #{:starts-with :ends-with :contains}) field s & [options]]
+    (conj [clause field (add-type-info s (type-info field) {:parse-datetime-strings? false})] options)))
+
+(defn wrap-value-literals
+  "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
+  datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
+  to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
+  can dispatch directly off of these clauses."
+  [qp]
   (comp qp wrap-value-literals*))

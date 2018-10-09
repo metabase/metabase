@@ -52,61 +52,48 @@
 ;; using directly. implementation of
 
 (defmacro match
-  "Return a sequence of things that match a `pattern` inside `x`, presumably a query, or `nil` if there are no matches.
-  Recurses through maps and sequences. `pattern` can be one of several things:
+  "Return a sequence of things that match a `pattern` or `patterns` inside `x`, presumably a query, returning `nil` if
+  there are no matches. Recurses through maps and sequences. `pattern` can be one of several things:
 
   *  Keyword name of an MBQL clause
   *  Set of keyword names of MBQL clauses. Matches any clauses with those names
   *  A `core.match` pattern
   *  A symbol naming a class.
   *  A symbol naming a predicate function
-  *  A map whose keys represent that path to look for matches in, with one of the other pattern types as a val
 
   Examples:
 
     ;; keyword pattern
-    (match :field-id {:fields [[:field-id 10]]}) ; -> [[:field-id 10]]
+    (match {:fields [[:field-id 10]]} :field-id) ; -> [[:field-id 10]]
 
     ;; set of keywords
-    (match #{:field-id :fk->} some-query) ; -> [[:field-id 10], [:fk-> [:field-id 10] [:field-id 20]], ...]
+    (match some-query #{:field-id :fk->}) ; -> [[:field-id 10], [:fk-> [:field-id 10] [:field-id 20]], ...]
 
     ;; `core.match` pattern
-    (match [:field-id (_ :guard #(> % 100))] some-query) ; -> [[:field-id 200], ...]
+    (match some-query [:field-id (_ :guard #(> % 100))]) ; -> [[:field-id 200], ...]
 
     ;; symbol naming a Class
-    (match java.util.Date some-query) ; -> [[#inst \"2018-10-08\", ...]
+    (match some-query java.util.Date) ; -> [[#inst \"2018-10-08\", ...]
 
     ;; symbol naming a predicate function
-    (match even? some-query) ; -> [2 4 6 8]
-
-    ;; pattern nested in a map
-    ;; look for field-id clauses within `filter`
-    (match {:query {:filter :field-id}} some-query) ; -> [[:field-id 10] [:field-id 20]]
+    (match some-query even?) ; -> [2 4 6 8]
 
   ### Using `core.match` patterns
 
   See [`core.match` documentation](`https://github.com/clojure/core.match/wiki/Overview`) for more details.
 
-  For patterns that are not vectors, you'll need to name the match and use a `result-body` (discussed below) to return
-  it:
-
-    (match (my-match :guard #(and (pred1? %) (pred2? %)) some-query my-match) ; -> [:x :y :z]
-
-  (`&match`, also discussed below, is the default `result-body`; if you name your non-vector pattern `&match`, you
-  don't need to specifiy a `result-body`.)
-
-  ### Returing something other than the exact match with `result-body`
+  ### Returing something other than the exact match with result body
 
   By default, `match` returns whatever matches the pattern you pass in. But what if you only want to return part of
   the match? You can, using `core.match` binding facilities. Bind relevant things in your pattern and pass in the
-  optional `result-body`. Whatever `result-body` returns will be returned by `match`:
+  optional result body. Whatever result body returns will be returned by `match`:
 
      ;; just return the IDs of Field ID clauses
-     (match [:field-id id] some-query id) ; -> [1 2 3]
+     (match some-query [:field-id id] id) ; -> [1 2 3]
 
-  You can also use `result-body` to results, and any `nil` values will be skipped:
+  You can also use result body to results, and any `nil` values will be skipped:
 
-    (match [:field-id id] some-query
+    (match some-query [:field-id id]
       (when (even? id)
         id))
     ;; -> [2 4 6 8]
@@ -114,51 +101,45 @@
   Of course, it's probably more efficient to let `core.match` compile an efficient matching function, so prefer using
   patterns with `:guard` where possible.
 
+  One more thing to know about result bodies: you can call `recur` inside them, and use the same matching logic
+  against a different value.
+
   ### `&match` and `&parents` anaphors
 
   For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
-  `match` binds a pair of anaphors inside the `result-body` for your convenience. `&match` is bound to the entire
+  `match` binds a pair of anaphors inside the result body for your convenience. `&match` is bound to the entire
   match, regardless of how you may have destructured it; `&parents` is bound to a sequence of keywords naming the
   parent top-level keys and clauses of the match.
 
-    (mbql.u/match :field-id {:fields [[:datetime-field [:fk-> [:field-id 1] [:field-id 2]] :day]]}
+    (mbql.u/match {:fields [[:datetime-field [:fk-> [:field-id 1] [:field-id 2]] :day]]} :field-id
       ;; &parents will be [:fields :datetime-field :fk->]
       (when (contains? (set &parents) :datetime-field)
         &match))
     ;; -> [[:field-id 1] [:field-id 2]]"
-  {:style/indent 2}
-  [pattern x & result-body]
-  `(mbql.match/match ~pattern ~x ~(when (seq result-body)
-                                    `(do ~@result-body))))
+  {:style/indent 1}
+  [x & patterns-and-results]
+  `(mbql.match/match ~x ~patterns-and-results))
 
 (defmacro match-one
   "Like `match` but returns a single match rather than a sequence of matches."
-  {:style/indent 2}
-  [pattern x & result-body]
-  `(first (match ~pattern ~x ~@result-body)))
+  {:style/indent 1}
+  [x & patterns-and-results]
+  `(first (mbql.match/match ~x ~patterns-and-results)))
 
-(defmacro match-including-subclauses
-  "Same as `match`, but includes clauses inside matches in results as well.
-
-     (match #{:field-id :fk->} [:fk-> [:field-id 1] [:field-id 2]])
-     ;; -> [[:fk-> [:field-id 1] [:field-id 2]]]
-
-     (match-including-subclauses #{:field-id :fk->} [:fk-> [:field-id 1] [:field-id 2]])
-     ;; -> [[:fk-> [:field-id 1] [:field-id 2]]
-            [:field-id 1]
-            [:field-id 2]]"
-  {:style/indent 2}
-  [pattern x & result-body]
-  `(mbql.match/match-including-subclauses ~pattern ~x ~(when (seq result-body)
-                                                         `(do ~@result-body))))
 
 (defmacro replace
-  "Like `match`, but replace matches in `x` with the results of `result-body`. The same pattern options are supported,
+  "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
   and `&parents` and `&match` anaphors are available in the same way. (`&match` is particularly useful here if you
   want to use keywords or sets of keywords as patterns.)"
+  {:style/indent 1}
+  [x & patterns-and-results]
+  `(mbql.match/replace ~x ~patterns-and-results))
+
+(defmacro replace-in
+  "Like `replace`, but only replaces things in the part of `x` noted by `ks`."
   {:style/indent 2}
-  [x pattern & result-body]
-  `(mbql.match/replace ~x ~pattern (do ~@result-body)))
+  [x ks & patterns-and-results]
+  `(update-in ~x ~ks #(mbql.match/replace % ~patterns-and-results)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -29,13 +29,14 @@
     (db/select-id->field :definition Segment, :id [:in (set segment-ids)])))
 
 (defn- replace-segment-clauses [outer-query segment-id->definition]
-  (mbql.u/replace outer-query {:query [:segment (segment-id :guard (complement mbql.u/ga-id?))]}
+  (mbql.u/replace-in outer-query [:query]
+    [:segment (segment-id :guard (complement mbql.u/ga-id?))]
     (or (:filter (segment-id->definition segment-id))
         (throw (IllegalArgumentException. (str (tru "Segment {0} does not exist, or is invalid." segment-id)))))))
 
 (s/defn ^:private expand-segments :- mbql.s/Query
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
-  (if-let [segments (mbql.u/match :segment inner-query)]
+  (if-let [segments (mbql.u/match inner-query :segment)]
     (replace-segment-clauses outer-query (segment-clauses->id->definition segments))
     outer-query))
 
@@ -48,7 +49,7 @@
   "Return a sequence of any (non-GA) `:metric` MBQL clauses in `query`."
   [query]
   ;; metrics won't be in a native query but they could be in source-query or aggregation clause
-  (mbql.u/match [:metric (_ :guard (complement mbql.u/ga-id?))] {:query query}))
+  (mbql.u/match query [:metric (_ :guard (complement mbql.u/ga-id?))]))
 
 (defn- metric-clauses->id->definition [metric-clauses]
   (db/select-id->field :definition Metric, :id [:in (set (map second metric-clauses))]))
@@ -58,7 +59,8 @@
     (reduce mbql.u/add-filter-clause query filters)))
 
 (defn- replace-metrics-aggregations [query metric-id->definition]
-  (mbql.u/replace {:query query} [:metric (metric-id :guard (complement mbql.u/ga-id?))]
+  (mbql.u/replace-in query [:query]
+    [:metric (metric-id :guard (complement mbql.u/ga-id?))]
     (or (first (:aggregation (metric-id->definition metric-id)))
         (throw (IllegalArgumentException.
                 (str (tru "Metric {0} does not exist, or is invalid." metric-id)))))))

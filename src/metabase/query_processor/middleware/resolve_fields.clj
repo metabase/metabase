@@ -8,7 +8,7 @@
 
 (defn- resolve-fields* [query]
   (u/prog1 query
-    (when-let [field-ids (mbql.u/match {:query [:field-id id]} query id)]
+    (when-let [field-ids (mbql.u/match query {:query [:field-id id]} id)]
       (doseq [field (db/select (vec (cons Field qp.store/field-columns-to-fetch)) :id [:in (set field-ids)])]
         (qp.store/store-field! field)))))
 

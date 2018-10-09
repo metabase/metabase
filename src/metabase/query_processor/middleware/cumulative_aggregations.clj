@@ -18,7 +18,8 @@
 (s/defn ^:private replace-cumulative-ags :- mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
-  (mbql.u/replace query {:query {:aggregation [(ag-type :guard #{:cum-sum :cum-count}) ag-field]}}
+  (mbql.u/replace-in query [:query :aggregation]
+    [(ag-type :guard #{:cum-sum :cum-count}) ag-field]
     [(case ag-type
        :cum-sum   :sum
        :cum-count :count) ag-field]))
@@ -46,7 +47,7 @@
   clauses respectively and summation is performed on results in Clojure-land."
   [qp]
   (fn [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
-    (if (mbql.u/match #{:cum-count :cum-sum} aggregations)
+    (if (mbql.u/match aggregations #{:cum-count :cum-sum})
       (let [new-query        (replace-cumulative-ags query)
             ;; figure out which indexes are being changed in the results. Since breakouts always get included in
             ;; results first we need to offset the indexes to change by the number of breakouts

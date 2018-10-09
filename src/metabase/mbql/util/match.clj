@@ -2,7 +2,7 @@
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [replace])
   (:require [clojure.core.match :as match]
-            [clojure.tools.logging :as log]))
+            [clojure.walk :as walk]))
 
 (defn match-with-pred-or-class
   "Return a function to use for pattern matching via `core.match`'s `:guard` functionality based on the value of a
@@ -25,26 +25,48 @@
   [pattern]
   (cond
     (keyword? pattern)
-    `[([~pattern ~'& ~'_] :seq) :as ~'&match]
+    [[pattern '& '_]]
 
     (and (set? pattern) (every? keyword? pattern))
-    `[([(:or ~@pattern) ~'& ~'_] :seq) :as ~'&match]
-
-    (vector? pattern)
-    `[(~pattern :seq) :as ~'&match]
+    [[`(:or ~@pattern) '& '_]]
 
     ;; if pattern is a symbol, assume it's either a predicate function or a class
     (symbol? pattern)
-    `[(~'&match :guard (match-with-pred-or-class ~pattern))]
+    `[(~'_ :guard (match-with-pred-or-class ~pattern))]
 
     :else
     [pattern]))
+
+(defn- recur-form? [form]
+  (and (seq? form)
+       (= 'recur (first form))))
+
+(defn- rewrite-recurs [result-form]
+  (walk/postwalk
+   (fn [form]
+     (if (recur-form? form)
+       `(~'recur ~'&parents ~@(rest form))
+       form))
+   result-form))
+
+(defn- generate-patterns-and-results
+  {:style/indent 1}
+  [patterns-and-results & {:keys [wrap-result-forms?]}]
+  (reduce
+   concat
+   (for [[pattern result] (partition 2 2 ['&match] patterns-and-results)]
+     [(generate-pattern pattern) (let [result (rewrite-recurs result)]
+                                   (if (or (not wrap-result-forms?)
+                                           (recur-form? result))
+                                     result
+                                     [result]))])))
+
 
 ;;; --------------------------------------------------- match-impl ---------------------------------------------------
 
 (defn match-in-collection
   "Internal impl for `match`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
-  [parents match-fn form]
+  [match-fn parents form]
   (cond
     (map? form)
     (reduce concat (for [[k v] form]
@@ -56,57 +78,25 @@
                                 parents))
             form)))
 
-(defmacro match*
-  "Internal impl for `match`. Generate a pattern-matching function using `core.match`, and call it with `form`."
-  [pattern form result]
-  `((fn match-fn# [~'&parents form#]
-      (match/match [form#]
-        ~pattern [~(if result
-                     result
-                     '&match)]
-        :else (match-in-collection ~'&parents match-fn# form#)))
-    []
-    ~form))
-
-(defmacro match-including-subclauses*
-  "Internal impl for `match-including-subclauses`. Same as `match*`, but the pattern matching function recurses on its
-  results as well."
-  [pattern form result]
-  (let [match-fn-symb (gensym "match-fn")]
-    `((fn ~match-fn-symb [~'&parents form#]
-        (match/match [form#]
-          ~pattern (let [result# ~(if result result '&match)]
-                     (cons result# (match-in-collection ~'&parents ~match-fn-symb result#)))
-          :else (match-in-collection ~'&parents ~match-fn-symb form#)))
-      []
-      ~form)))
-
-(defmacro match-with
-  "Internal impl for `match`. Handle patterns wrapped in maps appropriately, then use `match-macro` to do the rest."
-  [match-macro pattern form result]
-  (if (map? pattern)
-    (let [form-symb (gensym "form")]
-      `(let [~form-symb ~form]
-         (concat ~@(for [[k v] pattern]
-                     `(match-with ~match-macro ~(get pattern k) (get ~form-symb ~k) ~result)))))
-    `(seq (filter some? (~match-macro ~(generate-pattern pattern) ~form ~result)))))
-
 (defmacro match
-  "Internal impl for `match`."
-  [pattern form result]
-  `(match-with match* ~pattern ~form ~result))
-
-(defmacro match-including-subclauses
-  "Internal impl for `metabase.mbql.util/match-including-subclauses`."
-  [pattern form result]
-  `(match-with match-including-subclauses* ~pattern ~form ~result))
+  "Internal impl for `match`. Generate a pattern-matching function using `core.match`, and call it with `form`."
+  [form patterns-and-results]
+  `(seq
+    (filter
+     some?
+     ((fn match# [~'&parents ~'&match]
+        (match/match [~'&match]
+          ~@(generate-patterns-and-results patterns-and-results, :wrap-result-forms? true)
+          :else (match-in-collection match# ~'&parents ~'&match)))
+      []
+      ~form))))
 
 
 ;;; -------------------------------------------------- replace impl --------------------------------------------------
 
 (defn replace-in-collection
   "Inernal impl for `replace`. Recursively replace values in a collection using a `replace-fn`."
-  [parents replace-fn form]
+  [replace-fn parents form]
   (cond
     (map? form)
     (into (empty form) (for [[k v] form]
@@ -119,23 +109,13 @@
           form)
     :else              form))
 
-(defmacro replace*
+(defmacro replace
   "Internal implementation for `replace`. Generate a pattern-matching function with `core.match`, and use it to replace
   matching values in `form`."
-  [form pattern result]
-  `((fn replace-fn# [~'&parents form#]
-      (match/match [form#]
-        ~(generate-pattern pattern) ~result
-        :else (replace-in-collection ~'&parents replace-fn# form#)))
+  [form patterns-and-results]
+  `((fn replace# [~'&parents ~'&match]
+      (match/match [~'&match]
+        ~@(generate-patterns-and-results patterns-and-results, :wrap-result-forms? false)
+        :else (replace-in-collection replace# ~'&parents ~'&match)))
     []
     ~form))
-
-(defmacro replace
-  "Internal impl for `metabase.mbql.util/replace`. Handle patterns wrapped in maps appropriately, then call `replace*`
-  to do the rest."
-  [form pattern result]
-  (if (map? pattern)
-    `(-> ~form
-         ~@(for [[k v] pattern]
-             `(update ~k #(replace % ~v ~result))))
-    `(replace* ~form ~pattern ~result)))
