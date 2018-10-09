@@ -127,7 +127,7 @@
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 
-(def ^:dynamic ^:private database-id->connection-pool
+(def ^:private database-id->connection-pool
   "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))
 
