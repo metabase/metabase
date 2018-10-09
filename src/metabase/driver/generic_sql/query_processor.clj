@@ -253,17 +253,22 @@
     [:like field                    (->honeysql driver value)]
     [:like (hsql/call :lower field) (->honeysql driver (update value 1 str/lower-case))]))
 
+(s/defn ^:private update-string-value :- mbql.s/value
+  [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
+  (update value 1 f))
+
+(defmethod ->honeysql [Object :starts-with] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str % \%)) options))
+
+(defmethod ->honeysql [Object :contains] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% % \%)) options))
+
+(defmethod ->honeysql [Object :ends-with] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
+
 (defmethod ->honeysql [Object :between] [driver [_ field min-val max-val]]
   [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
 
-(defmethod ->honeysql [Object :starts-with] [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update value 1 #(str % \%)) options))
-
-(defmethod ->honeysql [Object :contains] [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update value 1 #(str \% % \%)) options))
-
-(defmethod ->honeysql [Object :ends-with] [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update value 1 #(str \% %)) options))
 
 (defmethod ->honeysql [Object :>] [driver [_ field value]]
   [:> (->honeysql driver field) (->honeysql driver value)])
@@ -282,6 +287,7 @@
 
 (defmethod ->honeysql [Object :!=] [driver [_ field value]]
   [:not= (->honeysql driver field) (->honeysql driver value)])
+
 
 (defmethod ->honeysql [Object :and] [driver [_ & subclauses]]
   (apply vector :and (map (partial ->honeysql driver) subclauses)))

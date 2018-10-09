@@ -1,10 +1,7 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  (:require [clojure.core.match :as match]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.string :as str]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util :as u]
@@ -12,8 +9,7 @@
              [date :as du]
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [medley.core :as m]))
+            [schema.core :as s]))
 
 (s/defn normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased

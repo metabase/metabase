@@ -1,15 +1,13 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.driver.googleanalytics.query-processor :as qp]
             [metabase.models
              [card :refer [Card]]
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor
-             [interface :as qpi]
-             [store :as qp.store]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.data.users :as users]
             [metabase.util :as u]
             [metabase.util.date :as du]

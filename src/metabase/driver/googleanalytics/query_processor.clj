@@ -8,7 +8,6 @@
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :as ui18n :refer [tru]]])
@@ -38,6 +37,9 @@
 (defmethod ->rvalue :field-id [[_ field-id]]
   (:name (qp.store/field field-id)))
 
+(defmethod ->rvalue :field-literal [[_ field-name]]
+  field-name)
+
 (defmethod ->rvalue :datetime-field [[_ field]]
   (->rvalue field))
 
@@ -50,6 +52,9 @@
     (and (= unit :day) (= amount -1)) "yesterday"
     (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
     :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
+
+(defmethod ->rvalue :value [[_ value _]]
+  value)
 
 
 (defn- char-escape-map
@@ -65,14 +70,14 @@
   (escape-for-filter-clause (apply str parts)))
 
 
-;;; ### source-table
+;;; -------------------------------------------------- source-table --------------------------------------------------
 
 (defn- handle-source-table [{source-table-id :source-table}]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
     {:ids (str "ga:" source-table-name)}))
 
 
-;;; ### breakout
+;;; ---------------------------------------------------- breakout ----------------------------------------------------
 
 (defn- aggregations [{aggregations :aggregation}]
   (if (every? sequential? aggregations)
@@ -103,9 +108,13 @@
                                    (->rvalue breakout-field)))))})
 
 
-;;; ### filter
+
+;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defmulti ^:private parse-filter mbql.u/dispatch-by-clause-name-or-class)
+
+(defmethod parse-filter nil [& _]
+  nil)
 
 (defmethod parse-filter :contains [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value))))
@@ -150,55 +159,68 @@
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
-    (let [filter (parse-filter filter-clause)]
+    ;; remove all clauses that operate on datetime fields because we don't want to handle them here, we'll do that
+    ;; seperately with the filter:interval stuff below
+    (let [filter (parse-filter (mbql.u/replace filter-clause
+                                 [_ [:datetime-field & _] & _] nil))]
+
       (when-not (str/blank? filter)
         {:filters filter}))))
 
-(defn- parse-filter-subclause:interval [[filter-type field value :as filter-clause] & [negate?]]
-  (when negate?
-    (throw (Exception. (str (tru ":not is not yet implemented")))))
-  (when (mbql.u/is-clause? :datetime-field field)
-    (case filter-type
-      :between
-      (let [[_ field min-val max-val] filter-clause]
-        {:start-date min-val, :end-date max-val})
+;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
-      :>
-      {:start-date (->rvalue value), :end-date latest-date}
+(defmulti ^:private parse-filter:interval mbql.u/dispatch-by-clause-name-or-class)
 
-      :<
-      {:start-date earliest-date, :end-date (->rvalue value)}
+(defmethod parse-filter:interval :default [_] nil)
 
-      :=
-      {:start-date (->rvalue value)
-       :end-date   (case (first value)
-                     :absolute-datetime
-                     (let [[_ timestamp] value]
-                       (->rvalue timestamp))
+(defmethod parse-filter:interval :between [[_ field min-val max-val]]
+  {:start-date min-val, :end-date max-val})
 
-                     ;; inc the end date so we'll get a proper date range once everything is bucketed
-                     :relative-datetime
-                     (->rvalue (mbql.u/add-datetime-units value 1)))})))
+(defmethod parse-filter:interval :> [[_ field value]]
+  {:start-date (->rvalue value), :end-date latest-date})
 
-(defn- parse-filter-clause:interval [[compound-type & [subclause :as subclauses] :as clause]]
-  (case compound-type
-    :and (reduce concat (filter some? (map parse-filter-clause:interval subclauses)))
-    :or  (reduce concat (filter some? (map parse-filter-clause:interval subclauses)))
-    :not (filter some? [(parse-filter-subclause:interval subclause :negate)])
-    nil  (filter some? [(parse-filter-subclause:interval clause)])))
+(defmethod parse-filter:interval :< [[_ field value]]
+  {:start-date earliest-date, :end-date (->rvalue value)})
+
+;; TODO - why we don't support `:>=` or `:<=` in GA?
+
+(defmethod parse-filter:interval := [[_ field value]]
+  {:start-date (->rvalue value)
+   :end-date   (->rvalue
+                (cond-> value
+                  ;; for relative datetimes, inc the end date so we'll get a proper date range once everything is
+                  ;; bucketed
+                  (mbql.u/is-clause? :relative-datetime value)
+                  (mbql.u/add-datetime-units 1)))})
+
+(defn- maybe-get-only-filter-or-throw [filters]
+  (when-let [filters (seq (filter some? filters))]
+    (when (> (count filters) 1)
+      (throw (Exception. (str (tru "Multiple date filters are not supported")))))
+    (first filters)))
+
+(defmethod parse-filter:interval :and [[_ & subclauses]]
+  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+
+(defmethod parse-filter:interval :or [[_ & subclauses]]
+  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+
+(defmethod parse-filter:interval :not [[& _]]
+  (throw (Exception. (str (tru ":not is not yet implemented")))))
 
 (defn- handle-filter:interval
   "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
   `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
-  (let [date-filters (when filter-clause
-                       (parse-filter-clause:interval filter-clause))]
-    (case (count date-filters)
-      0 {:start-date earliest-date, :end-date latest-date}
-      1 (first date-filters)
-      (throw (Exception. (str (tru "Multiple date filters are not supported")))))))
+  (or (when filter-clause
+        ;; filter out any filter clauses that aren't operating on `[:datetime-field ...]` forms. All other clauses
+        ;; will be using `:field-literal` since those are the only two options GA supports
+        (parse-filter:interval (mbql.u/replace filter-clause
+                                 [_ [:field-literal & _] & _] nil)))
+      {:start-date earliest-date, :end-date latest-date}))
 
-;;; ### order-by
+
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
@@ -213,7 +235,8 @@
                      [:aggregation index]     (second (nth (aggregations query) index))
                      [& _]                    (->rvalue &match)))))}))
 
-;;; ### limit
+
+;;; ----------------------------------------------------- limit ------------------------------------------------------
 
 (defn- handle-limit [{limit-clause :limit}]
   {:max-results (int (if (nil? limit-clause)

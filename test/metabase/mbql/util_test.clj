@@ -269,6 +269,20 @@
       (when (= := (last &parents))
         (float &match))))
 
+;; can we do fancy stuff like remove all the filters that use datetime fields from a query?
+;;
+;; (NOTE: this example doesn't take into account the fact that [:binning-strategy ...] can wrap a `:datetime-field`,
+;; so it's only appropriate for drivers that don't support binning (e.g. GA). Also the driver QP will need to be
+;; written to handle the nils in a filter clause appropriately.)
+(expect
+  [:and nil [:= [:field-id 100] 20]]
+  (mbql.u/replace [:and
+                   [:=
+                    [:datetime-field [:field-literal "ga:date"] :day]
+                    [:absolute-datetime #inst "2016-11-08T00:00:00.000-00:00" :day]]
+                   [:= [:field-id 100] 20]]
+    [_ [:datetime-field & _] & _] nil))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Other Fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+

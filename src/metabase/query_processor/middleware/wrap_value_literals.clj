@@ -34,28 +34,23 @@
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
-(defmulti ^:private add-type-info (fn [x info {:keys [parse-datetime-strings?]}]
-                                    (if (mbql.u/mbql-clause? x)
-                                      ::clause
-                                      (class x))))
+(defmulti ^:private add-type-info (fn [x info & [{:keys [parse-datetime-strings?]}]]
+                                    (class x)))
 
-;; don't add any type info to things that are already MBQL clauses!
-(defmethod add-type-info ::clause [this _ _]
-  this)
-
-(defmethod add-type-info nil [_ info _]
+(defmethod add-type-info nil [_ info & _]
   [:value nil info])
 
-(defmethod add-type-info Object [this info _]
+(defmethod add-type-info Object [this info & _]
   [:value this info])
 
-(defmethod add-type-info java.util.Date [this info _]
+(defmethod add-type-info java.util.Date [this info & _]
   [:absolute-datetime (du/->Timestamp this) (or (:unit info) :default)])
 
-(defmethod add-type-info java.sql.Timestamp [this info _]
+(defmethod add-type-info java.sql.Timestamp [this info & _]
   [:absolute-datetime this (or (:unit info) :default)])
 
-(defmethod add-type-info String [this info {:keys [parse-datetime-strings?]}]
+(defmethod add-type-info String [this info & [{:keys [parse-datetime-strings?]
+                                               :or   {parse-datetime-strings? true}}]]
   (if (and
        (:unit info)
        (du/date-string? this)
@@ -66,20 +61,22 @@
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
+(def ^:private raw-value? (complement mbql.u/mbql-clause?))
+
 (s/defn ^:private wrap-value-literals* :- mbql.s/Query
   [query]
   (mbql.u/replace-in query [:query :filter]
-    [(clause :guard #{:= :!= :< :> :<= :>=}) field x]
-    [clause field (add-type-info x (type-info field) {:parse-datetime-strings? true})]
+    [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
+    [clause field (add-type-info x (type-info field))]
 
-    [:between field min-val max-val]
+    [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
      field
-     (add-type-info min-val (type-info field) {:parse-datetime-strings? true})
-     (add-type-info max-val (type-info field) {:parse-datetime-strings? true})]
+     (add-type-info min-val (type-info field))
+     (add-type-info max-val (type-info field))]
 
-    [(clause :guard #{:starts-with :ends-with :contains}) field s & [options]]
-    (conj [clause field (add-type-info s (type-info field) {:parse-datetime-strings? false})] options)))
+    [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
+    (apply vector clause field (add-type-info s (type-info field) {:parse-datetime-strings? false}) more)))
 
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

@@ -97,7 +97,6 @@
       dev/guard-multiple-calls
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       wrap-value-literals/wrap-value-literals
-      desugar/desugar
       annotate/add-column-info
       perms/check-query-permissions
       resolve-joined-tables/resolve-joined-tables
@@ -119,6 +118,7 @@
       add-settings/add-settings
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
       bind-timezone/bind-effective-timezone
+      desugar/desugar
       fetch-source-query/fetch-source-query
       store/initialize-store
       ((fn [qp]
