@@ -14,7 +14,6 @@ import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
 import Query from "metabase/lib/query";
-import { mbqlEq } from "metabase/lib/query/util";
 
 import type {
   FieldFilter,
@@ -132,13 +131,11 @@ class CurrentPicker extends Component {
 }
 
 const getIntervals = ([op, field, value, unit]) =>
-  mbqlEq(op, "time-interval") && typeof value === "number"
-    ? Math.abs(value)
-    : 30;
+  op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit = ([op, field, value, unit]) =>
-  mbqlEq(op, "time-interval") && unit ? unit : "day";
+  op === "time-interval" && unit ? unit : "day";
 const getOptions = ([op, field, value, unit, options]) =>
-  (mbqlEq(op, "time-interval") && options) || {};
+  (op === "time-interval" && options) || {};
 
 const getDate = value => {
   if (typeof value !== "string" || !moment(value).isValid()) {
@@ -231,7 +228,7 @@ export const DATE_OPERATORS: Operator[] = [
     ],
     test: ([op, field, value]) =>
       // $FlowFixMe
-      (mbqlEq(op, "time-interval") && value < 0) || Object.is(value, -0),
+      (op === "time-interval" && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
   },
@@ -246,7 +243,7 @@ export const DATE_OPERATORS: Operator[] = [
       getOptions(filter),
     ],
     // $FlowFixMe
-    test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
+    test: ([op, field, value]) => op === "time-interval" && value >= 0,
     widget: NextPicker,
     options: { "include-current": true },
   },
@@ -259,8 +256,7 @@ export const DATE_OPERATORS: Operator[] = [
       "current",
       getUnit(filter),
     ],
-    test: ([op, field, value]) =>
-      mbqlEq(op, "time-interval") && value === "current",
+    test: ([op, field, value]) => op === "time-interval" && value === "current",
     widget: CurrentPicker,
   },
   {
@@ -288,7 +284,7 @@ export const DATE_OPERATORS: Operator[] = [
     name: "between",
     displayName: t`Between`,
     init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
-    test: ([op]) => mbqlEq(op, "between"),
+    test: ([op]) => op === "between",
     widget: MultiDatePicker,
   },
 ];
