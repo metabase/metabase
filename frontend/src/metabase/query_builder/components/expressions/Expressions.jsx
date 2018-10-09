@@ -26,8 +26,8 @@ export default class Expressions extends Component {
     let sortedNames = _.sortBy(_.keys(expressions), _.identity);
     return (
       <div className="pb3">
-        <div className="pb1 h6 text-uppercase text-grey-3 text-bold">
-          Custom fields
+        <div className="pb1 h6 text-uppercase text-medium text-bold">
+          {t`Custom fields`}
         </div>
 
         {sortedNames &&
@@ -51,7 +51,7 @@ export default class Expressions extends Component {
 
         <a
           data-metabase-event={"QueryBuilder;Show Add Custom Field"}
-          className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color"
+          className="text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color"
           onClick={() => onAddExpression()}
         >
           <IconBorder borderRadius="3px">

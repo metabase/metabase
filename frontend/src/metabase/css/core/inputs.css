@@ -1,15 +1,15 @@
 :root {
-  --input-border-color: #d9d9d9;
-  --input-border-active-color: #4e82c0;
+  --input-border-color: var(--color-border);
+  --input-border-active-color: var(--color-brand);
   --input-border-radius: 4px;
 }
 
 .input,
 :local(.input) {
-  color: var(--dark-color);
+  color: var(--color-text-dark);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;
-  border: 1px solid var(--input-border-color);
+  border: 1px solid var(--color-border);
   border-radius: var(--input-border-radius);
   transition: border 0.3s linear;
 }
@@ -29,9 +29,9 @@
 .input:focus,
 :local(.input):focus {
   outline: none;
-  border: 1px solid var(--input-border-active-color);
+  border: 1px solid var(--color-brand);
   transition: border 0.3s linear;
-  color: #222;
+  color: var(--color-text-dark);
 }
 
 .input--borderless,

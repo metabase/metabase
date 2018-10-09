@@ -14,6 +14,7 @@ import type {
   ParameterValue,
   ParameterValueOrArray,
   ParameterValues,
+  ParameterType,
 } from "metabase/meta/types/Parameter";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Metadata } from "metabase/meta/types/Metadata";
@@ -28,17 +29,19 @@ import { isNumericBaseType } from "metabase/lib/schema_metadata";
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
   return tags
     .filter(
-      tag => tag.type != null && (tag.widget_type || tag.type !== "dimension"),
+      tag =>
+        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
     .map(tag => ({
       id: tag.id,
       type:
-        tag.widget_type || (tag.type === "date" ? "date/single" : "category"),
+        tag["widget-type"] ||
+        (tag.type === "date" ? "date/single" : "category"),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
           : ["variable", ["template-tag", tag.name]],
-      name: tag.display_name,
+      name: tag["display-name"],
       slug: tag.name,
       default: tag.default,
     }));
@@ -67,7 +70,7 @@ export function getParameterTargetFieldId(
     if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
       if (datasetQuery.type === "native") {
         let templateTag =
-          datasetQuery.native.template_tags[String(dimension[1])];
+          datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
           return Q.getFieldTargetId(templateTag.dimension);
         }
@@ -215,5 +218,15 @@ export function parameterToMBQLFilter(
     } else {
       return stringParameterValueToMBQL(parameter.value, fieldRef);
     }
+  }
+}
+
+export function getParameterIconName(parameterType: ?ParameterType) {
+  if (/^date\//.test(parameterType || "")) {
+    return "calendar";
+  } else if (/^location\//.test(parameterType || "")) {
+    return "location";
+  } else {
+    return "label";
   }
 }

@@ -22,15 +22,15 @@ export default class ColumnarSelector extends Component {
         ? column.disabledOptionIds.includes(item.id)
         : false;
 
-    var columns = this.props.columns.map((column, columnIndex) => {
-      var sectionElements;
+    let columns = this.props.columns.map((column, columnIndex) => {
+      let sectionElements;
       if (column) {
-        var lastColumn = columnIndex === this.props.columns.length - 1;
-        var sections = column.sections || [column];
+        let lastColumn = columnIndex === this.props.columns.length - 1;
+        let sections = column.sections || [column];
         sectionElements = sections.map((section, sectionIndex) => {
-          var title = section.title;
-          var items = section.items.map((item, rowIndex) => {
-            var itemClasses = cx({
+          let title = section.title;
+          let items = section.items.map((item, rowIndex) => {
+            let itemClasses = cx({
               "ColumnarSelector-row": true,
               "ColumnarSelector-row--selected": isItemSelected(item, column),
               "ColumnarSelector-row--disabled": isItemDisabled(item, column),
@@ -38,9 +38,9 @@ export default class ColumnarSelector extends Component {
               "no-decoration": true,
               "cursor-default": isItemDisabled(item, column),
             });
-            var checkIcon = lastColumn ? <Icon name="check" size={14} /> : null;
-            var descriptionElement;
-            var description =
+            let checkIcon = lastColumn ? <Icon name="check" size={14} /> : null;
+            let descriptionElement;
+            let description =
               column.itemDescriptionFn && column.itemDescriptionFn(item);
             if (description) {
               descriptionElement = (
@@ -67,7 +67,7 @@ export default class ColumnarSelector extends Component {
               </li>
             );
           });
-          var titleElement;
+          let titleElement;
           if (title) {
             titleElement = (
               <div className="ColumnarSelector-title">{title}</div>

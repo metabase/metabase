@@ -8,11 +8,14 @@ import { setRequestState, clearRequestState } from "metabase/redux/requests";
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
+import { createSelectorCreator } from "reselect";
+import memoize from "lodash.memoize";
+
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, actionThunkCreator) {
   function fn(...actionArgs) {
-    var thunk = actionThunkCreator(...actionArgs);
+    let thunk = actionThunkCreator(...actionArgs);
     return async function(dispatch, getState) {
       try {
         let payload = await thunk(dispatch, getState);
@@ -37,7 +40,7 @@ export function momentifyTimestamps(
 ) {
   object = { ...object };
   for (let timestamp of keys) {
-    if (timestamp in object) {
+    if (object[timestamp]) {
       object[timestamp] = moment(object[timestamp]);
     }
   }
@@ -65,9 +68,21 @@ export const fetchData = async ({
   requestStatePath,
   existingStatePath,
   getData,
-  reload,
+  reload = false,
+  properties = null,
 }) => {
   const existingData = getIn(getState(), existingStatePath);
+
+  // short circuit if we have loaded data, and we're givein a list of required properties, and they all existing in the loaded data
+  if (
+    !reload &&
+    existingData &&
+    properties &&
+    _.all(properties, p => existingData[p] !== undefined)
+  ) {
+    return existingData;
+  }
+
   const statePath = requestStatePath.concat(["fetch"]);
   try {
     const requestState = getIn(getState(), [
@@ -93,7 +108,7 @@ export const fetchData = async ({
     return existingData;
   } catch (error) {
     dispatch(setRequestState({ statePath, error }));
-    console.error(error);
+    console.error("fetchData error", error);
     return existingData;
   }
 };
@@ -107,7 +122,9 @@ export const updateData = async ({
   dependentRequestStatePaths,
   putData,
 }) => {
-  const existingData = getIn(getState(), existingStatePath);
+  const existingData = existingStatePath
+    ? getIn(getState(), existingStatePath)
+    : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
     dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -143,7 +160,11 @@ export function mergeEntities(entities, newEntities) {
 
 // helper for working with normalizr
 // reducer that merges payload.entities
-export function handleEntities(actionPattern, entityType, reducer) {
+export function handleEntities(
+  actionPattern,
+  entityType,
+  reducer = (state = {}, action) => state,
+) {
   return (state, action) => {
     if (state === undefined) {
       state = {};
@@ -174,3 +195,8 @@ export const formDomOnlyProps = ({
   defaultValue,
   ...domProps
 }) => domProps;
+
+export const createMemoizedSelector = createSelectorCreator(
+  memoize,
+  (...args) => JSON.stringify(args),
+);

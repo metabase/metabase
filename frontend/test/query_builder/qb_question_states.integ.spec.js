@@ -66,7 +66,7 @@ describe("QueryBuilder", () => {
         mount(store.connectContainer(<QueryBuilder />));
         // only test here that the error page action is dispatched
         // (it is set on the root level of application React tree)
-        await store.waitForActions([INITIALIZE_QB, SET_ERROR_PAGE]);
+        await store.waitForActions([SET_ERROR_PAGE]);
       });
     });
     it("doesn't execute the query if user cancels it", async () => {

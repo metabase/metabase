@@ -1,58 +1,76 @@
-## X-rays and Comparisons
+## X-rays
 ---
-X-rays and comparisons are two powerful new features in Metabase that allow you to get deeper statistical reports about your segments, fields, and time series.
+X-rays are a fast and easy way to get automatic insights and explorations of your data.
 
-### Time series x-rays
+### Viewing x-rays by clicking on charts or tables
 
-To view an x-ray report for a time series, open up a saved time series question (any kind of chart or table with a metric broken out by time), click on the Action Menu in the bottom-right of the screen, and select "X-ray this question:"
+One great way to explore your data in general in Metabase is to click on points of interest in charts or tables, which shows you ways to further explore that point. We've added x-rays to this action menu, so if you for example find a point on your line chart that seems extra interesting, give it a click and x-ray it! We think you'll like what you see.
 
-![Time series x-ray action](images/x-ray-action-time-series.png)
+![X-ray action in drill-through menu](images/x-rays/drill-through.png)
 
-You'll get an in-depth analysis of your time series question, including growth rates, the distribution of values, and seasonality:
+### Comparisons
 
-![Time series x-ray](images/x-ray-time-series.png)
+When you click on a bar or point on a chart, you can now also choose the Compare action from the menu that pops up to see how the thing you've clicked on compares to the rest of the data.
 
-### Segment, table, and field x-rays
-To view an x-ray for a segment, table, or field, first go to the Data Reference, then navigate to the thing you want to x-ray, then select the x-ray option in the lefthand menu:
+![Compare menu](images/x-rays/x-ray-compare-popover.png)
 
-![X-rays in data reference](images/x-ray-data-reference.png)
+If you're already looking at an x-ray of a table or a segment, Metabase will also give you the option to compare the current table or segment to other segments of the table, if there are any. This is a very fast, powerful way to see, for example, how different segments of your users or orders compare to each other.
 
-If you have a saved Raw Data question that uses one or more segments as filters, you can also x-ray one of those segments from the Action Menu in the bottom-right of the screen when viewing that question:
+![Comparison](images/x-rays/x-ray-comparison-1.png)
+![Comparison](images/x-rays/x-ray-comparison-2.png)
 
-![X-ray action](images/x-ray-action.png)
 
-An x-ray report for a segment called "Californians" looks like this, displaying a summary of the distribution of values for each field in the segment, and the maximal and minimal values if applicable:
+### Table x-rays
 
-![X-ray](images/x-ray.png)
+Another great way to get to know your data is by x-raying your tables. From the home page, scroll to the bottom of the screen, click on one of your connected databases, and then click the bolt icon on a table to view an x-ray of it.
 
-Clicking on the summary for any field will take you to the detailed x-ray report for that single field.
+### X-raying question results
 
-### Changing the fidelity of an x-ray
+You can also see an x-ray of the results of a saved or unsaved question by clicking the blue compass button in the bottom-right of the question screen and selecting the x-ray action. This will show you an x-ray of the numbers and fields in your question's results.
 
-X-rays can be a somewhat costly or slow operation for your database to run, so by default Metabase only does a quick sampling of the segment or field you're x-raying. You can increase the fidelity in the top-right of the x-ray page:
+![X-ray results](images/x-rays/x-ray-action.png)
 
-![X-ray fidelity](images/x-ray-fidelity.png)
+## X-rays in the Data Reference
 
-Administrators can also set the maximum allowed fidelity for x-rays in the Admin Panel. Note that the `Extended` setting is required for time series x-rays to work. Admins can even turn x-rays off entirely, but that makes Simon cry. No one likes it when Simon cries.
+You can also view an x-ray by navigating to a table, field, metric, or segment in the [Data Reference](./12-data-model-reference.md). Just click the x-ray link in the lefthand sidebar.
 
-### Comparing segments
+![Data Reference x-ray](images/x-rays/data-reference.png)
 
-Segments are a subset of a larger table or list, so one thing you can do when viewing an x-ray of a segment is compare it to its "parent" table. For example, if I have a segment called "Californians," which is a subset of the "People" table, I can click on the button that says "Compare to all People" to see a comparison report:
+### Browsing through x-rays
 
-![Compare](images/x-ray-compare-button.png)
+One fun and interesting thing you can do once you're looking at an x-ray is to click and browse through the list of suggested next x-rays that show up in the righthand column.
 
-The comparison report shows how many rows there are in the segment versus the parent table, and also gives you a breakdown of how the fields in the segment differ from that of the parent table:
+Depending on the x-ray you're currently viewing, you'll see suggestions that will let you:
 
-![Comparison report](images/x-ray-comparison.png)
+- compare the table or segment you're currently x-raying to another segment
+- "zoom out" and view an x-ray of the table the current x-ray is based on
+- "zoom in" to see a more detailed x-ray about a field or dimension of the current x-ray
+- go to an x-ray of a related item, like a metric based on the current table, or a different table that's related to the current one
 
-An example for where this can be especially useful is a scenario where you've defined many different segments for your users or customers, like "Repeat Customers," "Users between 18 and 35," or "Female customers in Kalamazoo who dislike cheese." You can open up the x-ray for any of these segments, and then compare them to the larger Users or Customers table to see if there are any interesting patterns or differences.
+### Exploring newly added datasets
 
-## Automated insights
-Metabase hasn't quite achieved self-awareness, but it has gotten smarter recently. It will now show you relevant insights about your data at the top of x-rays about time series or numeric fields, provided there's something insightful to say.
+If you're an administrator, when you first connect a database to Metabase, Metabot will offer to show you some automated explorations of your newly-connected data.
 
-![Insights](./images/insights.png)
+![X-ray example](images/x-rays/suggestions.png)
 
-Insights include things like whether or not your data has an overall trend, has uncharacteristic spikes or dips, or if it follows a similar pattern at regular intervals.
+Click on one of these to see an x-ray.
 
-## Need help?
+![X-ray example](images/x-rays/example.png)
+
+You can see more suggested x-rays over on the right-hand side of the screen. Browsing through x-rays like this is a pretty fun way of getting a quick overview of your data.
+
+### Saving x-rays
+
+If you come across an x-ray that's particularly interesting, you can save it as a dashboard by clicking the green Save button. Metabase will create a new dashboard and put it and all of its charts in a new collection, and will save this new collection wherever you choose.
+
+### Where did the old x-rays go?
+
+We're reworking the way we do things like time series growth analysis, which was present in past versions of x-rays. In the meantime, we've removed those previous x-rays, and will bring those features back in a more elegant and streamlined way in a future version of Metabase.
+
+### Need help?
 If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
+
+---
+
+## Next: setting up alerts
+Learn how to get notified when one of your questions meets or goal or has results with [alerts](15-alerts.md).

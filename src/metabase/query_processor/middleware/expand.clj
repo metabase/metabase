@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.expand
+(ns ^:deprecated metabase.query-processor.middleware.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be
   needed to construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
@@ -9,7 +9,9 @@
              [interface :as i]
              [util :as qputil]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s])
   (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter DateTimeValue
             DateTimeField Expression ExpressionRef FieldLiteral FieldPlaceholder RelativeDatetime
@@ -19,16 +21,7 @@
 ;;; |                                                CLAUSE HANDLERS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - check that there's a matching :aggregation clause in the query ?
-(s/defn ^:ql aggregate-field :- AgFieldRef
-  "Aggregate field referece, e.g. for use in an `order-by` clause.
-
-     (query (aggregate (count))
-            (order-by (asc (aggregate-field 0)))) ; order by :count"
-  [index :- s/Int]
-  (i/map->AgFieldRef {:index index}))
-
-(s/defn ^:ql field-id :- i/AnyField
+(s/defn ^:deprecated ^:ql field-id :- i/AnyField
   "Create a generic reference to a `Field` with ID."
   [id]
   ;; If for some reason we were passed a field literal (e.g. [field-id [field-literal ...]])
@@ -40,7 +33,7 @@
       id)
     (i/map->FieldPlaceholder {:field-id id})))
 
-(s/defn ^:private field :- i/AnyField
+(s/defn ^:deprecated ^:private field :- i/AnyField
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -48,13 +41,13 @@
         (field-id f))
     f))
 
-(s/defn ^:ql field-literal :- FieldLiteral
+(s/defn ^:deprecated ^:ql field-literal :- FieldLiteral
   "Generic reference to a Field by FIELD-NAME. This is intended for use when using nested queries so as to allow one
    to refer to the fields coming back from the source query."
   [field-name :- su/KeywordOrString, field-type :- su/KeywordOrString]
   (i/map->FieldLiteral {:field-name (u/keyword->qualified-name field-name), :base-type (keyword field-type)}))
 
-(s/defn ^:ql named :- i/Aggregation
+(s/defn ^:deprecated ^:ql named :- i/Aggregation
   "Specify a CUSTOM-NAME to use for a top-level AGGREGATION-OR-EXPRESSION in the results.
    (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is
    supported.)"
@@ -62,7 +55,7 @@
   [aggregation-or-expression :- i/Aggregation, custom-name :- su/NonBlankString]
   (assoc aggregation-or-expression :custom-name custom-name))
 
-(s/defn ^:ql datetime-field :- i/AnyField
+(s/defn ^:deprecated ^:ql datetime-field :- i/AnyField
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
   ([f _ unit]
    (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. "
@@ -77,29 +70,36 @@
      ;; (:datetime-unit f)          f
      :else                       (assoc (field f) :datetime-unit (qputil/normalize-token unit)))))
 
-(s/defn ^:ql fk-> :- FieldPlaceholder
+(s/defn ^:deprecated ^:ql fk-> :- FieldPlaceholder
   "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is
    the ID of the foreign key field belonging to the *source table* we should use to perform the join.
 
    `fk->` is so named because you can think of it as \"going through\" the FK Field to get to the dest Field:
 
      (fk-> 100 200) ; refer to Field 200, which is part of another Table; join to the other table via our foreign key 100"
-  [fk-field-id :- s/Int, dest-field-id :- s/Int]
+  [fk-field-id, dest-field-id]
   (i/assert-driver-supports :foreign-keys)
-  (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
+  (i/map->FieldPlaceholder {:fk-field-id (if (instance? FieldPlaceholder fk-field-id)
+                                           (:field-id fk-field-id)
+                                           fk-field-id)
+                            :field-id    (if (instance? FieldPlaceholder dest-field-id)
+                                           (:field-id dest-field-id)
+                                           dest-field-id)}))
 
-(defn- datetime-unit
+(defn- ^:deprecated datetime-unit
   "Determine the appropriate datetime unit that should be used for a field F and a value V.
-   (Sometimes the value may already have a 'default' value that should be replaced with the
-   value from the field it is being used with, e.g. in a filter clause.
-   For example when filtering by minute it is important both F and V are bucketed as minutes,
-   and thus both most have the same unit."
+
+  (Sometimes the value may already have a 'default' value that should be replaced with the value from the field it is
+  being used with, e.g. in a filter clause.)
+
+  For example when filtering by minute it is important both F and V are bucketed as minutes, and thus both most have
+  the same unit."
   [f v]
   (qputil/normalize-token (core/or (:datetime-unit f)
                                    (:unit f)
                                    (:unit v))))
 
-(s/defn ^:private value :- i/AnyValue
+(s/defn ^:deprecated ^:private value :- i/AnyValue
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
   (cond
@@ -108,14 +108,14 @@
     (instance? RelativeDateTimeValue v) v
     (instance? DateTimeValue v)         v
     (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
-    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
+    (instance? DateTimeField f)         (i/map->DateTimeValue {:value (du/->Timestamp v), :field f})
     (instance? FieldLiteral f)          (if (isa? (:base-type f) :type/DateTime)
-                                          (i/map->DateTimeValue {:value (u/->Timestamp v)
+                                          (i/map->DateTimeValue {:value (du/->Timestamp v)
                                                                  :field (i/map->DateTimeField {:field f :unit :default})})
                                           (i/map->Value {:value v, :field f}))
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
-(s/defn ^:private field-or-value
+(s/defn ^:deprecated ^:private field-or-value
   "Use instead of `value` when something may be either a field or a value."
   [f v]
 
@@ -124,7 +124,7 @@
     v
     (value f v)))
 
-(s/defn ^:ql relative-datetime :- RelativeDatetime
+(s/defn ^:deprecated ^:ql relative-datetime :- RelativeDatetime
   "Value that represents a point in time relative to each moment the query is ran, e.g. \"today\" or \"1 year ago\".
 
    With `:current` as the only arg, refer to the current point in time; otherwise N is some number and UNIT is a unit
@@ -138,7 +138,7 @@
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (qputil/normalize-token unit))})))
 
-(s/defn ^:ql expression :- ExpressionRef
+(s/defn ^:deprecated ^:ql expression :- ExpressionRef
   {:added "0.17.0"}
   [expression-name :- su/KeywordOrString]
   (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
@@ -146,7 +146,7 @@
 
 ;;; ## aggregation
 
-(defn- field-or-expression [f]
+(defn- ^:deprecated field-or-expression [f]
   (if (instance? Expression f)
     ;; recursively call field-or-expression on all the args inside the expression unless they're numbers
     ;; plain numbers are always assumed to be numeric literals here; you must use MBQL '98 `:field-id` syntax to refer
@@ -158,49 +158,45 @@
     ;; otherwise if it's not an Expression it's a Field
     (field f)))
 
-(s/defn ^:private ag-with-field :- i/Aggregation [ag-type f]
+(s/defn ^:deprecated ^:private ag-with-field :- i/Aggregation [ag-type f]
   (i/map->AggregationWithField {:aggregation-type ag-type, :field (field-or-expression f)}))
 
-(def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
-(def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
-(def ^:ql ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
-(def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
-(def ^:ql ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
-(def ^:ql ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
+(def ^:ql ^:deprecated ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
+(def ^:ql ^:deprecated ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
+(def ^:ql ^:deprecated ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
+(def ^:ql ^:deprecated ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
+(def ^:ql ^:deprecated ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
+(def ^:ql ^:deprecated ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
 
-(defn ^:ql stddev
+(defn ^:deprecated ^:ql stddev
   "Aggregation clause. Return the standard deviation of values of F.
    Requires the feature `:standard-deviation-aggregations`."
   [f]
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
-(s/defn ^:ql count :- i/Aggregation
+(s/defn ^:deprecated ^:ql count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
   ([]  (i/map->AggregationWithoutField {:aggregation-type :count}))
   ([f] (ag-with-field :count f)))
 
-(s/defn ^:ql cum-count :- i/Aggregation
+(s/defn ^:deprecated ^:ql cum-count :- i/Aggregation
   "Aggregation clause. Return the cumulative row count (presumably broken out in some way)."
-  []
-  (i/map->AggregationWithoutField {:aggregation-type :cumulative-count}))
+  ([]
+   (i/map->AggregationWithoutField {:aggregation-type :cumulative-count}))
+  ([f] (ag-with-field :cumulative-count f)))
 
-(defn ^:ql ^:deprecated rows
-  "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
-  []
-  (log/warn (u/format-color 'yellow "Specifying :rows as the aggregation type is deprecated in MBQL '98. This is the default behavior, so you don't need to specify it.")))
-
-(s/defn ^:ql aggregation
+(s/defn ^:deprecated ^:ql aggregation
   "Specify the aggregation to be performed for this query.
 
      (aggregation {} (count 100))
      (aggregation {} :count 100))"
   ;; Handle ag field references like [:aggregation 0] (deprecated)
   ([index :- s/Int]
-   (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
-   (aggregate-field index))
+   (i/map->AgFieldRef {:index index}))
 
-  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps
+  ;; (multiple aggregations)
   ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
    (cond
      (map? ag-or-ags)  (recur query [ag-or-ags])
@@ -220,23 +216,24 @@
 
 ;;; ## breakout & fields
 
-(s/defn ^:ql binning-strategy :- FieldPlaceholder
-  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
-  ([f strategy-name & [strategy-param]]
+(s/defn ^:deprecated ^:ql binning-strategy :- (s/cond-pre FieldPlaceholder FieldLiteral)
+  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and
+  `STRATEGY-PARAM`"
+  ([f strategy-name & [strategy-param resolved-options]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
-     (assoc field :binning-strategy strategy, :binning-param strategy-param))))
+     (assoc field :binning-strategy strategy, :binning-param strategy-param, :binning-opts resolved-options))))
 
-(defn- fields-list-clause
-  ([k query] query)
+(defn- ^:deprecated fields-list-clause
+  ([_ query] query)
   ([k query & fields] (assoc query k (mapv field fields))))
 
-(def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
-(def ^:ql ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
+(def ^:ql ^:deprecated ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
+(def ^:ql ^:deprecated ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
 
 ;;; ## filter
 
-(s/defn ^:private compound-filter :- i/Filter
+(s/defn ^:deprecated ^:private compound-filter :- i/Filter
   ([compound-type, subclause :- i/Filter]
    (log/warn (u/format-color 'yellow "You shouldn't specify an %s filter with only one subclause." compound-type))
    subclause)
@@ -244,17 +241,17 @@
   ([compound-type, subclause :- i/Filter, & more :- [i/Filter]]
    (i/map->CompoundFilter {:compound-type compound-type, :subclauses (vec (cons subclause more))})))
 
-(def ^:ql ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
-(def ^:ql ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
+(def ^:ql ^:deprecated ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
+(def ^:ql ^:deprecated ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
 
-(s/defn ^:private equality-filter :- i/Filter
+(s/defn ^:deprecated ^:private equality-filter :- i/Filter
   ([filter-type _ f v]
    (i/map->EqualityFilter {:filter-type filter-type, :field (field f), :value (field-or-value f v)}))
   ([filter-type compound-fn f v & more]
    (apply compound-fn (for [v (cons v more)]
                         (equality-filter filter-type compound-fn f v)))))
 
-(def ^:ql ^{:arglists '([f v & more])} =
+(def ^:ql ^:deprecated ^{:arglists '([f v & more])} =
   "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F
   matches *any* of the values (i.e.`IN`)
 
@@ -262,7 +259,7 @@
      (= f v1 v2) ; same as (or (= f v1) (= f v2))"
   (partial equality-filter := or))
 
-(def ^:ql ^{:arglists '([f v & more])} !=
+(def ^:ql ^:deprecated ^{:arglists '([f v & more])} !=
   "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F
   does not match *any* of the values (i.e. `NOT IN`)
 
@@ -270,31 +267,31 @@
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
   (partial equality-filter :!= and))
 
-(defn ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil)) ; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
-(defn ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil)) ; not-null is doubly unnecessary since you could just use `not` instead.
+(defn ^:deprecated ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil)) ; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
+(defn ^:deprecated ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil)) ; not-null is doubly unnecessary since you could just use `not` instead.
 
-(s/defn ^:private comparison-filter :- ComparisonFilter [filter-type f v]
+(s/defn ^:deprecated ^:private comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
 
-(def ^:ql ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
-(def ^:ql ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
-(def ^:ql ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
-(def ^:ql ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
+(def ^:ql ^:deprecated ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
 
-(s/defn ^:ql between :- BetweenFilter
+(s/defn ^:deprecated ^:ql between :- BetweenFilter
   "Filter subclause. Return results where F is between MIN and MAX. MIN and MAX must be orderable, i.e. numbers or datetimes.
    This behaves like SQL `BETWEEN`, i.e. MIN and MAX are inclusive."
   [f min-val max-val]
   (i/map->BetweenFilter {:filter-type :between, :field (field f), :min-val (value f min-val), :max-val (value f max-val)}))
 
-(s/defn ^:ql inside :- CompoundFilter
+(s/defn ^:deprecated ^:ql inside :- CompoundFilter
   "Filter subclause for geo bounding. Return results where LAT-FIELD and LON-FIELD are between some set of bounding values."
   [lat-field lon-field lat-max lon-min lat-min lon-max]
   (and (between lat-field lat-min lat-max)
        (between lon-field lon-min lon-max)))
 
 
-(s/defn ^:private string-filter :- StringFilter
+(s/defn ^:deprecated ^:private string-filter :- StringFilter
   "String search filter clauses: `contains`, `starts-with`, and `ends-with`. First shipped in `0.11.0` (before initial
   public release) but only supported case-sensitive searches. In `0.29.0` support for case-insensitive searches was
   added. For backwards-compatibility, and to avoid possible performance implications, case-sensitive is the default
@@ -310,25 +307,25 @@
     {:filter-type     filter-type
      :field           (field f)
      :value           (value f s)
-     :case-sensitive? (qputil/get-normalized options-map :case-sensitive true)})))
+     :case-sensitive? (get options-map :case-sensitive true)})))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} starts-with
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} starts-with
   "Filter subclause. Return results where F starts with the string S. By default, is case-sensitive, but you may pass an
   `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :starts-with))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} contains
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} contains
   "Filter subclause. Return results where F contains the string S. By default, is case-sensitive, but you may pass an
   `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :contains))
 
-(def ^:ql ^{:arglists '([f s] [f s options-map])} ends-with
+(def ^:ql ^:deprecated ^{:arglists '([f s] [f s options-map])} ends-with
   "Filter subclause. Return results where F ends with with the string S. By default, is case-sensitive, but you may pass
   an `options-map` with `{:case-sensitive false}` for case-insensitive searches."
   (partial string-filter :ends-with))
 
 
-(s/defn ^:ql not :- i/Filter
+(s/defn ^:deprecated ^:ql not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
 
    For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler,
@@ -356,11 +353,11 @@
                             (> field max-val)))
              (i/strict-map->NotFilter {:compound-type :not, :subclause clause})))))
 
-(def ^:ql ^{:arglists '([f s]), :added "0.15.0"} does-not-contain
+(def ^:ql ^:deprecated ^{:arglists '([f s]), :added "0.15.0"} does-not-contain
   "Filter subclause. Return results where F does not start with the string S."
   (comp not contains))
 
-(s/defn ^:ql time-interval :- i/Filter
+(s/defn ^:deprecated ^:ql time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
 
  Optionally accepts a map of `options`. The following options are currently implemented:
@@ -381,7 +378,7 @@
       :last    (recur f -1 unit options)
       :next    (recur f  1 unit options))
     (let [f                (datetime-field f unit)
-          include-current? (qputil/get-normalized options :include-current)]
+          include-current? (:include-current options)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime  0 unit)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
@@ -391,7 +388,7 @@
         (core/> n  1) (between f (value f (relative-datetime (if include-current? 0  1) unit))
                                  (value f (relative-datetime                          n unit)))))))
 
-(s/defn ^:ql filter
+(s/defn ^:deprecated ^:ql filter
   "Filter the results returned by the query.
 
      (filter {} := 100 true) ; return rows where Field 100 == true"
@@ -400,7 +397,7 @@
     (assoc query :filter filter-map)
     query))
 
-(s/defn ^:ql limit
+(s/defn ^:deprecated ^:ql limit
   "Limit the number of results returned by the query.
 
      (limit {} 10)"
@@ -412,7 +409,7 @@
 
 ;;; ## order-by
 
-(s/defn ^:private order-by-subclause :- i/OrderBy
+(s/defn ^:deprecated ^:private order-by-subclause :- i/OrderBy
   [direction :- i/OrderByDirection, f]
   ;; it's not particularly useful to sort datetime fields with the default `:day` bucketing,
   ;; so specifiy `:default` bucketing to prevent the default of `:day` from being set during resolution.
@@ -424,19 +421,19 @@
                   (update f :datetime-unit (fn [unit]
                                              (core/or unit :default)))))})
 
-(def ^:ql ^{:arglists '([field])} asc
+(def ^:ql ^:deprecated ^{:arglists '([field])} asc
   "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (asc 100))"
   (partial order-by-subclause :ascending))
 
-(def ^:ql ^{:arglists '([field])} desc
+(def ^:ql ^:deprecated ^{:arglists '([field])} desc
   "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (desc 100))"
   (partial order-by-subclause :descending))
 
-(s/defn ^:private maybe-parse-order-by-subclause :- i/OrderBy
+(s/defn ^:deprecated ^:private maybe-parse-order-by-subclause :- i/OrderBy
   [subclause]
   (cond
     (map? subclause)    subclause ; already parsed by `asc` or `desc`
@@ -444,12 +441,12 @@
                           (log/warn (u/format-color 'yellow "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. Prefer [:asc/:desc <field>] instead."))
                           (order-by-subclause (qputil/normalize-token direction) f))))
 
-(defn ^:ql order-by
+(defn ^:deprecated ^:ql order-by
   "Specify how ordering should be done for this query.
 
      (order-by {} (asc 20))        ; order by field 20
      (order-by {} [20 :ascending]) ; order by field 20 (deprecated/legacy syntax)
-     (order-by {} [(aggregate-field 0) :descending]) ; order by the aggregate field (e.g. :count)"
+     (order-by {} [(aggregation 0) :descending]) ; order by the aggregate field (e.g. :count)"
   ([query] query)
   ([query & subclauses]
    (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses))))
@@ -457,7 +454,7 @@
 
 ;;; ## page
 
-(s/defn ^:ql page
+(s/defn ^:deprecated ^:ql page
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
@@ -468,7 +465,7 @@
 
 ;;; ## source-table
 
-(s/defn ^:ql source-table
+(s/defn ^:deprecated ^:ql source-table
   "Specify the ID of the table to query.
    Queries must specify *either* `:source-table` or `:source-query`.
 
@@ -478,7 +475,7 @@
 
 (declare expand-inner)
 
-(s/defn ^:ql source-query
+(s/defn ^:deprecated ^:ql source-query
   "Specify a query to use as the source for this query (e.g., as a `SUBSELECT`).
    Queries must specify *either* `:source-table` or `:source-query`.
 
@@ -493,23 +490,23 @@
 
 ;;; ## calculated columns
 
-(s/defn ^:ql expressions
+(s/defn ^:deprecated ^:ql expressions
   "Top-level clause. Add additional calculated fields to a query."
   {:added "0.17.0"}
   [query, m :- {s/Keyword Expression}]
   (assoc query :expressions m))
 
-(s/defn ^:private expression-fn :- Expression
+(s/defn ^:deprecated ^:private expression-fn :- Expression
   [k :- s/Keyword, & args]
   (i/map->Expression {:operator k, :args (vec (for [arg args]
                                                 (if (number? arg)
                                                   (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
                                                   arg)))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^:deprecated ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
 ;;; Metric & Segment handlers
 
@@ -518,8 +515,8 @@
 ;; consist of custom `metric` and `segment` clauses we need to at least accept them without barfing so we can expand a
 ;; query in order to check what permissions it requires.  TODO - in the future, we should just make these functions
 ;; expand Metric and Segment macros for consistency with the rest of the MBQL clauses
-(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
-(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
+(defn ^:deprecated ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
+(defn ^:deprecated ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -533,7 +530,7 @@
                  :when       (:ql (meta varr))]
              {(keyword symb) varr})))
 
-(defn- fn-for-token
+(defn- ^:deprecated fn-for-token
   "Return fn var that matches a token, or throw an exception.
 
      (fn-for-token :starts-with) -> #'starts-with"
@@ -542,7 +539,7 @@
     (core/or (token->ql-fn token)
              (throw (Exception. (str "Illegal clause (no matching fn found): " token))))))
 
-(s/defn expand-ql-sexpr
+(s/defn ^:deprecated expand-ql-sexpr
   "Expand a QL bracketed S-expression by dispatching to the appropriate `^:ql` function. If SEXPR is not a QL
    S-expression (the first item isn't a token), it is returned as-is.
 
@@ -553,7 +550,7 @@
     (apply (fn-for-token token) args)
     sexpr))
 
-(defn- walk-expand-ql-sexprs
+(defn ^:deprecated walk-expand-ql-sexprs
   "Walk QUERY depth-first and expand QL bracketed S-expressions."
   [x]
   (cond (map? x)        (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the original class,
@@ -562,7 +559,7 @@
         :else           x))
 
 
-(s/defn expand-inner :- i/Query
+(s/defn ^:deprecated expand-inner :- i/Query
   "Expand an inner query map."
   [inner-query :- (s/pred map?)]
   (loop [query {}, [[clause-name arg] & more] (seq inner-query)]
@@ -577,7 +574,7 @@
         (recur query more)
         query))))
 
-(defn expand
+(defn ^:deprecated expand
   "Expand a query dictionary as it comes in from the API and return an \"expanded\" form, (almost) ready for use by
    the Query Processor. This includes steps like token normalization and function dispatch.
 
@@ -594,7 +591,7 @@
   [outer-query]
   (update outer-query :query expand-inner))
 
-(defn expand-middleware
+(defn ^:deprecated expand-middleware
   "Wraps `expand` in a query-processor middleware function"
   [qp]
   (fn [query]
@@ -602,21 +599,12 @@
           (expand query)
           query))))
 
-(defmacro query
-  "Build a query by threading an (initially empty) map through each form in BODY with `->`.
-   The final result is validated against the `Query` schema."
-  {:style/indent 0}
-  [& body]
-  `(-> {}
-       ~@body
-       expand-inner))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                OTHER HELPER FNS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn is-clause?
+(defn ^:deprecated ^:deprecated is-clause?
   "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
 
      (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"

@@ -11,7 +11,6 @@ import { DEFAULT_DRILLS } from "../drill";
 
 import PivotByCategoryAction from "../actions/PivotByCategoryAction";
 import PivotByLocationAction from "../actions/PivotByLocationAction";
-import XRayCard from "../actions/XRayCard";
 
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
@@ -44,12 +43,7 @@ export const TimeseriesModeFooter = (props: Props) => {
 
 const TimeseriesMode: QueryMode = {
   name: "timeseries",
-  actions: [
-    PivotByCategoryAction,
-    PivotByLocationAction,
-    XRayCard,
-    ...DEFAULT_ACTIONS,
-  ],
+  actions: [PivotByCategoryAction, PivotByLocationAction, ...DEFAULT_ACTIONS],
   drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
   ModeFooter: TimeseriesModeFooter,
 };

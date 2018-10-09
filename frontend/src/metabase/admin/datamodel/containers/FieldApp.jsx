@@ -11,7 +11,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { t } from "c-3po";
 import Icon from "metabase/components/Icon";
-import Input from "metabase/components/Input";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Select from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -38,14 +38,8 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 
 import { rescanFieldValues, discardFieldValues } from "../field";
 
-const HAS_FIELD_VALUES_OPTIONS = [
-  { name: t`Search box`, value: "search" },
-  { name: t`A list of all values`, value: "list" },
-  { name: t`Plain input box`, value: "none" },
-];
-
-const SelectClasses =
-  "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
+import { has_field_values_options } from "metabase/lib/core";
+import colors from "metabase/lib/colors";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -206,17 +200,17 @@ export default class FieldApp extends Component {
                   title={t`Visibility`}
                   description={t`Where this field will appear throughout Metabase`}
                 />
-                <FieldVisibilityPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                />
+                <div style={{ maxWidth: 400 }}>
+                  <FieldVisibilityPicker
+                    field={field.getPlainObject()}
+                    updateField={this.onUpdateField}
+                  />
+                </div>
               </Section>
 
               <Section>
-                <SectionHeader title={t`Type`} />
+                <SectionHeader title={t`Field Type`} />
                 <SpecialTypeAndTargetPicker
-                  triggerClasses={SelectClasses}
                   field={field.getPlainObject()}
                   updateField={this.onUpdateField}
                   idfields={idfields}
@@ -230,8 +224,7 @@ export default class FieldApp extends Component {
                   description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
                 />
                 <Select
-                  triggerClasses={SelectClasses}
-                  value={_.findWhere(HAS_FIELD_VALUES_OPTIONS, {
+                  value={_.findWhere(has_field_values_options, {
                     value: field.has_field_values,
                   })}
                   onChange={option =>
@@ -239,7 +232,7 @@ export default class FieldApp extends Component {
                       has_field_values: option.value,
                     })
                   }
-                  options={HAS_FIELD_VALUES_OPTIONS}
+                  options={has_field_values_options}
                 />
               </Section>
 
@@ -280,14 +273,14 @@ export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
-    style={{ backgroundColor: "#8091AB" }}
+    style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>
 );
 
 const SelectSeparator = () => (
-  <Icon name="chevronright" size={12} className="mx2 text-grey-3" />
+  <Icon name="chevronright" size={12} className="mx2 text-medium" />
 );
 
 export class FieldHeader extends Component {
@@ -324,13 +317,13 @@ export class FieldHeader extends Component {
   render() {
     return (
       <div>
-        <Input
-          className="h1 AdminInput bordered rounded border-dark block mb1"
+        <InputBlurChange
+          className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
-        <Input
+        <InputBlurChange
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}
@@ -453,7 +446,7 @@ export class FieldValueMapping extends Component {
     return (
       <div className="flex align-center">
         <h3>{original}</h3>
-        <Input
+        <InputBlurChange
           className="AdminInput input ml-auto"
           value={mapped}
           onChange={this.onInputChange}
@@ -465,17 +458,13 @@ export class FieldValueMapping extends Component {
 }
 
 export const Section = ({ children }) => (
-  <section className="my3">{children}</section>
+  <section className="my4 pb4 border-bottom">{children}</section>
 );
 
 export const SectionHeader = ({ title, description }) => (
-  <div className="border-bottom py2 mb2">
-    <h2 className="text-italic">{title}</h2>
-    {description && (
-      <p className="mb0 text-grey-4 mt1 text-paragraph text-measure">
-        {description}
-      </p>
-    )}
+  <div className="mb2">
+    <h4>{title}</h4>
+    {description && <p className="mb0 text-medium mt1">{description}</p>}
   </div>
 );
 
@@ -496,11 +485,19 @@ export class FieldRemapping extends Component {
   }
 
   getMappingTypeForField = field => {
-    if (this.state.isChoosingInitialFkTarget) return MAP_OPTIONS.foreign;
+    if (this.state.isChoosingInitialFkTarget) {
+      return MAP_OPTIONS.foreign;
+    }
 
-    if (_.isEmpty(field.dimensions)) return MAP_OPTIONS.original;
-    if (field.dimensions.type === "external") return MAP_OPTIONS.foreign;
-    if (field.dimensions.type === "internal") return MAP_OPTIONS.custom;
+    if (_.isEmpty(field.dimensions)) {
+      return MAP_OPTIONS.original;
+    }
+    if (field.dimensions.type === "external") {
+      return MAP_OPTIONS.foreign;
+    }
+    if (field.dimensions.type === "internal") {
+      return MAP_OPTIONS.custom;
+    }
 
     throw new Error(t`Unrecognized mapping type`);
   };
@@ -699,7 +696,6 @@ export class FieldRemapping extends Component {
           description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
         />
         <Select
-          triggerClasses={SelectClasses}
           value={mappingType}
           onChange={this.onSetMappingType}
           options={this.getAvailableMappingTypes()}
@@ -711,18 +707,15 @@ export class FieldRemapping extends Component {
             triggerElement={
               <SelectButton
                 hasValue={hasFKMappingValue}
-                className={cx(
-                  "flex inline-block no-decoration h3 p2 shadowed",
-                  {
-                    "border-error": dismissedInitialFkTargetPopover,
-                    "border-dark": !dismissedInitialFkTargetPopover,
-                  },
-                )}
+                className={cx("flex inline-block no-decoration", {
+                  "border-error": dismissedInitialFkTargetPopover,
+                  "border-dark": !dismissedInitialFkTargetPopover,
+                })}
               >
                 {fkMappingField ? (
                   fkMappingField.display_name
                 ) : (
-                  <span className="text-grey-1">{t`Choose a field`}</span>
+                  <span className="text-medium">{t`Choose a field`}</span>
                 )}
               </SelectButton>
             }
@@ -763,7 +756,7 @@ export class FieldRemapping extends Component {
 
 export const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip:`}</span>
+    <span className="text-brand text-bold">{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );

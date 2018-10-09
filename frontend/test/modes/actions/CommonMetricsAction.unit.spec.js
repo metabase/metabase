@@ -12,14 +12,14 @@ import { assocIn } from "icepick";
 
 const question0Metrics = makeQuestion((card, state) => ({
   card,
-  state: assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "metrics"], []),
+  state: assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "metrics"], []),
 }));
 const question1Metrics = makeQuestion();
 const question6Metrics = makeQuestion((card, state) => ({
   card,
   state: assocIn(
     state,
-    ["metadata", "tables", ORDERS_TABLE_ID, "metrics"],
+    ["entities", "tables", ORDERS_TABLE_ID, "metrics"],
     [
       MAIN_METRIC_ID,
       MAIN_METRIC_ID,
@@ -46,8 +46,8 @@ describe("CommonMetricsAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: ORDERS_TABLE_ID,
-      aggregation: [["METRIC", MAIN_METRIC_ID]],
+      "source-table": ORDERS_TABLE_ID,
+      aggregation: [["metric", MAIN_METRIC_ID]],
     });
     expect(newCard.display).toEqual("scalar");
   });

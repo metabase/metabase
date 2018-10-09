@@ -1,5 +1,6 @@
 /*global ace*/
-/* eslint "import/no-commonjs": 0 */
+/* eslint-disable import/no-commonjs */
+/* eslint-disable no-color-literals */
 ace.define(
   "ace/theme/metabase",
   ["require", "exports", "module", "ace/lib/dom"],
@@ -105,7 +106,7 @@ background: #e8e8e8;\
 background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==") right repeat-y;\
 }';
 
-    var dom = require("../lib/dom");
+    let dom = require("../lib/dom");
     dom.importCssString(exports.cssText, exports.cssClass);
   },
 );

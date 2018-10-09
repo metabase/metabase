@@ -26,13 +26,13 @@
      :dependent_on_id    (u/get-id segment-2)}}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
-                                            :query    {:source_table (data/id :categories)
-                                                       :filter       ["AND"
-                                                                      ["="
+                                            :query    {:source-table (data/id :categories)
+                                                       :filter       [:and
+                                                                      [:=
                                                                        (data/id :categories :name)
                                                                        "Toucan-friendly"]
-                                                                      ["SEGMENT" (u/get-id segment-1)]
-                                                                      ["SEGMENT" (u/get-id segment-2)]]}}}]
+                                                                      [:segment (u/get-id segment-1)]
+                                                                      [:segment (u/get-id segment-2)]]}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
     (set (map (partial into {})
@@ -44,7 +44,7 @@
   []
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
-                                            :query    {:source_table (data/id :categories)}}}]
+                                            :query    {:source-table (data/id :categories)}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
     (db/select [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (u/get-id card))))
@@ -59,10 +59,10 @@
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
-                                            :definition {:aggregation ["count"]
-                                                         :filter      ["AND"
-                                                                       ["SEGMENT" (u/get-id segment-1)]
-                                                                       ["SEGMENT" (u/get-id segment-2)]]}}]]
+                                            :definition {:aggregation [[:count]]
+                                                         :filter      [:and
+                                                                       [:segment (u/get-id segment-1)]
+                                                                       [:segment (u/get-id segment-2)]]}}]]
     (process-dependencies-event {:topic :metric-create
                                  :item  metric})
     (set (map (partial into {})
@@ -81,8 +81,8 @@
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
                                                          :filter      ["AND"
-                                                                       ["SEGMENT" (u/get-id segment-1)]
-                                                                       ["SEGMENT" (u/get-id segment-2)]]}}]]
+                                                                       ["segment" (u/get-id segment-1)]
+                                                                       ["segment" (u/get-id segment-2)]]}}]]
     (process-dependencies-event {:topic :metric-update
                                  :item  metric})
     (set (map (partial into {})

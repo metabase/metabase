@@ -45,8 +45,8 @@ export function isObscured(element, offset) {
 
 // get the position of an element on the page
 export function findPosition(element, excludeScroll = false) {
-  var offset = { top: 0, left: 0 };
-  var scroll = { top: 0, left: 0 };
+  let offset = { top: 0, left: 0 };
+  let scroll = { top: 0, left: 0 };
   let offsetParent = element;
   while (offsetParent) {
     // we need to check every element for scrollTop/scrollLeft
@@ -173,7 +173,7 @@ function getTextNodeAtPosition(root, index) {
       return NodeFilter.FILTER_ACCEPT;
     },
   );
-  var c = treeWalker.nextNode();
+  let c = treeWalker.nextNode();
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -181,9 +181,9 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-var STYLE_SHEET = (function() {
+let STYLE_SHEET = (function() {
   // Create the <style> tag
-  var style = document.createElement("style");
+  let style = document.createElement("style");
 
   // WebKit hack :(
   style.appendChild(document.createTextNode("/* dynamic stylesheet */"));

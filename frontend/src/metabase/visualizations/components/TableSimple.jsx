@@ -3,18 +3,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+
 import styles from "./Table.css";
-import { t } from "c-3po";
+
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import MiniBar from "./MiniBar";
 
-import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
+import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -33,7 +37,7 @@ type State = {
   sortDescending: boolean,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableSimple extends Component {
   props: Props;
   state: State;
@@ -90,8 +94,10 @@ export default class TableSimple extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       isPivoted,
+      settings,
     } = this.props;
     const { rows, cols } = data;
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 
@@ -147,7 +153,10 @@ export default class TableSimple extends Component {
                             marginRight: 3,
                           }}
                         />
-                        <Ellipsified>{formatColumn(col)}</Ellipsified>
+                        <Ellipsified>
+                          {settings.column(col).column_title ||
+                            formatColumn(col)}
+                        </Ellipsified>
                       </div>
                     </th>
                   ))}
@@ -156,7 +165,7 @@ export default class TableSimple extends Component {
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {rows[rowIndex].map((cell, columnIndex) => {
+                    {rows[rowIndex].map((value, columnIndex) => {
                       const clicked = getTableCellClickedObject(
                         data,
                         rowIndex,
@@ -166,10 +175,20 @@ export default class TableSimple extends Component {
                       const isClickable =
                         onVisualizationClick &&
                         visualizationIsClickable(clicked);
+                      const columnSettings = settings.column(cols[columnIndex]);
                       return (
                         <td
                           key={columnIndex}
-                          style={{ whiteSpace: "nowrap" }}
+                          style={{
+                            whiteSpace: "nowrap",
+                            backgroundColor:
+                              getCellBackgroundColor &&
+                              getCellBackgroundColor(
+                                value,
+                                rowIndex,
+                                cols[columnIndex].name,
+                              ),
+                          }}
                           className={cx("px1 border-bottom", {
                             "text-right": isColumnRightAligned(
                               cols[columnIndex],
@@ -191,12 +210,25 @@ export default class TableSimple extends Component {
                                 : undefined
                             }
                           >
-                            {cell == null
-                              ? "-"
-                              : formatValue(cell, {
-                                  column: cols[columnIndex],
-                                  jsx: true,
-                                })}
+                            {value == null ? (
+                              "-"
+                            ) : columnSettings["show_mini_bar"] ? (
+                              <MiniBar
+                                value={value}
+                                options={columnSettings}
+                                extent={getColumnExtent(
+                                  cols,
+                                  rows,
+                                  columnIndex,
+                                )}
+                              />
+                            ) : (
+                              formatValue(value, {
+                                ...columnSettings,
+                                jsx: true,
+                                rich: true,
+                              })
+                            )}
                           </span>
                         </td>
                       );

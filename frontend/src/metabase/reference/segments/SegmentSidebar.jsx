@@ -45,12 +45,6 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         name={t`X-ray this segment`}
       />
 
-      <SidebarItem
-        key={`/xray/segment/${segment.id}/approximate`}
-        href={`/xray/segment/${segment.id}/approximate`}
-        icon="all"
-        name={t`See an in-depth analysis`}
-      />
       {user &&
         user.is_superuser && (
           <SidebarItem

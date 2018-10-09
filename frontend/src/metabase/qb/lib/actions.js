@@ -16,16 +16,22 @@ import {
   isState,
   isCountry,
   isCoordinate,
+  isNumber,
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
+import type { FieldId } from "metabase/meta/types/Field";
 import type {
   StructuredQuery,
   FieldFilter,
   Breakout,
+  LocalFieldReference,
+  ForeignFieldReference,
+  FieldLiteral,
 } from "metabase/meta/types/Query";
+import type { Column } from "metabase/meta/types/Dataset";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
@@ -45,16 +51,27 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     const newCard = startNewCard(
       "query",
       card.dataset_query.database,
-      query.source_table,
+      query["source-table"],
     );
     newCard.dataset_query.query.filter = query.filter;
     return newCard;
   }
 };
 
-export const getFieldRefFromColumn = (col, fieldId = col.id) => {
-  if (col.fk_field_id != null) {
-    return ["fk->", col.fk_field_id, fieldId];
+export const getFieldRefFromColumn = (
+  column: Column,
+  fieldId?: ?(FieldId | FieldLiteral) = column.id,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
+  if (fieldId == null) {
+    throw new Error(
+      "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
+    );
+  }
+  if (Array.isArray(fieldId)) {
+    // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
+    return fieldId;
+  } else if (column.fk_field_id != null) {
+    return ["fk->", column.fk_field_id, fieldId];
   } else {
     return ["field-id", fieldId];
   }
@@ -88,13 +105,13 @@ export const filter = (card, operator, column, value) => {
   return newCard;
 };
 
-const drillFilter = (card, value, column) => {
+export const drillFilter = (card, value, column) => {
   let filter;
   if (isDate(column)) {
     filter = [
       "=",
       ["datetime-field", getFieldRefFromColumn(column), "as", column.unit],
-      parseTimestamp(value, column.unit).toISOString(),
+      parseTimestamp(value, column.unit).format(),
     ];
   } else {
     const range = rangeForValue(value, column);
@@ -213,6 +230,23 @@ export const breakout = (card, breakout, tableMetadata) => {
     breakout,
   );
   guessVisualization(newCard, tableMetadata);
+  return newCard;
+};
+
+export const distribution = (card, column) => {
+  const breakout = isDate(column)
+    ? ["datetime-field", getFieldRefFromColumn(column), "month"]
+    : isNumber(column)
+      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+      : getFieldRefFromColumn(column);
+
+  const newCard = startNewCard("query");
+  newCard.dataset_query = Utils.copy(card.dataset_query);
+  newCard.dataset_query.query.aggregation = [["count"]];
+  newCard.dataset_query.query.breakout = [breakout];
+  delete newCard.dataset_query.query["order-by"];
+  delete newCard.dataset_query.query.fields;
+  newCard.display = "bar";
   return newCard;
 };
 
@@ -340,7 +374,7 @@ export const pivot = (
     );
   }
 
-  guessVisualization(newCard, tableMetadata);
+  guessVisualization(newCard, tableMetadata, card.display);
 
   return newCard;
 };
@@ -355,7 +389,19 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: Table) => {
+const VISUALIZATIONS_LINE_AREA_BAR = new Set(["bar", "line", "area"]);
+
+// helper to preserve existing display if it's a line/area/bar, otherwise use default
+const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
+  VISUALIZATIONS_LINE_AREA_BAR.has(existingDisplay)
+    ? existingDisplay
+    : defaultDisplay;
+
+const guessVisualization = (
+  card: CardObject,
+  tableMetadata: Table,
+  existingDisplay: ?string = null,
+) => {
   const query = Card.getQuery(card);
   if (!query) {
     return;
@@ -378,21 +424,17 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
       card.visualization_settings["map.type"] = "region";
       card.visualization_settings["map.region"] = "world_countries";
     } else if (isDate(breakoutFields[0])) {
-      card.display = "line";
+      card.display = getLineAreaBarDisplay("line", existingDisplay);
     } else {
-      card.display = "bar";
+      card.display = getLineAreaBarDisplay("bar", existingDisplay);
     }
   } else if (aggregations.length === 1 && breakoutFields.length === 2) {
     if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
       if (isDate(breakoutFields[0])) {
-        card.display = "line";
+        card.display = getLineAreaBarDisplay("line", existingDisplay);
       } else if (_.all(breakoutFields, isCoordinate)) {
         card.display = "map";
-        // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
-        // Currently show a pin map instead of heat map for double coordinate breakout
-        // This way the binning drill-through works in a somewhat acceptable way (although it is designed for heat maps)
-        card.visualization_settings["map.type"] = "pin";
-        // card.visualization_settings["map.type"] = "grid";
+        card.visualization_settings["map.type"] = "grid";
       } else {
         card.display = "bar";
       }

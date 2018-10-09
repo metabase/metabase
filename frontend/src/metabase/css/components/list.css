@@ -4,15 +4,15 @@
 
 .List-section-header .Icon,
 .List-item .List-item-arrow .Icon {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 .List-item .Icon {
-  color: var(--slate-light-color);
+  color: var(--color-text-light);
 }
 
 .List-section-header {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   border: 2px solid transparent; /* so that spacing matches .List-item */
 }
 
@@ -26,7 +26,7 @@
 }
 
 .List-section--expanded .List-section-header .List-section-title {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 .List-section-title {
@@ -42,18 +42,18 @@
 }
 
 .List-item--disabled .List-item-title {
-  color: var(--grey-3);
+  color: var(--color-text-medium);
 }
 
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected {
   background-color: currentColor;
-  border-color: rgba(0, 0, 0, 0.2);
+  border-color: color(var(--color-accent2) alpha(-80%));
   /*color: white;*/
 }
 
 .List-item-title {
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
 }
 
 .List-item:not(.List-item--disabled):hover .List-item-title,

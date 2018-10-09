@@ -26,7 +26,7 @@ export default class Progress extends Component {
 
   static minSize = { width: 3, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
@@ -38,13 +38,13 @@ export default class Progress extends Component {
 
   static settings = {
     "progress.goal": {
-      section: "Display",
+      section: t`Display`,
       title: t`Goal`,
       widget: "number",
       default: 0,
     },
     "progress.color": {
-      section: "Display",
+      section: t`Display`,
       title: t`Color`,
       widget: "color",
       default: normal.green,
@@ -112,6 +112,7 @@ export default class Progress extends Component {
     } = this.props;
     const value: number =
       rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
+    const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 
     const mainColor = settings["progress.color"];
@@ -138,10 +139,7 @@ export default class Progress extends Component {
       barMessage = t`Goal exceeded`;
     }
 
-    const clicked = {
-      value: value,
-      column: cols[0],
-    };
+    const clicked = { value, column };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
@@ -152,11 +150,11 @@ export default class Progress extends Component {
         >
           <div
             ref="container"
-            className="relative text-bold text-grey-4"
+            className="relative text-bold text-medium"
             style={{ height: 20 }}
           >
             <div ref="label" style={{ position: "absolute" }}>
-              {formatValue(value, { comma: true })}
+              {formatValue(value, { column })}
             </div>
           </div>
           <div className="relative" style={{ height: 10, marginBottom: 5 }}>
@@ -206,7 +204,7 @@ export default class Progress extends Component {
           <div className="mt1">
             <span className="float-left">0</span>
             <span className="float-right">{t`Goal ${formatValue(goal, {
-              comma: true,
+              column,
             })}`}</span>
           </div>
         </div>

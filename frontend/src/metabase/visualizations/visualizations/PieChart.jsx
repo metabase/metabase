@@ -12,11 +12,11 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import * as colors from "metabase/lib/colors";
+import colors, { getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -27,7 +27,7 @@ const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = Math.PI / 180 * 1; // 1 degree in radians
-const SLICE_THRESHOLD = 1 / 360; // 1 degree in percentage
+const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
@@ -43,7 +43,7 @@ export default class PieChart extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length === 2;
   }
 
@@ -57,31 +57,70 @@ export default class PieChart extends Component {
   }
 
   static settings = {
-    "pie.dimension": {
-      section: "Data",
+    ...dimensionSetting("pie.dimension", {
+      section: t`Data`,
       title: t`Dimension`,
-      ...dimensionSetting("pie.dimension"),
-    },
-    "pie.metric": {
-      section: "Data",
+    }),
+    ...metricSetting("pie.metric", {
+      section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("pie.metric"),
-    },
+    }),
     "pie.show_legend": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
     },
     "pie.show_legend_perecent": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
     },
     "pie.slice_threshold": {
-      section: "Display",
+      section: t`Display`,
       title: t`Minimum slice percentage`,
       widget: "number",
+      default: SLICE_THRESHOLD * 100,
+    },
+    "pie.colors": {
+      section: t`Display`,
+      title: t`Colors`,
+      widget: "colors",
+      getDefault: (series, settings) =>
+        getColorsForValues(settings["pie._dimensionValues"]),
+      getProps: (series, settings) => ({
+        seriesTitles: settings["pie._dimensionValues"],
+      }),
+      readDependencies: ["pie._dimensionValues"],
+    },
+    // this setting recomputes color assignment using pie.colors as the existing
+    // assignments in case the user previous modified pie.colors and a new value
+    // has appeared. Not ideal because those color values will be missing in the
+    // settings UI
+    "pie._colors": {
+      getValue: (series, settings) =>
+        getColorsForValues(
+          settings["pie._dimensionValues"],
+          settings["pie.colors"],
+        ),
+      readDependencies: ["pie._dimensionValues", "pie.colors"],
+    },
+    "pie._metricIndex": {
+      getValue: ([{ data: { cols } }], settings) =>
+        _.findIndex(cols, col => col.name === settings["pie.metric"]),
+      readDependencies: ["pie.metric"],
+    },
+    "pie._dimensionIndex": {
+      getValue: ([{ data: { cols } }], settings) =>
+        _.findIndex(cols, col => col.name === settings["pie.dimension"]),
+      readDependencies: ["pie.dimension"],
+    },
+    "pie._dimensionValues": {
+      getValue: ([{ data: { rows } }], settings) => {
+        const dimensionIndex = settings["pie._dimensionIndex"];
+        return rows.map(row => row[dimensionIndex]);
+      },
+      readDependencies: ["pie._dimensionIndex"],
     },
   };
 
@@ -108,14 +147,8 @@ export default class PieChart extends Component {
     } = this.props;
 
     const [{ data: { cols, rows } }] = series;
-    const dimensionIndex = _.findIndex(
-      cols,
-      col => col.name === settings["pie.dimension"],
-    );
-    const metricIndex = _.findIndex(
-      cols,
-      col => col.name === settings["pie.metric"],
-    );
+    const dimensionIndex = settings["pie._dimensionIndex"];
+    const metricIndex = settings["pie._metricIndex"];
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
@@ -131,13 +164,8 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    // $FlowFixMe
     let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
-    // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
-    let sliceColors = Object.values(
-      rows.length > 5 ? colors.harmony : colors.normal,
-    );
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
@@ -148,7 +176,7 @@ export default class PieChart extends Component {
         key: row[dimensionIndex],
         value: row[metricIndex],
         percentage: row[metricIndex] / total,
-        color: sliceColors[index % sliceColors.length],
+        color: settings["pie._colors"][row[dimensionIndex]],
       }))
       .partition(d => d.percentage > sliceThreshold)
       .value();
@@ -161,7 +189,7 @@ export default class PieChart extends Component {
           key: "Other",
           value: otherTotal,
           percentage: otherTotal / total,
-          color: "gray",
+          color: colors["text-light"],
         };
         slices.push(otherSlice);
       }
@@ -170,6 +198,7 @@ export default class PieChart extends Component {
     }
 
     // increase "other" slice so it's barely visible
+    // $FlowFixMe
     if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
       otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
@@ -182,6 +211,16 @@ export default class PieChart extends Component {
     ]);
     let legendColors = slices.map(slice => slice.color);
 
+    // no non-zero slices
+    if (slices.length === 0) {
+      otherSlice = {
+        value: 1,
+        color: colors["text-light"],
+        noHover: true,
+      };
+      slices.push(otherSlice);
+    }
+
     const pie = d3.layout
       .pie()
       .sort(null)
@@ -192,35 +231,45 @@ export default class PieChart extends Component {
       .outerRadius(OUTER_RADIUS)
       .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-    const hoverForIndex = (index, event) => ({
-      index,
-      event: event && event.nativeEvent,
-      data:
-        slices[index] === otherSlice
-          ? others.map(o => ({
-              key: formatDimension(o.key, false),
-              value: formatMetric(o.value, false),
-            }))
-          : [
-              {
-                key: getFriendlyName(cols[dimensionIndex]),
-                value: formatDimension(slices[index].key),
-              },
-              {
-                key: getFriendlyName(cols[metricIndex]),
-                value: formatMetric(slices[index].value),
-              },
-            ].concat(
-              showPercentInTooltip
-                ? [
-                    {
-                      key: "Percentage",
-                      value: formatPercent(slices[index].percentage),
-                    },
-                  ]
-                : [],
-            ),
-    });
+    function hoverForIndex(index, event) {
+      const slice = slices[index];
+      if (!slice || slice.noHover) {
+        return null;
+      } else if (slice === otherSlice) {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: others.map(o => ({
+            key: formatDimension(o.key, false),
+            value: formatMetric(o.value, false),
+          })),
+        };
+      } else {
+        return {
+          index,
+          event: event && event.nativeEvent,
+          data: [
+            {
+              key: getFriendlyName(cols[dimensionIndex]),
+              value: formatDimension(slice.key),
+            },
+            {
+              key: getFriendlyName(cols[metricIndex]),
+              value: formatMetric(slice.value),
+            },
+          ].concat(
+            showPercentInTooltip && slice.percentage != null
+              ? [
+                  {
+                    key: "Percentage",
+                    value: formatPercent(slice.percentage),
+                  },
+                ]
+              : [],
+          ),
+        };
+      }
+    }
 
     let value, title;
     if (

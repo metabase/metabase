@@ -27,7 +27,9 @@ const renderSyntaxTree = (node, index) => (
 );
 
 function nextNonWhitespace(tokens, index) {
-  while (index < tokens.length && /^\s+$/.test(tokens[++index])) {}
+  while (index < tokens.length && /^\s+$/.test(tokens[++index])) {
+    // this block intentionally left blank
+  }
   return tokens[index];
 }
 

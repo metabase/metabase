@@ -55,7 +55,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
   type: "query",
   query: {
-    source_table: null,
+    "source-table": null,
   },
 };
 
@@ -95,7 +95,7 @@ export default class StructuredQuery extends AtomicQuery {
       ...STRUCTURED_QUERY_TEMPLATE,
       database: databaseId || null,
       query: {
-        source_table: tableId || null,
+        "source-table": tableId || null,
       },
     };
 
@@ -175,6 +175,16 @@ export default class StructuredQuery extends AtomicQuery {
     return this._structuredDatasetQuery.query;
   }
 
+  setQuery(query: StructuredQueryObject): StructuredQuery {
+    return this._updateQuery(() => query, []);
+  }
+
+  updateQuery(
+    fn: (q: StructuredQueryObject) => StructuredQueryObject,
+  ): StructuredQuery {
+    return this._updateQuery(fn, []);
+  }
+
   /**
    * @returns a new query with the provided Database set.
    */
@@ -199,7 +209,7 @@ export default class StructuredQuery extends AtomicQuery {
         this._originalQuestion,
         chain(this.datasetQuery())
           .assoc("database", table.database.id)
-          .assocIn(["query", "source_table"], table.id)
+          .assocIn(["query", "source-table"], table.id)
           .value(),
       );
     } else {
@@ -211,7 +221,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the table ID, if a table is selected.
    */
   tableId(): ?TableId {
-    return this.query().source_table;
+    return this.query()["source-table"];
   }
 
   /**
@@ -272,7 +282,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns an array of aggregation options for the currently selected table, excluding the "rows" pseudo-aggregation
+   * @returns an array of aggregation options for the currently selected table
    */
   aggregationOptionsWithoutRows(): AggregationOption[] {
     return this.aggregationOptions().filter(option => option.short !== "rows");
@@ -474,10 +484,11 @@ export default class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns @type {Segment}s that can be used as filters.
-   * TODO: exclude used segments
    */
   filterSegmentOptions(): Segment[] {
-    return this.table().segments.filter(sgmt => sgmt.is_active === true);
+    return this.table().segments.filter(
+      sgmt => sgmt.archived === false && !this.segments().includes(sgmt),
+    );
   }
 
   /**
@@ -488,7 +499,7 @@ export default class StructuredQuery extends AtomicQuery {
       .filter(f => isSegmentFilter(f))
       .map(segmentFilter => {
         // segment id is stored as the second part of the filter clause
-        // e.x. ["SEGMENT", 1]
+        // e.x. ["segment", 1]
         const segmentId = segmentFilter[1];
         return this.metadata().segment(segmentId);
       });
@@ -547,7 +558,7 @@ export default class StructuredQuery extends AtomicQuery {
       const usedFields = new Set(
         this.sorts()
           .filter(b => !_.isEqual(b, sort))
-          .map(b => Q_deprecated.getFieldTargetId(b[0])),
+          .map(b => Q_deprecated.getFieldTargetId(b[1])),
       );
 
       return this.fieldOptions(field => !usedFields.has(field.id));
@@ -582,10 +593,10 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  addSort(order_by: OrderBy) {
+  addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
-  updateSort(index: number, order_by: OrderBy) {
+  updateSort(index: number, orderBy: OrderBy) {
     return this._updateQuery(Q.updateOrderBy, arguments);
   }
   removeSort(index: number) {
@@ -594,8 +605,8 @@ export default class StructuredQuery extends AtomicQuery {
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);
   }
-  replaceSort(order_by: OrderBy) {
-    return this.clearSort().addSort(order_by);
+  replaceSort(orderBy: OrderBy) {
+    return this.clearSort().addSort(orderBy);
   }
 
   // LIMIT
@@ -624,12 +635,24 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeExpression, arguments);
   }
 
-  // FIELD OPTIONS
+  // FIELDS
+  /**
+   * Returns dimension options that can appear in the `fields` clause
+   */
+  fieldsOptions(dimensionFilter = () => true): DimensionOptions {
+    if (this.isBareRows() && this.breakouts().length === 0) {
+      return this.dimensionOptions(dimensionFilter);
+    }
+    // TODO: allow adding fields connected by broken out PKs?
+    return { count: 0, dimensions: [], fks: [] };
+  }
+
+  // DIMENSION OPTIONS
 
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
-  fieldOptions(fieldFilter = () => true): DimensionOptions {
-    const fieldOptions = {
+  dimensionOptions(dimensionFilter = () => true): DimensionOptions {
+    const dimensionOptions = {
       count: 0,
       fks: [],
       dimensions: [],
@@ -637,11 +660,6 @@ export default class StructuredQuery extends AtomicQuery {
 
     const table = this.tableMetadata();
     if (table) {
-      const dimensionFilter = dimension => {
-        const field = dimension.field && dimension.field();
-        return !field || (field.isDimension() && fieldFilter(field));
-      };
-
       const dimensionIsFKReference = dimension =>
         dimension.field && dimension.field() && dimension.field().isFK();
 
@@ -649,8 +667,8 @@ export default class StructuredQuery extends AtomicQuery {
       // .filter(d => !dimensionIsFKReference(d));
 
       for (const dimension of filteredNonFKDimensions) {
-        fieldOptions.count++;
-        fieldOptions.dimensions.push(dimension);
+        dimensionOptions.count++;
+        dimensionOptions.dimensions.push(dimension);
       }
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
@@ -660,8 +678,8 @@ export default class StructuredQuery extends AtomicQuery {
           .filter(dimensionFilter);
 
         if (fkDimensions.length > 0) {
-          fieldOptions.count += fkDimensions.length;
-          fieldOptions.fks.push({
+          dimensionOptions.count += fkDimensions.length;
+          dimensionOptions.fks.push({
             field: dimension.field(),
             dimension: dimension,
             dimensions: fkDimensions,
@@ -670,7 +688,17 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    return fieldOptions;
+    return dimensionOptions;
+  }
+
+  // FIELD OPTIONS
+
+  fieldOptions(fieldFilter = () => true) {
+    const dimensionFilter = dimension => {
+      const field = dimension.field && dimension.field();
+      return !field || (field.isDimension() && fieldFilter(field));
+    };
+    return this.dimensionOptions(dimensionFilter);
   }
 
   // DIMENSIONS

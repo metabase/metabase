@@ -14,20 +14,17 @@ import {
   isState,
   isCountry,
 } from "metabase/lib/schema_metadata";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
   fieldSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 import MetabaseSettings from "metabase/lib/settings";
-
-import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
 
-// NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
-// const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
-const PIN_MAP_TYPES = new Set(["pin"]);
+const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -38,7 +35,7 @@ export default class Map extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return true;
   }
 
@@ -50,9 +47,9 @@ export default class Map extends Component {
         options: [
           { name: t`Region map`, value: "region" },
           { name: t`Pin map`, value: "pin" },
-          // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
+          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
           // { name: "Heat map", value: "heat" },
-          // { name: "Grid map", value: "grid" }
+          { name: "Grid map", value: "grid" },
         ],
       },
       getDefault: ([{ card, data: { cols } }], settings) => {
@@ -63,19 +60,26 @@ export default class Map extends Component {
           case "pin_map":
             return "pin";
           default:
-            // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
             if (hasLatitudeAndLongitudeColumns(cols)) {
-              //     const latitudeColumn = _.findWhere(cols, { name: settings["map.latitude_column"] });
-              //     const longitudeColumn = _.findWhere(cols, { name: settings["map.longitude_column"] });
-              //     if (latitudeColumn && longitudeColumn && latitudeColumn.binning_info && longitudeColumn.binning_info) {
-              //         // lat/lon columns are binned, use grid by default
-              //         return "grid";
-              //     } else if (settings["map.metric_column"]) {
-              //         //
-              //         return "heat";
-              //     } else {
-              return "pin";
-              //     }
+              const latitudeColumn = _.findWhere(cols, {
+                name: settings["map.latitude_column"],
+              });
+              const longitudeColumn = _.findWhere(cols, {
+                name: settings["map.longitude_column"],
+              });
+              if (
+                latitudeColumn &&
+                longitudeColumn &&
+                latitudeColumn.binning_info &&
+                longitudeColumn.binning_info
+              ) {
+                return "grid";
+                // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
+                // } else if (settings["map.metric_column"]) {
+                //   return "heat";
+              } else {
+                return "pin";
+              }
             } else {
               return "region";
             }
@@ -95,9 +99,9 @@ export default class Map extends Component {
         options: [
           { name: t`Tiles`, value: "tiles" },
           { name: t`Markers`, value: "markers" },
-          // NOTE Atte Keinänen 8/2/17: Heat/grid maps disabled in the first merged version of binning
+          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
           // { name: "Heat", value: "heat" },
-          // { name: "Grid", value: "grid" }
+          { name: "Grid", value: "grid" },
         ],
       },
       getDefault: (series, vizSettings) =>
@@ -109,34 +113,29 @@ export default class Map extends Component {
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
-    "map.latitude_column": {
+    ...fieldSetting("map.latitude_column", {
       title: t`Latitude field`,
-      ...fieldSetting(
-        "map.latitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLatitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.longitude_column": {
+    }),
+    ...fieldSetting("map.longitude_column", {
       title: t`Longitude field`,
-      ...fieldSetting(
-        "map.longitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLongitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.metric_column": {
+    }),
+    ...metricSetting("map.metric_column", {
       title: t`Metric field`,
-      ...metricSetting("map.metric_column"),
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
         (vizSettings["map.pin_type"] !== "heat" &&
           vizSettings["map.pin_type"] !== "grid"),
-    },
+    }),
     "map.region": {
       title: t`Region map`,
       widget: "select",
@@ -156,17 +155,15 @@ export default class Map extends Component {
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
-    "map.metric": {
+    ...metricSetting("map.metric", {
       title: t`Metric field`,
-      ...metricSetting("map.metric"),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
-    },
-    "map.dimension": {
+    }),
+    ...dimensionSetting("map.dimension", {
       title: t`Region field`,
       widget: "select",
-      ...dimensionSetting("map.dimension"),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
-    },
+    }),
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},

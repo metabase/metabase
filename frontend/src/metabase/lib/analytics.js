@@ -25,9 +25,9 @@ const MetabaseAnalytics = {
   // track an event
   trackEvent: function(
     category: string,
-    action?: string,
-    label?: string | number | boolean,
-    value?: number,
+    action?: ?string,
+    label?: ?(string | number | boolean),
+    value?: ?number,
   ) {
     const { tag } = MetabaseSettings.get("version");
 
@@ -50,7 +50,7 @@ export function registerAnalyticsClickListener() {
   document.body.addEventListener(
     "click",
     function(e) {
-      var node = e.target;
+      let node = e.target;
 
       // check the target and all parent elements
       while (node) {

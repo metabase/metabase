@@ -9,11 +9,11 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
-  getSettings,
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
@@ -62,23 +62,21 @@ export default class Funnel extends Component {
   }
 
   static settings = {
-    "funnel.dimension": {
-      section: "Data",
+    ...dimensionSetting("funnel.dimension", {
+      section: t`Data`,
       title: t`Step`,
-      ...dimensionSetting("funnel.dimension"),
       dashboard: false,
       useRawSeries: true,
-    },
-    "funnel.metric": {
-      section: "Data",
+    }),
+    ...metricSetting("funnel.metric", {
+      section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("funnel.metric"),
       dashboard: false,
       useRawSeries: true,
-    },
+    }),
     "funnel.type": {
       title: t`Funnel type`,
-      section: "Display",
+      section: t`Display`,
       widget: "select",
       props: {
         options: [
@@ -95,7 +93,7 @@ export default class Funnel extends Component {
   static transformSeries(series) {
     let [{ card, data: { rows, cols } }] = series;
 
-    const settings = getSettings(series);
+    const settings = getComputedSettingsForSeries(series);
 
     const dimensionIndex = _.findIndex(
       cols,
@@ -157,7 +155,6 @@ export default class Funnel extends Component {
           )}
           <LegendHeader
             className="flex-no-shrink"
-            // $FlowFixMe
             series={series._raw || series}
             actionButtons={!hasTitle && actionButtons}
             onChangeCardAndRun={onChangeCardAndRun}

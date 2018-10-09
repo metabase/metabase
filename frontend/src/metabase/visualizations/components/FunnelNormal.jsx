@@ -65,12 +65,11 @@ export default class Funnel extends Component {
         column: cols[metricIndex],
         jsx,
         majorWidth: 0,
-        comma: true,
       });
     const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 
     // Initial infos (required for step calculation)
-    var infos: StepInfo[] = [
+    let infos: StepInfo[] = [
       {
         value: rows[0][metricIndex],
         graph: {
@@ -82,7 +81,7 @@ export default class Funnel extends Component {
       },
     ];
 
-    var remaining: number = rows[0][metricIndex];
+    let remaining: number = rows[0][metricIndex];
 
     rows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];

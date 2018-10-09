@@ -14,7 +14,7 @@ function replaceReferences(str) {
 
 if (process.argv.length !== 4) {
   console.log(
-    "USAGE: build-translation-frontend-resource input.po output.json",
+    "USAGE: build-translation-frontend-resource input.po output.json"
   );
   process.exit(1);
 }

@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import MetabaseSettings from "metabase/lib/settings";
 
 import "leaflet/dist/leaflet.css";
+import "./LeafletMap.css";
+
 import L from "leaflet";
 import "leaflet-draw";
 
@@ -100,6 +102,10 @@ export default class LeafletMap extends Component {
         this.map.fitBounds(bounds);
       }
     }
+  }
+
+  componentWillUnmount() {
+    this.map.remove();
   }
 
   startFilter() {

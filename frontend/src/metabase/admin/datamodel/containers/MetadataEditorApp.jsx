@@ -77,12 +77,12 @@ export default class MetadataEditor extends Component {
   }
 
   render() {
-    var tableMetadata = this.props.databaseMetadata
+    let tableMetadata = this.props.databaseMetadata
       ? _.findWhere(this.props.databaseMetadata.tables, {
           id: this.props.editingTable,
         })
       : null;
-    var content;
+    let content;
     if (tableMetadata) {
       if (this.state.isShowingSchema) {
         content = <MetadataSchema tableMetadata={tableMetadata} />;

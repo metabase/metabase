@@ -14,7 +14,7 @@ const subheadPrefixes = [
   t`What do you want to find out?`,
 ];
 
-var Greeting = {
+const Greeting = {
   simpleGreeting: function() {
     // TODO - this can result in an undefined thing
     const randomIndex = Math.floor(
@@ -25,7 +25,7 @@ var Greeting = {
 
   sayHello: function(personalization) {
     if (personalization) {
-      var g = Greeting.simpleGreeting();
+      let g = Greeting.simpleGreeting();
       if (g === t`How's it going`) {
         return g + ", " + personalization + "?";
       } else {

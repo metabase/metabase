@@ -30,7 +30,7 @@ export default class LegendVertical extends Component {
       this.setState({ overflowCount: 0, size });
     } else if (this.state.overflowCount === 0) {
       let overflowCount = 0;
-      for (var i = 0; i < this.props.titles.length; i++) {
+      for (let i = 0; i < this.props.titles.length; i++) {
         let itemSize = ReactDOM.findDOMNode(
           this.refs["item" + i],
         ).getBoundingClientRect();

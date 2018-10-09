@@ -19,6 +19,7 @@ import HomepageApp from "metabase/home/containers/HomepageApp";
 import { FETCH_ACTIVITY } from "metabase/home/actions";
 import { QUERY_COMPLETED } from "metabase/query_builder/actions";
 
+import { activity as ActivityUrl } from "metabase/lib/urls";
 import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
@@ -46,7 +47,7 @@ describe("HomepageApp", () => {
     it("shows the expected list of activity", async () => {
       const store = await createTestStore();
 
-      store.pushPath("/");
+      store.pushPath(ActivityUrl);
       const homepageApp = mount(store.connectContainer(<HomepageApp />));
       await store.waitForActions([FETCH_ACTIVITY]);
 
@@ -76,7 +77,7 @@ describe("HomepageApp", () => {
     it("shows successfully open QB for a metric when clicking the metric name", async () => {
       const store = await createTestStore();
 
-      store.pushPath("/");
+      store.pushPath(ActivityUrl);
 
       // In this test we have to render the whole app in order to get links work properly
       const app = mount(store.getAppContainer());

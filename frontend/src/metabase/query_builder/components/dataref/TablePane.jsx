@@ -2,14 +2,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
+import cx from "classnames";
+
+// components
 import QueryButton from "metabase/components/QueryButton.jsx";
+import Expandable from "metabase/components/Expandable.jsx";
+
+// lib
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
-import inflection from "inflection";
-import cx from "classnames";
-
-import Expandable from "metabase/components/Expandable.jsx";
+import { inflect } from "metabase/lib/formatting";
 
 export default class TablePane extends Component {
   constructor(props, context) {
@@ -66,9 +69,9 @@ export default class TablePane extends Component {
   render() {
     const { table, error } = this.state;
     if (table) {
-      var queryButton;
+      let queryButton;
       if (table.rows != null) {
-        var text = t`See the raw data for ${table.display_name}`;
+        let text = t`See the raw data for ${table.display_name}`;
         queryButton = (
           <QueryButton
             className="border-bottom border-top mb3"
@@ -78,13 +81,13 @@ export default class TablePane extends Component {
           />
         );
       }
-      var panes = {
+      let panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
         // "segments": table.segments.length,
         connections: this.state.tableForeignKeys.length,
       };
-      var tabs = Object.entries(panes).map(([name, count]) => (
+      let tabs = Object.entries(panes).map(([name, count]) => (
         <a
           key={name}
           className={cx("Button Button--small", {
@@ -93,11 +96,12 @@ export default class TablePane extends Component {
           onClick={this.showPane.bind(null, name)}
         >
           <span className="DataReference-paneCount">{count}</span>
-          <span>{inflection.inflect(name, count)}</span>
+          <span>{inflect(name, count)}</span>
         </a>
       ));
 
-      var pane;
+      let pane;
+      let description;
       if (this.state.pane === "connections") {
         const fkCountsByTable = foreignKeyCountsByOriginTable(
           this.state.tableForeignKeys,
@@ -117,7 +121,7 @@ export default class TablePane extends Component {
                 >
                   {fk.origin.table.display_name}
                   {fkCountsByTable[fk.origin.table.id] > 1 ? (
-                    <span className="text-grey-3 text-light h5">
+                    <span className="text-medium text-light h5">
                       {" "}
                       via {fk.origin.display_name}
                     </span>
@@ -140,12 +144,14 @@ export default class TablePane extends Component {
             ))}
           </ul>
         );
-      } else var descriptionClasses = cx({ "text-grey-3": !table.description });
-      var description = (
-        <p className={descriptionClasses}>
-          {table.description || t`No description set.`}
-        </p>
-      );
+      } else {
+        const descriptionClasses = cx({ "text-medium": !table.description });
+        description = (
+          <p className={descriptionClasses}>
+            {table.description || t`No description set.`}
+          </p>
+        );
+      }
 
       return (
         <div>
@@ -159,7 +165,7 @@ export default class TablePane extends Component {
                 type="metrics"
                 show={this.props.show.bind(null, "metric")}
                 items={table.metrics.filter(
-                  metric => metric.is_active === true,
+                  metric => metric.archived === false,
                 )}
               />
             )}
@@ -170,7 +176,7 @@ export default class TablePane extends Component {
                 type="segments"
                 show={this.props.show.bind(null, "segment")}
                 items={table.segments.filter(
-                  segment => segment.is_active === true,
+                  segment => segment.archived === false,
                 )}
               />
             )}

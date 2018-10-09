@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
 
-import Dashboard from "../components/Dashboard.jsx";
+import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
@@ -27,8 +27,9 @@ import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
-import { archiveDashboard } from "metabase/dashboards/dashboards";
 import { parseHashOptions } from "metabase/lib/browser";
+
+import Dashboards from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -53,7 +54,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
-  archiveDashboard,
+  archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,

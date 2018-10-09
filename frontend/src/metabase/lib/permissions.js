@@ -71,7 +71,7 @@ export function updatePermission(
   } else {
     newValue = value;
   }
-  for (var i = 0; i < fullPath.length; i++) {
+  for (let i = 0; i < fullPath.length; i++) {
     if (typeof getIn(permissions, fullPath.slice(0, i)) === "string") {
       permissions = setIn(permissions, fullPath.slice(0, i), {});
     }
@@ -160,12 +160,12 @@ export function downgradeNativePermissionsIfNeeded(
     currentSchemas === "all" &&
     currentNative === "write"
   ) {
-    // if changing schemas to controlled, downgrade native to read
+    // if changing schemas to controlled, downgrade native to none
     return updateNativePermission(
       permissions,
       groupId,
       { databaseId },
-      "read",
+      "none",
       metadata,
     );
   } else {

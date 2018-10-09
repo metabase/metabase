@@ -5,10 +5,12 @@
             [metabase.api.common :refer [defendpoint define-routes]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
             [ring.util.response :as rr]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.util.i18n :as ui18n])
   (:import org.apache.commons.io.input.ReaderInputStream))
 
 (def ^:private ^:const ^Integer geojson-fetch-timeout-ms
@@ -46,7 +48,7 @@
   (memoize (fn [url-or-resource-path]
              (or (valid-json-url? url-or-resource-path)
                  (valid-json-resource? url-or-resource-path)
-                 (throw (Exception. (str "Invalid JSON URL or resource: " url-or-resource-path)))))))
+                 (throw (Exception. (str (tru "Invalid JSON URL or resource: {0}" url-or-resource-path))))))))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     s/Str
@@ -87,7 +89,7 @@
   [key]
   {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])
-                (throw (ex-info (str "Invalid custom GeoJSON key: " key)
+                (throw (ui18n/ex-info (tru "Invalid custom GeoJSON key: {0}" key)
                          {:status-code 400})))]
     ;; TODO - it would be nice if we could also avoid returning our usual cache-busting headers with the response here
     (-> (rr/response (ReaderInputStream. (io/reader url)))

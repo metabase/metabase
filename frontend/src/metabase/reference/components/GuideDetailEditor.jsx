@@ -142,7 +142,7 @@ const GuideDetailEditor = ({
             />
           )}
         </div>
-        <div className="ml-auto cursor-pointer text-grey-2">
+        <div className="ml-auto cursor-pointer text-light">
           <Tooltip tooltip={t`Remove item`}>
             <Icon name="close" width={16} height={16} onClick={removeField} />
           </Tooltip>

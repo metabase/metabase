@@ -41,7 +41,7 @@ export default class QueryModeButton extends Component {
     } = this.props;
 
     // determine the type to switch to based on the type
-    var targetType = mode === "query" ? "native" : "query";
+    let targetType = mode === "query" ? "native" : "query";
 
     const engine = tableMetadata && tableMetadata.db.engine;
     const nativeQueryName =
@@ -69,7 +69,7 @@ export default class QueryModeButton extends Component {
             data-metabase-event={"QueryBuilder;Toggle Mode"}
             className={cx("cursor-pointer", {
               "text-brand-hover": onClick,
-              "text-grey-1": !onClick,
+              "text-light": !onClick,
             })}
             onClick={onClick}
           >

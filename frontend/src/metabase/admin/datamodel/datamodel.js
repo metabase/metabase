@@ -271,7 +271,9 @@ export const fetchRevisions = createThunkAction(
       dispatch(action),
       RevisionsApi.get({ entity, id }),
     ]);
-    await dispatch(loadTableMetadata(object.payload.definition.source_table));
+    await dispatch(
+      loadTableMetadata(object.payload.definition["source-table"]),
+    );
     return { object: object.payload, revisions };
   },
 );

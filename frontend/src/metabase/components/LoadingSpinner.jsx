@@ -11,7 +11,7 @@ export default class LoadingSpinner extends Component {
   };
 
   render() {
-    var { size, borderWidth, className, spinnerClassName } = this.props;
+    let { size, borderWidth, className, spinnerClassName } = this.props;
     return (
       <div className={className}>
         <div

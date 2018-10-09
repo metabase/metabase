@@ -12,7 +12,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.async :refer [while-with-timeout]]
+            [metabase.util.date :as du]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
             [toucan.db :as db]
@@ -75,7 +75,7 @@
 (expect
   (user->id :rasta)
   (let [session-id (random-session-id)]
-    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (du/new-sql-timestamp))
     (-> (auth-enforced-handler (request-with-session-id session-id))
         :metabase-user-id)))
 
@@ -96,7 +96,7 @@
 ;; NOTE that :trashbird is our INACTIVE test user
 (expect response-unauthentic
   (let [session-id (random-session-id)]
-    (db/simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (du/new-sql-timestamp))
     (auth-enforced-handler (request-with-session-id session-id))))
 
 

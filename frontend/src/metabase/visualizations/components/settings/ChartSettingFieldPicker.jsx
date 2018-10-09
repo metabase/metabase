@@ -5,8 +5,14 @@ import cx from "classnames";
 
 import ChartSettingSelect from "./ChartSettingSelect.jsx";
 
-const ChartSettingFieldPicker = ({ value, options, onChange, onRemove }) => (
-  <div className="flex align-center">
+const ChartSettingFieldPicker = ({
+  value,
+  options,
+  onChange,
+  onRemove,
+  className,
+}) => (
+  <div className={cx(className, "flex align-center")}>
     <ChartSettingSelect
       value={value}
       options={options}
@@ -17,7 +23,7 @@ const ChartSettingFieldPicker = ({ value, options, onChange, onRemove }) => (
     />
     <Icon
       name="close"
-      className={cx("ml1 text-grey-4 text-brand-hover cursor-pointer", {
+      className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
         "disabled hidden": !onRemove,
       })}
       width={12}

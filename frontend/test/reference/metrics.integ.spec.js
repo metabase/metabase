@@ -5,6 +5,7 @@ import {
 
 import React from "react";
 import { mount } from "enzyme";
+import { assocIn } from "icepick";
 
 import { CardApi, MetricApi } from "metabase/services";
 
@@ -21,6 +22,8 @@ import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContai
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 
+// NOTE: database/table_id/source-table are hard-coded, this might be a problem at some point
+
 describe("The Reference Section", () => {
   // Test data
   const metricDef = {
@@ -28,7 +31,7 @@ describe("The Reference Section", () => {
     description: "I did it!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: ["count"] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const anotherMetricDef = {
@@ -36,7 +39,7 @@ describe("The Reference Section", () => {
     description: "I did it again!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: ["count"] } },
+    definition: { aggregation: [["count"]] },
   };
 
   const metricCardDef = {
@@ -44,9 +47,8 @@ describe("The Reference Section", () => {
     display: "scalar",
     dataset_query: {
       database: 1,
-      table_id: 1,
       type: "query",
-      query: { source_table: 1, aggregation: ["metric", 1] },
+      query: { "source-table": 1, aggregation: [["metric", 1]] },
     },
     visualization_settings: {},
   };
@@ -67,12 +69,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Metrics State", async () => {
-      var metricIds = [];
+      let metricIds = [];
 
       beforeAll(async () => {
         // Create some metrics to have something to look at
-        var metric = await MetricApi.create(metricDef);
-        var metric2 = await MetricApi.create(anotherMetricDef);
+        let metric = await MetricApi.create(metricDef);
+        let metric2 = await MetricApi.create(anotherMetricDef);
 
         metricIds.push(metric.id);
         metricIds.push(metric2.id);
@@ -116,10 +118,16 @@ describe("The Reference Section", () => {
       });
 
       it("Should see a newly asked question in its questions list", async () => {
-        var card = await CardApi.create(metricCardDef);
-        expect(card.name).toBe(metricCardDef.name);
-
+        let card;
         try {
+          const cardDef = assocIn(
+            metricCardDef,
+            ["dataset_query", "query", "aggregation", 0, 1],
+            metricIds[0],
+          );
+          card = await CardApi.create(cardDef);
+          expect(card.name).toBe(metricCardDef.name);
+
           // see that there is a new question on the metric's questions page
           const store = await createTestStore();
 
@@ -127,8 +135,10 @@ describe("The Reference Section", () => {
           mount(store.connectContainer(<MetricQuestionsContainer />));
           await store.waitForActions([FETCH_METRICS, FETCH_METRIC_TABLE]);
         } finally {
-          // even if the code above results in an exception, try to delete the question
-          await CardApi.delete({ cardId: card.id });
+          if (card) {
+            // even if the code above results in an exception, try to delete the question
+            await CardApi.delete({ cardId: card.id });
+          }
         }
       });
     });

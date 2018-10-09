@@ -2,6 +2,7 @@
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require [clojure.string :as s]
             [metabase.db.spec :as dbspec]
+            metabase.driver.h2 ; because we import metabase.driver.h2.H2Driver below
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]

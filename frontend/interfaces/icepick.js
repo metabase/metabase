@@ -26,6 +26,10 @@ declare module icepick {
     path: Array<K>,
     value: V,
   ): O;
+  declare function dissocIn<O: Object | Array<any>, K: Key>(
+    object: O,
+    path: Array<K>,
+  ): O;
   declare function updateIn<O: Object | Array<any>, K: Key, V: Value>(
     object: O,
     path: Array<K>,

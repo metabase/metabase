@@ -1,25 +1,29 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
   (:require [clojure.string :as s]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      helpers))
-  (:import honeysql.format.ToSql))
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]])
+  (:import honeysql.format.ToSql
+           java.util.Locale))
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
 
-;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see https://github.com/jkk/honeysql/issues/123
-(alter-meta! #'honeysql.helpers/merge-left-join assoc
-             :arglists '([m & clauses])
-             :style/indent 1)
-
+(defn- english-upper-case
+  "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
+  but always converts the string to upper-case characters in the English locale. Using `clojure.string/upper-case` for
+  table names, like we are using below in the `:h2` `honeysql.format` function can cause issues when the user has
+  changed the locale to a language that has different upper-case characters. Turkish is one example, where `i` gets
+  converted to `İ`. This causes the `SETTING` table to become the `SETTİNG` table, which doesn't exist."
+  [^CharSequence s]
+  (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
 (let [quote-fns     @(resolve 'honeysql.format/quote-fns)
       ansi-quote-fn (:ansi quote-fns)]
   (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :h2 (comp s/upper-case ansi-quote-fn))))
+          (assoc quote-fns :h2 (comp english-upper-case ansi-quote-fn))))
 
 
 ;; `:crate` quote style that correctly quotes nested column identifiers
@@ -45,27 +49,35 @@
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
 
+;; register the function "distinct-count" with HoneySQL
+;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
+(defmethod hformat/fn-handler "distinct-count" [_ field]
+  (str "count(distinct " (hformat/to-sql field) ")"))
 
-;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see https://github.com/jkk/honeysql/pull/122.
-;; However, this broke some of Metabase's behavior, specifically queries with calculated columns with numeric literals --
-;; some SQL databases can't recognize that a calculated field in a SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters.
-;; Go ahead an use the old behavior so we can keep our HoneySQL dependency up to date.
+
+;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
+;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
+;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
+;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
+;; old behavior so we can keep our HoneySQL dependency up to date.
 (extend-protocol honeysql.format/ToSql
   java.lang.Number
   (to-sql [x] (str x)))
 
-;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc.
-;; To handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with lozenges,
-;; let HoneySQL do its thing, then switch them back at the last second
+;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
+;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with
+;; lozenges, let HoneySQL do its thing, then switch them back at the last second
 ;;
-;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type that implements `ToSql` in a more intelligent way
+;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type
+;; that implements `ToSql` in a more intelligent way
 (defn escape-dots
   "Replace dots in a string with WHITE MEDIUM LOZENGES (⬨)."
   ^String [s]
   (s/replace (name s) #"\." "⬨"))
 
 (defn qualify-and-escape-dots
-  "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE MEDIUM LOZENGES (⬨).
+  "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE
+  MEDIUM LOZENGES (⬨).
 
      (qualify-and-escape-dots :ab.c :d) -> :ab⬨c.d"
   ^clojure.lang.Keyword [& name-components]
@@ -86,6 +98,7 @@
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
+  :load-ns true
   ToSql
   (to-sql [_]
     (str \' (name literal) \')))
@@ -93,7 +106,7 @@
 (defn literal
   "Wrap keyword or string S in single quotes and a HoneySQL `raw` form."
   [s]
-  (Literal. s))
+  (Literal. (name s)))
 
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial hsql/call :+))
@@ -135,6 +148,7 @@
 (defn ->timestamp-with-time-zone "CAST X to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
 (defn ->integer                  "CAST X to a `integer`."                  [x] (cast :integer x))
 (defn ->time                     "CAST X to a `time` datatype"             [x] (cast :time x))
+(defn ->boolean                  "CAST X to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))

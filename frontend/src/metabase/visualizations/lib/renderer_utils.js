@@ -124,6 +124,7 @@ export const isTimeseries = settings =>
 export const isQuantitative = settings =>
   ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
 export const isHistogram = settings =>
+  settings["graph.x_axis._scale_original"] === "histogram" ||
   settings["graph.x_axis.scale"] === "histogram";
 export const isOrdinal = settings =>
   !isTimeseries(settings) && !isHistogram(settings);

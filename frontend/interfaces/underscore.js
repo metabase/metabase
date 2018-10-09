@@ -10,6 +10,10 @@ declare module "underscore" {
     list: ?(T[]),
     predicate: (val: T) => boolean,
   ): number;
+  declare function findLastIndex<T>(
+    list: ?(T[]),
+    predicate: (val: T) => boolean,
+  ): number;
 
   declare function clone<T>(obj: T): T;
 

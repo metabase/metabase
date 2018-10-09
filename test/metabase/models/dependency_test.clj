@@ -3,12 +3,13 @@
             [metabase.models.dependency :refer :all]
             [metabase.test.data :refer :all]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]
             [toucan.util.test :as tt]))
 
-(models/defmodel Mock :mock)
+(models/defmodel ^:private Mock :mock)
 
 (extend (class Mock)
   IDependent
@@ -49,12 +50,12 @@
                                  :model_id           4
                                  :dependent_on_model "test"
                                  :dependent_on_id    1
-                                 :created_at         (u/new-sql-timestamp)}]
+                                 :created_at         (du/new-sql-timestamp)}]
                   Dependency [_ {:model              "Mock"
                                  :model_id           4
                                  :dependent_on_model "foobar"
                                  :dependent_on_id    13
-                                 :created_at         (u/new-sql-timestamp)}]]
+                                 :created_at         (du/new-sql-timestamp)}]]
     (format-dependencies (retrieve-dependencies Mock 4))))
 
 
@@ -101,6 +102,6 @@
       :model_id           1
       :dependent_on_model "test"
       :dependent_on_id    5
-      :created_at         (u/new-sql-timestamp))
+      :created_at         (du/new-sql-timestamp))
     (update-dependencies! Mock 1 {:test [1 2]})
     (format-dependencies (db/select Dependency, :model "Mock", :model_id 1))))

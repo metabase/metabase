@@ -54,3 +54,4 @@ coverage-summary.json
 bin/node_modules/
 *.log
 *.trace.db
+/backend-checksums.txt

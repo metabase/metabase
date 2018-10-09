@@ -12,6 +12,7 @@ import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import { t } from "c-3po";
+import colors from "metabase/lib/colors";
 
 const ReferenceHeader = ({
   name,
@@ -24,7 +25,10 @@ const ReferenceHeader = ({
     <div className={cx("relative", L.header)}>
       <div className={L.leftIcons}>
         {headerIcon && (
-          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+          <IconBorder
+            borderWidth="0"
+            style={{ backgroundColor: colors["bg-medium"] }}
+          >
             <Icon
               className="text-brand"
               name={headerIcon}

@@ -13,7 +13,7 @@ export default class TutorialModal extends Component {
       <div className="TutorialModalContent p2">
         <div className="flex">
           <a
-            className="text-grey-4 p1 cursor-pointer flex-align-right"
+            className="text-medium p1 cursor-pointer flex-align-right"
             onClick={this.props.onClose}
           >
             <Icon name="close" size={16} />
@@ -23,14 +23,14 @@ export default class TutorialModal extends Component {
         <div className="flex">
           {showBackButton && (
             <a
-              className="text-grey-4 cursor-pointer"
+              className="text-medium cursor-pointer"
               onClick={this.props.onBack}
             >
               back
             </a>
           )}
           {showStepCount && (
-            <span className="text-grey-4 flex-align-right">
+            <span className="text-medium flex-align-right">
               {modalStepIndex + 1} {t`of`} {modalStepCount}
             </span>
           )}
