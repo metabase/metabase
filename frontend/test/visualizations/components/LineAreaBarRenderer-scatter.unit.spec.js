@@ -1,7 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
-
 import {
   NumberColumn,
   dispatchUIEvent,

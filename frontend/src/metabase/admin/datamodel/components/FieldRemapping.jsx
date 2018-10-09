@@ -402,7 +402,7 @@ export class ValueRemappings extends React.Component {
   }
 }
 
-class FieldValueMapping extends React.Component {
+export class FieldValueMapping extends React.Component {
   onInputChange = e => {
     this.props.setMapping(e.target.value);
   };
