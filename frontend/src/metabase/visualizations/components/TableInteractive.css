@@ -92,6 +92,8 @@
   background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
   border-radius: 99px;
+  min-width: 35px;
+  text-align: center;
 }
 
 .TableInteractive--PK.TableInteractive-cellWrapper:hover,
