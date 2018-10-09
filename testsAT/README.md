@@ -21,45 +21,45 @@ mvn verify [-D\<ENV_VAR>=\<VALUE>] [-Dit.test=\<TEST_TO_EXECUTE>|-Dgroups=\<GROU
 Example:
 
 ### Create policies in Gosec
-mvn clean verify -Dgroups=create_policy -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DREGISTERSERVICEOLD=true -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true -DlogLevel=DEBUG
+mvn clean verify -Dgroups=create_policy -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DREGISTERSERVICEOLD=true -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true -DlogLevel=DEBUG -DPOSTGRES_VERSION=1.3.0
 
 ### Install Postgres dependencies
-mvn clean verify -Dgroups=config_postgres -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DCLUSTER_ID=nightly -DlogLevel=DEBUG
+mvn clean verify -Dgroups=config_postgres -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DCLUSTER_ID=nightly -DlogLevel=DEBUG
 
 ### Install Discovery
-mvn clean verify -Dgroups=install_discovery -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DlogLevel=DEBUG
+mvn clean verify -Dgroups=install_discovery -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DlogLevel=DEBUG
 
 ### Setup Discovery
-mvn clean verify -Dgroups=setup_discovery -DDISC_VERSION=0.31.0-SNAPSHOT -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
+mvn clean verify -Dgroups=setup_discovery -DDISC_VERSION=0.31.0-ccddeec -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
 ## For launch this group it's necessary having deployed next component:
 - docker run -d --name sl selenium/hub:3.9.1 && docker run -d -v /dev/shm:/dev/shm --name docker-selenium-chrome -e HUB_HOST=sl.demo.stratio.com -e HUB_PORT=4444 -e SE_OPTS="-browser browserName=chrome,version=64datagov " selenium/node-chrome-debug:3.9.1
 
 ### Register Postgres database
-mvn clean verify -Dgroups=connection_PG -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
+mvn clean verify -Dgroups=connection_PG -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
 ## For launch this group it's necessary having deployed next component:
 - docker run -d --name sl selenium/hub:3.9.1 && docker run -d -v /dev/shm:/dev/shm --name docker-selenium-chrome -e HUB_HOST=sl.demo.stratio.com -e HUB_PORT=4444 -e SE_OPTS="-browser browserName=chrome,version=64datagov " selenium/node-chrome-debug:3.9.1
 
 ### Register Crossdata database
-mvn clean verify -Dgroups=connection_XD -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
+mvn clean verify -Dgroups=connection_XD -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DlogLevel=DEBUG -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov
 ## For launch this group it's necessary having deployed next component:
 - docker run -d --name sl selenium/hub:3.9.1 && docker run -d -v /dev/shm:/dev/shm --name docker-selenium-chrome -e HUB_HOST=sl.demo.stratio.com -e HUB_PORT=4444 -e SE_OPTS="-browser browserName=chrome,version=64datagov " selenium/node-chrome-debug:3.9.1
 
 ### Login Tests
-mvn clean verify -Dgroups=login -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISC_VERSION=0.31.0-SNAPSHOT -DCLUSTER_ID=nightly -DlogLevel=DEBUG -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov -DMODHEADER_PLUGIN=src/test/resources/chromePlugins/ModHeader_v2.2.3.crx -DGROUP_LIST=testadmin,group1 -DUSERNAME=demo -DGROUP=group1 -DADMIN_GROUP=testadmin
+mvn clean verify -Dgroups=login -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly -DDISC_VERSION=0.31.0-ccddeec -DCLUSTER_ID=nightly -DlogLevel=DEBUG -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov -DMODHEADER_PLUGIN=src/test/resources/chromePlugins/ModHeader_v2.2.3.crx -DGROUP_LIST=testadmin,group1 -DUSERNAME=demo -DGROUP=group1 -DADMIN_GROUP=testadmin
 ## For launch this group it's necessary having deployed next component:
 - docker run -d --name sl selenium/hub:3.9.1 && docker run -d -v /dev/shm:/dev/shm --name docker-selenium-chrome -e HUB_HOST=sl.demo.stratio.com -e HUB_PORT=4444 -e SE_OPTS="-browser browserName=chrome,version=64datagov " selenium/node-chrome-debug:3.9.1
 
 ### Purge Discovery
-mvn clean verify -Dgroups=purge_discovery -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DlogLevel=DEBUG
+mvn clean verify -Dgroups=purge_discovery -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DlogLevel=DEBUG
 
 ### Delete changes in Postgres
-mvn clean verify -Dgroups=purge_postgres -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DCLUSTER_ID=nightly -DlogLevel=DEBUG
+mvn clean verify -Dgroups=purge_postgres -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DCLUSTER_ID=nightly -DlogLevel=DEBUG
 
 ### Delete policies in Gosec
-mvn clean verify -Dgroups=delete_policy -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DlogLevel=DEBUG -DDISC_VERSION=0.31.0-SNAPSHOT -DREGISTERSERVICEOLD=false -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true
+mvn clean verify -Dgroups=delete_policy -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DlogLevel=DEBUG -DDISC_VERSION=0.31.0-ccddeec -DREGISTERSERVICEOLD=false -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true -DPOSTGRES_VERSION=1.3.0
 
 ### Nightly
-mvn clean verify -Dgroups=nightly -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-SNAPSHOT -DREGISTERSERVICEOLD=false -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov -DlogLevel=DEBUG
+mvn clean verify -Dgroups=nightly -DBOOTSTRAP_IP=10.200.0.155 -DDCOS_IP=10.200.0.156 -DDCOS_CLI_HOST=dcos-cli-nightly.demo.stratio.com -DDISC_VERSION=0.31.0-ccddeec -DREGISTERSERVICEOLD=false -DDISCOVERY_SERVICE_VHOST=nightlypublic.labs.stratio.com -DCLUSTER_ID=nightly -DDISCOVERY_POLICIES=true -DSELENIUM_GRID=sl.demo.stratio.com:4444 -DFORCE_BROWSER=chrome_64datagov -DlogLevel=DEBUG -DPOSTGRES_VERSION=1.3.0
 ## For launch this group it's necessary having deployed next component:
 - docker run -d --name sl selenium/hub:3.9.1 && docker run -d -v /dev/shm:/dev/shm --name docker-selenium-chrome -e HUB_HOST=sl.demo.stratio.com -e HUB_PORT=4444 -e SE_OPTS="-browser browserName=chrome,version=64datagov " selenium/node-chrome-debug:3.9.1
 

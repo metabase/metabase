@@ -7,7 +7,7 @@ Feature: Connection on XData
     And I securely send requests to '${DCOS_IP}:443'
 
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection XData][02] Register xdata database
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
@@ -35,7 +35,7 @@ Feature: Connection on XData
 
   @ignore @manual
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][03] Get xdata database id
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
@@ -58,7 +58,7 @@ Feature: Connection on XData
 
   @ignore @manual
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][04] Check query xdata database
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'

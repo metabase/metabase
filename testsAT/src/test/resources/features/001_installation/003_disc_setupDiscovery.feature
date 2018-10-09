@@ -1,11 +1,11 @@
 Feature: Setup Discovery
 
   @web
-  @runOnEnv(DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.31.0-ccddeec)
   Scenario: Setup discovery
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
-    And I wait '3' seconds
+    And I wait '10' seconds
     And '1' elements exists with 'xpath://button'
     And I click on the element on index '0'
     And '1' elements exists with 'xpath://input[@name='first_name']'

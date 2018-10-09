@@ -6,7 +6,7 @@ Feature: Connection on Postgres
     And I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I securely send requests to '${DCOS_IP}:443'
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][01] Obtain postgreSQL ip and port
     Given I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status'
     Then the service response status must be '200'
@@ -15,7 +15,7 @@ Feature: Connection on Postgres
     And I wait '5' seconds
 
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][02] Register postgres database
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
@@ -42,7 +42,7 @@ Feature: Connection on Postgres
 
   @ignore @manual
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][03] Get postgres database id
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
@@ -65,7 +65,7 @@ Feature: Connection on Postgres
 
   @ignore @manual
   @web
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Connection Postgres][04] Check query postgres database
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'

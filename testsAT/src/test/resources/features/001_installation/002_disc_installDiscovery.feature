@@ -3,7 +3,7 @@ Feature: Install Discovery for Discovery
 
   Background: Initial setup
     Given I open a ssh connection to '${BOOTSTRAP_IP}' with user '${REMOTE_USER:-operador}' using pem file 'src/test/resources/credentials/${PEM_FILE:-key.pem}'
-    And I run 'grep -Po '"root_token":"(\d*?,|.*?[^\\]")' /stratio_volume/vault_response | awk -F":" '{print $2}' | sed -e 's/^"//' -e 's/"$//'' in the ssh connection and save the value in environment variable 'vaultToken'
+    And I run 'grep -Po '"root_token":\s*"(\d*?,|.*?[^\\]")' /stratio_volume/vault_response | awk -F":" '{print $2}' | sed -e 's/^\s*"//' -e 's/"$//'' in the ssh connection and save the value in environment variable 'vaultToken'
     And I authenticate to DCOS cluster '${DCOS_IP}' using email '${DCOS_USER:-admin}' with user '${REMOTE_USER:-operador}' and pem file 'src/test/resources/credentials/${PEM_FILE:-key.pem}'
     And I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I securely send requests to '${DCOS_IP}:443'
@@ -16,7 +16,7 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresMD5_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Basic Installation Discovery][02] Obtain postgreSQL ip and port
     Given I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls}/v1/service/status'
     Then the service response status must be '200'
@@ -24,14 +24,14 @@ Feature: Install Discovery for Discovery
     And I save element in position '0' in '$.status[?(@.role == "master")].ports[0]' in environment variable 'postgresTLS_Port'
     And I wait '5' seconds
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Basic Installation Discovery][03] Check Crossdata is running
     Given I run 'dcos marathon task list ${DISCOVERY_TENANT_NAME:-crossdata-1} | awk '{print $5}' | grep ${DISCOVERY_TENANT_NAME:-crossdata-1}' in the ssh connection and save the value in environment variable 'crossdataTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"state": "TASK_RUNNING"' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep 'healthCheckResults' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"alive": true' | wc -l' contains '2'
 
-  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.28.9||DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Basic Installation Discovery][04] Create config file
     Given I create file 'config_discovery_${DISC_VERSION}.json' based on 'schemas/config_discovery_0.28.9.json' as 'json' with:
       | $.Service.cpus                        | REPLACE | ${DISCOVERY_SERVICE_CPUS:-1}                                             | number  |
@@ -63,7 +63,7 @@ Feature: Install Discovery for Discovery
       | $.Datastore.host                      | UPDATE  | !{postgresMD5_IP}                                                        | n/a     |
       | $.Datastore.port                      | REPLACE | !{postgresMD5_Port}                                                      | number  |
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Basic Installation Discovery][05] Modify info to connect to postgrestls
     Given I create file 'config_discovery_${DISC_VERSION}.json' based on 'config_discovery_${DISC_VERSION}.json' as 'json' with:
       | $.Service.folder                                             | ADD     | ${DISCOVERY_SERVICE_FOLDER:-discovery}                                 | string  |
@@ -101,7 +101,7 @@ Feature: Install Discovery for Discovery
     Given I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-SNAPSHOT)
+  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
   Scenario: [Basic Installation Discovery][07] Check Discovery installation
     Given in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '1'
     And I run 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
