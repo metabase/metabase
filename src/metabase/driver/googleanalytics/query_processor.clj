@@ -58,8 +58,8 @@
   (into {} (for [c chars-to-escape]
              {c (str "\\" c)})))
 
-(def ^:private ^{:arglists '([s])} escape-for-regex         (u/rpartial str/escape (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
-(def ^:private ^{:arglists '([s])} escape-for-filter-clause (u/rpartial str/escape (char-escape-map ",;\\")))
+(def ^:private ^{:arglists '([s])} escape-for-regex         #(str/escape % (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+(def ^:private ^{:arglists '([s])} escape-for-filter-clause #(str/escape % (char-escape-map ",;\\")))
 
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
@@ -105,47 +105,58 @@
 
 ;;; ### filter
 
-;; TODO: implement negate?
-(defn- parse-filter-subclause:filters
-  (^String [filter-clause negate?]
-   ;; if optional arg `negate?` is truthy then prepend a `!` to negate the filter.
-   ;; See https://developers.google.com/analytics/devguides/reporting/core/v3/segments-feature-reference#not-operator
-   (str (when negate? "!") (parse-filter-subclause:filters filter-clause)))
+(defmulti ^:private parse-filter mbql.u/dispatch-by-clause-name-or-class)
 
-  (^String [{:keys [filter-type field value case-sensitive?], :as filter-clause}]
-   (when-not (mbql.u/is-clause? :datetime-field field)
-     (let [field (when field (->rvalue field))
-           value (when value (->rvalue value))]
-       (case filter-type
-         :contains    (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value))
-         :starts-with (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)") \^ (escape-for-regex value))
-         :ends-with   (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value) \$)
-         :=           (ga-filter field "==" value)
-         :!=          (ga-filter field "!=" value)
-         :>           (ga-filter field ">" value)
-         :<           (ga-filter field "<" value)
-         :>=          (ga-filter field ">=" value)
-         :<=          (ga-filter field "<=" value)
-         :between     (str (ga-filter field ">=" (->rvalue (:min-val filter-clause)))
-                           ";"
-                           (ga-filter field "<=" (->rvalue (:max-val filter-clause)))))))))
+(defmethod parse-filter :contains [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value))))
 
-(defn- parse-filter-clause:filters ^String [{:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and (str/join ";" (remove nil? (map parse-filter-clause:filters subclauses)))
-    :or  (str/join "," (remove nil? (map parse-filter-clause:filters subclauses)))
-    :not (parse-filter-subclause:filters subclause :negate)
-    nil  (parse-filter-subclause:filters clause)))
+(defmethod parse-filter :starts-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") \^ (escape-for-regex (->rvalue value))))
+
+(defmethod parse-filter :ends-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value)) \$))
+
+(defmethod parse-filter := [[_ field value]]
+  (ga-filter (->rvalue field) "==" (->rvalue value)))
+
+(defmethod parse-filter :!= [[_ field value]]
+  (ga-filter (->rvalue field) "!=" (->rvalue value)))
+
+(defmethod parse-filter :> [[_ field value]]
+  (ga-filter (->rvalue field) ">" (->rvalue value)))
+
+(defmethod parse-filter :< [[_ field value]]
+  (ga-filter (->rvalue field) "<" (->rvalue value)))
+
+(defmethod parse-filter :>= [[_ field value]]
+  (ga-filter (->rvalue field) ">=" (->rvalue value)))
+
+(defmethod parse-filter :<= [[_ field value]]
+  (ga-filter (->rvalue field) "<=" (->rvalue value)))
+
+(defmethod parse-filter :between [[_ field min-val max-val]]
+  (str (ga-filter (->rvalue field) ">=" (->rvalue min-val))
+       ";"
+       (ga-filter (->rvalue field) "<=" (->rvalue max-val))))
+
+(defmethod parse-filter :and [[_ & clauses]]
+  (str/join ";" (filter some? (map parse-filter clauses))))
+
+(defmethod parse-filter :or [[_ & clauses]]
+  (str/join "," (filter some? (map parse-filter clauses))))
+
+(defmethod parse-filter :not [[_ clause]]
+  (str "!" (parse-filter clause)))
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
-    (let [filter (parse-filter-clause:filters filter-clause)]
+    (let [filter (parse-filter filter-clause)]
       (when-not (str/blank? filter)
         {:filters filter}))))
 
 (defn- parse-filter-subclause:interval [[filter-type field value :as filter-clause] & [negate?]]
   (when negate?
-    (throw (Exception. (str (tru ":not is :not yet implemented")))))
+    (throw (Exception. (str (tru ":not is not yet implemented")))))
   (when (mbql.u/is-clause? :datetime-field field)
     (case filter-type
       :between
@@ -169,12 +180,12 @@
                      :relative-datetime
                      (->rvalue (mbql.u/add-datetime-units value 1)))})))
 
-(defn- parse-filter-clause:interval [{:keys [compound-type subclause subclauses], :as clause}]
+(defn- parse-filter-clause:interval [[compound-type & [subclause :as subclauses] :as clause]]
   (case compound-type
-    :and (apply concat (remove nil? (map parse-filter-clause:interval subclauses)))
-    :or  (apply concat (remove nil? (map parse-filter-clause:interval subclauses)))
-    :not (remove nil? [(parse-filter-subclause:interval subclause :negate)])
-    nil  (remove nil? [(parse-filter-subclause:interval clause)])))
+    :and (reduce concat (filter some? (map parse-filter-clause:interval subclauses)))
+    :or  (reduce concat (filter some? (map parse-filter-clause:interval subclauses)))
+    :not (filter some? [(parse-filter-subclause:interval subclause :negate)])
+    nil  (filter some? [(parse-filter-subclause:interval clause)])))
 
 (defn- handle-filter:interval
   "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
@@ -197,18 +208,10 @@
               (str (case direction
                      :asc  ""
                      :desc "-")
-                   (cond
-                     (mbql.u/is-clause? :datetime-field field)
-                     (let [[_ _ unit] field]
-                       (unit->ga-dimension unit))
-
-                     ;; aggregation is of format [ag-type metric-name]; get the metric-name
-                     (mbql.u/is-clause? :aggregation field)
-                     (let [[_ index] field]
-                       (second (nth (aggregations query) index)))
-
-                     :else
-                     (->rvalue field)))))}))
+                   (mbql.u/match field
+                     [:datetime-field _ unit] (unit->ga-dimension unit)
+                     [:aggregation index]     (second (nth (aggregations query) index))
+                     [& _]                    (->rvalue &match)))))}))
 
 ;;; ### limit
 

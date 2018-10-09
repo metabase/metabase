@@ -67,11 +67,7 @@
                  :cols    [{:base_type    "type/Integer"
                             :special_type "type/Number"
                             :name         "count"
-                            :display_name "count"
-                            :id           nil
-                            :table_id     nil
-                            :description  nil
-                            :target       nil}]
+                            :display_name "count"}]
                  :rows    [[100]]}
     :json_query {:parameters nil}
     :status     "completed"})

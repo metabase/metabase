@@ -147,6 +147,6 @@
                 (card-with-source-table (str "card__" (u/get-id card-c))))))
 
 (expect
-  [1]
+  []
   (#'card/extract-ids :segment {:query {:fields [[:segment 1]
                                                  [:metric 2]]}}))

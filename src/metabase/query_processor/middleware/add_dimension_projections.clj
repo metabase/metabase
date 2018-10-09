@@ -227,7 +227,9 @@
   `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
   `remap-results` to munge the results after query execution."
   [qp]
-  (fn [query]
-    (let [[remapping-dimensions query] (add-fk-remaps query)
-          results                      (qp query)]
-      (remap-results remapping-dimensions results))))
+  (fn [{query-type :type, :as query}]
+    (if (= query-type :native)
+      (qp query)
+      (let [[remapping-dimensions query] (add-fk-remaps query)
+            results                      (qp query)]
+        (remap-results remapping-dimensions results)))))

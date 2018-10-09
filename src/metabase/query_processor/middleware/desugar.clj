@@ -44,7 +44,7 @@
     [:between [:datetime-field field unit] [:relative-datetime 1 unit] [:relative-datetime n unit]]))
 
 (defn- desugar-does-not-contain [query]
-  (mbql.u/replace query {:query {:filter [:does-not-contain & args]}}
+  (mbql.u/replace-in query [:query :filter] [:does-not-contain & args]
     [:not (vec (cons :contains args))]))
 
 (defn- desugar-equals-and-not-equals-with-extra-args

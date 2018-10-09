@@ -139,7 +139,11 @@
   "Like `replace`, but only replaces things in the part of `x` noted by `ks`."
   {:style/indent 2}
   [x ks & patterns-and-results]
-  `(update-in ~x ~ks #(mbql.match/replace % ~patterns-and-results)))
+  `(let [form# ~x
+         ks#   ~ks]
+     (if-not (seq (get-in form# ks#))
+       form#
+       (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

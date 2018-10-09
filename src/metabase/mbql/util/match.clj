@@ -24,6 +24,9 @@
   This pattern will always include an alias to the entire match as `&match`."
   [pattern]
   (cond
+    (map? pattern)
+    (throw (Exception. "Don't use maps in patterns!"))
+
     (keyword? pattern)
     [[pattern '& '_]]
 
@@ -67,6 +70,7 @@
 (defn match-in-collection
   "Internal impl for `match`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
   [match-fn parents form]
+  {:pre [(fn? match-fn) (vector? parents)]}
   (cond
     (map? form)
     (reduce concat (for [[k v] form]
@@ -99,8 +103,8 @@
   [replace-fn parents form]
   (cond
     (map? form)
-    (into (empty form) (for [[k v] form]
-                         [k (replace-fn (conj parents k) v)]))
+    (into form (for [[k v] form]
+                 [k (replace-fn (conj parents k) v)]))
 
     (sequential? form)
     (mapv (partial replace-fn (if (keyword? (first form))

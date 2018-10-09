@@ -19,20 +19,16 @@
   (#'cumulative-aggregations/add-rows #{1 2} [1 2 3] [1 2 3]))
 
 (expect
-  [1 2 3]
+  IndexOutOfBoundsException
   (#'cumulative-aggregations/add-rows #{4} [1 2 3] [1 2 3]))
 
 (expect
   #{1}
-  (#'cumulative-aggregations/diff-indecies 0 [:a :b :c] [:a 100 :c]))
-
-(expect
-  #{5}
-  (#'cumulative-aggregations/diff-indecies 4 [:a :b :c] [:a 100 :c]))
+  (#'cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c]))
 
 (expect
   #{}
-  (#'cumulative-aggregations/diff-indecies 0 [:a :b :c] [:a :b :c]))
+  (#'cumulative-aggregations/diff-indecies [:a :b :c] [:a :b :c]))
 
 (expect
   [[0] [1] [2] [3] [4] [5] [6] [7] [8] [9]]
