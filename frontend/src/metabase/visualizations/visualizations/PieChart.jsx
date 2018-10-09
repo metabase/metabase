@@ -62,12 +62,12 @@ export default class PieChart extends Component {
     ...dimensionSetting("pie.dimension", {
       section: t`Data`,
       title: t`Dimension`,
-      columnSetting: true,
+      showColumnSetting: true,
     }),
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
-      columnSetting: true,
+      showColumnSetting: true,
     }),
     "pie.show_legend": {
       section: t`Display`,
