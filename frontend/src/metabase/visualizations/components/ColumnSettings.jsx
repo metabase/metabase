@@ -71,7 +71,7 @@ const ColumnSettings = ({
   );
 
   return (
-    <div>
+    <div style={{ maxWidth: 300 }}>
       {widgets.length > 0 ? (
         widgets.map(widget => (
           <ChartSettingsWidget
