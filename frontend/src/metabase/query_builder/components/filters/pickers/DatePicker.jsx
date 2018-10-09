@@ -287,7 +287,7 @@ export const DATE_OPERATORS: Operator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => ["BETWEEN", ...getDateTimeFieldAndValues(filter, 2)],
+    init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
     test: ([op]) => mbqlEq(op, "between"),
     widget: MultiDatePicker,
   },
@@ -297,14 +297,14 @@ export const EMPTINESS_OPERATORS: Operator[] = [
   {
     name: "empty",
     displayName: t`Is Empty`,
-    init: filter => ["IS_NULL", getDateTimeField(filter[1])],
-    test: ([op]) => op === "IS_NULL",
+    init: filter => ["is-null", getDateTimeField(filter[1])],
+    test: ([op]) => op === "is-null",
   },
   {
     name: "not-empty",
     displayName: t`Not Empty`,
-    init: filter => ["NOT_NULL", getDateTimeField(filter[1])],
-    test: ([op]) => op === "NOT_NULL",
+    init: filter => ["not-null", getDateTimeField(filter[1])],
+    test: ([op]) => op === "not-null",
   },
 ];
 

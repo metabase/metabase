@@ -46,7 +46,7 @@ export function computeFilterTimeRange(filter) {
   } else if (operator === "<" && values[0]) {
     start = min();
     end = absolute(values[0]).startOf(bucketing);
-  } else if (operator === "BETWEEN" && values[0] && values[1]) {
+  } else if (operator === "between" && values[0] && values[1]) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
   }
@@ -73,14 +73,14 @@ export function expandTimeIntervalFilter(filter) {
 
   if (n < -1) {
     return [
-      "BETWEEN",
+      "between",
       field,
       ["relative-datetime", n - 1, unit],
       ["relative-datetime", -1, unit],
     ];
   } else if (n > 1) {
     return [
-      "BETWEEN",
+      "between",
       field,
       ["relative-datetime", 1, unit],
       ["relative-datetime", n, unit],

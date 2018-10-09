@@ -142,13 +142,14 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^([0-9-T:]+)$/,
     deserialize: (matches, fieldRef) => ["=", fieldRef, matches[0]],
   },
-  // TODO 3/27/17 Atte Keinänen
-  // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
   {
     testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/,
-    deserialize: (matches, fieldRef) =>
-      // $FlowFixMe
-      ["BETWEEN", fieldRef, matches[0], matches[1]],
+    deserialize: (matches, fieldRef) => [
+      "between",
+      fieldRef,
+      matches[0],
+      matches[1],
+    ],
   },
 ];
 

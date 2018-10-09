@@ -95,7 +95,7 @@ export const TIME_OPERATORS: Operator[] = [
     name: "between",
     displayName: t`Between`,
     init: filter => [
-      "BETWEEN",
+      "between",
       getDateTimeFieldTarget(filter[1]),
       getTime(filter[2]),
       getTime(filter[3]),
