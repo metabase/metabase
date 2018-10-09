@@ -179,19 +179,7 @@ export default class ChoroplethMap extends Component {
       Math.min(HEAT_MAP_COLORS.length, rows.length),
     );
 
-    const onHoverFeature = hover => {
-      onHoverChange &&
-        onHoverChange(
-          hover && {
-            index: heatMapColors.indexOf(getColor(hover.feature)),
-            event: hover.event,
-            data: {
-              key: getFeatureName(hover.feature),
-              value: getFeatureValue(hover.feature),
-            },
-          },
-        );
-    };
+    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
     const getFeatureClickObject = row => ({
       value: row[metricIndex],
@@ -211,13 +199,25 @@ export default class ChoroplethMap extends Component {
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = _.find(rows, row => getRowKey(row) === featureKey);
-        if (onVisualizationClick && row !== undefined) {
+        const row = rowByFeatureKey.get(getFeatureKey(click.feature));
+        if (row && onVisualizationClick) {
           onVisualizationClick({
             ...getFeatureClickObject(row),
             event: click.event,
           });
+        }
+      });
+    const onHoverFeature =
+      onHoverChange &&
+      (hover => {
+        const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
+        if (row && onHoverChange) {
+          onHoverChange({
+            ...getFeatureClickObject(row),
+            event: hover.event,
+          });
+        } else if (onHoverChange) {
+          onHoverChange(null);
         }
       });
 
