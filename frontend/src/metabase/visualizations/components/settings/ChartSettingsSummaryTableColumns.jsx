@@ -17,10 +17,7 @@ import {
 } from "react-sortable-hoc";
 
 import type { ColumnName } from "metabase/meta/types/Dataset";
-import {
-  enrichSettings,
-  getColumnsFromSettings,
-} from "metabase/visualizations/lib/settings/summary_table";
+import { enrichSettings } from "metabase/visualizations/lib/settings/summary_table";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 

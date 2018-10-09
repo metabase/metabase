@@ -16,7 +16,6 @@ import {
 } from "metabase/visualizations/lib/table";
 
 import cx from "classnames";
-import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";

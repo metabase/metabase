@@ -163,11 +163,8 @@ export default class TableInteractiveSummary extends Component {
 
   _measure = () => {
     let {
-      data: { cols, probeRows, probeCols, valueColsLen, columnsHeaders },
+      data: { cols, probeRows, columnsHeaders },
     } = this.props;
-    //todo: benchmark it
-    probeCols = cols;
-    valueColsLen = 0;
 
     const probeHeaders = flatMap(columnsHeaders, row =>
       row.map((header, columnIndex) => header && { ...header, columnIndex }),
@@ -184,7 +181,7 @@ export default class TableInteractiveSummary extends Component {
             {this.renderHeader({ style: {}, value, column, columnIndex: 0, sortOrder: 'asc' })}
           </div>
         ))}
-        {probeCols.map((column, columnIndex) => probeRows.map(probeRow =>
+        {cols.map((column, columnIndex) => probeRows.map(probeRow =>
           (<div
                 className="fake-column"
                 title={columnIndex + "-" + (probeRow.colSpan || 1)}
@@ -226,19 +223,6 @@ export default class TableInteractiveSummary extends Component {
           "columnIndex",
         ]).reduce(computeWidths, []);
 
-        const diff = cols.length - probeCols.length;
-        if (diff > 0) {
-          const toDuplicate = contentWidths.slice(
-            contentWidths.length - valueColsLen,
-          );
-          contentWidths = [
-            ...contentWidths,
-            ...Array.from(Array(diff).keys())
-              .map(p => p % valueColsLen)
-              .map(p => toDuplicate[p]),
-          ];
-        }
-
         let columnWidths: number[] = cols.map((col, index) => {
           if (this.columnNeedsResize) {
             if (
@@ -272,11 +256,6 @@ export default class TableInteractiveSummary extends Component {
       this.grid.recomputeGridSize();
     }
   };
-
-  recomputeColumnSizes = _.debounce(() => {
-    this.setState({ contentWidths: null });
-  }, 100);
-
 
   onColumnResize(columnIndex: number, columnSpan: number, width: number) {
 
@@ -434,7 +413,9 @@ export default class TableInteractiveSummary extends Component {
 
     const columnName = column.name;
 
-    const summaryHeaderCustomSort = this.canSort(columnName) && { currentSortOrder: sortOrder || this.getRealSortOrderFromSettings(columnName), customAction : () =>  this.props.updateSort(column.name)};
+    const summaryHeaderCustomSort = this.canSort(columnName) &&
+      { currentSortOrder: sortOrder || this.getRealSortOrderFromSettings(columnName),
+        customAction : () =>  this.props.updateSort(column.name)};
     const clicked = summaryHeaderCustomSort && {value, column, summaryHeaderCustomSort} ;
 
     let columnTitle = displayText || (value || value === 0

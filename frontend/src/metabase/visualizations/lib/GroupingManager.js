@@ -29,8 +29,6 @@ export class GroupingManager {
   rows: Row[];
   cols;
   probeRows: Row[];
-  probeCols;
-  valueColsLen = 1;
   columnsHeaders: any[][] = [];
 
   constructor(
@@ -81,7 +79,6 @@ export class GroupingManager {
     let cols = tmp
       .map(p => rawCols[p[0]])
       .map((col, i) => ({ ...col, getValue: getValueByIndex(i) }));
-    this.probeCols = cols;
     const rows = [].concat(...normalizedRows);
     //
     this.rows = _.sortBy(rows, sortOrderMethod);
@@ -137,8 +134,7 @@ export class GroupingManager {
       const pivotColumn = colsTmp[grColumnsLength];
       const values = colsTmp.slice(grColumnsLength + 1);
       const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined, pivotedDimension: k ? {value: k, column: rawCols.find(c => c.name===summaryTableSettings.columnsSource[0])} : undefined})).filter(col => k !== undefined || canTotalize(col.base_type)));
-      this.probeCols = grCols.concat(tt[0]);
-      this.valueColsLen = (tt[0] || []).length;
+
       cols = grCols.concat(...tt);
 
       const grHeaders = grCols.map((column, i) => ({
@@ -195,24 +191,6 @@ export class GroupingManager {
       set(acc, index, {[Math.max(row.isTotalColumnIndex-1, 0)]:lastGroupIndex,  __proto__: valuesRow}) : acc,[]);
   }
 
-  isVisible = (
-    rowIndex: Number,
-    columnIndex: Number,
-    visibleRowIndices: Range,
-  ): Boolean => {
-    if (rowIndex < visibleRowIndices.start || visibleRowIndices.stop < rowIndex)
-      return false;
-
-    if (!this.isGrouped(columnIndex)) return true;
-
-    if (rowIndex === visibleRowIndices.start) return true;
-
-    return rowIndex in this.columnIndexToFirstInGroupIndexes[columnIndex];
-  };
-
-  isGrouped = (columnIndex: Number) =>
-    columnIndex in this.columnIndexToFirstInGroupIndexes;
-
   mapStyle = (
     rowIndex: Number,
     columnIndex: Number,
@@ -233,33 +211,6 @@ export class GroupingManager {
     return res;
   };
 
-  getRowSpan = (
-    rowIndex: Number,
-    columnIndex: Number,
-    visibleRowIndices: Range,
-  ): Number => {
-    if (columnIndex in this.columnIndexToFirstInGroupIndexes) {
-      const tmp = this.columnIndexToFirstInGroupIndexes[columnIndex];
-      const ri = getFirstRowInGroupIndex(tmp, rowIndex);
-      const endIndex = tmp[ri];
-      const visibleStartIndex = Math.max(rowIndex, ri);
-      const visibleEndIndex = Math.min(endIndex, visibleRowIndices.stop);
-      const rowSpan = visibleEndIndex - visibleStartIndex + 1;
-      return rowSpan;
-    }
-    return 1;
-  };
-
-  createKey = (rowIndex: Number, columnIndex: Number) => {
-    const firstIndexesInGroup = this.columnIndexToFirstInGroupIndexes[
-      columnIndex
-    ];
-    if (!firstIndexesInGroup) return rowIndex + "-" + columnIndex;
-
-    const ri = getFirstRowInGroupIndex(firstIndexesInGroup, rowIndex);
-
-    return ri + "-" + columnIndex;
-  };
 }
 
 const canTotalizeBuilder = (cols: Column[]): (ColumnName => boolean) => {
