@@ -74,7 +74,9 @@
 .TableInteractiveSummary .TableInteractiveSummary-headerCellWrapper:hover {
   z-index: 1;
 }
-
+.TableInteractiveSummary-cellWrapper-normalGrouped {
+  background-color: var(--color-bg-light);
+}
 .TableInteractiveSummary-cellWrapper-grandTotal {
   background-color: var(--color-brand);
   font-weight: bold;

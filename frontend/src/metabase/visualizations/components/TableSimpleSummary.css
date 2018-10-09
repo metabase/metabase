@@ -1,0 +1,8 @@
+.TableSimpleSummary-cellWrapper {
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.TableSimpleSummary-cellWrapper-firstColumn {
+  padding-left: 2em;
+}

@@ -282,12 +282,15 @@ export default class TableInteractiveSummary extends Component {
     const groupingManager = this.props.data;
 
     const { data, onVisualizationClick, visualizationIsClickable } = this.props;
-    const { rows, cols } = data;
+    const { rows, cols, isGrouped } = data;
     const column = cols[columnIndex];
     const row = rows[rowIndex];
     const isGrandTotal =
       row.isTotalColumnIndex === 0 &&
       groupingManager.rows.length - 1 === rowIndex;
+
+    const columnIsGrouped = isGrouped(columnIndex);
+
     return this.renderCell(
       row,
       column,
@@ -298,6 +301,7 @@ export default class TableInteractiveSummary extends Component {
       style,
       onVisualizationClick,
       visualizationIsClickable,
+      columnIsGrouped
     );
   };
 
@@ -311,6 +315,7 @@ export default class TableInteractiveSummary extends Component {
     style,
     onVisualizationClick,
     visualizationIsClickable,
+    columnIsGrouped,
   ): (RenderCellType => void) => {
     let value = column.getValue(row);
 
@@ -351,6 +356,7 @@ export default class TableInteractiveSummary extends Component {
           "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
           "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
           "TableInteractiveSummary-cellWrapper-normal" : !isTotalRow && !isGrandTotal,
+          "TableInteractiveSummary-cellWrapper-normalGrouped" : !isTotalRow && !isGrandTotal && columnIsGrouped,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
           link: isClickable && isID(column),

@@ -101,10 +101,7 @@ export default class TableSimpleSummary extends Component {
       sort,
       updateSort
     } = this.props;
-    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, totalsRows } = data;
-
-    const groupingManager = data;
-
+    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, totalsRows, isGrouped } = data;
     const { page, pageSize} = this.state;
 
     let start = pageSize * page;
@@ -150,15 +147,15 @@ export default class TableSimpleSummary extends Component {
                         <th
                           key={`header-${rowIndex}-${colIndex}`}
                           className={cx(
-
-                            "TableInteractive-headerCellData cellData text-brand-hover",
+                            "TableInteractiveSummary-headerCellData cellData text-brand-hover",
                             {
-                              "TableInteractive-headerCellData--sorted": !!sortOrder,
+                              "TableInteractiveSummary-headerCellData--sorted": !!sortOrder,
                               "text-right": isRightAligned,
+                              "TableSimpleSummary-cellWrapper-firstColumn" : colIndex === 0,
                             },
+
                           )}
                           onClick={clickAction}
-                          style = {{ 'padding-left': colIndex === 0 && '2em'}}
                           colSpan={col.columnSpan}
                         >
                           <div className="relative">
@@ -211,35 +208,14 @@ export default class TableSimpleSummary extends Component {
                         const rowSpan = rowStopIndex - rowStartIndex +1;
                         const colSpan = columnStopIndex - columnStartIndex +1;
 
-                        const isGrandTotal = row.isTotalColumnIndex === 0;
-                        if (isGrandTotal && columnStartIndex === 0)
-                          cell = "Grand totals";
+                      const isGrandTotal = row.isTotalColumnIndex === 0;
+                      const isTotalCell = row.isTotalColumnIndex === columnStartIndex + 1;
+                      const isTotalRow = Number.isInteger(row.isTotalColumnIndex);
+                      const isGrandTotalCell = isGrandTotal && columnStartIndex === 0;
 
-                        let mappedStyle = {
-                          ...groupingManager.mapStyle(
-                            rowStartIndex,
-                            columnStartIndex,
-                            { start, stop: end },
-                            {},
-                          ),
-                        };
-                        if (isGrandTotal)
-                          mappedStyle = {
-                            ...mappedStyle,
-                            background: "#509ee3",
-                            color: "white",
-                            fontWeight: "bold",
-                          };
-                        else if (
-                          row.isTotalColumnIndex &&
-                          row.isTotalColumnIndex <= columnStartIndex + 1
-                        )
-                          mappedStyle = {
-                            ...mappedStyle,
-                            background: "#EDEFF0",
-                            color: "#6E757C",
-                            fontWeight: "bold",
-                          };
+
+
+
 
                         let formatedRes = formatValue(cell, {
                           column: column,
@@ -247,26 +223,26 @@ export default class TableSimpleSummary extends Component {
                           rich: true,
                         });
 
+                        if (isGrandTotalCell)
+                          formatedRes = "Grand totals";
                         if (
-                          row.isTotalColumnIndex === columnStartIndex + 1 &&
+                          isTotalCell &&
                           typeof formatedRes === "string"
                         )
                           formatedRes = "Totals for " + formatedRes;
 
-                        const res = (
+                        return (
                           <td
                             ref={row.columnStopIndex === cols.length -1 && row.rowStopIndex === rows.length -1 ? "lastCell" : null}
-                            style={{
-                              ...mappedStyle,
-                              whiteSpace: "nowrap",
-                              verticalAlign: "top",
-                              'padding-left': columnStartIndex === 0 && '2em'
-                            }}
-                            className={cx("px1 border-bottom", {
+                            className={cx("TableSimpleSummary-cellWrapper px1 border-bottom", {
                               "text-right": isColumnRightAligned(
                                 cols[columnStartIndex],
                               ),
-
+                              "TableSimpleSummary-cellWrapper-firstColumn" : columnStartIndex === 0,
+                              "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
+                              "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
+                              "TableInteractiveSummary-cellWrapper-normal" : !isTotalRow && !isGrandTotal,
+                              "TableInteractiveSummary-cellWrapper-normalGrouped" : !isTotalRow && !isGrandTotal && isGrouped(columnStartIndex),
                             })}
                             rowSpan={rowSpan}
                             colSpan={colSpan}
@@ -291,7 +267,6 @@ export default class TableSimpleSummary extends Component {
                             </span>
                           </td>
                         );
-                        return res;
                       })}
                   </tr>)
                 )}

@@ -191,26 +191,7 @@ export class GroupingManager {
       set(acc, index, {[Math.max(row.isTotalColumnIndex-1, 0)]:lastGroupIndex,  __proto__: valuesRow}) : acc,[]);
   }
 
-  mapStyle = (
-    rowIndex: Number,
-    columnIndex: Number,
-    cellStyle: {},
-  ): {} => {
-    let res = cellStyle;
-    if (columnIndex in this.columnIndexToFirstInGroupIndexes) {
-      if ("height" in cellStyle) {
-        res = {
-          ...cellStyle,
-          display: "block",
-          "padding-top": ".25em",
-        };
-      }
-      res = { ...res, background: "#F8F9FA" };
-    }
-
-    return res;
-  };
-
+  isGrouped = columnIndex => columnIndex in this.columnIndexToFirstInGroupIndexes;
 }
 
 const canTotalizeBuilder = (cols: Column[]): (ColumnName => boolean) => {
