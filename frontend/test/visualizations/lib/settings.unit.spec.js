@@ -97,6 +97,7 @@ describe("settings framework", () => {
           hidden: false,
           props: {},
           value: "foo",
+          set: true,
         },
       ]);
     });

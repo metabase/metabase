@@ -1,6 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
@@ -10,6 +9,7 @@ import {
   DateTimeColumn,
   StringColumn,
   dispatchUIEvent,
+  renderLineAreaBar,
 } from "../__support__/visualizations";
 
 let formatTz = offset =>
@@ -268,46 +268,49 @@ describe("LineAreaBarRenderer", () => {
     unit,
     settings,
   }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "line",
-      series: rowsOfSeries.map(rows => ({
+    renderLineAreaBar(
+      element,
+      rowsOfSeries.map(rows => ({
         data: {
           cols: [DateTimeColumn({ unit }), NumberColumn()],
           rows: rows,
         },
-        card: {},
+        card: {
+          display: "line",
+          visualization_settings: {
+            "graph.x_axis.scale": "timeseries",
+            "graph.x_axis.axis_enabled": true,
+            "graph.colors": ["#000000"],
+            ...settings,
+          },
+        },
       })),
-      settings: {
-        "graph.x_axis.scale": "timeseries",
-        "graph.x_axis.axis_enabled": true,
-        "graph.colors": ["#000000"],
-        series: () => ({ display: "line" }),
-        ...settings,
+      {
+        onHoverChange,
       },
-      onHoverChange,
-    });
+    );
   };
 
   const renderScalarBar = ({ scalars, onHoverChange, unit }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "bar",
-      series: scalars.map(scalar => ({
+    renderLineAreaBar(
+      element,
+      scalars.map(scalar => ({
         data: {
           cols: [StringColumn(), NumberColumn()],
           rows: [scalar],
         },
-        card: {},
+        card: {
+          display: "bar",
+          visualization_settings: {
+            "bar.scalar_series": true,
+            "funnel.type": "bar",
+            "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
+            "graph.x_axis.axis_enabled": true,
+            "graph.x_axis.scale": "ordinal",
+          },
+        },
       })),
-      settings: {
-        "bar.scalar_series": true,
-        "funnel.type": "bar",
-        "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
-        "graph.x_axis.axis_enabled": true,
-        "graph.x_axis.scale": "ordinal",
-        "graph.x_axis._is_numeric": false,
-        series: () => ({ display: "bar" }),
-      },
-      onHoverChange,
-    });
+      { onHoverChange },
+    );
   };
 });
