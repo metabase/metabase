@@ -21,7 +21,19 @@ type SingleFormat = {
   type: "single",
   columns: ColumnName[],
   color: Color,
-  operator: "<" | ">" | "<=" | ">=" | "=" | "!=" | "is-null" | "not-null",
+  operator:
+    | "<"
+    | ">"
+    | "<="
+    | ">="
+    | "="
+    | "!="
+    | "is-null"
+    | "not-null"
+    | "contains"
+    | "does-not-contain"
+    | "starts-with"
+    | "ends-with",
   value: number | string,
   highlight_row: boolean,
 };
@@ -142,6 +154,34 @@ function compileFormatter(
         return v => (v === null ? color : null);
       case "not-null":
         return v => (v !== null ? color : null);
+      case "contains":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.indexOf(value) >= 0
+            ? color
+            : null;
+      case "does-not-contain":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.indexOf(value) < 0
+            ? color
+            : null;
+      case "starts-with":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.startsWith(value)
+            ? color
+            : null;
+      case "ends-with":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.endsWith(value)
+            ? color
+            : null;
     }
   } else if (format.type === "range") {
     const columnMin = name =>

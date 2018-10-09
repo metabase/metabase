@@ -14,7 +14,6 @@ import NumericInput from "metabase/components/NumericInput";
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { capitalize } from "metabase/lib/formatting";
 import { isNumeric, isString } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
@@ -22,21 +21,25 @@ import d3 from "d3";
 import cx from "classnames";
 
 const NUMBER_OPERATOR_NAMES = {
-  "<": t`less than`,
-  ">": t`greater than`,
-  "<=": t`less than or equal to`,
-  ">=": t`greater than or equal to`,
-  "=": t`equal to`,
-  "!=": t`not equal to`,
-  "is-null": t`null`,
-  "not-null": t`not null`,
+  "<": t`is less than`,
+  ">": t`is greater than`,
+  "<=": t`is less than or equal to`,
+  ">=": t`is greater than or equal to`,
+  "=": t`is equal to`,
+  "!=": t`is not equal to`,
+  "is-null": t`is null`,
+  "not-null": t`is not null`,
 };
 
 const STRING_OPERATOR_NAMES = {
-  "=": t`equal to`,
-  "!=": t`not equal to`,
-  "is-null": t`null`,
-  "not-null": t`not null`,
+  "=": t`is equal to`,
+  "!=": t`is not equal to`,
+  "is-null": t`is null`,
+  "not-null": t`is not null`,
+  contains: t`contains`,
+  "does-not-contain": t`does not contain`,
+  "starts-with": t`starts with`,
+  "ends-with": t`ends with`,
 };
 
 const ALL_OPERATOR_NAMES = {
@@ -293,7 +296,7 @@ const RuleDescription = ({ rule }) => (
     {rule.type === "range"
       ? t`Cells in this column will be tinted based on their values.`
       : rule.type === "single"
-        ? jt`When a cell in these columns is ${(
+        ? jt`When a cell in these columns ${(
             <span className="text-bold">
               {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
             </span>
@@ -352,7 +355,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       )}
       {rule.type === "single" ? (
         <div>
-          <h3 className="mt3 mb1">{t`When a cell in this column is…`}</h3>
+          <h3 className="mt3 mb1">{t`When a cell in this column…`}</h3>
           <Select
             value={rule.operator}
             onChange={e => onChange({ ...rule, operator: e.target.value })}
@@ -360,7 +363,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             {Object.entries(
               isNumericRule ? NUMBER_OPERATOR_NAMES : STRING_OPERATOR_NAMES,
             ).map(([operator, operatorName]) => (
-              <Option value={operator}>{capitalize(operatorName)}</Option>
+              <Option value={operator}>{operatorName}</Option>
             ))}
           </Select>
           {hasOperand && isNumericRule ? (
