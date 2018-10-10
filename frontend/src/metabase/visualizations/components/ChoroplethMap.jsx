@@ -22,6 +22,7 @@ import {
 import d3 from "d3";
 import ss from "simple-statistics";
 import _ from "underscore";
+import Color from "color";
 
 // const HEAT_MAP_COLORS = [
 //     "#E1F2FF",
@@ -35,6 +36,35 @@ import _ from "underscore";
 // TODO COLOR
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
+
+export function getColorplethColorScale(
+  color,
+  { lightness = 95, darken = 0.2, darkenLast = 0.3, saturate = 0.5 } = {},
+) {
+  let lightColor = Color(color)
+    .lightness(lightness)
+    .saturate(saturate);
+
+  let darkColor = Color(color)
+    .darken(darken)
+    .saturate(saturate);
+
+  const scale = d3.scale
+    .linear()
+    .domain([0, 1])
+    .range([lightColor.string(), darkColor.string()]);
+
+  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+
+  if (darkenLast) {
+    colors[colors.length - 1] = Color(color)
+      .darken(darkenLast)
+      .saturate(saturate)
+      .string();
+  }
+
+  return colors;
+}
 
 const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
