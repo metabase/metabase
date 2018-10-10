@@ -851,3 +851,83 @@
     :parameters [{:type   :text
                   :target [:dimension [:template-tag "names_list"]]
                   :value  ["BBQ", "Bakery", "Bar"]}]}))
+
+;;; ------------------------------------------- expansion tests: variables -------------------------------------------
+
+;; Test that comments are removed
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n;"
+   :params        []
+   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- something else\n;"
+                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+            :parameters []}))
+
+;; Test that comments are removed, even if they contain a parameter
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n;"
+   :params        []
+   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- {{should_not_matter}}\n;"
+                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+            :parameters []}))
+
+;; Test that comments are removed, even if they contain a parameter with a value
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n;"
+   :params        []
+   :template-tags {"id"     {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                   "not_id" {:name "not_id", :display-name "NOT ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- {{not_id}}\n;"
+                         :template-tags {"id"     {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                                         "not_id" {:name "not_id", :display-name "NOT ID", :type :number, :required true, :default "100"}}}
+            :parameters []}))
+
+;; Test that comments are ignored when they contain optional clauses
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 2 \n;"
+   :params        []
+   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- [[{{id}}]]\n;"
+                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+            :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]}))
+
+;; Even unparsable optional clauses are ignored
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n;"
+   :params        []
+   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- something [[\n;"
+                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+            :parameters []}))
+
+;; Test out a comment followed by more parsed content
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n or id = 101"
+   :params        []
+   :template-tags {"id"         {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                   "another_id" {:name "another_id", :display-name "ID", :type :number, :required true, :default "101"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} -- {{someid\n or id = {{another_id}}"
+                         :template-tags {"id"         {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                                         "another_id" {:name "another_id", :display-name "ID", :type :number, :required true, :default "101"}}}
+            :parameters []}))
+
+;; Should still allow multi-line optional clauses
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100 \n or \n id = 101"
+   :params        []
+   :template-tags {"id"         {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                   "another_id" {:name "another_id", :display-name "ID", :type :number, :required true, :default "101"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} [[\n or \n id = {{another_id}}]]"
+                         :template-tags {"id"         {:name "id", :display-name "ID", :type :number, :required true, :default "100"}
+                                         "another_id" {:name "another_id", :display-name "ID", :type :number, :required true, :default "101"}}}
+            :parameters []}))
+
+;; Should still allow multi-line optional clauses
+(expect
+  {:query         "SELECT * FROM orders WHERE id = 100"
+   :params        []
+   :template-tags {"id"         {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}} [[\n or \n id = {{something_missing}}]]"
+                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+            :parameters []}))

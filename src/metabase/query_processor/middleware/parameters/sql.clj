@@ -538,6 +538,9 @@
   {:query  s/Str
    :params [s/Any]})
 
+(defn- strip-sql-comments [sql]
+  (str/join "\n" (str/split sql #"--.*\r?\n")))
+
 (s/defn ^:private parse-optional :- ParseTemplateResponse
   "Attempts to parse SQL parameter string `s`. Parses any optional clauses or parameters found, returns a query map."
   [s :- s/Str, param-key->value :- ParamValues]
@@ -553,6 +556,7 @@
 (s/defn ^:private parse-template :- ParseTemplateResponse
   [sql :- s/Str, param-key->value :- ParamValues]
   (-> sql
+      strip-sql-comments
       (parse-optional param-key->value)
       (update :query str/trim)))
 
