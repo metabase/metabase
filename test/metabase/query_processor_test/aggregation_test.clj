@@ -52,7 +52,7 @@
 (qp-expect-with-all-engines
   {:rows        [[15]]
    :columns     ["count"]
-   :cols        [(aggregate-col :count)]
+   :cols        [(aggregate-col :count (Field (data/id :checkins :user_id)))]
    :native_form true}
   (->> (data/run-mbql-query checkins
          {:aggregation [[:distinct $user_id]]})
@@ -159,16 +159,12 @@
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
 ;;
-;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with
-;; multiple columns with the same name)
-(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
+;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
+;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
+;; so we can use it with Mongo
+(datasets/expect-with-engines (disj non-timeseries-engines :mongo)
   [(aggregate-col :count)
-   (-> (aggregate-col :count)
-       (dissoc :settings)
-       (assoc
-         :display_name    "Count 2"
-         :name            "count_2"
-         :preview_display true))]
+   (aggregate-col :count)]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
@@ -207,7 +203,7 @@
                  [15 120]]
    :columns     [(data/format-name "id")
                  "sum"]
-   :cols        [(breakout-col (users-col :id))
+   :cols        [(users-col :id)
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -236,7 +232,7 @@
                  ["Szymon Theutrich"    120]]
    :columns     [(data/format-name "name")
                  "sum"]
-   :cols        [(breakout-col (users-col :name))
+   :cols        [(users-col :name)
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -251,7 +247,7 @@
 (qp-expect-with-all-engines
   {:columns     [(data/format-name "price")
                  "sum"]
-   :cols        [(breakout-col (venues-col :price))
+   :cols        [(venues-col :price)
                  (aggregate-col :sum (venues-col :id))]
    :rows        [[1 1211]
                  [2 4066]
@@ -302,7 +298,7 @@
                  ["Szymon Theutrich"    15]]
    :columns     [(data/format-name "name")
                  "count"]
-   :cols        [(breakout-col (users-col :name))
+   :cols        [(users-col :name)
                  (cumulative-count-col users-col :id)]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -317,7 +313,7 @@
 (qp-expect-with-all-engines
   {:columns     [(data/format-name "price")
                  "count"]
-   :cols        [(breakout-col (venues-col :price))
+   :cols        [(venues-col :price)
                  (cumulative-count-col venues-col :id)]
    :rows        [[1 22]
                  [2 81]

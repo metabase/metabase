@@ -14,7 +14,6 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.util.i18n :refer [tru]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
@@ -26,7 +25,7 @@
   {:rows        [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
    :columns     [(data/format-name "user_id")
                  "count"]
-   :cols        [(breakout-col (checkins-col :user_id))
+   :cols        [(checkins-col :user_id)
                  (aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query checkins
@@ -39,7 +38,7 @@
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
 (qp-expect-with-all-engines
-  {:cols        [(breakout-col (checkins-col :user_id))]
+  {:cols        [(checkins-col :user_id)]
    :columns     [(data/format-name "user_id")]
    :rows        [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]
    :native_form true}
@@ -57,8 +56,8 @@
    :columns     [(data/format-name "user_id")
                  (data/format-name "venue_id")
                  "count"]
-   :cols        [(breakout-col (checkins-col :user_id))
-                 (breakout-col (checkins-col :venue_id))
+   :cols        [(checkins-col :user_id)
+                 (checkins-col :venue_id)
                  (aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query checkins
@@ -75,8 +74,8 @@
    :columns     [(data/format-name "user_id")
                  (data/format-name "venue_id")
                  "count"]
-   :cols        [(breakout-col (checkins-col :user_id))
-                 (breakout-col (checkins-col :venue_id))
+   :cols        [(checkins-col :user_id)
+                 (checkins-col :venue_id)
                  (aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query checkins
@@ -96,7 +95,7 @@
    :columns     [(data/format-name "category_id")
                  "count"
                  "Foo"]
-   :cols        [(assoc (breakout-col (venues-col :category_id))
+   :cols        [(assoc (venues-col :category_id)
                    :remapped_to "Foo")
                  (aggregate-col :count)
                  (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
@@ -213,10 +212,7 @@
 
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
-  (assoc (breakout-col (venues-col :latitude))
-    :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
-                   :num_bins         4,          :min_value 10.0
-                   :max_value        50.0})
+  (venues-col :latitude)
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :default]]})
@@ -225,10 +221,7 @@
       first))
 
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
-  (assoc (breakout-col (venues-col :latitude))
-    :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
-                   :num_bins         5,         :min_value 7.5,
-                   :max_value        45.0})
+  (venues-col :latitude)
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :num-bins 5]]})

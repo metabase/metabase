@@ -11,9 +11,10 @@
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [table :as table]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
-(def activity-feed-topics
+(def ^:private activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:alert-create
     :alert-delete
@@ -42,11 +43,13 @@
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
-(defn- process-card-activity! [topic object]
+(defn- process-card-activity! [topic {query :dataset_query, :as object}]
   (let [details-fn  #(select-keys % [:name :description])
-        query       (u/ignore-exceptions (qp/expand (:dataset_query object)))
-        database-id (when-let [database (:database query)]
-                      (u/get-id database))
+        query       (when (seq query)
+                      (try (qp/preprocess query)
+                           (catch Throwable e
+                             (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/get-id)
         table-id    (mbql.u/query->source-table-id query)]
     (activity/record-activity!
       :topic       topic

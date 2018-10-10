@@ -45,5 +45,4 @@
                              :type     :native
                              :database (data/id)})
           :stacktrace
-          :query
-          :expanded-query))
+          :query))

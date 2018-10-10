@@ -3,6 +3,7 @@
   (:require [kixi.stats.core :as stats]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.util.date :as du]
             [redux.core :as redux]))
 
 (defn- last-n
@@ -76,12 +77,12 @@
                                          (assoc col :position idx)))
                           (group-by (fn [{:keys [base_type unit] :as field}]
                                       (cond
-                                        (datetime-truncated-to-year? field)          :datetimes
-                                        (metabase.util.date/date-extract-units unit) :numbers
-                                        (field/unix-timestamp? field)                :datetimes
-                                        (isa? base_type :type/Number)                :numbers
-                                        (isa? base_type :type/DateTime)              :datetimes
-                                        :else                                        :others))))]
+                                        (datetime-truncated-to-year? field) :datetimes
+                                        (du/date-extract-units unit)        :numbers
+                                        (field/unix-timestamp? field)       :datetimes
+                                        (isa? base_type :type/Number)       :numbers
+                                        (isa? base_type :type/DateTime)     :datetimes
+                                        :else                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))

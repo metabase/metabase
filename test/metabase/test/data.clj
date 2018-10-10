@@ -98,10 +98,12 @@
   (walk/postwalk
    (fn [form]
      (or (when (symbol? form)
-           (let [[first-char & rest-chars] (name form)]
-             (when (= first-char \$)
-               (let [token (apply str rest-chars)]
-                 (token->id-call wrap-field-ids? table-name token)))))
+           (if (= form '$$table)
+             `(id ~(keyword table-name))
+             (let [[first-char & rest-chars] (name form)]
+               (when (= first-char \$)
+                 (let [token (apply str rest-chars)]
+                   (token->id-call wrap-field-ids? table-name token))))))
          form))
    body))
 
@@ -111,7 +113,11 @@
   as the first arg. With one or more `.` delimiters, no implicit `table-name` arg is passed to `id`:
 
     $venue_id      -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
-    $cities.id     -> (id :cities :id)          ; specify non-default Table"
+    $cities.id     -> (id :cities :id)          ; specify non-default Table
+
+  Use `$$table` to refer to the table itself.
+
+    $$table -> (id :venues)"
   {:style/indent 1}
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}]
   ($->id (keyword table-name) body, :wrap-field-ids? wrap-field-ids?))

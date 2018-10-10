@@ -6,12 +6,10 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
-(defn- resolve-fields* [{mbql-inner-query :query, :as query}]
+(defn- resolve-fields* [query]
   (u/prog1 query
-    (when-let [field-ids (seq (map second (mbql.u/clause-instances :field-id mbql-inner-query)))]
-      ;; Just fetch the entire object for right now. We can pare this down at a later date
-      ;; TODO - figure out which Fields we need and only fetch those
-      (doseq [field (db/select Field :id [:in (set field-ids)])]
+    (when-let [field-ids (mbql.u/match (:query query) [:field-id id] id)]
+      (doseq [field (db/select (vec (cons Field qp.store/field-columns-to-fetch)) :id [:in (set field-ids)])]
         (qp.store/store-field! field)))))
 
 (defn resolve-fields

@@ -144,4 +144,14 @@
                   Card [card-b (card-with-source-table (str "card__" (u/get-id card-a)))]
                   Card [card-c (card-with-source-table (str "card__" (u/get-id card-b)))]]
     (db/update! Card (u/get-id card-a)
-      (card-with-source-table (str "card__" (u/get-id card-c))))))
+                (card-with-source-table (str "card__" (u/get-id card-c))))))
+
+(expect
+  #{1}
+  (#'card/extract-ids :segment {:query {:fields [[:segment 1]
+                                                 [:metric 2]]}}))
+
+(expect
+  #{2}
+  (#'card/extract-ids :metric {:query {:fields [[:segment 1]
+                                                [:metric 2]]}}))

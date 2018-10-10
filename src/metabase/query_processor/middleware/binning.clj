@@ -25,9 +25,9 @@
   (reduce
    (partial merge-with concat)
    {}
-   (for [filter-clause (mbql.u/clause-instances #{:between :< :<= :> :>=} filter-clause)
-         [_ field-id]  (mbql.u/clause-instances #{:field-id} filter-clause)]
-     {field-id [filter-clause]})))
+   (for [subclause (mbql.u/match filter-clause #{:between :< :<= :> :>=})
+         field-id  (mbql.u/match subclause [:field-id field-id] field-id)]
+     {field-id [subclause]})))
 
 (s/defn ^:private extract-bounds :- {:min-value s/Num, :max-value s/Num}
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
@@ -37,14 +37,10 @@
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id->filters field-id)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
-        user-maxes                         (for [[clause-name :as filter-clause] filter-clauses
-                                                 :when                           (#{:< :<= :between} clause-name)]
-                                             (last filter-clause))
-        user-mins                          (for [[clause-name :as filter-clause] filter-clauses
-                                                 :when                           (#{:> :>= :between} clause-name)]
-                                             (if (= :between clause-name)
-                                               (nth filter-clause 2)
-                                               (last filter-clause)))
+        user-maxes                         (mbql.u/match filter-clauses
+                                             [(_ :guard #{:< :<= :between}) & args] (last args))
+        user-mins                          (mbql.u/match filter-clauses
+                                             [(_ :guard #{:> :>= :between}) _ min-val & _] min-val)
         min-value                          (or (when (seq user-mins)
                                                  (apply max user-mins))
                                                global-min)
@@ -185,9 +181,13 @@
                                                                     resolved-options)]))
 
 
-(defn- update-binning-strategy* [query]
-  (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
-    (mbql.u/replace-clauses-in query [:query] :binning-strategy (partial update-binned-field query field-id->filters))))
+(defn- update-binning-strategy* [{query-type :type, :as query}]
+  (if (= query-type :native)
+    query
+    (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
+      (mbql.u/replace-in query [:query]
+        :binning-strategy
+        (update-binned-field query field-id->filters &match)))))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of

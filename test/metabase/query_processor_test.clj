@@ -94,20 +94,14 @@
 ;; #### categories
 
 (defn- col-defaults []
-  {:extra_info      {}
-   :target          nil
-   :description     nil
+  {:description     nil
    :visibility_type :normal
-   :schema_name     (data/default-schema)
-   :source          :fields
-   :fk_field_id     nil
-   :remapped_from   nil
-   :remapped_to     nil
-   :settings        nil})
+   :settings        nil
+   :parent_id       nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint)))
+    (dissoc field :target :schema_name :fk_field_id :remapped_from :remapped_to :fingerprint)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -159,9 +153,9 @@
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
-                  :fingerprint  {:global {:distinct-count 11}
-                                 :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
-                                                          :latest   "2014-12-05T00:00:00.000Z"}}}})))
+                  :fingerprint  {:global {:distinct-count 15}
+                                 :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z"
+                                                          :latest   "2014-12-05T15:15:00.000Z"}}}})))
 
 ;; #### venues
 (defn venues-columns
@@ -182,10 +176,7 @@
                    :name         (data/format-name "id")
                    :display_name "ID"
                    :fingerprint  nil}
-     :category_id {:extra_info   (if (data/fks-supported?)
-                                   {:target_table_id (data/id :categories)}
-                                   {})
-                   :target       (target-field (categories-col :id))
+     :category_id {#_:target       #_(target-field (categories-col :id))
                    :special_type (if (data/fks-supported?)
                                    :type/FK
                                    :type/Category)
@@ -234,10 +225,7 @@
                 :base_type    (data/id-field-type)
                 :name         (data/format-name "id")
                 :display_name "ID"}
-     :venue_id {:extra_info   (if (data/fks-supported?)
-                                {:target_table_id (data/id :venues)}
-                                {})
-                :target       (target-field (venues-col :id))
+     :venue_id {#_:target       #_(target-field (venues-col :id))
                 :special_type (when (data/fks-supported?)
                                 :type/FK)
                 :base_type    (data/expected-base-type->actual :type/Integer)
@@ -246,9 +234,7 @@
                 :fingerprint  (if (data/fks-supported?)
                                 {:global {:distinct-count 100}}
                                 {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.965}}})}
-     :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
-                                  {})
-                :target       (target-field (users-col :id))
+     :user_id  {#_:target       #_(target-field (users-col :id))
                 :special_type (if (data/fks-supported?)
                                 :type/FK
                                 :type/Category)
@@ -270,34 +256,22 @@
     (aggregate-col :avg (venues-col :id))"
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
-   (case ag-col-kw
-     :count {:base_type    :type/Integer
-             :special_type :type/Number
-             :name         "count"
-             :display_name "count"
-             :id           nil
-             :table_id     nil
-             :description  nil
-             :settings     nil
-             :source       :aggregation
-             :extra_info   {}
-             :target       nil}))
+   (assert (= ag-col-kw) :count)
+   {:base_type    :type/Integer
+    :special_type :type/Number
+    :name         "count"
+    :display_name "count"})
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
-   {:base_type    base_type
-    :special_type special_type
-    :id           nil
-    :table_id     nil
-    :description  nil
-    :settings     nil
-    :source       :aggregation
-    :extra_info   {}
-    :target       nil
-    :name         (name ag-col-kw)
-    :display_name (name ag-col-kw)}))
-
-(defn breakout-col [column]
-  (assoc column :source :breakout))
+   (merge
+    {:base_type    base_type
+     :special_type special_type
+     :settings     nil
+     :name         (name ag-col-kw)
+     :display_name (name ag-col-kw)}
+    ;; count always gets the same special type regardless
+    (when (= ag-col-kw :count)
+      (aggregate-col :count)))))
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
@@ -339,12 +313,20 @@
   "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
-
-(defn rows
-  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
+(defn data
+  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (vec (or (get-in results [:data :rows])
+  (when (= (:status results) :failed)
+    (println "Error running query:" (u/pprint-to-str 'red results))
+    (throw (ex-info (:error results) results)))
+  (:data results))
+
+(defn rows
+  "Return the result rows from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (vec (or (:rows (data results))
            (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 

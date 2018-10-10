@@ -5,8 +5,7 @@
              [format :as tformat]]
             [clojure
              [set :as set]
-             [string :as str]
-             [walk :as walk]]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
@@ -21,24 +20,27 @@
              [google :as google]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.query-processor
-             [annotate :as annotate]
              [store :as qp.store]
              [util :as qputil]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
+             [i18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
            java.sql.Time
-           [java.util Collections Date]
-           [metabase.query_processor.interface AggregationWithField AggregationWithoutField Expression Field TimeValue]))
+           [java.util Collections Date]))
 
 (defrecord BigQueryDriver []
   :load-ns true
@@ -205,7 +207,7 @@
          tcoerce/to-long
          Time.)))
 
-(defn- unparse-bigquery-time [timezone coercible-to-dt]
+#_(defn- unparse-bigquery-time [timezone coercible-to-dt]
   (->> coercible-to-dt
        tcoerce/to-date-time
        (tformat/unparse (bigquery-time-format timezone))))
@@ -360,34 +362,35 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(defn- agg-or-exp? [x]
-  (or (instance? Expression x)
-      (instance? AggregationWithField x)
-      (instance? AggregationWithoutField x)))
+(s/defn ^:private bg-aggregate-name :- su/NonBlankString
+  [ag-clause :- mbql.s/Aggregation]
+  (-> ag-clause annotate/aggregation-name format-custom-field-name))
 
-(defn- bg-aggregate-name [aggregate]
-  (-> aggregate annotate/aggregation-name format-custom-field-name))
+(defn- unique-name-fn
+  "Return a function that used names with and returns a guaranteed unique name every time.
+
+    (let [unique-name (#'bigquery/unique-name-fn)]
+      [(unique-name \"count\")
+       (unique-name \"count\")])
+    ;; -> [\"count\", \"count_2\"]"
+  []
+  (let [aliases (atom {})]
+    (fn [original-name]
+      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
+                             original-name)]
+        (if (= total-count 1)
+          original-name
+          (recur (str original-name \_ total-count)))))))
 
 (defn- pre-alias-aggregations
   "Expressions are not allowed in the order by clauses of a BQ query. To sort by a custom expression, that custom
   expression must be aliased from the order by. This code will find the aggregations and give them a name if they
   don't already have one. This name can then be used in the order by if one is present."
-  [query]
-  (let [aliases (atom {})]
-    (walk/postwalk (fn [maybe-agg]
-                     (if-let [exp-name (and (agg-or-exp? maybe-agg)
-                                            (bg-aggregate-name maybe-agg))]
-                       (if-let [usage-count (get @aliases exp-name)]
-                         (let [new-custom-name (str exp-name "_" (inc usage-count))]
-                           (swap! aliases assoc
-                                  exp-name (inc usage-count)
-                                  new-custom-name 1)
-                           (assoc maybe-agg :custom-name new-custom-name))
-                         (do
-                           (swap! aliases assoc exp-name 1)
-                           (assoc maybe-agg :custom-name exp-name)))
-                       maybe-agg))
-                   query)))
+  [outer-query]
+  (let [unique-name (unique-name-fn)]
+    (mbql.u/replace-in outer-query [:query :aggregation]
+      [:named ag ag-name]       [:named ag (unique-name ag-name)]
+      [(_ :guard keyword?) & _] [:named &match (unique-name (bg-aggregate-name &match))])))
 
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)
@@ -404,20 +407,22 @@
   [_ date]
   (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
+#_(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
   [driver {:keys [value]}]
   (->> value
        (unparse-bigquery-time *bigquery-timezone*)
        (sqlqp/->honeysql driver)
        hx/->time))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver Field]
-  [_ {:keys [table-name field-name special-type] :as field}]
-  (let [field (map->BigQueryIdentifier {:table-name table-name, :field-name field-name})]
+(defmethod sqlqp/->honeysql [BigQueryDriver :field-id]
+  [driver [_ field-id]]
+  (let [field (qp.store/field field-id)
+        table (qp.store/table (:table_id field))
+        field (keyword (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field)))]
     (cond
-      (isa? special-type :type/UNIXTimestampSeconds)      (unix-timestamp->timestamp field :seconds)
-      (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
-      :else                                               field)))
+      (isa? (:special_type field) :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
+      (isa? (:special_type field) :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
+      :else                                                        field)))
 
 (defn- field->alias
   "Generate an appropriate alias for a `field`. This will normally be something like `tableName___fieldName` (done this
@@ -431,13 +436,13 @@
   (cond
     field (recur driver field) ; type/DateTime
     index (let [{{aggregations :aggregation} :query} sqlqp/*query*
-                {ag-type :aggregation-type :as agg}  (nth aggregations index)]
+                [ag-type :as ag]                     (nth aggregations index)]
             (cond
               (= ag-type :distinct)
               "count"
 
-              (instance? Expression agg)
-              (:custom-name agg)
+              (= ag-type :expression)
+              (second ag)
 
               :else
               (name ag-type)))

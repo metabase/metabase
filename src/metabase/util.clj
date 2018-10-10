@@ -238,7 +238,7 @@
    (colorize color (str x)))
 
   (^String [color format-string & args]
-   (colorize color (apply format format-string args))))
+   (colorize color (apply format (str format-string) args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.

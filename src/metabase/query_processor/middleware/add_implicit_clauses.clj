@@ -20,10 +20,6 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- datetime-field? [{:keys [base_type special_type]}]
-  (or (isa? base_type :type/DateTime)
-      (isa? special_type :type/DateTime)))
-
 (s/defn ^:private sorted-implicit-fields-for-table :- [mbql.s/Field]
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
@@ -34,21 +30,17 @@
                 :visibility_type [:not-in ["sensitive" "retired"]]
                 :parent_id       nil
                 {:order-by [
-                            ;; we can skip 1-3 because queries w/ implicit Field IDs queries won't have
-                            ;; breakouts or fields clauses, and aggregation isn't an actual Field in the DB
-                            ;; anyway
-                            ;;
-                            ;; 4A. position
+                            ;; sort first by position,
                             [:position :asc]
-                            ;; 4B. special_type: :type/PK, :type/Name, then others
+                            ;; or if that's the same, sort PKs first, followed by names, followed by everything else
                             [(hsql/call :case
                                (mdb/isa :special_type :type/PK)   0
                                (mdb/isa :special_type :type/Name) 1
                                :else                              2)
                              :asc]
-                            ;; 4C. name
+                            ;; finally, sort by name (case-insensitive)
                             [:%lower.name :asc]]})]
-    (if (datetime-field? field)
+    (if (mbql.u/datetime-field? field)
       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
       ;; default bucketing of `:day`
       [:datetime-field [:field-id (u/get-id field)] :default]
@@ -78,9 +70,10 @@
                         ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
                         ;; keywords as keys. We can remove this call once we fix that.
                         [:expression (u/keyword->qualified-name expression-name)])]
-      ;; if the Table has no Fields, log a warning.
+      ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (log/warn (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))))
+        (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
+                                     (:name (qp.store/table source-table-id)))))))
       ;; add the fields & expressions under the `:fields` clause
       (assoc-in query [:query :fields] (vec (concat fields expressions))))))
 

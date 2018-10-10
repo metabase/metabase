@@ -16,8 +16,7 @@
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.Time
-           java.util.UUID
-           metabase.query_processor.interface.Value))
+           java.util.UUID))
 
 (defrecord PostgresDriver []
   :load-ns true
@@ -191,14 +190,14 @@
     #".*" ; default
     message))
 
-(defmethod sqlqp/->honeysql [PostgresDriver Value]
-  [driver {value :value, {:keys [base-type database-type]} :field}]
-  (when (some? value)
-    (cond
-      (isa? base-type :type/UUID)         (UUID/fromString value)
-      (isa? base-type :type/IPAddress)    (hx/cast :inet value)
-      (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
-      :else                               (sqlqp/->honeysql driver value))))
+(defmethod sqlqp/->honeysql [PostgresDriver :value] [driver value]
+  (let [[_ value {base-type :base_type, database-type :database_type}] value]
+    (when (some? value)
+      (cond
+        (isa? base-type :type/UUID)         (UUID/fromString value)
+        (isa? base-type :type/IPAddress)    (hx/cast :inet value)
+        (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
+        :else                               (sqlqp/->honeysql driver value)))))
 
 (defmethod sqlqp/->honeysql [PostgresDriver Time]
   [_ time-value]
