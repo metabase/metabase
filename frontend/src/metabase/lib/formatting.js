@@ -44,6 +44,12 @@ import type {
   TimeEnabled,
 } from "metabase/lib/formatting/date";
 
+// a one or two character string specifying the decimal and grouping separator characters
+export type NumberSeparators = ".," | ", " | ",." | ".";
+
+// single character string specifying date separators
+export type DateSeparator = "/" | "-" | ".";
+
 export type FormattingOptions = {
   // GENERIC
   column?: Column | Field,
@@ -63,11 +69,9 @@ export type FormattingOptions = {
   scale?: number,
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
   scale?: number,
-  locale?: string,
+  number_separators?: NumberSeparators,
   minimumFractionDigits?: number,
   maximumFractionDigits?: number,
-  // use thousand separators, defualt to false if locale === null
-  useGrouping?: boolean,
   // decimals sets both minimumFractionDigits and maximumFractionDigits
   decimals?: number,
   // STRING
@@ -76,6 +80,7 @@ export type FormattingOptions = {
   // DATE/TIME
   // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
   date_style?: DateStyle,
+  date_separator?: DateSeparator,
   date_abbreviate?: boolean,
   date_format?: string,
   time_style?: TimeStyle,
@@ -88,7 +93,6 @@ type FormattedString = string | React$Element<any>;
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
   maximumFractionDigits: 2,
-  useGrouping: true,
 };
 
 function getDefaultNumberOptions(options) {
@@ -98,11 +102,6 @@ function getDefaultNumberOptions(options) {
   if (typeof options.decimals === "number" && !isNaN(options.decimals)) {
     defaults.minimumFractionDigits = options.decimals;
     defaults.maximumFractionDigits = options.decimals;
-  }
-
-  // previously we used locale === null to signify that we should turn off thousand separators
-  if (options.locale === null) {
-    defaults.useGrouping = false;
   }
 
   return defaults;
@@ -127,15 +126,19 @@ const RANGE_SEPARATOR = ` – `;
 // for extracting number portion from a formatted currency string
 const NUMBER_REGEX = /[\+\-]?[0-9\., ]+/;
 
+const DEFAULT_NUMBER_SEPARATORS = ".,";
+
 export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
-  // if we don't provide a locale much of the formatting doens't work
+  // always use "en" locale so we have known number separators we can replace depending on number_separators option
+  // TODO: if we do that how can we get localized currency names?
   // $FlowFixMe: doesn't know about Intl.NumberFormat
-  return new Intl.NumberFormat(options.locale || "en", {
+  return new Intl.NumberFormat("en", {
     style: options.number_style,
     currency: options.currency,
     currencyDisplay: options.currency_style,
-    useGrouping: options.useGrouping,
+    // always use grouping separators, but we may replace/remove them depending on number_separators option
+    useGrouping: true,
     minimumIntegerDigits: options.minimumIntegerDigits,
     minimumFractionDigits: options.minimumFractionDigits,
     maximumFractionDigits: options.maximumFractionDigits,
@@ -173,7 +176,8 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       } else {
         nf = numberFormatterForOptions(options);
       }
-      const formatted = nf.format(number);
+
+      let formatted = nf.format(number);
 
       // extract number portion of currency if we're formatting a cell
       if (
@@ -183,8 +187,14 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       ) {
         const match = formatted.match(NUMBER_REGEX);
         if (match) {
-          return match[0].trim();
+          formatted = match[0].trim();
         }
+      }
+
+      // replace the separators if not default
+      const separators = options["number_separators"];
+      if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
+        formatted = replaceNumberSeparators(formatted, separators);
       }
 
       return formatted;
@@ -197,6 +207,21 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       );
     }
   }
+}
+
+// replaces the decimale and grouping separators with those specified by a NumberSeparators option
+function replaceNumberSeparators(
+  formatted: string,
+  separators: NumberSeparators,
+) {
+  const [decimalSeparator, groupingSeparator] = (separators || ".,").split("");
+
+  const separatorMap = {
+    ",": groupingSeparator || "",
+    ".": decimalSeparator,
+  };
+
+  return formatted.replace(/,|\./g, separator => separatorMap[separator]);
 }
 
 function formatNumberScientific(
@@ -430,8 +455,12 @@ export function formatDateTimeWithUnit(
   let timeFormat = options.time_format;
 
   if (!dateFormat) {
-    // $FlowFixMe: date_style default set above
-    dateFormat = getDateFormatFromStyle(options.date_style, unit);
+    dateFormat = getDateFormatFromStyle(
+      // $FlowFixMe: date_style default set above
+      options["date_style"],
+      unit,
+      options["date_separator"],
+    );
   }
 
   if (!timeFormat) {

@@ -104,15 +104,17 @@ const DEFAULT_FIELD_FILTER = () => true;
 
 export function fieldSetting(
   id,
-  { fieldFilter = DEFAULT_FIELD_FILTER, ...def } = {},
+  { fieldFilter = DEFAULT_FIELD_FILTER, showColumnSetting, ...def } = {},
 ) {
   return {
     [id]: {
-      widget: "select",
+      widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getProps: ([{ card, data: { cols } }]) => ({
+      getProps: ([{ card, data: { cols } }], vizSettings) => ({
         options: cols.filter(fieldFilter).map(getOptionFromColumn),
+        columns: cols,
+        showColumnSetting: showColumnSetting,
       }),
       ...def,
     },

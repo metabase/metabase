@@ -81,7 +81,13 @@ describe("settings framework", () => {
     it("should return widget", () => {
       const defs = { foo: { title: "Foo", widget: "input" } };
       const stored = { foo: "foo" };
-      const widgets = getSettingsWidgets(defs, stored, mockObject, () => {});
+      const widgets = getSettingsWidgets(
+        defs,
+        stored,
+        stored,
+        mockObject,
+        () => {},
+      );
       widgets.map(deleteFunctions);
       expect(widgets).toEqual([
         {
@@ -91,42 +97,43 @@ describe("settings framework", () => {
           hidden: false,
           props: {},
           value: "foo",
+          set: true,
         },
       ]);
     });
     it("should return disabled widget when `disabled` is true", () => {
       const defs = { foo: { widget: "input", disabled: true } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].disabled).toEqual(true);
     });
     it("should return disabled widget when `getDisabled` returns true", () => {
       const getDisabled = jest.fn().mockReturnValue(true);
       const defs = { foo: { widget: "input", getDisabled } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].disabled).toEqual(true);
       expect(getDisabled.mock.calls).toEqual([[mockObject, {}, {}]]);
     });
     it("should return hidden widget when `hidden` is true", () => {
       const defs = { foo: { widget: "input", hidden: true } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].hidden).toEqual(true);
     });
     it("should return hidden widget when `getHidden` returns true", () => {
       const getHidden = jest.fn().mockReturnValue(true);
       const defs = { foo: { widget: "input", getHidden } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].hidden).toEqual(true);
       expect(getHidden.mock.calls).toEqual([[mockObject, {}, {}]]);
     });
     it("should return props when `props` is provided", () => {
       const defs = { foo: { widget: "input", props: { hello: "world" } } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].props).toEqual({ hello: "world" });
     });
     it("should compute props when `getProps` is provided", () => {
       const getProps = jest.fn().mockReturnValue({ hello: "world" });
       const defs = { foo: { widget: "input", getProps } };
-      const widgets = getSettingsWidgets(defs, {}, mockObject, () => {});
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
       expect(widgets[0].props).toEqual({ hello: "world" });
       // expect(getProps.mock.calls).toEqual([[null, {}, FIXME, {}]]);
     });
@@ -136,6 +143,7 @@ describe("settings framework", () => {
       const onChangeSettings = jest.fn();
       const widgets = getSettingsWidgets(
         defs,
+        stored,
         stored,
         mockObject,
         onChangeSettings,
@@ -153,6 +161,7 @@ describe("settings framework", () => {
       const onChangeSettings = jest.fn();
       const widgets = getSettingsWidgets(
         defs,
+        stored,
         stored,
         mockObject,
         onChangeSettings,

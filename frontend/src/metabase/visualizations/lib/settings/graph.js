@@ -139,6 +139,8 @@ export const GRAPH_DATA_SETTINGS = {
           vizSettings["graph.metrics"].length < 2
             ? t`Add a series breakout...`
             : null,
+        columns: data.cols,
+        showColumnSetting: true,
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
@@ -175,6 +177,8 @@ export const GRAPH_DATA_SETTINGS = {
           vizSettings["graph.dimensions"].length < 2
             ? t`Add another series...`
             : null,
+        columns: data.cols,
+        showColumnSetting: true,
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],

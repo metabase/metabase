@@ -1,3 +1,6 @@
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
+
 export function makeCard(card) {
   return {
     name: "card",
@@ -159,4 +162,20 @@ export function dispatchUIEvent(element, eventName) {
   let e = document.createEvent("UIEvents");
   e.initUIEvent(eventName, true, true, window, 1);
   element.dispatchEvent(e);
+}
+
+export function renderChart(renderer, element, series, props) {
+  const chartType = series[0].card.display;
+  const settings = getComputedSettingsForSeries(series);
+
+  return renderer(element, {
+    chartType,
+    series,
+    settings,
+    ...props,
+  });
+}
+
+export function renderLineAreaBar(...args) {
+  return renderChart(lineAreaBarRenderer, ...args);
 }

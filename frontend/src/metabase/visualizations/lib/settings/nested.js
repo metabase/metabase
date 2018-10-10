@@ -106,6 +106,7 @@ export function nestedSettings(
     );
     const widgets = getSettingsWidgets(
       settingsDefs,
+      storedSettings,
       computedSettings,
       object,
       onChangeSettings,

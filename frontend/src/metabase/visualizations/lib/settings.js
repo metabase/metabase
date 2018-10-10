@@ -12,6 +12,8 @@ import ChartSettingFieldsPicker from "metabase/visualizations/components/setting
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 export type SettingId = string;
 
 export type Settings = {
@@ -43,6 +45,7 @@ export type SettingDef = {
   widget?: string | React$Component<any, any, any>,
   writeDependencies?: SettingId[],
   readDependencies?: SettingId[],
+  noReset?: boolean,
 };
 
 export type WidgetDef = {
@@ -52,6 +55,7 @@ export type WidgetDef = {
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
+  noReset?: boolean,
   // $FlowFixMe
   widget?: React$Component<any, any, any>,
   onChange: (value: any) => void,
@@ -157,17 +161,18 @@ function getComputedSetting(
 function getSettingWidget(
   settingDefs: SettingDefs,
   settingId: SettingId,
-  settings: Settings,
+  storedSettings: Settings,
+  computedSettings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
   extra?: ExtraProps = {},
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
-  const value = settings[settingId];
+  const value = computedSettings[settingId];
   const onChange = value => {
     const newSettings = { [settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
-      newSettings[settingId] = settings[settingId];
+      newSettings[settingId] = computedSettings[settingId];
     }
     onChangeSettings(newSettings);
   };
@@ -179,20 +184,21 @@ function getSettingWidget(
     id: settingId,
     value: value,
     title: settingDef.getTitle
-      ? settingDef.getTitle(object, settings, extra)
+      ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
-      ? settingDef.getHidden(object, settings, extra)
+      ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
     disabled: settingDef.getDisabled
-      ? settingDef.getDisabled(object, settings, extra)
+      ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, settings, onChange, extra)
+        ? settingDef.getProps(object, computedSettings, onChange, extra)
         : {}),
     },
+    set: settingId in storedSettings,
     widget:
       typeof settingDef.widget === "string"
         ? WIDGETS[settingDef.widget]
@@ -203,7 +209,8 @@ function getSettingWidget(
 
 export function getSettingsWidgets(
   settingDefs: SettingDefs,
-  settings: Settings,
+  storedSettings: Settings,
+  computedSettings: Settings,
   object: any,
   onChangeSettings: (settings: Settings) => void,
   extra?: ExtraProps = {},
@@ -213,7 +220,8 @@ export function getSettingsWidgets(
       getSettingWidget(
         settingDefs,
         settingId,
-        settings,
+        storedSettings,
+        computedSettings,
         object,
         onChangeSettings,
         extra,
@@ -234,4 +242,24 @@ export function getPersistableDefaultSettings(
     }
   }
   return persistableDefaultSettings;
+}
+
+export function updateSettings(
+  storedSettings: Settings,
+  changedSettings: Settings,
+): Settings {
+  for (const key of Object.keys(changedSettings)) {
+    MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+  }
+  const newSettings = {
+    ...storedSettings,
+    ...changedSettings,
+  };
+  // remove undefined settings
+  for (const [key, value] of Object.entries(changedSettings)) {
+    if (value === undefined) {
+      delete newSettings[key];
+    }
+  }
+  return newSettings;
 }
