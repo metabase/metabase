@@ -332,8 +332,6 @@ const GaugeArc = ({
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
-  const colSettings =
-    settings && settings.column && column ? settings.column(column) : {};
   return (
     <path
       d={arc({
@@ -341,24 +339,30 @@ const GaugeArc = ({
         endAngle: end,
       })}
       fill={fill}
-      onMouseMove={
-        onHoverChange
-          ? e =>
-              onHoverChange({
-                data: [
-                  {
-                    key: segment.label,
-                    value: `${formatValue(
-                      segment.min,
-                      colSettings,
-                    )} - ${formatValue(segment.max, colSettings)}`,
-                  },
-                ],
-                event: e.nativeEvent,
-              })
-          : null
-      }
-      onMouseLeave={onHoverChange ? () => onHoverChange(null) : null}
+      onMouseMove={e => {
+        if (onHoverChange) {
+          const options =
+            settings && settings.column && column
+              ? settings.column(column)
+              : {};
+          onHoverChange({
+            data: [
+              {
+                key: segment.label,
+                value: [segment.min, segment.max]
+                  .map(n => formatValue(n, options))
+                  .join(" - "),
+              },
+            ],
+            event: e.nativeEvent,
+          });
+        }
+      }}
+      onMouseLeave={() => {
+        if (onHoverChange) {
+          onHoverChange(null);
+        }
+      }}
     />
   );
 };

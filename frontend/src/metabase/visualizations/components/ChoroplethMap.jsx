@@ -8,7 +8,7 @@ import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
@@ -174,6 +174,9 @@ export default class ChoroplethMap extends Component {
       String(feature.properties[keyProperty]).toLowerCase();
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
+    const formatMetric = value =>
+      formatValue(value, settings.column(cols[metricIndex]));
+
     const heatMapColors = HEAT_MAP_COLORS.slice(
       0,
       Math.min(HEAT_MAP_COLORS.length, rows.length),
@@ -241,8 +244,8 @@ export default class ChoroplethMap extends Component {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
-        ? formatNumber(min) + " +"
-        : formatNumber(min) + " - " + formatNumber(max);
+        ? formatMetric(min) + " +"
+        : formatMetric(min) + " - " + formatMetric(max);
     });
 
     const getColor = feature => {
