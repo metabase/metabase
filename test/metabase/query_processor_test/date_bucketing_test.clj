@@ -1,5 +1,19 @@
 (ns metabase.query-processor-test.date-bucketing-test
-  "Tests for date bucketing."
+  "The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
+  timezones in play when querying using these date bucketing features. The most visible is how timestamps are returned
+  to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps regardless of
+  timezone of the database. Specifying a report timezone (if the database supports it) will return the timestamps in
+  that timezone (manifesting itself as an offset for that time). Using the JVM timezone that doesn't match the
+  database timezone (assuming the database doesn't support a report timezone) can lead to incorrect results.
+
+  The second place timezones can impact this is calculations in the database. A good example of this is grouping
+  something by day. In that case, the start (or end) of the day will be different depending on what timezone the
+  database is in. The start of the day in pacific time is 7 (or 8) hours earlier than UTC. This means there might be a
+  different number of results depending on what timezone we're in. Report timezone lets the user specify that, and it
+  gets pushed into the database so calculations are made in that timezone.
+
+  If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
+  their results."
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
@@ -15,23 +29,6 @@
              [datasets :as datasets :refer [*driver* *engine*]]
              [interface :as i]])
   (:import org.joda.time.DateTime))
-
-;; The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
-;; timezones in play when querying using these date bucketing features. The most visible is how timestamps are
-;; returned to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps
-;; regardless of timezone of the database. Specifying a report timezone (if the database supports it) will return the
-;; timestamps in that timezone (manifesting itself as an offset for that time). Using the JVM timezone that doesn't
-;; match the database timezone (assuming the database doesn't support a report timezone) can lead to incorrect
-;; results.
-;;
-;; The second place timezones can impact this is calculations in the database. A good example of this is grouping
-;; something by day. In that case, the start (or end) of the day will be different depending on what timezone the
-;; database is in. The start of the day in pacific time is 7 (or 8) hours earlier than UTC. This means there might be
-;; a different number of results depending on what timezone we're in. Report timezone lets the user specify that, and
-;; it gets pushed into the database so calculations are made in that timezone.
-;;
-;; If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries
-;; or their results.
 
 (defn- ->long-if-number [x]
   (if (number? x)

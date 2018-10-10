@@ -66,7 +66,7 @@
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
      (let [fks-to-update (fetch-metadata/fk-metadata database table)]
-       {:total-fks (count fks-to-update)
+       {:total-fks   (count fks-to-update)
         :updated-fks (sync-util/sum-numbers (fn [fk]
                                               (if (mark-fk! database table fk)
                                                 1
