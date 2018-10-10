@@ -93,7 +93,7 @@ export default function rowRenderer(
   });
 
   chart
-    .ordinalColors([colors[0]])
+    .ordinalColors([settings.series(series[0]).color])
     .x(d3.scale.linear().domain(xDomain))
     .elasticX(true)
     .dimension(dimension)
