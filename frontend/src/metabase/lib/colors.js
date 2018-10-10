@@ -120,7 +120,7 @@ type ColorScale = (input: number) => ColorString;
 export const getColorScale = (
   extent: [number, number],
   colors: string[],
-  quantile = false,
+  quantile: boolean = false,
 ): ColorScale => {
   if (quantile) {
     return d3.scale
