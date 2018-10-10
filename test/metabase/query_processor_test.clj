@@ -102,7 +102,8 @@
    :source          :fields
    :fk_field_id     nil
    :remapped_from   nil
-   :remapped_to     nil})
+   :remapped_to     nil
+   :settings        nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
@@ -277,6 +278,7 @@
              :id           nil
              :table_id     nil
              :description  nil
+             :settings     nil
              :source       :aggregation
              :extra_info   {}
              :target       nil}))
@@ -287,6 +289,7 @@
     :id           nil
     :table_id     nil
     :description  nil
+    :settings     nil
     :source       :aggregation
     :extra_info   {}
     :target       nil

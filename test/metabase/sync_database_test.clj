@@ -130,7 +130,8 @@
    :special_type        nil
    :table_id            true
    :updated_at          true
-   :visibility_type     :normal})
+   :visibility_type     :normal
+   :settings            nil})
 
 ;; ## SYNC DATABASE
 (expect
