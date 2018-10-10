@@ -16,7 +16,7 @@
     :timestamp :type/DateTime
     :tinyint :type/Integer
     :uniontype :type/*
-    :varchar :type/Text} (keyword column-type)))
+    :varchar :type/Text} (keyword (re-find #"\w+" column-type))))
 
 (defn- create-nested-fields [schema]
   (set (map (fn [[k v]]

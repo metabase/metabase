@@ -48,6 +48,8 @@
   [result]
   (->> result
        (remove #(= (:col_name %) ""))
+       (remove #(= (:col_name %) nil))
+       (remove #(= (:data_type %) nil))
        (remove #(string/starts-with? (:col_name %) "#")) ; remove comment
        (distinct) ; driver can return twice the partitioning fields
        (map describe-database->clj)))
@@ -60,7 +62,7 @@
     (try
       (jdbc/query (sql/db->jdbc-connection-spec database) (string/replace query ";" " ") {:raw? true})
       (catch Exception e
-        (log/error (u/format-color 'red "Failed to execute query: %s %s\n%s" query (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
+        (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
 
 (defn- column->base-type [column-type]
   ({:array      :type/*
@@ -79,7 +81,7 @@
     :timestamp  :type/DateTime
     :tinyint    :type/Integer
     :uniontype  :type/*
-    :varchar    :type/Text} (keyword column-type)))
+    :varchar    :type/Text} (keyword (re-find #"\w+" column-type))))
 
 (defn- connection-details->spec
   "Create a database specification for an Athena database. DETAILS should include keys for `:user`,
