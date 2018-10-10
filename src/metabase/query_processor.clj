@@ -94,7 +94,6 @@
   [f]
   ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
   (-> f
-      dev/guard-multiple-calls
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
@@ -136,37 +135,41 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
+(def ^{:arglists '([query]), :style/indent 1} preprocess
+  "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
+  get executed by `execute-query`."
+  ;; throwing pre-allocated exceptions can actually get optimized away into long jumps by the JVM, let's give it a
+  ;; chance to happen here
+  (let [quit-early-exception (Exception.)
+        deliver-native-query (fn [{:keys [results-promise] :as query}]
+                               (deliver results-promise (dissoc query :results-promise))
+                               (throw quit-early-exception))
+        recieve-native-query (fn [qp]
+                               (fn [query]
+                                 (let [results-promise (promise)
+                                       results         (qp (assoc query :results-promise results-promise))]
+                                   (if (realized? results-promise)
+                                     @results-promise
+                                     results))))]
+    (recieve-native-query (qp-pipeline deliver-native-query))))
+
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form)."
   {:style/indent 0}
   [query]
-  (let [results ((qp-pipeline identity) query)]
-    (or (get-in results [:data :native_form])
-        (throw (ex-info "No native form returned."
-                 results)))))
+  (let [results (preprocess query)]
+    (or (get results :native)
+        (throw (ex-info (str (tru "No native form returned."))
+                 (or results {}))))))
+
+(def ^:private default-pipeline (qp-pipeline execute-query))
 
 (defn process-query
   "A pipeline of various QP functions (including middleware) that are used to process MB queries."
   {:style/indent 0}
   [query]
-  ((qp-pipeline execute-query) query))
-
-(def ^{:arglists '([query])} expand
-  "Expand a QUERY the same way it would normally be done as part of query processing.
-   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
-  (->> identity
-       resolve-source-table/resolve-source-table
-       parameters/substitute-parameters
-       expand-macros/expand-macros
-       driver-specific/process-query-in-context
-       resolve-driver/resolve-driver
-       fetch-source-query/fetch-source-query
-       bind-timezone/bind-effective-timezone
-       validate/validate-query
-       normalize/normalize))
-;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
-;; instead of running it
+  (default-pipeline query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

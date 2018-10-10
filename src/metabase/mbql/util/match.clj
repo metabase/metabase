@@ -24,14 +24,15 @@
   This pattern will always include an alias to the entire match as `&match`."
   [pattern]
   (cond
-    (map? pattern)
-    (throw (Exception. "Don't use maps in patterns!"))
-
     (keyword? pattern)
     [[pattern '& '_]]
 
     (and (set? pattern) (every? keyword? pattern))
     [[`(:or ~@pattern) '& '_]]
+
+    ;; special case for `_`, we'll let you match anything with that
+    (= pattern '_)
+    [pattern]
 
     ;; if pattern is a symbol, assume it's either a predicate function or a class
     (symbol? pattern)

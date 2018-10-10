@@ -28,13 +28,13 @@
     [:time-interval field (n :guard #{-1 0 1}) unit _]
     [:= [:datetime-field field unit] [:relative-datetime n unit]]
 
-    [:time-interval field (n :guard neg?) unit (options :guard :include-current)]
+    [:time-interval field (n :guard neg?) unit (_ :guard :include-current)]
     [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime 0 unit]]
 
     [:time-interval field (n :guard neg?) unit _]
     [:between [:datetime-field field unit] [:relative-datetime n unit] [:relative-datetime -1 unit]]
 
-    [:time-interval field n unit (options :guard :include-current)]
+    [:time-interval field n unit (_ :guard :include-current)]
     [:between [:datetime-field field unit] [:relative-datetime 0 unit] [:relative-datetime n unit]]
 
     [:time-interval field n unit _]

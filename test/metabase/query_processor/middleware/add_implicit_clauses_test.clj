@@ -2,9 +2,30 @@
   (:require [expectations :refer :all]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.util :as u]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+;; check we fetch Fields in the right order
+(expect
+  [ ;; sorted first because it has lowest positon
+   {:position -1, :name "PRICE",       :special_type :type/Category}
+   ;; PK
+   {:position 0,  :name "ID",          :special_type :type/PK}
+   ;; Name
+   {:position 0,  :name "NAME",        :special_type :type/Name}
+   ;; The rest are sorted by name
+   {:position 0,  :name "CATEGORY_ID", :special_type :type/FK}
+   {:position 0,  :name "LATITUDE",    :special_type :type/Latitude}
+   {:position 0,  :name "LONGITUDE",   :special_type :type/Longitude}]
+  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+    (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (data/id :venues)))
+          id->field (u/key-by :id (db/select [Field :id :position :name :special_type] :id [:in ids]))]
+      (for [id ids]
+        (into {} (dissoc (id->field id) :id))))))
 
 ;; we should add order-bys for breakout clauses
 (expect

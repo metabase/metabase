@@ -4,8 +4,7 @@
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.date :as du]
-            [schema.core :as s]))
+            [metabase.util.date :as du]))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
@@ -59,7 +58,8 @@
   (if-let [unit (when (and (du/date-string? this)
                            parse-datetime-strings?)
                   (:unit info))]
-    [:absolute-datetime (du/->Timestamp this) unit] ; TODO - what about timezone ?!
+    ;; should use report timezone by default
+    [:absolute-datetime (du/->Timestamp this) unit]
     [:value this info]))
 
 
@@ -67,20 +67,29 @@
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
-(s/defn ^:private wrap-value-literals* :- mbql.s/Query
-  [query]
-  (mbql.u/replace-in query [:query :filter]
-    [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
-    [clause field (add-type-info x (type-info field))]
+(defn ^:private wrap-value-literals-in-mbql-query
+  [{:keys [source-query], :as inner-query}]
+  (let [inner-query (cond-> inner-query
+                      source-query (update :source-query wrap-value-literals-in-mbql-query))]
+    (mbql.u/replace-in inner-query [:filter]
+      [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
+      [clause field (add-type-info x (type-info field))]
 
-    [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
-    [:between
-     field
-     (add-type-info min-val (type-info field))
-     (add-type-info max-val (type-info field))]
+      [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
+      [:between
+       field
+       (add-type-info min-val (type-info field))
+       (add-type-info max-val (type-info field))]
 
-    [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
-    (apply vector clause field (add-type-info s (type-info field) {:parse-datetime-strings? false}) more)))
+      [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
+      (apply vector clause field (add-type-info s (type-info field) {:parse-datetime-strings? false}) more))))
+
+(defn- wrap-value-literals*
+  [{query-type :type, :as query}]
+  (if-not (= query-type :query)
+    query
+    (mbql.s/validate-query
+     (update query :query wrap-value-literals-in-mbql-query))))
 
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

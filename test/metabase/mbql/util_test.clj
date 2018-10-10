@@ -295,7 +295,7 @@
 ;; wrapped by other clauses?
 (expect
   [[:datetime-field [:field-id 10] :day]
-   [:datetime-field [:field-id 20] :day]
+   [:datetime-field [:field-id 20] :month]
    [:field-id 30]]
   (let [id-is-datetime-field? #{10}]
     (mbql.u/replace [[:field-id 10]
@@ -392,3 +392,35 @@
                                :query    {:source-table 1
                                           :order-by     [[:asc [:field-id 10]]]}}
                               [:asc [:datetime-field [:field-id 10] :day]]))
+
+
+;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
+
+(def ^:private query-with-some-nesting
+  {:database 1
+   :type     :query
+   :query    {:source-query {:source-table 1
+                             :aggregation  [[:stddev [:field-id 1]]
+                                            [:min [:field-id 1]]]}
+              :aggregation  [[:avg [:field-id 1]]
+                             [:max [:field-id 1]]]}})
+
+(expect
+  [:avg [:field-id 1]]
+  (mbql.u/aggregation-at-index query-with-some-nesting 0))
+
+(expect
+  [:max [:field-id 1]]
+  (mbql.u/aggregation-at-index query-with-some-nesting 1))
+
+(expect
+  [:avg [:field-id 1]]
+  (mbql.u/aggregation-at-index query-with-some-nesting 0 0))
+
+(expect
+  [:stddev [:field-id 1]]
+  (mbql.u/aggregation-at-index query-with-some-nesting 0 1))
+
+(expect
+  [:min [:field-id 1]]
+  (mbql.u/aggregation-at-index query-with-some-nesting 1 1))

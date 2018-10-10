@@ -107,3 +107,15 @@
     (wrap-value-literals [$date]
       {:source-table (data/id :checkins)
        :filter       [:starts-with [:datetime-field [:field-id $date] :month] "2018-10-01"]})))
+
+;; does wrapping value literals work recursively on source queries as well?
+(expect
+  (data/$ids checkins
+    {:source-query {:source-table (data/id :checkins)
+                    :filter       [:>
+                                   [:field-id $date]
+                                   [:absolute-datetime #inst "2014-01-01T00:00:00.000000000-00:00" :default]]}})
+  (data/$ids checkins
+    (wrap-value-literals [$date]
+      {:source-query {:source-table (data/id :checkins)
+                      :filter       [:> [:field-id $date] "2014-01-01"]}})))

@@ -362,7 +362,7 @@
       (h/offset (* items (dec page)))))
 
 
-;;; ------------------------------------------ source-table & source-query -------------------------------------------
+;;; -------------------------------------------------- source-table --------------------------------------------------
 
 (defn apply-source-table
   "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
@@ -370,17 +370,6 @@
   [_ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
     (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name))))
-
-(declare apply-clauses)
-
-(defn- apply-source-query [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
-  ;; TODO - what alias should we give the source query?
-  (assoc honeysql-form
-    :from [[(if native
-              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
-              (binding [*nested-query-level* (inc *nested-query-level*)]
-                (apply-clauses driver {} source-query)))
-            :source]]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -393,7 +382,6 @@
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
   [:source-table #'sql/apply-source-table
-   :source-query apply-source-query
    :breakout     #'sql/apply-breakout
    :aggregation  #'sql/apply-aggregation
    :fields       #'sql/apply-fields
@@ -403,18 +391,63 @@
    :page         #'sql/apply-page
    :limit        #'sql/apply-limit])
 
-(defn- apply-clauses
-  "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
-  [driver honeysql-form query]
+(defn- apply-top-level-clauses
+  "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn. Doesn't
+  handle `:source-query`; since that must be handled in a special way, that is handled separately."
+  [driver honeysql-form inner-query]
   (loop [honeysql-form honeysql-form, [clause f & more] (seq clause-handlers)]
-    (let [honeysql-form (if (clause query)
-                          (f driver honeysql-form query)
+    (let [honeysql-form (if (clause inner-query)
+                          (f driver honeysql-form inner-query)
                           honeysql-form)]
       (if (seq more)
         (recur honeysql-form more)
         ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one
         ;; in
         (update honeysql-form :select #(if (seq %) % [:*]))))))
+
+
+;;; -------------------------------------------- Handling source queries ---------------------------------------------
+
+(declare apply-clauses)
+
+;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
+;; a different alias
+(def ^:private source-query-alias :source)
+
+(defn- apply-source-query
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
+  source queries are aliased as `source`."
+  [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
+  (assoc honeysql-form
+    :from [[(if native
+              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
+              (binding [*nested-query-level* (inc *nested-query-level*)]
+                (apply-clauses driver {} source-query)))
+            source-query-alias]]))
+
+(defn- apply-clauses-with-aliased-source-query-table
+  "For queries that have a source query that is a normal MBQL query with a source table, temporarily swap the name of
+  that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
+  referring to Fields belonging to the Table in the source query work normally."
+  [driver honeysql-form {:keys [source-query], :as inner-query}]
+  (qp.store/with-pushed-store
+    (when-let [source-table-id (:source-table source-query)]
+      (qp.store/store-table! (assoc (qp.store/table source-table-id) :schema nil, :name (name source-query-alias))))
+    (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
+
+
+;;; -------------------------------------------- putting it all togetrher --------------------------------------------
+
+(defn- apply-clauses
+  "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
+  because it is aliased."
+  [driver honeysql-form {:keys [source-query], :as inner-query}]
+  (if source-query
+    (apply-clauses-with-aliased-source-query-table
+     driver
+     (apply-source-query driver honeysql-form inner-query)
+     inner-query)
+    (apply-top-level-clauses driver honeysql-form inner-query)))
 
 (defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
@@ -641,7 +674,7 @@
     (when-not (:quiet environ.core/env) ; NOCOMMIT
       (println "NATIVE QUERY:"
                (u/format-color 'blue "\n%s\n%s"
-                 (str (loop [sql (:query query), [k & more] ["FROM" "WHERE" "ORDER BY" "LIMIT" "AND"]]
+                 (str (loop [sql (:query query), [k & more] ["FROM" "WHERE" "ORDER BY" "LIMIT" "AND" "LEFT JOIN"]]
                         (if-not k
                           sql
                           (recur (str/replace sql (re-pattern (str "\\s" k)) (str "\n" k))

@@ -1,9 +1,12 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor
+             [interface :as i]
+             [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data])
+  (:import metabase.driver.h2.H2Driver))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             add-native-column-info                                             |
@@ -69,4 +72,57 @@
         :cols
         vec)))
 
-;; TODO - test info added for aggregations
+;; datetime unit should work on field literals too
+(expect
+  [{:name         "price"
+    :base_type    :type/Number
+    :display_name "Price"
+    :unit         :month}]
+  (-> (#'annotate/add-mbql-column-info
+       {:query {:fields [[:datetime-field [:field-literal "price" :type/Number] :month]]}}
+       {:columns [:price]})
+      :cols
+      vec))
+
+;; test that added information about aggregations looks the way we'd expect
+(defn- aggregation-name [ag-clause]
+  (binding [i/*driver* (H2Driver.)]
+    (annotate/aggregation-name ag-clause)))
+
+(expect
+  "count"
+  (aggregation-name [:count]))
+
+(expect
+  "count"
+  (aggregation-name [:distinct [:field-id 1]]))
+
+(expect
+  "sum"
+  (aggregation-name [:sum [:field-id 1]]))
+
+(expect
+  "count + 1"
+  (aggregation-name [:+ [:count] 1]))
+
+(expect
+  "min + (2 * avg)"
+  (aggregation-name [:+ [:min [:field-id 1]] [:* 2 [:avg [:field-id 2]]]]))
+
+(expect
+  "min + (2 * avg * 3 * (max - 4))"
+  (aggregation-name [:+
+                     [:min [:field-id 1]]
+                     [:*
+                      2
+                      [:avg [:field-id 2]]
+                      3
+                      [:-
+                       [:max [:field-id 3]]
+                       4]]]))
+
+(expect
+  "My Cool Aggregation"
+  (aggregation-name [:named [:avg [:field-id 2]] "My Cool Aggregation"]))
+
+;; TODO - more tests for info added for aggregations

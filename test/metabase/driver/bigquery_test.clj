@@ -17,7 +17,8 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.mbql.util :as mbql.u]))
 
 ;; Test native queries
 (expect-with-engine :bigquery
@@ -75,27 +76,44 @@
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
 
-(defn- aggregation-names [query-map]
-  (->> query-map
-       :aggregation
-       (map :custom-name)))
+;; can we generate unique names?
+(expect
+  ["count" "sum" "count_2" "count_3"]
+  (let [unique-name (#'bigquery/unique-name-fn)]
+    [(unique-name "count")
+     (unique-name "sum")
+     (unique-name "count")
+     (unique-name "count")]))
 
-(defn- pre-alias-aggregations' [query-map]
+;; what if we try to trick it by using a name it would have generated?
+(expect
+  ["count" "count_2" "count_2_2"]
+  (let [unique-name (#'bigquery/unique-name-fn)]
+    [(unique-name "count")
+     (unique-name "count")
+     (unique-name "count_2")]))
+
+;; ok, make sure we actually wrap all of our ag clauses in `:named` clauses with unique names
+(defn- aggregation-names [query]
+  (mbql.u/match (-> query :query :aggregation)
+    [:named _ ag-name] ag-name))
+
+(defn- pre-alias-aggregations [outer-query]
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (aggregation-names (#'bigquery/pre-alias-aggregations query-map))))
+    (aggregation-names (#'bigquery/pre-alias-aggregations outer-query))))
 
-(defn- expanded-query-with-aggregations [aggregations]
-  (-> (qp/expand {:database (data/id)
-                  :type     :query
-                  :query    {:source-table (data/id :venues)
-                             :aggregation  aggregations}})
-      :query))
+(defn- query-with-aggregations
+  [aggregations]
+  {:database (data/id)
+   :type     :query
+   :query    {:source-table (data/id :venues)
+              :aggregation  aggregations}})
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (pre-alias-aggregations'
-   (expanded-query-with-aggregations
+  (pre-alias-aggregations
+   (query-with-aggregations
     [[:sum [:field-id (data/id :venues :id)]]
      [:count [:field-id (data/id :venues :id)]]
      [:sum [:field-id (data/id :venues :id)]]
@@ -105,13 +123,14 @@
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (pre-alias-aggregations'
-   (expanded-query-with-aggregations [[:sum [:field-id (data/id :venues :id)]]
-                                      [:count [:field-id (data/id :venues :id)]]
-                                      [:sum [:field-id (data/id :venues :id)]]
-                                      [:avg [:field-id (data/id :venues :id)]]
-                                      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
-                                      [:min [:field-id (data/id :venues :id)]]])))
+  (pre-alias-aggregations
+   (query-with-aggregations
+    [[:sum [:field-id (data/id :venues :id)]]
+     [:count [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:avg [:field-id (data/id :venues :id)]]
+     [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
+     [:min [:field-id (data/id :venues :id)]]])))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}

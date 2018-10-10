@@ -23,7 +23,7 @@
   "Infer the types of columns by looking at the first value for each in the results, which will be added to the results
   as `:cols`. This is used for native queries, which don't have the type information from the original `Field` objects
   used in the query."
-  [{:keys [columns rows], :as results}]
+  [{:keys [columns rows]}]
   (vec (for [i    (range (count columns))
              :let [col (nth columns i)]]
          {:name         (name col)
@@ -50,15 +50,13 @@
   (merge
    (dissoc (qp.store/field field-id) :database_type)
    (when-let [source-field-id (mbql.u/match-one field-clause [:fk-> [:field-id source-field-id] _] source-field-id)]
-     {:fk_field_id source-field-id})
-   (when-let [unit (mbql.u/match-one field-clause [:datetime-field _ unit] unit)]
-     {:unit unit})))
+     {:fk_field_id source-field-id})))
 
 (s/defn ^:private col-info-for-field-literal :- su/Map
-  [query, [_ field-name field-type] :- mbql.s/field-literal]
-  ;; TODO - shouldn't Field literals get a display_name too?
-  {:name      field-name
-   :base_type field-type})
+  [[_ field-name field-type] :- mbql.s/field-literal]
+  {:name         field-name
+   :base_type    field-type
+   :display_name (humanization/name->human-readable-name field-name)})
 
 (s/defn ^:private col-info-for-expression :- su/Map
   [query, expression-name :- su/NonBlankString]
@@ -69,55 +67,55 @@
 
 (s/defn ^:private col-info-for-field-clause :- su/Map
   [query, original-clause :- mbql.s/Field]
-  (let [[clause x :as wrapped-clause] (mbql.u/maybe-unwrap-field-clause original-clause)]
-    (case clause
-      :field-id      (col-info-for-field-id original-clause x)
-      :field-literal (col-info-for-field-literal query wrapped-clause)
-      :expression    (col-info-for-expression query x))))
+  (if (mbql.u/is-clause? :datetime-field original-clause)
+    ;; for datetime clauses, call `col-info-for-field-clause` recursively on whatever it wraps and add our `unit` to it
+    (let [[_ field unit] original-clause]
+      (assoc (col-info-for-field-clause query field) :unit unit))
+    ;; for everyone else unwrap anything else wrapping it and call appropriate fn to get info
+    (let [[clause x :as wrapped-clause] (mbql.u/maybe-unwrap-field-clause original-clause)]
+      (case clause
+        :field-id      (col-info-for-field-id original-clause x)
+        :field-literal (col-info-for-field-literal wrapped-clause)
+        :expression    (col-info-for-expression query x)))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
 
-(defn aggregation-name
+(s/defn aggregation-name :- su/NonBlankString
   "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or expression)."
-  ^String [[clause-name :as ag-clause]]
+  [ag-clause :- mbql.s/Aggregation]
   (when-not i/*driver*
     (throw (Exception. (str (tru "metabase.query-processor.interface/*driver* is unbound.")))))
-
-  (cond
+  (mbql.u/match-one ag-clause
     ;; if a custom name was provided use it
-    (= clause-name :named)
-    (driver/format-custom-field-name i/*driver* (nth ag-clause 2))
+    [:named _ ag-name]
+    (driver/format-custom-field-name i/*driver* ag-name)
 
     ;; for unnamed expressions, just compute a name like "sum + count"
-    (mbql.u/is-clause? #{:+ :- :/ :*} ag-clause)
-    (let [[operator & args] ag-clause]
-      (str/join (str " " (name operator) " ")
-                (for [arg args]
-                  (cond
-                    (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                    (str "(" (aggregation-name arg) ")")
+    [(operator :guard #{:+ :- :/ :*}) & args]
+    (str/join (str " " (name operator) " ")
+              ;; for each arg...
+              (for [arg args]
+                (mbql.u/match-one arg
+                  ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
+                  [(_ :guard #{:+ :- :/ :*}) & _]
+                  (str "(" (aggregation-name &match) ")")
 
-                    (mbql.u/mbql-clause? arg)
-                    (aggregation-name arg)
+                  ;; if the arg is another aggregation, recurse to get its name
+                  [(_ :guard keyword?) & _]
+                  (aggregation-name &match)
 
-                    :else
-                    arg))))
+                  ;; otherwise for things like numbers just use that directly
+                  _ &match)))
 
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
     ;; is called `:count` (WHY?)
-    (= clause-name :distinct)
+    [:distinct _]
     "count"
 
-    :else
+    ;; for any other aggregation just use the name of the clause e.g. `sum`
+    [clause-name & _]
     (name clause-name)))
-
-(defn- expression-aggregate-field-info [expression]
-  (let [ag-name (aggregation-name expression)]
-    {:name         ag-name
-     :display_name ag-name
-     :base_type    :type/Number
-     :special_type :type/Number}))
 
 (defn- col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
@@ -151,14 +149,19 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- check-correct-number-of-columns-returned [expected-count results]
-  (let [actual-count (count (:columns results))]
+(defn- check-correct-number-of-columns-returned [mbql-cols results]
+  (let [expected-count (count mbql-cols)
+        actual-count   (count (:columns results))]
     (when-not (= expected-count actual-count)
       (throw
        (Exception.
         (str (tru "Query processor error: mismatched number of columns in query and results.")
              " "
-             (tru "Expected {0} fields, got {1}" expected-count actual-count)))))))
+             (tru "Expected {0} fields, got {1}" expected-count actual-count)
+             "\n"
+             (tru "Expected: {0}" (mapv :name mbql-cols))
+             "\n"
+             (tru "Actual: {0}" (vec (:columns results)))))))))
 
 (defn- cols-for-fields [{{fields-clause :fields} :query, :as query}]
   (map (partial col-info-for-field-clause query) fields-clause))
@@ -175,7 +178,7 @@
     (native-cols results)
     (mbql-cols {:query source-query} results)))
 
-(defn- mbql-cols [{{:keys [fields breakout aggregation source-query]} :query, :as query}, results]
+(defn- mbql-cols [{{:keys [source-query]} :query, :as query}, results]
   (let [cols (concat
               (cols-for-ags-and-breakouts query)
               (cols-for-fields query))]
@@ -185,7 +188,7 @@
 
 (defn- add-mbql-column-info [query results]
   (let [cols (mbql-cols query results)]
-    (check-correct-number-of-columns-returned (count cols) results)
+    (check-correct-number-of-columns-returned cols results)
     (assoc results :cols cols)))
 
 

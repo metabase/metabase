@@ -30,19 +30,15 @@
                 :visibility_type [:not-in ["sensitive" "retired"]]
                 :parent_id       nil
                 {:order-by [
-                            ;; we can skip 1-3 because queries w/ implicit Field IDs queries won't have
-                            ;; breakouts or fields clauses, and aggregation isn't an actual Field in the DB
-                            ;; anyway
-                            ;;
-                            ;; 4A. position
+                            ;; sort first by position,
                             [:position :asc]
-                            ;; 4B. special_type: :type/PK, :type/Name, then others
+                            ;; or if that's the same, sort PKs first, followed by names, followed by everything else
                             [(hsql/call :case
                                (mdb/isa :special_type :type/PK)   0
                                (mdb/isa :special_type :type/Name) 1
                                :else                              2)
                              :asc]
-                            ;; 4C. name
+                            ;; finally, sort by name (case-insensitive)
                             [:%lower.name :asc]]})]
     (if (mbql.u/datetime-field? field)
       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it

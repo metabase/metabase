@@ -42,7 +42,7 @@
     ;; if we have a source-query just recur until we hit either the native source or the MBQL source
     source-query (recur source-query)
     ;; for root MBQL queries just return source-table + join-tables
-    :else        (cons source-table join-tables)))
+    :else        (cons source-table (map :table-id join-tables))))
 
 (s/defn ^:private tables->permissions-path-set :- #{perms/ObjectPath}
   "Given a sequence of `tables` referenced by a query, return a set of required permissions."
@@ -57,6 +57,7 @@
              (perms/adhoc-native-query-path database-or-id)
 
              ;; If Table is an ID then fetch its schema from the DB and require normal table perms
+             ;; TODO - we should check and see if Table is in the QP store here so we don't do the extra fetch
              (integer? table)
              (perms/object-path (u/get-id database-or-id) (table-id->schema table) table)
 
@@ -74,11 +75,6 @@
                            (throw (Exception. (str (tru "Card {0} does not exist." source-card-id)))))
                        :read))
 
-(defn- expand-query-if-needed [query]
-  (if (map? (:database query))
-    query
-    ((resolve 'metabase.query-processor/expand) query)))
-
 ;; TODO - not sure how we can prevent circular source Cards if source Cards permissions are just collection perms now???
 (s/defn ^:private mbql-permissions-path-set :- #{perms/ObjectPath}
   "Return the set of required permissions needed to run an adhoc `query`.
@@ -87,13 +83,16 @@
   things when a single Card is busted (e.g. API endpoints that filter out unreadable Cards) and instead returns 'only
   admins can see this' permissions -- `#{\"db/0\"}` (DB 0 will never exist, thus normal users will never be able to
   get permissions for it, but admins have root perms and will still get to see (and hopefully fix) it)."
-  [query :- {:query su/Map, s/Keyword s/Any} & [throw-exceptions? :- (s/maybe (s/eq :throw-exceptions))]]
+  [query :- {:query su/Map, s/Keyword s/Any} & [throw-exceptions?     :- (s/maybe (s/eq :throw-exceptions))
+                                                already-preprocessed? :- (s/maybe (s/eq :already-preprocessed))]]
   (try
     ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
     (if-let [source-card-id (qputil/query->source-card-id query)]
       (source-card-read-perms source-card-id)
       ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-      (let [{:keys [query database]} (expand-query-if-needed query)]
+      (let [{:keys [query database]} (if already-preprocessed?
+                                       query
+                                       ((resolve 'metabase.query-processor/preprocess) query))]
         (tables->permissions-path-set database (query->source-and-join-tables query))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
@@ -107,11 +106,12 @@
 
 (s/defn perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions required to run an ad-hoc `query`."
-  {:arglists '([outer-query & [throw-exceptions?]])}
-  ;; TODO - I think we can remove the two optional params because nothing uses them anymore
-  [{query-type :type, database :database, :as query} & [throw-exceptions? :- (s/maybe (s/eq :throw-exceptions))]]
+  {:arglists '([outer-query & [throw-exceptions? already-preprocessed?]])}
+  ;; TODO - I think we can remove the `throw-exceptions?` optional param because nothing uses it anymore
+  [{query-type :type, database :database, :as query} & [throw-exceptions?     :- (s/maybe (s/eq :throw-exceptions))
+                                                        already-preprocessed? :- (s/maybe (s/eq :already-preprocessed))]]
   (cond
     (empty? query)                   #{}
+    (= (keyword query-type) :query)  (mbql-permissions-path-set query throw-exceptions? already-preprocessed?)
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
-    (= (keyword query-type) :query)  (mbql-permissions-path-set query throw-exceptions?)
     :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))

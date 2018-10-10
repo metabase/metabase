@@ -56,6 +56,7 @@
   *  A `core.match` pattern
   *  A symbol naming a class.
   *  A symbol naming a predicate function
+  *  `_`, which will match anything
 
   Examples:
 
@@ -74,15 +75,23 @@
     ;; symbol naming a predicate function
     (match some-query even?) ; -> [2 4 6 8]
 
+    ;; match anything with `_`
+    (match 100 `_`) ; -> 100
+
+
   ### Using `core.match` patterns
 
   See [`core.match` documentation](`https://github.com/clojure/core.match/wiki/Overview`) for more details.
 
-  Pattern-matching works almost exactly the way it does when using `core.match/match` directly (after things like
-  keywords and predicate functions are transformed into appropriate patterns) with the biggest difference being that
-  this macro automatically recurses through sequences and maps as a final `:else` clause. If you don't want to
-  automatically recurse, use a catch-all pattern and return nil, which will prevent `core.match` from reaching the
-  `:else` clause.
+  Pattern-matching works almost exactly the way it does when using `core.match/match` directly, with a few
+  differences:
+
+  *  `mbql.util/match` returns a sequence of everything that matches, rather than the first match it finds
+  *  patterns are automatically wrapped in vectors for you when appropriate
+  *  things like keywords and classes are automatically converted to appropriate patterns for you
+  *  this macro automatically recurses through sequences and maps as a final `:else` clause. If you don't want to
+     automatically recurse, use a catch-all pattern (such as `_`) and return nil, which will prevent `core.match` from
+     reaching the `:else` clause.
 
   ### Returing something other than the exact match with result body
 
@@ -206,8 +215,9 @@
     (update-in outer-query [:query :filter] combine-filter-clauses new-clause)))
 
 
-(defn query->source-table-id
-  "Return the source Table ID associated with `query`, if applicable; handles nested queries as well."
+(s/defn query->source-table-id :- (s/maybe s/Int)
+  "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
+  `nil`, returns `nil`."
   {:argslists '([outer-query])}
   [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query}]
   (cond
@@ -232,6 +242,7 @@
                                  mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
   [[clause-name x y, :as clause] :- mbql.s/Field]
+  ;; TODO - could use `match` to do this
   (case clause-name
     :field-id         clause
     :fk->             (recur y)
@@ -322,9 +333,9 @@
   ([query :- mbql.s/Query, index :- su/NonNegativeInt, nesting-level :- su/NonNegativeInt]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
-         (throw (Exception. (str (tru "No aggregation at index: {0} (nesting level: {1})" index nesting-level)))))
+         (throw (Exception. (str (tru "No aggregation at index: {0}" index)))))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
-     (recur (get-in query [:query :source-query]) index (dec nesting-level)))))
+     (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
 
 (defn ga-id?
   "Is this ID (presumably of a Metric or Segment) a GA one?"
