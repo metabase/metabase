@@ -10,7 +10,7 @@
     (s/one arg-schema arg-name)
     (let [[option arg-schema] arg-schema]
       (case option
-        :optional (s/optional arg-schema arg-name)
+        :optional (s/optional (s/maybe arg-schema) arg-name)
         :rest     (s/named arg-schema arg-name)))))
 
 (defn clause

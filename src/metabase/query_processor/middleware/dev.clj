@@ -6,14 +6,15 @@
              [util :as u]]
             [schema.core :as s]))
 
-;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
-;; just waste CPU cycles and at worst cause a query to fail when it would otherwise succeed.
+;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod
+;; because at best they just waste CPU cycles and at worst cause a query to fail when it would otherwise succeed.
 
 (def QPResultsFormat
   "Schema for the expected format of results returned by a query processor."
   {:columns               [(s/cond-pre s/Keyword s/Str)]
-   (s/optional-key :cols) [{s/Keyword s/Any}]            ; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
-   :rows                  [[s/Any]]
+   ;; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
+   (s/optional-key :cols) [{s/Keyword s/Any}]
+   :rows                  s/Any
    s/Keyword              s/Any})
 
 (def ^{:arglists '([results])} validate-results

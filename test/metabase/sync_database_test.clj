@@ -25,7 +25,7 @@
 ;; These tests make up a fake driver and then confirm that sync uses the various methods defined by the driver to
 ;; correctly sync appropriate metadata rows (Table/Field/etc.) in the Application DB
 
-(def ^:private ^:const sync-test-tables
+(def ^:private sync-test-tables
   {"movie"  {:name   "movie"
              :schema "default"
              :fields #{{:name          "id"
@@ -51,8 +51,7 @@
 
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
-(defrecord SyncTestDriver []
-  :load-ns true
+(defrecord ^:private SyncTestDriver []
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 
