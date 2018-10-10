@@ -372,6 +372,12 @@
         [:inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)]
         coordinates)))
 
+    (= :time-interval filter-name)
+    (let [[_ field & args] filter-clause]
+      (apply vector :time-interval (wrap-implicit-field-id (if (mbql.u/is-clause? :datetime-field field)
+                                                             (second field)
+                                                             field))))
+
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
     (#{:= :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval} filter-name)
