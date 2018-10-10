@@ -8,19 +8,18 @@
   ([schema l r]
    (let [x (+ r 1)]
   (cond
-    (> x 2) ""
-    (clojure.string/starts-with? schema ">")
-      (str (peek l) (cool-parser (clojure.string/replace-first schema #">" "") (pop l) x))
     (clojure.string/starts-with? schema "array<")
       (str "[" (cool-parser (clojure.string/replace-first schema #"array<" "") (conj l "]") x))
     (clojure.string/starts-with? schema "struct<")
       (str "{" (cool-parser (clojure.string/replace-first schema #"struct<" "") (conj l "}") x))
-    (clojure.string/starts-with? schema "map<")
-      (str "{" (cool-parser (clojure.string/replace-first schema #"map<" "") (conj l "}") x))
+    (clojure.string/starts-with? schema "map<string,string>")
+    (str "[{\"key\":\"string\",\"value\":\"string\"}]" (cool-parser (clojure.string/replace-first schema #"map<string,string>" "") l r))
     (clojure.string/starts-with? schema ":")
       (str ":" (cool-parser (clojure.string/replace-first schema #":" "") l r))
     (clojure.string/starts-with? schema ",")
       (str "," (cool-parser (clojure.string/replace-first schema #"," "") l r))
+    (clojure.string/starts-with? schema ">")
+      (str (peek l) (cool-parser (clojure.string/replace-first schema #">" "") (pop l) r))
     :else (let [name-or-type (re-find #"\w+" schema)]
             (if (= name-or-type nil) ""
                                      (str "\"" name-or-type "\""
