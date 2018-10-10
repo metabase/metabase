@@ -8,7 +8,10 @@ import Select, { Option } from "metabase/components/Select";
 import Radio from "metabase/components/Radio";
 import Toggle from "metabase/components/Toggle";
 import ColorPicker from "metabase/components/ColorPicker";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
+import ColorRangePicker, {
+  ColorRangePreview,
+} from "metabase/components/ColorRangePicker";
 
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
@@ -17,7 +20,6 @@ import { formatNumber, capitalize } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
-import d3 from "d3";
 import cx from "classnames";
 
 const OPERATOR_NAMES = {
@@ -29,7 +31,7 @@ const OPERATOR_NAMES = {
   "!=": t`not equal to`,
 };
 
-import colors, { desaturated, getColorScale } from "metabase/lib/colors";
+import colors, { desaturated } from "metabase/lib/colors";
 
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
@@ -245,7 +247,11 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
 
 const RuleBackground = ({ rule, className, style }) =>
   rule.type === "range" ? (
-    <RangePreview colors={rule.colors} className={className} style={style} />
+    <ColorRangePreview
+      colors={rule.colors}
+      className={className}
+      style={style}
+    />
   ) : rule.type === "single" ? (
     <SinglePreview color={rule.color} className={className} style={style} />
   ) : null;
@@ -257,19 +263,6 @@ const SinglePreview = ({ color, className, style, ...props }) => (
     {...props}
   />
 );
-
-const RangePreview = ({ colors = [], sections = 5, className, ...props }) => {
-  const scale = getColorScale([0, sections - 1], colors);
-  return (
-    <div className={cx(className, "flex")} {...props}>
-      {d3
-        .range(0, sections)
-        .map(value => (
-          <div className="flex-full" style={{ background: scale(value) }} />
-        ))}
-    </div>
-  );
-};
 
 const RuleDescription = ({ rule }) => (
   <span>
@@ -338,8 +331,16 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
       <div>
         <h3 className="mt3 mb1">{t`Colors`}</h3>
         <ColorRangePicker
-          colors={rule.colors}
-          onChange={colors => onChange({ ...rule, colors })}
+          value={rule.colors}
+          onChange={colors => {
+            MetabaseAnalytics.trackEvent(
+              "Chart Settings",
+              "Table Formatting",
+              "Select Range  Colors",
+              colors,
+            );
+            onChange({ ...rule, colors });
+          }}
         />
         <h3 className="mt3 mb1">{t`Start the range at`}</h3>
         <Radio
@@ -409,42 +410,6 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => (
       )}
     </div>
   </div>
-);
-
-const ColorRangePicker = ({ colors, onChange, className, style }) => (
-  <PopoverWithTrigger
-    triggerElement={
-      <RangePreview
-        colors={colors}
-        className={cx(className, "bordered rounded overflow-hidden")}
-        style={{ height: 30, ...style }}
-      />
-    }
-  >
-    {({ onClose }) => (
-      <div className="pt1 mr1 flex flex-wrap" style={{ width: 300 }}>
-        {COLOR_RANGES.map(range => (
-          <div className={"mb1 pl1"} style={{ flex: "1 1 50%" }}>
-            <RangePreview
-              colors={range}
-              onClick={() => {
-                onChange(range);
-                MetabaseAnalytics.trackEvent(
-                  "Chart Settings",
-                  "Table Formatting",
-                  "Select Range  Colors",
-                  range,
-                );
-                onClose();
-              }}
-              className={cx("bordered rounded overflow-hidden cursor-pointer")}
-              style={{ height: 30 }}
-            />
-          </div>
-        ))}
-      </div>
-    )}
-  </PopoverWithTrigger>
 );
 
 const NumericInput = ({ value, onChange }) => (

@@ -1,7 +1,7 @@
 import LeafletMap from "./LeafletMap.jsx";
 import L from "leaflet";
 
-import { isPK, isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { isPK } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 

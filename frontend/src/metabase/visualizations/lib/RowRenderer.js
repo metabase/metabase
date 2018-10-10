@@ -25,8 +25,6 @@ export default function rowRenderer(
   // disable clicks
   chart.onClick = () => {};
 
-  const colors = settings["graph.colors"];
-
   const formatDimension = row =>
     formatValue(row[0], { column: cols[0], type: "axis" });
 

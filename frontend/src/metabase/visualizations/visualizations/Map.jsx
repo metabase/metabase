@@ -28,6 +28,10 @@ import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
+import { normal } from "metabase/lib/colors";
+
+import ColorRangePicker from "metabase/components/ColorRangePicker";
+
 export default class Map extends Component {
   static uiName = t`Map`;
   static identifier = "map";
@@ -194,6 +198,79 @@ export default class Map extends Component {
       default: 1,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
+    "map.colors": {
+      title: t`Color`,
+      widget: ColorRangePicker,
+      getProps: (series, settings) => ({
+        ranges: Object.values(normal).map(color =>
+          getColorplethColorScale(color, tmpGetScaleSettings(settings)),
+        ),
+        quantile: true,
+        columns: 1,
+      }),
+      getDefault: (series, settings) =>
+        getColorplethColorScale(
+          settings["map._tmp_color_default"],
+          tmpGetScaleSettings(settings),
+        ),
+      readDependencies: [
+        "map._tmp_color_default",
+        "map._tmp_color_lighten",
+        "map._tmp_color_darken",
+        "map._tmp_color_darken_last",
+        "map._tmp_color_saturate",
+      ],
+    },
+    // FIXME: REMOVE BEFORE SHIPPING!
+    "map._tmp_color_default": {
+      title: t`Base color (DEV)`,
+      widget: "color",
+      default: Object.values(normal)[0],
+    },
+    "map._tmp_color_lighten": {
+      title: t`Lighten (DEV)`,
+      widget: "number",
+      default: 0.5,
+      props: {
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+    },
+    "map._tmp_color_darken": {
+      title: t`Darken (DEV)`,
+      widget: "number",
+      default: 0.2,
+      props: {
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+    },
+    "map._tmp_color_darken_last": {
+      title: t`Darken Last (DEV)`,
+      widget: "number",
+      default: 0.3,
+      props: {
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+    },
+    "map._tmp_color_saturate": {
+      title: t`Saturate (DEV)`,
+      widget: "number",
+      default: 0.5,
+      props: {
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
+    },
   };
 
   static checkRenderable([{ data: { cols, rows } }], settings) {
@@ -238,3 +315,45 @@ export default class Map extends Component {
     }
   }
 }
+
+import d3 from "d3";
+import Color from "color";
+
+function getColorplethColorScale(
+  color,
+  { lighten = 0.5, darken = 0.2, saturate = 0.5, darkenLast = 0.3 } = {},
+) {
+  const scale = d3.scale
+    .linear()
+    .domain([0, 1])
+    .range([
+      Color(color)
+        .lighten(lighten)
+        .saturate(saturate)
+        .string(),
+      Color(color)
+        .darken(darken)
+        .saturate(saturate)
+        .string(),
+    ]);
+  if (darkenLast) {
+    return d3
+      .range(0, 1, 0.25)
+      .map(value => scale(value))
+      .concat(
+        Color(color)
+          .darken(darkenLast)
+          .saturate(saturate)
+          .string(),
+      );
+  } else {
+    return d3.range(0, 1.25, 0.25).map(value => scale(value));
+  }
+}
+
+const tmpGetScaleSettings = settings => ({
+  lighten: settings["map._tmp_color_lighten"],
+  darken: settings["map._tmp_color_darken"],
+  darkenLast: settings["map._tmp_color_darken_last"],
+  saturate: settings["map._tmp_color_saturate"],
+});

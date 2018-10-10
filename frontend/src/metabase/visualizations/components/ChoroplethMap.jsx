@@ -33,18 +33,7 @@ import _ from "underscore";
 // const HEAT_MAP_ZERO_COLOR = '#CCC';
 
 // TODO COLOR
-const HEAT_MAP_COLORS = [
-  // "#E2F2FF",
-  "#C4E4FF",
-  // "#9ED2FF",
-  "#81C5FF",
-  // "#6BBAFF",
-  "#51AEFF",
-  // "#36A2FF",
-  "#1E96FF",
-  // "#0089FF",
-  "#0061B5",
-];
+const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
 
 const geoJsonCache = new Map();
@@ -145,7 +134,7 @@ export default class ChoroplethMap extends Component {
       projection = null;
     }
 
-    const nameProperty = details.region_name;
+    // const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -169,18 +158,15 @@ export default class ChoroplethMap extends Component {
     const getRowKey = row =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+
+    // const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
+
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
     const formatMetric = value =>
       formatValue(value, settings.column(cols[metricIndex]));
-
-    const heatMapColors = HEAT_MAP_COLORS.slice(
-      0,
-      Math.min(HEAT_MAP_COLORS.length, rows.length),
-    );
 
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
@@ -232,6 +218,8 @@ export default class ChoroplethMap extends Component {
       domain.push(getRowValue(row));
     }
 
+    const heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
     let colorScale = d3.scale
@@ -239,7 +227,7 @@ export default class ChoroplethMap extends Component {
       .domain(groups.map(cluster => cluster[0]))
       .range(heatMapColors);
 
-    let legendColors = heatMapColors.slice();
+    let legendColors = heatMapColors;
     let legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
