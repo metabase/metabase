@@ -256,7 +256,9 @@ export default class Gauge extends Component {
                   end={angle(segment.max)}
                   fill={segment.color}
                   segment={segment}
-                  onHoverChange={this.props.onHoverChange}
+                  column={column}
+                  settings={settings}
+                  onHoverChange={!showLabels ? this.props.onHoverChange : null}
                 />
               ))}
               {/* NEEDLE */}
@@ -317,11 +319,21 @@ export default class Gauge extends Component {
   }
 }
 
-const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
+const GaugeArc = ({
+  start,
+  end,
+  fill,
+  segment,
+  onHoverChange,
+  settings,
+  column,
+}) => {
   const arc = d3.svg
     .arc()
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
+  const colSettings =
+    settings && settings.column && column ? settings.column(column) : {};
   return (
     <path
       d={arc({
@@ -330,13 +342,16 @@ const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
       })}
       fill={fill}
       onMouseMove={
-        onHoverChange && segment.label
+        onHoverChange
           ? e =>
               onHoverChange({
                 data: [
                   {
                     key: segment.label,
-                    value: `${segment.min} - ${segment.max}`,
+                    value: `${formatValue(
+                      segment.min,
+                      colSettings,
+                    )} - ${formatValue(segment.max, colSettings)}`,
                   },
                 ],
                 event: e.nativeEvent,

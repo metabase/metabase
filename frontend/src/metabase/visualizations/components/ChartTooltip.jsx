@@ -73,8 +73,8 @@ export default class ChartTooltip extends Component {
 
 const TooltipRow = ({ name, value, column, settings }) => (
   <tr>
-    <td className="text-light text-right">{name}:</td>
-    <td className="pl1 text-bold text-left">
+    {name ? <td className="text-light text-right pr1">{name}:</td> : <td />}
+    <td className="text-bold text-left">
       {React.isValidElement(value)
         ? value
         : formatValue(value, {

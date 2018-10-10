@@ -154,7 +154,7 @@ export default class TableSimple extends Component {
                           }}
                         />
                         <Ellipsified>
-                          {settings.column(col)._column_title_full ||
+                          {settings.column(col)["_column_title_full"] ||
                             formatColumn(col)}
                         </Ellipsified>
                       </div>
