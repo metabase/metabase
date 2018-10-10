@@ -4,6 +4,8 @@ import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
 
+import { deterministicAssign } from "./deterministic";
+
 type ColorName = string;
 type ColorString = string;
 type ColorFamily = { [name: ColorName]: ColorString };
@@ -17,7 +19,7 @@ const colors = {
   accent2: "#A989C5",
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
-  accent5: "#F1B556",
+  accent5: "#F2A86F",
   accent6: "#A6E7F3",
   accent7: "#7172AD",
   white: "#FFFFFF",
@@ -55,6 +57,8 @@ export function syncColors() {
   syncHarmony();
   syncDeprecatedColorFamilies();
 }
+
+export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
 
 function syncHarmony() {
   const harmonizer = new Harmonizer();
@@ -128,6 +132,16 @@ export const getColorScale = (
     .range(colors);
 };
 
+// HACK: d3 may return rgb values with decimals but certain rendering engines
+// don't support that (e.x. Safari and CSSBox)
+export function roundColor(color: ColorString): ColorString {
+  return color.replace(
+    /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
+    (_, r, g, b, a) =>
+      `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`,
+  );
+}
+
 export const alpha = (color: ColorString, alpha: number): ColorString =>
   Color(color)
     .alpha(alpha)
@@ -137,3 +151,70 @@ export const darken = (color: ColorString, factor: number): ColorString =>
   Color(color)
     .darken(factor)
     .string();
+
+const PREFERRED_COLORS = {
+  [colors["success"]]: [
+    "success",
+    "succeeded",
+    "pass",
+    "valid",
+    "complete",
+    "completed",
+    "accepted",
+    "active",
+    "profit",
+  ],
+  [colors["error"]]: [
+    "fail",
+    "failed",
+    "failure",
+    "failures",
+    "invalid",
+    "rejected",
+    "inactive",
+    "loss",
+    "cost",
+    "deleted",
+    "pending",
+  ],
+  [colors["warning"]]: ["warn", "warning", "incomplete"],
+  [colors["brand"]]: ["count"],
+  [colors["accent1"]]: ["sum"],
+  [colors["accent2"]]: ["average"],
+};
+
+const PREFERRED_COLORS_MAP = new Map();
+for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
+  // $FlowFixMe
+  for (const key of keys) {
+    PREFERRED_COLORS_MAP.set(key, color);
+  }
+}
+
+type Key = string;
+
+function getPreferredColor(key: Key) {
+  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
+}
+
+// returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
+export function getColorsForValues(
+  keys: string[],
+  existingAssignments: ?{ [key: Key]: ColorString } = {},
+) {
+  const all = Object.values(harmony);
+  const primaryTier = all.slice(0, 8);
+  const secondaryTier = all.slice(8);
+  return deterministicAssign(
+    keys,
+    primaryTier,
+    existingAssignments,
+    getPreferredColor,
+    [secondaryTier],
+  );
+}
+
+// conviennce for a single color (only use for visualizations with a single color)
+export function getColorForValue(key: Key) {
+  return getColorsForValues([key])[key];
+}

@@ -102,7 +102,8 @@
    :source          :fields
    :fk_field_id     nil
    :remapped_from   nil
-   :remapped_to     nil})
+   :remapped_to     nil
+   :settings        nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
@@ -270,32 +271,30 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type       :type/Integer
-              :special_type    :type/Number
-              :name            "count"
-              :display_name    "count"
-              :id              nil
-              :table_id        nil
-              :description     nil
-              :source          :aggregation
-              :extra_info      {}
-              :target          nil
-              :remapped_from   nil
-              :remapped_to     nil}))
+     :count {:base_type    :type/Integer
+             :special_type :type/Number
+             :name         "count"
+             :display_name "count"
+             :id           nil
+             :table_id     nil
+             :description  nil
+             :settings     nil
+             :source       :aggregation
+             :extra_info   {}
+             :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
-    :special_type  special_type
-    :id            nil
-    :table_id      nil
-    :description   nil
-    :source        :aggregation
-    :extra_info    {}
-    :target        nil
-    :name          (name ag-col-kw)
-    :display_name  (name ag-col-kw)
-    :remapped_from nil
-    :remapped_to   nil}))
+    :special_type special_type
+    :id           nil
+    :table_id     nil
+    :description  nil
+    :settings     nil
+    :source       :aggregation
+    :extra_info   {}
+    :target       nil
+    :name         (name ag-col-kw)
+    :display_name (name ag-col-kw)}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))
@@ -307,7 +306,8 @@
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence
@@ -339,12 +339,20 @@
   "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
-
-(defn rows
-  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
+(defn data
+  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (vec (or (get-in results [:data :rows])
+  (when (= (:status results) :failed)
+    (println "Error running query:" (u/pprint-to-str 'red results))
+    (throw (ex-info (:error results) results)))
+  (:data results))
+
+(defn rows
+  "Return the result rows from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (vec (or (:rows (data results))
            (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 

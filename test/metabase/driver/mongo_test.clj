@@ -77,15 +77,15 @@
    :row_count 1
    :data      {:rows        [[1]]
                :columns     ["count"]
-               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer
-                              :remapped_to nil, :remapped_from nil}]
+               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query
                                     :collection "venues"}
                          :type     :native
                          :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 ;; ## Tests for individual syncing functions
 

@@ -6,9 +6,12 @@ import { t } from "c-3po";
 import d3 from "d3";
 import cx from "classnames";
 
+import _ from "underscore";
+
 import colors from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 
@@ -60,7 +63,7 @@ export default class Gauge extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
@@ -77,6 +80,11 @@ export default class Gauge extends Component {
   _label: ?HTMLElement;
 
   static settings = {
+    ...columnSettings({
+      getColumns: ([{ data: { cols } }], settings) => [
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+      ],
+    }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
@@ -265,7 +273,7 @@ export default class Gauge extends Component {
                       OUTER_RADIUS * LABEL_OFFSET_PERCENT,
                     )}
                   >
-                    {formatValue(value, { column })}
+                    {formatValue(value, settings.column(column))}
                   </GaugeSegmentLabel>
                 ))}
               {/* TEXT LABELS */}
@@ -299,7 +307,7 @@ export default class Gauge extends Component {
                   transform: "translate(0,0.2em)",
                 }}
               >
-                {formatValue(value, { column })}
+                {formatValue(value, settings.column(column))}
               </text>
             </g>
           </svg>

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve
+(ns ^:deprecated metabase.query-processor.middleware.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary. During the `expand`
   phase of the Query Processor, forms like `[:field-id 10]` are replaced with placeholder objects of types like
   `FieldPlaceholder` or similar. During this phase, we'll take those placeholder objects and fetch information from
@@ -10,7 +10,6 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.util.date :as du]
             [metabase.models
              [database :refer [Database]]
              [field :as field]
@@ -18,15 +17,18 @@
              [table :refer [Table]]]
             [metabase.query-processor
              [interface :as i]
+             [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]])
   (:import java.util.TimeZone
-           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral FieldPlaceholder
-            RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
+           [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral
+            FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
@@ -161,21 +163,10 @@
 
 ;;; ----------------------------------------------- FIELD PLACEHOLDER ------------------------------------------------
 
-(defn- resolve-binned-field [binning-strategy binning-param field]
-  (let [binned-field (i/map->BinnedField {:field    field
-                                          :strategy binning-strategy})]
-    (case binning-strategy
-      :num-bins
-      (assoc binned-field :num-bins binning-param)
-
-      :bin-width
-      (assoc binned-field :bin-width binning-param)
-
-      :default
-      binned-field
-
-      :else
-      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy))))))
+(defn- resolve-binned-field [binning-strategy binning-param binning-opts field]
+  (i/map->BinnedField (merge {:field    field
+                              :strategy binning-strategy}
+                             binning-opts)))
 
 (defn- merge-non-nils
   "Like `clojure.core/merge` but only merges non-nil values"
@@ -184,7 +175,7 @@
 
 (defn- field-ph-resolve-field
   "Attempt to resolve the `Field` for a `FieldPlaceholder`. Return a resolved `Field` or `DateTimeField`."
-  [{:keys [field-id datetime-unit binning-strategy binning-param], :as this} field-id->field]
+  [{:keys [field-id datetime-unit binning-strategy binning-param binning-opts], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
@@ -200,7 +191,7 @@
       (i/map->TimeField {:field field})
 
       binning-strategy
-      (resolve-binned-field binning-strategy binning-param field)
+      (resolve-binned-field binning-strategy binning-param binning-opts field)
 
       :else field)
     ;; If that fails just return ourselves as-is
@@ -307,7 +298,7 @@
   Clojure-style as expected by the rest of the QP code."
   [field-ids]
   (as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
-                    :description :id :fingerprint :database_type]
+                    :description :id :fingerprint :database_type :settings]
           :visibility_type [:not= "sensitive"]
           :id              [:in field-ids]) fields
     ;; hydrate values & dimensions for the `fields` we just fetched from the DB
@@ -406,31 +397,32 @@
   (if (:native source-query)
     expanded-query-dict
     (let [ ;; Resolve the nested query as if it were a top level query
-          {nested-q :query :as nested-qd} (resolve-tables (assoc expanded-query-dict :query source-query))
-          nested-source-table             (get-in nested-qd [:query :source-table])
+          {nested-inner :query, :as nested-outer} (resolve-tables (assoc expanded-query-dict :query source-query))
+          nested-source-table-id                  (:source-table nested-inner)
           ;; Build a list of join tables found from the newly resolved nested query
-          nested-joined-tables            (fk-field-ids->joined-tables (:id nested-source-table)
-                                                                       (:fk-field-ids nested-qd))
+          nested-joined-tables                    (fk-field-ids->joined-tables nested-source-table-id
+                                                                               (:fk-field-ids nested-outer))
           ;; Create the map of fk to table info from the resolved nested query
-          fk-id+table-id->table           (create-fk-id+table-id->table nested-source-table nested-joined-tables)
+          fk-id+table-id->table                   (create-fk-id+table-id->table (some-> nested-source-table-id qp.store/table)
+                                                                                nested-joined-tables)
           ;; Resolve the top level (original) breakout fields with the join information from the resolved nested query
-          resolved-breakout               (for [breakout (get-in expanded-query-dict [:query :breakout])]
-                                            (resolve-table breakout fk-id+table-id->table))]
+          resolved-breakout                       (for [breakout (get-in expanded-query-dict [:query :breakout])]
+                                                    (resolve-table breakout fk-id+table-id->table))]
       (assoc-in expanded-query-dict [:query :source-query]
-                (if (and (contains? nested-q :fields)
+                (if (and (contains? nested-inner :fields)
                          (seq resolved-breakout))
-                  (update nested-q :fields append-new-fields resolved-breakout)
-                  nested-q)))))
+                  (update nested-inner :fields append-new-fields resolved-breakout)
+                  nested-inner)))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{:keys [fk-field-ids], {{source-table-id :id :as source-table} :source-table} :query, :as expanded-query-dict}]
+  [{:keys [fk-field-ids], {source-table-id :source-table} :query, :as expanded-query-dict}]
   (if-not source-table-id
     ;; if we have a `source-query`, recurse and resolve tables in that
     (resolve-tables-in-nested-query expanded-query-dict)
     ;; otherwise we can resolve tables in the (current) top-level
     (let [joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
-          fk-id+table-id->table (create-fk-id+table-id->table source-table joined-tables)]
+          fk-id+table-id->table (create-fk-id+table-id->table (qp.store/table source-table-id) joined-tables)]
       (as-> expanded-query-dict <>
         (assoc-in <> [:query :join-tables]  joined-tables)
         (walk/postwalk #(resolve-table % fk-id+table-id->table) <>)))))
@@ -438,12 +430,12 @@
 (defn- resolve-field-literals
   "When resolving a field, we connect a `field-id` with a `Field` in our metadata tables. This is a similar process
   for `FieldLiteral`s, except we are attempting to connect a `FieldLiteral` with an associated entry in the
-  `result_metadata` attached to the query (typically from the `Card` of a nested query)."
-  [{:keys [result_metadata] :as expanded-query-dict}]
-  (let [name->fingerprint (zipmap (map :name result_metadata)
-                                  (map :fingerprint result_metadata))]
+  `source-metadata` attached to the query (typically from the `Card` of a nested query)."
+  [{:keys [source-metadata] :as expanded-query-dict}]
+  (let [name->fingerprint (zipmap (map :name source-metadata)
+                                  (map :fingerprint source-metadata))]
     (qputil/postwalk-pred #(instance? FieldLiteral %)
-                          (fn [{:keys [binning-strategy binning-param] :as node}]
+                          (fn [{:keys [binning-strategy binning-param binning-opts] :as node}]
                             (let [fingerprint     (get name->fingerprint (:field-name node))
                                   node-with-print (assoc node :fingerprint fingerprint)]
                               (cond
@@ -452,7 +444,7 @@
                                 (throw (Exception. "Binning not supported on a field literal with no fingerprint"))
 
                                 (and fingerprint binning-strategy)
-                                (resolve-binned-field binning-strategy binning-param node-with-print)
+                                (resolve-binned-field binning-strategy binning-param binning-opts node-with-print)
 
                                 :else
                                 node-with-print)))
@@ -461,7 +453,7 @@
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
-(defn resolve-fields-if-needed
+(defn ^:deprecated resolve-fields-if-needed
   "Resolves any unresolved fields found in `fields`. Will just return resolved fields with no changes."
   [fields]
   (let [fields-to-resolve (map unresolved-field-id fields)]
@@ -470,16 +462,16 @@
       (map #(resolve-field % field-id->field) fields)
       fields)))
 
-(defn resolve
+(s/defn ^:deprecated resolve :- su/Map
   "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
-  [expanded-query-dict]
+  [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
           resolve-field-literals
           resolve-tables))
 
-(defn resolve-middleware
+(defn ^:deprecated resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
   [qp]
   (fn [{database-id :database, query-type :type, :as query}]

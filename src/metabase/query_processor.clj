@@ -15,6 +15,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
@@ -34,8 +35,10 @@
              [permissions :as perms]
              [resolve :as resolve]
              [resolve-driver :as resolve-driver]
+             [resolve-fields :as resolve-fields]
              [results-metadata :as results-metadata]
              [source-table :as source-table]
+             [store :as store]
              [validate :as validate]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
@@ -94,18 +97,19 @@
       mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
       annotate-and-sort/annotate-and-sort
       perms/check-query-permissions
-      log-query/log-expanded-query
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
-      binning/update-binning-strategy
       resolve/resolve-middleware
+      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      binning/update-binning-strategy
+      resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
+      bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
-      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters
       expand-macros/expand-macros
@@ -114,7 +118,9 @@
       resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
+      store/initialize-store
       log-query/log-initial-query
+      ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
       log-query/log-results-metadata
       validate/validate-query
@@ -144,8 +150,8 @@
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
   (->> identity
        resolve/resolve-middleware
-       source-table/resolve-source-table-middleware
        expand/expand-middleware
+       source-table/resolve-source-table-middleware
        parameters/substitute-parameters
        expand-macros/expand-macros
        driver-specific/process-query-in-context

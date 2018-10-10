@@ -64,9 +64,12 @@ function applyChartTooltips(
               {
                 key: getFriendlyName(cols[1]),
                 value: isNormalized
-                  ? `${formatValue(d.data.value) * 100}%`
+                  ? formatValue(d.data.value, {
+                      number_style: "percent",
+                      column: cols[1],
+                    })
                   : d.data.value,
-                col: cols[1],
+                col: { ...cols[1] },
               },
             ];
 

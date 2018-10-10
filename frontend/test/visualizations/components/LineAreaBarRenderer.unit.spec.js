@@ -1,6 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
@@ -10,6 +9,7 @@ import {
   DateTimeColumn,
   StringColumn,
   dispatchUIEvent,
+  renderLineAreaBar,
 } from "../__support__/visualizations";
 
 let formatTz = offset =>
@@ -124,16 +124,16 @@ describe("LineAreaBarRenderer", () => {
               formatValue(rows[0][0], {
                 column: DateTimeColumn({ unit: "hour" }),
               }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
             expect(
               formatValue(hover.data[0].value, { column: hover.data[0].col }),
-            ).toEqual("1 AM - January 1, 2016");
+            ).toEqual("January 1, 2016, 1:00 AM");
 
             expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-              "1 AM - January 1, 2016",
-              "2 AM - January 1, 2016",
-              "3 AM - January 1, 2016",
-              "4 AM - January 1, 2016",
+              "January 1, 2016, 1:00 AM",
+              "January 1, 2016, 2:00 AM",
+              "January 1, 2016, 3:00 AM",
+              "January 1, 2016, 4:00 AM",
             ]);
 
             resolve();
@@ -226,6 +226,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": 30,
+          "graph.goal_label": "Goal",
         },
       });
 
@@ -243,6 +244,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": goalValue,
+          "graph.goal_label": "Goal",
         },
         onHoverChange: hover => {
           expect(hover.data[0].value).toEqual(goalValue);
@@ -266,44 +268,49 @@ describe("LineAreaBarRenderer", () => {
     unit,
     settings,
   }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "line",
-      series: rowsOfSeries.map(rows => ({
+    renderLineAreaBar(
+      element,
+      rowsOfSeries.map(rows => ({
         data: {
           cols: [DateTimeColumn({ unit }), NumberColumn()],
           rows: rows,
         },
-        card: {},
+        card: {
+          display: "line",
+          visualization_settings: {
+            "graph.x_axis.scale": "timeseries",
+            "graph.x_axis.axis_enabled": true,
+            "graph.colors": ["#000000"],
+            ...settings,
+          },
+        },
       })),
-      settings: {
-        "graph.x_axis.scale": "timeseries",
-        "graph.x_axis.axis_enabled": true,
-        "graph.colors": ["#000000"],
-        ...settings,
+      {
+        onHoverChange,
       },
-      onHoverChange,
-    });
+    );
   };
 
   const renderScalarBar = ({ scalars, onHoverChange, unit }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "bar",
-      series: scalars.map(scalar => ({
+    renderLineAreaBar(
+      element,
+      scalars.map(scalar => ({
         data: {
           cols: [StringColumn(), NumberColumn()],
           rows: [scalar],
         },
-        card: {},
+        card: {
+          display: "bar",
+          visualization_settings: {
+            "bar.scalar_series": true,
+            "funnel.type": "bar",
+            "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
+            "graph.x_axis.axis_enabled": true,
+            "graph.x_axis.scale": "ordinal",
+          },
+        },
       })),
-      settings: {
-        "bar.scalar_series": true,
-        "funnel.type": "bar",
-        "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
-        "graph.x_axis.axis_enabled": true,
-        "graph.x_axis.scale": "ordinal",
-        "graph.x_axis._is_numeric": false,
-      },
-      onHoverChange,
-    });
+      { onHoverChange },
+    );
   };
 });

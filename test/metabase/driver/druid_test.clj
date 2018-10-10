@@ -84,7 +84,7 @@
           (m/dissoc-in [:data :results_metadata])))))
 
 (def ^:private col-defaults
-  {:base_type :type/Text, :remapped_from nil, :remapped_to nil})
+  {:base_type :type/Text})
 
 ;; test druid native queries
 (expect-with-engine :druid
@@ -101,7 +101,8 @@
                                    {:name "venue_name",  :display_name "Venue Name"}
                                    {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
-  (process-native-query native-query-1))
+  (-> (process-native-query native-query-1)
+      (m/dissoc-in [:data :insights])))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
