@@ -145,7 +145,7 @@ export default class ChoroplethMap extends Component {
       projection = null;
     }
 
-    const nameProperty = details.region_name;
+    // const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -169,9 +169,11 @@ export default class ChoroplethMap extends Component {
     const getRowKey = row =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+
+    // const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
+
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
     const formatMetric = value =>
