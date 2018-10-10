@@ -12,7 +12,7 @@ const SETTING_TYPES = [
       "date_style",
       "date_separator",
       "date_abbreviate",
-      "time_enabled",
+      // "time_enabled",
       "time_style",
     ],
     column: {

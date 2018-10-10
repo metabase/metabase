@@ -228,10 +228,15 @@ export const DATE_COLUMN_SETTINGS = {
         { name: t`Off`, value: null },
         { name: t`HH:MM`, value: "minutes" },
       ];
-      if (!unit || unit === "default" || unit === "second") {
+      if (
+        !unit ||
+        unit === "default" ||
+        unit === "second" ||
+        unit === "millisecond"
+      ) {
         options.push({ name: t`HH:MM:SS`, value: "seconds" });
       }
-      if (!unit || unit === "default") {
+      if (!unit || unit === "default" || unit === "millisecond") {
         options.push({ name: t`HH:MM:SS.MS`, value: "milliseconds" });
       }
       if (options.length === 2) {

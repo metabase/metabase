@@ -448,7 +448,7 @@ export default class TableInteractive extends Component {
     const column = cols[columnIndex];
 
     let columnTitle =
-      settings.column(column)._column_title_full || formatColumn(column);
+      settings.column(column)["_column_title_full"] || formatColumn(column);
 
     if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
       columnTitle = t`Unset`;
