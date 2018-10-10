@@ -1,5 +1,5 @@
 (ns metabase.events.activity-feed-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.events.activity-feed :refer :all]
             [metabase.models
              [activity :refer [Activity]]

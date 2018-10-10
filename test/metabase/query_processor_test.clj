@@ -339,12 +339,20 @@
   "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
-
-(defn rows
-  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
+(defn data
+  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (vec (or (get-in results [:data :rows])
+  (when (= (:status results) :failed)
+    (println "Error running query:" (u/pprint-to-str 'red results))
+    (throw (ex-info (:error results) results)))
+  (:data results))
+
+(defn rows
+  "Return the result rows from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (vec (or (:rows (data results))
            (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 
