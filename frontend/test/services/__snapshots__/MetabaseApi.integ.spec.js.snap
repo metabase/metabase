@@ -425,12 +425,12 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1387,
+          "distinct-count": 10001,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-30T07:00:00.000Z",
-            "latest": "2020-04-19T07:00:00.000Z",
+            "earliest": "2016-05-01T01:56:13.352Z",
+            "latest": "2020-04-19T21:07:15.657Z",
           },
         },
       },
@@ -1796,12 +1796,12 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 992,
+          "distinct-count": 2500,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-19T07:00:00.000Z",
-            "latest": "2019-04-19T07:00:00.000Z",
+            "earliest": "2016-04-20T04:35:18.752Z",
+            "latest": "2019-04-19T21:06:27.300Z",
           },
         },
       },
@@ -2783,12 +2783,12 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 186,
+          "distinct-count": 200,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-26T07:00:00.000Z",
-            "latest": "2019-04-15T07:00:00.000Z",
+            "earliest": "2016-04-27T02:29:55.147Z",
+            "latest": "2019-04-15T20:34:19.931Z",
           },
         },
       },
@@ -3630,12 +3630,12 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 720,
+          "distinct-count": 1112,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-06-03T07:00:00.000Z",
-            "latest": "2020-04-19T07:00:00.000Z",
+            "earliest": "2016-06-03T07:37:05.818Z",
+            "latest": "2020-04-19T21:15:25.677Z",
           },
         },
       },

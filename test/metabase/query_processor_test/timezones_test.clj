@@ -30,10 +30,14 @@
   `(call-with-timezones-db (fn [] ~@body)))
 
 (def ^:private default-utc-results
-  #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]
-    [7 "Conchúr Tihomir" "2014-08-02T09:30:00.000Z"]})
+  #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]})
 
 (def ^:private default-pacific-results
+  #{[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]})
+
+;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going to
+;; match anything with a `2014-08-02` date
+(def ^:private default-pacific-results-for-params
   #{[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]
     [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]})
 
@@ -87,7 +91,7 @@
 
 ;; Test that native dates are parsed with the report timezone (when supported)
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'
@@ -105,7 +109,7 @@
 
 ;; This does not currently work for MySQL
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'
@@ -122,7 +126,7 @@
 
 ;; Querying using a single date
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'

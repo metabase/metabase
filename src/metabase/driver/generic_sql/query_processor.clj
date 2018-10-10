@@ -10,20 +10,23 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor
-             [annotate :as annotate]
              [interface :as i]
              [store :as qp.store]
              [util :as qputil]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [trs]]])
+             [i18n :refer [tru]]]
+            [schema.core :as s])
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException]
            [java.util Calendar Date TimeZone]
-           [metabase.query_processor.interface AgFieldRef BinnedField DateTimeField DateTimeValue Expression
-            ExpressionRef Field FieldLiteral JoinQuery JoinTable RelativeDateTimeValue TimeField TimeValue Value]))
+           metabase.models.field.FieldInstance))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
@@ -36,84 +39,97 @@
   Each nested query increments this counter by 1."
   0)
 
-;;; ## Formatting
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Other Formatting                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- qualified-alias
-  "Convert the given `FIELD` to a stringified alias"
-  [driver field]
+
+(s/defn ^:private qualified-alias
+  "Convert the given `FIELD` to a stringified alias, for use in a SQL `AS` clause."
+  [driver, field :- FieldInstance]
   (some->> field
            (sql/field->alias driver)
            hx/qualify-and-escape-dots))
 
 (defn as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
-  [driver form field]
-  (if-let [alias (qualified-alias driver field)]
-    [form alias]
-    form))
+  [driver form field-clause]
+  (let [expression-name (when (mbql.u/is-clause? :expression field-clause)
+                          (second field-clause))
+        field           (when-not expression-name
+                          (let [id-or-name (mbql.u/field-clause->id-or-literal field-clause)]
+                            (when (integer? id-or-name)
+                              (qp.store/field id-or-name))))]
+    (if-let [alias (cond
+                     expression-name expression-name
+                     field           (qualified-alias driver field))]
+      [form alias]
+      form)))
 
-;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
-(defn- expression-with-name
-  "Return the `Expression` referenced by a given (keyword or string) EXPRESSION-NAME."
-  [expression-name]
-  (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
-      (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
-(defn- aggregation-at-index
-  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
-   This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations."
-  ([index]
-   (aggregation-at-index index (:query *query*) *nested-query-level*))
-  ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
-  ([index query aggregation-level]
-   (if (zero? aggregation-level)
-     (nth (:aggregation query) index)
-     (recur index (:source-query query) (dec aggregation-level)))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                              ->honeysql multimethod def & low-level method impls                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti ^{:doc          (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and object "
-                               "classes making this easy to override in any places needed for a given driver.")
+;; this is the primary way to override behavior for a specific clause or object class.
+
+(defmulti ^{:doc (str "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause "
+                      "name or object class making this easy to override in any places needed for a given driver.")
             :arglists     '([driver x])
             :style/indent 1}
   ->honeysql
   (fn [driver x]
-    [(class driver) (class x)]))
+    [(class driver) (mbql.u/dispatch-by-clause-name-or-class x)]))
 
 (defmethod ->honeysql [Object nil]    [_ _]    nil)
 (defmethod ->honeysql [Object Object] [_ this] this)
 
-(defmethod ->honeysql [Object Expression]
-  [driver {:keys [operator args]}]
-  (apply (partial hsql/call operator)
-         (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [Object :value] [driver [_ value]] (->honeysql driver value))
 
-(defmethod ->honeysql [Object ExpressionRef]
-  [driver {:keys [expression-name]}]
+(defmethod ->honeysql [Object :expression]
+  [driver [_ expression-name]]
   ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
   ;; original formula.
-  (->honeysql driver (expression-with-name expression-name)))
+  (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
-(defmethod ->honeysql [Object Field]
-  [driver {:keys [schema-name table-name special-type field-name]}]
-  (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-    (cond
-      (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
-      (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
-      :else                                               field)))
+(defmethod ->honeysql [Object FieldInstance]
+  [driver field]
+  (let [table            (qp.store/table (:table_id field))
+        field-identifier (keyword (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field)))]
+    (condp #(isa? %2 %1) (:special_type field)
+      :type/UNIXTimestampSeconds      (sql/unix-timestamp->timestamp driver field-identifier :seconds)
+      :type/UNIXTimestampMilliseconds (sql/unix-timestamp->timestamp driver field-identifier :milliseconds)
+      field-identifier)))
 
-(defmethod ->honeysql [Object FieldLiteral]
-  [driver {:keys [field-name]}]
+(defmethod ->honeysql [Object :field-id]
+  [driver [_ field-id]]
+  (->honeysql driver (qp.store/field field-id)))
+
+(defmethod ->honeysql [Object :fk->]
+  [driver [_ _ dest-field-clause :as fk-clause]]
+  ;; because the dest field needs to be qualified like `categories__via_category_id.name` instead of the normal
+  ;; `public.category.name` we will temporarily swap out the `categories` Table in the QP store for the duration of
+  ;; converting this `fk->` clause to HoneySQL. We'll remove the `:schema` and swap out the `:name` with the alias so
+  ;; other `->honeysql` impls (e.g. the `FieldInstance` one) will do the correct thing automatically without having to
+  ;; worry about the context in which they are being called
+  (qp.store/with-pushed-store
+    (when-let [{:keys [join-alias table-id]} (mbql.u/fk-clause->join-info *query* fk-clause)]
+      (when table-id
+        (qp.store/store-table! (assoc (qp.store/table table-id)
+                                 :schema nil
+                                 :name   join-alias))))
+    (->honeysql driver dest-field-clause)))
+
+(defmethod ->honeysql [Object :field-literal]
+  [driver [_ field-name]]
   (->honeysql driver (keyword (hx/escape-dots (name field-name)))))
 
-(defmethod ->honeysql [Object DateTimeField]
-  [driver {unit :unit, field :field}]
+(defmethod ->honeysql [Object :datetime-field]
+  [driver [_ field unit]]
   (sql/date driver unit (->honeysql driver field)))
 
-(defmethod ->honeysql [Object TimeField]
-  [driver {field :field}]
-  (->honeysql driver field))
-
-(defmethod ->honeysql [Object BinnedField]
-  [driver {:keys [bin-width min-value max-value field] :as binned-field}]
+(defmethod ->honeysql [Object :binning-strategy]
+  [driver [_ field _ _ {:keys [bin-width min-value max-value]}]]
   (let [honeysql-field-form (->honeysql driver field)]
     ;;
     ;; Equation is | (value - min) |
@@ -127,102 +143,95 @@
         (hx/* bin-width)
         (hx/+ min-value))))
 
-(defn- aggregation->honeysql
-  "Generate the HoneySQL form for an aggregation."
-  [driver aggregation-type field]
-  {:pre [(keyword? aggregation-type)]}
-  (if-not field
-    ;; aggregation clauses w/o a field
-    (do (assert (or (= aggregation-type :count)
-                    (= aggregation-type :cumulative-count))
-          (format "Aggregations of type '%s' must specify a field." aggregation-type))
-        :%count.*)
-    ;; aggregation clauses w/ a Field
-    (hsql/call (case aggregation-type
-                 :avg      :avg
-                 :count    :count
-                 :distinct :distinct-count
-                 :stddev   (sql/stddev-fn driver)
-                 :sum      :sum
-                 :min      :min
-                 :max      :max)
-      (->honeysql driver field))))
 
-;; TODO - can't we just roll this into the ->honeysql method for `expression`?
-(defn expression-aggregation->honeysql
-  "Generate the HoneySQL form for an expression aggregation."
-  [driver expression]
-  (->honeysql driver
-    (update expression :args
-            (fn [args]
-              (for [arg args]
-                (cond
-                  (number? arg)           arg
-                  (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
-                  (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+(defmethod ->honeysql [Object :count] [driver [_ field]]
+  (if field
+    (hsql/call :count (->honeysql driver field))
+    :%count.*))
 
-;; e.g. the ["aggregation" 0] fields we allow in order-by
-(defmethod ->honeysql [Object AgFieldRef]
-  [driver {index :index}]
-  (let [{:keys [aggregation-type] :as aggregation} (aggregation-at-index index)]
+(defmethod ->honeysql [Object :avg]      [driver [_ field]] (hsql/call :avg            (->honeysql driver field)))
+(defmethod ->honeysql [Object :distinct] [driver [_ field]] (hsql/call :distinct-count (->honeysql driver field)))
+(defmethod ->honeysql [Object :stddev]   [driver [_ field]] (hsql/call :stddev         (->honeysql driver field)))
+(defmethod ->honeysql [Object :sum]      [driver [_ field]] (hsql/call :sum            (->honeysql driver field)))
+(defmethod ->honeysql [Object :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
+(defmethod ->honeysql [Object :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
+
+(defmethod ->honeysql [Object :+] [driver [_ & args]] (apply hsql/call :+ (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [Object :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [Object :*] [driver [_ & args]] (apply hsql/call :* (map (partial ->honeysql driver) args)))
+
+;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
+;; integer division and give us something like 1.0 where we would rather see something like 1.5
+(defmethod ->honeysql [Object :/]
+  [driver [_ & args]]
+  (apply hsql/call :/ (for [arg args]
+                        (->honeysql driver (if (integer? arg)
+                                             (double arg)
+                                             arg)))))
+
+(defmethod ->honeysql [Object :named] [driver [_ ag ag-name]]
+  (->honeysql driver ag))
+
+;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
+(defmethod ->honeysql [Object :aggregation]
+  [driver [_ index]]
+  (let [aggregation (mbql.u/aggregation-at-index *query* index *nested-query-level*)]
     (cond
       ;; For some arcane reason we name the results of a distinct aggregation "count",
       ;; everything else is named the same as the aggregation
-      (= aggregation-type :distinct)
+      (mbql.u/is-clause? :distinct aggregation)
       :count
 
-      (instance? Expression aggregation)
-      (expression-aggregation->honeysql driver aggregation)
+      (mbql.u/is-clause? #{:+ :- :* :/} aggregation)
+      (->honeysql driver aggregation)
 
+      ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
+      ;; TODO - this obviously doesn't work right for multiple aggregations of the same type
       :else
-      aggregation-type)))
+      (first aggregation))))
 
-(defmethod ->honeysql [Object Value]
-  [driver {:keys [value]}]
-  (->honeysql driver value))
+(defmethod ->honeysql [Object :absolute-datetime]
+  [driver [_ timestamp unit]]
+  (sql/date driver unit (->honeysql driver timestamp)))
 
-(defmethod ->honeysql [Object DateTimeValue]
-  [driver {{unit :unit} :field, value :value}]
+(defmethod ->honeysql [Object :time]
+  [driver [_ value unit]]
   (sql/date driver unit (->honeysql driver value)))
 
-(defmethod ->honeysql [Object RelativeDateTimeValue]
-  [driver {:keys [amount unit], {field-unit :unit} :field}]
-  (sql/date driver field-unit (if (zero? amount)
-                                (sql/current-datetime-fn driver)
-                                (driver/date-interval driver unit amount))))
+(defmethod ->honeysql [Object :relative-datetime]
+  [driver [_ amount unit]]
+  (sql/date driver unit (if (zero? amount)
+                          (sql/current-datetime-fn driver)
+                          (driver/date-interval driver unit amount))))
 
-(defmethod ->honeysql [Object TimeValue]
-  [driver  {:keys [value]}]
-  (->honeysql driver value))
 
-;;; ## Clause Handlers
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Clause Handlers                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- apply-expression-aggregation [driver honeysql-form expression]
-  (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
-                                 (hx/escape-dots (driver/format-custom-field-name driver (annotate/aggregation-name expression)))]))
-
-(defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
-  (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
-                                 (hx/escape-dots (annotate/aggregation-name aggregation))]))
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defn apply-aggregation
-  "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  "Apply `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
   [driver honeysql-form {aggregations :aggregation}]
   (loop [form honeysql-form, [ag & more] aggregations]
-    (let [form (if (instance? Expression ag)
-                 (apply-expression-aggregation driver form ag)
-                 (apply-single-aggregation driver form ag))]
+    (let [form (h/merge-select
+                form
+                [(->honeysql driver ag)
+                 (hx/escape-dots (driver/format-custom-field-name driver (annotate/aggregation-name ag)))])]
       (if-not (seq more)
         form
         (recur form more)))))
+
+;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
   [driver honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (for [field breakout-fields
-                                         :when (not (contains? (set fields-fields) field))]
-                                     (as driver (->honeysql driver field) field)))
+    (apply h/merge-select new-hsql (for [field-clause breakout-fields
+                                         :when        (not (contains? (set fields-fields) field-clause))]
+                                     (as driver (->honeysql driver field-clause) field-clause)))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defn apply-fields
@@ -231,100 +240,122 @@
   (apply h/merge-select honeysql-form (for [field fields]
                                         (as driver (->honeysql driver field) field))))
 
+
+;;; ----------------------------------------------------- filter -----------------------------------------------------
+
 (defn- like-clause
   "Generate a SQL `LIKE` clause. `value` is assumed to be a `Value` object (a record type with a key `:value` as well as
   some sort of type info) or similar as opposed to a raw value literal."
-  [driver field value case-sensitive?]
+  [driver field value options]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
   ;; LIKE clauses? That's what we're doing with Druid...
   ;;
   ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
   ;; custom implementation?
-  (if case-sensitive?
+  (if (get options :case-sensitive true)
     [:like field                    (->honeysql driver value)]
-    [:like (hsql/call :lower field) (->honeysql driver (update value :value str/lower-case))]))
+    [:like (hsql/call :lower field) (->honeysql driver (update value 1 str/lower-case))]))
 
-(defn filter-subclause->predicate
-  "Given a filter SUBCLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`."
-  [driver {:keys [filter-type field value case-sensitive?], :as filter}]
-  {:pre [(map? filter) field]}
-  (let [field (->honeysql driver field)]
-    (case          filter-type
-      :between     [:between field
-                    (->honeysql driver (:min-val filter))
-                    (->honeysql driver (:max-val filter))]
+(s/defn ^:private update-string-value :- mbql.s/value
+  [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
+  (update value 1 f))
 
-      :starts-with (like-clause driver field (update value :value #(str    % \%)) case-sensitive?)
-      :contains    (like-clause driver field (update value :value #(str \% % \%)) case-sensitive?)
-      :ends-with   (like-clause driver field (update value :value #(str \% %))    case-sensitive?)
+(defmethod ->honeysql [Object :starts-with] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str % \%)) options))
 
-      :>           [:>    field (->honeysql driver value)]
-      :<           [:<    field (->honeysql driver value)]
-      :>=          [:>=   field (->honeysql driver value)]
-      :<=          [:<=   field (->honeysql driver value)]
-      :=           [:=    field (->honeysql driver value)]
-      :!=          [:not= field (->honeysql driver value)])))
+(defmethod ->honeysql [Object :contains] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% % \%)) options))
 
-(defn filter-clause->predicate
-  "Given a filter CLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`.
-   If this is a compound clause then we call `filter-subclause->predicate` on all of the subclauses."
-  [driver {:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and (apply vector :and (map (partial filter-clause->predicate driver) subclauses))
-    :or  (apply vector :or  (map (partial filter-clause->predicate driver) subclauses))
-    :not [:not (filter-subclause->predicate driver subclause)]
-    nil  (filter-subclause->predicate driver clause)))
+(defmethod ->honeysql [Object :ends-with] [driver [_ field value options]]
+  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
+
+(defmethod ->honeysql [Object :between] [driver [_ field min-val max-val]]
+  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+
+
+(defmethod ->honeysql [Object :>] [driver [_ field value]]
+  [:> (->honeysql driver field) (->honeysql driver value)])
+
+(defmethod ->honeysql [Object :<] [driver [_ field value]]
+  [:< (->honeysql driver field) (->honeysql driver value)])
+
+(defmethod ->honeysql [Object :>=] [driver [_ field value]]
+  [:>= (->honeysql driver field) (->honeysql driver value)])
+
+(defmethod ->honeysql [Object :<=] [driver [_ field value]]
+  [:<= (->honeysql driver field) (->honeysql driver value)])
+
+(defmethod ->honeysql [Object :=] [driver [_ field value]]
+  [:= (->honeysql driver field) (->honeysql driver value)])
+
+(defmethod ->honeysql [Object :!=] [driver [_ field value]]
+  [:not= (->honeysql driver field) (->honeysql driver value)])
+
+
+(defmethod ->honeysql [Object :and] [driver [_ & subclauses]]
+  (apply vector :and (map (partial ->honeysql driver) subclauses)))
+
+(defmethod ->honeysql [Object :or] [driver [_ & subclauses]]
+  (apply vector :or (map (partial ->honeysql driver) subclauses)))
+
+(defmethod ->honeysql [Object :not] [driver [_ subclause]]
+  [:not (->honeysql driver subclause)])
 
 (defn apply-filter
   "Apply a `filter` clause to HONEYSQL-FORM. Default implementation of `apply-filter` for SQL drivers."
   [driver honeysql-form {clause :filter}]
-  (h/where honeysql-form (filter-clause->predicate driver clause)))
+  (h/where honeysql-form (->honeysql driver clause)))
+
+
+;;; -------------------------------------------------- join tables ---------------------------------------------------
 
 (declare build-honeysql-form)
 
 (defn- make-honeysql-join-clauses
   "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
   a `JoinQuery`"
-  [table-or-query-expr {:keys [table-name pk-field source-field schema join-alias] :as jt-or-jq}]
+  [table-or-query-expr {:keys [join-alias fk-field-id pk-field-id]}]
   (let [source-table-id                                  (mbql.u/query->source-table-id *query*)
-        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)]
+        {source-table-name :name, source-schema :schema} (qp.store/table source-table-id)
+        source-field                                     (qp.store/field fk-field-id)
+        pk-field                                         (qp.store/field pk-field-id)]
     [[table-or-query-expr (keyword join-alias)]
      [:=
-      (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-      (hx/qualify-and-escape-dots join-alias (:field-name pk-field))]]))
+      (hx/qualify-and-escape-dots source-schema source-table-name (:name source-field))
+      (hx/qualify-and-escape-dots join-alias (:name pk-field))]]))
 
-(defmethod ->honeysql [Object JoinTable]
-  ;; Returns a seq of clauses used in a honeysql join clause
-  [driver {:keys [schema table-name] :as jt} ]
-  (make-honeysql-join-clauses (hx/qualify-and-escape-dots schema table-name) jt))
-
-(defmethod ->honeysql [Object JoinQuery]
-  ;; Returns a seq of clauses used in a honeysql join clause
-  [driver {:keys [query] :as jq}]
-  (make-honeysql-join-clauses (build-honeysql-form driver query) jq))
+(s/defn ^:private join-info->honeysql
+  [driver , {:keys [query table-id], :as info} :- mbql.s/JoinInfo]
+  (if query
+    (make-honeysql-join-clauses (build-honeysql-form driver query) info)
+    (let [table (qp.store/table table-id)]
+      (make-honeysql-join-clauses (hx/qualify-and-escape-dots (:schema table) (:name table)) info))))
 
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to `honeysql-form`. Default implementation of `apply-join-tables` for SQL
   drivers."
   [driver honeysql-form {:keys [join-tables]}]
-  (reduce (partial apply h/merge-left-join) honeysql-form (map #(->honeysql driver %) join-tables)))
+  (reduce (partial apply h/merge-left-join) honeysql-form (map (partial join-info->honeysql driver) join-tables)))
 
-(defn apply-limit
-  "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
-  [_ honeysql-form {value :limit}]
-  (h/limit honeysql-form value))
+
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
   [driver honeysql-form {subclauses :order-by breakout-fields :breakout}]
   (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
-    (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-      (let [honeysql-form (h/merge-order-by honeysql-form [(->honeysql driver field) (case direction
-                                                                                       :ascending  :asc
-                                                                                       :descending :desc)])]
+    (loop [honeysql-form honeysql-form, [[direction field] & more] subclauses]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(->honeysql driver field) direction])]
         (if (seq more)
           (recur honeysql-form more)
           honeysql-form)))))
+
+;;; -------------------------------------------------- limit & page --------------------------------------------------
+
+(defn apply-limit
+  "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
+  [_ honeysql-form {value :limit}]
+  (h/limit honeysql-form value))
 
 (defn apply-page
   "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers."
@@ -333,6 +364,9 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
+
+;;; -------------------------------------------------- source-table --------------------------------------------------
+
 (defn apply-source-table
   "Apply `source-table` clause to `honeysql-form`. Default implementation of `apply-source-table` for SQL drivers.
   Override as needed."
@@ -340,16 +374,10 @@
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
     (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name))))
 
-(declare apply-clauses)
 
-(defn- apply-source-query [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
-  ;; TODO - what alias should we give the source query?
-  (assoc honeysql-form
-    :from [[(if native
-              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
-              (binding [*nested-query-level* (inc *nested-query-level*)]
-                (apply-clauses driver {} source-query)))
-            :source]]))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Building the HoneySQL Form                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private clause-handlers
   ;; 1) Use the vars rather than the functions themselves because them implementation
@@ -357,9 +385,8 @@
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
   [:source-table #'sql/apply-source-table
-   :source-query apply-source-query
-   :aggregation  #'sql/apply-aggregation
    :breakout     #'sql/apply-breakout
+   :aggregation  #'sql/apply-aggregation
    :fields       #'sql/apply-fields
    :filter       #'sql/apply-filter
    :join-tables  #'sql/apply-join-tables
@@ -367,12 +394,13 @@
    :page         #'sql/apply-page
    :limit        #'sql/apply-limit])
 
-(defn- apply-clauses
-  "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
-  [driver honeysql-form query]
+(defn- apply-top-level-clauses
+  "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn. Doesn't
+  handle `:source-query`; since that must be handled in a special way, that is handled separately."
+  [driver honeysql-form inner-query]
   (loop [honeysql-form honeysql-form, [clause f & more] (seq clause-handlers)]
-    (let [honeysql-form (if (clause query)
-                          (f driver honeysql-form query)
+    (let [honeysql-form (if (clause inner-query)
+                          (f driver honeysql-form inner-query)
                           honeysql-form)]
       (if (seq more)
         (recur honeysql-form more)
@@ -381,13 +409,61 @@
         (update honeysql-form :select #(if (seq %) % [:*]))))))
 
 
+;;; -------------------------------------------- Handling source queries ---------------------------------------------
+
+(declare apply-clauses)
+
+;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
+;; a different alias
+(def ^:private source-query-alias :source)
+
+(defn- apply-source-query
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
+  source queries are aliased as `source`."
+  [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
+  (assoc honeysql-form
+    :from [[(if native
+              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
+              (binding [*nested-query-level* (inc *nested-query-level*)]
+                (apply-clauses driver {} source-query)))
+            source-query-alias]]))
+
+(defn- apply-clauses-with-aliased-source-query-table
+  "For queries that have a source query that is a normal MBQL query with a source table, temporarily swap the name of
+  that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
+  referring to Fields belonging to the Table in the source query work normally."
+  [driver honeysql-form {:keys [source-query], :as inner-query}]
+  (qp.store/with-pushed-store
+    (when-let [source-table-id (:source-table source-query)]
+      (qp.store/store-table! (assoc (qp.store/table source-table-id) :schema nil, :name (name source-query-alias))))
+    (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
+
+
+;;; -------------------------------------------- putting it all togetrher --------------------------------------------
+
+(defn- apply-clauses
+  "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
+  because it is aliased."
+  [driver honeysql-form {:keys [source-query], :as inner-query}]
+  (if source-query
+    (apply-clauses-with-aliased-source-query-table
+     driver
+     (apply-source-query driver honeysql-form inner-query)
+     inner-query)
+    (apply-top-level-clauses driver honeysql-form inner-query)))
+
 (defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
   (u/prog1 (apply-clauses driverr {} inner-query)
     (when-not i/*disable-qp-logging*
-      (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
+      (log/debug (tru "HoneySQL Form:") (u/emoji "🍯") "\n" (u/pprint-to-str 'cyan <>)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 MBQL -> Native                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
@@ -398,6 +474,11 @@
       {:query  sql
        :params args})))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Parsing Results                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defn- parse-date-as-string
   "Most databases will never invoke this code. It's possible with SQLite to get here if the timestamp was stored
   without milliseconds. Currently the SQLite JDBC driver will throw an exception even though the SQLite datetime
@@ -407,7 +488,7 @@
   (let [date-string (.getString rs i)]
     (if-let [parsed-date (du/str->date-time date-string tz)]
       parsed-date
-      (throw (Exception. (format "Unable to parse date '%s'" date-string))))))
+      (throw (Exception. (str (tru "Unable to parse date ''{0}''" date-string)))))))
 
 (defn- get-date [^TimeZone tz]
   (fn [^ResultSet rs _ ^Integer i]
@@ -447,6 +528,11 @@
     (let [data-read-functions (map (fn [^Integer i] (make-column-reader (.getColumnType rsmeta i) timezone)) idxs)]
       (mapv (fn [^Integer i data-read-fn]
               (jdbc/result-set-read-column (data-read-fn rs rsmeta i) rsmeta i)) idxs data-read-functions))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Running Queries                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- set-parameters-with-timezone
   "Returns a function that will set date/timestamp PreparedStatement
@@ -493,7 +579,7 @@
           ;; we can give up on the query running in the future
           @query-future)
         (catch InterruptedException e
-          (log/warn e "Client closed connection, cancelling query")
+          (log/warn e (tru "Client closed connection, cancelling query"))
           ;; This is what does the real work of cancelling the query. We aren't checking the result of
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
@@ -504,11 +590,16 @@
   [{sql :query, params :params, remark :remark} timezone connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (cancellable-run-query connection sql params {:identifiers    identity, :as-arrays? true
-                                                                       :read-columns   (read-columns-with-date-handling timezone)
-                                                                       :set-parameters (set-parameters-with-timezone timezone)})]
-       {:rows    (or rows [])
-        :columns columns}))
+        [columns & rows] (cancellable-run-query connection sql params
+                                                {:identifiers    identity
+                                                 :as-arrays?     true
+                                                 :read-columns   (read-columns-with-date-handling timezone)
+                                                 :set-parameters (set-parameters-with-timezone timezone)})]
+    {:rows    (or rows [])
+     :columns (map u/keyword->qualified-name columns)}))
+
+
+;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------
 
 (defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
@@ -544,6 +635,9 @@
   (jdbc/with-db-transaction [transaction-connection connection]
     (do-with-auto-commit-disabled transaction-connection (partial f transaction-connection))))
 
+
+;;; ---------------------------------------------- Running w/ Timezone -----------------------------------------------
+
 (defn- set-timezone!
   "Set the timezone for the current connection."
   [driver settings connection]
@@ -551,7 +645,7 @@
                         (assert (re-matches #"[A-Za-z\/_]+" <>)))
         format-string (sql/set-timezone-sql driver)
         sql           (format format-string (str \' timezone \'))]
-    (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
+    (log/debug (u/format-color 'green (tru "Setting timezone with statement: {0}" sql)))
     (jdbc/db-do-prepared connection [sql])))
 
 (defn- run-query-without-timezone [_ _ connection query]
@@ -565,20 +659,22 @@
                                                (some-> report-timezone TimeZone/getTimeZone)
                                                transaction-connection)))
     (catch SQLException e
-      (log/error (trs "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (tru "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error (trs "Failed to set timezone:") "\n" (.getMessage e))
+      (log/error (tru "Failed to set timezone:") "\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 
+;;; ------------------------------------------------- execute-query --------------------------------------------------
+
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings], query :native, :as outer-query}]
+  [driver {settings :settings, database-id :database, query :native, :as outer-query}]
   (let [query (assoc query :remark (qputil/query->remark outer-query))]
     (do-with-try-catch
       (fn []
-        (let [db-connection (sql/db->jdbc-connection-spec database)]
+        (let [db-connection (sql/db->jdbc-connection-spec (Database (u/get-id database-id)))]
           ((if (seq (:report-timezone settings))
              run-query-with-timezone
              run-query-without-timezone) driver settings db-connection query))))))

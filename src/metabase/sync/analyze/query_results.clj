@@ -3,10 +3,11 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.query-processor.interface :as qp.i]
+  (:require [metabase.mbql.schema :as mbql.s]
             [metabase.sync.analyze.classifiers.name :as classify-name]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.sync.analyze.fingerprint.insights :as insights]
+            [metabase.sync.analyze.fingerprint
+             [fingerprinters :as f]
+             [insights :as insights]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -16,7 +17,7 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   (s/constrained su/KeywordOrString
-                 qp.i/datetime-field-unit?
+                 #(not (s/check mbql.s/DatetimeFieldUnit (keyword %)))
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata

@@ -89,7 +89,7 @@
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
           [4 -118.465 29 2 "Wurstküche"                   33.9997]
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-   :cols [{:name "id",          :base_type :type/Integer}
+   :cols [{:name "id",          :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "longitude",   :base_type :type/Float}
           {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}
@@ -112,7 +112,7 @@
                     :limit        5}}))))
 
 
-(def ^:private ^:const breakout-results
+(def ^:private breakout-results
   {:rows [[1 22]
           [2 59]
           [3 13]
@@ -333,7 +333,7 @@
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
 (expect
   {:query (str "SELECT avg(\"stddev\") AS \"avg\" FROM ("
-                   "SELECT STDDEV(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                   "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                    "FROM \"PUBLIC\".\"VENUES\" "
                    "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                    "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
@@ -351,12 +351,13 @@
 (def ^:private ^:const ^String venues-source-with-category-sql
   (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
        "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", \"category_id\" AS \"category_id\" "
+       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
        "FROM \"PUBLIC\".\"VENUES\") \"source\""))
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
-  {:query  (format "SELECT \"category_id\" AS \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10" venues-source-with-category-sql)
+  {:query  (format "SELECT \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10"
+                   venues-source-with-category-sql)
    :params nil}
   (qp/query->native
     {:database (data/id)
@@ -403,51 +404,47 @@
        :query    {:source-table (str "card__" (u/get-id card))}})))
 
 (defn results-metadata {:style/indent 0} [results]
+  (when (= :failed (:status results))
+    (throw (ex-info "No results metadata." results)))
   (for [col (get-in results [:data :cols])]
-    (u/select-non-nil-keys col [:base_type :display_name :id :name :source :special_type :table_id :unit :datetime-unit])))
+    (u/select-non-nil-keys col [:base_type :display_name :id :name :special_type :table_id :unit :datetime-unit])))
 
 ;; make sure a query using a source query comes back with the correct columns metadata
 (expect
   [{:base_type    :type/BigInteger
     :display_name "ID"
-    :id           [:field-literal "ID" :type/BigInteger]
+    :id           (data/id :venues :id)
     :name         "ID"
-    :source       :fields
     :special_type :type/PK
     :table_id     (data/id :venues)}
    {:base_type    :type/Text
     :display_name "Name"
-    :id           [:field-literal "NAME" :type/Text]
+    :id           (data/id :venues :name)
     :name         "NAME"
-    :source       :fields
     :special_type :type/Name
     :table_id     (data/id :venues)}
    {:base_type    :type/Integer
     :display_name "Category ID"
-    :id           [:field-literal "CATEGORY_ID" :type/Integer]
+    :id           (data/id :venues :category_id)
     :name         "CATEGORY_ID"
-    :source       :fields
     :special_type :type/FK
     :table_id     (data/id :venues)}
    {:base_type    :type/Float
     :display_name "Latitude"
-    :id           [:field-literal "LATITUDE" :type/Float]
+    :id           (data/id :venues :latitude)
     :name         "LATITUDE"
-    :source       :fields
     :special_type :type/Latitude
     :table_id     (data/id :venues)}
    {:base_type    :type/Float
     :display_name "Longitude"
-    :id           [:field-literal "LONGITUDE" :type/Float]
+    :id           (data/id :venues :longitude)
     :name         "LONGITUDE"
-    :source       :fields
     :special_type :type/Longitude
     :table_id     (data/id :venues)}
    {:base_type    :type/Integer
     :display_name "Price"
-    :id           [:field-literal "PRICE" :type/Integer]
+    :id           (data/id :venues :price)
     :name         "PRICE"
-    :source       :fields
     :special_type :type/Category
     :table_id     (data/id :venues)}]
   (-> (tt/with-temp Card [card (venues-mbql-card-def)]
@@ -457,14 +454,11 @@
 ;; make sure a breakout/aggregate query using a source query comes back with the correct columns metadata
 (expect
   [{:base_type    :type/Text
-    :id           [:field-literal "PRICE" :type/Text]
     :name         "PRICE"
-    :display_name "Price"
-    :source       :breakout}
+    :display_name "Price"}
    {:base_type    :type/Integer
     :display_name "count"
     :name         "count"
-    :source       :aggregation
     :special_type :type/Number}]
   (-> (tt/with-temp Card [card (venues-mbql-card-def)]
         (qp/process-query (query-with-source-card card
@@ -476,14 +470,11 @@
 (expect
   [{:base_type    :type/DateTime
     :display_name "Date"
-    :id           [:field-literal "DATE" :type/DateTime]
     :name         "DATE"
-    :source       :breakout
     :unit         :day}
    {:base_type    :type/Integer
     :display_name "count"
     :name         "count"
-    :source       :aggregation
     :special_type :type/Number}]
   (-> (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                                 :type     :native
@@ -495,17 +486,16 @@
 
 ;; make sure when doing a nested query we give you metadata that would suggest you should be able to break out a *YEAR*
 (expect
-  [{:base_type    :type/Text
+  [{:base_type    :type/Date
     :display_name "Date"
-    :id           [:field-literal "DATE" :type/Text]
+    :id           (data/id :checkins :date)
     :name         "DATE"
-    :source       :breakout
-    :table_id     (data/id :checkins)}
+    :table_id     (data/id :checkins)
+    :unit         :year}
    {:base_type    :type/Integer
-    :display_name "Count"
-    :id           [:field-literal :count :type/Integer]
+    :display_name "count"
     :name         "count"
-    :source       :fields}]
+    :special_type :type/Number}]
   (-> (tt/with-temp Card [card (mbql-card-def
                                  :source-table (data/id :checkins)
                                  :aggregation  [[:count]]

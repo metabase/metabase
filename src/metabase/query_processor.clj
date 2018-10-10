@@ -2,6 +2,7 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
   (:require [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -14,16 +15,17 @@
              [add-implicit-clauses :as implicit-clauses]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
-             [annotate-and-sort :as annotate-and-sort]
+             [annotate :as annotate]
              [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
+             [check-features :as check-features]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
+             [desugar :as desugar]
              [dev :as dev]
              [driver-specific :as driver-specific]
-             [expand :as expand]
              [expand-macros :as expand-macros]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
@@ -33,13 +35,14 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
-             [resolve :as resolve]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
+             [resolve-joined-tables :as resolve-joined-tables]
+             [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
-             [source-table :as source-table]
              [store :as store]
-             [validate :as validate]]
+             [validate :as validate]
+             [wrap-value-literals :as wrap-value-literals]]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [date :as du]
@@ -93,28 +96,37 @@
   [f]
   ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
   (-> f
-      mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
-      annotate-and-sort/annotate-and-sort
+      ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
+      mbql-to-native/mbql->native
+      check-features/check-features
+      wrap-value-literals/wrap-value-literals
+      annotate/add-column-info
       perms/check-query-permissions
+      resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
-      resolve/resolve-middleware
-      expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      desugar/desugar
       binning/update-binning-strategy
       resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       bucket-datetime/auto-bucket-datetime-breakouts
-      source-table/resolve-source-table-middleware
-      row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
+      resolve-source-table/resolve-source-table
+      row-count-and-status/add-row-count-and-status
+      ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
+      ;; TODO - I think we should do this much later, perhaps at the very end right before `catch-exceptions`
       parameters/substitute-parameters
       expand-macros/expand-macros
-      driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
+      ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
+      driver-specific/process-query-in-context
       add-settings/add-settings
-      resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      ;; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲
+      ;; All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      ;; TODO - I think we should do this much earlier
+      resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       store/initialize-store
@@ -128,39 +140,57 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
+(def ^{:arglists '([query]), :style/indent 1} preprocess
+  "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
+  get executed by `execute-query`. One important thing to note: if preprocessing fails for some reason, `preprocess`
+  will throw an Exception, unlike `process-query`. Why? Preprocessing is something we use internally, so wrapping
+  catching Exceptions and wrapping them in frontend results format doesn't make sense."
+  ;; throwing pre-allocated exceptions can actually get optimized away into long jumps by the JVM, let's give it a
+  ;; chance to happen here
+  (let [quit-early-exception (Exception.)
+        ;; the 'pivoting' function is just one that delivers the query in its current state into the promise we
+        ;; conveniently attached to the query. Then it quits early by throwing our pre-allocated Exception...
+        deliver-native-query
+        (fn [{:keys [results-promise] :as query}]
+          (deliver results-promise (dissoc query :results-promise))
+          (throw quit-early-exception))
+
+        ;; ...which ends up getting caught by the `catch-exceptions` middleware. Add a final post-processing function
+        ;; around that which will return whatever we delivered into the `:results-promise`.
+        recieve-native-query
+        (fn [qp]
+          (fn [query]
+            (let [results-promise (promise)
+                  results         (qp (assoc query :results-promise results-promise))]
+              (if (realized? results-promise)
+                @results-promise
+                ;; if the results promise was never delivered, it means we never made it all the way to the
+                ;; `deliver-native-query` portion of the QP pipeline; the results will thus be a failure message from
+                ;; our `catch-exceptions` middleware. In 99.9% of cases we probably want to know right away that the
+                ;; query failed instead of giving people a failure response and trying to get results from that. So do
+                ;; everyone a favor and throw an Exception
+                (let [results (m/dissoc-in results [:query :results-promise])]
+                  (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
+                  (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
+    (recieve-native-query (qp-pipeline deliver-native-query))))
+
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form)."
+  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)"
   {:style/indent 0}
   [query]
-  (let [results ((qp-pipeline identity) query)]
-    (or (get-in results [:data :native_form])
-        (throw (ex-info "No native form returned."
-                 results)))))
+  (let [results (preprocess query)]
+    (or (get results :native)
+        (throw (ex-info (str (tru "No native form returned."))
+                 (or results {}))))))
+
+(def ^:private default-pipeline (qp-pipeline execute-query))
 
 (defn process-query
   "A pipeline of various QP functions (including middleware) that are used to process MB queries."
   {:style/indent 0}
   [query]
-  ((qp-pipeline execute-query) query))
-
-(def ^{:arglists '([query])} expand
-  "Expand a QUERY the same way it would normally be done as part of query processing.
-   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
-  (->> identity
-       resolve/resolve-middleware
-       expand/expand-middleware
-       source-table/resolve-source-table-middleware
-       parameters/substitute-parameters
-       expand-macros/expand-macros
-       driver-specific/process-query-in-context
-       resolve-driver/resolve-driver
-       fetch-source-query/fetch-source-query
-       bind-timezone/bind-effective-timezone
-       validate/validate-query
-       normalize/normalize))
-;; ▲▲▲ This only does PRE-PROCESSING, so it happens from bottom to top, eventually returning the preprocessed query
-;; instead of running it
+  (default-pipeline query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
