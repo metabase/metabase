@@ -35,6 +35,14 @@
 (defn- qualified-name-components [& args]
   (map dashes->underscores args))
 
+(defn- qualify+quote-name
+  ([db-name]
+   (dashes->underscores db-name))
+  ([_ table-name]
+   (dashes->underscores table-name))
+  ([_ _ field-name]
+   (dashes->underscores field-name)))
+
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host     "localhost"
           :port     10000
@@ -108,6 +116,7 @@
           :drop-db-if-exists-sql     drop-db-if-exists-sql
           :load-data!                load-data!
           :pk-sql-type               (constantly "INT")
+          :qualify+quote-name        (u/drop-first-arg qualify+quote-name)
           :qualified-name-components (u/drop-first-arg qualified-name-components)
           :quote-name                (u/drop-first-arg quote-name)})
   i/IDriverTestExtensions
