@@ -23,13 +23,15 @@
                                                              su/FieldType)
                               special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
-                              fk              :- (s/maybe s/Keyword)]
+                              fk              :- (s/maybe s/Keyword)
+                              field-comment   :- (s/maybe su/NonBlankString)]
   nil
   :load-ns true)
 
 (s/defrecord TableDefinition [table-name        :- su/NonBlankString
                               field-definitions :- [FieldDefinition]
-                              rows              :- [[s/Any]]]
+                              rows              :- [[s/Any]]
+                              table-comment     :- (s/maybe su/NonBlankString)]
   nil
   :load-ns true)
 
@@ -113,8 +115,11 @@
      *  `:db`     - Return details for connecting specifically to the DB.")
 
   (create-db! [this, ^DatabaseDefinition database-definition]
+              [this, ^DatabaseDefinition database-definition, ^Boolean skip-drop-db?]
     "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
-     and add the appropriate data. This method should drop existing databases with the same name if applicable.
+     and add the appropriate data. This method should drop existing databases with the same name if applicable,
+     unless the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates
+     the connection before dropping the DB and causes some tests to fail.
      (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
 
   ;; TODO - this would be more useful if DATABASE-DEFINITION was a parameter

@@ -26,10 +26,8 @@
 
 ;; DESCRIBE-DATABASE
 (expect
-  {:tables #{{:name "CATEGORIES" :schema "PUBLIC"}
-             {:name "VENUES"     :schema "PUBLIC"}
-             {:name "CHECKINS"   :schema "PUBLIC"}
-             {:name "USERS"      :schema "PUBLIC"}}}
+  {:tables (set (map #(hash-map :name % :schema "PUBLIC" :description nil)
+                     ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]))}
   (driver/describe-database (H2Driver.) (db)))
 
 ;; DESCRIBE-TABLE

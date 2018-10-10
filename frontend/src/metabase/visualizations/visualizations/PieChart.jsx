@@ -13,6 +13,7 @@ import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -57,13 +58,16 @@ export default class PieChart extends Component {
   }
 
   static settings = {
+    ...columnSettings({ hidden: true }),
     ...dimensionSetting("pie.dimension", {
       section: t`Data`,
       title: t`Dimension`,
+      showColumnSetting: true,
     }),
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
+      showColumnSetting: true,
     }),
     "pie.show_legend": {
       section: t`Display`,
@@ -152,12 +156,16 @@ export default class PieChart extends Component {
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
-        column: cols[dimensionIndex],
+        ...settings.column(cols[dimensionIndex]),
         jsx,
         majorWidth: 0,
       });
     const formatMetric = (metric, jsx = true) =>
-      formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 });
+      formatValue(metric, {
+        ...settings.column(cols[metricIndex]),
+        jsx,
+        majorWidth: 0,
+      });
     const formatPercent = percent => (100 * percent).toFixed(2) + "%";
 
     const showPercentInTooltip =
