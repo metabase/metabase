@@ -24,15 +24,6 @@ import ss from "simple-statistics";
 import _ from "underscore";
 import Color from "color";
 
-// const HEAT_MAP_COLORS = [
-//     "#E1F2FF",
-//     "#67B9FF",
-//     "#2DA0FF",
-//     "#0A93FF",
-//     "#005FB8"
-// ];
-// const HEAT_MAP_ZERO_COLOR = '#CCC';
-
 // TODO COLOR
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
