@@ -43,7 +43,7 @@ const ColumnSettings = ({
 
   // add a "unit" to make certain settings work
   if (column.unit == null) {
-    column = { ...column, unit: "millisecond" };
+    column = { ...column, unit: "default" };
   }
 
   // $FlowFixMe

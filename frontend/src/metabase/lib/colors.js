@@ -19,7 +19,7 @@ const colors = {
   accent2: "#A989C5",
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
-  accent5: "#F1B556",
+  accent5: "#F2A86F",
   accent6: "#A6E7F3",
   accent7: "#7172AD",
   white: "#FFFFFF",
@@ -139,6 +139,16 @@ export const getColorScale = (
       .range(colors);
   }
 };
+
+// HACK: d3 may return rgb values with decimals but certain rendering engines
+// don't support that (e.x. Safari and CSSBox)
+export function roundColor(color: ColorString): ColorString {
+  return color.replace(
+    /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
+    (_, r, g, b, a) =>
+      `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`,
+  );
+}
 
 export const alpha = (color: ColorString, alpha: number): ColorString =>
   Color(color)

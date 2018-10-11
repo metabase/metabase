@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { CSSTransitionGroup } from "react-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -11,9 +10,6 @@ import { constrainToScreen } from "metabase/lib/dom";
 import cx from "classnames";
 
 import "./Popover.css";
-
-const POPOVER_TRANSITION_ENTER = 100;
-const POPOVER_TRANSITION_LEAVE = 100;
 
 // space we should leave berween page edge and popover edge
 const PAGE_PADDING = 10;
@@ -103,13 +99,11 @@ export default class Popover extends Component {
     }
     if (this._popoverElement) {
       this._renderPopover(false);
-      setTimeout(() => {
-        ReactDOM.unmountComponentAtNode(this._popoverElement);
-        if (this._popoverElement.parentNode) {
-          this._popoverElement.parentNode.removeChild(this._popoverElement);
-        }
-        delete this._popoverElement;
-      }, POPOVER_TRANSITION_LEAVE);
+      ReactDOM.unmountComponentAtNode(this._popoverElement);
+      if (this._popoverElement.parentNode) {
+        this._popoverElement.parentNode.removeChild(this._popoverElement);
+      }
+      delete this._popoverElement;
       clearInterval(this._timer);
       delete this._timer;
     }
@@ -278,17 +272,7 @@ export default class Popover extends Component {
     const popoverElement = this._getPopoverElement();
     ReactDOM.unstable_renderSubtreeIntoContainer(
       this,
-      <CSSTransitionGroup
-        transitionName="Popover"
-        transitionAppear
-        transitionEnter
-        transitionLeave
-        transitionAppearTimeout={POPOVER_TRANSITION_ENTER}
-        transitionEnterTimeout={POPOVER_TRANSITION_ENTER}
-        transitionLeaveTimeout={POPOVER_TRANSITION_LEAVE}
-      >
-        {isOpen ? this._popoverComponent() : null}
-      </CSSTransitionGroup>,
+      <span>{isOpen ? this._popoverComponent() : null}</span>,
       popoverElement,
     );
 

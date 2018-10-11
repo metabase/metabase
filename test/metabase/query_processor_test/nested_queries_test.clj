@@ -143,7 +143,7 @@
         {:database (data/id)
          :type     :query
          :query    {:source-query {:source-table (data/id :checkins)
-                                   :filter [:> (data/id :checkins :date) "2014-01-01"]}
+                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
                     :aggregation  [:count]
                     :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
                     :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
@@ -178,9 +178,9 @@
           [1 3 13]
           [1 4 8]
           [1 5 10]],
-   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
+   :cols [{:name "price",   :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "user_id", :base_type :type/Integer}
-          {:name "count", :base_type :type/Integer}]}
+          {:name "count",   :base_type :type/Integer}]}
   (rows+cols
     (format-rows-by [int int int]
       (qp/process-query

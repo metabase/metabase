@@ -1,6 +1,9 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
+  (:require [buddy.sign
+             [jwt :as jwt]
+             [util :as buddy-util]]
+            [clj-time.core :as time]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
@@ -100,6 +103,7 @@
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil, :param_fields nil})
 
+(def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
@@ -112,6 +116,13 @@
     (with-temp-card [card {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (card-url card))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true}]
+      (http/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
@@ -320,6 +331,13 @@
     (tt/with-temp Dashboard [dash {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (dashboard-url dash))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Dashboard [dash {:enable_embedding true}]
+      (http/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
