@@ -235,9 +235,7 @@ export default class TableSimpleSummary extends Component {
                           <td
                             ref={row.columnStopIndex === cols.length -1 && row.rowStopIndex === rows.length -1 ? "lastCell" : null}
                             className={cx("TableSimpleSummary-cellWrapper px1 border-bottom", {
-                              "text-right": isColumnRightAligned(
-                                cols[columnStartIndex],
-                              ),
+                              "text-right": !isTotalCell && !isGrandTotalCell && isColumnRightAligned(cols[columnStartIndex]),
                               "TableSimpleSummary-cellWrapper-firstColumn" : columnStartIndex === 0,
                               "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
                               "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
