@@ -166,7 +166,15 @@ export default class PieChart extends Component {
         jsx,
         majorWidth: 0,
       });
-    const formatPercent = percent => (100 * percent).toFixed(2) + "%";
+    const formatPercent = (percent, jsx = true) =>
+      formatValue(percent, {
+        ...settings.column(cols[metricIndex]),
+        jsx,
+        majorWidth: 0,
+        number_style: "percent",
+        minimumSignificantDigits: 3,
+        maximumSignificantDigits: 3,
+      });
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
@@ -214,7 +222,7 @@ export default class PieChart extends Component {
     let legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
-        ? formatPercent(slice.percentage)
+        ? formatPercent(slice.percentage, true)
         : undefined,
     ]);
     let legendColors = slices.map(slice => slice.color);
