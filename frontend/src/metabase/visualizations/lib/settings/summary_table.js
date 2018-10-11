@@ -224,13 +224,19 @@ export const getAllAggregationKeysFlatten = (
 ): AggregationKey[][] => flatMap(getAllQueryKeys(qp));
 
 
-export const canTotalizeByType = (type: string) =>
+const canTotalizeByType = (type: string) =>
   type === "type/BigInteger" ||
   type === "type/Integer" ||
   type === "type/Float" ||
   type === "type/Decimal";
 
-const shouldTotalizeDefaultBuilder = (
+const canTotalizeBySpecialType = (specialType : string) =>{
+  return !specialType ||
+       specialType !== "type/PK"
+    && specialType !== "type/FK";
+};
+
+export const shouldTotalizeDefaultBuilder = (
   columns: Column[],
 ): (ColumnName => boolean) => {
   const aggrColumns =
@@ -238,7 +244,7 @@ const shouldTotalizeDefaultBuilder = (
     !columns[0].source ||
     columns.filter(p => p.source !== BREAKOUT).length === 0
       ? columns
-          .filter(p => !p.special_type)
+          .filter(p => canTotalizeBySpecialType(p.special_type))
           .filter(p => canTotalizeByType(p.base_type))
       : columns.filter(p => p.source === AGGREGATION);
 

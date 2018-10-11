@@ -5,7 +5,7 @@ import flatMap from 'lodash.flatmap';
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 import type {DatasetQuery} from "metabase/meta/types/Card";
 import {
-  canTotalizeByType,
+  shouldTotalizeDefaultBuilder,
   getAllAggregationKeysFlatten,
   getQueryPlan
 } from "metabase/visualizations/lib/settings/summary_table";
@@ -177,8 +177,9 @@ export const getAggregationQueries = (settings : SummaryTableSettings,  cols : C
   const createLiteral = name => ["field-literal", name, nameToTypeMap[name]];
   const createTotal = name => ["named", ["sum", createLiteral(name)], name];
 
-  const queryPlan = getQueryPlan(settings, p =>
-    canTotalizeByType(nameToTypeMap[p]));
+
+  const canTotalize = shouldTotalizeDefaultBuilder(cols);
+  const queryPlan = getQueryPlan(settings, p => canTotalize(p));
   const allKeys = getAllAggregationKeysFlatten(queryPlan);
 
   return allKeys.map(([groupings, aggregations]) => ({
