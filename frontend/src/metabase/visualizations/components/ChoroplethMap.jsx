@@ -22,30 +22,40 @@ import {
 import d3 from "d3";
 import ss from "simple-statistics";
 import _ from "underscore";
-
-// const HEAT_MAP_COLORS = [
-//     "#E1F2FF",
-//     "#67B9FF",
-//     "#2DA0FF",
-//     "#0A93FF",
-//     "#005FB8"
-// ];
-// const HEAT_MAP_ZERO_COLOR = '#CCC';
+import Color from "color";
 
 // TODO COLOR
-const HEAT_MAP_COLORS = [
-  // "#E2F2FF",
-  "#C4E4FF",
-  // "#9ED2FF",
-  "#81C5FF",
-  // "#6BBAFF",
-  "#51AEFF",
-  // "#36A2FF",
-  "#1E96FF",
-  // "#0089FF",
-  "#0061B5",
-];
+const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
+
+export function getColorplethColorScale(
+  color,
+  { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
+) {
+  let lightColor = Color(color)
+    .lightness(lightness)
+    .saturate(saturate);
+
+  let darkColor = Color(color)
+    .darken(darken)
+    .saturate(saturate);
+
+  const scale = d3.scale
+    .linear()
+    .domain([0, 1])
+    .range([lightColor.string(), darkColor.string()]);
+
+  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+
+  if (darkenLast) {
+    colors[colors.length - 1] = Color(color)
+      .darken(darkenLast)
+      .saturate(saturate)
+      .string();
+  }
+
+  return colors;
+}
 
 const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
@@ -179,11 +189,6 @@ export default class ChoroplethMap extends Component {
     const formatMetric = value =>
       formatValue(value, settings.column(cols[metricIndex]));
 
-    const heatMapColors = HEAT_MAP_COLORS.slice(
-      0,
-      Math.min(HEAT_MAP_COLORS.length, rows.length),
-    );
-
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
     const getFeatureClickObject = row => ({
@@ -234,6 +239,8 @@ export default class ChoroplethMap extends Component {
       domain.push(getRowValue(row));
     }
 
+    const heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
     let colorScale = d3.scale
@@ -241,7 +248,7 @@ export default class ChoroplethMap extends Component {
       .domain(groups.map(cluster => cluster[0]))
       .range(heatMapColors);
 
-    let legendColors = heatMapColors.slice();
+    let legendColors = heatMapColors;
     let legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
