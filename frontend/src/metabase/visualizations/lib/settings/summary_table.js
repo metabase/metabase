@@ -309,6 +309,11 @@ const enrichMetadata = ({groupsSources, columnsSource}, columnNameToMetadata, so
 
 };
 
+const getRawColumns = (cols, columns) =>{
+  const names = Set.of(...cols.map(p => p.name));
+  return columns.filter(col => names.contains(col));
+};
+
 export const enrichSettings = (
   stateSerialized,
   cols,
@@ -316,9 +321,10 @@ export const enrichSettings = (
   sortOverride = {}
 ): SummaryTableSettings => {
 
+  const rawColumns = getRawColumns(cols, columns);
   const stateNormalized = { ...emptyStateSerialized, ...stateSerialized };
 
-  const partColumns = enrichColumns(stateNormalized, cols, columns);
+  const partColumns = enrichColumns(stateNormalized, cols, rawColumns);
   const columnNameToMetadata = enrichMetadata(partColumns, stateNormalized.columnNameToMetadata, sortOverride);
   return {...partColumns, columnNameToMetadata};
 };
