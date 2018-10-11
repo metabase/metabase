@@ -8,7 +8,7 @@ import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
@@ -145,7 +145,7 @@ export default class ChoroplethMap extends Component {
       projection = null;
     }
 
-    const nameProperty = details.region_name;
+    // const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -169,29 +169,22 @@ export default class ChoroplethMap extends Component {
     const getRowKey = row =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+
+    // const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
+
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
+
+    const formatMetric = value =>
+      formatValue(value, settings.column(cols[metricIndex]));
 
     const heatMapColors = HEAT_MAP_COLORS.slice(
       0,
       Math.min(HEAT_MAP_COLORS.length, rows.length),
     );
 
-    const onHoverFeature = hover => {
-      onHoverChange &&
-        onHoverChange(
-          hover && {
-            index: heatMapColors.indexOf(getColor(hover.feature)),
-            event: hover.event,
-            data: {
-              key: getFeatureName(hover.feature),
-              value: getFeatureValue(hover.feature),
-            },
-          },
-        );
-    };
+    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
     const getFeatureClickObject = row => ({
       value: row[metricIndex],
@@ -211,13 +204,25 @@ export default class ChoroplethMap extends Component {
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = _.find(rows, row => getRowKey(row) === featureKey);
-        if (onVisualizationClick && row !== undefined) {
+        const row = rowByFeatureKey.get(getFeatureKey(click.feature));
+        if (row && onVisualizationClick) {
           onVisualizationClick({
             ...getFeatureClickObject(row),
             event: click.event,
           });
+        }
+      });
+    const onHoverFeature =
+      onHoverChange &&
+      (hover => {
+        const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
+        if (row && onHoverChange) {
+          onHoverChange({
+            ...getFeatureClickObject(row),
+            event: hover.event,
+          });
+        } else if (onHoverChange) {
+          onHoverChange(null);
         }
       });
 
@@ -241,8 +246,8 @@ export default class ChoroplethMap extends Component {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
-        ? formatNumber(min) + " +"
-        : formatNumber(min) + " - " + formatNumber(max);
+        ? formatMetric(min) + " +"
+        : formatMetric(min) + " - " + formatMetric(max);
     });
 
     const getColor = feature => {

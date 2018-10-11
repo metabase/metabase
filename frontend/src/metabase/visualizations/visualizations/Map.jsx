@@ -20,6 +20,8 @@ import {
   dimensionSetting,
   fieldSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
@@ -40,6 +42,7 @@ export default class Map extends Component {
   }
 
   static settings = {
+    ...columnSettings({ hidden: true }),
     "map.type": {
       title: t`Map type`,
       widget: "select",

@@ -256,7 +256,9 @@ export default class Gauge extends Component {
                   end={angle(segment.max)}
                   fill={segment.color}
                   segment={segment}
-                  onHoverChange={this.props.onHoverChange}
+                  column={column}
+                  settings={settings}
+                  onHoverChange={!showLabels ? this.props.onHoverChange : null}
                 />
               ))}
               {/* NEEDLE */}
@@ -317,7 +319,15 @@ export default class Gauge extends Component {
   }
 }
 
-const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
+const GaugeArc = ({
+  start,
+  end,
+  fill,
+  segment,
+  onHoverChange,
+  settings,
+  column,
+}) => {
   const arc = d3.svg
     .arc()
     .outerRadius(OUTER_RADIUS)
@@ -329,21 +339,30 @@ const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
         endAngle: end,
       })}
       fill={fill}
-      onMouseMove={
-        onHoverChange && segment.label
-          ? e =>
-              onHoverChange({
-                data: [
-                  {
-                    key: segment.label,
-                    value: `${segment.min} - ${segment.max}`,
-                  },
-                ],
-                event: e.nativeEvent,
-              })
-          : null
-      }
-      onMouseLeave={onHoverChange ? () => onHoverChange(null) : null}
+      onMouseMove={e => {
+        if (onHoverChange) {
+          const options =
+            settings && settings.column && column
+              ? settings.column(column)
+              : {};
+          onHoverChange({
+            data: [
+              {
+                key: segment.label,
+                value: [segment.min, segment.max]
+                  .map(n => formatValue(n, options))
+                  .join(" - "),
+              },
+            ],
+            event: e.nativeEvent,
+          });
+        }
+      }}
+      onMouseLeave={() => {
+        if (onHoverChange) {
+          onHoverChange(null);
+        }
+      }}
     />
   );
 };

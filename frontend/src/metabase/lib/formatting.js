@@ -166,7 +166,10 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
         // max significant digits instead of max fraction digits
         nf = numberFormatterForOptions({
           ...options,
-          maximumSignificantDigits: 2,
+          maximumSignificantDigits: Math.max(
+            2,
+            options.minimumSignificantDigits || 0,
+          ),
           maximumFractionDigits: undefined,
         });
       } else if (options._numberFormatter) {
