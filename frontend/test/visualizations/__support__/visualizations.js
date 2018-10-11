@@ -1,6 +1,8 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
+import { formatValue } from "metabase/lib/formatting";
+
 export function makeCard(card) {
   return {
     name: "card",
@@ -178,4 +180,23 @@ export function renderChart(renderer, element, series, props) {
 
 export function renderLineAreaBar(...args) {
   return renderChart(lineAreaBarRenderer, ...args);
+}
+
+// mirrors logic in ChartTooltip
+export function getFormattedTooltips(hover) {
+  let data;
+  if (hover.data) {
+    data = hover.data;
+  } else {
+    data = [];
+    if (hover.dimensions) {
+      for (const dimension of hover.dimensions) {
+        data.push({ value: dimension.value, col: dimension.column });
+      }
+    }
+    if (hover.value !== undefined) {
+      data.push({ value: hover.value, col: hover.column });
+    }
+  }
+  return data.map(d => formatValue(d.value, { column: d.col }));
 }
