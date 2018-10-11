@@ -30,7 +30,7 @@ const HEAT_MAP_ZERO_COLOR = "#CCC";
 
 export function getColorplethColorScale(
   color,
-  { lightness = 95, darken = 0.2, darkenLast = 0.3, saturate = 0.5 } = {},
+  { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
 ) {
   let lightColor = Color(color)
     .lightness(lightness)
