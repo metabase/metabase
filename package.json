@@ -48,6 +48,7 @@
     "lodash.partition": "^4.6.0",
     "lodash.range": "^3.2.0",
     "lodash.set": "^4.1.2",
+    "lodash.sortby": "^4.6.0",
     "lodash.unset": "^4.1.2",
     "lodash.values": "^4.3.0",
     "lodash.zip": "^4.2.0",

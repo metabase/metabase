@@ -15,6 +15,7 @@ import values from "lodash.values";
 import invert from "lodash.invert";
 import flatMap from "lodash.flatmap";
 import partition from "lodash.partition";
+import sortBy from "lodash.sortby";
 import _ from "lodash";
 import { Set } from "immutable";
 import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
@@ -315,9 +316,12 @@ const enrichMetadata = ({groupsSources, columnsSource}, columnNameToMetadata, so
 
 };
 
+const getWeight = (column : Column) => get(column, ['fingerprint', 'global', 'distinct-count'], Number.MAX_SAFE_INTEGER);
+
 const getRawColumns = (cols, columns) =>{
   const names = Set.of(...cols.map(p => p.name));
-  return columns.filter(col => names.contains(col));
+  const weights = cols.reduce((acc, column) => set(acc, column.name, getWeight(column)) , {});
+  return sortBy(columns.filter(col => names.contains(col)), columnName => weights[columnName]);
 };
 
 export const enrichSettings = (
