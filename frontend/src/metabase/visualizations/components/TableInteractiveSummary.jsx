@@ -359,7 +359,7 @@ export default class TableInteractiveSummary extends Component {
           "TableInteractiveSummary-cellWrapper-normalGrouped" : !isTotalRow && !isGrandTotal && columnIsGrouped,
           "cursor-pointer": isClickable,
           "justify-end": !isTotalCell && !isGrandTotalCell && isColumnRightAligned(column),
-          link: isClickable && isID(column),
+          link: !isTotalRow && isClickable && isID(column),
         })}
         onMouseUp={
           isClickable
