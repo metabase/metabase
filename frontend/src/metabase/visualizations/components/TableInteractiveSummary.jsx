@@ -320,7 +320,7 @@ export default class TableInteractiveSummary extends Component {
     let value = column.getValue(row);
 
     const isTotalCell = row.isTotalColumnIndex === columnIndex + 1;
-    const isTotalRow = Number.isInteger(row.isTotalColumnIndex);
+    const isTotalRow = Number.isInteger(row.isTotalColumnIndex) && row.isTotalColumnIndex <= columnIndex +1;
     const isGrandTotalCell = isGrandTotal && columnIndex === 0;
 
     let formattedRes = formatValue(value, {

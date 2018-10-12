@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import styles from "./Table.css";
+import "./TableSimpleSummary.css";
 import { t } from "c-3po";
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
@@ -210,11 +211,8 @@ export default class TableSimpleSummary extends Component {
 
                       const isGrandTotal = row.isTotalColumnIndex === 0;
                       const isTotalCell = row.isTotalColumnIndex === columnStartIndex + 1;
-                      const isTotalRow = Number.isInteger(row.isTotalColumnIndex);
+                      const isTotalRow = Number.isInteger(row.isTotalColumnIndex) && row.isTotalColumnIndex <= columnStartIndex +1;
                       const isGrandTotalCell = isGrandTotal && columnStartIndex === 0;
-
-
-
 
 
                         let formatedRes = formatValue(cell, {
