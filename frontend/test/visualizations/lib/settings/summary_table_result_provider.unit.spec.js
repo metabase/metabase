@@ -1,13 +1,11 @@
 import { TYPE } from "metabase/lib/types";
 import type { DatasetData, Row } from "metabase/meta/types/Dataset";
-import {
-  buildResultProvider,
-  createKey
-} from "metabase/visualizations/lib/settings/summary_table";
-import { Column, ColumnName } from "metabase/meta/types/Dataset";
+
+import { Column } from "metabase/meta/types/Dataset";
 import isEqual from "lodash.isequal";
 import orderBy from "lodash.orderby";
 import invert from "lodash.invert";
+import {buildResultProvider, createKey} from "metabase/visualizations/lib/summary_table";
 
 const BREAKOUT = "breakout";
 const AGGREGATION = "aggregation";

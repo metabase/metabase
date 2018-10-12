@@ -22,19 +22,22 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
-const HEADER_HEIGHT = 30;
-const ROW_HEIGHT = 30;
-const MIN_COLUMN_WIDTH = ROW_HEIGHT;
-const RESIZE_HANDLE_WIDTH = 5;
-
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 import type {Row, Column, ColumnName} from "metabase/meta/types/Dataset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
-import {buildCellRangeRenderer, buildIndexGenerator, getTableCellClickedObjectForSummary} from "metabase/visualizations/lib/summary_table";
+import {getTableCellClickedObjectForSummary} from "metabase/visualizations/lib/summary_table";
 import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
 import type {VisualizationSettings} from "metabase/meta/types/Card";
+import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_virtualized";
+
+const HEADER_HEIGHT = 30;
+const ROW_HEIGHT = 30;
+const MIN_COLUMN_WIDTH = ROW_HEIGHT;
+const RESIZE_HANDLE_WIDTH = 5;
+
+
 
 type Props = VisualizationProps & {
   width: number,

@@ -1,11 +1,10 @@
-import { getQueryPlan } from "metabase/visualizations/lib/settings/summary_table";
 import type {
-  QueryPlan,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
 import { Set } from "immutable";
 import zip from "lodash.zip";
 import type {ColumnName} from "metabase/meta/types/Dataset";
+import {getQueryPlan} from "metabase/visualizations/lib/summary_table";
 
 const createQueryPlan = (settings: SummaryTableSettings,
                          isAggregation : ColumnName => Boolean) => getQueryPlan(settings, isAggregation || (() => true));

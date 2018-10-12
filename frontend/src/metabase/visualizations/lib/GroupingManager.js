@@ -7,15 +7,14 @@ import set from "lodash.set";
 import range from "lodash.range";
 import type {
   AggregationKey,
-  QueryPlan,
   ResultProvider,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
 import {
-  getAllQueryKeys,
-  getColumnsFromSettings, getMainKey, getQueryPlan
+  getColumnsFromSettings
 } from "metabase/visualizations/lib/settings/summary_table";
 import type { ColumnName, Column } from "metabase/meta/types/Dataset";
+import {getAllQueryKeys, getMainKey, getQueryPlan} from "metabase/visualizations/lib/summary_table";
 
 type ColumnAcc = {
   prevRow: Row,

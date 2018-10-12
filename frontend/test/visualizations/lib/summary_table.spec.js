@@ -1,10 +1,9 @@
-import {
-  buildIndexGenerator
-} from "metabase/visualizations/lib/summary_table";
+
 import orderBy from "lodash.orderby";
 import isEqual from "lodash.isequal";
 import zip from "lodash.zip";
 import set from "lodash.set";
+import {buildIndexGenerator} from "metabase/visualizations/lib/table_virtualized";
 
 
 const orderByIndexes = (array) => orderBy(array, ['rowStartIndex', 'rowStopIndex', 'columnStartIndex', 'columnStopIndex']);

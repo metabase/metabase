@@ -21,12 +21,12 @@ import { GroupingManager } from "../lib/GroupingManager";
 import type { RawSeries } from "metabase/meta/types/Visualization";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
-  buildResultProvider,
-  enrichSettings, fetchAggregationsDataBuilder,
+  enrichSettings,
   settingsAreValid,
 } from "metabase/visualizations/lib/settings/summary_table";
 import { connect } from "react-redux";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import {buildResultProvider, fetchAggregationsDataBuilder} from "metabase/visualizations/lib/summary_table";
 
 type Props = {
   card: Card,
