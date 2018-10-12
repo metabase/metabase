@@ -133,7 +133,7 @@ export default class TableSimple extends Component {
                     <th
                       key={colIndex}
                       className={cx(
-                        "TableInteractive-headerCellData cellData text-brand-hover",
+                        "TableInteractive-headerCellData cellData text-brand-hover text-medium",
                         {
                           "TableInteractive-headerCellData--sorted":
                             sortColumn === colIndex,
@@ -189,11 +189,14 @@ export default class TableSimple extends Component {
                                 cols[columnIndex].name,
                               ),
                           }}
-                          className={cx("px1 border-bottom", {
-                            "text-right": isColumnRightAligned(
-                              cols[columnIndex],
-                            ),
-                          })}
+                          className={cx(
+                            "px1 border-bottom text-dark text-bold",
+                            {
+                              "text-right": isColumnRightAligned(
+                                cols[columnIndex],
+                              ),
+                            },
+                          )}
                         >
                           <span
                             className={cx({
