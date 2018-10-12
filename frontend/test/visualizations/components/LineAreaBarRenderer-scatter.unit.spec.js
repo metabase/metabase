@@ -4,6 +4,7 @@ import {
   NumberColumn,
   dispatchUIEvent,
   renderLineAreaBar,
+  getFormattedTooltips,
 } from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
@@ -34,7 +35,8 @@ describe("LineAreaBarRenderer-scatter", () => {
     document.body.removeChild(document.getElementById("fixture"));
   });
 
-  it("should render a scatter chart with 2 dimensions", function(done) {
+  it("should render a scatter chart with 2 dimensions", () => {
+    const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
       [
@@ -53,22 +55,20 @@ describe("LineAreaBarRenderer-scatter", () => {
         },
       ],
       {
-        onHoverChange: hover => {
-          expect(hover.data.length).toBe(2);
-          expect(hover.data[0].key).toBe("A");
-          expect(hover.data[0].value).toBe(1);
-          expect(hover.data[1].key).toBe("B");
-          expect(hover.data[1].value).toBe(2);
-
-          done();
-        },
+        onHoverChange,
       },
     );
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
+
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "1",
+      "2",
+    ]);
   });
 
-  it("should render a scatter chart with 2 dimensions and 1 metric", function(done) {
+  it("should render a scatter chart with 2 dimensions and 1 metric", () => {
+    const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
       [
@@ -88,19 +88,16 @@ describe("LineAreaBarRenderer-scatter", () => {
         },
       ],
       {
-        onHoverChange: hover => {
-          expect(hover.data.length).toBe(3);
-          expect(hover.data[0].key).toBe("A");
-          expect(hover.data[0].value).toBe(1);
-          expect(hover.data[1].key).toBe("B");
-          expect(hover.data[1].value).toBe(2);
-          expect(hover.data[2].key).toBe("C");
-          expect(hover.data[2].value).toBe(3);
-          done();
-        },
+        onHoverChange,
       },
     );
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
+
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
   });
 });

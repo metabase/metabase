@@ -21,7 +21,10 @@ function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
 
-import { numberFormatterForOptions } from "metabase/lib/formatting";
+import {
+  formatColumn,
+  numberFormatterForOptions,
+} from "metabase/lib/formatting";
 import {
   DEFAULT_DATE_STYLE,
   getDateFormatFromStyle,
@@ -413,7 +416,7 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   _column_title_full: {
     getValue: (column: Column, settings: ColumnSettings) => {
-      let columnTitle = settings["column_title"];
+      let columnTitle = settings["column_title"] || formatColumn(column);
       const headerUnit = settings["_header_unit"];
       if (headerUnit) {
         columnTitle += ` (${headerUnit})`;
