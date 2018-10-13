@@ -32,7 +32,7 @@
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-  padding: 0 1.75em;
+  padding: 0 0.75em;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -87,7 +87,7 @@
   background-color: color(var(--color-brand) alpha(-90%));
 }
 
-.TableInteractive--PK .cellData {
+.TableInteractive--ID .cellData {
   border: 1px solid color(var(--color-brand) alpha(-86%));
   background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
@@ -96,13 +96,13 @@
   text-align: center;
 }
 
-.TableInteractive--PK.TableInteractive-cellWrapper:hover,
-.TableInteractive--PK.TableInteractive-cellWrapper.tether-enabled {
+.TableInteractive--ID.TableInteractive-cellWrapper:hover,
+.TableInteractive--ID.TableInteractive-cellWrapper.tether-enabled {
   background-color: transparent;
 }
 
-.TableInteractive--PK.TableInteractive-cellWrapper:hover .cellData,
-.TableInteractive--PK.TableInteractive-cellWrapper.tether-enabled .cellData {
+.TableInteractive--ID.TableInteractive-cellWrapper:hover .cellData,
+.TableInteractive--ID.TableInteractive-cellWrapper.tether-enabled .cellData {
   background-color: var(--color-brand);
   color: white;
 }
