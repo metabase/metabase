@@ -15,6 +15,7 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -472,9 +473,12 @@ export default class TableInteractive extends Component {
     const isSortable = isClickable && column.source;
     const isRightAligned = isColumnRightAligned(column);
 
-    // the column id is in `["field-id", fieldId]` format
+    // TODO MBQL: use query lib to get the sort field
     const isSorted =
-      sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
+      sort &&
+      sort[0] &&
+      sort[0][1] &&
+      Query.getFieldTargetId(sort[0][1]) === column.id;
     const isAscending = sort && sort[0] && sort[0][0] === "asc";
     return (
       <Draggable
