@@ -5,10 +5,13 @@ While tables are useful for looking up information or finding specific numbers, 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
 * Number
+* Smart number
 * Progress bar
+* Gauge
 * Table
 * Line chart
 * Bar chart
+* Line + bar chart
 * Row chart
 * Area chart
 * Scatterplot or bubble chart
@@ -33,25 +36,72 @@ This option is for displaying a single number, nice and big. The options for num
 
 ![Number](images/visualizations/number.png)
 
+#### Smart numbers
+The Smart Number visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a single Time field, like the Count of Orders by Created At. The Smart Number will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Smart Number will show you the most recent day compared to the day before that.
+
+![Smart Number](images/visualizations/smart-number.png)
+
+By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something were an increase is bad (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
+
+![Smart Number settings](images/visualizations/smart-scalar-settings.png)
+
 #### Progress bars
 Progress bars are for comparing a single number result to a goal value that you input. Open up the chart options for your progress bar to choose a goal for it, and Metabase will show you how far away your question's current result is from the goal.
 
 ![Progress bar](images/visualizations/progress.png)
 
+#### Gauges
+Ah, gauges: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number, and where its value falls in a number of ranges that you can specify. By default when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
+
+![Gauge](images/visualizations/gauge.png)
+
+Open up the visualization settings to define your own ranges, choose colors for them, and optionally add labels to some or all of your ranges:
+
+![Gauge settings](images/visualizations/gauge-settings.png)
+
 #### Tables
 The Table option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at.
 
-##### Adding or hiding fields
+##### Rearranging, adding, and removing columns
 
 ![Additional fields](images/visualizations/add-fields.png)
 
-Open up the visualization options and you'll see the Data tab, which displays all the fields currently being shown in the table, as well as more fields from linked tables that you can add to the current table view.
+Open up the visualization options for a table and you'll see the Columns tab, which displays all the columns currently being shown in the table, as well as more columns from linked tables that you can add to the current table view.
 
-To hide a field, click the X icon on it; that'll send it down to the "More fields" area in case you want to bring it back. To add a linked field, just click the + icon on it, which will bring it to the "Visible fields" section. Click and drag any of the fields listed there to rearrange the order in which they appear.
+To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked field, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear.
 
 **Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
 
-##### Conditional formatting
+Another super easy way to rearrange columns in a table is to simply click and drag on a column's heading to move it where you'd like it to go.
+
+##### Column formatting options
+
+To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
+
+![Column formatting](images/visualizations/column-header-formatting.png)
+
+The options you see of course will be different depending on the kind of column it is:
+
+**Dates**
+* `Date style` gives you a bunch of different choices for how to display the date.
+* `Abbreviate names of days and months`, when turned on, will turn things like `January` to `Jan`, and `Monday` to `Mon`.
+* `Show the time` lets you decide whether or not to display the time, and if so, how. You can include hours and minutes, and additionally seconds and milliseconds.
+
+**Numbers**
+* `Show a mini bar chart` will display a small horizontal bar chart next to each number in this column to show its size relative to the other values in the column.
+* `Style` lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
+* `Separator style` gives you various options for how commas and periods are used to separate the number.
+* `Minimum number of decimal places` forces the number to be displayed with exactly this many decimal places.
+* `Multiply by a number` multiplies each number in this column by whatever you type here. Just don't type an emoji here; it almost always causes a temporal vortex to manifest.
+* `Add a prefix/suffix` lets you put a symbol, word, or whatever before or after each cell's value.
+
+**Currency**
+Currency columns have all the same options as numbers, and additionally the following:
+* `Unit of Currency` lets you change the unit of currency from whatever the system default is.
+* `Currency label style` allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
+* `Where to display the unit of currency` lets you toggle between showing the currency label in the column heading or in every cell in the column.
+
+##### Conditional table formatting
 Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the `Formatting` tab.
 
 ![Conditional formatting](images/visualizations/conditional-formatting.png)
@@ -76,6 +126,23 @@ Line charts are best for displaying the trend of a number over time, especially 
 Area charts are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
 ![Stacked area chart](images/visualizations/area.png)
+
+#### Line + Bar charts
+Also called Combo Charts, the Line + Bar chart lets you combine bars and lines (or areas) on the same chart.
+
+![Line + bar](images/visualizations/combo-chart.png)
+
+Metabase will pick one of your series to display as a line, and another to display as a bar by default. Open up the visualization settings to change which series are lines, bars, or areas, and to change other per-series settings like colors. Click the down arrow icon on the right of a series to see additional options:
+
+![Line + bar](images/visualizations/combo-chart-settings.png)
+
+To use a Line + Bar chart, you'll either need to have two or more metrics selected in the View section of your question, with one or two grouping fields, like this…
+
+![Data for Line + Bar chart](images/visualizations/combo-chart-data-1.png)
+
+…or you'll need a question with a single item in the View section, with two grouping fields, like this:
+
+![Data for Line + Bar chart](images/visualizations/combo-chart-data-2.png)
 
 #### Row charts
 If you're trying to group a number by a field that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a row chart. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
