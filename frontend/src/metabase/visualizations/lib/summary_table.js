@@ -1,6 +1,12 @@
 import type {DatasetData, Column, Row, ColumnName} from "metabase/meta/types/Dataset";
 import flatMap from 'lodash.flatmap';
-import type {AggregationKey, QueryPlan, ResultProvider, SummaryTableSettings} from "metabase/meta/types/summary_table";
+import type {
+  AggregationKey,
+  QueryPlan,
+  ResultProvider,
+  SortOrder,
+  SummaryTableSettings
+} from "metabase/meta/types/summary_table";
 import type {DatasetQuery} from "metabase/meta/types/Card";
 import {AGGREGATION, BREAKOUT, shouldTotalizeDefaultBuilder} from "metabase/visualizations/lib/settings/summary_table";
 import {Set} from "immutable";
@@ -17,6 +23,7 @@ import {applyParameters} from "metabase/meta/Card";
 import {EmbedApi, MetabaseApi, PublicApi} from "metabase/services";
 import {getParametersBySlug} from "metabase/meta/Parameter";
 import {getDashboardComplete} from "metabase/dashboard/selectors";
+import {ASC, DESC} from "metabase/meta/types/summary_table";
 
 
 
@@ -69,10 +76,11 @@ export const getAggregationQueries = (settings : SummaryTableSettings,  cols : C
   const canTotalize = shouldTotalizeDefaultBuilder(cols);
   const queryPlan = getQueryPlan(settings, p => canTotalize(p));
   const allKeys = getAllAggregationKeysFlatten(queryPlan);
-
-  return allKeys.map(([groupings, aggregations]) => ({
+  
+  return allKeys.map(([groupings, aggregations, sortOrder]) => ({
     aggregation: aggregations.toArray().map(createTotal),
     breakout: groupings.toArray().map(createLiteral),
+    'order-by': sortOrder.map(([ascDsc, columnName]) => [ascDsc, createLiteral(columnName)])
   }));
 };
 
@@ -86,13 +94,18 @@ const getNameToTypeMap = columns => {
 export const createKey = (
   groups: ColumnName[],
   totals: ColumnName[],
-): AggregationKey => [Set.of(...groups), Set.of(...totals)];
+  sortOrder: SortOrder[]
+): AggregationKey => {
+  const groupsSet = Set.of(...groups);
+  return [groupsSet, Set.of(...totals), sortOrder.filter(([_, columnName]) => groupsSet.contains(columnName))];
+};
 
 
 const createKeyFrom = (dataSet: DatasetData) =>
   createKey(
     getColumnNames(dataSet, BREAKOUT),
     getColumnNames(dataSet, AGGREGATION),
+    []
   );
 
 const createValueKey = (groups: ColumnName[]): string =>
@@ -149,6 +162,7 @@ const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
     columns: _.orderBy(colsRes.map(p => p.name), p => columnToIndex[p]),
     rows: newRows,
   };
+  //todo log load res from js
 
   return res;
 };
@@ -205,7 +219,7 @@ export const buildResultProvider = (
     throw new Error("InvalidArgumentException - BANG!!!!");
   };
 };
-export const getMainKey = (qp : QueryPlan) => createKey(qp.groupings[0].reduce((acc, current) => acc.size < current.size ? current : acc, Set.of()), qp.aggregations);
+export const getMainKey = (qp : QueryPlan) => createKey(qp.groupings[0].reduce((acc, current) => acc.size < current.size ? current : acc, Set.of()), qp.aggregations, qp.sortOrder);
 
 
 export const getQueryPlan = (
@@ -216,7 +230,7 @@ export const getQueryPlan = (
   const aggregations = Set.of(...aggregationsList);
   const subqueriesBreakouts = [...settings.columnsSource, ...settings.groupsSources];
   const allBreakouts = Set.of(...subqueriesBreakouts, ...additionalGroupings);
-
+  const sortOrder = [...subqueriesBreakouts, ...additionalGroupings].map(columnName => [settings.columnNameToMetadata[columnName].isAscSortOrder ? ASC : DESC, columnName]);
 
   if (aggregations.size === 0) {
     return {groupings: [[allBreakouts]], aggregations: Set.of() };
@@ -239,7 +253,7 @@ export const getQueryPlan = (
   const breakoutsList = [allBreakouts, ...queriesBreakouts.acc];
 
   if (!showTotalsFor(settings.columnsSource[0])) {
-    return { groupings: breakoutsList.map(p => [p]), aggregations };
+    return { groupings: breakoutsList.map(p => [p]), aggregations, sortOrder};
   }
 
   const groupings = breakoutsList
@@ -249,18 +263,15 @@ export const getQueryPlan = (
   return {
     groupings,
     aggregations,
+    sortOrder
   };
 };
 
 //todo: move into QueryPlan object
 export const getAllQueryKeys = (
-  qp: QueryPlan
-): { totals: AggregationKey[][] } => {
-  const aggregations = qp.aggregations;
-
-  return  qp.groupings.map(group =>
-    group.map(p => createKey(p, aggregations)));
-};
+  {aggregations, groupings, sortOrder}: QueryPlan
+): { totals: AggregationKey[][] } =>  groupings.map(group =>
+    group.map(p => createKey(p, aggregations, sortOrder)));
 
 export const getAllAggregationKeysFlatten = (
   qp: QueryPlan
