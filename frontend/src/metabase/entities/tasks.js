@@ -5,6 +5,17 @@ export default createEntity({
   path: "/api/tasks/",
 
   api: {
+    get: async () => {
+      return {
+        id: 1,
+        task: "task name",
+        dbId: 1,
+        started_at: "date",
+        ended_at: "date",
+        duration: 300,
+        task_details: "json json json",
+      };
+    },
     list: async () => {
       return [
         {

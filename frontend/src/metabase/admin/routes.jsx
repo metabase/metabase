@@ -4,6 +4,7 @@ import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "c-3po";
 
 import { withBackground } from "metabase/hoc/Background";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
@@ -22,6 +23,7 @@ import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
+import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -78,7 +80,9 @@ const getRoutes = (store, IsAdmin) => (
     </Route>
 
     {/* Task History */}
-    <Route path="tasks" title={t`Task History`} component={TasksApp} />
+    <Route path="tasks" title={t`Task History`} component={TasksApp}>
+      <ModalRoute path=":taskId" modal={TaskModal} />
+    </Route>
 
     {/* SETTINGS */}
     <Route path="settings" title={t`Settings`}>

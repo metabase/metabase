@@ -12,7 +12,7 @@ import Link from "metabase/components/Link";
 })
 class TasksApp extends React.Component {
   render() {
-    const { list } = this.props;
+    const { list, children } = this.props;
     return (
       <Box p={3}>
         <AdminHeader title={t`Tasks log`} />
@@ -36,13 +36,17 @@ class TasksApp extends React.Component {
                 <td>
                   <Link
                     className="link"
-                    to={`/admin/task/${l.id}`}
+                    to={`/admin/tasks/${l.id}`}
                   >{t`View`}</Link>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {
+          // render 'children' so that the invididual task modals show up
+          children
+        }
       </Box>
     );
   }
