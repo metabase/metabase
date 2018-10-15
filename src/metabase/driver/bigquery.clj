@@ -418,6 +418,10 @@
        (sql/date driver unit)
        hx/->time))
 
+(defmethod sqlqp/->honeysql [Object :datetime-field]
+  [driver [_ field unit]]
+  (sql/date driver unit (sqlqp/->honeysql driver field)))
+
 (defmethod sqlqp/->honeysql [BigQueryDriver :field-id]
   [_ [_ field-id]]
   (let [{field-name :name, special-type :special_type, table-id :table_id} (qp.store/field field-id)
