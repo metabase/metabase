@@ -106,6 +106,7 @@
       format-rows/format-rows
       resolve/resolve-middleware
       expand/expand-middleware                         ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      superquery/expand-superquery
       binning/update-binning-strategy
       resolve-fields/resolve-fields
       add-dim/add-remapping
@@ -113,7 +114,6 @@
       bucket-datetime/auto-bucket-datetime-breakouts
       source-table/resolve-source-table-middleware
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
-      superquery/expand-superquery
       parameters/substitute-parameters
       expand-macros/expand-macros
       driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
