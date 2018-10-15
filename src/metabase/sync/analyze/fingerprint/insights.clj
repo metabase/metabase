@@ -28,39 +28,42 @@
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
-  (and (= (count numbers) 1)
+  (and (pos? (count numbers))
        (= (count datetimes) 1)
        (empty? others)))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
-  (redux/post-complete
-   (let [x-position (-> datetimes first :position)
-         y-position (-> numbers first :position)
-         xfn        (if (-> datetimes first :base_type (isa? :type/DateTime))
-                      #(some-> %
-                               (nth x-position)
-                               ;; at this point in the pipeline, dates are still stings
-                               f/->date
-                               (.getTime))
-                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
-                      ;; at this stage in the pipeline the value is still an int, so we can use it
-                      ;; directly.
-                      #(nth % x-position))
-         yfn        #(nth % y-position)]
-     (redux/juxt ((map yfn) (last-n 2))
-                 (stats/simple-linear-regression xfn yfn)))
-   (fn [[[previous current] [offset slope]]]
-     {:last-value     current
-      :previous-value previous
-      :last-change    (change current previous)
-      :slope          slope
-      :offset         offset})))
+  (let [x-position (-> datetimes first :position)
+        xfn        (if (-> datetimes first :base_type (isa? :type/DateTime))
+                     #(some-> %
+                              (nth x-position)
+                              ;; at this point in the pipeline, dates are still stings
+                              f/->date
+                              (.getTime))
+                     ;; unit=year workaround. While the field is in this case marked as :type/Text,
+                     ;; at this stage in the pipeline the value is still an int, so we can use it
+                     ;; directly.
+                     #(nth % x-position))]
+    (redux/juxt (for [number-col numbers]
+                  (redux/post-complete
+                   (let [y-position (:position number-col)
+                         yfn        #(nth % y-position)]
+                     (redux/juxt ((map yfn) (last-n 2))
+                                 (stats/simple-linear-regression xfn yfn)))
+                   (fn [[[previous current] [offset slope]]]
+                     {:last-value     current
+                      :previous-value previous
+                      :last-change    (change current previous)
+                      :slope          slope
+                      :offset         offset
+                      :col            (:name number-col)}))))))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
    this is the only way to recover the information they were once datetimes."
   [{:keys [base_type unit fingerprint] :as field}]
+  (println fingerprint)
   (and (= base_type :type/Text)
        (contains? field :unit)
        (nil? unit)
