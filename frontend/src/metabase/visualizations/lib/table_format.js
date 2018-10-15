@@ -3,7 +3,7 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale } from "metabase/lib/colors";
+import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -21,8 +21,20 @@ type SingleFormat = {
   type: "single",
   columns: ColumnName[],
   color: Color,
-  operator: "<" | ">" | "<=" | ">=" | "=" | "!=",
-  value: number,
+  operator:
+    | "<"
+    | ">"
+    | "<="
+    | ">="
+    | "="
+    | "!="
+    | "is-null"
+    | "not-null"
+    | "contains"
+    | "does-not-contain"
+    | "starts-with"
+    | "ends-with",
+  value: number | string,
   highlight_row: boolean,
 };
 
@@ -127,17 +139,49 @@ function compileFormatter(
     }
     switch (operator) {
       case "<":
-        return v => (v < value ? color : null);
+        return v => (typeof value === "number" && v < value ? color : null);
       case "<=":
-        return v => (v <= value ? color : null);
+        return v => (typeof value === "number" && v <= value ? color : null);
       case ">=":
-        return v => (v >= value ? color : null);
+        return v => (typeof value === "number" && v >= value ? color : null);
       case ">":
-        return v => (v > value ? color : null);
+        return v => (typeof value === "number" && v > value ? color : null);
       case "=":
         return v => (v === value ? color : null);
       case "!=":
         return v => (v !== value ? color : null);
+      case "is-null":
+        return v => (v === null ? color : null);
+      case "not-null":
+        return v => (v !== null ? color : null);
+      case "contains":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.indexOf(value) >= 0
+            ? color
+            : null;
+      case "does-not-contain":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.indexOf(value) < 0
+            ? color
+            : null;
+      case "starts-with":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.startsWith(value)
+            ? color
+            : null;
+      case "ends-with":
+        return v =>
+          typeof value === "string" &&
+          typeof v === "string" &&
+          v.endsWith(value)
+            ? color
+            : null;
     }
   } else if (format.type === "range") {
     const columnMin = name =>
@@ -149,14 +193,14 @@ function compileFormatter(
 
     const min =
       format.min_type === "custom"
-        ? format.min_value
+        ? parseFloat(format.min_value)
         : format.min_type === "all"
           ? // $FlowFixMe
             Math.min(...format.columns.map(columnMin))
           : columnMin(columnName);
     const max =
       format.max_type === "custom"
-        ? format.max_value
+        ? parseFloat(format.max_value)
         : format.max_type === "all"
           ? // $FlowFixMe
             Math.max(...format.columns.map(columnMax))
@@ -167,10 +211,11 @@ function compileFormatter(
       return () => null;
     }
 
-    return getColorScale(
+    const scale = getColorScale(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
+    return value => roundColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;

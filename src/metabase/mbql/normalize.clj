@@ -285,59 +285,58 @@
 (defn- canonicalize-aggregation-subclause
   "Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present, and wrap
   `:field-ids` where appropriate."
-  [[ag-type :as ag-subclause]]
-  (cond
-    (= ag-type :rows)
+  [ag-subclause]
+  (mbql.u/replace ag-subclause
+    seq? (recur (vec &match))
+
+    [:rows & _]
     nil
 
     ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is an just canonicalize the ag it names
-    (= ag-type :named)
-    (let [[_ ag ag-name] ag-subclause]
-      [:named (canonicalize-aggregation-subclause ag) ag-name])
+    [:named ag ag-name]
+    [:named (canonicalize-aggregation-subclause ag) ag-name]
 
-    (#{:+ :- :* :/} ag-type)
-    (vec
-     (cons
-      ag-type
-      ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
-      (for [arg (rest ag-subclause)]
-        (cond-> arg
-          (mbql-clause? arg) canonicalize-aggregation-subclause))))
+    [(ag-type :guard #{:+ :- :* :/}) & args]
+    (apply
+     vector
+     ag-type
+     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
+     (for [arg args]
+       (cond-> arg
+         (mbql-clause? arg) canonicalize-aggregation-subclause)))
 
     ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
-    (= :metric ag-type)
-    ag-subclause
+    [:metric _]
+    &match
 
     ;; something with an arg like [:sum [:field-id 41]]
-    (second ag-subclause)
-    (let [[_ field] ag-subclause]
-      [ag-type (wrap-implicit-field-id field)])
-
-    :else
-    ag-subclause))
+    [ag-type field]
+    [ag-type (wrap-implicit-field-id field)]))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
-  (cond
+  (mbql.u/replace aggregations
+    seq? (recur (vec &match))
+
     ;; something like {:aggregations :count} -- MBQL 95 single aggregation
-    (keyword? aggregations)
-    [[aggregations]]
+    keyword?
+    [[&match]]
 
     ;; special-case: MBQL 98 multiple aggregations using unwrapped :count or :rows
     ;; e.g. {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
-    (and (mbql-clause? aggregations)
-         (aggregation-subclause? (second aggregations))
-         (not (is-clause? #{:named :+ :- :* :/} aggregations)))
-    (reduce concat (map wrap-single-aggregations aggregations))
+    [(_ :guard (every-pred keyword? (complement #{:named :+ :- :* :/})))
+     (_ :guard aggregation-subclause?)
+     & _]
+    (vec (reduce concat (map wrap-single-aggregations aggregations)))
 
     ;; something like {:aggregations [:sum 10]} -- MBQL 95 single aggregation
-    (mbql-clause? aggregations)
-    [(vec aggregations)]
+    [(_ :guard keyword?) & _]
+    [&match]
 
-    :else
-    (vec aggregations)))
+    _
+    &match))
 
 (defn- canonicalize-aggregations
   "Canonicalize subclauses (see above) and make sure `:aggregation` is a sequence of clauses instead of a single
@@ -347,10 +346,12 @@
        (map canonicalize-aggregation-subclause)
        (filterv identity)))
 
-(defn- canonicalize-filter [[filter-name & args, :as filter-clause]]
-  (cond
-    ;; for other `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing
-    (#{:and :or :not} filter-name)
+(defn- canonicalize-filter [filter-clause]
+  (mbql.u/replace filter-clause
+    seq? (recur (vec &match))
+
+    ;; for `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing
+    [(filter-name :guard #{:and :or :not}) & args]
     (mbql.u/simplify-compound-filter (vec (cons
                                            filter-name
                                            ;; we need to canonicalize any other mbql clauses that might show up in
@@ -359,47 +360,51 @@
                                            (map (comp canonicalize-mbql-clauses canonicalize-filter)
                                                 args))))
 
-    ;; string filters should get the string implict filter options added if not specified explicitly
-    (#{:starts-with :ends-with :contains :does-not-contain} filter-name)
-    (let [[field arg options] args]
-      (cond-> [filter-name (wrap-implicit-field-id field) arg]
-        (seq options) (conj options)))
+    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field arg options]
+    [filter-name (wrap-implicit-field-id field) arg options]
 
-    (= :inside filter-name)
-    (let [[field-1 field-2 & coordinates] args]
-      (vec
-       (concat
-        [:inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)]
-        coordinates)))
+    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field arg]
+    [filter-name (wrap-implicit-field-id field) arg]
+
+    [:inside field-1 field-2 & coordinates]
+    (vec
+     (concat
+      [:inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)]
+      coordinates))
+
+    ;; if you put a `:datetime-field` inside a `:time-interval` we should fix it for you
+    [:time-interval [:datetime-field field _] & args]
+    (recur (apply vector :time-interval field args))
 
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
-    (#{:= :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval} filter-name)
-    (apply vector filter-name (wrap-implicit-field-id (first args)) (rest args))
+    [(filter-name :guard #{:= :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) field & more]
+    (apply vector filter-name (wrap-implicit-field-id field) more)
 
     ;; don't wrap segment IDs in `:field-id`
-    (= filter-name :segment)
-    filter-clause
-
-    :else
+    [:segment _]
+    &match
+    _
     (throw (IllegalArgumentException. (str (tru "Illegal filter clause: {0}" filter-clause))))))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
-  [order-by-clause]
-  (vec (for [subclause order-by-clause
-             :let      [[direction field-id] (if (#{:asc :desc :ascending :descending} (first subclause))
-                                               ;; normal [<direction> <field>] clause
-                                               subclause
-                                               ;; MBQL 95 reversed [<field> <direction>] clause
-                                               (reverse subclause))]]
-         [(case direction
-            :asc        :asc
-            :desc       :desc
-            ;; old MBQL 95 names
-            :ascending  :asc
-            :descending :desc)
-          (wrap-implicit-field-id field-id)])))
+  [clauses]
+  (mbql.u/replace clauses
+    seq? (recur (vec &match))
+
+    ;; MBQL 95 reversed [<field> <direction>] clause
+    [field :asc]        (recur [:asc field])
+    [field :desc]       (recur [:desc field])
+    [field :ascending]  (recur [:asc field])
+    [field :descending] (recur [:desc field])
+
+    ;; MBQL 95 names but MBQL 98+ reversed syntax
+    [:ascending field]  (recur [:asc field])
+    [:descending field] (recur [:desc field])
+
+    [:asc field]  [:asc (wrap-implicit-field-id field)]
+    [:desc field] [:desc (wrap-implicit-field-id field)]))
 
 (declare canonicalize-inner-mbql-query)
 
@@ -457,8 +462,8 @@
    (fn [clause]
      (if-not (mbql-clause? clause)
        clause
-       (let [[clause-name & args] clause
-             f                    (mbql-clause->canonicalization-fn clause-name)]
+       (let [[clause-name & _] clause
+             f                 (mbql-clause->canonicalization-fn clause-name)]
          (if f
            (apply f clause)
            clause))))
@@ -479,8 +484,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - can't we combine these functions into a single fn?
 
 (defn- non-empty-value?
   "Is this 'value' in a query map considered non-empty (e.g., should we refrain from removing that key entirely?) e.g.:
@@ -512,8 +515,6 @@
   (walk/postwalk
    (fn [x]
      (cond
-       ;; TODO - we can remove this part once we take out the `expand` namespace. This is here just to prevent
-       ;; double-expansion from barfing
        (record? x)
        x
 
@@ -543,6 +544,7 @@
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
     ;;-> [:= [:field-id 100] 200]"
+  {:style/indent 1}
   [path x]
   (if-not (seq path)
     (normalize x)

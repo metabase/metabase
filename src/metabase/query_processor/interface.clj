@@ -152,7 +152,8 @@
                                  remapped-to        :- (s/maybe s/Str)
                                  dimensions         :- (s/maybe (s/cond-pre Dimensions {} []))
                                  values             :- (s/maybe (s/cond-pre FieldValues {} []))
-                                 fingerprint        :- (s/maybe i/Fingerprint)]
+                                 fingerprint        :- (s/maybe i/Fingerprint)
+                                 settings           :- (s/maybe su/Map)]
   nil
   :load-ns true
   clojure.lang.Named

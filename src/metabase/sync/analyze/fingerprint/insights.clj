@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require [kixi.stats.core :as stats]
+            [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [redux.core :as redux]))
 
@@ -45,25 +46,24 @@
                      ;; at this stage in the pipeline the value is still an int, so we can use it
                      ;; directly.
                      #(nth % x-position))]
-    (redux/juxt (for [number-col numbers]
-                  (redux/post-complete
-                   (let [y-position (:position number-col)
-                         yfn        #(nth % y-position)]
-                     (redux/juxt ((map yfn) (last-n 2))
-                                 (stats/simple-linear-regression xfn yfn)))
-                   (fn [[[previous current] [offset slope]]]
-                     {:last-value     current
-                      :previous-value previous
-                      :last-change    (change current previous)
-                      :slope          slope
-                      :offset         offset
-                      :col            (:name number-col)}))))))
+    (apply redux/juxt (for [number-col numbers]
+                        (redux/post-complete
+                         (let [y-position (:position number-col)
+                               yfn        #(nth % y-position)]
+                           (redux/juxt ((map yfn) (last-n 2))
+                                       (stats/simple-linear-regression xfn yfn)))
+                         (fn [[[previous current] [offset slope]]]
+                           {:last-value     current
+                            :previous-value previous
+                            :last-change    (change current previous)
+                            :slope          slope
+                            :offset         offset
+                            :col            (:name number-col)}))))))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
    this is the only way to recover the information they were once datetimes."
   [{:keys [base_type unit fingerprint] :as field}]
-  (println fingerprint)
   (and (= base_type :type/Text)
        (contains? field :unit)
        (nil? unit)
@@ -80,6 +80,7 @@
                                       (cond
                                         (datetime-truncated-to-year? field)          :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
+                                        (field/unix-timestamp? field)                :datetimes
                                         (isa? base_type :type/Number)                :numbers
                                         (isa? base_type :type/DateTime)              :datetimes
                                         :else                                        :others))))]

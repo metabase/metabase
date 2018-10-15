@@ -523,7 +523,7 @@ export default class Visualization extends Component {
             }
           />
         )}
-        <ChartTooltip series={series} hovered={hovered} />
+        <ChartTooltip series={series} hovered={hovered} settings={settings} />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
             clicked={clicked}

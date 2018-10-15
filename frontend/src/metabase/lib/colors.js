@@ -120,17 +120,35 @@ type ColorScale = (input: number) => ColorString;
 export const getColorScale = (
   extent: [number, number],
   colors: string[],
+  quantile: boolean = false,
 ): ColorScale => {
-  const [start, end] = extent;
-  return d3.scale
-    .linear()
-    .domain(
-      colors.length === 3
-        ? [start, start + (end - start) / 2, end]
-        : [start, end],
-    )
-    .range(colors);
+  if (quantile) {
+    return d3.scale
+      .quantile()
+      .domain(extent)
+      .range(colors);
+  } else {
+    const [start, end] = extent;
+    return d3.scale
+      .linear()
+      .domain(
+        colors.length === 3
+          ? [start, start + (end - start) / 2, end]
+          : [start, end],
+      )
+      .range(colors);
+  }
 };
+
+// HACK: d3 may return rgb values with decimals but certain rendering engines
+// don't support that (e.x. Safari and CSSBox)
+export function roundColor(color: ColorString): ColorString {
+  return color.replace(
+    /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
+    (_, r, g, b, a) =>
+      `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`,
+  );
+}
 
 export const alpha = (color: ColorString, alpha: number): ColorString =>
   Color(color)

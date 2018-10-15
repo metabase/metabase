@@ -194,11 +194,13 @@
                                  db-name db-name)]
                    {:transaction? false})))
 
+(defn- default-table-result [table-name]
+  {:name table-name, :schema "public", :description nil})
 
 ;; Check that we properly fetch materialized views.
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
 (expect-with-engine :postgres
-  {:tables #{{:schema "public", :name "test_mview"}}}
+  {:tables #{(default-table-result "test_mview")}}
   (do
     (drop-if-exists-and-create-db! "materialized_views_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test"})]
@@ -211,7 +213,7 @@
 
 ;; Check that we properly fetch foreign tables.
 (expect-with-engine :postgres
-  {:tables #{{:schema "public", :name "foreign_table"} {:schema "public", :name "local_table"}}}
+  {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
   (do
     (drop-if-exists-and-create-db! "fdw_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test"})]

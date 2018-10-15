@@ -1,12 +1,15 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
-  (:require [metabase
+  (:require [expectations :refer [expect]]
+            [metabase
              [query-processor-test :refer :all]
              [util :as u]]
+            [metabase.models.field :refer [Field]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [toucan.util.test :as tt]))
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
@@ -160,10 +163,12 @@
 ;; multiple columns with the same name)
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
   [(aggregate-col :count)
-   (assoc (aggregate-col :count)
-     :display_name    "Count 2"
-     :name            "count_2"
-     :preview_display true)]
+   (-> (aggregate-col :count)
+       (dissoc :settings)
+       (assoc
+         :display_name    "Count 2"
+         :name            "count_2"
+         :preview_display true))]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
@@ -308,7 +313,7 @@
        tu/round-fingerprint-cols))
 
 
-;;; Cumulative count w/ a different breakout field that requires grouping
+;; Cumulative count w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
   {:columns     [(data/format-name "price")
                  "count"]
@@ -324,3 +329,16 @@
           :breakout    [$price]})
        booleanize-native-form
        (format-rows-by [int int])))
+
+
+;; Does Field.settings show up for aggregate Fields?
+(expect
+  (assoc (aggregate-col :sum (Field (data/id :venues :price)))
+    :settings {:is_priceless false})
+  (tt/with-temp Field [copy-of-venues-price (-> (Field (data/id :venues :price))
+                                                (dissoc :id)
+                                                (assoc :settings {:is_priceless false}))]
+    (let [results (data/run-mbql-query venues
+                    {:aggregation [[:sum [:field-id (u/get-id copy-of-venues-price)]]]})]
+      (or (-> results :data :cols first)
+          results))))
