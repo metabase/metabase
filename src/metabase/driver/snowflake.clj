@@ -12,19 +12,20 @@
 
 (defn connection-details->spec
   "Create a database specification for a snowflake database."
-  [{:keys [account regionid dbname] :as opts}]
+  [{:keys [account regionid db] :as opts}]
   (let [host (if regionid
                (str account "." regionid)
                account)]
     (merge {:subprotocol                                "snowflake"
             :classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
             :subname                                    (str "//" host ".snowflakecomputing.com/")
-            :db                                         dbname
+            ;; This was dbname, not sure why as I didn't see any dbname populated, just db
+            :db                                         db
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true
             ;; other SESSION parameters
             :week_start                                 7}
-           (dissoc opts :host :port :dbname))))
+           (dissoc opts :host :port :db))))
 
 (defrecord SnowflakeDriver []
   :load-ns true
@@ -84,7 +85,10 @@
     :milliseconds (hsql/call :to_timestamp expr 3)))
 
 (defn- date-interval [unit amount]
-  (hsql/raw (format "dateadd(%s, %d, current_timestamp())" (name unit) (int amount))))
+  (hsql/call :dateadd
+    (hsql/raw (name unit))
+    (hsql/raw (int amount))
+    :%current_timestamp))
 
 (defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
@@ -114,6 +118,16 @@
 (defn- describe-database [driver database]
   (sql/with-metadata [metadata driver database]
     {:tables (sql/fast-active-tables driver metadata (:name database))}))
+
+(defn- describe-table [driver database table]
+  (sql/with-metadata [metadata driver database]
+    (->> (assoc (select-keys table [:name :schema])
+           :fields (sql/describe-table-fields metadata driver table (:name database)))
+         ;; find PKs and mark them
+         (sql/add-table-pks metadata))))
+
+(defn- describe-table-fks [driver database table]
+  (sql/describe-table-fks driver database table (:name database)))
 
 (u/strict-extend SnowflakeDriver
   driver/IDriver
@@ -152,8 +166,11 @@
           :current-db-time                (driver/make-current-db-time-fn
                                            snowflake-db-time-query
                                            snowflake-date-formatters)
-          :format-aggregation-column-name (u/drop-first-arg str/upper-case)
-          :describe-database              describe-database})
+          ;; This appears to be overwritten by `format-custom-field-name`
+          :format-aggregation-column-name (u/drop-first-arg str/lower-case)
+          :describe-database              describe-database
+          :describe-table                 describe-table
+          :describe-table-fks             describe-table-fks})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

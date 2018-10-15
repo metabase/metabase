@@ -288,6 +288,12 @@
        (let ~(vec (interleave (map first binding-pairs) (map #(list `~jdbc/result-set-seq %) rs-syms)))
          ~@body))))
 
+(defn get-catalogs
+  "Returns a set of all of the catalogs found via `metadata`"
+  [^DatabaseMetaData metadata]
+  (with-resultset-open [rs-seq (.getCatalogs metadata)]
+    (set (map :table_cat rs-seq))))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
   ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil, ^String database-name-or-nil]
@@ -318,7 +324,7 @@
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, ^DatabaseMetaData metadata]
+  [driver, ^DatabaseMetaData metadata  & [database-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                              (get-tables metadata nil nil))]
          (let [remarks (:remarks table)]
@@ -343,8 +349,10 @@
       (str "Invalid type: " special-type))
     special-type))
 
-(defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
-  (with-resultset-open [rs-seq (.getColumns metadata nil schema table-name nil)]
+(defn describe-table-fields
+  "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
+  [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}, & [database-name-or-nil]]
+  (with-resultset-open [rs-seq (.getColumns metadata database-name-or-nil schema table-name nil)]
     (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} rs-seq]
            (merge {:name          column-name
                    :database-type database-type
@@ -354,7 +362,8 @@
                   (when-let [special-type (calculated-special-type driver column-name database-type)]
                     {:special-type special-type}))))))
 
-(defn- add-table-pks
+(defn add-table-pks
+  "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata, table]
   (with-resultset-open [rs-seq (.getPrimaryKeys metadata nil nil (:name table))]
     (let [pks (set (map :column_name rs-seq))]
@@ -380,9 +389,11 @@
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn- describe-table-fks [driver database table]
+(defn describe-table-fks
+  "Default implementation of `describe-table-fks` for JDBC based drivers."
+  [driver database table & [database-name-or-nil]]
   (with-metadata [metadata driver database]
-    (with-resultset-open [rs-seq (.getImportedKeys metadata nil (:schema table) (:name table))]
+    (with-resultset-open [rs-seq (.getImportedKeys metadata database-name-or-nil (:schema table) (:name table))]
       (set (for [result rs-seq]
              {:fk-column-name   (:fkcolumn_name result)
               :dest-table       {:name   (:pktable_name result)

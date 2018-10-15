@@ -359,46 +359,47 @@
       (when (seq statement)
         (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
 
-(defn- create-db!
+(defn default-create-db!
   ([driver database-definition]
-    (create-db! driver database-definition false))
+   (default-create-db! driver database-definition false))
   ([driver {:keys [table-definitions], :as dbdef} skip-drop-db?]
-    (when-not skip-drop-db?
-      ;; Exec SQL for creating the DB
-      (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
-                                              (create-db-sql driver dbdef))))
-    ;; Build combined statement for creating tables + FKs + comments
-    (let [statements (atom [])]
-      ;; Add the SQL for creating each Table
-      (doseq [tabledef table-definitions]
-        (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
-               (create-table-sql driver dbdef tabledef)))
-      ;; Add the SQL for adding FK constraints
-      (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-        (doseq [{:keys [fk], :as fielddef} field-definitions]
-          (when fk
-            (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
-      ;; Add the SQL for adding table comments
-      (doseq [{:keys [table-comment], :as tabledef} table-definitions]
-        (when table-comment
-          (swap! statements conj (standalone-table-comment-sql driver dbdef tabledef))))
-      ;; Add the SQL for adding column comments
-      (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-        (doseq [{:keys [field-comment], :as fielddef} field-definitions]
-          (when field-comment
-            (swap! statements conj (standalone-column-comment-sql driver dbdef tabledef fielddef)))))
-      ;; exec the combined statement
-      (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
+   (when-not skip-drop-db?
+     ;; Exec SQL for creating the DB
+     (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
+                                             (create-db-sql driver dbdef))))
+   ;; Build combined statement for creating tables + FKs + comments
+   (let [statements (atom [])]
+     ;; Add the SQL for creating each Table
+     (doseq [tabledef table-definitions]
+       (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
+              (create-table-sql driver dbdef tabledef)))
+
+     ;; Add the SQL for adding FK constraints
+     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+       (doseq [{:keys [fk], :as fielddef} field-definitions]
+         (when fk
+           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
+     ;; Add the SQL for adding table comments
+     (doseq [{:keys [table-comment], :as tabledef} table-definitions]
+       (when table-comment
+         (swap! statements conj (standalone-table-comment-sql driver dbdef tabledef))))
+     ;; Add the SQL for adding column comments
+     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+       (doseq [{:keys [field-comment], :as fielddef} field-definitions]
+         (when field-comment
+           (swap! statements conj (standalone-column-comment-sql driver dbdef tabledef fielddef)))))
+     ;; exec the combined statement
+     (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
    ;; Now load the data for each Table
    (doseq [tabledef table-definitions]
      (du/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
-        (load-data! driver dbdef tabledef)))))
+       (load-data! driver dbdef tabledef)))))
 
 
 (def IDriverTestExtensionsMixin
   "Mixin for `IGenericSQLTestExtensions` types to implement `create-db!` from `IDriverTestExtensions`."
   (merge i/IDriverTestExtensionsDefaultsMixin
-         {:create-db! create-db!}))
+         {:create-db! default-create-db!}))
 
 
 ;;; ## Various Util Fns
