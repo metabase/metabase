@@ -1,10 +1,13 @@
 (ns metabase.query-processor.middleware.add-query-throttle-test
-  (:require  [expectations :refer :all]
-             [metabase.query-processor.middleware
-              [add-query-throttle :as throttle :refer :all]
-              [catch-exceptions :as catch-exceptions]]
-             [metabase.test.data :as data]
-             [metabase.util :as u])
+  (:require [environ.core :as environ]
+            [expectations :refer :all]
+            [metabase.query-processor.middleware
+             [add-query-throttle :as throttle :refer :all]
+             [catch-exceptions :as catch-exceptions]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.util :as u])
   (:import java.util.concurrent.Semaphore))
 
 (defmacro ^:private exception-and-message [& body]
@@ -103,7 +106,7 @@
                                        (throw (Exception. "failure")))
           query-future              (future
                                       (u/ignore-exceptions
-                                       ((#'throttle/throttle-queries semaphore coordinate-then-fail) {:query "map"})))]
+                                        ((#'throttle/throttle-queries semaphore coordinate-then-fail) {:query "map"})))]
       {:beinning-permits       begin-num-permits
        :before-failure-permits (do
                                  @start-middleware-promise
@@ -112,3 +115,32 @@
                                  (deliver finish-middleware-promise true)
                                  @query-future
                                  (.availablePermits semaphore))})))
+
+;; Test the function that adds the middleware only when MB_ENABLE_QUERY_THROTTLE is set to true
+
+(defmacro ^:private with-query-throttle-value [enable-query-thottle-str & body]
+  `(with-redefs [environ/env {:mb-enable-query-throttle ~enable-query-thottle-str}]
+     ~@body))
+
+;; By default the query throttle should not be applied
+(expect
+  #'identity
+  (tu/throw-if-called throttle/throttle-queries
+    (with-query-throttle-value nil
+      (throttle/maybe-add-query-throttle #'identity))))
+
+;; The query throttle should not be applied if MB_ENABLE_QUERY_THROTTLE is false
+(expect
+  #'identity
+  (tu/throw-if-called throttle/throttle-queries
+    (with-query-throttle-value "false"
+      (throttle/maybe-add-query-throttle #'identity))))
+
+;; The query throttle should be applied if MB_ENABLE_QUERY_THROTTLE is true
+(expect
+  (let [called? (atom false)]
+    (with-redefs [throttle/throttle-queries (fn [& args]
+                                              (reset! called? true))]
+      (with-query-throttle-value "true"
+        (throttle/maybe-add-query-throttle #'identity)
+        @called?))))

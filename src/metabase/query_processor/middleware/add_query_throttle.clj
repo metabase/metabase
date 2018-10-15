@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.add-query-throttle
-  "Middleware that constraints the number of concurrent queries, rejects queries by throwing an exception and
+  "Middleware that constrains the number of concurrent queries, rejects queries by throwing an exception and
   returning a 503 when we exceed our capacity"
   (:require [metabase.config :as config]
             [puppetlabs.i18n.core :refer [tru]])
@@ -44,8 +44,8 @@
       (throw-503-unavailable))))
 
 (defn maybe-add-query-throttle
-  "Adds the query throttle middleware as not as `MB_DISABLE_QUERY_THROTTLE` hasn't been set"
+  "Adds the query throttle middleware if `MB_ENABLE_QUERY_THROTTLE` has been set"
   [qp]
-  (if (config/config-bool :mb-disable-query-throttle)
-    qp
-    (throttle-queries query-semaphore qp)))
+  (if (config/config-bool :mb-enable-query-throttle)
+    (throttle-queries query-semaphore qp)
+    qp))
