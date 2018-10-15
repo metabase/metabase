@@ -21,6 +21,8 @@ import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx"
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
+import TasksApp from "metabase/admin/tasks/containers/TasksApp";
+
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
@@ -74,6 +76,9 @@ const getRoutes = (store, IsAdmin) => (
         <Route path=":groupId" component={GroupDetailApp} />
       </Route>
     </Route>
+
+    {/* Task History */}
+    <Route path="tasks" title={t`Task History`} component={TasksApp} />
 
     {/* SETTINGS */}
     <Route path="settings" title={t`Settings`}>
