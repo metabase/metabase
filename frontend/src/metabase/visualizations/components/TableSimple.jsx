@@ -22,6 +22,8 @@ import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
 
+import { isID, isFK } from "metabase/lib/schema_metadata";
+
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
@@ -166,6 +168,7 @@ export default class TableSimple extends Component {
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
                     {rows[rowIndex].map((value, columnIndex) => {
+                      const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
                         rowIndex,
@@ -175,7 +178,7 @@ export default class TableSimple extends Component {
                       const isClickable =
                         onVisualizationClick &&
                         visualizationIsClickable(clicked);
-                      const columnSettings = settings.column(cols[columnIndex]);
+                      const columnSettings = settings.column(column);
                       return (
                         <td
                           key={columnIndex}
@@ -186,20 +189,21 @@ export default class TableSimple extends Component {
                               getCellBackgroundColor(
                                 value,
                                 rowIndex,
-                                cols[columnIndex].name,
+                                column.name,
                               ),
                           }}
                           className={cx(
                             "px1 border-bottom text-dark text-bold",
                             {
-                              "text-right": isColumnRightAligned(
-                                cols[columnIndex],
-                              ),
+                              "text-right": isColumnRightAligned(column),
+                              "Table-ID": isID(column),
+                              "Table-FK": isFK(column),
+                              link: isClickable && isID(column),
                             },
                           )}
                         >
                           <span
-                            className={cx({
+                            className={cx("cellData", {
                               "cursor-pointer text-brand-hover": isClickable,
                             })}
                             onClick={

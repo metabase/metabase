@@ -87,7 +87,7 @@
   background-color: color(var(--color-brand) alpha(-90%));
 }
 
-.TableInteractive--ID .cellData {
+.Table-ID .cellData {
   border: 1px solid color(var(--color-brand) alpha(-86%));
   background-color: color(var(--color-brand) alpha(-92%));
   padding: 0.25em 0.65em;
@@ -96,13 +96,13 @@
   text-align: center;
 }
 
-.TableInteractive--ID.TableInteractive-cellWrapper:hover,
-.TableInteractive--ID.TableInteractive-cellWrapper.tether-enabled {
+.TableInteractive-ID.TableInteractive-cellWrapper:hover,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled {
   background-color: transparent;
 }
 
-.TableInteractive--ID.TableInteractive-cellWrapper:hover .cellData,
-.TableInteractive--ID.TableInteractive-cellWrapper.tether-enabled .cellData {
+.TableInteractive-ID.TableInteractive-cellWrapper:hover .cellData,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled .cellData {
   background-color: var(--color-brand);
   color: white;
 }

@@ -353,8 +353,8 @@ export default class TableInteractive extends Component {
           "TableInteractive-emptyCell": value == null,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
-          "TableInteractive--ID": isID(column),
-          "TableInteractive--FK": isFK(column),
+          "Table-ID": isID(column),
+          "Table-FK": isFK(column),
           link: isClickable && isID(column),
         })}
         onMouseUp={
