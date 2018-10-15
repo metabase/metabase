@@ -203,7 +203,7 @@ export default class TableSimple extends Component {
                           )}
                         >
                           <span
-                            className={cx("cellData", {
+                            className={cx("cellData inline-block", {
                               "cursor-pointer text-brand-hover": isClickable,
                             })}
                             onClick={
