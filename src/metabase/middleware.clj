@@ -386,7 +386,7 @@
   "Convert an exception from an API endpoint into an appropriate HTTP response."
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema)
+        other-info                      (dissoc info :status-code :schema :type)
         message                         (.getMessage e)
         body                            (cond
                                           ;; Exceptions that include a status code *and* other info are things like
