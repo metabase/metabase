@@ -232,6 +232,14 @@
     [& (args :guard (partial some nil?))]
     (recur (filterv some? args))
 
+    ;; Rewrite a `:not` over `:and` using de Morgan's law
+    [:not [:and & args]]
+    (recur (apply vector :or (map #(vector :not %) args)))
+
+    ;; Rewrite a `:not` over `:or` using de Morgan's law
+    [:not [:or & args]]
+    (recur (apply vector :and (map #(vector :not %) args)))
+
     ;; for `and` or `not` compound filters with only one subclase, just unnest the subclause
     [(:or :and :or) arg] (recur arg)
 
@@ -352,7 +360,7 @@
     (let [[_ original-n unit] absolute-or-relative-datetime]
       [:relative-datetime (+ n original-n) unit])
     (let [[_ timestamp unit] absolute-or-relative-datetime]
-      (du/relative-date unit n timestamp))))
+      [:absolute-datetime (du/relative-date unit n timestamp) unit])))
 
 
 (defn dispatch-by-clause-name-or-class

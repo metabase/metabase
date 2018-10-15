@@ -62,13 +62,22 @@
 (defmethod ->rvalue Object [this]
   this)
 
-(defmethod ->rvalue :aggregation [{index :index}]
+(defmethod ->rvalue :aggregation [[_ index]]
   (let [ag      (nth (:aggregation *query*) index)
-        ag-type (or (:aggregation-type ag)
-                    (throw (Exception. "Unknown aggregation type!")))]
-    (if (= ag-type :distinct)
+        ag-type (:aggregation-type ag)]
+    (cond
+
+      (= [:count] ag)
+      :count
+
+      (= ag-type :distinct)
       :distinct___count
-      ag-type)))
+
+      ag-type
+      ag-type
+
+      :else
+      (throw (Exception. "Unknown aggregation type!")))))
 
 (defmethod ->rvalue :field-id [[_ field-id]]
   (:name (qp.store/field field-id)))
@@ -265,7 +274,7 @@
 
       [:count  nil] [[(or output-name-kwd :count)] {:aggregations [(ag:count (or output-name :count))]}]
 
-      [:count    _] [[(or output-name-kwd :count)] {:aggregations [(ag:count ag-field (or output-name :count))]}]
+      [:count    _] [[(or output-name-kwd :count)] {:aggregations [(ag:count ag-field (or (name output-name) :count))]}]
 
       [:avg      _] (let [count-name (name (gensym "___count_"))
                           sum-name   (name (gensym "___sum_"))]
@@ -279,7 +288,7 @@
                                                      {:type :fieldAccess, :fieldName count-name}]}]}])
       [:distinct _] [[(or output-name-kwd :distinct___count)]
                      {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
-      [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or output-name :sum))]}]
+      [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or (name output-name) :sum))]}]
       [:min      _] [[(or output-name-kwd :min)] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
       [:max      _] [[(or output-name-kwd :max)] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
@@ -295,38 +304,44 @@
             (update :projections #(vec (concat % projections)))
             (update :query #(merge-with concat % ag-clauses)))))))
 
-(defn- add-expression-aggregation-output-names [[operator & args]]
-  (apply
-   vector
-   operator
-   (for [arg args]
-     (cond
-       (number? arg)
-       arg
+(defn- add-expression-aggregation-output-names [[operator & args :as expression]]
+  (if (mbql.u/is-clause? :named expression)
+    [:named (add-expression-aggregation-output-names (second expression)) (last expression)]
+    (apply
+     vector
+     operator
+     (for [arg args]
+       (cond
+         (number? arg)
+         arg
 
-       (mbql.u/is-clause? :named arg)
-       arg
+         (mbql.u/is-clause? :named arg)
+         arg
 
-       (mbql.u/is-clause? #{:count :avg :distinct :stddev :sum :min :max} arg)
-       [:named arg (name (gensym (str "___" (name (first arg)) "_")))]
+         (mbql.u/is-clause? #{:count :avg :distinct :stddev :sum :min :max} arg)
+         [:named arg (name (gensym (str "___" (name (first arg)) "_")))]
 
-       (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-       (add-expression-aggregation-output-names arg)))))
+         (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+         (add-expression-aggregation-output-names arg))))))
 
 (defn- expression-post-aggregation [[operator & args, :as expression]]
-  {:type   :arithmetic
-   :name   (annotate/aggregation-name expression)
-   :fn     operator
-   :fields (for [arg args]
-             (cond
-               (number? arg)
-               {:type :constant, :name (str arg), :value arg}
+  (if (mbql.u/is-clause? :named expression)
+    ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
+    (merge (expression-post-aggregation (second expression))
+           {:name (annotate/aggregation-name expression {:top-level? true})})
+    {:type   :arithmetic
+     :name   (annotate/aggregation-name expression {:top-level? true})
+     :fn     operator
+     :fields (for [arg args]
+               (cond
+                 (number? arg)
+                 {:type :constant, :name (str arg), :value arg}
 
-               (mbql.u/is-clause? :named arg)
-               {:type :fieldAccess, :fieldName (last arg)}
+                 (mbql.u/is-clause? :named arg)
+                 {:type :fieldAccess, :fieldName (last arg)}
 
-               (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-               (expression-post-aggregation arg)))})
+                 (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                 (expression-post-aggregation arg)))}))
 
 (declare handle-aggregations)
 
@@ -339,10 +354,17 @@
                     (expression->actual-ags arg)
                     [arg]))))
 
+(defn- unwrap-name [x]
+  (if (mbql.u/is-clause? :named x)
+    (second x)
+    x))
+
 (defn- handle-expression-aggregation [query-type [operator & args, :as expression] query-context]
   ;; filter out constants from the args list
   (let [expression    (add-expression-aggregation-output-names expression)
-        ags           (expression->actual-ags expression)
+        ;; The QP will automatically add a generated name to the expression, if it's there, unwrap it before looking
+        ;; for the aggregation
+        ags           (expression->actual-ags (unwrap-name expression))
         query-context (handle-aggregations query-type {:aggregation ags} query-context)
         post-agg      (expression-post-aggregation expression)]
     (-> query-context
@@ -352,14 +374,18 @@
 (defn- handle-aggregations [query-type {aggregations :aggregation} query-context]
   (loop [[ag & more] aggregations, query query-context]
     (cond
+      (and (mbql.u/is-clause? :named ag)
+           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
+      (handle-expression-aggregation query-type ag query)
+
       (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-      (handle-expression-aggregation query-type ag query-context)
+      (handle-expression-aggregation query-type ag query)
 
       (not ag)
       query
 
       :else
-      (recur more (handle-aggregation query-type ag query-context)))))
+      (recur more (handle-aggregation query-type ag query)))))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
@@ -506,7 +532,7 @@
                                          (keyword (if (and (map? dim-rvalue)
                                                            (contains? dim-rvalue :outputName))
                                                     (:outputName dim-rvalue)
-                                                    (name breakout-field)))))
+                                                    (field-clause->name breakout-field)))))
                                      breakout-fields))
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
 
@@ -526,16 +552,16 @@
 (defn- filter:= [field value]
   {:type      :selector
    :dimension (->rvalue field)
-   :value     value})
+   :value     (->rvalue value)})
 
-(defn- filter:nil? [field]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} field)
-    (filter:and (for [arg   (:args field)
+(defn- filter:nil? [clause-or-field]
+  (if (mbql.u/is-clause? #{:+ :- :/ :*} clause-or-field)
+    (filter:and (for [arg   (rest clause-or-field)
                       :when (field? arg)]
                   (filter:nil? arg)))
-    (filter:= field (case (dimension-or-metric? field)
-                      :dimension nil
-                      :metric    0))))
+    (filter:= clause-or-field (case (dimension-or-metric? clause-or-field)
+                                :dimension nil
+                                :metric    0))))
 
 (defn- filter:like
   "Build a `like` filter clause, which is almost just like a SQL `LIKE` clause."
@@ -593,7 +619,7 @@
              (filter-fields-are-dimensions? fields)
              ;; and make sure none of the Fields are datetime Fields
              ;; We'll handle :timestamp separately. It needs to go in :intervals instead
-             (empty? (some (partial mbql.u/is-clause? :datetime-field) fields)))
+             (not-any? (partial mbql.u/is-clause? :datetime-field) fields))
         clause-name))))
 
 (defmethod parse-filter nil [_] nil)
@@ -605,17 +631,17 @@
   {:type      :search
    :dimension (->rvalue field)
    :query     {:type          :contains
-               :value         string-or-field
+               :value         (->rvalue string-or-field)
                :caseSensitive (get options :case-sensitive true)}})
 
 (defmethod parse-filter :starts-with [[_ field string-or-field options]]
   (filter:like field
-               (str (escape-like-filter-pattern string-or-field) \%)
+               (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
                (get options :case-sensitive true)))
 
 (defmethod parse-filter :ends-with [[_ field string-or-field options]]
   (filter:like field
-               (str \% (escape-like-filter-pattern string-or-field))
+               (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
                (get options :case-sensitive true)))
 
 (defmethod parse-filter := [[_ field value-or-field]]
@@ -657,12 +683,11 @@
                (when (seq more)
                  (apply make-intervals more)))))
 
-(defn- parse-filter-subclause:intervals [[filter-type field value]]
+(defn- parse-filter-subclause:intervals [[filter-type field value maybe-max-value]]
   (when (mbql.u/is-clause? :datetime-field field)
     (case filter-type
       ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
-      :between (let [[_ _ min-val max-val] filter]
-                 (make-intervals min-val (mbql.u/add-datetime-units max-val 1)))
+      :between (make-intervals value (mbql.u/add-datetime-units maybe-max-value 1))
       ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
       :=       (make-intervals value (mbql.u/add-datetime-units value 1))
       ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
@@ -740,11 +765,18 @@
                                                                :direction (case direction
                                                                             :desc :descending
                                                                             :asc  :ascending)}))))
+(defn- datetime-field?
+  "Similar to `mbql.u/datetime-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
+  datetime"
+  [field]
+  (when field
+    (or (mbql.u/is-clause? :datetime-field field)
+        (mbql.u/datetime-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
 (defn- handle-order-by-timestamp [field direction query-context]
-  (assoc-in query-context [:query :descending] (and (mbql.u/is-clause? :datetime-field field)
-                                                    (= direction :descending))))
+  (assoc-in query-context [:query :descending] (and (datetime-field? field)
+                                                    (= direction :desc))))
 
 (defmethod handle-order-by ::grouped-timeseries [_ {[[direction field]] :order-by} query-context]
   (handle-order-by-timestamp field direction query-context))
@@ -780,14 +812,17 @@
             (assoc-in [:query :dimensions] (or (seq dimensions) [:___dummy]))
             (assoc-in [:query :metrics]    (or (seq metrics)    [:___dummy])))
 
-        (mbql.u/is-clause? :datetime-field field)
+        (datetime-field? field)
         (recur dimensions metrics projections more)
 
         (= (dimension-or-metric? field) :dimension)
-        (recur (conj dimensions (->rvalue field)) metrics (conj projections (keyword (name field))) more)
+        (recur (conj dimensions (->rvalue field)) metrics (conj projections (keyword (field-clause->name field))) more)
 
         (= (dimension-or-metric? field) :metric)
-        (recur dimensions (conj metrics (->rvalue field)) (conj projections (keyword (name field))) more)))))
+        (recur dimensions (conj metrics (->rvalue field)) (conj projections (keyword (field-clause->name field))) more)
+
+        :else
+        (throw (Exception. "bad field"))))))
 
 
 ;;; -------------------------------------------------- handle-limit --------------------------------------------------

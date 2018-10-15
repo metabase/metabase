@@ -281,12 +281,12 @@
 
 ;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
 
-(declare UnnamedAggregation)
+(declare Aggregation)
 
 (def ^:private ExpressionAggregationArg
   (s/if number?
     s/Num
-    (s/recursive #'UnnamedAggregation)))
+    (s/recursive #'Aggregation)))
 
 (defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
   x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))

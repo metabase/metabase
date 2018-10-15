@@ -86,12 +86,21 @@
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
 
+(def ^:private arithmetic-op->text
+  {:+ "add"
+   :- "sub"
+   :/ "div"
+   :* "mul"})
+
 ;; TODO - I think this might be an appropriate thing to move to either `mbql.u` or somewhere else more general we can
 ;; have the function take an ag clause and optional custom-name-formatting function so it doesn't need to worry about
 ;; `*driver*
 (s/defn aggregation-name :- su/NonBlankString
-  "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or expression)."
-  [ag-clause :- mbql.s/Aggregation]
+  "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or
+  expression). Takes an options map as schema won't support passing keypairs directly as a varargs. `{:top-level?
+  true}` will cause a name to be generated that will appear in the results, other names with a leading __ will be
+  trimmed on some backends."
+  [ag-clause :- mbql.s/Aggregation & [{:keys [top-level?]}]]
   (when-not i/*driver*
     (throw (Exception. (str (tru "metabase.query-processor.interface/*driver* is unbound.")))))
   (mbql.u/match-one ag-clause
@@ -99,22 +108,26 @@
     [:named _ ag-name]
     (driver/format-custom-field-name i/*driver* ag-name)
 
-    ;; for unnamed expressions, just compute a name like "sum + count"
+    ;; For unnamed expressions, just compute a name like "sum + count"
+    ;; Top level expressions need a name without a leading __ as those are automatically removed from the results
     [(operator :guard #{:+ :- :/ :*}) & args]
-    (str/join (str " " (name operator) " ")
-              ;; for each arg...
-              (for [arg args]
-                (mbql.u/match-one arg
-                  ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
-                  [(_ :guard #{:+ :- :/ :*}) & _]
-                  (str "(" (aggregation-name &match) ")")
+    (str (when top-level?
+           (str (arithmetic-op->text operator)
+                "__"))
+         (str/join (str " " (name operator) " ")
+                   ;; for each arg...
+                   (for [arg args]
+                     (mbql.u/match-one arg
+                       ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
+                       [(_ :guard #{:+ :- :/ :*}) & _]
+                       (str "(" (aggregation-name &match) ")")
 
-                  ;; if the arg is another aggregation, recurse to get its name
-                  [(_ :guard keyword?) & _]
-                  (aggregation-name &match)
+                       ;; if the arg is another aggregation, recurse to get its name
+                       [(_ :guard keyword?) & _]
+                       (aggregation-name &match)
 
-                  ;; otherwise for things like numbers just use that directly
-                  _ &match)))
+                       ;; otherwise for things like numbers just use that directly
+                       _ &match))))
 
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
     ;; is called `:count` (WHY?)
