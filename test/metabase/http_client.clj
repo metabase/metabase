@@ -152,6 +152,6 @@
   [& args]
   (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
         [expected-status [url & args]]    (u/optional integer? args)
-        [{:keys [request-options]} args]  (u/optional #(and (map? %) (:request-options %)) args {:request-options {}})
+        [{:keys [request-options]} args]  (u/optional (every-pred map? :request-options) args {:request-options {}})
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     (-client credentials method expected-status url body url-param-kwargs request-options)))

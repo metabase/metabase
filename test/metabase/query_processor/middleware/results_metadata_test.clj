@@ -27,7 +27,7 @@
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/get-id card)))
 
-(defn- round-all-decimals'
+(defn- round-to-2-decimals
   "Defaults `tu/round-all-decimals` to 2 digits"
   [data]
   (tu/round-all-decimals 2 data))
@@ -126,7 +126,6 @@
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0}}}}]
-
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query

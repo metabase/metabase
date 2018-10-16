@@ -161,7 +161,8 @@
     "webchauffeur": "^1.2.0",
     "webpack": "^3.8.1",
     "webpack-dev-server": "^2.9.1",
-    "webpack-postcss-tools": "^1.1.2"
+    "webpack-postcss-tools": "^1.1.2",
+    "xhr-mock": "^2.4.1"
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",

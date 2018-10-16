@@ -275,7 +275,8 @@
    :position           0
    :target             nil
    :preview_display    true
-   :parent_id          nil})
+   :parent_id          nil
+   :settings           nil})
 
 (defn- field-details [field]
   (merge

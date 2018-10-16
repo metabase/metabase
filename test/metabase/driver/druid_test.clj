@@ -101,7 +101,8 @@
                                    {:name "venue_name",  :display_name "Venue Name"}
                                    {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
-  (process-native-query native-query-1))
+  (-> (process-native-query native-query-1)
+      (m/dissoc-in [:data :insights])))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409

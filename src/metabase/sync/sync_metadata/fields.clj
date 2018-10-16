@@ -70,14 +70,15 @@
   [table :- i/TableInstance, new-fields :- [i/TableMetadataField], parent-id :- ParentID]
   (when (seq new-fields)
     (db/insert-many! Field
-      (for [{:keys [database-type base-type], field-name :name :as field} new-fields]
+      (for [{:keys [database-type base-type field-comment], field-name :name :as field} new-fields]
         {:table_id      (u/get-id table)
          :name          field-name
          :display_name  (humanization/name->human-readable-name field-name)
          :database_type (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
          :base_type     base-type
          :special_type  (special-type field)
-         :parent_id     parent-id}))))
+         :parent_id     parent-id
+         :description   field-comment}))))
 
 (s/defn ^:private ->metabase-fields! :- [i/FieldInstance]
   "Return an active Metabase Field instance that matches NEW-FIELD-METADATA. This object will be created or
@@ -118,10 +119,14 @@
 (s/defn ^:private update-field-metadata-if-needed!
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed."
   [table :- i/TableInstance, metabase-field :- TableMetadataFieldWithID, field-metadata :- i/TableMetadataField]
-  (let [{old-database-type :database-type, old-base-type :base-type} metabase-field
-        {new-database-type :database-type, new-base-type :base-type} field-metadata
-        new-db-type?                                                 (not= old-database-type new-database-type)
-        new-base-type?                                               (not= old-base-type new-base-type)]
+  (let [{old-database-type :database-type,
+         old-base-type     :base-type,
+         old-field-comment :field-comment} metabase-field
+        {new-database-type :database-type,
+         new-base-type     :base-type,
+         new-field-comment :field-comment} field-metadata
+        new-db-type?                       (not= old-database-type new-database-type)
+        new-base-type?                     (not= old-base-type new-base-type)]
     ;; If the driver is reporting a different `database-type` than what we have recorded in the DB, update it
     (when new-db-type?
       (log/info (format "Database type of %s has changed from '%s' to '%s'."
@@ -134,8 +139,14 @@
                         (field-metadata-name-for-logging table metabase-field)
                         old-base-type new-base-type))
       (db/update! Field (u/get-id metabase-field), :base_type new-base-type))
+    ;; And field comment, but only if the existing description is blank
+    (when (and (str/blank? old-field-comment) (not (str/blank? new-field-comment)))
+      (log/info (format "Comment has been added for %s."
+                        (field-metadata-name-for-logging table metabase-field)))
+      (db/update! Field (u/get-id metabase-field), :description new-field-comment))
 
     (or new-db-type? new-base-type?)))
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -235,7 +246,7 @@
 (s/defn ^:private update-metadata!
   "Make sure things like PK status and base-type are in sync with what has come back from the DB."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}, parent-id :- ParentID]
-  (let [existing-fields         (db/select [Field :base_type :special_type :name :id]
+  (let [existing-fields         (db/select [Field :base_type :special_type :name :id :description]
                                   :table_id  (u/get-id table)
                                   :active    true
                                   :parent_id parent-id)
@@ -287,7 +298,7 @@
 (s/defn ^:private parent-id->fields :- {ParentID #{TableMetadataFieldWithID}}
   "Build a map of the Metabase Fields we have for TABLE, keyed by their parent id (usually `nil`)."
   [table :- i/TableInstance]
-  (->> (for [field (db/select [Field :name :database_type :base_type :special_type :parent_id :id]
+  (->> (for [field (db/select [Field :name :database_type :base_type :special_type :parent_id :id :description]
                      :table_id (u/get-id table)
                      :active   true)]
          {:parent-id     (:parent_id field)
@@ -296,7 +307,8 @@
           :database-type (:database_type field)
           :base-type     (:base_type field)
           :special-type  (:special_type field)
-          :pk?           (isa? (:special_type field) :type/PK)})
+          :pk?           (isa? (:special_type field) :type/PK)
+          :field-comment (:description field)})
        ;; make a map of parent-id -> set of
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
@@ -333,7 +345,7 @@
 
 (defn- calculate-table-hash [db-metadata]
   (->> db-metadata
-       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom))
+       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom :field-comment))
        ;; We need a predictable sort order as the hash will be different if the order is different
        (sort-by first)
        sync-util/calculate-hash))

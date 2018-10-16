@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require [kixi.stats.core :as stats]
+            [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [redux.core :as redux]))
 
@@ -77,6 +78,7 @@
                                       (cond
                                         (datetime-truncated-to-year? field)          :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
+                                        (field/unix-timestamp? field)                :datetimes
                                         (isa? base_type :type/Number)                :numbers
                                         (isa? base_type :type/DateTime)              :datetimes
                                         :else                                        :others))))]

@@ -73,7 +73,7 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase kan skanne verdiene i hvert felt i denne databasen for og aktivere sjekkboks filtere i paneler og spørsmål. Dette er en ressurs krevende prosess, spesielt for veldig store databaser"
+msgstr "Metabase kan skanne verdiene i hvert felt i denne databasen for og aktivere sjekkboks filtere i infotavler og spørsmål. Dette er en ressurs krevende prosess, spesielt for veldig store databaser"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:159
 msgid "When should Metabase automatically scan and cache field values?"
@@ -90,7 +90,7 @@ msgstr "Bare når du legger til en ny filter-widget"
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:199
 msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
-msgstr "Når en bruker legger til nye filter på ett panel eller et SQL spørsmål, vil Metabase skanne feltene som er tilknyttet til det filteret for å vise liste over mulige filterverdier."
+msgstr "Når en bruker legger til nye filter på en infotavle eller et SQL spørsmål, vil Metabase skanne feltene som er tilknyttet til det filteret for å vise liste over mulige filterverdier."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:210
 msgid "Never, I'll do this manually if I need to"
@@ -173,7 +173,7 @@ msgstr "I denne boksen:"
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:209
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:397
 msgid "Cancel"
-msgstr "Kanseler"
+msgstr "Avbryt"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:84
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:123
@@ -664,7 +664,7 @@ msgstr "Mellomlagret felt verdier"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:782
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase kan skanne verdiene for dette feltet for å aktivere avhukingsfilter i paneler og spørsmål."
+msgstr "Metabase kan skanne verdiene for dette feltet for å aktivere avhukingsfilter i infotavler og spørsmål."
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:787
 msgid "Re-scan this field"
@@ -880,7 +880,7 @@ msgstr "Alle brukere tilhører {0}-gruppen og kan ikke fjernes fra den. Innstill
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:41
 msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Dette er en spesiell gruppe, og dens medlemmer kan se alt i denne Metabase-instansen. Medlemmer av denne gruppen kan også gjøre endringer i administrasjons-panelet, inkludert endring av tillatelser! Så, vær forsiktig når du legger til brukere i denne gruppen."
+msgstr "Dette er en spesiell gruppe, og dens medlemmer kan se alt i denne Metabase-instansen. Medlemmer av denne gruppen kan også gjøre endringer i administrasjonspanelet, inkludert endring av tillatelser! Så, vær forsiktig når du legger til brukere i denne gruppen."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:45
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
@@ -990,7 +990,7 @@ msgstr "Opprett en gruppe"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:406
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
-msgstr "Du kan bruke grupper for og kontrollere din brukers tilgang til dataen. Putt brukere i grupper og endre hver gruppers tilgang under tilgangseksjonen. Gruppene \"Administratorer\" og \"Alle brukere\" er spesielle grupper som ikke kan slettes."
+msgstr "Du kan bruke grupper for og kontrollere din brukers tilgang til dataene. Putt brukere i grupper og endre hver gruppes tilgang under tilgangseksjonen. Gruppene \"Administratorer\" og \"Alle brukere\" er spesielle grupper som ikke kan slettes."
 
 #: frontend/src/metabase/admin/people/components/UserActionsSelect.jsx:79
 msgid "Edit Details"
@@ -1207,7 +1207,7 @@ msgstr "Du har gjort endringer med tilganger"
 
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:52
 msgid "Permissions for this collection"
-msgstr "Tilganger for denne kolleksjonen"
+msgstr "Tilganger for denne samlingen"
 
 #: frontend/src/metabase/admin/permissions/containers/PermissionsApp.jsx:53
 msgid "You have unsaved changes"
@@ -1322,19 +1322,19 @@ msgstr "Organiser samlingen"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:284
 msgid "View collection"
-msgstr "Vis kolleksjon"
+msgstr "Vis samling"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:327
 #: frontend/src/metabase/admin/permissions/selectors.js:423
 #: frontend/src/metabase/admin/permissions/selectors.js:520
 msgid "Data Access"
-msgstr "Data tilgang"
+msgstr "Tilgang til data"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:488
 #: frontend/src/metabase/admin/permissions/selectors.js:645
 #: frontend/src/metabase/admin/permissions/selectors.js:650
 msgid "View tables"
-msgstr "Hvis tabeller"
+msgstr "Vis tabeller"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:586
 msgid "SQL Queries"
@@ -1347,7 +1347,7 @@ msgstr "Vis skjemaer"
 #: frontend/src/metabase/admin/routes.jsx:45
 #: frontend/src/metabase/nav/containers/Navbar.jsx:210
 msgid "Data Model"
-msgstr "Data modell"
+msgstr "Datamodell"
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:11
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:118
@@ -1595,7 +1595,7 @@ msgstr "Ved å aktivere innebygging er du enig med innebygging lisensen som fins
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:19
 msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "Kort oppsummert, når du bygger inn grafer eller paneler fra Metabase i din egen applikasjon, så blir ikke den applikasjonen underlagt \"Affero General Publicus Lovende\" som dekker resten av Metabase, så lenge Metabase-logoen og teksten \"Powered by Metabase\" er synlig på alle innbygginger. Du burde uansett lese selve lisensen lenket til ovenfor ettersom det er den faktiske lisensen som du godtar ved å aktivere denne funksjonen."
+msgstr "Kort oppsummert, når du bygger inn grafer eller infotavler fra Metabase i din egen applikasjon, så blir ikke den applikasjonen underlagt \"Affero General Publicus Lovende\" som dekker resten av Metabase, så lenge Metabase-logoen og teksten \"Powered by Metabase\" er synlig på alle innbygginger. Du burde uansett lese selve lisensen lenket til ovenfor ettersom det er den faktiske lisensen som du godtar ved å aktivere denne funksjonen."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:32
 msgid "Enable"
@@ -1611,7 +1611,7 @@ msgstr "Legg inn nøkkelen du kjøpte fra Metabase butikken"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "Premium innebygging lar deg inaktiveres \"Powered by Metabase\" på innebygde paneler og spørsmål."
+msgstr "Premium innebygging lar deg inaktiveres \"Powered by Metabase\" på innebygde infotavler og spørsmål."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
@@ -1666,7 +1666,7 @@ msgstr "Offentlig oppføring av infotavle"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:152
 msgid "No dashboards have been publicly shared yet."
-msgstr "Ingen paneler har blitt offentlig publisert enda."
+msgstr "Ingen infotavler har blitt offentlig publisert enda."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:160
 msgid "Public Card Listing"
@@ -1678,11 +1678,11 @@ msgstr "Ingen spørsmål har blitt offentlig publisert enda "
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:172
 msgid "Embedded Dashboard Listing"
-msgstr "Innebygd panelvisning"
+msgstr "Innebygd visning av infotavle"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:173
 msgid "No dashboards have been embedded yet."
-msgstr "Ingen paneler blir brukt som en del av en annen side enda."
+msgstr "Ingen infotavler har blitt bygget inn som en del av en annen side enda."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:183
 msgid "Embedded Card Listing"
@@ -1922,7 +1922,7 @@ msgstr "Aktiver offentlig deling"
 
 #: frontend/src/metabase/admin/settings/selectors.js:323
 msgid "Shared Dashboards"
-msgstr "Delte paneler"
+msgstr "Delte infotavler"
 
 #: frontend/src/metabase/admin/settings/selectors.js:329
 msgid "Shared Questions"
@@ -1942,7 +1942,7 @@ msgstr "Hemmelig innebyggingsnøkkel"
 
 #: frontend/src/metabase/admin/settings/selectors.js:379
 msgid "Embedded Dashboards"
-msgstr "Innebygde paneler"
+msgstr "Innebygde infotavler"
 
 #: frontend/src/metabase/admin/settings/selectors.js:385
 msgid "Embedded Questions"
@@ -2121,11 +2121,11 @@ msgstr "Ok"
 
 #: frontend/src/metabase/components/ArchiveCollectionModal.jsx:40
 msgid "Archive this collection?"
-msgstr "Arkiver denne kolleksjonen?"
+msgstr "Arkiver denne samlingen?"
 
 #: frontend/src/metabase/components/ArchiveCollectionModal.jsx:45
 msgid "The dashboards, collections, and pulses in this collection will also be archived."
-msgstr "Panelene, kolleksjonene og pulser i denne kolleksjonen vil også bli arkivert."
+msgstr "Infotavlene, samlingene og pulsene i denne samlingen vil også bli arkivert."
 
 #: frontend/src/metabase/components/ArchiveCollectionModal.jsx:49
 #: frontend/src/metabase/components/CollectionLanding.jsx:587
@@ -2232,7 +2232,7 @@ msgstr "For og sende {0} må en administrator sette opp {1} integrasjonen."
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:15
 msgid "This collection is empty, like a blank canvas"
-msgstr "Denne kolleksjonen er tom, som ett tomt lerret"
+msgstr "Denne samlingen er tom, som ett tomt lerret"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:16
 msgid "You can use collections to organize and group dashboards, questions and pulses for your team or yourself"
@@ -2240,11 +2240,11 @@ msgstr "Du kan bruke samlinger for å organisere og gruppere infotavler, spørsm
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:28
 msgid "Create another collection"
-msgstr "Lag en ny kolleksjon"
+msgstr "Lag en ny samling"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:61
 msgid "Dashboards let you collect and share data in one place."
-msgstr "Paneler lar deg samle og dele data fra ett sted."
+msgstr "Infotavler lar deg samle og dele data fra ett sted."
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:70
 msgid "Pulses let you send out the latest data to your team on a schedule via email or slack."
@@ -2269,7 +2269,7 @@ msgstr "Dra noe hit for og feste det til toppen"
 #: frontend/src/metabase/home/containers/SearchApp.jsx:35
 #: frontend/src/metabase/home/containers/SearchApp.jsx:96
 msgid "Collections"
-msgstr "Kolleksjoner"
+msgstr "Samlinger"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:411
 #: frontend/src/metabase/components/CollectionLanding.jsx:434
@@ -2299,21 +2299,21 @@ msgstr "Flytt"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:656
 msgid "Edit this collection"
-msgstr "Rediger denne kolleksjonen"
+msgstr "Rediger denne samlingen"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:664
 msgid "Archive this collection"
-msgstr "Arkiver denne kolleksjonen"
+msgstr "Arkiver denne samlingen"
 
 #: frontend/src/metabase/components/CollectionList.jsx:64
 #: frontend/src/metabase/entities/collections.js:148
 msgid "My personal collection"
-msgstr "Min personlige kolleksjon"
+msgstr "Min personlige samling"
 
 #: frontend/src/metabase/components/CollectionList.jsx:106
 #: frontend/src/metabase/containers/CollectionForm.jsx:9
 msgid "New collection"
-msgstr "Ny kolleksjon"
+msgstr "Ny samling"
 
 #: frontend/src/metabase/components/CopyButton.jsx:35
 msgid "Copied!"
@@ -2365,7 +2365,7 @@ msgstr "Med Google Drive tillatelse"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:351
 msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
-msgstr "For å bruke Metabase med denne dataen må du aktivere API tilgang i Google Developers Console. "
+msgstr "For å bruke Metabase med disse dataene må du aktivere API tilgang i Google Developers Console. "
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:354
 msgid "{0} to go to the console if you haven't already done so."
@@ -2429,7 +2429,7 @@ msgstr "Arkiver handling"
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:329
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:342
 msgid "Add to dashboard"
-msgstr "Legg til panel"
+msgstr "Legg til infotavle"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:49
 #: frontend/src/metabase/components/EntityMenu.info.js:101
@@ -2605,7 +2605,7 @@ msgstr "Alt"
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:18
 #: frontend/src/metabase/home/containers/SearchApp.jsx:73
 msgid "Dashboards"
-msgstr "Paneler"
+msgstr "Infotavler"
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:23
 #: frontend/src/metabase/home/containers/SearchApp.jsx:119
@@ -2672,7 +2672,7 @@ msgstr "Vis"
 
 #: frontend/src/metabase/components/QuestionSavedModal.jsx:17
 msgid "Saved! Add this to a dashboard?"
-msgstr "Lagret! Vil du legge den til ett panel?"
+msgstr "Lagret! Vil du legge den til en infotavle?"
 
 #: frontend/src/metabase/components/QuestionSavedModal.jsx:25
 msgid "Yes please!"
@@ -2782,7 +2782,7 @@ msgstr "Lag"
 
 #: frontend/src/metabase/containers/DashboardForm.jsx:9
 msgid "Create dashboard"
-msgstr "Lag panel"
+msgstr "Lag infotavle"
 
 #: frontend/src/metabase/containers/EntitySearch.jsx:35
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:324
@@ -2887,7 +2887,7 @@ msgstr "Det er valgfritt, men veldig hjelpsomt"
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:245
 #: frontend/src/metabase/entities/dashboards.js:108
 msgid "Which collection should this go in?"
-msgstr "Hvilken kolleksjon skal denne være i?"
+msgstr "Hvilken samling skal denne være i?"
 
 #: frontend/src/metabase/containers/UndoListing.jsx:34
 msgid "modified"
@@ -2919,7 +2919,7 @@ msgstr "Vi er ikke sikker på om dette spørsmålet kompatibelt"
 
 #: frontend/src/metabase/dashboard/components/ArchiveDashboardModal.jsx:43
 msgid "Archive Dashboard"
-msgstr "Arkiver panel"
+msgstr "Arkiver infotavle"
 
 #: frontend/src/metabase/dashboard/components/DashCardParameterMapper.jsx:20
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
@@ -2927,7 +2927,7 @@ msgstr "Forsikre deg om at noe i hver serie er valgt, ellers vil ikke filteret v
 
 #: frontend/src/metabase/dashboard/components/Dashboard.jsx:284
 msgid "This dashboard is looking empty."
-msgstr "Dette panelet ser ut som det er tomt."
+msgstr "Denne infotavlen ser ut til å være tom."
 
 #: frontend/src/metabase/dashboard/components/Dashboard.jsx:287
 msgid "Add a question to start making it useful!"
@@ -2961,7 +2961,7 @@ msgstr "Legg til spørsmål"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:219
 msgid "Add a question to this dashboard"
-msgstr "Legg til spørsmål til dette panelet"
+msgstr "Legg et spørsmål til denne infotavlen"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:248
 msgid "Add a filter"
@@ -2979,19 +2979,19 @@ msgstr "Legg til en tekst boks"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:301
 msgid "Move dashboard"
-msgstr "Flytt panel"
+msgstr "Flytt infotavlen"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:313
 msgid "Edit dashboard"
-msgstr "Rediger panel"
+msgstr "Rediger infotavle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:317
 msgid "Edit Dashboard Layout"
-msgstr "Rediger panelvisning"
+msgstr "Rediger visning av infotavle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:352
 msgid "You are editing a dashboard"
-msgstr "Du redigerer ett panel"
+msgstr "Du redigerer en infotavle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:357
 msgid "Select the field that should be filtered for each card"
@@ -2999,11 +2999,11 @@ msgstr "Velg feltet som skal være filtrert for hvert kort"
 
 #: frontend/src/metabase/dashboard/components/DashboardMoveModal.jsx:28
 msgid "Move dashboard to..."
-msgstr "Flytt panel til..."
+msgstr "Flytt infotavle til..."
 
 #: frontend/src/metabase/dashboard/components/DashboardMoveModal.jsx:52
 msgid "Dashboard moved to {0}"
-msgstr "Panelet ble flyttet til {0}"
+msgstr "Infotavlen ble flyttet til {0}"
 
 #: frontend/src/metabase/dashboard/components/ParametersPopover.jsx:82
 msgid "What do you want to filter?"
@@ -3055,7 +3055,7 @@ msgstr "Fjern dette spørsmålet?"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:70
 msgid "Your dashboard was saved"
-msgstr "Panelet ble lagret"
+msgstr "Infotavlen ble lagret"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:75
 msgid "See it"
@@ -3538,7 +3538,7 @@ msgstr "Metabase vil aldri hente dette feltet. Bruk dette for sensitiv eller irr
 #: frontend/src/metabase/lib/query.js:615
 #: frontend/src/metabase/visualizations/lib/utils.js:113
 msgid "Count"
-msgstr "Telle"
+msgstr "Antall"
 
 #: frontend/src/metabase/lib/expressions/config.js:8
 msgid "CumulativeCount"
@@ -5082,7 +5082,7 @@ msgstr "LAGRE ENDRINGER"
 
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:263
 msgid "CANCEL"
-msgstr "KANSELER"
+msgstr "AVBRYT"
 
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:276
 msgid "Move question"
@@ -5090,7 +5090,7 @@ msgstr "Flytt spørsmål"
 
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:283
 msgid "Which collection should this be in?"
-msgstr "Hvilken kolleksjon skal denne være i?"
+msgstr "Hvilken samling skal denne være i?"
 
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:313
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:110
@@ -5482,7 +5482,7 @@ msgstr "Variabler i lokale spørringer lar deg dynamisk erstatte verdier i spør
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:112
 msgid "{0} creates a variable in this SQL template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the SQL template."
-msgstr "{0} oppretter en variabel i denne SQL-malen kalt \"variable_name\". "
+msgstr "{0} oppretter en variabel i denne SQL-malen kalt \"variable_name\". Variabler kan gies typer i sidepanelet, som endrer deres oppførsel. Alle variabeltyper annet enn \"feltfilter\" vil automatisk gjøre at en filterwidget blir plassert på dette spørsmålet; med feltfiltere, så er dette valgfritt. Når denne filterwidgeten er fylt inn, så vil dens verdi erstatte variabelen i SQL-malen."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:121
 msgid "Field Filters"
@@ -5554,7 +5554,7 @@ msgstr "Arkiver spørsmålet?"
 
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:57
 msgid "This question will be removed from any dashboards or pulses using it."
-msgstr "Dette spørsmål vil bli slettet fra alle panel eller pulser den er i."
+msgstr "Dette spørsmålet vil bli slettet fra alle infotavler eller pulser den er i."
 
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:136
 msgid "Question"
@@ -5663,7 +5663,7 @@ msgstr "Slett element"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:155
 msgid "Why is this dashboard the most important?"
-msgstr "Hvorfor er dette panelet det viktigste?"
+msgstr "Hvorfor er denne infotavlen den viktigste?"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:156
 msgid "What is useful or interesting about this {0}?"
@@ -5676,7 +5676,7 @@ msgstr "Skriv noe hjelpsomt her"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:169
 msgid "Is there anything users of this dashboard should be aware of?"
-msgstr "Er det noe brukere av dette panelet bør vite om?"
+msgstr "Er det noe brukere av denne infotavlen bør vite om?"
 
 #: frontend/src/metabase/reference/components/GuideDetailEditor.jsx:170
 msgid "Anything users should be aware of about this {0}?"
@@ -5851,7 +5851,7 @@ msgstr "Gå igang"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:173
 msgid "Our most important dashboard"
-msgstr "Vårt viktigste panel"
+msgstr "Vår viktigste infotavle"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:188
 msgid "Numbers that we pay attention to"
@@ -5927,11 +5927,11 @@ msgstr "Er det en viktig infotavle for ditt lag?"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:260
 msgid "Create a dashboard now"
-msgstr "Lag ett panel nå"
+msgstr "Lag en infotavle nå"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:266
 msgid "What is your most important dashboard?"
-msgstr "Hva er ditt viktigste panel?"
+msgstr "Hva er din viktigste infotavle?"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:285
 msgid "Do you have any commonly referenced metrics?"
@@ -6100,7 +6100,7 @@ msgstr "Søk"
 
 #: frontend/src/metabase/routes.jsx:217
 msgid "Dashboard"
-msgstr "Panel"
+msgstr "Infotavle"
 
 #: frontend/src/metabase/routes.jsx:227
 msgid "New Question"
@@ -6411,7 +6411,7 @@ msgstr "Logg inn med Google E-postadresse"
 
 #: frontend/src/metabase/user/components/UserSettings.jsx:65
 msgid "User Details"
-msgstr "Bruker detaljer"
+msgstr "Brukerdetaljer"
 
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:225
 msgid "Reset to defaults"
@@ -6448,7 +6448,7 @@ msgstr "Tegn en boks for å filtrere"
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:226
 msgid "Cancel filter"
-msgstr "Kanseler filter"
+msgstr "Avbryt filter"
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:47
 msgid "Pin Map"
@@ -6488,7 +6488,7 @@ msgstr "Dette tar vanligvis gjennomsnittlig {0}."
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:484
 msgid "(This is a bit long for a dashboard)"
-msgstr "(dette er litt for langt for ett panel)"
+msgstr "(dette er litt for langt for en infotavle)"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:488
 msgid "This is usually pretty fast but seems to be taking awhile right now."
@@ -7540,7 +7540,7 @@ msgstr "Sammenligning av {0} og {1}"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 msgid "Automatically generated comparison dashboard comparing {0} and {1}"
-msgstr "Automatisk generert sammenlignings panel sammenlign {0} og {1}"
+msgstr "Automatisk generert sammenligningsinfotavle som sammenligner {0} og {1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "sum"
@@ -7631,7 +7631,7 @@ msgstr "Bruker definisjoner:nBeregninger:n%snFiltere:n%s"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Can''t create dashboard for {0}"
-msgstr "Kan ikke lage panel for {0}"
+msgstr "Kan ikke lage infotavle for {0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0}st"
@@ -7699,7 +7699,7 @@ msgstr "En grundigere titt på {0}"
 
 #: src/metabase/automagic_dashboards/populate.clj
 msgid "Adding %s cards to dashboard %s:n%s"
-msgstr "Legger til %s kort til panel %s:n%s"
+msgstr "Legger til %s kort til infotavlen %s:n%s"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "0 <= score <= {0}"
@@ -7727,7 +7727,7 @@ msgstr "Gyldig order_by referanser"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "Valid dashboard filters references"
-msgstr "Gyldig panel filter referanser"
+msgstr "Gyldige referanser for infotavlefilter"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "Valid dimension references"
@@ -8196,7 +8196,7 @@ msgstr "må være en gyldig 6-tegn hex fargekode"
 
 #: src/metabase/models/collection.clj
 msgid "Collection name cannot be blank!"
-msgstr "Kolleksjonsnavn kan ikke være blank!"
+msgstr "Navn på samling kan ikke være tomt!"
 
 #: src/metabase/models/collection.clj
 msgid "cannot be blank"
@@ -8204,31 +8204,31 @@ msgstr "kan ikke være blank"
 
 #: src/metabase/models/collection.clj
 msgid "Invalid Collection location: path is invalid."
-msgstr "Ugyldig kolleksjonslokasjon: lokasjon er ugyldig."
+msgstr "Ugyldig samlingsplassering: sti er ugyldig."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot move a Personal Collection."
-msgstr "Du kan ikke flytte en personlig kolleksjon."
+msgstr "Du kan ikke flytte en personlig samling."
 
 #: src/metabase/models/collection.clj
 msgid "Invalid Collection location: some or all ancestors do not exist."
-msgstr "Ugyldig kolleksjon lokasjon: noen eller alle toppkolleksjoner fins ikke."
+msgstr "Ugyldig plassering av samling: noen eller alle toppsamlinger finnes ikke."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot archive the Root Collection."
-msgstr "Du kan ikke arkivere hovedkolleksjonen."
+msgstr "Du kan ikke arkivere hovedsamlingen."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot archive a Personal Collection."
-msgstr "Du kan ikke arkivere en personlig kolleksjon."
+msgstr "Du kan ikke arkivere en personlig samling."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot move the Root Collection."
-msgstr "Du kan ikke flytte hovedkolleksjonen."
+msgstr "Du kan ikke flytte hovedsamlingen."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot move a Collection into itself or into one of its descendants."
-msgstr "Du kan ikke flytte en kolleksjon til seg selv eller til en av underkolleksjonene."
+msgstr "Du kan ikke flytte en samling til seg selv eller til en av undersamlingene."
 
 #. first move this Collection
 #: src/metabase/models/collection.clj
@@ -8297,7 +8297,7 @@ msgstr "Ugyldig sti for rettighetsobjekt: \"{0}\"."
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot update a permissions entry!"
-msgstr "Du kan ikke oppdatere en tilgangsmodell!"
+msgstr "Du kan ikke oppdatere en tilgangsoppføring!"
 
 #: src/metabase/models/permissions.clj
 msgid "Delete it and create a new one."
@@ -8305,7 +8305,7 @@ msgstr "Slett den og lag en ny en."
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot edit permissions for a Personal Collection or its descendants."
-msgstr "Du kan ikke redigere tilganger for personlig kolleksjon eller underkolleksjonene."
+msgstr "Du kan ikke redigere tilganger for en personlig samling eller dens undersamlinger."
 
 #: src/metabase/models/permissions.clj
 msgid "Looks like someone else edited the permissions and your data is out of date."
@@ -8317,7 +8317,7 @@ msgstr "Vennligst last inn ny data og prøv igjen."
 
 #: src/metabase/models/permissions_group.clj
 msgid "Created magic permissions group ''{0}'' (ID = {1})"
-msgstr "Lag magisk tilgangseksjonen \"{0}\" (ID = {1})"
+msgstr "Opprettet magisk tilgangsgruppe \"{0}\" (ID = {1})"
 
 #: src/metabase/models/permissions_group.clj
 msgid "A group with that name already exists."
@@ -8341,7 +8341,7 @@ msgstr "Du kan ikke slette siste medlem av 'Administrator' gruppen!"
 
 #: src/metabase/models/permissions_revision.clj
 msgid "You cannot update a PermissionsRevision!"
-msgstr "Du kan ikke oppdatere en tilgangseksjonen!"
+msgstr "Du kan ikke oppdatere en tilgangsrevisjon!"
 
 #. if there's still not a Card, throw an Exception!
 #: src/metabase/models/pulse.clj
@@ -8616,7 +8616,7 @@ msgstr "Du har ikke tilgang til å vise kort {0}."
 
 #: src/metabase/query_processor/middleware/permissions.clj
 msgid "You do not have permissions to run this query."
-msgstr "Du har ikke tilganger til å kjøre denne spørringen."
+msgstr "Du har ikke tilgang til å kjøre denne spørringen."
 
 #: src/metabase/sync/analyze.clj
 msgid "Fingerprint updates attempted {0}, updated {1}, no data found {2}, failed {3}"
@@ -8883,43 +8883,43 @@ msgstr "verdi må være en gyldig embedding params kart."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:12
 msgid "Data permissions"
-msgstr "Data tilganger"
+msgstr "Tilgang til data"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsTabs.jsx:13
 msgid "Collection permissions"
-msgstr "Kolleksjonstilganger"
+msgstr "Tilgang til samlinger"
 
 #: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:56
 msgid "See all collection permissions"
-msgstr "Se alle kolleksjonstilganger"
+msgstr "Se alle tilganger til samlinger"
 
 #: frontend/src/metabase/admin/permissions/containers/TogglePropagateAction.jsx:25
 msgid "Also change sub-collections"
-msgstr "Endre også underkolleksjoner"
+msgstr "Endre også undersamlinger"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:278
 msgid "Can edit this collection and its contents"
-msgstr "Kan endre denne kolleksjonen og inneholdet"
+msgstr "Kan endre denne samlingen og inneholdet"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:285
 msgid "Can view items in this collection"
-msgstr "Kan se elementer i denne kolleksjonen"
+msgstr "Kan se elementer i denne samlingen"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:745
 msgid "Collection Access"
-msgstr "Kolleksjonstilgang"
+msgstr "Tilgang til samlinger"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:821
 msgid "This group has permission to view at least one subcollection of this collection."
-msgstr "Denne gruppen har tilgang til å vise minst en underkolleksjonene av denne kolleksjonen."
+msgstr "Denne gruppen har tilgang til å vise minst en undersamling av denne samlingen."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:826
 msgid "This group has permission to edit at least one subcollection of this collection."
-msgstr "Denne gruppen har tilganger til å endre minst en av underkolleksjonene av denne kolleksjonen."
+msgstr "Denne gruppen har tilganger til å endre minst en av undersamlingene til denne samlingen."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:839
 msgid "View sub-collections"
-msgstr "Hvis underkolleksjoner"
+msgstr "Vis undersamlingen"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:211
 msgid "Remember Me"
@@ -8931,15 +8931,15 @@ msgstr "Kjør X-ray på dette skjema"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:246
 msgid "Edit the permissions for this collection"
-msgstr "Endre tilgangenene for denne kolleksjonen"
+msgstr "Endre tilgangenene for denne samlingen"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:51
 msgid "Add this question to a dashboard"
-msgstr "Legg dette spørsmålet til ett panel"
+msgstr "Legg dette spørsmålet til en infotavle"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal.jsx:61
 msgid "Create a new dashboard"
-msgstr "Legg til nytt panel"
+msgstr "Legg til ny infotavle"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:45
 msgid "The page you asked for couldn't be found."
@@ -8951,11 +8951,11 @@ msgstr "Velg en {0}"
 
 #: frontend/src/metabase/containers/Overworld.jsx:188
 msgid "Save dashboards, questions, and collections in \"{0}\""
-msgstr "Lagre panel, spørsmål og kolleksjoner i \"{0}\""
+msgstr "Lagre infotavle, spørsmål og samlinger i \"{0}\""
 
 #: frontend/src/metabase/containers/Overworld.jsx:191
 msgid "Access dashboards, questions, and collections in \"{0}\""
-msgstr "Adgang til paneler, spørsmål og kolleksjoner i \"{0}\""
+msgstr "Adgang til infotavler, spørsmål og samlinger i \"{0}\""
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:216
 msgid "Compare"
@@ -9001,7 +9001,7 @@ msgstr "Egendefinerte felter"
 #. 2. Create the new collections.
 #: src/metabase/db/migrations.clj
 msgid "Migrated Dashboards"
-msgstr "Migrerte paneler"
+msgstr "Migrerte infotavler"
 
 #: src/metabase/db/migrations.clj
 msgid "Migrated Pulses"
@@ -9026,7 +9026,7 @@ msgstr "Kan ikke dekryptere kryptert tekststreng. Har du endret eller glemt å s
 
 #: frontend/src/metabase/entities/collections.js:157
 msgid "All personal collections"
-msgstr "Alle personlige kolleksjoner"
+msgstr "Alle personlige samlinger"
 
 #: src/metabase/driver.clj
 msgid "Host"
@@ -9204,7 +9204,7 @@ msgstr "Legg til medlemmer"
 
 #: frontend/src/metabase/entities/collections.js:108
 msgid "Collection it's saved in"
-msgstr "Kolleksjon den er lagret i"
+msgstr "Samling den er lagret i"
 
 #: frontend/src/metabase/lib/groups.js:4
 msgid "All Users"
@@ -9299,7 +9299,7 @@ msgstr "Ditt lags viktigste infoskjermer finnes her"
 
 #: frontend/src/metabase/containers/Overworld.jsx:314
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
-msgstr "Fest paneler i {0} for at de skal vises på denne plassen for alle"
+msgstr "Fest infotavler til {0} for at de skal vises på denne plassen for alle sammen"
 
 #: src/metabase/db.clj
 msgid "Unable to release the Liquibase lock after a migration failure"

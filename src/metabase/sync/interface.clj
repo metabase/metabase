@@ -11,8 +11,9 @@
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name   su/NonBlankString
-   :schema (s/maybe su/NonBlankString)})
+  {:name          su/NonBlankString
+   :schema        (s/maybe su/NonBlankString)
+   (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -25,6 +26,7 @@
    :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
    (s/optional-key :special-type)  (s/maybe su/FieldType)
+   (s/optional-key :field-comment) (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataField)}
    (s/optional-key :custom)        {s/Any s/Any}})
@@ -33,7 +35,8 @@
   "Schema for the expected output of `describe-table`."
   {:name   su/NonBlankString
    :schema (s/maybe su/NonBlankString)
-   :fields #{TableMetadataField}})
+   :fields #{TableMetadataField}
+   (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."

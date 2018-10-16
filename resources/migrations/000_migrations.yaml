@@ -5065,3 +5065,17 @@ databaseChangeLog:
             columnNames: id, author, filename
             constraintName: idx_databasechangelog_id_author_filename
             tableName: DATABASECHANGELOG
+#
+# ADD Field.settings COLUMN
+#
+  - changeSet:
+      id: 96
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              name: settings
+              type: text
+              remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'

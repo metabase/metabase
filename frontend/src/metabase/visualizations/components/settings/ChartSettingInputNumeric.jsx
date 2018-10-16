@@ -20,6 +20,7 @@ export default class ChartSettingInputNumeric extends Component {
     const { onChange, ...props } = this.props;
     return (
       <input
+        type="number"
         {...props}
         className={cx("input block full", {
           "border-error":
