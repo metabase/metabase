@@ -61,6 +61,7 @@ class BrowserSelect extends Component {
     height: 320,
     rowHeight: 40,
     multiple: false,
+    searchCaseInsensitive: true,
     searchFuzzy: true,
   };
 
