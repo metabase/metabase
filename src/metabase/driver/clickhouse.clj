@@ -1,11 +1,15 @@
 (ns metabase.driver.clickhouse
   (:require (clojure [set :as set])
             [honeysql.core :as hsql]
-            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
+
+(defrecord ClickHouseDriver []
+  :load-ns true
+  clojure.lang.Named
+  (getName [_] "ClickHouse"))
 
 (def ^:private ^:const column->base-type
   "Map of ClickHouse column types -> Field base types.
@@ -31,10 +35,12 @@
    :UUID        :type/UUID})
 
 (defn- connection-details->spec [details]
-  (-> details
-      (set/rename-keys {:dbname :db})
-      dbspec/clickhouse
-      (sql/handle-additional-options details)))
+  (let [{:keys [host port dbname]} details]
+    (-> (dissoc details :host :port :dbname)
+        (merge {:classname   "ru.yandex.clickhouse.ClickHouseDriver"
+                :subprotocol "clickhouse"
+                :subname     (str "//" host ":" port "/" dbname)})
+        (sql/handle-additional-options))))
 
 (defn- minus [a b]
   (hsql/call :minus a b))
@@ -109,43 +115,20 @@
     :seconds      (hsql/call :toDateTime expr)
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-
-(defrecord ClickHouseDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "ClickHouse"))
-
-
 (u/strict-extend ClickHouseDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:details-fields (constantly [{:name "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      8123}
-                                       {:name         "dbname"
-                                        :display-name "Database name"
-                                        :placeholder  "database_name"
-                                        :required     true}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"
-                                        :default      "default"
-                                        :required     false}
-                                       {:name         "password"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "*******"}
-                                       {:name         "additional-options"
-                                        :display-name "Additional JDBC connection string options"
-                                        :placeholder  "connection_timeout=50"}])
-          :features (constantly #{:basic-aggregations
-                                  :standard-deviation-aggregations
-                                  :expressions
-                                  :expression-aggregations})})
+  (merge
+    (sql/IDriverSQLDefaultsMixin)
+    {:details-fields (constantly [driver/default-host-details
+                                  (assoc driver/default-port-details :default 8123)
+                                  (assoc driver/default-dbname-details :required false)
+                                  (assoc driver/default-user-details :required false)
+                                  driver/default-password-details
+                                  driver/default-additional-options-details])
+     :features (constantly #{:basic-aggregations
+                             :standard-deviation-aggregations
+                             :expressions
+                             :expression-aggregations})})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
