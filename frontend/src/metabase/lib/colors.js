@@ -160,6 +160,11 @@ export const darken = (color: ColorString, factor: number): ColorString =>
     .darken(factor)
     .string();
 
+export const lighten = (color: ColorString, factor: number): ColorString =>
+  Color(color)
+    .lighten(factor)
+    .string();
+
 const PREFERRED_COLORS = {
   [colors["success"]]: [
     "success",
