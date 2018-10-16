@@ -34,7 +34,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 const PAGE_PADDING = [1, 2, 4];
 
 import { createSelector } from "reselect";
-import { getXraysEnabled } from "metabase/admin/settings/selectors";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 // use reselect select to avoid re-render if list doesn't change
 const getParitionedCollections = createSelector(

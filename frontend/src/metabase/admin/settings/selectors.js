@@ -516,9 +516,3 @@ export const getActiveSection = createSelector(
     }
   },
 );
-
-export const getXraysEnabled = createSelector(getSettingValues, settings => {
-  // apparently "null" is true for boolean settings so we need to check for
-  // false explicitly here rather than use the value of the setting
-  return settings["enable-xrays"] !== false;
-});

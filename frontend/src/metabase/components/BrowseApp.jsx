@@ -10,7 +10,7 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
-import { getXraysEnabled } from "metabase/admin/settings/selectors";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";

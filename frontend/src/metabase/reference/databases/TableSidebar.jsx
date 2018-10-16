@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import { getXraysEnabled } from "metabase/admin/settings/selectors";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 import S from "metabase/components/Sidebar.css";
 
