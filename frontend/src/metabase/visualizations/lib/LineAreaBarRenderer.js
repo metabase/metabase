@@ -6,6 +6,7 @@ import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "c-3po";
+import { alpha } from "metabase/lib/colors";
 
 import {
   computeSplit,
@@ -627,6 +628,8 @@ function addTrendlineChart(
       .reduce((p, d) => d[1], (p, d) => p, () => 0);
     const trendIndex = charts.length;
 
+    const color = alpha(settings.series(series[0]).color, 0.5);
+
     const trendChart = dc
       .lineChart(parent)
       .dimension(trendDimension)
@@ -637,7 +640,8 @@ function addTrendlineChart(
           .select(".sub._" + trendIndex)
           .classed("sub", false)
           .classed("trend", true);
-      });
+      })
+      .colors([color]);
     charts.push(trendChart);
   }
 }

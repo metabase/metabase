@@ -240,7 +240,7 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
+function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   // remove dots
   chart.selectAll(".goal .dot, .trend .dot").remove();
 
@@ -368,7 +368,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderSetLineWidth(chart);
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
-  onRenderCleanupGoal(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
