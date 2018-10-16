@@ -426,6 +426,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1387,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -517,6 +518,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 700,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -556,6 +558,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -595,6 +598,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -628,6 +632,7 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 200,
+	    "nil%": 0.0,
           },
           "type": Object {
             "type/Number": Object {
@@ -721,6 +726,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 62,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -813,6 +819,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 340,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -905,6 +912,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 797,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -997,6 +1005,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1036,6 +1045,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 929,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1069,6 +1079,7 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 2500,
+	    "nil%": 0.0,
           },
           "type": Object {
             "type/Number": Object {
@@ -1391,6 +1402,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2490,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1575,6 +1587,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2308,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -1613,6 +1626,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1966,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1797,6 +1811,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 992,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -1835,6 +1850,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1875,6 +1891,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1977,6 +1994,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2079,6 +2097,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2118,6 +2137,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2499,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2158,6 +2178,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2198,6 +2219,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2238,6 +2260,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 49,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2278,6 +2301,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2235,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2600,6 +2624,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 4,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2784,6 +2809,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 186,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -2822,6 +2848,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2862,6 +2889,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2954,6 +2982,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 170,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3046,6 +3075,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 23,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3085,6 +3115,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 199,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3125,6 +3156,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3447,6 +3479,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3631,6 +3664,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 720,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -3669,6 +3703,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3708,6 +3743,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 176,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3741,6 +3777,7 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 200,
+	    "nil%": 0.0,
           },
           "type": Object {
             "type/Number": Object {
@@ -3834,6 +3871,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3873,6 +3911,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1076,
+	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
