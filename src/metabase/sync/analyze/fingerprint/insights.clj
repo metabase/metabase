@@ -97,7 +97,7 @@
     :mbql      (fn [offset slope]
                  [:* (math/exp offset) [:pow :x slope]])}])
 
-(def ^:private ^:const ^long validation-set-size 20)
+(def ^:private ^:const ^Long validation-set-size 20)
 
 (defn- best-fit
   [fx fy]
