@@ -131,6 +131,11 @@
   :type    :json
   :default {})
 
+(defsetting enable-xrays
+  (tru "Allow users to explore data using Xrays")
+  :type    :boolean
+  :default true)
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
    won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."

@@ -91,6 +91,11 @@ const SECTIONS = [
         display_name: t`Enable Nested Queries`,
         type: "boolean",
       },
+      {
+        key: "enable-xrays",
+        display_name: t`Enable X-ray features`,
+        type: "boolean",
+      },
     ],
   },
   {
@@ -511,3 +516,8 @@ export const getActiveSection = createSelector(
     }
   },
 );
+
+export const getXraysEnabled = createSelector(getSettingValues, settings => {
+  console.log(settings);
+  return settings["enable-xrays"];
+});
