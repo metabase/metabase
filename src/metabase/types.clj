@@ -37,11 +37,12 @@
 (derive :type/Decimal :type/Float)
 (derive :type/Share :type/Float)
 
-(derive :type/Income :type/Number)
-(derive :type/Discount :type/Number)
-(derive :type/Price :type/Number)
-(derive :type/GrossMargin :type/Number)
-(derive :type/Cost :type/Number)
+(derive :type/Currency :type/Float)
+(derive :type/Income :type/Currency)
+(derive :type/Discount :type/Currency)
+(derive :type/Price :type/Currency)
+(derive :type/GrossMargin :type/Currency)
+(derive :type/Cost :type/Currency)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)

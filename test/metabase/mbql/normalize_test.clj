@@ -22,7 +22,49 @@
   (#'normalize/normalize-tokens {:native {:query {:NAME        "FAKE_QUERY"
                                                   :description "Theoretical fake query in a JSON-based query lang"}}}))
 
-;; do aggregations get normalized?
+;; METRICS shouldn't get normalized in some kind of wacky way
+(expect
+  {:aggregation [:+ [:metric 10] 1]}
+  (#'normalize/normalize-tokens {:aggregation ["+" ["METRIC" 10] 1]}))
+
+;; Nor should SEGMENTS
+(expect
+  {:filter [:= [:+ [:segment 10] 1] 10]}
+  (#'normalize/normalize-tokens {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}))
+
+;; are expression names exempt from lisp-casing/lower-casing?
+(expect
+  {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}
+  (#'normalize/normalize-tokens {"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}))
+
+;; expression names should always be keywords
+(expect
+  {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}
+  (#'normalize/normalize-tokens {"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}))
+
+;; expression references should be exempt too
+(expect
+  {:order-by [[:desc [:expression "SALES_TAX"]]]}
+  (#'normalize/normalize-tokens {:order-by [[:desc [:expression "SALES_TAX"]]]}) )
+
+;; ... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!
+(expect
+  {:order-by [[:desc [:expression "SALES/TAX"]]]}
+  (#'normalize/normalize-tokens {:order-by [[:desc ["expression" :SALES/TAX]]]}))
+
+;; field literals should be exempt too
+(expect
+  {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
+  (#'normalize/normalize-tokens {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}) )
+
+;; ... but they should be converted to strings if passed in as a KW for some reason
+(expect
+  {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}
+  (#'normalize/normalize-tokens {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}))
+
+
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
+
 (expect
   {:query {:aggregation :rows}}
   (#'normalize/normalize-tokens {:query {"AGGREGATION" "ROWS"}}))
@@ -83,45 +125,8 @@
   {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}))
 
-;; METRICS shouldn't get normalized in some kind of wacky way
-(expect
-  {:aggregation [:+ [:metric 10] 1]}
-  (#'normalize/normalize-tokens {:aggregation ["+" ["METRIC" 10] 1]}))
 
-;; Nor should SEGMENTS
-(expect
-  {:filter [:= [:+ [:segment 10] 1] 10]}
-  (#'normalize/normalize-tokens {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}))
-
-;; are expression names exempt from lisp-casing/lower-casing?
-(expect
-  {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}
-  (#'normalize/normalize-tokens {"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}))
-
-;; expression names should always be keywords
-(expect
-  {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}
-  (#'normalize/normalize-tokens {"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}))
-
-;; expression references should be exempt too
-(expect
-  {:order-by [[:desc [:expression "SALES_TAX"]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc [:expression "SALES_TAX"]]]}) )
-
-;; ... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!
-(expect
-  {:order-by [[:desc [:expression "SALES/TAX"]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc ["expression" :SALES/TAX]]]}))
-
-;; field literals should be exempt too
-(expect
-  {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}) )
-
-;; ... but they should be converted to strings if passed in as a KW for some reason
-(expect
-  {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}))
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 ;; does order-by get properly normalized?
 (expect
@@ -139,6 +144,9 @@
 (expect
   {:query {:order-by [[:desc [:field-id 10]]]}}
   (#'normalize/normalize-tokens {:query {"ORDER_BY" [["DESC" ["field_id" 10]]]}}))
+
+
+;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 ;; the unit & amount in time interval clauses should get normalized
 (expect
@@ -179,6 +187,9 @@
 (expect
   {:query {:filter [:starts-with 10 "ABC" {:case-sensitive true}]}}
   (#'normalize/normalize-tokens {:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}))
+
+
+;;; --------------------------------------------------- parameters ---------------------------------------------------
 
 ;; make sure we're not running around trying to normalize the type in native query params
 (expect
@@ -245,6 +256,8 @@
                   :target ["dimension" ["template-tag" "names_list"]]
                   :value  ["=" 10 20]}]}))
 
+;;; ------------------------------------------------- source queries -------------------------------------------------
+
 ;; Make sure token normalization works correctly on source queries
 (expect
   {:database 4
@@ -274,6 +287,9 @@
     :type     :query
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
 
+
+;;; ----------------------------------------------------- other ------------------------------------------------------
+
 ;; Does the QueryExecution context get normalized?
 (expect
   {:context :json-download}
@@ -298,18 +314,35 @@
   [:field-id 10]
   (#'normalize/wrap-implicit-field-id [:field-id 10]))
 
+;; make sure `binning-strategy` wraps implicit Field IDs
+(expect
+  {:query {:breakout [[:binning-strategy [:field-id 10] :bin-width 2000]]}}
+  (#'normalize/canonicalize {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}))
+
+
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
+
 ;; Do aggregations get canonicalized properly?
+;; field ID should get wrapped in field-id and ags should be converted to multiple ag syntax
 (expect
   {:query {:aggregation [[:count [:field-id 10]]]}}
   (#'normalize/canonicalize {:query {:aggregation [:count 10]}}))
 
+;; ag with no Field ID
 (expect
   {:query {:aggregation [[:count]]}}
   (#'normalize/canonicalize {:query {:aggregation [:count]}}))
 
+;; if already wrapped in field-id it's ok
 (expect
   {:query {:aggregation [[:count [:field-id 1000]]]}}
   (#'normalize/canonicalize {:query {:aggregation [:count [:field-id 1000]]}}))
+
+;; ags in the canonicalized format should pass thru ok
+(expect
+  {:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}
+  (#'normalize/canonicalize
+   {:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}))
 
 ;; :rows aggregation type, being deprecated since FOREVER, should just get removed
 (expect
@@ -389,6 +422,20 @@
   {:query {:aggregation [[:cum-count [:field-id 10]]]}}
   (#'normalize/canonicalize {:query {:aggregation [:cum-count 10]}}))
 
+;; should handle seqs without a problem
+(expect
+  {:query {:aggregation [[:min [:field-id 1]] [:min [:field-id 2]]]}}
+  (#'normalize/canonicalize {:query {:aggregation '([:min 1] [:min 2])}}))
+
+;; make sure canonicalization can handle aggregations with expressions where the Field normally goes
+(expect
+  {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}
+  (#'normalize/canonicalize
+   {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}))
+
+
+;;; ---------------------------------------------------- breakout ----------------------------------------------------
+
 ;; implicit Field IDs should get wrapped in [:field-id] in :breakout
 (expect
   {:query {:breakout [[:field-id 10]]}}
@@ -398,9 +445,17 @@
   {:query {:breakout [[:field-id 10] [:field-id 20]]}}
   (#'normalize/canonicalize {:query {:breakout [10 20]}}))
 
+;; should handle seqs
+(expect
+  {:query {:breakout [[:field-id 10] [:field-id 20]]}}
+  (#'normalize/canonicalize {:query {:breakout '(10 20)}}))
+
 (expect
   {:query {:breakout [[:field-id 1000]]}}
   (#'normalize/canonicalize {:query {:breakout [[:field-id 1000]]}}))
+
+
+;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (expect
   {:query {:fields [[:field-id 10]]}}
@@ -414,6 +469,14 @@
 (expect
   {:query {:fields [[:field-id 1000]]}}
   (#'normalize/canonicalize {:query {:fields [[:field-id 1000]]}}))
+
+;; should handle seqs
+(expect
+  {:query {:fields [[:field-id 10] [:field-id 20]]}}
+  (#'normalize/canonicalize {:query {:fields '(10 20)}}))
+
+
+;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 ;; implicit Field IDs should get wrapped in [:field-id] in filters
 (expect
@@ -534,6 +597,20 @@
                         [:segment "gaid:-11"]
                         [:time-interval [:field-id 6851] -365 :day {}]]}}))
 
+;; should handle seqs
+(expect
+  {:query {:filter [:and [:= [:field-id 100] 1] [:= [:field-id 200] 2]]}}
+  (#'normalize/canonicalize {:query {:filter '(:and
+                                               [:= 100 1]
+                                               [:= 200 2])}}))
+
+;; if you put a `:datetime-field` inside a `:time-interval` we should fix it for you
+(expect
+  {:query {:filter [:time-interval [:field-id 8] -30 :day]}}
+  (#'normalize/canonicalize {:query {:filter [:time-interval [:datetime-field [:field-id 8] :month] -30 :day]}}))
+
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
+
 ;; ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98 [direction field]
 (expect
   {:query {:order-by [[:asc [:field-id 10]]]}}
@@ -578,11 +655,13 @@
   {:query {:filter [:= [:field-id 1] 10]}}
   (#'normalize/canonicalize {:query {:filter [:= [:field-id [:field-id 1]] 10]}}))
 
-;; make sure `binning-strategy` wraps implicit Field IDs
+;; we should handle seqs no prob
 (expect
-  {:query {:breakout [[:binning-strategy [:field-id 10] :bin-width 2000]]}}
-  (#'normalize/canonicalize {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}))
+  {:query {:filter [:= [:field-id 1] 10]}}
+  (#'normalize/canonicalize {:query {:filter '(:= 1 10)}}))
 
+
+;;; ------------------------------------------------- source queries -------------------------------------------------
 
 ;; Make sure canonicalization works correctly on source queries
 (expect
@@ -605,20 +684,15 @@
                                                           :required     true
                                                           :default      "Widget"}}}}}))
 
+;; make sure we recursively canonicalize source queries
 (expect
-  {:database 4,
-   :type     :query,
+  {:database 4
+   :type     :query
    :query    {:source-query {:source-table 1, :aggregation []}}}
   (#'normalize/canonicalize
    {:database 4
     :type     :query
     :query    {:source-query {:source-table 1, :aggregation :rows}}}))
-
-;; make sure canonicalization can handle aggregations with expressions where the Field normally goes
-(expect
-  {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}
-  (#'normalize/canonicalize
-   {:query {:aggregation [[:sum [:* [:field-id 4] [:field-id 1]]]]}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

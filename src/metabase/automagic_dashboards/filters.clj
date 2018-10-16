@@ -203,12 +203,12 @@
   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
   (ie. no `:and`s inside `:or` or `:not`)."
   [filter-clause refinement]
-  (let [in-refinement?  (into #{}
-                              (map collect-field-references)
-                              (flatten-filter-clause refinement))
+  (let [in-refinement?   (into #{}
+                               (map collect-field-references)
+                               (flatten-filter-clause refinement))
         existing-filters (->> filter-clause
-                             flatten-filter-clause
-                             (remove (comp in-refinement? collect-field-references)))]
+                              flatten-filter-clause
+                              (remove (comp in-refinement? collect-field-references)))]
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input

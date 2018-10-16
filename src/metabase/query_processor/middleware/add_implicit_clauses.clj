@@ -11,7 +11,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -80,7 +80,7 @@
                         [:expression (u/keyword->qualified-name expression-name)])]
       ;; if the Table has no Fields, log a warning.
       (when-not (seq fields)
-        (log/warn (trs "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))))
+        (log/warn (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))))
       ;; add the fields & expressions under the `:fields` clause
       (assoc-in query [:query :fields] (vec (concat fields expressions))))))
 
