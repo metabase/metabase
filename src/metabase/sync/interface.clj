@@ -88,7 +88,8 @@
 
 (def GlobalFingerprint
   "Fingerprint values that Fields of all types should have."
-  {(s/optional-key :distinct-count) s/Int})
+  {(s/optional-key :distinct-count) s/Int
+   (s/optional-key :nil%)           (s/maybe Percent)})
 
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
@@ -100,7 +101,8 @@
    (s/optional-key :max) (s/maybe s/Num)
    (s/optional-key :avg) (s/maybe s/Num)
    (s/optional-key :q1)  (s/maybe s/Num)
-   (s/optional-key :q3)  (s/maybe s/Num)})
+   (s/optional-key :q3)  (s/maybe s/Num)
+   (s/optional-key :sd)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
