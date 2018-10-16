@@ -89,14 +89,14 @@
   [[s/Any]])
 
 
+(def Percent
+  "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
+  (s/constrained s/Num #(<= 0 % 1) "Valid percentage between (inclusive) 0 and 1."))
+
 (def GlobalFingerprint
   "Fingerprint values that Fields of all types should have."
   {(s/optional-key :distinct-count) s/Int
    (s/optional-key :nil%)           (s/maybe Percent)})
-
-(def Percent
-  "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
-  (s/constrained s/Num #(<= 0 % 1) "Valid percentage between (inclusive) 0 and 1."))
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
