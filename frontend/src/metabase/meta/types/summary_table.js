@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { ColumnName, DatasetData } from "metabase/meta/types/Dataset";
+import type { ColumnName, DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { ColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
 import { Set } from "immutable";
 
@@ -29,3 +29,15 @@ export type QueryPlan = {
   aggregations: Aggregations,
   sortOrder : SortOrder[],
 };
+
+
+export type ColumnHeader = {
+  column: Column,
+  columnSpan: Number,
+  displayText? : string,
+  value?: any,
+}
+
+export type SummaryTableDatasetData = {
+  columnsHeaders : ColumnHeader[][]
+} & DatasetData;
