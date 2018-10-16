@@ -23,5 +23,5 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ---
 
-## Next: caching query results
-Metabase makes it easy to [automatically cache results](14-caching.md) for queries that take a long time to run.
+## Next: setting formatting defaults for dates and numbers
+Easily customize how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).

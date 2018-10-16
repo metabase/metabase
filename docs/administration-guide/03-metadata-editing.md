@@ -64,11 +64,12 @@ Common detailed types include:
 * Longitude
 * Entity Name
 * Number
+* Currency
 * State
 * URL
 * Zip Code
 
-This is also where you set mark special fields in a table:
+This is also where you set special fields in a table:
 
 * Entity Key — the field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
