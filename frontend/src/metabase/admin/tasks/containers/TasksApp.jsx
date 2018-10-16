@@ -36,7 +36,7 @@ class TasksApp extends React.Component {
                 <td>
                   <Link
                     className="link text-bold"
-                    to={`/admin/tasks/${task.id}`}
+                    to={`/admin/troubleshooting/tasks/${task.id}`}
                   >{t`View`}</Link>
                 </td>
               </tr>

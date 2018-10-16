@@ -222,8 +222,8 @@ export default class Navbar extends Component {
               currentPath={this.props.path}
             />
             <AdminNavItem
-              name={t`Tasks`}
-              path="/admin/tasks"
+              name={t`Troubleshooting`}
+              path="/admin/troubleshooting"
               currentPath={this.props.path}
             />
           </ul>

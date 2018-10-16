@@ -79,9 +79,12 @@ const getRoutes = (store, IsAdmin) => (
       </Route>
     </Route>
 
-    {/* Task History */}
-    <Route path="tasks" title={t`Task History`} component={TasksApp}>
-      <ModalRoute path=":taskId" modal={TaskModal} />
+    {/* Troubleshooting */}
+    <Route path="troubleshooting" title={t`Troubleshooting`}>
+      <IndexRedirect to="tasks" />
+      <Route path="tasks" component={TasksApp}>
+        <ModalRoute path=":taskId" modal={TaskModal} />
+      </Route>
     </Route>
 
     {/* SETTINGS */}
