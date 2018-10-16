@@ -47,7 +47,7 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0}}))
+  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))
 
 ;; test that Card result metadata is saved after running a Card
 (expect
@@ -58,7 +58,7 @@
                                :query-hash (qputil/query-hash {})}))
     (-> card
         card-metadata
-        round-all-decimals'
+        round-to-2-decimals
         tu/round-fingerprint-cols)))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
@@ -107,7 +107,7 @@
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
-      round-all-decimals'
+      round-to-2-decimals
       (->> (tu/round-fingerprint-cols [:columns]))))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
@@ -118,14 +118,15 @@
     :name         "DATE"
     :unit         nil
     :special_type nil
-    :fingerprint  {:global {:distinct-count 618}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+    :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
                                                                          :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 3},
-                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0}}}}]
+    :fingerprint  {:global {:distinct-count 3
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query
@@ -136,5 +137,5 @@
                                   :query-hash (qputil/query-hash {})}})
     (-> card
         card-metadata
-        round-all-decimals'
+        round-to-2-decimals
         tu/round-fingerprint-cols)))

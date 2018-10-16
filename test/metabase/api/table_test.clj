@@ -521,7 +521,8 @@
                           :special_type             "type/Name"
                           :default_dimension_option nil
                           :dimension_options        []
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                                                           :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
@@ -532,7 +533,8 @@
                           :special_type             nil
                           :default_dimension_option (var-get #'table-api/date-default-index)
                           :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z",
                                                                               :latest   "2014-12-05T15:15:00.000Z"}}}}]})
   (do
