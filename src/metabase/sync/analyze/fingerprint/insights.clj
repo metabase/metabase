@@ -36,9 +36,11 @@
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
   (redux/post-complete
-   (let [x-position (-> datetimes first :position)
+   (let [datetime   (first datetimes)
+         x-position (:position datetime)
          y-position (-> numbers first :position)
-         xfn        (if (-> datetimes first :base_type (isa? :type/DateTime))
+         xfn        (if (or (-> datetime :base_type (isa? :type/DateTime))
+                            (field/unix-timestamp? datetime))
                       #(some-> %
                                (nth x-position)
                                ;; at this point in the pipeline, dates are still stings
