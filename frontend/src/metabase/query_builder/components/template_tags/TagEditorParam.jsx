@@ -194,7 +194,6 @@ export default class TagEditorParam extends Component {
             </div>
           )}
 
-	{(
           <div className="flex align-center pb1">
             <h5 className="text-normal mr1">{t`Required?`}</h5>
             <Toggle
@@ -202,7 +201,6 @@ export default class TagEditorParam extends Component {
               onChange={value => this.setRequired(value)}
             />
           </div>
-        )}
 
         {((tag.type !== "dimension" && tag.required) ||
           (tag.type === "dimension" || tag.widget_type)) && (
