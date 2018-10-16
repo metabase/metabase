@@ -200,7 +200,7 @@
                                              :nil%           0.0}}
                                    {:global {:distinct-count 28
                                              :nil%           0.0},
-                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0}}})}
+                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.058108414099443}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
@@ -262,7 +262,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 100
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0}}})}
+                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0 :sd 28.508208884780377}}})}
      :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
                                   {})
                 :target       (target-field (users-col :id))
@@ -277,7 +277,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 15
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0}}})})))
+                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0 :sd 3.9902231617894355}}})})))
 
 
 ;;; #### aggregate columns

@@ -426,7 +426,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1387,
-	  "nil%": 0.0,
+	  "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -518,7 +518,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 700,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -558,7 +557,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -598,7 +596,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -632,7 +629,6 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 200,
-	    "nil%": 0.0,
           },
           "type": Object {
             "type/Number": Object {
@@ -726,7 +722,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 62,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -819,7 +814,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 340,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -912,7 +906,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 797,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1005,7 +998,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1045,7 +1037,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 929,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1079,7 +1070,6 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 2500,
-	    "nil%": 0.0,
           },
           "type": Object {
             "type/Number": Object {
@@ -1402,7 +1392,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2490,
-	  "nil%": 0.0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1587,7 +1576,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2308,
-	  "nil%": 0.0,
+	  "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
