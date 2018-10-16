@@ -35,10 +35,11 @@ export const getColumnsFromSettings = (value: SummaryTableSettings) => [
 ];
 
 
-const canTotalizeByType = (type: string) =>
+export const canTotalizeByType = (type: string) =>
   type === "type/BigInteger" ||
   type === "type/Integer" ||
   type === "type/Float" ||
+  type === "type/Number" ||
   type === "type/Decimal";
 
 const canTotalizeBySpecialType = (specialType : string) =>{

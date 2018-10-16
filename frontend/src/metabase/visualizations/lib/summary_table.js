@@ -26,6 +26,10 @@ import {getDashboardComplete} from "metabase/dashboard/selectors";
 import {ASC, DESC} from "metabase/meta/types/summary_table";
 
 
+export const grandTotalsLabel = "Grand totals";
+// export const grandTotalsLabelBuilder = () => "Grand totals";
+// export const totalsLabelBuilder = arg => `Totals for ${arg || ''}`;
+
 
 export function getTableCellClickedObjectForSummary(
   cols: Column[],
