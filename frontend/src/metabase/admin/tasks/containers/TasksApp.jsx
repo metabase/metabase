@@ -12,7 +12,7 @@ import Link from "metabase/components/Link";
 })
 class TasksApp extends React.Component {
   render() {
-    const { list, children } = this.props;
+    const { tasks, children } = this.props;
     return (
       <Box p={3}>
         <AdminHeader title={t`Tasks log`} />
@@ -26,17 +26,17 @@ class TasksApp extends React.Component {
             <th>{t`Details`}</th>
           </thead>
           <tbody>
-            {list.map(l => (
-              <tr key={l.id}>
-                <td>{l.task}</td>
-                <td>{l.dbId}</td>
-                <td>{l.started_at}</td>
-                <td>{l.ended_at}</td>
-                <td>{l.duration}</td>
+            {tasks.map(task => (
+              <tr key={task.id}>
+                <td className="text-bold">{task.task}</td>
+                <td>{task.db_id}</td>
+                <td>{task.started_at}</td>
+                <td>{task.ended_at}</td>
+                <td>{task.duration}</td>
                 <td>
                   <Link
-                    className="link"
-                    to={`/admin/tasks/${l.id}`}
+                    className="link text-bold"
+                    to={`/admin/tasks/${task.id}`}
                   >{t`View`}</Link>
                 </td>
               </tr>

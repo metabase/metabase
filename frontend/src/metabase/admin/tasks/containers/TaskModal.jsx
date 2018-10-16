@@ -18,7 +18,7 @@ class TaskModal extends React.Component {
     const { object } = this.props;
     return (
       <ModalContent title={t`Task details`} onClose={() => this.props.goBack()}>
-        <Code>{object.task_details}</Code>
+        <Code>{JSON.stringify(object.task_details)}</Code>
       </ModalContent>
     );
   }
