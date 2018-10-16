@@ -1,15 +1,19 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
 import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
+import { connect } from "react-redux";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const TableSidebar = ({ database, table, style, className }) => (
+import { getXraysEnabled } from "metabase/admin/settings/selectors";
+
+import S from "metabase/components/Sidebar.css";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
+import SidebarItem from "metabase/components/SidebarItem.jsx";
+
+const TableSidebar = ({ database, table, style, className, xraysEnabled }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div className={S.breadcrumbs}>
       <Breadcrumbs
@@ -44,12 +48,14 @@ const TableSidebar = ({ database, table, style, className }) => (
         icon="all"
         name={t`Questions about this table`}
       />
-      <SidebarItem
-        key={`/auto/dashboard/table/${table.id}`}
-        href={`/auto/dashboard/table/${table.id}`}
-        icon="bolt"
-        name={t`X-ray this table`}
-      />
+      {xraysEnabled && (
+        <SidebarItem
+          key={`/auto/dashboard/table/${table.id}`}
+          href={`/auto/dashboard/table/${table.id}`}
+          icon="bolt"
+          name={t`X-ray this table`}
+        />
+      )}
     </ol>
   </div>
 );
@@ -59,6 +65,9 @@ TableSidebar.propTypes = {
   table: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
+  xraysEnabled: PropTypes.bool,
 };
 
-export default pure(TableSidebar);
+export default connect(state => ({ xraysEnabled: getXraysEnabled(state) }))(
+  pure(TableSidebar),
+);

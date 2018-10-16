@@ -8,7 +8,10 @@ import type {
 import { t } from "c-3po";
 import { utf8_to_b64url } from "metabase/lib/card";
 
-export default ({ question }: ClickActionProps): ClickAction[] => {
+export default ({ question, settings }: ClickActionProps): ClickAction[] => {
+  if (!settings["enable-xrays"]) {
+    return [];
+  }
   return [
     {
       name: "xray-card",
