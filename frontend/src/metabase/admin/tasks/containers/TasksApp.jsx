@@ -9,8 +9,15 @@ import Link from "metabase/components/Link";
 
 @entityListLoader({
   entityType: "tasks",
+  entityQuery: { limit: 40, offset: 0 },
 })
 class TasksApp extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      offset: this.props.entityQuery.offset,
+    };
+  }
   render() {
     const { tasks, children } = this.props;
     return (
