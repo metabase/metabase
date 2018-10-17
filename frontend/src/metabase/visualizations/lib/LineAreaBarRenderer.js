@@ -6,6 +6,7 @@ import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "c-3po";
+import { lighten } from "metabase/lib/colors";
 
 import {
   computeSplit,
@@ -598,6 +599,67 @@ function addGoalChartAndGetOnGoalHover(
   };
 }
 
+function findSeriesIndexForColumnName(series, colName) {
+  return (
+    _.findIndex(series, ({ data: { cols } }) =>
+      _.findWhere(cols, { name: colName }),
+    ) || 0
+  );
+}
+
+function addTrendlineChart(
+  { series, settings, onHoverChange },
+  { xDomain },
+  { yAxisSplit },
+  parent,
+  charts,
+) {
+  if (!settings["graph.show_trendline"]) {
+    return;
+  }
+
+  const rawSeries = series._raw || series;
+  const insights = rawSeries[0].data.insights;
+
+  for (const insight of insights) {
+    if (insight.slope != null && insight.offset != null) {
+      const index = findSeriesIndexForColumnName(series, insight.col);
+      const seriesSettings = settings.series(series[index]);
+      const color = lighten(seriesSettings.color, 0.2);
+
+      const fn = x => x * insight.slope + insight.offset;
+
+      const trendData = [
+        [xDomain[0], fn(xDomain[0])],
+        [xDomain[1], fn(xDomain[1])],
+      ];
+      const trendDimension = crossfilter(trendData).dimension(d => d[0]);
+
+      // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
+      // has just a single row / datapoint
+      const trendGroup = trendDimension
+        .group()
+        .reduce((p, d) => d[1], (p, d) => p, () => 0);
+      const trendIndex = charts.length;
+
+      const trendChart = dc
+        .lineChart(parent)
+        .dimension(trendDimension)
+        .group(trendGroup)
+        .on("renderlet", function(chart) {
+          // remove "sub" class so the trend is not used in voronoi computation
+          chart
+            .select(".sub._" + trendIndex)
+            .classed("sub", false)
+            .classed("trend", true);
+        })
+        .colors([color])
+        .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
+      charts.push(trendChart);
+    }
+  }
+}
+
 function applyXAxisSettings(parent, series, xAxisProps) {
   if (isTimeseries(parent.settings)) {
     applyChartTimeseriesXAxis(parent, series, xAxisProps);
@@ -749,6 +811,7 @@ export default function lineAreaBar(
     parent,
     charts,
   );
+  addTrendlineChart(props, xAxisProps, yAxisProps, parent, charts);
 
   parent.compose(charts);
 
