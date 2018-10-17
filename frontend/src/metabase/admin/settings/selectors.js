@@ -91,6 +91,11 @@ const SECTIONS = [
         display_name: t`Enable Nested Queries`,
         type: "boolean",
       },
+      {
+        key: "enable-xrays",
+        display_name: t`Enable X-ray features`,
+        type: "boolean",
+      },
     ],
   },
   {
