@@ -324,7 +324,7 @@ export const GRAPH_GOAL_SETTINGS = {
     default: false,
     getHidden: (series, vizSettings) => {
       const { insights } = series[0].data;
-      return !insights || insights.slope == null || insights.offset == null;
+      return !insights || insights.length === 0;
     },
     useRawSeries: true,
   },
