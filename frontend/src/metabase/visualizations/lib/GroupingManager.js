@@ -11,6 +11,7 @@ import type {
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
 import {
+  canTotalizeByType,
   getColumnsFromSettings
 } from "metabase/visualizations/lib/settings/summary_table";
 import type { ColumnName, Column } from "metabase/meta/types/Dataset";
@@ -132,7 +133,7 @@ export class GroupingManager {
 
       const pivotColumn = colsTmp[grColumnsLength];
       const values = colsTmp.slice(grColumnsLength + 1);
-      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined, pivotedDimension: k ? {value: k, column: rawCols.find(c => c.name===summaryTableSettings.columnsSource[0])} : undefined})).filter(col => k !== undefined || canTotalize(col.base_type)));
+      const tt = pivotedColumns.map(k => [getPivotValue(k, grColumnsLength+1), k]).map(([getValue, k]) => values.map((col, i) => ({...col, getValue: getValue(i), parentName: i === 0 ? [k ? k : 'Grand totals' , values.length, k ? colsTmp[grColumnsLength] : undefined ] : undefined, pivotedDimension: k ? {value: k, column: rawCols.find(c => c.name===summaryTableSettings.columnsSource[0])} : undefined})).filter(col => k !== undefined || canTotalizeByType(col.base_type)));
 
       cols = grCols.concat(...tt);
 
@@ -198,7 +199,7 @@ const canTotalizeBuilder = (cols: Column[]): (ColumnName => boolean) => {
     (acc, { name, base_type }) => ({ ...acc, [name]: base_type }),
     {},
   );
-  return p => canTotalize(columnNameToType[p]);
+  return p => canTotalizeByType(columnNameToType[p]);
 };
 
 const sortMainGroup = (
@@ -361,9 +362,6 @@ const pivotRows = (rows, cmp) => {
   return grouped;
 };
 
-//todo remove, use from SummaryTableQueryBuilder
-export const canTotalize = (type: string) =>
-  type === "type/Integer" || type === "type/Float" || type === "type/Decimal";
 
 type ColumnHeader = {
   column: Column,

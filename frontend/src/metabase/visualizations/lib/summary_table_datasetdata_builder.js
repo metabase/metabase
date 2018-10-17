@@ -5,13 +5,19 @@ import type {
   SummaryTableDatasetData,
   SummaryTableSettings
 } from "metabase/meta/types/summary_table";
-import type {ColumnName, DatasetData, Column} from "metabase/meta/types/Dataset";
+import type {ColumnName, DatasetData, Column, Row} from "metabase/meta/types/Dataset";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
 import zip from "lodash.zip";
 import orderBy from "lodash.orderby";
+import invert from "lodash.invert";
 import {canTotalizeByType} from "metabase/visualizations/lib/settings/summary_table";
-import {grandTotalsLabel} from "metabase/visualizations/lib/summary_table";
+import {getAllQueryKeys, getQueryPlan, grandTotalsLabel} from "metabase/visualizations/lib/summary_table";
+
+type RowTemplate = {
+  normalPart: ColumnName[],
+  pivotPart?: any,
+}
 
 const repeat = (values: [], len) => flatMap(Array(len), () => values);
 
@@ -54,10 +60,6 @@ const buildColumnHeaders = ({groupsSources, columnsSource, valuesSources, column
       : topRowNormalPart;
     const bottomRow = [...partGroupingsRaw, ...repeat(partValuesRaw, partPivotRaw.length), ...(hasGrandsTotalsColumn ? partValuesTotalized : [])];
 
-    if(columnSpan === 1){
-      return {columnsHeaders :[zip(topRow, bottomRow).map(([top, bottom]) => top || bottom)],
-        cols: bottomRow.map(p => p.column)};
-    }
 
     return {columnsHeaders :[topRow, bottomRow], cols: bottomRow.map(p => p.column)};
   }
@@ -67,9 +69,120 @@ const buildColumnHeaders = ({groupsSources, columnsSource, valuesSources, column
   }
 };
 
+const tryCompressColumnsHeaders = ({valuesSources}, columnsHeaders) =>{
+
+  if(valuesSources.length > 1)
+    return columnsHeaders;
+
+  const [topRow, bottomRow] =columnsHeaders;
+  return [zip(topRow, bottomRow).map(([top, bottom]) => top || bottom)]
+};
+
+const getRowTemplate = (columnsHeaders:ColumnHeader[][]) => {
+
+  if(columnsHeaders.length === 1){
+    return {normalPart: columnsHeaders[0].map(({column: {name}}) => name )};
+  }
+
+
+  throw new Error("Not implemented exception");
+};
+
+
+const canTotalizeBuilder = (cols: Column[]): (ColumnName => boolean) => {
+  const columnNameToType = cols.reduce(
+    (acc, { name, base_type }) => ({ ...acc, [name]: base_type }),
+    {},
+  );
+  return p => canTotalizeByType(columnNameToType[p]);
+};
+
+
+const extractRows = ({normalPart}: RowTemplate, [mainData ,pivotColumnData]) => {
+  const {columns} = mainData;
+  const columnNameToCellIndex = invert(columns);
+  const normalPartMapping = normalPart.map(columnName => columnNameToCellIndex[columnName]);
+
+  return mainData.rows.map(row => normalPartMapping.map(i => row[i]));
+
+};
+
+const funGen = columnNumber => {
+  let orderedGroupingKeys = [];
+  return row => {
+    let groupingKey = row[columnNumber];
+    let i = orderedGroupingKeys.indexOf(groupingKey);
+    if (i < 0) {
+      i = orderedGroupingKeys.length;
+      orderedGroupingKeys.push(groupingKey);
+    }
+    return i;
+  };
+};
+
+const isDefined = value => value || value === 0;
+
+const buildComparer = (ascDescMultiplier, index) => (nextComparer) => (item1, item2) => {
+
+  const value1 = item1[index];
+  const value2 = item2[index];
+
+  if(value1 === value2 || !isDefined(value1) && !isDefined(value2)){
+    return nextComparer ? nextComparer(item1, item2) : 0;
+  }
+
+  if(isDefined(value1) && !isDefined(value2))
+    return -1;
+
+  if(!isDefined(value1) && isDefined(value2))
+    return 1;
+
+  if(value1 < value2)
+    return -1 * ascDescMultiplier;
+
+  return 1 * ascDescMultiplier;
+
+};
+
+const buildUberComparer = (sortOrders) => {
+
+  const ascDescMultiplier = ascDesc => ascDesc === 'asc' ? 1 : -1;
+
+  return sortOrders
+    .map(([ascDesc], index) => buildComparer(ascDescMultiplier(ascDesc), index))
+    .reverse()
+    .reduce((prevCmp, currentPartCmp) => currentPartCmp(prevCmp));
+};
+
+//todo: do it better, we can merge in O(n) time
+const combineRows = (sortOrder, rowsArray : Row[][]) =>
+  flatMap(rowsArray, p => p).sort(buildUberComparer(sortOrder));
+
+
+const combineData = (rowTemplate: RowTemplate, queryPlan: QueryPlan, resultsProvider: ResultProvider) => {
+
+  const normalizedRows = getAllQueryKeys(queryPlan)
+    .map(keys => keys.map(key => resultsProvider(key)))
+    .map(results => extractRows(rowTemplate, results));
+
+  const combinedRows = combineRows(queryPlan.sortOrder, normalizedRows);
+  return { rows: combinedRows};
+};
+
+
 export const buildDatasetData = (settings: SummaryTableSettings, mainResults: DatasetData, resultsProvider: ResultProvider): SummaryTableDatasetData => {
   const {columnsHeaders, cols} = buildColumnHeaders(settings, mainResults);
+  const compressedColumnsHeaders = tryCompressColumnsHeaders(settings, columnsHeaders);
+  const rowTemplate = getRowTemplate(columnsHeaders);
 
+  const queryPlan = getQueryPlan(settings, canTotalizeBuilder(mainResults.cols));
 
-  return {columnsHeaders, cols, columns: cols.map(p => p.name)}
+  const {rows} = combineData(rowTemplate, queryPlan, resultsProvider);
+
+  return {
+    columnsHeaders: compressedColumnsHeaders,
+    cols,
+    columns: cols.map(p => p.name),
+    rows
+  };
 };

@@ -6,6 +6,7 @@ import isEqual from "lodash.isequal";
 import zip from "lodash.zip";
 import type {Column} from "metabase/meta/types/Dataset";
 import {enrichSettings} from "metabase/visualizations/lib/settings/summary_table";
+import {buildResultProvider} from "metabase/visualizations/lib/summary_table";
 
 //todo:
 // import {GroupingManager} from "metabase/visualizations/lib/GroupingManager";
@@ -62,9 +63,9 @@ const allColumns = [columnText1, columnText2, columnText3, columnNumeric1, colum
 
 const row1 = ["a", "d", "g", 3, 5];
 const row2 = ["a", "e", "h", 4, 7];
-const row3 = ["b", "d", "h", 1, 12];
+const row3 = ["b", "d", "h", 1, -12];
 const row4 = ["c", "e", "h", 1, 9];
-const row5 = ["c", "e", "i", -1, -9];
+const row5 = ["c", "e", "i", -1, 9];
 const allRows = [row1, row2, row3, row4, row5];
 
 const rawOrderedDatasetData = {
@@ -72,6 +73,8 @@ const rawOrderedDatasetData = {
   cols: allColumns,
   columns: allColumns.map(p => p.name),
 };
+
+const sortOrderForRawDatasetData = rawOrderedDatasetData.columns.map(columnName => ['asc', columnName]);
 
 const createColumnHeader = (column: Column, value, columnSpan, displayText) =>
   ({
@@ -284,12 +287,119 @@ describe("summary_table_datasetdata_builder.js", () => {
       });
     });
 
-    describe("rows tests", () =>{
-      describe("given results provider ", ()=>{
+    describe("rows tests" +
+      "given results provider:", () => {
 
-      })
+      const resultsProvider = buildResultProvider(rawOrderedDatasetData, [rawOrderedDatasetData], sortOrderForRawDatasetData);
 
-    })
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
+        "where we don't have selected 'show totals' for any column", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: false, isAscSortOrder : true},
+            'C2' : {showTotals: false, isAscSortOrder : true},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return all rows from rawOrderedDatasetData in the same order", () => {
+          rowListsAreEqual(rows, rawOrderedDatasetData.rows);
+        });
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for C1", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : true},
+            'C2' : {showTotals: false, isAscSortOrder : true},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return all rows from rawOrderedDatasetData and grand totals row in the same order", () => {
+          const expectedRows = [...allRows, [null,null,null, 8, 18]];
+          rowListsAreEqual(rows, expectedRows);
+        });
+
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for C1 and C3", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : true},
+            'C2' : {showTotals: false, isAscSortOrder : true},
+            'C3' : {showTotals: true, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return all rows from rawOrderedDatasetData and grand totals row and totals rows for C3 in the same order", () => {
+          const row1        = ["a", "d", "g", 3, 5];
+          const totalRow_ad = ["a", "d", null, 3, 5];
+          const row2        = ["a", "e", "h", 4, 7];
+          const totalRow_ae = ["a", "e", null, 4, 7];
+          const row3        = ["b", "d", "h", 1, -12];
+          const totalRow_bd = ["b", "d", null, 1, -12];
+          const row4        = ["c", "e", "h", 1, 9];
+          const row5        = ["c", "e", "i", -1, 9];
+          const totalRow_ce = ["c", "e", null, 0, 18];
+          const grandTotals = [null,null,null, 8, 18];
+
+          const expectedRows = [
+              row1,
+              totalRow_ad,
+              row2,
+              totalRow_ae,
+              row3,
+              totalRow_bd,
+              row4,
+              row5,
+              totalRow_ce,
+              grandTotals,
+          ];
+          rowListsAreEqual(rows, expectedRows);
+        });
+
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for C1 and C2" +
+        "and C2 is ordered 'desc", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : true},
+            'C2' : {showTotals: true, isAscSortOrder : false},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return all rows from rawOrderedDatasetData and grand totals row and totals rows for C3 reordered", () => {
+          const row1        = ["a", "e", "h", 4, 7];
+          const row2        = ["a", "d", "g", 3, 5];
+          const totalRow_a  = ["a",null,null, 7, 12];
+          const row3        = ["b", "d", "h", 1, -12];
+          const totalRow_b  = ["b",null,null, 1, -12];
+          const row4        = ["c", "e", "h", 1, 9];
+          const row5        = ["c", "e", "i", -1, 9];
+          const totalRow_c  = ["c",null,null, 0, 18];
+          const grandTotals = [null,null,null, 8, 18];
+
+          const expectedRows = [
+            row1       ,
+            row2       ,
+            totalRow_a ,
+            row3       ,
+            totalRow_b ,
+            row4       ,
+            row5       ,
+            totalRow_c ,
+            grandTotals,
+          ];
+          rowListsAreEqual(rows, expectedRows);
+        });
+      });
+
+    });
   });
   //
   //   describe("given rows in correct order", () => {
