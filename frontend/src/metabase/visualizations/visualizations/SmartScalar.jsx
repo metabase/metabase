@@ -60,7 +60,7 @@ export default class Smart extends React.Component {
     const insights =
       this.props.rawSeries &&
       this.props.rawSeries[0].data &&
-      this.props.rawSeries[0].data.insights;
+      this.props.rawSeries[0].data.insights[0];
     const {
       actionButtons,
       onChangeCardAndRun,
