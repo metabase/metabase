@@ -1,6 +1,8 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [kixi.stats.core :as stats]
+  (:require [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [redux.core :as redux]))
@@ -27,11 +29,107 @@
         (neg? x1)                 (- (change x2 x1))
         :else                     (/ (- x2 x1) x1)))))
 
+(defn reservoir-sample
+  "Transducer that samples a fixed number `n` of samples.
+   https://en.wikipedia.org/wiki/Reservoir_sampling"
+  [n]
+  (fn
+    ([] [(transient []) 0])
+    ([[reservoir c] x]
+     (let [c   (inc c)
+           idx (rand-int c)]
+       (cond
+         (<= c n)  [(conj! reservoir x) c]
+         (< idx n) [(assoc! reservoir idx x) c]
+         :else     [reservoir c])))
+    ([[reservoir _]] (persistent! reservoir))))
+
+(defn rmse
+  "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
+   respectively, calculates the root mean squared error of the estimate.
+   https://en.wikipedia.org/wiki/Root-mean-square_deviation"
+  [fy-hat fy]
+  (fn
+    ([] [0.0 0.0])
+    ([[^double c ^double mse :as acc] e]
+     (let [y-hat (fy-hat e)
+           y (fy e)]
+       (if (or (nil? y-hat) (nil? y))
+         acc
+         (let [se (math/sq (- y y-hat))
+               c' (inc c)]
+           [c' (+ mse (/ (- se mse) c'))]))))
+    ([[c mse]]
+     (when (pos? c)
+       (math/sqrt mse)))))
+
+(def ^:private trendline-function-families
+  ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
+  [{:x-link-fn identity
+    :y-link-fn identity
+    :formula   (fn [offset slope]
+                 (fn [x]
+                   (+ offset (* slope x))))
+    :mbql      (fn [offset slope]
+                 [:+ offset [:* slope :x]])}
+   ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
+   {:x-link-fn identity
+    :y-link-fn math/log
+    :formula   (fn [offset slope]
+                 (fn [x]
+                   (* (math/exp offset) (math/exp (* slope x)))))
+    :mbql      (fn [offset slope]
+                 [:* (math/exp offset) [:exp [:* slope :x]]])}
+   ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
+   {:x-link-fn math/log
+    :y-link-fn identity
+    :formula   (fn [offset slope]
+                 (fn [x]
+                   (+ offset (* slope (math/log x)))))
+    :mbql      (fn [offset slope]
+                 [:+ offset [:* slope [:log :x]]])}
+   ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
+   {:x-link-fn math/log
+    :y-link-fn math/log
+    :formula   (fn [offset slope]
+                 (fn [x]
+                   (* (math/exp offset) (math/pow x slope))))
+    :mbql      (fn [offset slope]
+                 [:* (math/exp offset) [:pow :x slope]])}])
+
+(def ^:private ^:const ^Long validation-set-size 20)
+
+(defn- best-fit
+  [fx fy]
+  (redux/post-complete
+   (redux/fuse
+    {:fits (->> (for [{:keys [x-link-fn y-link-fn formula mbql]} trendline-function-families]
+                  (redux/post-complete
+                   (stats/simple-linear-regression (comp x-link-fn fx) (comp y-link-fn fy))
+                   (fn [[offset slope]]
+                     (when-not (or (Double/isNaN offset)
+                                   (Double/isNaN slope))
+                       {:mbql    (mbql offset slope)
+                        :formula (formula offset slope)}))))
+                (apply redux/juxt))
+     :validation-set ((map (juxt fx fy)) (reservoir-sample validation-set-size))})
+   (fn [{:keys [validation-set fits]}]
+     (->> fits
+          (remove nil?)
+          (apply min-key #(transduce identity
+                                     (rmse (comp (:formula %) first) second)
+                                     validation-set))
+          :mbql))))
+
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
   (and (= (count numbers) 1)
        (= (count datetimes) 1)
        (empty? others)))
+
+(def ^:private ms->day
+  "We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities."
+  #(/ % (* 1000 60 60 24)))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -45,20 +143,23 @@
                                (nth x-position)
                                ;; at this point in the pipeline, dates are still stings
                                f/->date
-                               (.getTime))
+                               (.getTime)
+                               ms->day)
                       ;; unit=year workaround. While the field is in this case marked as :type/Text,
                       ;; at this stage in the pipeline the value is still an int, so we can use it
                       ;; directly.
-                      #(nth % x-position))
+                      (comp ms->day #(nth % x-position)))
          yfn        #(nth % y-position)]
      (redux/juxt ((map yfn) (last-n 2))
-                 (stats/simple-linear-regression xfn yfn)))
-   (fn [[[previous current] [offset slope]]]
+                 (stats/simple-linear-regression xfn yfn)
+                 (best-fit xfn yfn)))
+   (fn [[[previous current] [offset slope] best-fit]]
      {:last-value     current
       :previous-value previous
       :last-change    (change current previous)
       :slope          slope
-      :offset         offset})))
+      :offset         offset
+      :best-fit       best-fit})))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
