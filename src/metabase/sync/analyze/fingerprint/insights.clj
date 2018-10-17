@@ -67,49 +67,52 @@
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
   [{:x-link-fn identity
     :y-link-fn identity
-    :formula   (fn [offset slope]
+    :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope x))))
-    :mbql      (fn [offset slope]
+    :formula   (fn [offset slope]
                  [:+ offset [:* slope :x]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
    {:x-link-fn identity
     :y-link-fn math/log
-    :formula   (fn [offset slope]
+    :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/exp (* slope x)))))
-    :mbql      (fn [offset slope]
+    :formula   (fn [offset slope]
                  [:* (math/exp offset) [:exp [:* slope :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
    {:x-link-fn math/log
     :y-link-fn identity
-    :formula   (fn [offset slope]
+    :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope (math/log x)))))
-    :mbql      (fn [offset slope]
+    :formula   (fn [offset slope]
                  [:+ offset [:* slope [:log :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
    {:x-link-fn math/log
     :y-link-fn math/log
-    :formula   (fn [offset slope]
+    :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/pow x slope))))
-    :mbql      (fn [offset slope]
+    :formula   (fn [offset slope]
                  [:* (math/exp offset) [:pow :x slope]])}])
 
 (def ^:private ^:const ^Long validation-set-size 20)
 
 (defn- best-fit
+  "Fit curves from `trendline-function-families` and pick the one with the smallest RMSE.
+   To keep the operation single pass we collect a small validation set as we go using reservoir
+   sampling, and use it to calculate RMSE."
   [fx fy]
   (redux/post-complete
    (redux/fuse
-    {:fits (->> (for [{:keys [x-link-fn y-link-fn formula mbql]} trendline-function-families]
+    {:fits (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                   (redux/post-complete
                    (stats/simple-linear-regression (comp x-link-fn fx) (comp y-link-fn fy))
                    (fn [[offset slope]]
                      (when-not (or (Double/isNaN offset)
                                    (Double/isNaN slope))
-                       {:mbql    (mbql offset slope)
+                       {:model   (model offset slope)
                         :formula (formula offset slope)}))))
                 (apply redux/juxt))
      :validation-set ((map (juxt fx fy)) (reservoir-sample validation-set-size))})
@@ -117,9 +120,9 @@
      (->> fits
           (remove nil?)
           (apply min-key #(transduce identity
-                                     (rmse (comp (:formula %) first) second)
+                                     (rmse (comp (:model %) first) second)
                                      validation-set))
-          :mbql))))
+          :formula))))
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
