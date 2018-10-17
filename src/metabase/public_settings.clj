@@ -132,7 +132,7 @@
   :default {})
 
 (defsetting enable-xrays
-  (tru "Allow users to explore data using Xrays")
+  (tru "Allow users to explore data using X-rays")
   :type    :boolean
   :default true)
 
