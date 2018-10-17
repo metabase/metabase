@@ -16,7 +16,7 @@ import invert from "lodash.invert";
 import isEqual from "lodash.isequal";
 import zip from "lodash.zip";
 import values from "lodash.values";
-import _ from "lodash";
+import orderBy from "lodash.orderby";
 import partition from "lodash.partition";
 import {fetchDataOrError, getDashboardType} from "metabase/dashboard/dashboard";
 import {applyParameters} from "metabase/meta/Card";
@@ -119,7 +119,8 @@ const createValueKey = (groups: ColumnName[]): string =>
 const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
                                                                     groupings,
                                                                     totals,
-                                                                  ]: AggregationKey): DatasetData => {
+                                                                  ]: AggregationKey,
+                                                                  sortOrder : SortOrder[]): DatasetData => {
   const groupingColumns = cols
     .filter(col => groupings.has(col.name))
     .map(p => ({ ...p, source: BREAKOUT }));
@@ -163,8 +164,8 @@ const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
   const colsRes = [...groupingColumns, ...totalsColumns];
   const res = {
     cols: colsRes,
-    columns: _.orderBy(colsRes.map(p => p.name), p => columnToIndex[p]),
-    rows: newRows,
+    columns: orderBy(colsRes.map(p => p.name), p => columnToIndex[p]),
+    rows: orderBy(newRows, sortOrder.map(([_,columnName]) => columnToIndex[columnName]), sortOrder.map(([ascDesc])=> ascDesc))
   };
   //todo log load res from js
 
@@ -189,9 +190,30 @@ const isSuperset = (subsetValues: ColumnName[]) => (
 ) => superSet.subtract(subsetValues).size === 0;
 
 
+const shouldSort = (defaultSortOrder : SortOrder[], expectedSortOrder: SortOrder[]) => {
+  const expectedColumns = Set.of(...expectedSortOrder.map(([_, columnName]) => columnName));
+  const normalizedDefaultSortOrder = defaultSortOrder.filter(([_, columnName]) => expectedColumns.contains(columnName));
+
+  return !isEqual(normalizedDefaultSortOrder, expectedSortOrder);
+};
+
+const sortBuilder = (defaultSortOrder : SortOrder[]) => (datasetData: DatasetData, expectedSortOrder: SortOrder[]) => {
+  if(!datasetData || !shouldSort(defaultSortOrder, expectedSortOrder))
+    return datasetData;
+
+  const {cols, columns, rows} = datasetData;
+  const columnToIndex = invert(columns);
+  return {
+    cols,
+    columns,
+    rows: orderBy(rows, expectedSortOrder.map(([_,columnName]) => columnToIndex[columnName]), expectedSortOrder.map(([ascDesc])=> ascDesc))
+  }
+};
+
 export const buildResultProvider = (
   rawResults: DatasetData,
   totalsSeries: DatasetData[],
+  defaultSortOrder : SortOrder[],
 ): ResultProvider => {
   const totalsWithKeys = (totalsSeries || []).map(p => [p, createKeyFrom(p)]);
 
@@ -203,21 +225,21 @@ export const buildResultProvider = (
   );
 
   const canBuildResults = canBuildResultsBuilder(rawResults);
-  //all results from totalsSeries should have the same aggregations
   const canBeInCache = isSuperset(get(totalsWithKeys, [0, 1])[1]);
 
   const buildResultsFor = resultsBuilder(rawResults);
+  const trySort = sortBuilder(defaultSortOrder);
 
   return (key: AggregationKey): DatasetData => {
 
-    const [groups, aggregations] = key;
+    const [groups, aggregations, sortOrder] = key;
 
     if (canBuildResults(key)) {
-      return (
-        (canBeInCache(aggregations) &&
-          get(totalsLookupTree, [...groups, valueKey])) ||
-        buildResultsFor(key)
-      );
+      let res;
+      if(canBeInCache(aggregations)){
+        res = trySort(get(totalsLookupTree, [...groups, valueKey]), sortOrder);
+      }
+      return res || buildResultsFor(key, sortOrder);
     }
 
     throw new Error("InvalidArgumentException - BANG!!!!");
