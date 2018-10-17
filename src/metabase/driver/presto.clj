@@ -90,9 +90,10 @@
 (defn- parse-presto-results [report-timezone columns data]
   (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
     (for [row data]
-      (for [[value parser] (partition 2 (interleave row parsers))]
-        (when (some? value)
-          (parser value))))))
+      (vec
+       (for [[value parser] (partition 2 (interleave row parsers))]
+         (when (some? value)
+           (parser value)))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
