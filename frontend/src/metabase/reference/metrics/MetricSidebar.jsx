@@ -4,16 +4,15 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { connect } from "react-redux";
 
-import { getXraysEnabled } from "metabase/selectors/settings";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
 import S from "metabase/components/Sidebar.css";
 
-const MetricSidebar = ({ metric, user, style, className, xraysEnabled }) => (
+const MetricSidebar = ({ metric, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -36,7 +35,7 @@ const MetricSidebar = ({ metric, user, style, className, xraysEnabled }) => (
         icon="all"
         name={t`Questions about ${metric.name}`}
       />
-      {xraysEnabled && (
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
           key={`/auto/dashboard/metric/${metric.id}`}
           href={`/auto/dashboard/metric/${metric.id}`}
@@ -62,9 +61,6 @@ MetricSidebar.propTypes = {
   user: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  xraysEnabled: PropTypes.bool,
 };
 
-export default connect(state => ({
-  xraysEnabled: getXraysEnabled(state),
-}))(pure(MetricSidebar));
+export default pure(MetricSidebar);

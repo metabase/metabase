@@ -2,18 +2,17 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
-import { connect } from "react-redux";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import { getXraysEnabled } from "metabase/selectors/settings";
+import MetabaseSettings from "metabase/lib/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
 
 import S from "metabase/components/Sidebar.css";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
-const TableSidebar = ({ database, table, style, className, xraysEnabled }) => (
+const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div className={S.breadcrumbs}>
       <Breadcrumbs
@@ -48,7 +47,7 @@ const TableSidebar = ({ database, table, style, className, xraysEnabled }) => (
         icon="all"
         name={t`Questions about this table`}
       />
-      {xraysEnabled && (
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
           key={`/auto/dashboard/table/${table.id}`}
           href={`/auto/dashboard/table/${table.id}`}
@@ -65,9 +64,6 @@ TableSidebar.propTypes = {
   table: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  xraysEnabled: PropTypes.bool,
 };
 
-export default connect(state => ({ xraysEnabled: getXraysEnabled(state) }))(
-  pure(TableSidebar),
-);
+export default pure(TableSidebar);

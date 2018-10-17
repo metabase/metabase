@@ -2,25 +2,17 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
-import { connect } from "react-redux";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import { getXraysEnabled } from "metabase/selectors/settings";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
 import S from "metabase/components/Sidebar.css";
 
-const FieldSidebar = ({
-  database,
-  table,
-  field,
-  style,
-  className,
-  xraysEnabled,
-}) => (
+const FieldSidebar = ({ database, table, field, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -49,7 +41,7 @@ const FieldSidebar = ({
         name={t`Details`}
       />
 
-      {xraysEnabled && (
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
           key={`/auto/dashboard/field/${field.id}`}
           href={`/auto/dashboard/field/${field.id}`}
@@ -67,9 +59,6 @@ FieldSidebar.propTypes = {
   field: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  xraysEnabled: PropTypes.bool,
 };
 
-export default connect(state => ({
-  xraysEnabled: getXraysEnabled(state),
-}))(pure(FieldSidebar));
+export default pure(FieldSidebar);

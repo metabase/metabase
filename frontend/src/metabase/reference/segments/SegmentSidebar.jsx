@@ -4,16 +4,15 @@ import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { connect } from "react-redux";
 
-import { getXraysEnabled } from "metabase/selectors/settings";
+import MetabaseSettings from "metabase/lib/settings";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
 import S from "metabase/components/Sidebar.css";
 
-const SegmentSidebar = ({ segment, user, style, className, xraysEnabled }) => (
+const SegmentSidebar = ({ segment, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -42,7 +41,7 @@ const SegmentSidebar = ({ segment, user, style, className, xraysEnabled }) => (
         icon="all"
         name={t`Questions about this segment`}
       />
-      {xraysEnabled && (
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
           key={`/auto/dashboard/segment/${segment.id}`}
           href={`/auto/dashboard/segment/${segment.id}`}
@@ -68,9 +67,6 @@ SegmentSidebar.propTypes = {
   user: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  xraysEnabled: PropTypes.bool,
 };
 
-export default connect(state => ({
-  xraysEnabled: getXraysEnabled(state),
-}))(pure(SegmentSidebar));
+export default pure(SegmentSidebar);
