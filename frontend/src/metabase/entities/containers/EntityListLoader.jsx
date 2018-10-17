@@ -80,8 +80,9 @@ export default class EntityListLoader extends React.Component {
   }
 
   async fetchList(
+    // $FlowFixMe: fetchList provided by @connect
     { fetchList, entityQuery, pageSize, onChangeHasMorePages },
-    options,
+    options?: any,
   ) {
     const result = await fetchList(entityQuery, options);
     if (typeof pageSize === "number" && onChangeHasMorePages) {
@@ -93,20 +94,17 @@ export default class EntityListLoader extends React.Component {
   }
 
   componentWillMount() {
-    // $FlowFixMe: provided by @connect
     this.fetchList(this.props, { reload: this.props.reload });
   }
 
   componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
-      // $FlowFixMe: provided by @connect
       this.fetchList(nextProps, { reload: nextProps.reload });
     } else if (this.props.loaded && !nextProps.loaded && !nextProps.loading) {
       // transitioned from loaded to not loaded, and isn't yet loading again
       // this typically means the list request state was cleared by a
       // create/update/delete action
-      // $FlowFixMe: provided by @connect
       this.fetchList(nextProps);
     }
   }
@@ -145,7 +143,7 @@ export default class EntityListLoader extends React.Component {
   }
 
   reload = () => {
-    return this.fetchList(this.props, { reload: true });
+    this.fetchList(this.props, { reload: true });
   };
 }
 
