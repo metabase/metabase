@@ -124,7 +124,7 @@ class Overworld extends React.Component {
               );
             }
 
-            if (items.length === 0) {
+            if (pinnedDashboards.length === 0) {
               return null;
             }
 
