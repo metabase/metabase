@@ -6,7 +6,7 @@ import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "c-3po";
-import { alpha } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 
 import {
   computeSplit,
@@ -628,7 +628,7 @@ function addTrendlineChart(
       .reduce((p, d) => d[1], (p, d) => p, () => 0);
     const trendIndex = charts.length;
 
-    const color = alpha(settings.series(series[0]).color, 0.5);
+    const color = lighten(settings.series(series[0]).color, 0.25);
 
     const trendChart = dc
       .lineChart(parent)
