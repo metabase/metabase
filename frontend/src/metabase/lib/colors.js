@@ -20,7 +20,7 @@ const colors = {
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
   accent5: "#F2A86F",
-  accent6: "#77D4D4",
+  accent6: "#98D9D9",
   accent7: "#7172AD",
   white: "#FFFFFF",
   black: "#2E353B",
