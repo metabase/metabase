@@ -1,12 +1,13 @@
 import React from "react";
 import { t } from "c-3po";
-import { Box } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 import AdminHeader from "metabase/components/AdminHeader";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Button from "metabase/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 @entityListLoader({
   entityType: "tasks",
@@ -30,20 +31,31 @@ class TasksApp extends React.Component {
     } = this.props;
     return (
       <Box p={3}>
-        <AdminHeader title={t`Tasks log`} />
-        <div>
-          Page {page} ({page * pageSize + 1} - {page * pageSize + tasks.length})
-          {onPreviousPage && (
-            <Button small onClick={onPreviousPage}>
-              Previous
-            </Button>
-          )}
-          {onNextPage && (
-            <Button small onClick={onNextPage}>
-              Next
-            </Button>
-          )}
-        </div>
+        <Flex align="center">
+          <Flex align="center">
+            <AdminHeader title={t`Troubleshooting logs`} />
+            <Tooltip
+              tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+            >
+              <Icon
+                name="info"
+                ml={1}
+                className="text-brand-hover cursor-pointer"
+              />
+            </Tooltip>
+          </Flex>
+          <Flex align="center" ml="auto">
+            <span className="text-bold mr1">
+              {page * pageSize + 1} - {page * pageSize + tasks.length}
+            </span>
+            <IconWrapper onClick={onPreviousPage} disabled={!onPreviousPage}>
+              <Icon name="chevronleft" />
+            </IconWrapper>
+            <IconWrapper small onClick={onNextPage} disabled={!onNextPage}>
+              <Icon name="chevronright" />
+            </IconWrapper>
+          </Flex>
+        </Flex>
 
         <table className="ContentTable mt2">
           <thead>
