@@ -625,7 +625,7 @@ function addTrendlineChart(
     if (insight.slope != null && insight.offset != null) {
       const index = findSeriesIndexForColumnName(series, insight.col);
       const seriesSettings = settings.series(series[index]);
-      const color = lighten(seriesSettings.color, 0.25);
+      const color = lighten(seriesSettings.color, 0.2);
 
       const fn = x => x * insight.slope + insight.offset;
 
