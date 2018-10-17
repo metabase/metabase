@@ -24,32 +24,36 @@ const DEFAULT_TAB_PRIORITY = ["Display"];
 class ChartSettings extends Component {
   constructor(props) {
     super(props);
-    const initialSettings = props.series[0].card.visualization_settings;
     this.state = {
       currentTab: null,
-      settings: initialSettings,
-      series: this._getSeries(props.series, initialSettings),
       showWidget: props.initialWidget,
+      ...this._getState(
+        props.series,
+        props.series[0].card.visualization_settings,
+      ),
     };
   }
 
   componentWillReceiveProps(nextProps) {
     if (this.props.series !== nextProps.series) {
-      this.setState({
-        series: this._getSeries(
-          nextProps.series,
-          nextProps.series[0].card.visualization_settings,
-        ),
-      });
+      this.setState(this._getState(nextProps.series, this.state.settings));
     }
   }
 
-  _getSeries(series, settings) {
-    if (settings) {
-      series = assocIn(series, [0, "card", "visualization_settings"], settings);
-    }
-    const transformed = getVisualizationTransformed(extractRemappings(series));
-    return transformed.series;
+  _getState(series, settings) {
+    const rawSeries = assocIn(
+      series,
+      [0, "card", "visualization_settings"],
+      settings,
+    );
+    const { series: transformedSeries } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+    return {
+      settings,
+      rawSeries,
+      transformedSeries,
+    };
   }
 
   handleSelectTab = tab => {
@@ -58,18 +62,12 @@ class ChartSettings extends Component {
 
   handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState({
-      settings: {},
-      series: this._getSeries(this.props.series, {}),
-    });
+    this.setState(this._getState(this.props.series, {}));
   };
 
   handleChangeSettings = changedSettings => {
     const newSettings = updateSettings(this.state.settings, changedSettings);
-    this.setState({
-      settings: newSettings,
-      series: this._getSeries(this.props.series, newSettings),
-    });
+    this.setState(this._getState(this.props.series, newSettings));
   };
 
   handleDone = () => {
@@ -91,13 +89,13 @@ class ChartSettings extends Component {
 
   render() {
     const { isDashboard, question, addField } = this.props;
-    const { series, showWidget } = this.state;
+    const { rawSeries, transformedSeries, showWidget } = this.state;
 
     const widgetsById = {};
 
     const tabs = {};
     for (const widget of getSettingsWidgetsForSeries(
-      series,
+      transformedSeries,
       this.handleChangeSettings,
       isDashboard,
     )) {
@@ -181,7 +179,7 @@ class ChartSettings extends Component {
               <div className="mx4 flex-full relative">
                 <Visualization
                   className="spread"
-                  rawSeries={series}
+                  rawSeries={rawSeries}
                   showTitle
                   isEditing
                   isDashboard

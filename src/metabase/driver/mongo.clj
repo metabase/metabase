@@ -178,7 +178,7 @@
                                                             (assoc driver/default-port-details :default 27017)
                                                             (assoc driver/default-dbname-details
                                                               :placeholder  (tru "carrierPigeonDeliveries"))
-                                                            driver/default-user-details
+                                                            (assoc driver/default-user-details :required false)
                                                             (assoc driver/default-password-details :name "pass")
                                                             {:name         "authdb"
                                                              :display-name (tru "Authentication Database")

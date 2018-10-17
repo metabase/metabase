@@ -35,8 +35,10 @@
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
-  (let [x-position (-> datetimes first :position)
-        xfn        (if (-> datetimes first :base_type (isa? :type/DateTime))
+  (let [datetime   (first datetimes)
+        x-position (:position datetime)
+        xfn        (if (or (-> datetime :base_type (isa? :type/DateTime))
+                           (field/unix-timestamp? datetime))
                      #(some-> %
                               (nth x-position)
                               ;; at this point in the pipeline, dates are still stings
