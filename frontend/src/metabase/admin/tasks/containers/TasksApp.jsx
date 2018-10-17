@@ -6,10 +6,11 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 
 import AdminHeader from "metabase/components/AdminHeader";
 import Link from "metabase/components/Link";
+import Button from "metabase/components/Button";
 
 @entityListLoader({
   entityType: "tasks",
-  entityQuery: { limit: 40, offset: 0 },
+  pageSize: 50,
 })
 class TasksApp extends React.Component {
   constructor(props) {
@@ -19,10 +20,31 @@ class TasksApp extends React.Component {
     };
   }
   render() {
-    const { tasks, children } = this.props;
+    const {
+      tasks,
+      page,
+      pageSize,
+      onNextPage,
+      onPreviousPage,
+      children,
+    } = this.props;
     return (
       <Box p={3}>
         <AdminHeader title={t`Tasks log`} />
+        <div>
+          Page {page} ({page * pageSize + 1} - {page * pageSize + tasks.length})
+          {onPreviousPage && (
+            <Button small onClick={onPreviousPage}>
+              Previous
+            </Button>
+          )}
+          {onNextPage && (
+            <Button small onClick={onNextPage}>
+              Next
+            </Button>
+          )}
+        </div>
+
         <table className="ContentTable mt2">
           <thead>
             <th>{t`Task`}</th>
