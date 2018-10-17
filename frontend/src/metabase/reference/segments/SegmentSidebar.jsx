@@ -1,15 +1,19 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
 import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
 import cx from "classnames";
 import pure from "recompose/pure";
+import { connect } from "react-redux";
 
-const SegmentSidebar = ({ segment, user, style, className }) => (
+import { getXraysEnabled } from "metabase/selectors/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
+
+const SegmentSidebar = ({ segment, user, style, className, xraysEnabled }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -38,13 +42,14 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         icon="all"
         name={t`Questions about this segment`}
       />
-      <SidebarItem
-        key={`/auto/dashboard/segment/${segment.id}`}
-        href={`/auto/dashboard/segment/${segment.id}`}
-        icon="bolt"
-        name={t`X-ray this segment`}
-      />
-
+      {xraysEnabled && (
+        <SidebarItem
+          key={`/auto/dashboard/segment/${segment.id}`}
+          href={`/auto/dashboard/segment/${segment.id}`}
+          icon="bolt"
+          name={t`X-ray this segment`}
+        />
+      )}
       {user &&
         user.is_superuser && (
           <SidebarItem
@@ -63,6 +68,9 @@ SegmentSidebar.propTypes = {
   user: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
+  xraysEnabled: PropTypes.bool,
 };
 
-export default pure(SegmentSidebar);
+export default connect(state => ({
+  xraysEnabled: getXraysEnabled(state),
+}))(pure(SegmentSidebar));

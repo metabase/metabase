@@ -1,15 +1,19 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
 import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
 import cx from "classnames";
 import pure from "recompose/pure";
+import { connect } from "react-redux";
 
-const MetricSidebar = ({ metric, user, style, className }) => (
+import { getXraysEnabled } from "metabase/selectors/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
+
+const MetricSidebar = ({ metric, user, style, className, xraysEnabled }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -32,12 +36,14 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         icon="all"
         name={t`Questions about ${metric.name}`}
       />
-      <SidebarItem
-        key={`/auto/dashboard/metric/${metric.id}`}
-        href={`/auto/dashboard/metric/${metric.id}`}
-        icon="bolt"
-        name={t`X-ray this metric`}
-      />
+      {xraysEnabled && (
+        <SidebarItem
+          key={`/auto/dashboard/metric/${metric.id}`}
+          href={`/auto/dashboard/metric/${metric.id}`}
+          icon="bolt"
+          name={t`X-ray this metric`}
+        />
+      )}
       {user &&
         user.is_superuser && (
           <SidebarItem
@@ -56,6 +62,9 @@ MetricSidebar.propTypes = {
   user: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
+  xraysEnabled: PropTypes.bool,
 };
 
-export default pure(MetricSidebar);
+export default connect(state => ({
+  xraysEnabled: getXraysEnabled(state),
+}))(pure(MetricSidebar));
