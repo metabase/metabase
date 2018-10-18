@@ -7,7 +7,9 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor
+             [interface :as qpi]
+             [store :as qp.store]]
             [metabase.test.data.users :as users]
             [metabase.util :as u]
             [metabase.util.date :as du]
@@ -20,22 +22,14 @@
 
 ;; check that a built-in Metric gets removed from the query and put in `:ga`
 (expect
-  {:query {:filter nil}
-   :ga    {:segment nil, :metrics "ga:users"}}
-  (qp/transform-query {:query {:aggregation ["METRIC" "ga:users"]}}))
+  {:ga {:segment nil, :metrics "ga:users"}}
+  (qp/transform-query {:query {:aggregation [[:metric "ga:users"]]}}))
 
 
 ;; check that a built-in segment gets removed from the query and put in `:ga`
 (expect
-  {:query {:filter nil}
-   :ga    {:segment "gaid::-4", :metrics nil}}
+  {:ga {:segment "gaid::-4", :metrics nil}}
   (qp/transform-query {:query {:filter [:segment "gaid::-4"]}}))
-
-;; check that it still works if wrapped in an `:and`
-(expect
-  {:query {:filter nil}
-   :ga    {:segment "gaid::-4", :metrics nil}}
-  (qp/transform-query {:query {:filter [:and [:segment "gaid::-4"]]}}))
 
 ;; check that other things stay in the order-by clause
 (expect
@@ -70,7 +64,10 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (qp/mbql->native (update query :query (partial merge {:source-table {:name "0123456"}}))))
+  (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
+                                                                                    :schema nil
+                                                                                    :id     1}}})]
+    (qp/mbql->native (update query :query (partial merge {:source-table 1})))))
 
 ;; just check that a basic almost-empty MBQL query can be compiled
 (expect
@@ -198,7 +195,7 @@
            :visualization_settings {}
            :dataset_query          {:database (u/get-id db)
                                     :type     :query
-                                    :query    {:source_table (u/get-id table)
+                                    :query    {:source-table (u/get-id table)
                                                :aggregation  [[:METRIC "ga:sessions"]
                                                               [:METRIC "ga:1dayUsers"]]
                                                :breakout     [[:datetime-field [:field-id (u/get-id field)] :day]]}}

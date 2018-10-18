@@ -4,9 +4,10 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.analyze.fingerprint.insights :as insights]
+            [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [redux.core :as redux]
@@ -57,7 +58,8 @@
      {:base_type :type/Text
       :unit      nil})))
 
-(s/defn results->column-metadata :- ResultsMetadata
+;; TODO schema
+(defn results->column-metadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
   (let [result-metadata (for [col (:cols results)]
@@ -66,23 +68,26 @@
                               (maybe-infer-special-type col)))]
     (transduce identity
                (redux/post-complete
-                (apply f/col-wise (for [metadata result-metadata]
-                                    (if (and (seq (:name metadata))
-                                             (nil? (:fingerprint metadata)))
-                                      (f/fingerprinter metadata)
-                                      (f/constant-fingerprinter (:fingerprint metadata)))))
-                (fn [fingerprints]
+                (redux/juxt
+                 (apply f/col-wise (for [metadata result-metadata]
+                                     (if (and (seq (:name metadata))
+                                              (nil? (:fingerprint metadata)))
+                                       (f/fingerprinter metadata)
+                                       (f/constant-fingerprinter (:fingerprint metadata)))))
+                 (insights/insights result-metadata))
+                (fn [[fingerprints insights]]
                   ;; Rarely certain queries will return columns with no names. For example
                   ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
                   ;; can't use those as field literals in subsequent queries just filter them out
-                  (->> (map (fn [fingerprint metadata]
-                              (cond
-                                (instance? Throwable fingerprint)
-                                metadata
+                  {:metadata (->> (map (fn [fingerprint metadata]
+                                         (cond
+                                           (instance? Throwable fingerprint)
+                                           metadata
 
-                                (not-empty (:name metadata))
-                                (assoc metadata :fingerprint fingerprint)))
-                            fingerprints
-                            result-metadata)
-                       (remove nil?))))
+                                           (not-empty (:name metadata))
+                                           (assoc metadata :fingerprint fingerprint)))
+                                       fingerprints
+                                       result-metadata)
+                                  (remove nil?))
+                   :insights insights}))
                (:rows results))))

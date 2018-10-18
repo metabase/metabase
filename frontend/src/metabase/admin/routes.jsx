@@ -55,10 +55,10 @@ const getRoutes = (store, IsAdmin) => (
         path="database/:databaseId/:mode/:tableId/settings"
         component={TableSettingsApp}
       />
-      <Route
-        path="database/:databaseId/:mode/:tableId/:fieldId"
-        component={FieldApp}
-      />
+      <Route path="database/:databaseId/:mode/:tableId/:fieldId">
+        <IndexRedirect to="general" />
+        <Route path=":section" component={FieldApp} />
+      </Route>
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
       <Route path="segment/create" component={SegmentApp} />

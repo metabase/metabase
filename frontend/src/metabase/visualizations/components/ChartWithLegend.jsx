@@ -11,7 +11,7 @@ import cx from "classnames";
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 
-@ExplicitSize
+@ExplicitSize()
 export default class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,

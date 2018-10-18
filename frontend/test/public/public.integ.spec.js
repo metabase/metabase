@@ -395,7 +395,7 @@ describe("public/embedded", () => {
           type: "native",
           native: {
             query: "SELECT {{num}} AS num",
-            template_tags: {
+            "template-tags": {
               num: {
                 name: "num",
                 display_name: "Num",
@@ -417,7 +417,7 @@ describe("public/embedded", () => {
           database: 1,
           type: "query",
           query: {
-            source_table: PEOPLE_TABLE_ID,
+            "source-table": PEOPLE_TABLE_ID,
             aggregation: ["count"],
           },
         },

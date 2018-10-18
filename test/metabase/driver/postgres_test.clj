@@ -18,7 +18,6 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test
              [data :as data]
@@ -38,7 +37,7 @@
   {:user        "camsaul"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
-   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"
+   :subname     "//localhost:5432/bird_sightings?sslmode=disable&OpenSourceSubProtocolOverride=true"
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -54,7 +53,7 @@
    :subprotocol "postgresql"
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
-   :subname     "//localhost:5432/bird_sightings?OpenSourceSubProtocolOverride=true"}
+   :subname     "//localhost:5432/bird_sightings?ssl=true&sslmode=require&OpenSourceSubProtocolOverride=true"}
   (sql/connection-details->spec pg-driver {:ssl    true
                                            :host   "localhost"
                                            :port   5432
@@ -88,7 +87,7 @@
   [{:name "id",      :base_type :type/Integer}
    {:name "user_id", :base_type :type/UUID}]
   (->> (data/dataset metabase.driver.postgres-test/with-uuid
-         (data/run-query users))
+         (data/run-mbql-query users))
        :data
        :cols
        (mapv (u/rpartial select-keys [:name :base_type]))))
@@ -98,15 +97,15 @@
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
-          (data/run-query users
-            (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))))
+          (data/run-mbql-query users
+            {:filter [:= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"]}))))
 
 ;; check that a nil value for a UUID field doesn't barf (#2152)
 (expect-with-engine :postgres
   []
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
-          (data/run-query users
-            (ql/filter (ql/= $user_id nil))))))
+          (data/run-mbql-query users
+            {:filter [:= $user_id nil]}))))
 
 ;; Check that we can filter by a UUID for SQL Field filters (#7955)
 (expect-with-engine :postgres
@@ -115,7 +114,7 @@
     (rows (qp/process-query {:database   (data/id)
                              :type       :native
                              :native     {:query         "SELECT * FROM users WHERE {{user}}"
-                                          :template_tags {:user {:name         "user"
+                                          :template-tags {:user {:name         "user"
                                                                  :display_name "User ID"
                                                                  :type         "dimension"
                                                                  :dimension    ["field-id" (data/id :users :user_id)]}}}
@@ -138,8 +137,8 @@
              [2 "four_loko"]
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
-        (data/run-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata)))
+        (data/run-mbql-query objects.stuff))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -157,9 +156,9 @@
   {:columns ["name" "name_2"]
    :rows    [["Cam" "Rasta"]]}
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
-        (data/run-query people
-          (ql/fields $name $bird_id->birds.name)))
-      :data (dissoc :cols :native_form :results_metadata)))
+        (data/run-mbql-query people
+          {:fields [$name $bird_id->birds.name]}))
+      :data (dissoc :cols :native_form :results_metadata :insights)))
 
 
 ;;; Check support for `inet` columns
@@ -174,9 +173,9 @@
 (expect-with-engine :postgres
   [[1]]
   (rows (data/dataset metabase.driver.postgres-test/ip-addresses
-          (data/run-query addresses
-            (ql/aggregation (ql/count))
-            (ql/filter (ql/= $ip "192.168.1.1"))))))
+          (data/run-mbql-query addresses
+            {:aggregation [[:count]]
+             :filter      [:= $ip "192.168.1.1"]}))))
 
 
 ;;; Util Fns
@@ -195,11 +194,13 @@
                                  db-name db-name)]
                    {:transaction? false})))
 
+(defn- default-table-result [table-name]
+  {:name table-name, :schema "public", :description nil})
 
 ;; Check that we properly fetch materialized views.
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
 (expect-with-engine :postgres
-  {:tables #{{:schema "public", :name "test_mview"}}}
+  {:tables #{(default-table-result "test_mview")}}
   (do
     (drop-if-exists-and-create-db! "materialized_views_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test"})]
@@ -212,7 +213,7 @@
 
 ;; Check that we properly fetch foreign tables.
 (expect-with-engine :postgres
-  {:tables #{{:schema "public", :name "foreign_table"} {:schema "public", :name "local_table"}}}
+  {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
   (do
     (drop-if-exists-and-create-db! "fdw_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test"})]
@@ -286,7 +287,7 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:5432/cool?OpenSourceSubProtocolOverride=true&prepareThreshold=0"
+  "//localhost:5432/cool?sslmode=disable&OpenSourceSubProtocolOverride=true&prepareThreshold=0"
   (:subname (sql/connection-details->spec pg-driver {:host               "localhost"
                                                      :port               "5432"
                                                      :dbname             "cool"

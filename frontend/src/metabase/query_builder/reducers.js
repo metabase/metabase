@@ -40,6 +40,7 @@ import {
   DELETE_PUBLIC_LINK,
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_EMBEDDING_PARAMS,
+  SHOW_CHART_SETTINGS,
 } from "./actions";
 
 // various ui state options
@@ -106,6 +107,10 @@ export const uiControls = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
     },
+
+    [SHOW_CHART_SETTINGS]: {
+      next: (state, { payload }) => ({ ...state, chartSettings: payload }),
+    },
   },
   {
     isShowingDataReference: false,
@@ -114,6 +119,7 @@ export const uiControls = handleActions(
     isShowingNewbModal: false,
     isEditing: false,
     isRunning: false,
+    chartSettings: null,
   },
 );
 

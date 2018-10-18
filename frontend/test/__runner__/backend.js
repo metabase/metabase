@@ -60,6 +60,7 @@ export const BackendResource = createSharedResource("BackendResource", {
         ],
         {
           env: {
+            MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
             MB_JETTY_PORT: server.port,
           },

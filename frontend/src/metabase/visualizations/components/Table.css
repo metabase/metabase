@@ -5,7 +5,6 @@
 
   width: 100%;
 
-  font-family: "Helvetica Neue", "Helvetica", sans-serif;
   font-size: 12px;
   line-height: 12px;
   text-align: left;
@@ -17,11 +16,11 @@
 
 :local(.Table) th,
 :local(.Table) td {
-  padding: 1em;
+  padding: 0.72em;
   border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 :local(.TableSimple) th:first-child,
 :local(.TableSimple) td:first-child {
-  padding-left: 2em;
+  padding-left: 1.44em;
 }

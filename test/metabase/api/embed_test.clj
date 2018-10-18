@@ -1,6 +1,9 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
+  (:require [buddy.sign
+             [jwt :as jwt]
+             [util :as buddy-util]]
+            [clj-time.core :as time]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
@@ -66,7 +69,7 @@
    {:data       {:columns ["count"]
                  :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count",
                             :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
-                            :base_type "type/Integer", :remapped_from nil, :remapped_to nil}]
+                            :base_type "type/Integer", :settings nil}]
                  :rows    [[100]]}
     :json_query {:parameters nil}
     :status     "completed"})
@@ -100,6 +103,7 @@
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil, :param_fields nil})
 
+(def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
@@ -112,6 +116,13 @@
     (with-temp-card [card {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (card-url card))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true}]
+      (http/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
@@ -143,7 +154,7 @@
     (with-temp-card [card {:enable_embedding true
                            :dataset_query    {:database (data/id)
                                               :type     :native
-                                              :native   {:template_tags {:a {:type "date", :name "a", :display_name "a"}
+                                              :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
                                                                          :b {:type "date", :name "b", :display_name "b"}
                                                                          :c {:type "date", :name "c", :display_name "c"}
                                                                          :d {:type "date", :name "d", :display_name "d"}}}}
@@ -284,11 +295,11 @@
   {:dataset_query    {:database (data/id)
                       :type     :native
                       :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
-                                 :template_tags {:date {:name         "date"
-                                                        :display_name "Date"
+                                 :template-tags {:date {:name         "date"
+                                                        :display-name "Date"
                                                         :type         "dimension"
                                                         :dimension    [:field-id (data/id :checkins :date)]
-                                                        :widget_type  "date/quarter-year"}}}}
+                                                        :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
 
@@ -320,6 +331,13 @@
     (tt/with-temp Dashboard [dash {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (dashboard-url dash))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Dashboard [dash {:enable_embedding true}]
+      (http/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
