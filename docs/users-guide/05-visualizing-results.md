@@ -41,12 +41,12 @@ The Smart Number visualization is great for displaying how a single number has c
 
 ![Smart Number](images/visualizations/smart-number.png)
 
-By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something were an increase is bad (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
+By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
 
 ![Smart Number settings](images/visualizations/smart-scalar-settings.png)
 
 #### Progress bars
-Progress bars are for comparing a single number result to a goal value that you input. Open up the chart options for your progress bar to choose a goal for it, and Metabase will show you how far away your question's current result is from the goal.
+Progress bars are for comparing a single number result to a goal value that you set. Open up the chart options for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
 
 ![Progress bar](images/visualizations/progress.png)
 
