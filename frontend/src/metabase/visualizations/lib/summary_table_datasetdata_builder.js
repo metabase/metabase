@@ -79,21 +79,24 @@ const buildColumnHeaders = ({groupsSources, columnsSource, valuesSources, column
 
 const tryCompressColumnsHeaders = ({valuesSources}, columnsHeaders) => {
 
-  if (valuesSources.length > 1)
+  if (valuesSources.length > 1){
     return columnsHeaders;
+  }
 
   const [topRow, bottomRow] = columnsHeaders;
   return [zip(topRow, bottomRow).map(([top, bottom]) => top || bottom)]
 };
 
 const updateValueIfExists = (toUpdate, index, value) => {
-  if (isDefined(value))
-    set(toUpdate, index, value);
+  if (isDefined(value)) {
+    toUpdate[index]=value;
+  }
 
   return toUpdate;
 };
 
-const pivotedRowUpdater = (expectedRowShape: ColumnName[], pivotColumnName: ColumnName, expectedPivotShape: { [key: any]: { [key: ColumnName]: Number } }): (ColumnName[] => RowUpdater) => {
+const pivotedRowUpdater = (expectedRowShape: ColumnName[], pivotColumnName: ColumnName, expectedPivotShape: { [key: any]: [ColumnName, Number][]}): (ColumnName[] => RowUpdater) => {
+
   return (givenRowShape: ColumnName[]) => {
     const pivotColumnIndex = givenRowShape.indexOf(pivotColumnName);
     const rowToExpectedPivotShape = row => expectedPivotShape[row[pivotColumnIndex]];
@@ -101,20 +104,22 @@ const pivotedRowUpdater = (expectedRowShape: ColumnName[], pivotColumnName: Colu
   };
 };
 
-const rowUpdater = (expectedRowShape: ColumnName[], rowToExpectedPivotShape: (Row => { [key: ColumnName]: Number })): (ColumnName[] => RowUpdater) => {
+const rowUpdater = (expectedRowShape: ColumnName[], rowToExpectedPivotShape: (Row => [ColumnName, Number][])): (ColumnName[] => RowUpdater) => {
   return (givenRowShape: ColumnName[]): RowUpdater => {
+
     const columnNameToValueIndex = invert(givenRowShape);
 
     return (toUpdate, updateFrom) => {
-      if (toUpdate === []) {
-        console.log(updateFrom, '-----------------------------')
-      }
 
-      const columnNameToPivotedValueIndex = rowToExpectedPivotShape(updateFrom);
+      const pivotShape = rowToExpectedPivotShape(updateFrom);
 
-      expectedRowShape
-        .map((columnName, index) => [index, columnNameToValueIndex[columnName] || columnNameToPivotedValueIndex[columnName]])
-        .reduce((acc, [targetIndex, valueIndex]) => updateValueIfExists(acc, targetIndex, get(updateFrom, valueIndex)), toUpdate);
+      const normalPart = expectedRowShape.map((columnName, targetIndex) => [targetIndex, columnNameToValueIndex[columnName]]);
+      const pivotPart = pivotShape.map(([columnName, targetIndex]) => [targetIndex, columnNameToValueIndex[columnName]]);
+
+      const rowUpdateMethod = (acc, [targetIndex, valueIndex]) => updateValueIfExists(acc, targetIndex, get(updateFrom, valueIndex));
+
+      normalPart.reduce(rowUpdateMethod, toUpdate);
+      pivotPart.reduce(rowUpdateMethod, toUpdate);
 
       return toUpdate;
     };
@@ -125,20 +130,24 @@ const haveEqualPrefixAssembler = (expectedRowShape: ColumnName[]) => (givenRowSh
   const columnNameToNormalizedValueIndex = invert(expectedRowShape);
   const columnNameToValueIndex = invert(givenRowShape);
 
-  const valueIndexes = givenRowShape.map(columnName => [columnNameToNormalizedValueIndex[columnName], columnNameToValueIndex[columnName]]);
+  const valueIndexes = expectedRowShape
+    .filter(columnName => columnName in columnNameToValueIndex)
+    .map(columnName => [columnNameToNormalizedValueIndex[columnName], columnNameToValueIndex[columnName]]);
 
   return (normalizedRow, nextRow) => {
-    if (!normalizedRow)
+    if (!normalizedRow){
       return false;
+    }
+
+
 
     for (let i = 0; i < valueIndexes.length; i++) {
       const [normValueIndex, nextRowValueIndex] = valueIndexes[i];
       if (normalizedRow[normValueIndex] !== nextRow[nextRowValueIndex]) {
         return false;
       }
-
-      return true;
     }
+    return true;
   };
 
 };
@@ -156,12 +165,13 @@ const getRowAssembler = (columnsHeaders: ColumnHeader[][]): RowAssembler => {
   }
 
   const firstPivotIndex = columnsHeaders[0].findIndex(p => p);
-  const expectedRowShape = columnsHeaders[1].slice(0, firstPivotIndex - 1);
+  const expectedRowShape = columnsHeaders[1].slice(0, firstPivotIndex).map(({column: {name}}) => name);
+
   const pivotShape = columnsHeaders[0].reduce((acc, header, index) => {
     if (header) {
       const {columnSpan, value} = header;
       const pivotValueColumnsNames = columnsHeaders[1].slice(index, index + columnSpan).map(({column: {name}}) => name);
-      acc[value] = pivotValueColumnsNames.reduce((acc, columnName, localIndex) => set(acc, columnName, localIndex + index), [])
+      acc[value] = pivotValueColumnsNames.reduce((acc, columnName, localIndex) => set(acc, localIndex, [columnName, localIndex + index]), [])
     }
     return acc;
   }, {});

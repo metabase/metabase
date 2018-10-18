@@ -1,38 +1,10 @@
-import {buildDataset, buildDatasetData} from "metabase/visualizations/lib/summary_table_datasetdata_builder";
-import type {ResultProvider, SummaryTableSettings} from "metabase/meta/types/summary_table";
-import type {DatasetData} from "metabase/meta/types/Dataset";
+import {buildDatasetData} from "metabase/visualizations/lib/summary_table_datasetdata_builder";
 import {TYPE} from "metabase/lib/types";
 import isEqual from "lodash.isequal";
 import zip from "lodash.zip";
 import type {Column} from "metabase/meta/types/Dataset";
 import {enrichSettings} from "metabase/visualizations/lib/settings/summary_table";
 import {buildResultProvider} from "metabase/visualizations/lib/summary_table";
-
-//todo:
-// import {GroupingManager} from "metabase/visualizations/lib/GroupingManager";
-// import {TYPE} from "metabase/lib/types";
-// import type {Row} from "metabase/meta/types/Dataset";
-//
-// function makeData(rows) {
-//   return {
-//     rows: rows,
-//     cols: [
-//       {name: "C1", display_name: "Column 1", base_type: TYPE.Text},
-//       {name: "C2", display_name: "Column 2", base_type: TYPE.Text},
-//       {name: "C3", display_name: "Column 3", base_type: TYPE.Numeric},
-//     ],
-//   };
-// }
-//
-// function newStyleWithTop(top: Number) {
-//   return {height: 1, top: top};
-// }
-//
-// const styleMock = newStyleWithTop(0);
-// const rowVisibleRangeMock = {start: 0, stop: 100};
-// const newGroupingManager = (columnsIndexesForGrouping: number[], rows: Row[]) => new GroupingManager(1, columnsIndexesForGrouping, rows);
-// const newSimpleGroupingManager = (rows: Row[]) => newGroupingManager([0], rows);
-//
 
 const columnText1 = {
   name: "C1",
@@ -86,7 +58,6 @@ const createColumnHeader = (column: Column, value, columnSpan, displayText) =>
 
 
 const rowsAreEqual = (computedRow, expectedRow) => {
-  expect(computedRow.length).toEqual(expectedRow.length);
   zip(computedRow, expectedRow).forEach(([computedValue, expectedValue]) => {
     if (expectedValue)
       expect(isEqual(computedValue, expectedValue)).toBe(true);
@@ -121,6 +92,7 @@ const setTotalIndex = (row, index) => {
 describe("summary_table_datasetdata_builder.js", () => {
   describe("datasetData builder for summaryTable", () => {
 
+    const resultsProvider = buildResultProvider(rawOrderedDatasetData, [rawOrderedDatasetData], sortOrderForRawDatasetData);
     const toSettings = baseSettings => enrichSettings(baseSettings, allColumns, getAllColumns(baseSettings));
 
     describe("header tests, notation: " +
@@ -128,7 +100,7 @@ describe("summary_table_datasetdata_builder.js", () => {
       describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2", () => {
         const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2']});
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
         it("builder should return columnsHeader with 1 row: C1, C2, C3, CN1, CN2", () => {
           const expectedRow = allColumns.map(columnName => createColumnHeader(columnName));
           rowListsAreEqual(columnsHeaders, [expectedRow]);
@@ -143,7 +115,7 @@ describe("summary_table_datasetdata_builder.js", () => {
         const settings = toSettings({groupsSources: ['C1', 'C3'], valuesSources: ['CN2']});
         const expectedColumns = [columnText1, columnText3, columnNumeric2];
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
         it("builder should return columnsHeader with 1 row: C1, C3, CN2", () => {
           const expectedRow = expectedColumns.map(columnName => createColumnHeader(columnName));
           rowListsAreEqual(columnsHeaders, [expectedRow]);
@@ -164,7 +136,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           columnNumeric1, columnNumeric2,
           columnNumeric1, columnNumeric2];
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
 
         it("builder should return columnsHeader with 2 rows: " +
           "[null, null, C3(g, 2), null, C3(h, 2), null, C3(i, 2), null] " +
@@ -194,7 +166,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           columnNumeric1, columnNumeric2,
           columnNumeric1, columnNumeric2];
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
 
         it("builder should return columnsHeader with 2 rows: " +
           "[null, null, C3(i, 2), null, C3(h, 2), null, C3(g, 2), null] " +
@@ -225,7 +197,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           columnNumeric1, columnNumeric2,
           columnNumeric1, columnNumeric2];
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
 
         it("builder should return columnsHeader with 2 rows: " +
           "[null, null, C3(i, 2), null, C3(h, 2), null, C3(g, 2), null] " +
@@ -252,7 +224,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           columnNameToMetadata: {'C3': {isAscSortOrder: true, showTotals: false}}
         });
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
         it("builder should return columnsHeader with 1 row: " +
           "[C1,   C2,  C3(g, 1), C3(h, 1), C3(i, 1)]", () => {
 
@@ -277,7 +249,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           columnNameToMetadata: {'C3': {isAscSortOrder: true, showTotals: true}}
         });
 
-        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData);
+        const {columnsHeaders, cols} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
         it("builder should return columnsHeader with 1 row: " +
           "[C1,   C2,  C3(g, 1), C3(h, 1), C3(i, 1), C3(null, 1, 'Grand totals')]", () => {
 
@@ -301,7 +273,7 @@ describe("summary_table_datasetdata_builder.js", () => {
     describe("rows tests" +
       "given results provider:", () => {
 
-      const resultsProvider = buildResultProvider(rawOrderedDatasetData, [rawOrderedDatasetData], sortOrderForRawDatasetData);
+
 
       describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
         "where we don't have selected 'show totals' for any column", () => {
@@ -327,7 +299,7 @@ describe("summary_table_datasetdata_builder.js", () => {
           }});
 
         const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
-        it("builder should return all rows from rawOrderedDatasetData and grand totals row in the same order", () => {
+        it("builder should return all rows from rawOrderedDatasetData and grand totals row in the same order like rawOrderedDatasetData", () => {
           const expectedRows = [...allRows,
             setTotalIndex([null,null,null, 8, 18], 0)];
           dataRowListsAreEqual(rows, expectedRows);
@@ -345,16 +317,16 @@ describe("summary_table_datasetdata_builder.js", () => {
           }});
 
         const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
-        it("builder should return all rows from rawOrderedDatasetData and grand totals row and totals rows for C3 in the same order", () => {
+        it("builder should return all rows from rawOrderedDatasetData and grand totals row and totals rows for C3 in the same order like rawOrderedDatasetData", () => {
           const row1        =               ["a", "d", "g", 3, 5];
-          const totalRow_ad = setTotalIndex(["a", "d", null, 3, 5], 3);
+          const totalRow_ad = setTotalIndex(["a", "d", null, 3, 5], 2);
           const row2        =               ["a", "e", "h", 4, 7];
-          const totalRow_ae = setTotalIndex(["a", "e", null, 4, 7], 3);
+          const totalRow_ae = setTotalIndex(["a", "e", null, 4, 7], 2);
           const row3        =               ["b", "d", "h", 1, -12];
-          const totalRow_bd = setTotalIndex(["b", "d", null, 1, -12], 3);
+          const totalRow_bd = setTotalIndex(["b", "d", null, 1, -12], 2);
           const row4        =               ["c", "e", "h", 1, 9];
           const row5        =               ["c", "e", "i", -1, 9];
-          const totalRow_ce = setTotalIndex(["c", "e", null, 0, 18], 3);
+          const totalRow_ce = setTotalIndex(["c", "e", null, 0, 18], 2);
           const grandTotals = setTotalIndex([null,null,null, 8, 18], 0);
 
           const expectedRows = [
@@ -375,7 +347,7 @@ describe("summary_table_datasetdata_builder.js", () => {
 
       });
 
-      fdescribe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2, C3 and valuesSources CN1, CN2, " +
         "where we have selected 'show totals' for C1 and C2" +
         "and C2 is ordered 'desc", () => {
         const settings = toSettings({groupsSources: ['C1', 'C2', 'C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
@@ -421,15 +393,120 @@ describe("summary_table_datasetdata_builder.js", () => {
           }});
 
         const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
-        fit("builder should return pivoted rows", () => {
+        it("builder should return pivoted rows", () => {
           // C1, C2, 'g'(CN1, CN2), 'h'(CN1, CN2), 'i'(CN1, CN2)
           const expectedRows = [
-            ["a", "e", null, null, 4,    7,    null, null],
             ["a", "d", 3,    5,    null, null, null, null],
-            ["b", "d", null, null, null, null, 1,   -12],
+            ["a", "e", null, null, 4,    7,    null, null],
+            ["b", "d", null, null, 1,   -12,   null, null],
             ["c", "e", null, null, 1,    9,    -1,  9],
           ];
-          console.log(rows, '\n', '***************', '\n', expectedRows)
+          dataRowListsAreEqual(rows, expectedRows);
+        });
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2 columnSource: C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for 'C2'", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: false, isAscSortOrder : true},
+            'C2' : {showTotals: true, isAscSortOrder : true},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return pivoted and pivoted totals rows", () => {
+          // C1, C2, 'g'(CN1, CN2), 'h'(CN1, CN2), 'i'(CN1, CN2)
+          const expectedRows = [
+                          ["a", "d", 3,    5,    null, null, null, null],
+                          ["a", "e", null, null, 4,    7,    null, null],
+            setTotalIndex(["a", null, 3,   5,    4,    7,    null, null], 1),
+                          ["b", "d", null, null, 1,   -12,   null, null],
+            setTotalIndex(["b",null, null, null, 1,   -12,   null, null], 1),
+                          ["c", "e", null, null, 1,    9,    -1,    9  ],
+            setTotalIndex(["c",null, null, null, 1,    9,    -1,    9  ], 1),
+          ];
+          dataRowListsAreEqual(rows, expectedRows);
+        });
+
+      });
+
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, C2 columnSource: C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for 'C1' and 'C2", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : true},
+            'C2' : {showTotals: true, isAscSortOrder : true},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return pivoted and pivoted (grand)totals rows", () => {
+          // C1, C2, 'g'(CN1, CN2), 'h'(CN1, CN2), 'i'(CN1, CN2)
+          const expectedRows = [
+                          ["a", "d", 3,    5,    null, null, null, null],
+                          ["a", "e", null, null, 4,    7,    null, null],
+            setTotalIndex(["a", null, 3,   5,    4,    7,    null, null], 1),
+                          ["b", "d", null, null, 1,   -12,   null, null],
+            setTotalIndex(["b",null, null, null, 1,   -12,   null, null], 1),
+                          ["c", "e", null, null, 1,    9,    -1,    9  ],
+            setTotalIndex(["c",null, null, null, 1,    9,    -1,    9  ], 1),
+            setTotalIndex([null,null,   3,    5, 6,    4,    -1,    9  ], 0),
+          ];
+          dataRowListsAreEqual(rows, expectedRows);
+        });
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: C1, desc C2 columnSource: C3 and valuesSources CN1, CN2, " +
+        "where we have selected 'show totals' for 'C1' and 'C2", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : true},
+            'C2' : {showTotals: true, isAscSortOrder : false},
+            'C3' : {showTotals: false, isAscSortOrder : true}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return pivoted and pivoted (grand)totals rows in correct order", () => {
+          // C1, C2, 'g'(CN1, CN2), 'h'(CN1, CN2), 'i'(CN1, CN2)
+          const expectedRows = [
+                          ["a", "e", null, null, 4,    7,    null, null],
+                          ["a", "d", 3,    5,    null, null, null, null],
+            setTotalIndex(["a", null, 3,   5,    4,    7,    null, null], 1),
+                          ["b", "d", null, null, 1,   -12,   null, null],
+            setTotalIndex(["b",null, null, null, 1,   -12,   null, null], 1),
+                          ["c", "e", null, null, 1,    9,    -1,    9  ],
+            setTotalIndex(["c",null, null, null, 1,    9,    -1,    9  ], 1),
+            setTotalIndex([null,null,   3,    5, 6,    4,    -1,    9  ], 0),
+          ];
+
+          dataRowListsAreEqual(rows, expectedRows);
+        });
+
+      });
+
+      fdescribe("given rawOrderedDatasetData and settings with groupsSources: desc C1, desc C2 columnSource: desc C3 and valuesSources CN2, " +
+        "where we have selected 'show totals' for 'C1' and 'C2", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : false},
+            'C2' : {showTotals: true, isAscSortOrder : false},
+            'C3' : {showTotals: false, isAscSortOrder : false}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return pivoted and pivoted (grand)totals rows in correct order", () => {
+                          // C1, C2, 'i'(CN1, CN2), 'h'(CN1, CN2), 'g'(CN1, CN2)
+          const expectedRows = [
+                          ["c", "e", -1,    9  , 1,    9,   null, null ],
+            setTotalIndex(["c",null, -1,    9  , 1,    9,   null, null ], 1),
+                          ["b", "d", null, null, 1,   -12,  null, null ],
+            setTotalIndex(["b",null, null, null, 1,   -12,  null, null ], 1),
+                          ["a", "e", null, null, 4,    7,   null, null ],
+                          ["a", "d", null, null, null, null, 3,    5   ],
+            setTotalIndex(["a", null, null, null, 4,    7,   3,    5   ], 1),
+            setTotalIndex([null,null, -1,    9  , 6,    4,   3,    5   ], 0),
+          ];
+
           dataRowListsAreEqual(rows, expectedRows);
         });
 

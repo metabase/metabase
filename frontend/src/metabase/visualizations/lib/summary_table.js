@@ -128,10 +128,12 @@ const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
     .filter(col => totals.has(col.name))
     .map(p => ({ ...p, source: AGGREGATION }));
 
-  const columnToIndex = invert(columns);
+  const columnFromMainResToIndex = invert(columns);
 
-  const groupingIndexes = groupingColumns.map(col => columnToIndex[col.name]);
-  const totalsIndexes = totalsColumns.map(col => columnToIndex[col.name]);
+  const groupingIndexes = groupingColumns.map(col => columnFromMainResToIndex[col.name]);
+  const totalsIndexes = totalsColumns.map(col => columnFromMainResToIndex[col.name]);
+
+  const columnToIndex = invert(groupingColumns.map(p => p.name));
 
   const rowResRaw = rows.reduce((acc, row) => {
     const rowPrefix = groupingIndexes.map(i => row[i]);
@@ -164,10 +166,10 @@ const resultsBuilder = ({ cols, columns, rows }: DatasetData) => ([
   const colsRes = [...groupingColumns, ...totalsColumns];
   const res = {
     cols: colsRes,
-    columns: orderBy(colsRes.map(p => p.name), p => columnToIndex[p]),
+    columns: orderBy(colsRes.map(p => p.name), p => columnFromMainResToIndex[p]),
     rows: orderBy(newRows, sortOrder.map(([_,columnName]) => columnToIndex[columnName]), sortOrder.map(([ascDesc])=> ascDesc))
   };
-  //todo log load res from js
+  //todo log it
 
   return res;
 };
@@ -256,7 +258,8 @@ export const getQueryPlan = (
   const aggregations = Set.of(...aggregationsList);
   const subqueriesBreakouts = [...settings.columnsSource, ...settings.groupsSources];
   const allBreakouts = Set.of(...subqueriesBreakouts, ...additionalGroupings);
-  const sortOrder = [...subqueriesBreakouts, ...additionalGroupings].map(columnName => [settings.columnNameToMetadata[columnName].isAscSortOrder ? ASC : DESC, columnName]);
+  const sortOrder = [...settings.groupsSources, ...additionalGroupings, ...settings.columnsSource]
+    .map(columnName => [settings.columnNameToMetadata[columnName].isAscSortOrder ? ASC : DESC, columnName]);
 
   if (aggregations.size === 0) {
     return {groupings: [[allBreakouts]], aggregations: Set.of() };
