@@ -3,21 +3,21 @@ import { formatValue } from "metabase/lib/formatting";
 import _ from "underscore";
 
 export function pivot(data, normalCol, pivotCol, cellCol) {
-  const { pivotColValues, normalColValues } = distinctValuesSorted(
+  const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
     pivotCol,
     normalCol,
   );
 
   // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
-  pivotColValues.unshift(data.cols[normalCol].display_name);
+  pivotValues.unshift(data.cols[normalCol].display_name);
 
   // start with an empty grid that we'll fill with the appropriate values
-  const pivotedRows = normalColValues.map((normalColValues, index) => {
-    const row = pivotColValues.map(() => null);
+  const pivotedRows = normalValues.map((normalValues, index) => {
+    const row = pivotValues.map(() => null);
     // for onVisualizationClick:
     row._dimension = {
-      value: normalColValues,
+      value: normalValues,
       column: data.cols[normalCol],
     };
     return row;
@@ -25,8 +25,8 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
 
   // fill it up with the data
   for (let j = 0; j < data.rows.length; j++) {
-    let normalColIdx = normalColValues.lastIndexOf(data.rows[j][normalCol]);
-    let pivotColIdx = pivotColValues.lastIndexOf(data.rows[j][pivotCol]);
+    let normalColIdx = normalValues.lastIndexOf(data.rows[j][normalCol]);
+    let pivotColIdx = pivotValues.lastIndexOf(data.rows[j][pivotCol]);
 
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
     // NOTE: we are hard coding the expectation that the metric is in the 3rd column
@@ -34,7 +34,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotColValues.map(function(value, idx) {
+  const cols = pivotValues.map(function(value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
@@ -55,52 +55,9 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
 
   return {
     cols: cols,
-    columns: pivotColValues,
+    columns: pivotValues,
     rows: pivotedRows,
   };
-}
-
-const DEFAULT_COMPARE = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-
-class SortState {
-  constructor(compare = DEFAULT_COMPARE) {
-    this.asc = true;
-    this.desc = true;
-    this.lastValue = undefined;
-
-    this.isGrouped = false;
-    this.groupAsc = true;
-    this.groupDesc = true;
-    this.lastGroupKey = undefined;
-
-    this.compare = compare;
-  }
-  update(value, groupKey) {
-    if (this.lastValue !== undefined) {
-      this.asc = this.asc && value >= this.lastValue;
-      this.desc = this.desc && value <= this.lastValue;
-      if (this.lastGroupKey !== undefined && this.lastGroupKey === groupKey) {
-        this.groupAsc = this.groupAsc && value >= this.lastValue;
-        this.groupDesc = this.groupDesc && value <= this.lastValue;
-        this.isGrouped = true;
-      }
-    }
-    this.lastValue = value;
-    this.lastGroupKey = groupKey;
-  }
-  sort(array) {
-    if (!this.isGrouped) {
-      console.log("Not grouped");
-    } else if (this.groupAsc && this.groupDesc) {
-      console.warn("This shouldn't happen");
-    } else if (this.groupAsc && !this.asc) {
-      console.log("Sorting ascending");
-      array.sort(this.compare);
-    } else if (this.groupDesc && !this.desc) {
-      console.log("Sorting descending");
-      array.sort((a, b) => this.compare(b, a));
-    }
-  }
 }
 
 export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
@@ -121,11 +78,65 @@ export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
     pivotSortState.update(pivotValue, normalValue);
   }
 
-  const normalColValues = Array.from(normalSet);
-  const pivotColValues = Array.from(pivotSet);
+  const normalValues = Array.from(normalSet);
+  const pivotValues = Array.from(pivotSet);
 
-  normalSortState.sort(normalColValues);
-  pivotSortState.sort(pivotColValues);
+  normalSortState.sort(normalValues);
+  pivotSortState.sort(pivotValues);
 
-  return { normalColValues, pivotColValues };
+  return { normalValues, pivotValues };
+}
+
+// This should work for both strings and numbers
+const DEFAULT_COMPARE = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+class SortState {
+  constructor(compare = DEFAULT_COMPARE) {
+    this.compare = compare;
+
+    this.asc = true;
+    this.desc = true;
+    this.lastValue = undefined;
+
+    this.groupAsc = true;
+    this.groupDesc = true;
+    this.lastGroupKey = undefined;
+    this.isGrouped = false;
+  }
+  update(value, groupKey) {
+    // skip the first value since there's nothing to compare it to
+    if (this.lastValue !== undefined) {
+      // compare the current value with the previous value
+      const result = this.compare(value, this.lastValue);
+      // update global sort state
+      this.asc = this.asc && result >= 0;
+      this.desc = this.desc && result <= 0;
+      if (
+        // if current and last values are different
+        result !== 0 &&
+        // and current and last group are same
+        this.lastGroupKey !== undefined &&
+        this.lastGroupKey === groupKey
+      ) {
+        // update grouped sort state
+        this.groupAsc = this.groupAsc && result >= 0;
+        this.groupDesc = this.groupDesc && result <= 0;
+        this.isGrouped = true;
+      }
+    }
+    // update last value and group key
+    this.lastValue = value;
+    this.lastGroupKey = groupKey;
+  }
+  sort(array) {
+    if (this.isGrouped) {
+      if (this.groupAsc && this.groupDesc) {
+        console.warn("This shouldn't happen");
+      } else if (this.groupAsc && !this.asc) {
+        array.sort(this.compare);
+      } else if (this.groupDesc && !this.desc) {
+        array.sort((a, b) => this.compare(b, a));
+      }
+    }
+  }
 }
