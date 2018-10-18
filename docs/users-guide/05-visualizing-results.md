@@ -137,7 +137,7 @@ Area charts are useful when comparing the proportions of two metrics over time. 
 ![Stacked area chart](images/visualizations/area.png)
 
 **Trend lines**
-Another useful option for line, area, bar, and scatter charts is trend lines. If you have a question where you're grouping by a time field, Open up the visualization options by clicking the gear icon and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. This will even work if you have multiple numbers selected in the View section of your question. It won't work, however, if you any groupings beyond the one time field.
+Another useful option for line, area, bar, and scatter charts is trend lines. If you have a question where you're grouping by a time field, open up the visualization options by clicking the gear icon, and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. This will even work if you have multiple numbers selected in the View section of your question. It won't work, however, if you have any groupings beyond the one time field.
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
