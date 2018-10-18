@@ -3,8 +3,11 @@ import { formatValue } from "metabase/lib/formatting";
 import _ from "underscore";
 
 export function pivot(data, normalCol, pivotCol, cellCol) {
-  const pivotColValues = distinctValues(data, pivotCol);
-  const normalColValues = distinctValues(data, normalCol);
+  const { pivotColValues, normalColValues } = distinctValuesSorted(
+    data.rows,
+    pivotCol,
+    normalCol,
+  );
 
   // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
   pivotColValues.unshift(data.cols[normalCol].display_name);
@@ -57,6 +60,72 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   };
 }
 
-export function distinctValues(data, colIndex) {
-  return _.uniq(data.rows.map(row => row[colIndex]));
+const DEFAULT_COMPARE = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+class SortState {
+  constructor(compare = DEFAULT_COMPARE) {
+    this.asc = true;
+    this.desc = true;
+    this.lastValue = undefined;
+
+    this.isGrouped = false;
+    this.groupAsc = true;
+    this.groupDesc = true;
+    this.lastGroupKey = undefined;
+
+    this.compare = compare;
+  }
+  update(value, groupKey) {
+    if (this.lastValue !== undefined) {
+      this.asc = this.asc && value >= this.lastValue;
+      this.desc = this.desc && value <= this.lastValue;
+      if (this.lastGroupKey !== undefined && this.lastGroupKey === groupKey) {
+        this.groupAsc = this.groupAsc && value >= this.lastValue;
+        this.groupDesc = this.groupDesc && value <= this.lastValue;
+        this.isGrouped = true;
+      }
+    }
+    this.lastValue = value;
+    this.lastGroupKey = groupKey;
+  }
+  sort(array) {
+    if (!this.isGrouped) {
+      console.log("Not grouped");
+    } else if (this.groupAsc && this.groupDesc) {
+      console.warn("This shouldn't happen");
+    } else if (this.groupAsc && !this.asc) {
+      console.log("Sorting ascending");
+      array.sort(this.compare);
+    } else if (this.groupDesc && !this.desc) {
+      console.log("Sorting descending");
+      array.sort((a, b) => this.compare(b, a));
+    }
+  }
+}
+
+export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
+  const normalSet = new Set();
+  const pivotSet = new Set();
+
+  const normalSortState = new SortState();
+  const pivotSortState = new SortState();
+
+  for (const row of rows) {
+    const pivotValue = row[pivotColIdx];
+    const normalValue = row[normalColIdx];
+
+    normalSet.add(normalValue);
+    pivotSet.add(pivotValue);
+
+    normalSortState.update(normalValue, pivotValue);
+    pivotSortState.update(pivotValue, normalValue);
+  }
+
+  const normalColValues = Array.from(normalSet);
+  const pivotColValues = Array.from(pivotSet);
+
+  normalSortState.sort(normalColValues);
+  pivotSortState.sort(pivotColValues);
+
+  return { normalColValues, pivotColValues };
 }
