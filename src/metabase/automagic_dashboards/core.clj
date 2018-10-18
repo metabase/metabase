@@ -35,7 +35,7 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :as qp.expand]
+            [metabase.query-processor.middleware.expand-macros :as qp.macros]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util.date :as date]
@@ -82,7 +82,7 @@
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
   (every-pred (partial mbql.u/is-clause? :metric)
-              (complement qp.expand/ga-metric?)))
+              (complement qp.macros/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
   (partial mbql.u/is-clause? :named))
@@ -94,10 +94,10 @@
   "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
   (cond
-    (qp.expand/ga-metric? metric) (-> args first str (subs 3) str/capitalize)
-    (adhoc-metric? metric)        (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)        (-> args first Metric :name)
-    :else                         (second args)))
+    (qp.macros/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
+    (adhoc-metric? metric)                   (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)                   (-> args first Metric :name)
+    :else                                    (second args)))
 
 (defn metric-op
   "Return the name op of the metric"

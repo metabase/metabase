@@ -18,3 +18,10 @@
    :ssl "true", :sslfactory "org.postgresql.ssl.NonValidatingFactory"}
   (#'mdb/parse-connection-string (str "postgres://tom:1234@localhost:5432/toms_cool_db"
                                       "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))
+
+;; the leading "jdbc" found in driver JDBC docs should be ignored
+(expect
+  {:type :postgres, :user "tom", :password "1234", :host "localhost", :port "5432", :dbname "toms_cool_db",
+   :ssl "true", :sslfactory "org.postgresql.ssl.NonValidatingFactory"}
+  (#'mdb/parse-connection-string (str "jdbc:postgres://tom:1234@localhost:5432/toms_cool_db"
+                                      "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))

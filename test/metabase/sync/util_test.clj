@@ -1,13 +1,15 @@
 (ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as time]
+            [clojure.string :as str]
+            [expectations :refer :all]
             [metabase
              [driver :as driver]
              [sync :as sync]]
             [metabase.models
              [database :as mdb :refer [Database]]
              [task-history :refer [TaskHistory]]]
-            [metabase.sync.util :refer :all]
+            [metabase.sync.util :as sync-util :refer :all]
             [metabase.test.util :as tu]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -137,3 +139,56 @@
        :operation-history         (fetch-task-history-row process-name)
        :step-1-history            (fetch-task-history-row step-1-name)
        :step-2-history            (fetch-task-history-row step-2-name)})))
+
+(defn- create-test-sync-summary [step-name log-summary-fn]
+  (let [start (time/now)]
+    {:start-time start
+     :end-time (time/plus start (time/seconds 5))
+     :steps [[step-name {:start-time start
+                         :end-time (time/plus start (time/seconds 4))
+                         :log-summary-fn log-summary-fn}]]}))
+
+;; Test that we can create the log summary message. This is a big string blob, so validate that it contains the
+;; important parts and it doesn't throw an exception
+(expect
+  {:has-operation?          true
+   :has-db-name?            true
+   :has-operation-duration? true
+   :has-step-name?          true
+   :has-step-duration?      true
+   :has-log-summary-text?   true}
+  (let [operation     (tu/random-name)
+        db-name       (tu/random-name)
+        step-name     (tu/random-name)
+        step-log-text (tu/random-name)
+        results       (#'sync-util/make-log-sync-summary-str operation
+                                                             (mdb/map->DatabaseInstance {:name db-name})
+                                                             (create-test-sync-summary step-name
+                                                                                       (fn [step-info]
+                                                                                         step-log-text)))]
+    {:has-operation?          (str/includes? results operation)
+     :has-db-name?            (str/includes? results db-name)
+     :has-operation-duration? (str/includes? results "5 s")
+     :has-step-name?          (str/includes? results step-name)
+     :has-step-duration?      (str/includes? results "4 s")
+     :has-log-summary-text?   (str/includes? results step-log-text)}))
+
+;; The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we properly handle that
+;; case
+(expect
+  {:has-operation?          true
+   :has-db-name?            true
+   :has-operation-duration? true
+   :has-step-name?          true
+   :has-step-duration?      true}
+  (let [operation (tu/random-name)
+        db-name   (tu/random-name)
+        step-name (tu/random-name)
+        results   (#'sync-util/make-log-sync-summary-str operation
+                                                         (mdb/map->DatabaseInstance {:name db-name})
+                                                         (create-test-sync-summary step-name nil))]
+    {:has-operation?          (str/includes? results operation)
+     :has-db-name?            (str/includes? results db-name)
+     :has-operation-duration? (str/includes? results "5 s")
+     :has-step-name?          (str/includes? results step-name)
+     :has-step-duration?      (str/includes? results "4 s")}))

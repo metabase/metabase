@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import d3 from "d3";
+import _ from "underscore";
 
 import colors from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
@@ -11,6 +12,34 @@ const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching f
 const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
 const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
 const X_LABEL_DISABLED_SPACING = 6; // spacing to use if the x-axis is disabled completely
+
+// +-------------------------------------------------------------------------------------------------------------------+
+// |                                                  HELPER FUNCTIONS                                                 |
+// +-------------------------------------------------------------------------------------------------------------------+
+
+// moves an element on top of all siblings
+function moveToTop(element) {
+  if (element) {
+    element.parentNode.appendChild(element);
+  }
+}
+
+// assumes elements are in order from left to right, skips those that aren't
+function getMinElementSpacing(elements) {
+  let min = null;
+  let lastLeft = null;
+  for (const element of elements) {
+    const { left } = element.getBoundingClientRect();
+    if (lastLeft !== null) {
+      const delta = left - lastLeft;
+      if (delta > 0 && (min == null || delta < min)) {
+        min = delta;
+      }
+    }
+    lastLeft = left;
+  }
+  return min;
+}
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -26,16 +55,45 @@ function onRenderRemoveClipPath(chart) {
 }
 
 function onRenderMoveContentToTop(chart) {
-  for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
+  for (let element of chart.selectAll(".sub, .chart-body")[0]) {
     // move chart content on top of axis (z-index doesn't work on SVG):
-    elem.parentNode.appendChild(elem);
+    moveToTop(element);
   }
 }
 
+function onRenderReorderCharts(chart) {
+  const displayTypes = chart.series.map(
+    single => chart.settings.series(single).display,
+  );
+  const isHeterogenous = _.uniq(displayTypes).length > 0;
+  if (isHeterogenous) {
+    // move area charts first
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "area") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+    // move line charts second
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "line") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+  }
+}
 function onRenderSetDotStyle(chart) {
   for (let elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
     elem.style.color = elem.getAttribute("fill");
+  }
+}
+
+function onRenderSetLineWidth(chart) {
+  const min = getMinElementSpacing(chart.svg().selectAll(".dot")[0]);
+  if (min > 150) {
+    chart.svg().classed("line--heavy", true);
+  } else if (min > 75) {
+    chart.svg().classed("line--medium", true);
   }
 }
 
@@ -44,41 +102,60 @@ const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
 function onRenderEnableDots(chart) {
-  let enableDots;
-  const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-  if (chart.settings["line.marker_enabled"] != null) {
-    enableDots = !!chart.settings["line.marker_enabled"];
-  } else if (dots.length > 500) {
-    // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
-    enableDots = false;
-  } else {
-    const vertices = dots.map((e, index) => {
-      let rect = e.getBoundingClientRect();
-      return [rect.left, rect.top, index];
-    });
-    const overlappedIndex = {};
-    // essentially pairs of vertices closest to each other
-    for (let { source, target } of d3.geom.voronoi().links(vertices)) {
-      if (
-        Math.sqrt(
-          Math.pow(source[0] - target[0], 2) +
-            Math.pow(source[1] - target[1], 2),
-        ) < DOT_OVERLAP_DISTANCE
-      ) {
-        // if they overlap, mark both as overlapped
-        overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+  const markerEnabledByIndex = chart.series.map(
+    single => chart.settings.series(single)["line.marker_enabled"],
+  );
+
+  // if any settings are auto, determine the correct auto setting
+  let enableDotsAuto;
+  const hasAuto = _.any(markerEnabledByIndex, enabled => enabled == null);
+  if (hasAuto) {
+    // get all enabled or auto dots
+    const dots = [].concat(
+      ...markerEnabledByIndex.map(
+        (markerEnabled, index) =>
+          markerEnabled === false
+            ? []
+            : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
+      ),
+    );
+    if (dots.length > 500) {
+      // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+      enableDotsAuto = false;
+    } else {
+      const vertices = dots.map((e, index) => {
+        let rect = e.getBoundingClientRect();
+        return [rect.left, rect.top, index];
+      });
+      const overlappedIndex = {};
+      // essentially pairs of vertices closest to each other
+      for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+        if (
+          Math.sqrt(
+            Math.pow(source[0] - target[0], 2) +
+              Math.pow(source[1] - target[1], 2),
+          ) < DOT_OVERLAP_DISTANCE
+        ) {
+          // if they overlap, mark both as overlapped
+          overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+        }
       }
+      const total = vertices.length;
+      const overlapping = Object.keys(overlappedIndex).length;
+      enableDotsAuto =
+        overlapping < DOT_OVERLAP_COUNT_LIMIT ||
+        overlapping / total < DOT_OVERLAP_RATIO;
     }
-    const total = vertices.length;
-    const overlapping = Object.keys(overlappedIndex).length;
-    enableDots =
-      overlapping < DOT_OVERLAP_COUNT_LIMIT ||
-      overlapping / total < DOT_OVERLAP_RATIO;
   }
-  chart
-    .svg()
-    .classed("enable-dots", enableDots)
-    .classed("enable-dots-onhover", !enableDots);
+
+  for (const [index, markerEnabled] of markerEnabledByIndex.entries()) {
+    const enableDots = markerEnabled != null ? !!markerEnabled : enableDotsAuto;
+    chart
+      .svg()
+      .select(`.sub._${index}`)
+      .classed("enable-dots", enableDots)
+      .classed("enable-dots-onhover", !enableDots);
+  }
 }
 
 const VORONOI_TARGET_RADIUS = 25;
@@ -163,17 +240,13 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
+function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   // remove dots
-  chart.selectAll(".goal .dot").remove();
+  chart.selectAll(".goal .dot, .trend .dot").remove();
 
   // move to end of the parent node so it's on top
-  chart.selectAll(".goal").each(function() {
+  chart.selectAll(".goal, .trend").each(function() {
     this.parentNode.appendChild(this);
-  });
-  chart.selectAll(".goal .line").attr({
-    stroke: colors["text-medium"],
-    "stroke-dasharray": "5,5",
   });
 
   // add the label
@@ -200,7 +273,7 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
     chart
       .selectAll(".goal .stack._0")
       .append("text")
-      .text("Goal")
+      .text(chart.settings["graph.goal_label"])
       .attr({
         x: labelOnRight ? x + width : x,
         y: y - 5,
@@ -290,10 +363,12 @@ function onRenderRotateAxis(chart) {
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
+  onRenderReorderCharts(chart);
   onRenderSetDotStyle(chart);
+  onRenderSetLineWidth(chart);
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
-  onRenderCleanupGoal(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);

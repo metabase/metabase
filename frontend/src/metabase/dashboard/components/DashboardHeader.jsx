@@ -297,16 +297,18 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    buttons.push(
-      <Tooltip tooltip={t`Move dashboard`}>
-        <Link
-          to={location.pathname + "/move"}
-          data-metabase-event={"Dashboard;Move"}
-        >
-          <Icon className="text-brand-hover" name="move" size={18} />
-        </Link>
-      </Tooltip>,
-    );
+    if (!isFullscreen) {
+      buttons.push(
+        <Tooltip tooltip={t`Move dashboard`}>
+          <Link
+            to={location.pathname + "/move"}
+            data-metabase-event={"Dashboard;Move"}
+          >
+            <Icon className="text-brand-hover" name="move" size={18} />
+          </Link>
+        </Tooltip>,
+      );
+    }
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
@@ -347,6 +349,7 @@ export default class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
+        showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
         editingTitle={t`You are editing a dashboard`}

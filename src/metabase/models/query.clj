@@ -1,6 +1,7 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [metabase.db :as mdb]
+            [metabase.mbql.normalize :as normalize]
             [metabase.util.honeysql-extensions :as hx]
             [toucan
              [db :as db]
@@ -77,6 +78,8 @@
 (defn adhoc-query
   "Wrap query map into a Query object (mostly to fascilitate type dispatch)."
   [query]
-  (->> {:dataset_query query}
+  (->> query
+       normalize/normalize
+       (hash-map :dataset_query)
        (merge (query->database-and-table-ids query))
        map->QueryInstance))

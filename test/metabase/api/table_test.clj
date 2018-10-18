@@ -90,7 +90,8 @@
    :dimensions               []
    :dimension_options        []
    :has_field_values         nil
-   :default_dimension_option nil})
+   :default_dimension_option nil
+   :settings                 nil})
 
 (defn- field-details [field]
   (merge

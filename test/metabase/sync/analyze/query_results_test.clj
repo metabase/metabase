@@ -31,11 +31,14 @@
 
 (defn- query->result-metadata
   [query-map]
-  (->> query-map
-       qp/process-query
-       :data
-       results->column-metadata
-       (tu/round-all-decimals 2)))
+  (let [results (qp/process-query query-map)]
+    (when (= (:status results) :failed)
+      (throw (ex-info "Query Failed" results)))
+    (->> results
+         :data
+         results->column-metadata
+         :metadata
+         (tu/round-all-decimals 2))))
 
 (defn- query-for-card [card]
   {:database database/virtual-id

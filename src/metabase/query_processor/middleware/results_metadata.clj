@@ -14,8 +14,8 @@
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
-;; metadata as part of the query context so we can compare for changes
+;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
+;; Card metadata as part of the query context so we can compare for changes
 (defn- record-metadata! [card-id metadata]
   (when metadata
     (db/update! 'Card card-id
@@ -54,7 +54,7 @@
       (if (-> query :middleware :skip-results-metadata?)
         results
         (try
-          (let [metadata (seq (qr/results->column-metadata results))]
+          (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
             ;; At the very least we can skip the Extra DB call to update this Card's metadata results
             ;; if its DB doesn't support nested queries in the first place
             (when (and (i/driver-supports? :nested-queries)
@@ -62,8 +62,10 @@
                        (not nested?))
               (record-metadata! card-id metadata))
             ;; add the metadata and checksum to the response
-            (assoc results :results_metadata {:checksum (metadata-checksum metadata)
-                                              :columns  metadata}))
+            (assoc results
+              :results_metadata {:checksum (metadata-checksum metadata)
+                                 :columns  metadata}
+              :insights insights))
           ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
           ;; rather than failing the entire query
           (catch Throwable e

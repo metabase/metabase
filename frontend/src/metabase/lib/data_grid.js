@@ -1,4 +1,3 @@
-import * as SchemaMetadata from "metabase/lib/schema_metadata";
 import { formatValue } from "metabase/lib/formatting";
 
 import _ from "underscore";

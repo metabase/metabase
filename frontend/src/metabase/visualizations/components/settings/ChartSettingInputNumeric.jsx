@@ -17,9 +17,11 @@ export default class ChartSettingInputNumeric extends Component {
   }
 
   render() {
-    const { onChange } = this.props;
+    const { onChange, ...props } = this.props;
     return (
       <input
+        type="number"
+        {...props}
         className={cx("input block full", {
           "border-error":
             this.state.value !== "" && isNaN(parseFloat(this.state.value)),

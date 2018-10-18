@@ -1,14 +1,18 @@
 (ns metabase.models.query.permissions-test
   (:require [expectations :refer :all]
-            [metabase.api.common :refer [*current-user-permissions-set*]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [card :as card :refer :all]
              [collection :refer [Collection]]
-             [database :as database]
+             [database :as database :refer [Database]]
+             [field :refer [Field]]
              [interface :as mi]
-             [permissions :as perms]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
+             [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.test.data :as data]
+            [metabase.test.data.users :as users]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
@@ -126,6 +130,36 @@
   #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
   (query-perms/perms-set (data/mbql-query venues)))
 
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  (query-perms/perms-set
+   {:query    {:source-table (data/id :venues)
+               :filter       [:> [:field-id (data/id :venues :id)] 10]}
+    :type     :query
+    :database (data/id)}))
+
+;; if current user is bound, we should ignore that for purposes of calculating query permissions
+(tt/expect-with-temp [Database [db]
+                      Table    [table {:db_id (u/get-id db), :schema nil}]
+                      Field    [_     {:table_id (u/get-id table)}]]
+  #{(perms/object-path db nil table)}
+  (do
+    (perms/revoke-permissions! (perms-group/all-users) db)
+    (binding [*current-user-permissions-set* (atom nil)
+              *current-user-id*              (users/user->id :rasta)]
+      (query-perms/perms-set
+       {:database (u/get-id db)
+        :type     :query
+        :query    {:source-table (u/get-id table)}}))))
+
+;; should be able to calculate permissions of a query before normalization
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  (query-perms/perms-set
+   {:query    {"SOURCE_TABLE" (data/id :venues)
+               "FILTER"       [">" (data/id :venues :id) 10]}
+    :type     :query
+    :database (data/id)}))
 
 ;;; -------------------------------------------------- MBQL w/ JOIN --------------------------------------------------
 
