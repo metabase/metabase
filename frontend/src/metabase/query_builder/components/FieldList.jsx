@@ -37,6 +37,7 @@ type Props = {
 
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
+  useOriginalDimension?: boolean,
 
   hideSectionHeader?: boolean,
 };
@@ -213,6 +214,7 @@ export default class FieldList extends Component {
     const {
       field,
       enableSubDimensions,
+      useOriginalDimension,
       onFilterChange,
       onFieldChange,
     } = this.props;
@@ -222,7 +224,9 @@ export default class FieldList extends Component {
       // ensure if we select the same item we don't reset datetime-field's unit
       onFieldChange(field);
     } else {
-      const dimension = item.dimension.defaultDimension() || item.dimension;
+      const dimension = useOriginalDimension
+        ? item.dimension
+        : item.dimension.defaultDimension() || item.dimension;
       const shouldExcludeBinning =
         !enableSubDimensions && dimension instanceof BinnedDimension;
 
