@@ -228,7 +228,9 @@ export default class FieldList extends Component {
         ? item.dimension
         : item.dimension.defaultDimension() || item.dimension;
       const shouldExcludeBinning =
-        !enableSubDimensions && dimension instanceof BinnedDimension;
+        !enableSubDimensions &&
+        !useOriginalDimension &&
+        dimension instanceof BinnedDimension;
 
       if (shouldExcludeBinning) {
         // If we don't let user choose the sub-dimension, we don't want to treat the field
