@@ -289,6 +289,22 @@ export default class Table extends Component {
     }
   }
 
+  // shared helpers for table implementations
+
+  getColumnTitle = columnIndex => {
+    const { data: { cols } } = this.state;
+    const { settings } = this.props;
+    const isPivoted = settings["table.pivot"];
+    const column = cols[columnIndex];
+    if (isPivoted) {
+      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
+    } else {
+      return (
+        settings.column(column)["_column_title_full"] || formatColumn(column)
+      );
+    }
+  };
+
   render() {
     const { card, isDashboard, settings } = this.props;
     const { data } = this.state;
@@ -327,6 +343,7 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
+          getColumnTitle={this.getColumnTitle}
         />
       );
     }
