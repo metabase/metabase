@@ -6,9 +6,9 @@ import { Harmonizer } from "color-harmony";
 
 import { deterministicAssign } from "./deterministic";
 
-type ColorName = string;
-type ColorString = string;
-type ColorFamily = { [name: ColorName]: ColorString };
+export type ColorName = string;
+export type ColorString = string;
+export type ColorFamily = { [name: ColorName]: ColorString };
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS

@@ -1,7 +1,5 @@
 import { formatValue } from "metabase/lib/formatting";
 
-import _ from "underscore";
-
 export function pivot(data, normalCol, pivotCol, cellCol) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,

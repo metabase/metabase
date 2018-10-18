@@ -291,8 +291,11 @@ export default class Table extends Component {
 
   // shared helpers for table implementations
 
-  getColumnTitle = columnIndex => {
-    const { data: { cols } } = this.state;
+  getColumnTitle = (columnIndex: number): ?string => {
+    const cols = this.state.data && this.state.data.cols;
+    if (!cols) {
+      return null;
+    }
     const { settings } = this.props;
     const isPivoted = settings["table.pivot"];
     const column = cols[columnIndex];
