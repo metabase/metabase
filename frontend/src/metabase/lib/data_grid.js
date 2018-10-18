@@ -29,8 +29,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     let pivotColIdx = pivotValues.lastIndexOf(data.rows[j][pivotCol]);
 
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
-    // NOTE: we are hard coding the expectation that the metric is in the 3rd column
-    pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][2];
+    pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][cellCol];
   }
 
   // provide some column metadata to maintain consistency
