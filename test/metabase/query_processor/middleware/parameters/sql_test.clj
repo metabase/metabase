@@ -321,7 +321,7 @@
 
 ;; dimension -- required but unspecified
 (expect Exception
-            (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :required true,
+            (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
                                            :dimension ["field-id" (data/id :checkins :date)]}
                                           nil)))
 
@@ -331,12 +331,12 @@
                         :parent_id nil
                         :table_id  (data/id :checkins)
                         :base_type :type/Date}
-        :param {:type   "dimension"
-                           :target ["dimension" ["template-tag" "checkin_date"]]
-                           :value  "2015-04-01~2015-05-01"}}
-    (into {} (#'sql/value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :required true, :default "2015-04-01~2015-05-01",
-                                   :dimension ["field-id" (data/id :checkins :date)]}
-                                  nil)))
+        :param {:type   :dimension
+                :target [:dimension [:template-tag "checkin_date"]]
+                :value  "2015-04-01~2015-05-01"}}
+   (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :required true, :default "2015-04-01~2015-05-01",
+                                  :dimension [:field-id (data/id :checkins :date)]}
+                                 nil)))
 
 
 ;; multiple values for the same tag should return a vector with multiple params instead of a single param
