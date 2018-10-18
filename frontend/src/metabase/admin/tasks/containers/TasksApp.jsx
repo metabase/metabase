@@ -40,7 +40,8 @@ class TasksApp extends React.Component {
               <Icon
                 name="info"
                 ml={1}
-                className="text-brand-hover cursor-pointer"
+                style={{ marginTop: 5 }}
+                className="text-brand-hover cursor-pointer text-medium"
               />
             </Tooltip>
           </Flex>
