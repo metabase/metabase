@@ -100,11 +100,12 @@
   [driver original-field]
   (let [schema-name (:schema-name original-field)
         table-name (:table-name original-field)
+        table-alias (:table-alias original-field)
         special-type (:special-type original-field)
-        field-name (:field-name original-field)
-        parent-name (:parent original-field)
         parents (fpr/get-qualified-name original-field)
-        field (keyword (apply hx/qualify-and-escape-dots schema-name table-name parents))]
+        field (if (nil? table-alias)
+             (keyword (apply hx/qualify-and-escape-dots schema-name table-name parents))
+             (keyword (apply hx/qualify-and-escape-dots table-alias parents)))]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
       (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)

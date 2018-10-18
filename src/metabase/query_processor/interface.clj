@@ -116,6 +116,7 @@
                                  position           :- (s/maybe su/IntGreaterThanZero)
                                  fk-field-id        :- (s/maybe s/Int)
                                  description        :- (s/maybe su/NonBlankString)
+                                 table-alias        :- (s/maybe String)
                                  parent-id          :- (s/maybe su/IntGreaterThanZero)
                                  ;; Field once its resolved; FieldPlaceholder before that
                                  parent             :- s/Any

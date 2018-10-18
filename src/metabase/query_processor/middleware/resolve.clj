@@ -7,6 +7,7 @@
   (:require [clojure
              [set :as set]
              [walk :as walk]]
+            [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -43,6 +44,8 @@
                                     :database_type   :database-type
                                     :base_type       :base-type
                                     :table_id        :table-id
+                                    :table_name      :table-name
+                                    :schema_name     :schema-name
                                     :parent_id       :parent-id}))
 
 (defn- rename-dimension-keys
@@ -308,10 +311,30 @@
   'sensitive' Fields. Then hydrate information that will be used by the QP and transform the keys so they're
   Clojure-style as expected by the rest of the QP code."
   [field-ids]
-  (as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
-                    :description :id :fingerprint :database_type]
-          :visibility_type [:not= "sensitive"]
-          :id              [:in field-ids]) fields
+  ;(as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
+  ;                  :description :id :fingerprint :database_type]
+  ;        :visibility_type [:not= "sensitive"]
+  ;        :id              [:in field-ids]) fields
+
+        (as-> (db/query {:select [[:field.name             :name]
+                                  [:field.display_name     :display_name]
+                                  [:field.base_type        :base_type]
+                                  [:field.special_type     :special_type]
+                                  [:field.visibility_type  :visibility_type]
+                                  [:field.table_id         :table_id]
+                                  [:field.parent_id        :parent_id]
+                                  [:field.description      :description]
+                                  [:field.id               :id]
+                                  [:field.fingerprint      :fingerprint]
+                                  [:field.database_type    :database_type]
+                                  [:table.name             :table_name]
+                                  [:table.schema           :schema_name]]
+
+                         :from        [[field/Field  :field]]
+                         :left-join   [[Table        :table] [:= :field.table_id :table.id]]
+                         :where       [:and [:in   :field.id (set field-ids)]
+                                       [:not= :field.visibility_type "sensitive"]]}) fields
+
     ;; hydrate values & dimensions for the `fields` we just fetched from the DB
     (hydrate fields :values :dimensions)
     ;; now for each Field call `rename-mb-field-keys` on it to take underscored DB-style names and replace them with
@@ -469,6 +492,27 @@
                           expanded-query-dict)))
 
 
+(defn- resolve-field-alias[list-table field]
+  (let [match-table (filter #(= (:table-id %) (:table-id field)) list-table)
+        join-table (first match-table)
+        table-alias (:join-alias join-table)
+    f2 (assoc field :table-alias table-alias)]
+    (log/info f2)
+    f2))
+
+(defn resolve-alias
+  [expanded-query-dict]
+  (log/info expanded-query-dict)
+  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
+  (let [query (:query expanded-query-dict)
+        breakout (:breakout query)
+    resolved (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %1) breakout)
+    result (assoc (:query expanded-query-dict) :breakout resolved)
+    new-expanded (assoc expanded-query-dict :query result)]
+    (log/info new-expanded)
+    new-expanded))
+
+
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
 (defn resolve-fields-if-needed
@@ -487,7 +531,8 @@
           record-fk-field-ids
           resolve-tables
           resolve-fields
-          resolve-field-literals))
+          resolve-field-literals
+          resolve-alias))
 
 (defn resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
