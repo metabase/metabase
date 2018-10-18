@@ -145,8 +145,8 @@ cards:
       title: "[[this]] per [[GenericCategorySmall]] over time"
       metrics: this
       dimensions:
-        - GenericCategorySmall
         - Timestamp
+        - GenericCategorySmall
       visualization:
         area:
           stackable.stack_type: stacked
