@@ -8,9 +8,7 @@ import colors from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
-import * as Query from "metabase/lib/query/query";
-import * as Card from "metabase/meta/Card";
-import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+import { formatBucketing } from "metabase/lib/query_time";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -44,12 +42,12 @@ export default class Smart extends React.Component {
   };
 
   static isSensible({ insights }) {
-    return !!insights;
+    return insights && insights.length > 0;
   }
 
   // Smart scalars need to have a breakout
-  static checkRenderable(series, settings) {
-    if (!series[0].data.insights) {
+  static checkRenderable([{ data: { insights } }], settings) {
+    if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
         t`Group by a time field to see how this has changed over time`,
       );
@@ -57,10 +55,6 @@ export default class Smart extends React.Component {
   }
 
   render() {
-    const insights =
-      this.props.rawSeries &&
-      this.props.rawSeries[0].data &&
-      this.props.rawSeries[0].data.insights;
     const {
       actionButtons,
       onChangeCardAndRun,
@@ -70,22 +64,30 @@ export default class Smart extends React.Component {
       settings,
       visualizationIsClickable,
       series: [{ card, data: { rows, cols } }],
+      rawSeries,
     } = this.props;
 
-    if (!insights) {
+    const metricIndex = 1;
+    const dimensionIndex = 0;
+
+    const lastRow = rows[rows.length - 1];
+    const value = lastRow && lastRow[metricIndex];
+    const column = cols[metricIndex];
+    const dimensionColumn = cols[dimensionIndex];
+
+    let granularity =
+      dimensionColumn && dimensionColumn.unit
+        ? formatBucketing(dimensionColumn.unit).toLowerCase()
+        : null;
+
+    const insights =
+      rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
+    const insight = _.findWhere(insights, { col: column.name });
+    if (!insight) {
       return null;
     }
 
-    let granularity;
-    if (Card.isStructured(card)) {
-      const query = Card.getQuery(card);
-      const breakouts = query && Query.getBreakouts(query);
-      granularity = formatBucketing(
-        parseFieldBucketing(breakouts[0]),
-      ).toLowerCase();
-    }
-
-    const change = formatNumber(insights["last-change"] * 100);
+    const change = formatNumber(insight["last-change"] * 100);
     const isNegative = (change && Math.sign(change) < 0) || false;
 
     let color = isNegative ? colors["error"] : colors["success"];
@@ -116,13 +118,6 @@ export default class Smart extends React.Component {
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
 
-    const metricIndex = 1;
-    const dimensionIndex = 0;
-
-    const lastRow = rows[rows.length - 1];
-    const value = lastRow && lastRow[metricIndex];
-    const column = cols[metricIndex];
-
     const clicked = {
       value,
       column,
@@ -151,7 +146,7 @@ export default class Smart extends React.Component {
           ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
-            value={formatValue(insights["last-value"], settings.column(column))}
+            value={formatValue(insight["last-value"], settings.column(column))}
           />
         </span>
         {isDashboard && (
@@ -178,7 +173,7 @@ export default class Smart extends React.Component {
             >
               {!isFullscreen &&
                 jt`${separator} was ${formatValue(
-                  insights["previous-value"],
+                  insight["previous-value"],
                   settings.column(column),
                 )} ${granularityDisplay}`}
             </h4>
