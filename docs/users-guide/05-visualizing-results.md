@@ -123,7 +123,7 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
 ##### Pivoted tables
-If your table is a result that contains one metric and two dimensions, Metabase will also automatically "pivot" your table, like in the example below (the example shows the count of orders grouped by the review rating for that order and the category of the product that was purchased; you can tell it's pivoted because the grouping field values are all in the first column and first row). You can turn this behavior off in the chart settings.
+If your table is a result that contains one metric and two dimensions, Metabase will also automatically "pivot" your table, like in the example below. What this does is it takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](images/visualizations/pivot.png)
 
