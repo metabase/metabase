@@ -485,7 +485,7 @@ describe("summary_table_datasetdata_builder.js", () => {
 
       });
 
-      fdescribe("given rawOrderedDatasetData and settings with groupsSources: desc C1, desc C2 columnSource: desc C3 and valuesSources CN2, " +
+      describe("given rawOrderedDatasetData and settings with groupsSources: desc C1, desc C2 columnSource: desc C3 and valuesSources CN1,CN2, " +
         "where we have selected 'show totals' for 'C1' and 'C2", () => {
         const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: ['CN1', 'CN2'], columnNameToMetadata:{
             'C1' : {showTotals: true, isAscSortOrder : false},
@@ -505,6 +505,33 @@ describe("summary_table_datasetdata_builder.js", () => {
                           ["a", "d", null, null, null, null, 3,    5   ],
             setTotalIndex(["a", null, null, null, 4,    7,   3,    5   ], 1),
             setTotalIndex([null,null, -1,    9  , 6,    4,   3,    5   ], 0),
+          ];
+
+          dataRowListsAreEqual(rows, expectedRows);
+        });
+
+      });
+
+      describe("given rawOrderedDatasetData and settings with groupsSources: desc C1, desc C2 columnSource: desc C3 and valuesSources CN2, " +
+        "where we have selected 'show totals' for 'C1' and 'C2", () => {
+        const settings = toSettings({groupsSources: ['C1', 'C2'], columnsSource:['C3'], valuesSources: [ 'CN2'], columnNameToMetadata:{
+            'C1' : {showTotals: true, isAscSortOrder : false},
+            'C2' : {showTotals: true, isAscSortOrder : false},
+            'C3' : {showTotals: false, isAscSortOrder : false}
+          }});
+
+        const {rows} = buildDatasetData(settings, rawOrderedDatasetData, resultsProvider);
+        it("builder should return pivoted and pivoted (grand)totals rows in correct order", () => {
+          // C1, C2, 'i'(CN1), 'h'(CN1), 'g'(CN1)
+          const expectedRows = [
+                          ["c", "e",  9  ,  9,   null ],
+            setTotalIndex(["c",null,  9  ,  9,   null ], 1),
+                          ["b", "d", null, -12,  null ],
+            setTotalIndex(["b",null, null, -12,  null ], 1),
+                          ["a", "e", null,  7,   null ],
+                          ["a", "d", null,  null, 5   ],
+            setTotalIndex(["a", null, null,  7,   5   ], 1),
+            setTotalIndex([null,null,  9  ,  4,   5   ], 0),
           ];
 
           dataRowListsAreEqual(rows, expectedRows);
