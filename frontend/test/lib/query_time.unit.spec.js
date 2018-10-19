@@ -164,16 +164,6 @@ describe("query_time", () => {
         generateTimeFilterValuesDescriptions(["time-interval", null, 1, "day"]),
       ).toEqual(["Tomorrow"]);
     });
-    it("should format legacy 'TIME_INTERVAL' correctly", () => {
-      expect(
-        generateTimeFilterValuesDescriptions([
-          "TIME_INTERVAL",
-          null,
-          -30,
-          "day",
-        ]),
-      ).toEqual(["Past 30 Days"]);
-    });
   });
 
   describe("computeFilterTimeRange", () => {

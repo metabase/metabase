@@ -3,7 +3,6 @@ import ReactTestUtils from "react-dom/test-utils";
 import Dimension from "metabase-lib/lib/Dimension";
 import {
   metadata,
-  ORDERS_CREATED_DATE_FIELD_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_CATEGORY_FIELD_ID,
   PRODUCT_CREATED_AT_FIELD_ID,
