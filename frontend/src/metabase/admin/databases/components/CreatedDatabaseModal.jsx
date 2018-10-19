@@ -42,7 +42,7 @@ export default class CreatedDatabaseModal extends Component {
               {t`Explore this data`}
             </Link>
           ) : (
-            <Button primary onClose={onClose} ml="auto">
+            <Button primary onClick={onDone} ml="auto">
               {t`Done`}
             </Button>
           )}
