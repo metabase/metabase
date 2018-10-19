@@ -23,6 +23,7 @@ export const ORDERS_TOTAL_FIELD_ID = 6;
 export const MAIN_METRIC_ID = 1;
 
 export const PRODUCT_CATEGORY_FIELD_ID = 21;
+export const PRODUCT_CREATED_AT_FIELD_ID = 22;
 export const PRODUCT_PK_FIELD_ID = 24;
 export const PRODUCT_TILE_FIELD_ID = 27;
 

@@ -177,23 +177,8 @@ export default class Dimension {
     if (!otherDimension) {
       return false;
     }
-    // must be instace of the same class
-    if (this.constructor !== otherDimension.constructor) {
-      return false;
-    }
-    // must both or neither have a parent
-    if (!this._parent !== !otherDimension._parent) {
-      return false;
-    }
-    // parents must be equal
-    if (this._parent && !this._parent.isEqual(otherDimension._parent)) {
-      return false;
-    }
-    // args must be equal
-    if (!_.isEqual(this._args, otherDimension._args)) {
-      return false;
-    }
-    return true;
+    // assumes .mbql() returns canonical form
+    return _.isEqual(this.mbql(), other.mbql());
   }
 
   /**
@@ -283,7 +268,7 @@ export default class Dimension {
    * Renders a dimension to React
    */
   render(): ?React$Element<any> {
-    return [this.displayName()];
+    return this._parent ? this._parent.render() : [this.displayName()];
   }
 }
 
@@ -365,7 +350,7 @@ export class FKDimension extends FieldDimension {
       // $FlowFixMe
       const fkRef: ForeignFieldReference = mbql;
       const parent = Dimension.parseMBQL(fkRef[1], metadata);
-      return new FKDimension(parent, fkRef.slice(2));
+      return new FKDimension(parent, fkRef.slice(2), metadata);
     }
     return null;
   }
@@ -375,23 +360,24 @@ export class FKDimension extends FieldDimension {
       const field = parent.field();
       if (field.target && field.target.table) {
         return field.target.table.fields.map(
-          field => new FKDimension(parent, [field.id]),
+          field => new FKDimension(parent, [field.id], parent._metadata),
         );
       }
     }
     return [];
   }
 
+  constructor(parent: ?Dimension, args: any[], metadata?: Metadata): Dimension {
+    super(parent, args, metadata);
+    this._dest = Dimension.parseMBQL(args[0], metadata);
+  }
+
   mbql(): ForeignFieldReference {
-    // TODO: not sure `this._parent._args[0]` is the best way to handle this?
-    // we don't want the `["field-id", ...]` wrapper from the `this._parent.mbql()`
-    return ["fk->", this._parent._args[0], this._args[0]];
+    return ["fk->", this._parent.mbql(), this._dest.mbql()];
   }
 
   field() {
-    return (
-      (this._metadata && this._metadata.fields[this._args[0]]) || new Field()
-    );
+    return this._dest.field();
   }
 
   render() {
