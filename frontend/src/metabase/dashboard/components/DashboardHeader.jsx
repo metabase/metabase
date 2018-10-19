@@ -308,6 +308,16 @@ export default class DashboardHeader extends Component {
           </Link>
         </Tooltip>,
       );
+      buttons.push(
+        <Tooltip tooltip={t`Copy dashboard`}>
+          <Link
+            to={location.pathname + "/copy"}
+            data-metabase-event={"Dashboard;Copy"}
+          >
+            <Icon className="text-brand-hover" name="copy" size={18} />
+          </Link>
+        </Tooltip>,
+      );
     }
 
     if (!isFullscreen && !isEditing && canEdit) {

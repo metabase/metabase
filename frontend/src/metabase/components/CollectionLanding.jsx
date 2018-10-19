@@ -29,6 +29,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import CollectionCopyModal from "metabase/containers/CollectionCopyModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import CollectionList from "metabase/components/CollectionList";
@@ -122,7 +123,8 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 @withRouter
 class DefaultLanding extends React.Component {
   state = {
-    moveItems: null,
+    selectedItems: null,
+    isCopy: null,
   };
 
   handleBulkArchive = async () => {
@@ -136,15 +138,31 @@ class DefaultLanding extends React.Component {
   };
 
   handleBulkMoveStart = () => {
-    this.setState({ moveItems: this.props.selected });
+    this.setState({ selectedItems: this.props.selected, isCopy: false });
   };
 
   handleBulkMove = async collection => {
     try {
       await Promise.all(
-        this.state.moveItems.map(item => item.setCollection(collection)),
+        this.state.selectedItems.map(item => item.setCollection(collection)),
       );
-      this.setState({ moveItems: null });
+      this.setState({ selectedItems: null, isCopy: null });
+    } finally {
+      this.handleBulkActionSuccess();
+    }
+  };
+
+  handleBulkCopyStart = () => {
+    this.setState({ selectedItems: this.props.selected, isCopy: true });
+  };
+
+  // collection - {id: number}
+  handleBulkCopy = async collection => {
+    try {
+      await Promise.all(
+        this.state.selectedItems.map(item => { item.copy({name: item.name + " - " + t`Copy`, collection_id: collection.id}) }),
+      );
+      this.setState({ selectedItems: null, isCopy: null });
     } finally {
       this.handleBulkActionSuccess();
     }
@@ -174,7 +192,7 @@ class DefaultLanding extends React.Component {
       onToggleSelected,
       location,
     } = this.props;
-    const { moveItems } = this.state;
+    const { selectedItems, isCopy } = this.state;
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
@@ -382,8 +400,11 @@ class DefaultLanding extends React.Component {
                                           collection={collection}
                                           selection={selection}
                                           onToggleSelected={onToggleSelected}
-                                          onMove={moveItems =>
-                                            this.setState({ moveItems })
+                                          onMove={selectedItems =>
+                                            this.setState({ selectedItems, isCopy: false })
+                                          }
+                                          onCopy={selectedItems => 
+                                            this.setState({ selectedItems, isCopy: true })
                                           }
                                         />
                                       </ItemDragSource>
@@ -464,6 +485,11 @@ class DefaultLanding extends React.Component {
                             ? this.handleBulkMoveStart
                             : null
                         }
+                        onCopy={
+                          _.all(selected, item => item.copy)
+                            ? this.handleBulkCopyStart
+                            : null
+                        }
                       />
                       <Box ml="auto">
                         {ngettext(
@@ -479,18 +505,32 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(moveItems) && (
-          <Modal>
-            <CollectionMoveModal
-              title={
-                moveItems.length > 1
-                  ? t`Move ${moveItems.length} items?`
-                  : t`Move "${moveItems[0].getName()}"?`
-              }
-              onClose={() => this.setState({ moveItems: null })}
-              onMove={this.handleBulkMove}
-            />
-          </Modal>
+        {!_.isEmpty(selectedItems) && (
+          isCopy ? ( 
+            <Modal>
+              <CollectionCopyModal
+                title={
+                  selectedItems.length > 1
+                    ? t`Copy ${selectedItems.length} items?`
+                    : t`Copy "${selectedItems[0].getName()}"?`
+                }
+                onClose={() => this.setState({ selectedItems: null, isCopy: null })}
+                onCopy={this.handleBulkCopy}
+              />
+            </Modal>
+          ) : ( 
+            <Modal>
+              <CollectionMoveModal
+                title={
+                  selectedItems.length > 1
+                    ? t`Move ${selectedItems.length} items?`
+                    : t`Move "${selectedItems[0].getName()}"?`
+                }
+                onClose={() => this.setState({ selectedItems: null, isCopy: null })}
+                onMove={this.handleBulkMove}
+              />
+            </Modal>
+          )
         )}
         <ItemsDragLayer selected={selected} />
       </Box>
@@ -504,6 +544,7 @@ export const NormalItem = ({
   selection = new Set(),
   onToggleSelected,
   onMove,
+  onCopy,
 }) => (
   <Link
     to={item.getUrl()}
@@ -530,6 +571,9 @@ export const NormalItem = ({
       }
       onMove={
         collection.can_write && item.setCollection ? () => onMove([item]) : null
+      }
+      onCopy={
+        item.copy ? () => onCopy([item]) : null
       }
       onArchive={
         collection.can_write && item.setArchived
@@ -576,7 +620,7 @@ const PinnedItem = ({ item, index, collection }) => (
   </Link>
 );
 
-const BulkActionControls = ({ onArchive, onMove }) => (
+const BulkActionControls = ({ onArchive, onMove, onCopy }) => (
   <Box ml={1}>
     <Button
       ml={1}
@@ -592,6 +636,13 @@ const BulkActionControls = ({ onArchive, onMove }) => (
       onClick={onMove}
       data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Move Items`}
     >{t`Move`}</Button>
+    <Button
+      ml={1}
+      medium
+      disabled={!onCopy}
+      onClick={onCopy}
+      data-metabase-event={`${ANALYTICS_CONTEXT};Bulk Actions;Copy Items`}
+    >{t`Copy`}</Button>
   </Box>
 );
 
