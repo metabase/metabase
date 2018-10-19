@@ -1,11 +1,6 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [metabase.query-processor.middleware
-             [add-query-throttle :as query-throttle]
-             [expand :as expand]
-             [resolve :as resolve]
-             [source-table :as source-table]]
-            [metabase.query-processor.util :as qputil]
+  (:require [metabase.query-processor.middleware.add-query-throttle :as query-throttle]
             [metabase.util :as u]
             schema.utils)
   (:import [schema.utils NamedError ValidationError]))
