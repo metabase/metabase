@@ -311,29 +311,10 @@
   'sensitive' Fields. Then hydrate information that will be used by the QP and transform the keys so they're
   Clojure-style as expected by the rest of the QP code."
   [field-ids]
-  ;(as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
-  ;                  :description :id :fingerprint :database_type]
-  ;        :visibility_type [:not= "sensitive"]
-  ;        :id              [:in field-ids]) fields
-
-        (as-> (db/query {:select [[:field.name             :name]
-                                  [:field.display_name     :display_name]
-                                  [:field.base_type        :base_type]
-                                  [:field.special_type     :special_type]
-                                  [:field.visibility_type  :visibility_type]
-                                  [:field.table_id         :table_id]
-                                  [:field.parent_id        :parent_id]
-                                  [:field.description      :description]
-                                  [:field.id               :id]
-                                  [:field.fingerprint      :fingerprint]
-                                  [:field.database_type    :database_type]
-                                  [:table.name             :table_name]
-                                  [:table.schema           :schema_name]]
-
-                         :from        [[field/Field  :field]]
-                         :left-join   [[Table        :table] [:= :field.table_id :table.id]]
-                         :where       [:and [:in   :field.id (set field-ids)]
-                                       [:not= :field.visibility_type "sensitive"]]}) fields
+  (as-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id
+                    :description :id :fingerprint :database_type]
+          :visibility_type [:not= "sensitive"]
+          :id              [:in field-ids]) fields
 
     ;; hydrate values & dimensions for the `fields` we just fetched from the DB
     (hydrate fields :values :dimensions)
