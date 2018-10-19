@@ -84,7 +84,7 @@ describe("metabase/meta/Parameter", () => {
     });
     it("should parse 2017-05-01~2017-05-02", () => {
       expect(dateParameterValueToMBQL("2017-05-01~2017-05-02", null)).toEqual([
-        "BETWEEN",
+        "between",
         null,
         "2017-05-01",
         "2017-05-02",
