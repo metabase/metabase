@@ -111,13 +111,13 @@
     :range  (fn [_ dt]
               {:start dt,
                :end   dt})
-    :filter (fn [_ field] [:= field [:relative-datetime :current]])}
+    :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime :current]])}
 
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
               {:start (t/minus dt (t/days 1))
                :end   (t/minus dt (t/days 1))})
-    :filter (fn [_ field] [:= field [:relative-datetime -1 :day]])}
+    :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime -1 :day]])}
 
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
@@ -152,9 +152,10 @@
 (defn- day->iso8601 [date]
   (tf/unparse (tf/formatters :year-month-day) date))
 
+;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field]
-  [:between field (day->iso8601 start) (day->iso8601 end)])
+  [:between [:datetime-field field :day] (day->iso8601 start) (day->iso8601 end)])
 
 (def ^:private absolute-date-string-decoders
   ;; year and month
@@ -176,25 +177,25 @@
               {:start date, :end date})
     :filter (fn [{:keys [date]} field-id-clause]
               (let [iso8601date (day->iso8601 date)]
-                [:between field-id-clause iso8601date iso8601date]))}
+                [:= [:datetime-field field-id-clause :day] :between]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
               {:start date-1, :end date-2})
     :filter (fn [{:keys [date-1 date-2]} field-id-clause]
-              [:between field-id-clause (day->iso8601 date-1) (day->iso8601 date-2)])}
+              [:between [:datetime-field field-id-clause :day] (day->iso8601 date-1) (day->iso8601 date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
               {:end date})
     :filter (fn [{:keys [date]} field-id-clause]
-              [:< field-id-clause (day->iso8601 date)])}
+              [:< [:datetime-field field-id-clause :day] (day->iso8601 date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date})
     :filter (fn [{:keys [date]} field-id-clause]
-              [:> field-id-clause (day->iso8601 date)])}])
+              [:> [:datetime-field field-id-clause :day] (day->iso8601 date)])}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
@@ -226,7 +227,7 @@
              (m/map-vals (partial tf/unparse formatter-no-tz))))))
 
 (s/defn date-string->filter :- mbql.s/Filter
-  "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and returns a
-   corresponding MBQL filter clause for a given field reference."
+  "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
+   returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- s/Str, field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
   (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string))

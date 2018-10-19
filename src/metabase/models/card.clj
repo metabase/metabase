@@ -41,8 +41,10 @@
 (defn- extract-ids
   "Get all the Segment or Metric IDs referenced by a query."
   [segment-or-metric query]
-  (set (for [[_ id] (mbql.u/clause-instances segment-or-metric query)]
-         id)))
+  (set
+   (case segment-or-metric
+     :segment (mbql.u/match query [:segment id] id)
+     :metric  (mbql.u/match query [:metric  id] id))))
 
 (defn card-dependencies
   "Calculate any dependent objects for a given `card`."

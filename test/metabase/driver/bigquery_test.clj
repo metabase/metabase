@@ -8,11 +8,13 @@
              [query-processor-test :as qptest]
              [util :as u]]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.middleware.check-features :as check-features]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -75,27 +77,44 @@
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
 
-(defn- aggregation-names [query-map]
-  (->> query-map
-       :aggregation
-       (map :custom-name)))
+;; can we generate unique names?
+(expect
+  ["count" "sum" "count_2" "count_3"]
+  (let [unique-name (#'bigquery/unique-name-fn)]
+    [(unique-name "count")
+     (unique-name "sum")
+     (unique-name "count")
+     (unique-name "count")]))
 
-(defn- pre-alias-aggregations' [query-map]
+;; what if we try to trick it by using a name it would have generated?
+(expect
+  ["count" "count_2" "count_2_2"]
+  (let [unique-name (#'bigquery/unique-name-fn)]
+    [(unique-name "count")
+     (unique-name "count")
+     (unique-name "count_2")]))
+
+;; ok, make sure we actually wrap all of our ag clauses in `:named` clauses with unique names
+(defn- aggregation-names [query]
+  (mbql.u/match (-> query :query :aggregation)
+    [:named _ ag-name] ag-name))
+
+(defn- pre-alias-aggregations [outer-query]
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (aggregation-names (#'bigquery/pre-alias-aggregations query-map))))
+    (aggregation-names (#'bigquery/pre-alias-aggregations outer-query))))
 
-(defn- expanded-query-with-aggregations [aggregations]
-  (-> (qp/expand {:database (data/id)
-                  :type     :query
-                  :query    {:source-table (data/id :venues)
-                             :aggregation  aggregations}})
-      :query))
+(defn- query-with-aggregations
+  [aggregations]
+  {:database (data/id)
+   :type     :query
+   :query    {:source-table (data/id :venues)
+              :aggregation  aggregations}})
 
 ;; make sure BigQuery can handle two aggregations with the same name (#4089)
 (expect
   ["sum" "count" "sum_2" "avg" "sum_3" "min"]
-  (pre-alias-aggregations'
-   (expanded-query-with-aggregations
+  (pre-alias-aggregations
+   (query-with-aggregations
     [[:sum [:field-id (data/id :venues :id)]]
      [:count [:field-id (data/id :venues :id)]]
      [:sum [:field-id (data/id :venues :id)]]
@@ -105,13 +124,14 @@
 
 (expect
   ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
-  (pre-alias-aggregations'
-   (expanded-query-with-aggregations [[:sum [:field-id (data/id :venues :id)]]
-                                      [:count [:field-id (data/id :venues :id)]]
-                                      [:sum [:field-id (data/id :venues :id)]]
-                                      [:avg [:field-id (data/id :venues :id)]]
-                                      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
-                                      [:min [:field-id (data/id :venues :id)]]])))
+  (pre-alias-aggregations
+   (query-with-aggregations
+    [[:sum [:field-id (data/id :venues :id)]]
+     [:count [:field-id (data/id :venues :id)]]
+     [:sum [:field-id (data/id :venues :id)]]
+     [:avg [:field-id (data/id :venues :id)]]
+     [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
+     [:min [:field-id (data/id :venues :id)]]])))
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
@@ -141,16 +161,17 @@
 ;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
 ;; databases do. (#4218)
 (expect-with-engine :bigquery
-  (str "SELECT count(*) AS `count`,"
-       " `test_data.categories__via__category_id`.`name` AS `categories__via__category_id___name` "
+  (str "SELECT `test_data.categories__via__category_id`.`name` AS `categories___name`,"
+       " count(*) AS `count` "
        "FROM `test_data.venues` "
        "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
        " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
-       "GROUP BY `categories__via__category_id___name` "
-       "ORDER BY `categories__via__category_id___name` ASC")
+       "GROUP BY `categories___name` "
+       "ORDER BY `categories___name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
-  (with-redefs [qpi/driver-supports? (constantly true)]
+  (with-redefs [driver/driver-supports?         (constantly true)
+                check-features/driver-supports? (constantly true)]
     (tu/with-temp-vals-in-db 'Field (data/id :venues :category_id) {:fk_target_field_id (data/id :categories :id)
                                                                     :special_type       "type/FK"}
       (let [results (qp/process-query

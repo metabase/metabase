@@ -1,5 +1,5 @@
 (ns metabase.test.mock.util
-  (:require [metabase.query-processor :as qp]))
+  (:require [metabase.mbql.util :as mbql.u]))
 
 (def table-defaults
   {:description             nil
@@ -57,11 +57,13 @@
 
 ;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
 ;; queries we know will get ran as part of sync
-(defn- is-table-row-count-query? [expanded-query]
-  (= :count (get-in expanded-query [:query :aggregation 0 :aggregation-type])))
+(defn- is-table-row-count-query? [query]
+  (boolean
+   (mbql.u/match (-> :query :aggregation)
+     [:count & _])))
 
-(defn- is-table-sample-query? [expanded-query]
-  (seq (get-in expanded-query [:query :fields])))
+(defn- is-table-sample-query? [query]
+  (seq (get-in query [:query :fields])))
 
 (defn process-query-in-context
   "QP mock that will return some 'appropriate' fake answers to the questions we know are ran during the sync process
@@ -69,12 +71,16 @@
    for any other queries, including ones for determining FieldValues."
   [_ _]
   (fn [query]
-    (let [expanded-query (qp/expand query)]
-      {:data
-       {:rows
-        (cond
-          (is-table-row-count-query? expanded-query) [[1000]]
-          (is-table-sample-query? expanded-query)    (let [fields-count (count (get-in query [:query :fields]))]
-                                                       (for [i (range 500)]
-                                                         (repeat fields-count i)))
-          :else                                      nil)}})))
+    {:data
+     {:rows
+      (cond
+        (is-table-row-count-query? query)
+        [[1000]]
+
+        (is-table-sample-query? query)
+        (let [fields-count (count (get-in query [:query :fields]))]
+          (for [i (range 500)]
+            (repeat fields-count i)))
+
+        :else
+        nil)}}))

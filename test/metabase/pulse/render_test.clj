@@ -5,7 +5,7 @@
             [metabase.pulse
              [color :as color]
              [render :as render :refer :all]]
-            [metabase.query-processor.util :as qputil])
+            [metabase.test.util :as tu])
   (:import java.util.TimeZone))
 
 (def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
@@ -292,13 +292,26 @@
   (count-displayed-columns
    (concat test-columns [description-col detail-col sensitive-col retired-col])))
 
+(defn- postwalk-collect
+  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
+  results."
+  [pred collect-fn form]
+  (let [results (atom [])]
+    (tu/postwalk-pred pred
+                      (fn [node]
+                        (when-let [result (collect-fn node)]
+                          (swap! results conj result))
+                        node)
+                      form)
+    @results))
+
 (defn- find-table-body
   "Given the hiccup data structure, find the table body and return it"
   [results]
-  (qputil/postwalk-collect (every-pred vector? #(= :tbody (first %)))
-                           ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
-                           second
-                           results))
+  (postwalk-collect (every-pred vector? #(= :tbody (first %)))
+                    ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
+                    second
+                    results))
 
 (defn- style-map->background-color
   "Finds the background color in the style string of a Hiccup style map"
@@ -310,10 +323,10 @@
   "Returns a map of cell values to background colors of the pulse table found in the hiccup `results` data
   structure. This only includes the data cell values, not the header values."
   [results]
-  (into {} (qputil/postwalk-collect (every-pred vector? #(= :td (first %)))
-                                    (fn [[_ style-map cell-value]]
-                                      [cell-value (style-map->background-color style-map)])
-                                    results)))
+  (into {} (postwalk-collect (every-pred vector? #(= :td (first %)))
+                             (fn [[_ style-map cell-value]]
+                               [cell-value (style-map->background-color style-map)])
+                             results)))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."

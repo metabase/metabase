@@ -122,8 +122,9 @@
          :reload-paths ["src"]}
   :eastwood {:exclude-namespaces
              [:test-paths
-              metabase.driver.generic-sql                             ; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
-              metabase.query-processor.middleware.binning]            ; Similarly Eastwood gets confused because this namespace relies on defrecord :load-ns options which it seems to ignore :(
+              ;; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+              metabase.driver.generic-sql]
+             :config-files ["./test_resources/eastwood-config.clj"]
              :add-linters [:unused-private-vars
                            :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
