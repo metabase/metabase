@@ -202,6 +202,7 @@
       \"sum(x) + count(y)\" or \"avg(x + y)\"
   *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
       are CTEs or subselects in SQL queries.
+  *  `:binning` - Does the driver support binning as specified by the `binning-strategy` clause?
   *  `:no-case-sensitivity-string-filter-options` - An anti-feature: does this driver not let you specify whether or not
       our string search filter clauses (`:contains`, `:starts-with`, and `:ends-with`, collectively the equivalent of
       SQL `LIKE` are case-senstive or not? This informs whether we should present you with the 'Case Sensitive' checkbox

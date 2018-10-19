@@ -30,11 +30,12 @@ import { FETCH_IDFIELDS } from "metabase/admin/datamodel/datamodel";
 import { delay } from "metabase/lib/promise";
 import FieldApp, {
   FieldHeader,
-  FieldRemapping,
-  FieldValueMapping,
+} from "metabase/admin/datamodel/containers/FieldApp";
+import FieldRemapping, {
   RemappingNamingTip,
   ValueRemappings,
-} from "metabase/admin/datamodel/containers/FieldApp";
+  FieldValueMapping,
+} from "metabase/admin/datamodel/components/FieldRemapping";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import {
   FieldVisibilityPicker,

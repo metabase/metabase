@@ -3,6 +3,7 @@
             [honeysql
              [core :as hsql]
              [format :as hformat]]
+            [metabase.models.field :refer [Field]]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
@@ -102,7 +103,8 @@
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`.
    This function should be used by databases where schemas do not make much sense."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
+  ;; TODO - we are making too many DB calls here! Why aren't we using the QP Store?
+  (conj (vec (if-let [parent (Field parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
                  [table-name])))

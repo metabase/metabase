@@ -1,13 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
 import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
 import cx from "classnames";
 import pure from "recompose/pure";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
 
 const MetricSidebar = ({ metric, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
@@ -32,12 +35,14 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         icon="all"
         name={t`Questions about ${metric.name}`}
       />
-      <SidebarItem
-        key={`/auto/dashboard/metric/${metric.id}`}
-        href={`/auto/dashboard/metric/${metric.id}`}
-        icon="bolt"
-        name={t`X-ray this metric`}
-      />
+      {MetabaseSettings.get("enable_xrays") && (
+        <SidebarItem
+          key={`/auto/dashboard/metric/${metric.id}`}
+          href={`/auto/dashboard/metric/${metric.id}`}
+          icon="bolt"
+          name={t`X-ray this metric`}
+        />
+      )}
       {user &&
         user.is_superuser && (
           <SidebarItem

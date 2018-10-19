@@ -282,7 +282,7 @@
   (let [fn-name                (route-fn-name method route)
         route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
+        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
       (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))

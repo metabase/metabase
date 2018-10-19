@@ -170,6 +170,9 @@ export const isLatitude = field =>
 export const isLongitude = field =>
   isa(field && field.special_type, TYPE.Longitude);
 
+export const isCurrency = field =>
+  isa(field && field.special_type, TYPE.Currency);
+
 export const isID = field => isFK(field) || isPK(field);
 
 export const isURL = field => isa(field && field.special_type, TYPE.URL);

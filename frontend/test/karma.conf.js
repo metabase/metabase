@@ -41,7 +41,15 @@ module.exports = function(config) {
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
-    browsers: ["Chrome"],
+    // The --no-sandbox below is to fix issues running in docker, running Chrome as root
+    // https://github.com/karma-runner/karma-chrome-launcher/issues/158
+    browsers: ["ChromeHeadlessNoSandbox"],
+    customLaunchers: {
+      ChromeHeadlessNoSandbox: {
+        base: "ChromeHeadless",
+        flags: ["--no-sandbox"],
+      },
+    },
     autoWatch: true,
     singleRun: false,
   });

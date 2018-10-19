@@ -132,15 +132,14 @@
                            ;; and re-enable them if we can get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-             :exclude-linters [#_:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
-                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
+             :exclude-linters [:deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]        ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-                             [jonase/eastwood "0.2.6"
+                             [jonase/eastwood "0.3.1"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'

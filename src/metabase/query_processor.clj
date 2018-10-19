@@ -33,6 +33,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [add-query-throttle :as query-throttle]
              [resolve :as resolve]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
@@ -119,6 +120,7 @@
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       store/initialize-store
+      query-throttle/maybe-add-query-throttle
       log-query/log-initial-query
       ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
@@ -263,10 +265,13 @@
         (assert-query-status-successful result)
         (save-and-return-successful-query! query-execution result))
       (catch Throwable e
-        (log/warn (u/format-color 'red "Query failure: %s\n%s"
-                    (.getMessage e)
-                    (u/pprint-to-str (u/filtered-stacktrace e))))
-        (save-and-return-failed-query! query-execution (.getMessage e))))))
+        (if (= (:type (ex-data e)) ::query-throttle/concurrent-query-limit-reached)
+          (throw e)
+          (do
+            (log/warn (u/format-color 'red "Query failure: %s\n%s"
+                                      (.getMessage e)
+                                      (u/pprint-to-str (u/filtered-stacktrace e))))
+            (save-and-return-failed-query! query-execution (.getMessage e))))))))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!

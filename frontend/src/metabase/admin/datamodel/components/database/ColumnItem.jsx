@@ -3,13 +3,15 @@ import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon";
 import { t } from "c-3po";
 import * as MetabaseCore from "metabase/lib/core";
 import { titleize, humanize } from "metabase/lib/formatting";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
+import currency from "metabase/lib/currency";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -152,6 +154,8 @@ export class SpecialTypeAndTargetPicker extends Component {
 
   onSpecialTypeChange = async special_type => {
     const { field, updateField } = this.props;
+
+    // FIXME: mutation
     field.special_type = special_type.id;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
@@ -168,6 +172,23 @@ export class SpecialTypeAndTargetPicker extends Component {
       "Data Model",
       "Update Field Special-Type",
       field.special_type,
+    );
+  };
+
+  onCurrencyTypeChange = async currency => {
+    const { field, updateField } = this.props;
+
+    // FIXME: mutation
+    field.settings = {
+      ...(field.settings || {}),
+      currency,
+    };
+
+    await updateField(field);
+    MetabaseAnalytics.trackEvent(
+      "Data Model",
+      "Update Currency Type",
+      currency,
     );
   };
 
@@ -196,6 +217,8 @@ export class SpecialTypeAndTargetPicker extends Component {
 
     const showFKTargetSelect = isFK(field.special_type);
 
+    const showCurrencyTypeSelect = isCurrency(field);
+
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
     const includeSchemaName =
@@ -214,6 +237,38 @@ export class SpecialTypeAndTargetPicker extends Component {
           onChange={this.onSpecialTypeChange}
           triggerClasses={this.props.triggerClasses}
         />
+        {showCurrencyTypeSelect && selectSeparator}
+        {// TODO - now that we have multiple "nested" options like choosing a
+        // FK table and a currency type we should make this more generic and
+        // handle a "secondary" input more elegantly
+        showCurrencyTypeSelect && (
+          <Select
+            className={cx(
+              "TableEditor-field-target",
+              "inline-block",
+              className,
+            )}
+            triggerClasses={this.props.triggerClasses}
+            value={
+              (field.settings && field.settings.currency) ||
+              getGlobalSettingsForColumn(field).currency ||
+              "USD"
+            }
+            onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
+            placeholder={t`Select a currency type`}
+            searchProp="name"
+            searchCaseSensitive={false}
+          >
+            {Object.values(currency).map(c => (
+              <Option name={c.name} value={c.code}>
+                <span className="flex full align-center">
+                  <span>{c.name}</span>
+                  <span className="text-bold text-light ml1">{c.symbol}</span>
+                </span>
+              </Option>
+            ))}
+          </Select>
+        )}
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select

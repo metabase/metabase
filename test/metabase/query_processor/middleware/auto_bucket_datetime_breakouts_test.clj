@@ -2,6 +2,7 @@
   (:require [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.auto-bucket-datetime-breakouts :as auto-bucket-datetime-breakouts]
+            [metabase.test.data :as data]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
@@ -10,7 +11,7 @@
    query))
 
 (defn- auto-bucket-mbql [mbql-query]
-  (-> (auto-bucket {:database 1, :type :query, :query mbql-query})
+  (-> (auto-bucket {:database (data/id), :type :query, :query mbql-query})
       :query))
 
 ;; does a :type/DateTime Field get auto-bucketed when present in a breakout clause?
@@ -65,3 +66,15 @@
   (auto-bucket-mbql
    {:source-table 1
     :breakout     [[:field-id Integer/MAX_VALUE]]}))
+
+;; do UNIX TIMESTAMP datetime fields get auto-bucketed?
+(expect
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      {:source-table $$table
+       :breakout     [[:datetime-field [:field-id $timestamp] :day]]}))
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      (auto-bucket-mbql
+       {:source-table $$table
+        :breakout     [[:field-id $timestamp]]}))))

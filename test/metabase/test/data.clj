@@ -98,10 +98,12 @@
   (walk/postwalk
    (fn [form]
      (or (when (symbol? form)
-           (let [[first-char & rest-chars] (name form)]
-             (when (= first-char \$)
-               (let [token (apply str rest-chars)]
-                 (token->id-call wrap-field-ids? table-name token)))))
+           (if (= form '$$table)
+             `(id ~(keyword table-name))
+             (let [[first-char & rest-chars] (name form)]
+               (when (= first-char \$)
+                 (let [token (apply str rest-chars)]
+                   (token->id-call wrap-field-ids? table-name token))))))
          form))
    body))
 
@@ -111,7 +113,11 @@
   as the first arg. With one or more `.` delimiters, no implicit `table-name` arg is passed to `id`:
 
     $venue_id      -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
-    $cities.id     -> (id :cities :id)          ; specify non-default Table"
+    $cities.id     -> (id :cities :id)          ; specify non-default Table
+
+  Use `$$table` to refer to the table itself.
+
+    $$table -> (id :venues)"
   {:style/indent 1}
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}]
   ($->id (keyword table-name) body, :wrap-field-ids? wrap-field-ids?))
@@ -165,6 +171,12 @@
         (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
+
+(defn table-name
+  "Return the correct (database specific) table name for `table-name`. For most databases `table-name` is just
+  returned. For others (like Oracle), the real name is prefixed by the dataset and might be different"
+  [db-id table-name]
+  (db/select-one-field :name Table :id (get-table-id-or-explode db-id table-name)))
 
 (defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]

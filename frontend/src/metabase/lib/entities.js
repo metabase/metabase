@@ -344,11 +344,27 @@ export function createEntity(def: EntityDefinition): Entity {
           requestStatePath: getListStatePath(entityQuery),
           existingStatePath: getListStatePath(entityQuery),
           getData: async () => {
-            const { result, entities } = normalize(
-              await entity.api.list(entityQuery || {}),
-              [entity.schema],
-            );
-            return { result, entities, entityQuery };
+            const fetched = await entity.api.list(entityQuery || {});
+            let results = fetched;
+
+            // for now at least paginated endpoints have a 'data' property that
+            // contains the actual entries, if that is on the response we should
+            // use that as the 'results'
+            if (fetched.data) {
+              results = fetched.data;
+            }
+            const { result, entities } = normalize(results, [entity.schema]);
+            return {
+              result,
+              entities,
+              entityQuery,
+              // capture some extra details from the result just in case?
+              resultDetails: {
+                total: fetched.total,
+                offset: fetched.offset,
+                limit: fetched.limit,
+              },
+            };
           },
         }),
     ),

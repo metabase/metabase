@@ -126,6 +126,16 @@
   :type :double
   :default 10.0)
 
+(defsetting custom-formatting
+  (tru "Object keyed by type, containing formatting settings")
+  :type    :json
+  :default {})
+
+(defsetting enable-xrays
+  (tru "Allow users to explore data using X-rays")
+  :type    :boolean
+  :default true)
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
    won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
@@ -154,10 +164,12 @@
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
+   :custom_formatting     (setting/get :custom-formatting)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
+   :enable_xrays          (enable-xrays)
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)

@@ -103,3 +103,19 @@
   in the data-map `M`."
   [m table column]
   (mapv #(get % column) (get m table)))
+
+;; Takes the `test-data` dataset and adds a `created_by` column to the users table that is self referencing
+(di/def-database-definition test-data-self-referencing-user
+  (di/update-table-def "users"
+                       (fn [table-def]
+                         (conj table-def {:field-name "created_by", :base-type :type/Integer, :fk :users}))
+                       (fn [rows]
+                         (mapv (fn [[username last-login password-text] idx]
+                                 [username last-login password-text (if (= 1 idx)
+                                                                      idx
+                                                                      (dec idx))])
+                               rows
+                               (iterate inc 1)))
+                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
+                             :when (= table-name "users")]
+                         orig-def)))

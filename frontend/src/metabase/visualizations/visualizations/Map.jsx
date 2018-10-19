@@ -2,7 +2,9 @@
 
 import React, { Component } from "react";
 import { t } from "c-3po";
-import ChoroplethMap from "../components/ChoroplethMap.jsx";
+import ChoroplethMap, {
+  getColorplethColorScale,
+} from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -20,11 +22,17 @@ import {
   dimensionSetting,
   fieldSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
+
+import { desaturated } from "metabase/lib/colors";
+
+import ColorRangePicker from "metabase/components/ColorRangePicker";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -40,6 +48,7 @@ export default class Map extends Component {
   }
 
   static settings = {
+    ...columnSettings({ hidden: true }),
     "map.type": {
       title: t`Map type`,
       widget: "select",
@@ -164,6 +173,19 @@ export default class Map extends Component {
       widget: "select",
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
+    "map.colors": {
+      title: t`Color`,
+      widget: ColorRangePicker,
+      props: {
+        ranges: Object.values(desaturated).map(color =>
+          getColorplethColorScale(color),
+        ),
+        quantile: true,
+        columns: 1,
+      },
+      default: getColorplethColorScale(Object.values(desaturated)[0]),
+      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+    },
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},

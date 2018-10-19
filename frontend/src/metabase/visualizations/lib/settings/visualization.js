@@ -45,13 +45,16 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
   return definitions;
 }
 
+export function getStoredSettingsForSeries(series: ?Series): Settings {
+  return (series && series[0] && series[0].card.visualization_settings) || {};
+}
+
 export function getComputedSettingsForSeries(series: ?Series): Settings {
   if (!series) {
     return {};
   }
   const settingsDefs = getSettingDefintionsForSeries(series);
-  const [{ card }] = series;
-  const storedSettings = card.visualization_settings || {};
+  const storedSettings = getStoredSettingsForSeries(series);
   return getComputedSettings(settingsDefs, series, storedSettings);
 }
 
@@ -71,9 +74,11 @@ export function getSettingsWidgetsForSeries(
   isDashboard: boolean = false,
 ): WidgetDef[] {
   const settingsDefs = getSettingDefintionsForSeries(series);
+  const storedSettings = getStoredSettingsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
   return getSettingsWidgets(
     settingsDefs,
+    storedSettings,
     computedSettings,
     series,
     onChangeSettings,
