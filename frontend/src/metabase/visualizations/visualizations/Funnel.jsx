@@ -14,6 +14,7 @@ import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
@@ -62,17 +63,20 @@ export default class Funnel extends Component {
   }
 
   static settings = {
+    ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
       section: t`Data`,
       title: t`Step`,
       dashboard: false,
       useRawSeries: true,
+      showColumnSetting: true,
     }),
     ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
       dashboard: false,
       useRawSeries: true,
+      showColumnSetting: true,
     }),
     "funnel.type": {
       title: t`Funnel type`,

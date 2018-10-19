@@ -203,6 +203,12 @@
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
     (tru "value must be a valid integer greater than zero.")))
 
+(def IntStringGreaterThanOrEqualToZero
+  "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
+   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
+  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
+    (tru "value must be a valid integer greater than or equal to zero.")))
+
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
              (let [s (str/lower-case s)]

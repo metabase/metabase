@@ -13,6 +13,7 @@
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
+             [add-query-throttle :as query-throttle]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
@@ -130,6 +131,7 @@
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
       store/initialize-store
+      query-throttle/maybe-add-query-throttle
       log-query/log-initial-query
       ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
@@ -292,10 +294,13 @@
         (assert-query-status-successful result)
         (save-and-return-successful-query! query-execution result))
       (catch Throwable e
-        (log/warn (u/format-color 'red "Query failure: %s\n%s"
-                    (.getMessage e)
-                    (u/pprint-to-str (u/filtered-stacktrace e))))
-        (save-and-return-failed-query! query-execution (.getMessage e))))))
+        (if (= (:type (ex-data e)) ::query-throttle/concurrent-query-limit-reached)
+          (throw e)
+          (do
+            (log/warn (u/format-color 'red "Query failure: %s\n%s"
+                                      (.getMessage e)
+                                      (u/pprint-to-str (u/filtered-stacktrace e))))
+            (save-and-return-failed-query! query-execution (.getMessage e))))))))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
