@@ -17,7 +17,6 @@ import type {
 } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
-import { GroupingManager } from "../lib/GroupingManager";
 import type { RawSeries } from "metabase/meta/types/Visualization";
 import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
 import {
@@ -27,6 +26,7 @@ import {
 import { connect } from "react-redux";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import {buildResultProvider, fetchAggregationsDataBuilder} from "metabase/visualizations/lib/summary_table";
+import {buildDatasetData} from "metabase/visualizations/lib/summary_table_datasetdata_builder";
 
 type Props = {
   card: Card,
@@ -144,14 +144,11 @@ export default class SummaryTable extends Component {
 
       const resultProvider = buildResultProvider(data, totalsData);
 
-      const groupingManager = new GroupingManager(
-        summarySettings,
-        data.cols,
-        resultProvider
-      );
+
+      const reformattedDatasetData = buildDatasetData(summarySettings, data, resultProvider);
 
       this.setState({
-        data: groupingManager,
+        data: reformattedDatasetData,
         settings : summarySettings,
       });
   }

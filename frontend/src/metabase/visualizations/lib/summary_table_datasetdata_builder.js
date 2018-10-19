@@ -12,9 +12,11 @@ import get from "lodash.get";
 import flatMap from "lodash.flatmap";
 import zip from "lodash.zip";
 import orderBy from "lodash.orderby";
+import sortBy from "lodash.sortby";
 import invert from "lodash.invert";
 import {canTotalizeByType} from "metabase/visualizations/lib/settings/summary_table";
 import {getAllQueryKeys, getQueryPlan, grandTotalsLabel} from "metabase/visualizations/lib/summary_table";
+import range from "lodash.range";
 
 type RowUpdater = (Row, Row) => Row;
 
@@ -79,7 +81,7 @@ const buildColumnHeaders = ({groupsSources, columnsSource, valuesSources, column
 
 const tryCompressColumnsHeaders = ({valuesSources}, columnsHeaders) => {
 
-  if (valuesSources.length > 1){
+  if (valuesSources.length > 1) {
     return columnsHeaders;
   }
 
@@ -89,13 +91,13 @@ const tryCompressColumnsHeaders = ({valuesSources}, columnsHeaders) => {
 
 const updateValueIfExists = (toUpdate, index, value) => {
   if (isDefined(value)) {
-    toUpdate[index]=value;
+    toUpdate[index] = value;
   }
 
   return toUpdate;
 };
 
-const pivotedRowUpdater = (expectedRowShape: ColumnName[], pivotColumnName: ColumnName, expectedPivotShape: { [key: any]: [ColumnName, Number][]}): (ColumnName[] => RowUpdater) => {
+const pivotedRowUpdater = (expectedRowShape: ColumnName[], pivotColumnName: ColumnName, expectedPivotShape: { [key: any]: [ColumnName, Number][] }): (ColumnName[] => RowUpdater) => {
 
   return (givenRowShape: ColumnName[]) => {
     const pivotColumnIndex = givenRowShape.indexOf(pivotColumnName);
@@ -135,10 +137,9 @@ const haveEqualPrefixAssembler = (expectedRowShape: ColumnName[]) => (givenRowSh
     .map(columnName => [columnNameToNormalizedValueIndex[columnName], columnNameToValueIndex[columnName]]);
 
   return (normalizedRow, nextRow) => {
-    if (!normalizedRow){
+    if (!normalizedRow) {
       return false;
     }
-
 
 
     for (let i = 0; i < valueIndexes.length; i++) {
@@ -214,7 +215,7 @@ const extractRows = ({shouldUpdateAssembler, updateAssembler}: RowAssembler, [ma
     },
     {result: []}
   );
-  if(pivotColumnData && result.length === pivotColumnData.rows.length){
+  if (pivotColumnData && result.length === pivotColumnData.rows.length) {
     const updateGrandTotal = updateAssembler(pivotColumnData.columns);
     zip(result, pivotColumnData.rows).forEach(([normalizedRow, grandTotalRow]) => updateGrandTotal(normalizedRow, grandTotalRow));
   }
@@ -233,14 +234,17 @@ const buildComparer = (ascDescMultiplier, index) => (nextComparer) => (item1, it
     return nextComparer ? nextComparer(item1, item2) : 0;
   }
 
-  if (isDefined(value1) && !isDefined(value2))
+  if (isDefined(value1) && !isDefined(value2)) {
     return -1;
+  }
 
-  if (!isDefined(value1) && isDefined(value2))
+  if (!isDefined(value1) && isDefined(value2)) {
     return 1;
+  }
 
-  if (value1 < value2)
+  if (value1 < value2) {
     return -1 * ascDescMultiplier;
+  }
 
   return 1 * ascDescMultiplier;
 
@@ -283,8 +287,7 @@ const combineData = (rowAssembler: RowAssembler, queryPlan: QueryPlan, settings:
     .map(({results, keys}) => ({rows: extractRows(rowAssembler, results), keys}))
     .map(({rows, keys}, index) => index === 0 ? rows : addTotalIndex(rows, keys, settings));
 
-  const combinedRows = combineRows(queryPlan.sortOrder, normalizedRows);
-  return {rows: combinedRows};
+  return combineRows(queryPlan.sortOrder, normalizedRows);
 };
 
 
@@ -295,12 +298,100 @@ export const buildDatasetData = (settings: SummaryTableSettings, mainResults: Da
 
   const queryPlan = getQueryPlan(settings, canTotalizeBuilder(mainResults.cols));
 
-  const {rows} = combineData(rowAssembler, queryPlan, settings, resultsProvider);
+  const rows = combineData(rowAssembler, queryPlan, settings, resultsProvider);
+
+  const columnIndexToFirstInGroupIndexes = buildColumnIndexToFirstInGroupIndexes(rows, settings);
+
+  const rowIndexesToColSpans = buildRowIndexesToColSpans(settings, rows, cols);
 
   return {
     columnsHeaders: compressedColumnsHeaders,
     cols,
     columns: cols.map(p => p.name),
-    rows
+    rows,
+    columnIndexToFirstInGroupIndexes,
+    isGrouped: columnIndex => columnIndex in columnIndexToFirstInGroupIndexes,
+    rowIndexesToColSpans
   };
+};
+
+////////////////////////////////////
+
+
+const buildRowIndexesToColSpans = ({groupsSources}: SummaryTableSettings, rows, cols) => {
+  const valueSpans = range(groupsSources.length, cols.length).reduce((acc, val) => set(acc, val, val), {});
+
+  return rows.reduce((acc, row, index) => Number.isInteger(row.isTotalColumnIndex) ?
+    set(acc, index, {[Math.max(row.isTotalColumnIndex - 1, 0)]: groupsSources.length - 1, __proto__: valueSpans})
+    : acc,
+    []);
+};
+
+//group == neighboring cells of the same value in a column
+const buildColumnIndexToFirstInGroupIndexes = (rows, summarySettings) => {
+  const columnsIndexesForGrouping = range(0, summarySettings.groupsSources.length)
+
+  const columnIndexToFirstIndexesInGroupBuilder = getFirstInGroupMap(rows);
+
+  const columnIndexToFirstIndexesInGroupRaw = columnsIndexesForGrouping
+    .map(columnIndexToFirstIndexesInGroupBuilder)
+    .map(p => p.firstInGroupIndexes);
+
+  const columnIndexToFirstIndexesInGroup = columnIndexToFirstIndexesInGroupRaw.reduce(
+    ({resArr, prevElem}, elem) => {
+      const r = new Set([...prevElem, ...elem]);
+      resArr.push(r);
+      return {resArr, prevElem: r};
+    },
+    {resArr: [], prevElem: new Set()},
+  ).resArr;
+
+  return columnIndexToFirstIndexesInGroup.map((v, i) => [columnsIndexesForGrouping[i], v])
+    .reduce(
+    (acc, [columnIndex, value]) => {
+      acc[columnIndex] = getStartGroupIndexToEndGroupIndex(value);
+      return acc;
+    },
+    [],
+  );
+};
+
+const getStartGroupIndexToEndGroupIndex = (startIndexes: Set): {} => {
+  const sortedIndexes = sortBy(Array.from(startIndexes));
+  const [x, ...tail] = sortedIndexes;
+  return tail.reduce((acc, currentValue, index) => {
+    acc[sortedIndexes[index]] = currentValue - 1;
+    return acc;
+  }, {});
+};
+
+
+const getFirstInGroupMap = (rows: Row) => (columnIndex: Number) => {
+  return rows.reduce(
+    updateFirstInGroup(hasTheSameValueByColumn(columnIndex), columnIndex),
+    {
+      prevRow: [],
+      firstInGroupIndexes: new Set().add(0).add(rows.length),
+    },
+  );
+};
+
+const hasTheSameValueByColumn = (columnIndex: Number) => (
+  row1: Row,
+  row2: Row,
+): Boolean => row1[columnIndex] === row2[columnIndex];
+
+const updateFirstInGroup = (hasTheSameValue, columnIndex) => (
+  {prevRow, firstInGroupIndexes}: ColumnAcc,
+  currentRow,
+  index: Number,
+) => {
+  if (
+    !hasTheSameValue(prevRow, currentRow) ||
+    currentRow.isTotalColumnIndex === columnIndex + 1
+  ) {
+    firstInGroupIndexes.add(index);
+  }
+
+  return {prevRow: currentRow, firstInGroupIndexes};
 };

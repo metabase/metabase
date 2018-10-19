@@ -19,7 +19,6 @@ import {
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import { GroupingManager } from "metabase/visualizations/lib/GroupingManager";
 import orderBy from 'lodash.orderby';
 import set from 'lodash.set';
 import type {ColumnName} from "metabase/meta/types/Dataset";
@@ -31,7 +30,6 @@ import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/table_
 type Props = VisualizationProps & {
   height: number,
   className?: string,
-  groupingManager: GroupingManager,
 
   sort: {[key: ColumnName] : string},
   updateSort : ColumnName => void,
@@ -102,13 +100,13 @@ export default class TableSimpleSummary extends Component {
       sort,
       updateSort
     } = this.props;
-    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, totalsRows, isGrouped } = data;
+    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, rowIndexesToColSpans, isGrouped } = data;
     const { page, pageSize} = this.state;
 
     let start = pageSize * page;
     let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
-    const indexGenerator = buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: totalsRows});
+    const indexGenerator = buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: rowIndexesToColSpans});
     const indexes = indexGenerator({windowColumnStartIndex:0, windowColumnStopIndex: cols.length-1, windowRowStartIndex: start, windowRowStopIndex: end});
     const trimmedIndexes = indexes.map(({columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex }) =>
       ({columnStartIndex, columnStopIndex, rowStartIndex : Math.max(rowStartIndex, start), rowStopIndex : Math.min(rowStopIndex, end)})
@@ -190,13 +188,17 @@ export default class TableSimpleSummary extends Component {
               }
               </thead>
               <tbody>
-                {groupedIndexes.map((row, i) =>
+                {groupedIndexes.map((cellInfos, i) =>
                   (<tr key={`row-${i}`}>
-                    {row.map(cellInfo => {
+                    {cellInfos.map(cellInfo => {
                       const {columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex} = cellInfo;
                         const column = cols[columnStartIndex];
                         const row = rows[rowStartIndex];
-                        let cell = column.getValue(row);
+                        if(!row){
+                          //todo:  why row is null?
+                          return null;
+                        }
+                        let cell = row[columnStartIndex];
                         const clicked = getTableCellClickedObject(
                           data,
                           rowStartIndex,

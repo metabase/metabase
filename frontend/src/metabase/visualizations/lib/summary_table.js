@@ -193,6 +193,11 @@ const isSuperset = (subsetValues: ColumnName[]) => (
 
 
 const shouldSort = (defaultSortOrder : SortOrder[], expectedSortOrder: SortOrder[]) => {
+  if(!defaultSortOrder) {
+    //todo: why defaultSortOrder is null?
+    return false;
+  }
+
   const expectedColumns = Set.of(...expectedSortOrder.map(([_, columnName]) => columnName));
   const normalizedDefaultSortOrder = defaultSortOrder.filter(([_, columnName]) => expectedColumns.contains(columnName));
 

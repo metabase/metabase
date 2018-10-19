@@ -166,8 +166,17 @@ export default class TableInteractiveSummary extends Component {
 
   _measure = () => {
     let {
-      data: { cols, probeRows, columnsHeaders },
+      data: { cols, rows, columnsHeaders },
+      summarySettings: {groupsSources}
     } = this.props;
+
+    const magicNumber = 42;
+
+    const probeRows  = [
+      rows[rows.length - 1],
+      ...rows.slice(0, magicNumber),
+      ...cols.map((_, colIndex) => rows.find((row, index) => index > magicNumber && row[colIndex])).filter(p => p),
+    ].map(p => p.isTotalColumnIndex ? ({__proto__:p, colSpan: groupsSources.length - Math.max(p.isTotalColumnIndex-1, 0) }): p);
 
     const probeHeaders = flatMap(columnsHeaders, row =>
       row.map((header, columnIndex) => header && { ...header, columnIndex }),
@@ -320,7 +329,7 @@ export default class TableInteractiveSummary extends Component {
     visualizationIsClickable,
     columnIsGrouped,
   ): (RenderCellType => void) => {
-    let value = column.getValue(row);
+    let value = row[columnIndex];
 
     const isTotalCell = row.isTotalColumnIndex === columnIndex + 1;
     const isTotalRow = Number.isInteger(row.isTotalColumnIndex) && row.isTotalColumnIndex <= columnIndex +1;
@@ -530,7 +539,7 @@ export default class TableInteractiveSummary extends Component {
     const {
       width,
       height,
-      data: { cols, rows, columnsHeaders, columnIndexToFirstInGroupIndexes, totalsRows },
+      data: { cols, rows, columnsHeaders, columnIndexToFirstInGroupIndexes, rowIndexesToColSpans },
       className
     } = this.props;
     if (!width || !height) {
@@ -612,7 +621,7 @@ export default class TableInteractiveSummary extends Component {
               overscanRowCount={20}
               cellRenderer={this.cellRenderer}
               cellRangeRenderer={
-                buildCellRangeRenderer(buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: totalsRows}))
+                buildCellRangeRenderer(buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: rowIndexesToColSpans}))
 
               }
             />
