@@ -175,6 +175,7 @@ const getRowAssembler = (columnsHeaders: ColumnHeader[][]): RowAssembler => {
     }
     return acc;
   }, {});
+
   const shouldUpdateAssembler = haveEqualPrefixAssembler(expectedRowShape);
 
   const pivotColumnName = columnsHeaders[0][firstPivotIndex].column.name;
@@ -213,6 +214,10 @@ const extractRows = ({shouldUpdateAssembler, updateAssembler}: RowAssembler, [ma
     },
     {result: []}
   );
+  if(pivotColumnData && result.length === pivotColumnData.rows.length){
+    const updateGrandTotal = updateAssembler(pivotColumnData.columns);
+    zip(result, pivotColumnData.rows).forEach(([normalizedRow, grandTotalRow]) => updateGrandTotal(normalizedRow, grandTotalRow));
+  }
 
   return result;
 };
