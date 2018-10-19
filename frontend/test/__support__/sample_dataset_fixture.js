@@ -501,6 +501,38 @@ export const state = {
         base_type: "type/Float",
         points_of_interest: null,
         values: [],
+        default_dimension_option: {
+          mbql: ["binning-strategy", null, "default"],
+          name: "Auto bin",
+          type: "type/Number",
+        },
+        dimension_options: [
+          {
+            mbql: ["binning-strategy", null, "default"],
+            name: "Auto bin",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 10],
+            name: "10 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 50],
+            name: "50 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 100],
+            name: "100 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: null,
+            name: "Don't bin",
+            type: "type/Number",
+          },
+        ],
       },
       "7": {
         description:

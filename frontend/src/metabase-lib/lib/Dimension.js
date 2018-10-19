@@ -178,7 +178,7 @@ export default class Dimension {
       return false;
     }
     // assumes .mbql() returns canonical form
-    return _.isEqual(this.mbql(), other.mbql());
+    return _.isEqual(this.mbql(), otherDimension.mbql());
   }
 
   /**
