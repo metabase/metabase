@@ -22,7 +22,7 @@ import type { Metadata } from "metabase/meta/types/Metadata";
 import moment from "moment";
 
 import Q from "metabase/lib/query";
-import { mbqlEq } from "metabase/lib/query/util";
+
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
@@ -67,7 +67,7 @@ export function getParameterTargetFieldId(
 ): ?FieldId {
   if (target && target[0] === "dimension") {
     let dimension = target[1];
-    if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
+    if (Array.isArray(dimension) && dimension[0] === "template-tag") {
       if (datasetQuery.type === "native") {
         let templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
@@ -142,13 +142,14 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^([0-9-T:]+)$/,
     deserialize: (matches, fieldRef) => ["=", fieldRef, matches[0]],
   },
-  // TODO 3/27/17 Atte Keinänen
-  // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
   {
     testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/,
-    deserialize: (matches, fieldRef) =>
-      // $FlowFixMe
-      ["BETWEEN", fieldRef, matches[0], matches[1]],
+    deserialize: (matches, fieldRef) => [
+      "between",
+      fieldRef,
+      matches[0],
+      matches[1],
+    ],
   },
 ];
 

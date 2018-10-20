@@ -175,7 +175,7 @@
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .text-monospace,

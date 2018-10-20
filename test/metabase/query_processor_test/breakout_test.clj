@@ -14,7 +14,6 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.util.i18n :refer [tru]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
@@ -214,9 +213,7 @@
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
-    :binning_info {:binning_strategy :bin-width, :bin_width 10.0,
-                   :num_bins         4,          :min_value 10.0
-                   :max_value        50.0})
+    :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width})
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :default]]})
@@ -226,9 +223,7 @@
 
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
-    :binning_info {:binning_strategy :num-bins, :bin_width 7.5,
-                   :num_bins         5,         :min_value 7.5,
-                   :max_value        45.0})
+    :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins})
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :num-bins 5]]})

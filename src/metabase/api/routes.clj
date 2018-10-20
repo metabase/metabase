@@ -31,6 +31,7 @@
              [slack :as slack]
              [table :as table]
              [tiles :as tiles]
+             [task :as task]
              [user :as user]
              [util :as util]]
             [metabase.middleware :as middleware]
@@ -82,6 +83,7 @@
   (context "/setup"                [] setup/routes)
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
+  (context "/task"                 [] (+auth task/routes))
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

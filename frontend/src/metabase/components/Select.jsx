@@ -36,8 +36,11 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
+
     isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
     // NOTE - @kdoh
@@ -58,6 +61,8 @@ class BrowserSelect extends Component {
     height: 320,
     rowHeight: 40,
     multiple: false,
+    searchCaseInsensitive: true,
+    searchFuzzy: true,
   };
 
   isSelected(otherValue) {
@@ -80,6 +85,7 @@ class BrowserSelect extends Component {
       onChange,
       searchProp,
       searchCaseInsensitive,
+      searchFuzzy,
       isInitiallyOpen,
       placeholder,
       triggerElement,
@@ -98,15 +104,20 @@ class BrowserSelect extends Component {
       selectedNames = [placeholder];
     }
 
-    const { inputValue } = this.state;
+    let { inputValue } = this.state;
     let filter = () => true;
     if (searchProp && inputValue) {
       filter = child => {
         let childValue = String(child.props[searchProp] || "");
         if (!inputValue) {
           return false;
-        } else if (searchCaseInsensitive) {
-          return childValue.toLowerCase().startsWith(inputValue.toLowerCase());
+        }
+        if (searchCaseInsensitive) {
+          childValue = childValue.toLowerCase();
+          inputValue = inputValue.toLowerCase();
+        }
+        if (searchFuzzy) {
+          return childValue.indexOf(inputValue) >= 0;
         } else {
           return childValue.startsWith(inputValue);
         }
@@ -143,6 +154,11 @@ class BrowserSelect extends Component {
               ))}
             </SelectButton>
           )
+        }
+        pinInitialAttachment={
+          // keep the popover from jumping around one its been opened,
+          // this can happen when filtering items via search
+          true
         }
         triggerClasses={className}
         verticalAttachments={["top", "bottom"]}

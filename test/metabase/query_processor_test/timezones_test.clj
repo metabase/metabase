@@ -30,28 +30,16 @@
   `(call-with-timezones-db (fn [] ~@body)))
 
 (def ^:private default-utc-results
-  #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]
-    [7 "Conchúr Tihomir" "2014-08-02T09:30:00.000Z"]})
+  #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]})
 
 (def ^:private default-pacific-results
+  #{[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]})
+
+;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going to
+;; match anything with a `2014-08-02` date
+(def ^:private default-pacific-results-for-params
   #{[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]
     [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]})
-
-;; Test querying a database that does NOT support report timezones
-;;
-;; The report-timezone of Europe/Brussels is UTC+2, our tests use a JVM timezone of UTC. If the timestamps below are
-;; interpretted incorrectly as Europe/Brussels, it would adjust that back 2 hours to UTC
-;; (i.e. 2014-07-01T22:00:00.000Z). We then cast that time to a date, which truncates it to 2014-07-01, which is then
-;; querying the day before. This reproduces the bug found in https://github.com/metabase/metabase/issues/7584
-(expect-with-engine :bigquery
-  #{[10 "Frans Hevel" "2014-07-03T19:30:00.000Z"]
-    [12 "Kfir Caj" "2014-07-03T01:30:00.000Z"]}
-  (with-tz-db
-    (tu/with-temporary-setting-values [report-timezone "Europe/Brussels"]
-      (-> (data/run-mbql-query users
-            {:filter [:between $last_login "2014-07-02" "2014-07-03"]})
-          qpt/rows
-          set))))
 
 ;; Query PG using a report-timezone set to pacific time. Should adjust the query parameter using that report timezone
 ;; and should return the timestamp in pacific time as well
@@ -87,7 +75,7 @@
 
 ;; Test that native dates are parsed with the report timezone (when supported)
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'
@@ -105,7 +93,7 @@
 
 ;; This does not currently work for MySQL
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'
@@ -122,7 +110,7 @@
 
 ;; Querying using a single date
 (expect-with-engines [:postgres :mysql]
-  default-pacific-results
+  default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'

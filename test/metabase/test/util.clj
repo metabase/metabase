@@ -1,13 +1,11 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
-            [clojure.string :as s]
             [clj-time.core :as time]
+            [clojure
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
@@ -35,7 +33,6 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -48,7 +45,6 @@
            org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
-
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -431,12 +427,21 @@
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
 
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
+
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (qputil/postwalk-pred double?
-                        #(u/round-to-decimals decimal-place %)
-                        data))
+  (postwalk-pred double?
+                 #(u/round-to-decimals decimal-place %)
+                 data))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

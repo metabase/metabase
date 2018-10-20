@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
-  (:require [expectations :refer :all]
-            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]))
+  (:require [expectations :refer [expect]]
+            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [toucan.hydrate :as hydrate]))
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
@@ -17,6 +18,15 @@
                 (constantly
                  {3 {:name "Product", :field_id 3, :human_readable_field_id 4}})]
     (f)))
+
+;; make sure we create the remap column tuples correctly
+(expect
+  [[[:field-id 3]
+    [:fk-> [:field-id 3] [:field-id 4]]
+    {:name "Product", :field_id 3, :human_readable_field_id 4}]]
+  (do-with-fake-remappings-for-field-3
+   (fn []
+     (#'add-dim-projections/create-remap-col-tuples [[:field-id 1] [:field-id 2] [:field-id 3]]))))
 
 ;; make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]
 (expect
@@ -44,7 +54,6 @@
 (def ^:private col-defaults
   {:description     nil
    :source          :fields
-   :extra_info      {}
    :fk_field_id     nil
    :visibility_type :normal
    :target          nil
@@ -80,7 +89,6 @@
     :schema_name  "PUBLIC"
     :special_type :type/FK
     :name         "CATEGORY_ID"
-    :extra_info   {:target_table_id 1}
     :id           11
     :display_name "Category ID"
     :base_type    :type/Integer}))
@@ -101,10 +109,7 @@
   {:description     nil
    :table_id        nil
    :name            "Foo"
-   :expression-name "Foo"
-   :source          :fields
    :remapped_from   "CATEGORY_ID"
-   :extra_info      {}
    :remapped_to     nil
    :id              nil
    :target          nil
@@ -123,23 +128,26 @@
                :remapped_to "Foo")
              example-result-cols-price
              example-result-cols-foo]}
-  (#'add-dim-projections/remap-results
-   nil
-   {:rows    [[1 "Red Medicine"                  4 3]
-              [2 "Stout Burgers & Beers"        11 2]
-              [3 "The Apple Pan"                11 2]
-              [4 "Wurstküche"                   29 2]
-              [5 "Brite Spot Family Restaurant" 20 2]]
-    :columns ["ID" "NAME" "CATEGORY_ID" "PRICE"]
-    :cols    [example-result-cols-id
-              example-result-cols-name
-              (assoc example-result-cols-category-id
-                :dimensions {:dimension-id 1, :dimension-type :internal, :dimension-name "Foo", :field-id 10}
-                :values     {:field-value-id        1
-                             :human-readable-values ["Foo" "Bar" "Baz" "Qux"]
-                             :values                [4 11 29 20]
-                             :field-id              33})
-              example-result-cols-price]}))
+  ;; swap out `hydrate` with one that will add some fake dimensions and values for CATEGORY_ID.
+  (with-redefs [hydrate/hydrate (fn [fields & _]
+                                  (for [{field-name :name, :as field} fields]
+                                    (cond-> field
+                                      (= field-name "CATEGORY_ID")
+                                      (assoc :dimensions {:type :internal, :name "Foo", :field_id 10}
+                                             :values     {:human_readable_values ["Foo" "Bar" "Baz" "Qux"]
+                                                          :values                [4 11 29 20]}))))]
+    (#'add-dim-projections/remap-results
+     nil
+     {:rows    [[1 "Red Medicine"                  4 3]
+                [2 "Stout Burgers & Beers"        11 2]
+                [3 "The Apple Pan"                11 2]
+                [4 "Wurstküche"                   29 2]
+                [5 "Brite Spot Family Restaurant" 20 2]]
+      :columns ["ID" "NAME" "CATEGORY_ID" "PRICE"]
+      :cols    [example-result-cols-id
+                example-result-cols-name
+                example-result-cols-category-id
+                example-result-cols-price]})))
 
 ;; test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info
 (def ^:private example-result-cols-category
@@ -150,8 +158,6 @@
     :schema_name     nil
     :special_type    :type/Category
     :name            "CATEGORY"
-    :source          :fields
-    :extra_info      {}
     :fk_field_id     32
     :id              27
     :visibility_type :normal
