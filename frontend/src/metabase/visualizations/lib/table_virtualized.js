@@ -107,10 +107,14 @@ export const buildIndexGenerator = ({
           windowRowStopIndex,
         )
           .filter(({ rowStartIndex }) => {
-            if (columnIndex === windowColumnStartIndex) return true;
+            if (columnIndex === windowColumnStartIndex) {
+              return true;
+            }
             const getLastColumnIndexInGroup = groupForRowGetter[rowStartIndex];
 
-            if (!getLastColumnIndexInGroup) return true;
+            if (!getLastColumnIndexInGroup) {
+              return true;
+            }
 
             const endIndex = getLastColumnIndexInGroup(columnIndex);
             return endIndex || endIndex === 0;
@@ -132,13 +136,14 @@ const resizeCellInRow = (
   groupForRowGetter,
 ) => {
   const getLastColumnIndexInGroup = groupForRowGetter[rowStartIndex];
-  if (!getLastColumnIndexInGroup)
+  if (!getLastColumnIndexInGroup) {
     return {
       rowStartIndex,
       rowStopIndex,
       columnStartIndex: columnIndex,
       columnStopIndex: columnIndex,
     };
+  }
 
   const realFirstColumnIndex = getRealFirstIndex(
     columnIndex,

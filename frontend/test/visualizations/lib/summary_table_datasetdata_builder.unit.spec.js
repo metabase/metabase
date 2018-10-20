@@ -70,8 +70,11 @@ const createColumnHeader = (
 
 const rowsAreEqual = (computedRow, expectedRow) => {
   zip(computedRow, expectedRow).forEach(([computedValue, expectedValue]) => {
-    if (expectedValue) expect(isEqual(computedValue, expectedValue)).toBe(true);
-    else expect(!computedValue).toBe(true);
+    if (expectedValue) {
+      expect(isEqual(computedValue, expectedValue)).toBe(true);
+    } else {
+      expect(!computedValue).toBe(true);
+    }
   });
 };
 
@@ -85,10 +88,11 @@ const rowListsAreEqual = (
   zippedRows.forEach(([computedRow, expectedRow]) =>
     rowsAreEqual(computedRow, expectedRow),
   );
-  if (additionalRowComparer)
+  if (additionalRowComparer) {
     zippedRows.forEach(([computedRow, expectedRow]) =>
       expect(additionalRowComparer(computedRow, expectedRow)).toBe(true),
     );
+  }
 };
 
 const dataRowListsAreEqual = (computedList, expectedList) =>

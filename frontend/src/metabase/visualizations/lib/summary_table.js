@@ -52,18 +52,23 @@ export function getTableCellClickedObjectForSummary(
       .filter((column, index) => index < row.isTotalColumnIndex)
       .map((column, index) => ({ value: row[index], column }))
       .filter(dimension => dimension.column.source === "breakout");
-    if (column.pivotedDimension) dimensions.push(column.pivotedDimension);
-    return {
-      dimensions,
-    };
+    if (column.pivotedDimension) {
+      dimensions.push(column.pivotedDimension);
+      return {
+        dimensions,
+      };
+    }
   } else if (column.source === "aggregation") {
     let dimensions = cols
       .map((column, index) => ({ value: row[index], column }))
       .filter(dimension => dimension.column.source === "breakout");
-    if (column.pivotedDimension)
+    if (column.pivotedDimension) {
       // $FlowFixMe: pivotedDimension
       dimensions.push(column.pivotedDimension);
-    if (!value) value = ""; // so that SortAction won't be available when dilling
+    }
+    if (!value) {
+      value = "";
+    } // so that SortAction won't be available when dilling
     return {
       value,
       column,
@@ -234,8 +239,9 @@ const sortBuilder = (defaultSortOrder: SortOrder[]) => (
   datasetData: DatasetData,
   expectedSortOrder: SortOrder[],
 ) => {
-  if (!datasetData || !shouldSort(defaultSortOrder, expectedSortOrder))
+  if (!datasetData || !shouldSort(defaultSortOrder, expectedSortOrder)) {
     return datasetData;
+  }
 
   const { cols, columns, rows } = datasetData;
   const columnToIndex = invert(columns);

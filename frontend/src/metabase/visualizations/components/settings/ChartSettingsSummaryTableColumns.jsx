@@ -1,5 +1,3 @@
-//todo rename
-//todo remove {name}.css (update style using ChartSettingsTableFormatting)
 import React, { Component } from "react";
 
 import { t } from "c-3po";
@@ -174,10 +172,11 @@ export default class ChartSettingsSummaryTableColumns extends Component<
   };
 
   componentWillReceiveProps = (newProps: Props) => {
-    if (newProps !== this.props)
+    if (newProps !== this.props) {
       this.setState(
         convertValueToState(newProps.value, newProps.cols, newProps.columns),
       );
+    }
   };
 
   onSortEnd = ({ oldIndex, newIndex }: ArrayMoveArg) =>
@@ -290,7 +289,7 @@ const SortableItem = SortableElement(
       if (
         itemTypeHelper.isGroupingColumn(valueIndex) ||
         itemTypeHelper.isColumnSourceColumn(valueIndex)
-      )
+      ) {
         return (
           <FatColumn
             displayName={value.displayName}
@@ -299,14 +298,17 @@ const SortableItem = SortableElement(
             onChange={updateMeta}
           />
         );
-      if (itemTypeHelper.isValueColumn(valueIndex))
+      }
+      if (itemTypeHelper.isValueColumn(valueIndex)) {
         return (
           <ValueColumn
             displayName={value.displayName}
             onRemove={removeColumn}
           />
         );
-      else return <UnusedColumn displayName={value.displayName} />;
+      } else {
+        return <UnusedColumn displayName={value.displayName} />;
+      }
     }
 
     return <SectionHeader text={value.displayName} />;
@@ -388,13 +390,14 @@ const moveItem = (updateState: StateSuperType => Promise<*>) => async (
     if (
       items[newIndex - 1] === columnSourceItem &&
       items[newIndex + 1] !== valueSourceItem
-    )
+    ) {
       items = arrayMove(items, newIndex + 1, newIndex + 2);
-    else if (
+    } else if (
       items[newIndex - 1] !== columnSourceItem &&
       items[newIndex + 1] === valueSourceItem
-    )
+    ) {
       items = arrayMove(items, newIndex - 2, newIndex - 1);
+    }
 
     await updateState({
       items,
@@ -473,8 +476,8 @@ const RowHeader = ({ displayName, onRemove }) => (
     className={cx(
       "p1 border-bottom relative bg-grey-0",
       !onRemove && "cursor-move",
+      onRemove && "removable-header",
     )}
-    style={{ background: onRemove && "#EDEFF0" }}
   >
     <div className="px1 flex align-center relative">
       <span className="h4 flex-full text-dark no-select">{displayName}</span>

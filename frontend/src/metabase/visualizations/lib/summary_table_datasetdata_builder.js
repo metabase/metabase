@@ -473,7 +473,7 @@ const buildColumnIndexToFirstInGroupIndexes = (rows, summarySettings) => {
 
 const getStartGroupIndexToEndGroupIndex = (startIndexes: Set): {} => {
   const sortedIndexes = sortBy(Array.from(startIndexes));
-  const [x, ...tail] = sortedIndexes;
+  const [, ...tail] = sortedIndexes;
   return tail.reduce((acc, currentValue, index) => {
     acc[sortedIndexes[index]] = currentValue - 1;
     return acc;

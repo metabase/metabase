@@ -68,8 +68,9 @@ const getMetadataBuilder = (columnNameToMetadata, sortOverride) => {
     if (
       orderOverridden &&
       orderOverridden !== (metadata.isAscSortOrder ? "asc" : "desc")
-    )
+    ) {
       return { ...metadata, isAscSortOrder: !metadata.isAscSortOrder };
+    }
 
     return metadata;
   };

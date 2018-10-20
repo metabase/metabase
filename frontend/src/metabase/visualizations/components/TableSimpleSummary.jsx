@@ -223,8 +223,9 @@ export default class TableSimpleSummary extends Component {
                             </div>
                           </th>
                         );
-                      } else if (colIndex < groupingColumnsLen)
+                      } else if (colIndex < groupingColumnsLen) {
                         return <th key={`header-${colIndex}`} />;
+                      }
                     })}
                   </tr>
                 ))}
@@ -273,9 +274,12 @@ export default class TableSimpleSummary extends Component {
                         rich: true,
                       });
 
-                      if (isGrandTotalCell) formatedRes = "Grand totals";
-                      if (isTotalCell && typeof formatedRes === "string")
+                      if (isGrandTotalCell) {
+                        formatedRes = "Grand totals";
+                      }
+                      if (isTotalCell && typeof formatedRes === "string") {
                         formatedRes = "Totals for " + formatedRes;
+                      }
 
                       return (
                         <td

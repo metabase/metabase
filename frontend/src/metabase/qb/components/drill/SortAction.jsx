@@ -26,11 +26,15 @@ const getClickActionsForSummaryHeader = ({
 };
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
-  if (!clicked || !clicked.column || !clicked.column.source) return [];
+  if (!clicked || !clicked.column || !clicked.column.source) {
+    return [];
+  }
+
   // $FlowFixMe summaryHeaderCustomSort
   const { summaryHeaderCustomSort } = clicked;
-  if (summaryHeaderCustomSort)
+  if (summaryHeaderCustomSort) {
     return getClickActionsForSummaryHeader(summaryHeaderCustomSort);
+  }
 
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {

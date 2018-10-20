@@ -362,9 +362,12 @@ export default class TableInteractiveSummary extends Component {
       rich: true,
     });
 
-    if (isGrandTotalCell) formattedRes = "Grand totals";
-    if (isTotalCell && typeof formattedRes === "string")
+    if (isGrandTotalCell) {
+      formattedRes = "Grand totals";
+    }
+    if (isTotalCell && typeof formattedRes === "string") {
       formattedRes = "Totals for " + formattedRes;
+    }
 
     const clicked = getTableCellClickedObjectForSummary(
       this.props.data.cols,
@@ -704,7 +707,9 @@ const createArgsForIndexGenerator = cells =>
           shouldIgnoreNulls: true,
         };
       }
-      if (shouldIgnoreNulls) return { acc, shouldIgnoreNulls };
+      if (shouldIgnoreNulls) {
+        return { acc, shouldIgnoreNulls };
+      }
 
       return { acc: set(acc, index, index) };
     },

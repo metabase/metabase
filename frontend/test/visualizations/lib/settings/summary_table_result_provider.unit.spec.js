@@ -49,8 +49,9 @@ const buildData = (rows: Row[], cols: Column[]): DatasetData => ({
 });
 
 const addSource = (col: Column, source?: string) => {
-  if (!source) source = col.base_type === TYPE.Number ? AGGREGATION : BREAKOUT;
-
+  if (!source) {
+    source = col.base_type === TYPE.Number ? AGGREGATION : BREAKOUT;
+  }
   return { ...col, source };
 };
 
@@ -167,13 +168,17 @@ const datasAreEqual = (
     orderBy(data.columns),
     orderBy(expectedData.columns),
   );
-  if (!columnsAreEqual) return false;
+  if (!columnsAreEqual) {
+    return false;
+  }
 
   const colsAreEqual = isEqual(
     orderBy(data.cols, p => p.name),
     orderBy(expectedData.cols, p => p.name),
   );
-  if (!colsAreEqual) return false;
+  if (!colsAreEqual) {
+    return false;
+  }
 
   const expColumnToIndex = invert(expectedData.columns);
   const normalizedRows = expectedData.rows.map(row =>
