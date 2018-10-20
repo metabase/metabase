@@ -5,7 +5,10 @@ import { Column } from "metabase/meta/types/Dataset";
 import isEqual from "lodash.isequal";
 import orderBy from "lodash.orderby";
 import invert from "lodash.invert";
-import {buildResultProvider, createKey} from "metabase/visualizations/lib/summary_table";
+import {
+  buildResultProvider,
+  createKey,
+} from "metabase/visualizations/lib/summary_table";
 
 const BREAKOUT = "breakout";
 const AGGREGATION = "aggregation";
@@ -26,14 +29,16 @@ const columnNumeric = {
   base_type: TYPE.Number,
 };
 const allColumns = [columnText1, columnText2, columnNumeric];
-const mainQuerySortOrder = [columnText1, columnText2].map(({name}) => ['asc', name]);
+const mainQuerySortOrder = [columnText1, columnText2].map(({ name }) => [
+  "asc",
+  name,
+]);
 
 const row1 = ["a", "a", 3];
 const row2 = ["a", "b", 4];
 const row3 = ["b", "a", 1];
 const row4 = ["c", "b", 1];
 const row5 = ["c", "b", -1];
-
 
 const allRows = [row1, row2, row3, row4, row5];
 
@@ -52,12 +57,18 @@ const addSource = (col: Column, source?: string) => {
 describe("summary table result provider", () => {
   describe("given result provider initialized by main results", () => {
     const rawResults = buildData(allRows, allColumns);
-    const mainResults = buildData(allRows, allColumns.map(col => addSource(col)));
+    const mainResults = buildData(
+      allRows,
+      allColumns.map(col => addSource(col)),
+    );
 
-    const resultsProvider = buildResultProvider(rawResults, [mainResults], mainQuerySortOrder);
-    it("results provider should return main results", () =>
-    {
-      const mainKey = createKey(['C1', 'C2'], ['C3'], mainQuerySortOrder);
+    const resultsProvider = buildResultProvider(
+      rawResults,
+      [mainResults],
+      mainQuerySortOrder,
+    );
+    it("results provider should return main results", () => {
+      const mainKey = createKey(["C1", "C2"], ["C3"], mainQuerySortOrder);
       expect(resultsProvider(mainKey)).toBe(mainResults);
     });
     it("results provider should compute results for grand totals", () => {
@@ -79,20 +90,23 @@ describe("summary table result provider", () => {
     });
 
     it("results provider should compute results for totals on 'desc' C1", () => {
-      const totalsKey = createKey(["C1"], ["C3"], [['desc', 'C1']]);
+      const totalsKey = createKey(["C1"], ["C3"], [["desc", "C1"]]);
       const expectedResults = buildData(
         [["c", 0], ["b", 1], ["a", 7]],
         [columnText1, columnNumeric].map(p => addSource(p)),
       );
       expect(
-        datasAreEqual(resultsProvider(totalsKey), expectedResults)
+        datasAreEqual(resultsProvider(totalsKey), expectedResults),
       ).toEqual(true);
     });
   });
 
   describe("given result provider initialized by main and totals results", () => {
     const rawResults = buildData(allRows, allColumns);
-    const mainResults = buildData(allRows, allColumns.map(col => addSource(col)));
+    const mainResults = buildData(
+      allRows,
+      allColumns.map(col => addSource(col)),
+    );
 
     const grandTotalKey = createKey([], ["C3"], mainQuerySortOrder);
     const grandTotalResults = buildData([[8]], [addSource(columnNumeric)]);
@@ -103,15 +117,14 @@ describe("summary table result provider", () => {
       [columnText1, columnNumeric].map(p => addSource(p)),
     );
 
-    const resultsProvider = buildResultProvider(rawResults, [
-      mainResults,
-      grandTotalResults,
-      totalsResults,
-    ], mainQuerySortOrder);
+    const resultsProvider = buildResultProvider(
+      rawResults,
+      [mainResults, grandTotalResults, totalsResults],
+      mainQuerySortOrder,
+    );
 
-    it("results provider should return main results", () =>
-    {
-      const mainKey = createKey(['C1', 'C2'], ['C3'], mainQuerySortOrder);
+    it("results provider should return main results", () => {
+      const mainKey = createKey(["C1", "C2"], ["C3"], mainQuerySortOrder);
       expect(resultsProvider(mainKey)).toBe(mainResults);
     });
     it("results provider should return results for grand totals", () => {
@@ -122,21 +135,20 @@ describe("summary table result provider", () => {
     });
 
     it("results provider should reorder results for totals on 'desc' C1", () => {
-      const key = createKey(["C1"], ["C3"], [['desc', 'C1']]);
+      const key = createKey(["C1"], ["C3"], [["desc", "C1"]]);
       const expectedResults = buildData(
-        [ ["c", 0],["b", 1], ["a", 7]],
+        [["c", 0], ["b", 1], ["a", 7]],
         [columnText1, columnNumeric].map(p => addSource(p)),
       );
 
-      expect(datasAreEqual(resultsProvider(key),expectedResults)).toEqual(true);
+      expect(datasAreEqual(resultsProvider(key), expectedResults)).toEqual(
+        true,
+      );
     });
 
     it("results provider should compute results for totals on C2", () => {
       const totalsKey = createKey(["C2"], ["C3"], mainQuerySortOrder);
-      const resRows = [
-        [4, "a"],
-        [4, "b"],
-      ];
+      const resRows = [[4, "a"], [4, "b"]];
       const expectedResults = buildData(
         resRows,
         [columnNumeric, columnText2].map(p => addSource(p)),
@@ -147,12 +159,10 @@ describe("summary table result provider", () => {
   });
 });
 
-
 const datasAreEqual = (
   data: DatasetData,
   expectedData: DatasetData,
 ): boolean => {
-
   const columnsAreEqual = isEqual(
     orderBy(data.columns),
     orderBy(expectedData.columns),
@@ -170,8 +180,5 @@ const datasAreEqual = (
     data.columns.map(columnName => row[expColumnToIndex[columnName]]),
   );
 
-  return isEqual(
-    data.rows,
-    normalizedRows
-  );
+  return isEqual(data.rows, normalizedRows);
 };

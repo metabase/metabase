@@ -8,36 +8,36 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
-const getClickActionsForSummaryHeader = ({currentSortOrder, customAction}: {currentSortOrder : string, customAction : () => void}) =>{
+const getClickActionsForSummaryHeader = ({
+  currentSortOrder,
+  customAction,
+}: {
+  currentSortOrder: string,
+  customAction: () => void,
+}) => {
   return [
-    {name: currentSortOrder === 'desc' ? "sort-ascending" : "sort-descending",
-    section: "sort",
-    title: currentSortOrder === 'desc' ? t`Ascending`: t`Descending`,
-    customAction
-    }
+    {
+      name: currentSortOrder === "desc" ? "sort-ascending" : "sort-descending",
+      section: "sort",
+      title: currentSortOrder === "desc" ? t`Ascending` : t`Descending`,
+      customAction,
+    },
   ];
 };
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
-
-  if (
-    !clicked ||
-    !clicked.column ||
-    !clicked.column.source
-  )
-    return [];
+  if (!clicked || !clicked.column || !clicked.column.source) return [];
   // $FlowFixMe summaryHeaderCustomSort
-  const {summaryHeaderCustomSort} = clicked;
-  if(summaryHeaderCustomSort)
+  const { summaryHeaderCustomSort } = clicked;
+  if (summaryHeaderCustomSort)
     return getClickActionsForSummaryHeader(summaryHeaderCustomSort);
-
 
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];
   }
 
-  if(clicked.value !== undefined) {
+  if (clicked.value !== undefined) {
     return [];
   }
 

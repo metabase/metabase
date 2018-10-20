@@ -1,4 +1,3 @@
-
 //todo rename
 //todo remove {name}.css (update style using ChartSettingsTableFormatting)
 import React, { Component } from "react";

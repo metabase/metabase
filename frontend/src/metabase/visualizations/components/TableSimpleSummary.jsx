@@ -19,22 +19,24 @@ import {
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import orderBy from 'lodash.orderby';
-import set from 'lodash.set';
-import type {ColumnName} from "metabase/meta/types/Dataset";
-import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
-import type {VisualizationSettings} from "metabase/meta/types/Card";
-import {buildIndexGenerator, createKey} from "metabase/visualizations/lib/table_virtualized";
-
+import orderBy from "lodash.orderby";
+import set from "lodash.set";
+import type { ColumnName } from "metabase/meta/types/Dataset";
+import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import {
+  buildIndexGenerator,
+  createKey,
+} from "metabase/visualizations/lib/table_virtualized";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
 
-  sort: {[key: ColumnName] : string},
-  updateSort : ColumnName => void,
-  settings : VisualizationSettings,
-  summarySettings: SummaryTableSettings
+  sort: { [key: ColumnName]: string },
+  updateSort: ColumnName => void,
+  settings: VisualizationSettings,
+  summarySettings: SummaryTableSettings,
 };
 
 type State = {
@@ -64,7 +66,6 @@ export default class TableSimpleSummary extends Component {
     className: "",
   };
 
-
   componentDidUpdate() {
     let headerHeight = ReactDOM.findDOMNode(
       this.refs.header,
@@ -75,7 +76,7 @@ export default class TableSimpleSummary extends Component {
           headerHeight
         ).getBoundingClientRect().height
       : 0;
-    let rowHeight = headerHeight/this.props.data.columnsHeaders.length;
+    let rowHeight = headerHeight / this.props.data.columnsHeaders.length;
     let pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
@@ -86,9 +87,12 @@ export default class TableSimpleSummary extends Component {
     }
   }
 
-  canSort = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.summarySettings;
-    return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
+  canSort = (columnName: ColumnName) => {
+    const settings: SummaryTableSettings = this.props.summarySettings;
+    return (
+      settings.groupsSources.includes(columnName) ||
+      settings.columnsSource.includes(columnName)
+    );
   };
 
   render() {
@@ -98,23 +102,53 @@ export default class TableSimpleSummary extends Component {
       visualizationIsClickable,
       isPivoted,
       sort,
-      updateSort
+      updateSort,
     } = this.props;
-    const { rows, columnsHeaders, cols, columnIndexToFirstInGroupIndexes, rowIndexesToColSpans, isGrouped } = data;
-    const { page, pageSize} = this.state;
+    const {
+      rows,
+      columnsHeaders,
+      cols,
+      columnIndexToFirstInGroupIndexes,
+      rowIndexesToColSpans,
+      isGrouped,
+    } = data;
+    const { page, pageSize } = this.state;
 
     let start = pageSize * page;
     let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
-    const indexGenerator = buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: rowIndexesToColSpans});
-    const indexes = indexGenerator({windowColumnStartIndex:0, windowColumnStopIndex: cols.length-1, windowRowStartIndex: start, windowRowStopIndex: end});
-    const trimmedIndexes = indexes.map(({columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex }) =>
-      ({columnStartIndex, columnStopIndex, rowStartIndex : Math.max(rowStartIndex, start), rowStopIndex : Math.min(rowStopIndex, end)})
+    const indexGenerator = buildIndexGenerator({
+      groupsForColumns: columnIndexToFirstInGroupIndexes,
+      groupsForRows: rowIndexesToColSpans,
+    });
+    const indexes = indexGenerator({
+      windowColumnStartIndex: 0,
+      windowColumnStopIndex: cols.length - 1,
+      windowRowStartIndex: start,
+      windowRowStopIndex: end,
+    });
+    const trimmedIndexes = indexes.map(
+      ({ columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex }) => ({
+        columnStartIndex,
+        columnStopIndex,
+        rowStartIndex: Math.max(rowStartIndex, start),
+        rowStopIndex: Math.min(rowStopIndex, end),
+      }),
     );
 
-    const sortedIndexes = orderBy(trimmedIndexes, ['rowStartIndex', 'columnStartIndex']);
+    const sortedIndexes = orderBy(trimmedIndexes, [
+      "rowStartIndex",
+      "columnStartIndex",
+    ]);
 
-    const groupedIndexes = sortedIndexes.reduce((acc, indexes) => set(acc, indexes.rowStartIndex, [...acc[indexes.rowStartIndex] || [], indexes] ) , [])
+    const groupedIndexes = sortedIndexes.reduce(
+      (acc, indexes) =>
+        set(acc, indexes.rowStartIndex, [
+          ...(acc[indexes.rowStartIndex] || []),
+          indexes,
+        ]),
+      [],
+    );
 
     const groupingColumnsLen = columnsHeaders[0].findIndex(p => p);
 
@@ -133,141 +167,170 @@ export default class TableSimpleSummary extends Component {
               )}
             >
               <thead ref="header">
-              {columnsHeaders.map((visibleCols, rowIndex) =>
-                <tr key={`header-${rowIndex}`}>
-                  {visibleCols.map((col, colIndex) => {
-                    if (col) {
-                      const column = col.column;
-                      const sortOrder = sort[column.name];
-                      const columnName = column.name;
-                      const clickAction = this.canSort(columnName) && (() => updateSort(columnName));
-                      const isRightAligned = col.columnSpan > 1 || isColumnRightAligned(cols[colIndex]);
-                      return (
-                        <th
-                          key={`header-${rowIndex}-${colIndex}`}
-                          className={cx(
-                            "TableInteractiveSummary-headerCellData cellData text-brand-hover",
-                            {
-                              "TableInteractiveSummary-headerCellData--sorted": !!sortOrder,
-                              "text-right": isRightAligned,
-                              "TableSimpleSummary-cellWrapper-firstColumn" : colIndex === 0,
-                            },
-
-                          )}
-                          onClick={clickAction}
-                          colSpan={col.columnSpan}
-                        >
-                          <div className="relative">
-                            <Icon
-                              name={
-                                sortOrder === 'desc' ? "chevrondown" : "chevronup"
-                              }
-                              width={8}
-                              height={8}
-                              style={{
-                                position: "absolute",
-                                right: "100%",
-                                marginRight: 3,
-                              }}
-                            />
-                            <Ellipsified>
-                              {col.displayText|| (col.value || col.value === 0) && formatValue(col.value, {
-                                column: col.column,
-                                jsx: true,
-                                rich: true,
-                              }) || formatColumn(col.column)}
-                            </Ellipsified>
-                          </div>
-                        </th>
-                      );
-                    }
-                    else if(colIndex < groupingColumnsLen)
-                      return <th key={`header-${colIndex}`}/>
-                  })}
-                </tr>)
-              }
+                {columnsHeaders.map((visibleCols, rowIndex) => (
+                  <tr key={`header-${rowIndex}`}>
+                    {visibleCols.map((col, colIndex) => {
+                      if (col) {
+                        const column = col.column;
+                        const sortOrder = sort[column.name];
+                        const columnName = column.name;
+                        const clickAction =
+                          this.canSort(columnName) &&
+                          (() => updateSort(columnName));
+                        const isRightAligned =
+                          col.columnSpan > 1 ||
+                          isColumnRightAligned(cols[colIndex]);
+                        return (
+                          <th
+                            key={`header-${rowIndex}-${colIndex}`}
+                            className={cx(
+                              "TableInteractiveSummary-headerCellData cellData text-brand-hover",
+                              {
+                                "TableInteractiveSummary-headerCellData--sorted": !!sortOrder,
+                                "text-right": isRightAligned,
+                                "TableSimpleSummary-cellWrapper-firstColumn":
+                                  colIndex === 0,
+                              },
+                            )}
+                            onClick={clickAction}
+                            colSpan={col.columnSpan}
+                          >
+                            <div className="relative">
+                              <Icon
+                                name={
+                                  sortOrder === "desc"
+                                    ? "chevrondown"
+                                    : "chevronup"
+                                }
+                                width={8}
+                                height={8}
+                                style={{
+                                  position: "absolute",
+                                  right: "100%",
+                                  marginRight: 3,
+                                }}
+                              />
+                              <Ellipsified>
+                                {col.displayText ||
+                                  ((col.value || col.value === 0) &&
+                                    formatValue(col.value, {
+                                      column: col.column,
+                                      jsx: true,
+                                      rich: true,
+                                    })) ||
+                                  formatColumn(col.column)}
+                              </Ellipsified>
+                            </div>
+                          </th>
+                        );
+                      } else if (colIndex < groupingColumnsLen)
+                        return <th key={`header-${colIndex}`} />;
+                    })}
+                  </tr>
+                ))}
               </thead>
               <tbody>
-                {groupedIndexes.map((cellInfos, i) =>
-                  (<tr key={`row-${i}`}>
+                {groupedIndexes.map((cellInfos, i) => (
+                  <tr key={`row-${i}`}>
                     {cellInfos.map(cellInfo => {
-                      const {columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex} = cellInfo;
-                        const column = cols[columnStartIndex];
-                        const row = rows[rowStartIndex];
-                        if(!row){
-                          //todo:  why row is null?
-                          return null;
-                        }
-                        let cell = row[columnStartIndex];
-                        const clicked = getTableCellClickedObject(
-                          data,
-                          rowStartIndex,
-                          columnStartIndex,
-                          isPivoted,
-                        );
-                        const isClickable =
-                          onVisualizationClick &&
-                          visualizationIsClickable(clicked);
-                        const rowSpan = rowStopIndex - rowStartIndex +1;
-                        const colSpan = columnStopIndex - columnStartIndex +1;
+                      const {
+                        columnStartIndex,
+                        columnStopIndex,
+                        rowStartIndex,
+                        rowStopIndex,
+                      } = cellInfo;
+                      const column = cols[columnStartIndex];
+                      const row = rows[rowStartIndex];
+                      if (!row) {
+                        //todo:  why row is null?
+                        return null;
+                      }
+                      let cell = row[columnStartIndex];
+                      const clicked = getTableCellClickedObject(
+                        data,
+                        rowStartIndex,
+                        columnStartIndex,
+                        isPivoted,
+                      );
+                      const isClickable =
+                        onVisualizationClick &&
+                        visualizationIsClickable(clicked);
+                      const rowSpan = rowStopIndex - rowStartIndex + 1;
+                      const colSpan = columnStopIndex - columnStartIndex + 1;
 
                       const isGrandTotal = row.isTotalColumnIndex === 0;
-                      const isTotalCell = row.isTotalColumnIndex === columnStartIndex + 1;
-                      const isTotalRow = Number.isInteger(row.isTotalColumnIndex) && row.isTotalColumnIndex <= columnStartIndex +1;
-                      const isGrandTotalCell = isGrandTotal && columnStartIndex === 0;
+                      const isTotalCell =
+                        row.isTotalColumnIndex === columnStartIndex + 1;
+                      const isTotalRow =
+                        Number.isInteger(row.isTotalColumnIndex) &&
+                        row.isTotalColumnIndex <= columnStartIndex + 1;
+                      const isGrandTotalCell =
+                        isGrandTotal && columnStartIndex === 0;
 
+                      let formatedRes = formatValue(cell, {
+                        column: column,
+                        jsx: true,
+                        rich: true,
+                      });
 
-                        let formatedRes = formatValue(cell, {
-                          column: column,
-                          jsx: true,
-                          rich: true,
-                        });
+                      if (isGrandTotalCell) formatedRes = "Grand totals";
+                      if (isTotalCell && typeof formatedRes === "string")
+                        formatedRes = "Totals for " + formatedRes;
 
-                        if (isGrandTotalCell)
-                          formatedRes = "Grand totals";
-                        if (
-                          isTotalCell &&
-                          typeof formatedRes === "string"
-                        )
-                          formatedRes = "Totals for " + formatedRes;
-
-                        return (
-                          <td
-                            ref={row.columnStopIndex === cols.length -1 && row.rowStopIndex === rows.length -1 ? "lastCell" : null}
-                            className={cx("TableSimpleSummary-cellWrapper px1 border-bottom", {
-                              "text-right": !isTotalCell && !isGrandTotalCell && isColumnRightAligned(cols[columnStartIndex]),
-                              "TableSimpleSummary-cellWrapper-firstColumn" : columnStartIndex === 0,
+                      return (
+                        <td
+                          ref={
+                            row.columnStopIndex === cols.length - 1 &&
+                            row.rowStopIndex === rows.length - 1
+                              ? "lastCell"
+                              : null
+                          }
+                          className={cx(
+                            "TableSimpleSummary-cellWrapper px1 border-bottom",
+                            {
+                              "text-right":
+                                !isTotalCell &&
+                                !isGrandTotalCell &&
+                                isColumnRightAligned(cols[columnStartIndex]),
+                              "TableSimpleSummary-cellWrapper-firstColumn":
+                                columnStartIndex === 0,
                               "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
-                              "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
-                              "TableInteractiveSummary-cellWrapper-normal" : !isTotalRow && !isGrandTotal,
-                              "TableInteractiveSummary-cellWrapper-normalGrouped" : !isTotalRow && !isGrandTotal && isGrouped(columnStartIndex),
+                              "TableInteractiveSummary-cellWrapper-total":
+                                isTotalRow && !isGrandTotal,
+                              "TableInteractiveSummary-cellWrapper-normal":
+                                !isTotalRow && !isGrandTotal,
+                              "TableInteractiveSummary-cellWrapper-normalGrouped":
+                                !isTotalRow &&
+                                !isGrandTotal &&
+                                isGrouped(columnStartIndex),
+                            },
+                          )}
+                          rowSpan={rowSpan}
+                          colSpan={colSpan}
+                          key={createKey(cellInfo)}
+                        >
+                          <span
+                            className={cx({
+                              "cursor-pointer text-brand-hover": isClickable,
                             })}
-                            rowSpan={rowSpan}
-                            colSpan={colSpan}
-                            key={createKey(cellInfo)}
-                          >
-                            <span
-                              className={cx({
-                                "cursor-pointer text-brand-hover": isClickable,
-                              })}
-                              onClick={
-                                isClickable
-                                  ? e => {
+                            onClick={
+                              isClickable
+                                ? e => {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,
                                     });
                                   }
-                                  : undefined
-                              }
-                            >
-                              {formatedRes}
-                            </span>
-                          </td>
-                        );
-                      })}
-                  </tr>)
-                )}
+                                : undefined
+                            }
+                          >
+                            {formatedRes}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

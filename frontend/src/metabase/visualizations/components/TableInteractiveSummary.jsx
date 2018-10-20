@@ -1,5 +1,3 @@
-
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -9,9 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isID } from "metabase/lib/schema_metadata";
-import {
-  isColumnRightAligned,
-} from "metabase/visualizations/lib/table";
+import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -23,21 +19,22 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import type {Row, Column, ColumnName} from "metabase/meta/types/Dataset";
+import type { Row, Column, ColumnName } from "metabase/meta/types/Dataset";
 import orderBy from "lodash.orderby";
 import set from "lodash.set";
 import flatMap from "lodash.flatmap";
-import {getTableCellClickedObjectForSummary} from "metabase/visualizations/lib/summary_table";
-import type {SummaryTableSettings} from "metabase/meta/types/summary_table";
-import type {VisualizationSettings} from "metabase/meta/types/Card";
-import {buildCellRangeRenderer, buildIndexGenerator} from "metabase/visualizations/lib/table_virtualized";
+import { getTableCellClickedObjectForSummary } from "metabase/visualizations/lib/summary_table";
+import type { SummaryTableSettings } from "metabase/meta/types/summary_table";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import {
+  buildCellRangeRenderer,
+  buildIndexGenerator,
+} from "metabase/visualizations/lib/table_virtualized";
 
 const HEADER_HEIGHT = 30;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
-
-
 
 type Props = VisualizationProps & {
   width: number,
@@ -45,10 +42,10 @@ type Props = VisualizationProps & {
 
   onActionDismissal: () => void,
 
-  sort: {[key: ColumnName] : string},
-  updateSort : ColumnName => void,
-  settings : VisualizationSettings,
-  summarySettings: SummaryTableSettings
+  sort: { [key: ColumnName]: string },
+  updateSort: ColumnName => void,
+  settings: VisualizationSettings,
+  summarySettings: SummaryTableSettings,
 };
 type State = {
   columnWidths: number[],
@@ -61,7 +58,6 @@ type CellRendererProps = {
   columnIndex: number,
   rowIndex: number,
 };
-
 
 type Range = { start: Number, stop: Number };
 
@@ -99,7 +95,7 @@ export default class TableInteractiveSummary extends Component {
 
     this.state = {
       columnWidths: [],
-      contentWidths: null
+      contentWidths: null,
     };
     this.columnHasResized = {};
   }
@@ -167,16 +163,29 @@ export default class TableInteractiveSummary extends Component {
   _measure = () => {
     let {
       data: { cols, rows, columnsHeaders },
-      summarySettings: {groupsSources}
+      summarySettings: { groupsSources },
     } = this.props;
 
     const magicNumber = 42;
 
-    const probeRows  = [
+    const probeRows = [
       rows[rows.length - 1],
       ...rows.slice(0, magicNumber),
-      ...cols.map((_, colIndex) => rows.find((row, index) => index > magicNumber && row[colIndex])).filter(p => p),
-    ].map(p => p.isTotalColumnIndex ? ({__proto__:p, colSpan: groupsSources.length - Math.max(p.isTotalColumnIndex-1, 0) }): p);
+      ...cols
+        .map((_, colIndex) =>
+          rows.find((row, index) => index > magicNumber && row[colIndex]),
+        )
+        .filter(p => p),
+    ].map(
+      p =>
+        p.isTotalColumnIndex
+          ? {
+              __proto__: p,
+              colSpan:
+                groupsSources.length - Math.max(p.isTotalColumnIndex - 1, 0),
+            }
+          : p,
+    );
 
     const probeHeaders = flatMap(columnsHeaders, row =>
       row.map((header, columnIndex) => header && { ...header, columnIndex }),
@@ -190,15 +199,22 @@ export default class TableInteractiveSummary extends Component {
             title={columnIndex + "-" + columnSpan}
             key={Math.random()}
           >
-            {this.renderHeader({ style: {}, value, column, columnIndex: 0, sortOrder: 'asc' })}
+            {this.renderHeader({
+              style: {},
+              value,
+              column,
+              columnIndex: 0,
+              sortOrder: "asc",
+            })}
           </div>
         ))}
-        {cols.map((column, columnIndex) => probeRows.map(probeRow =>
-          (<div
-                className="fake-column"
-                title={columnIndex + "-" + (probeRow.colSpan || 1)}
-                key={Math.random()}
-              >
+        {cols.map((column, columnIndex) =>
+          probeRows.map(probeRow => (
+            <div
+              className="fake-column"
+              title={columnIndex + "-" + (probeRow.colSpan || 1)}
+              key={Math.random()}
+            >
               {this.renderCell(
                 probeRow,
                 column,
@@ -208,10 +224,9 @@ export default class TableInteractiveSummary extends Component {
                 true,
                 {},
               )}
-
-              </div>)))
-                }
-
+            </div>
+          )),
+        )}
         ))}
       </div>,
       this._div,
@@ -270,17 +285,22 @@ export default class TableInteractiveSummary extends Component {
   };
 
   onColumnResize(columnIndex: number, columnSpan: number, width: number) {
-
     const { settings } = this.props;
     const columnWidthsSetting = settings["summaryTable.column_widths"]
       ? settings["summaryTable.column_widths"].slice()
       : [];
 
     const { columnWidths } = this.state;
-    const updated = computeNewWidths(columnWidths,
-      { columnIndex, columnSpan, offsetWidth : width });
+    const updated = computeNewWidths(columnWidths, {
+      columnIndex,
+      columnSpan,
+      offsetWidth: width,
+    });
 
-    updated.reduce((acc, currentElem, index) => set(acc, index + columnIndex, currentElem), columnWidthsSetting);
+    updated.reduce(
+      (acc, currentElem, index) => set(acc, index + columnIndex, currentElem),
+      columnWidthsSetting,
+    );
 
     this.props.onUpdateVisualizationSettings({
       "summaryTable.column_widths": columnWidthsSetting,
@@ -288,9 +308,7 @@ export default class TableInteractiveSummary extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  cellRenderer = (
-    { key, style, rowIndex, columnIndex }: CellRendererProps,
-  ) => {
+  cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const groupingManager = this.props.data;
 
     const { data, onVisualizationClick, visualizationIsClickable } = this.props;
@@ -313,7 +331,7 @@ export default class TableInteractiveSummary extends Component {
       style,
       onVisualizationClick,
       visualizationIsClickable,
-      columnIsGrouped
+      columnIsGrouped,
     );
   };
 
@@ -332,7 +350,9 @@ export default class TableInteractiveSummary extends Component {
     let value = row[columnIndex];
 
     const isTotalCell = row.isTotalColumnIndex === columnIndex + 1;
-    const isTotalRow = Number.isInteger(row.isTotalColumnIndex) && row.isTotalColumnIndex <= columnIndex +1;
+    const isTotalRow =
+      Number.isInteger(row.isTotalColumnIndex) &&
+      row.isTotalColumnIndex <= columnIndex + 1;
     const isGrandTotalCell = isGrandTotal && columnIndex === 0;
 
     let formattedRes = formatValue(value, {
@@ -342,8 +362,7 @@ export default class TableInteractiveSummary extends Component {
       rich: true,
     });
 
-    if (isGrandTotalCell)
-      formattedRes = "Grand totals";
+    if (isGrandTotalCell) formattedRes = "Grand totals";
     if (isTotalCell && typeof formattedRes === "string")
       formattedRes = "Totals for " + formattedRes;
 
@@ -366,11 +385,15 @@ export default class TableInteractiveSummary extends Component {
           "TableInteractiveSummary-cellWrapper--lastColumn":
             columnIndex === this.props.data.cols.length - 1,
           "TableInteractiveSummary-cellWrapper-grandTotal": isGrandTotal,
-          "TableInteractiveSummary-cellWrapper-total" : isTotalRow && !isGrandTotal,
-          "TableInteractiveSummary-cellWrapper-normal" : !isTotalRow && !isGrandTotal,
-          "TableInteractiveSummary-cellWrapper-normalGrouped" : !isTotalRow && !isGrandTotal && columnIsGrouped,
+          "TableInteractiveSummary-cellWrapper-total":
+            isTotalRow && !isGrandTotal,
+          "TableInteractiveSummary-cellWrapper-normal":
+            !isTotalRow && !isGrandTotal,
+          "TableInteractiveSummary-cellWrapper-normalGrouped":
+            !isTotalRow && !isGrandTotal && columnIsGrouped,
           "cursor-pointer": isClickable,
-          "justify-end": !isTotalCell && !isGrandTotalCell && isColumnRightAligned(column),
+          "justify-end":
+            !isTotalCell && !isGrandTotalCell && isColumnRightAligned(column),
           link: !isTotalRow && isClickable && isID(column),
         })}
         onMouseUp={
@@ -397,23 +420,33 @@ export default class TableInteractiveSummary extends Component {
   }: CellRendererProps) => {
     const { columnsHeaders } = this.props.data;
     const columnHeader = columnsHeaders[rowIndex][columnIndex];
-    if(!columnHeader){
+    if (!columnHeader) {
       return null;
     }
 
-    const sortOrder =  this.props.sort[columnHeader.column.name];
-    return this.renderHeader({ ...columnHeader, key, style, columnIndex, sortOrder});
+    const sortOrder = this.props.sort[columnHeader.column.name];
+    return this.renderHeader({
+      ...columnHeader,
+      key,
+      style,
+      columnIndex,
+      sortOrder,
+    });
   };
 
-  getRealSortOrderFromSettings = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.summarySettings;
-    const isAsc = (settings.columnNameToMetadata[columnName] || {}).isAscSortOrder;
-    return isAsc === false ?  'desc' : 'asc';
+  getRealSortOrderFromSettings = (columnName: ColumnName) => {
+    const settings: SummaryTableSettings = this.props.summarySettings;
+    const isAsc = (settings.columnNameToMetadata[columnName] || {})
+      .isAscSortOrder;
+    return isAsc === false ? "desc" : "asc";
   };
 
-  canSort = (columnName : ColumnName) => {
-    const settings : SummaryTableSettings = this.props.summarySettings;
-    return settings.groupsSources.includes(columnName) || settings.columnsSource.includes(columnName);
+  canSort = (columnName: ColumnName) => {
+    const settings: SummaryTableSettings = this.props.summarySettings;
+    return (
+      settings.groupsSources.includes(columnName) ||
+      settings.columnsSource.includes(columnName)
+    );
   };
 
   renderHeader = ({
@@ -424,32 +457,45 @@ export default class TableInteractiveSummary extends Component {
     columnIndex,
     columnSpan,
     displayText,
-    sortOrder
+    sortOrder,
   }: CellRendererProps) => {
     columnSpan = columnSpan || 1;
-    const { onVisualizationClick, visualizationIsClickable, data:{ cols } } = this.props;
+    const {
+      onVisualizationClick,
+      visualizationIsClickable,
+      data: { cols },
+    } = this.props;
 
     const columnName = column.name;
 
-    const summaryHeaderCustomSort = this.canSort(columnName) &&
-      { currentSortOrder: sortOrder || this.getRealSortOrderFromSettings(columnName),
-        customAction : () =>  this.props.updateSort(column.name)};
-    const clicked = summaryHeaderCustomSort && {value, column, summaryHeaderCustomSort} ;
+    const summaryHeaderCustomSort = this.canSort(columnName) && {
+      currentSortOrder:
+        sortOrder || this.getRealSortOrderFromSettings(columnName),
+      customAction: () => this.props.updateSort(column.name),
+    };
+    const clicked = summaryHeaderCustomSort && {
+      value,
+      column,
+      summaryHeaderCustomSort,
+    };
 
-    let columnTitle = displayText || (value || value === 0
-      ? formatValue(value, {
-          column: column,
-          type: "cell",
-          jsx: true,
-          rich: true,
-        })
-      : column && formatColumn(column));
+    let columnTitle =
+      displayText ||
+      (value || value === 0
+        ? formatValue(value, {
+            column: column,
+            type: "cell",
+            jsx: true,
+            rich: true,
+          })
+        : column && formatColumn(column));
 
-    const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
-
+    const isClickable =
+      onVisualizationClick && visualizationIsClickable(clicked);
 
     const isSortable = isClickable && sortOrder;
-    const isRightAligned =  columnSpan > 1 || isColumnRightAligned(cols[columnIndex]);
+    const isRightAligned =
+      columnSpan > 1 || isColumnRightAligned(cols[columnIndex]);
 
     return (
       <div>
@@ -465,14 +511,17 @@ export default class TableInteractiveSummary extends Component {
               "TableInteractiveSummary-headerCellData--sorted": !!sortOrder,
               "cursor-pointer": isClickable,
               "justify-end": isRightAligned,
-              "TableInteractiveSummary-mergedHeaderMarker":columnSpan > 1,
+              "TableInteractiveSummary-mergedHeaderMarker": columnSpan > 1,
             },
           )}
           // use onMouseUp instead of onClick since we can stopPropation when resizing headers
           onMouseUp={
             isClickable
               ? e => {
-                  onVisualizationClick({ ...clicked, element: e.currentTarget });
+                  onVisualizationClick({
+                    ...clicked,
+                    element: e.currentTarget,
+                  });
                 }
               : undefined
           }
@@ -482,19 +531,19 @@ export default class TableInteractiveSummary extends Component {
               isRightAligned && (
                 <Icon
                   className="Icon mr1"
-                  name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
+                  name={sortOrder === "asc" ? "chevronup" : "chevrondown"}
                   size={8}
                 />
               )}
             {columnTitle}
             {isSortable &&
-            !isRightAligned &&
-              <Icon
+              !isRightAligned && (
+                <Icon
                   className="Icon ml1"
-                  name={sortOrder === 'asc' ? "chevronup" : "chevrondown"}
+                  name={sortOrder === "asc" ? "chevronup" : "chevrondown"}
                   size={8}
                 />
-              }
+              )}
           </div>
           <Draggable
             axis="x"
@@ -519,7 +568,6 @@ export default class TableInteractiveSummary extends Component {
               }}
             />
           </Draggable>
-
         </div>
         {/*{don't remove it, it is bottom border}*/}
       </div>
@@ -539,15 +587,21 @@ export default class TableInteractiveSummary extends Component {
     const {
       width,
       height,
-      data: { cols, rows, columnsHeaders, columnIndexToFirstInGroupIndexes, rowIndexesToColSpans },
-      className
+      data: {
+        cols,
+        rows,
+        columnsHeaders,
+        columnIndexToFirstInGroupIndexes,
+        rowIndexesToColSpans,
+      },
+      className,
     } = this.props;
     if (!width || !height) {
       return <div className={className} />;
     }
     const headerHeight = HEADER_HEIGHT * columnsHeaders.length;
 
-    const groupsForRows = columnsHeaders.map(createArgsForIndexGenerator );
+    const groupsForRows = columnsHeaders.map(createArgsForIndexGenerator);
 
     return (
       <ScrollSync>
@@ -559,7 +613,11 @@ export default class TableInteractiveSummary extends Component {
           scrollLeft,
         }) => (
           <div
-            className={cx(className, "TableInteractiveSummary relative", this.state.contentWidths && "TableInteractiveSummary--ready")}
+            className={cx(
+              className,
+              "TableInteractiveSummary relative",
+              this.state.contentWidths && "TableInteractiveSummary--ready",
+            )}
           >
             <canvas
               className="spread"
@@ -591,7 +649,9 @@ export default class TableInteractiveSummary extends Component {
                   ? this.tableHeaderRenderer(props)
                   : null
               }
-              cellRangeRenderer={buildCellRangeRenderer(buildIndexGenerator({groupsForRows}))}
+              cellRangeRenderer={buildCellRangeRenderer(
+                buildIndexGenerator({ groupsForRows }),
+              )}
               onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
               scrollLeft={scrollLeft}
               tabIndex={null}
@@ -620,10 +680,12 @@ export default class TableInteractiveSummary extends Component {
               tabIndex={null}
               overscanRowCount={20}
               cellRenderer={this.cellRenderer}
-              cellRangeRenderer={
-                buildCellRangeRenderer(buildIndexGenerator({groupsForColumns: columnIndexToFirstInGroupIndexes, groupsForRows: rowIndexesToColSpans}))
-
-              }
+              cellRangeRenderer={buildCellRangeRenderer(
+                buildIndexGenerator({
+                  groupsForColumns: columnIndexToFirstInGroupIndexes,
+                  groupsForRows: rowIndexesToColSpans,
+                }),
+              )}
             />
           </div>
         )}
@@ -632,45 +694,47 @@ export default class TableInteractiveSummary extends Component {
   }
 }
 
+const createArgsForIndexGenerator = cells =>
+  cells.reduce(
+    ({ acc, shouldIgnoreNulls }, cell, index) => {
+      if (cell) {
+        const span = cell.columnSpan || 1;
+        return {
+          acc: set(acc, index, index + span - 1),
+          shouldIgnoreNulls: true,
+        };
+      }
+      if (shouldIgnoreNulls) return { acc, shouldIgnoreNulls };
 
-const createArgsForIndexGenerator = (cells) => cells.reduce(({acc, shouldIgnoreNulls}, cell, index) =>
-{
-  if(cell){
-    const span = cell.columnSpan || 1;
-    return {acc : set(acc, index, index + span -1), shouldIgnoreNulls : true};
-  }
-  if(shouldIgnoreNulls)
-    return {acc, shouldIgnoreNulls};
+      return { acc: set(acc, index, index) };
+    },
+    { acc: {} },
+  ).acc;
 
-  return {acc:set(acc, index, index)};
-} , {acc:{}} ).acc;
-
-const computeWidths = (
-  widths: Number[],
-  rangeInfo,
-) => {
+const computeWidths = (widths: Number[], rangeInfo) => {
   const { columnIndex, columnSpan, offsetWidth } = rangeInfo;
-  const lastIndex = columnIndex + columnSpan-1;
+  const lastIndex = columnIndex + columnSpan - 1;
   //force resize if necessary
   widths[lastIndex] = widths[lastIndex];
 
   const subsetToModify = widths
     .slice(columnIndex, columnIndex + columnSpan)
     .map(p => p || MIN_COLUMN_WIDTH);
-  const currentLen = subsetToModify.reduce((acc, elem) => acc + elem , 0);
+  const currentLen = subsetToModify.reduce((acc, elem) => acc + elem, 0);
   if (currentLen < offsetWidth) {
     const toUpdate = computeNewWidths(widths, rangeInfo);
-    return toUpdate.reduce((acc, value, index) => set(acc, columnIndex + index ,value), widths);
+    return toUpdate.reduce(
+      (acc, value, index) => set(acc, columnIndex + index, value),
+      widths,
+    );
   }
   return widths;
 };
 
-
 const computeNewWidths = (
   currentWidths: Number[],
-  { columnIndex, columnSpan, offsetWidth }
+  { columnIndex, columnSpan, offsetWidth },
 ) => {
-
   const subsetToUpdate = currentWidths
     .slice(columnIndex, columnIndex + columnSpan)
     .map(p => p || MIN_COLUMN_WIDTH);
@@ -678,4 +742,3 @@ const computeNewWidths = (
   const multiplier = offsetWidth / subsetLen;
   return subsetToUpdate.map(p => Math.max(p * multiplier, MIN_COLUMN_WIDTH));
 };
-

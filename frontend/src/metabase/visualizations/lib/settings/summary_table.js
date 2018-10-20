@@ -7,7 +7,6 @@ import sortBy from "lodash.sortby";
 import { Set } from "immutable";
 import { emptyColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
 
-
 export const AGGREGATION = "aggregation";
 export const BREAKOUT = "breakout";
 
@@ -18,7 +17,6 @@ const emptyStateSerialized: SummaryTableSettings = {
   unusedColumns: [],
   columnNameToMetadata: {},
 };
-
 
 export const settingsAreValid = (
   settings: SummaryTableSettings,
@@ -34,7 +32,6 @@ export const getColumnsFromSettings = (value: SummaryTableSettings) => [
   ...value.valuesSources,
 ];
 
-
 export const canTotalizeByType = (type: string) =>
   type === "type/BigInteger" ||
   type === "type/Integer" ||
@@ -42,10 +39,10 @@ export const canTotalizeByType = (type: string) =>
   type === "type/Number" ||
   type === "type/Decimal";
 
-const canTotalizeBySpecialType = (specialType : string) =>{
-  return !specialType ||
-       specialType !== "type/PK"
-    && specialType !== "type/FK";
+const canTotalizeBySpecialType = (specialType: string) => {
+  return (
+    !specialType || (specialType !== "type/PK" && specialType !== "type/FK")
+  );
 };
 
 export const shouldTotalizeDefaultBuilder = (
@@ -64,26 +61,25 @@ export const shouldTotalizeDefaultBuilder = (
   return name => aggregations.has(name);
 };
 
-
-
-const getMetadataBuilder = (columnNameToMetadata, sortOverride) =>{
+const getMetadataBuilder = (columnNameToMetadata, sortOverride) => {
   return columnName => {
     const metadata = columnNameToMetadata[columnName] || emptyColumnMetadata;
     const orderOverridden = sortOverride[columnName];
-    if(orderOverridden && orderOverridden !== (metadata.isAscSortOrder ? 'asc' : 'desc'))
-      return {...metadata, isAscSortOrder: !metadata.isAscSortOrder};
+    if (
+      orderOverridden &&
+      orderOverridden !== (metadata.isAscSortOrder ? "asc" : "desc")
+    )
+      return { ...metadata, isAscSortOrder: !metadata.isAscSortOrder };
 
     return metadata;
-  }
+  };
 };
 
-
-const enrichColumns = ({ columnsSource,
-                         groupsSources,
-                         valuesSources,
-                         unusedColumns,
-                       }, cols, columns) => {
-
+const enrichColumns = (
+  { columnsSource, groupsSources, valuesSources, unusedColumns },
+  cols,
+  columns,
+) => {
   const usedColumns = Set.of(
     ...columnsSource,
     ...groupsSources,
@@ -106,40 +102,55 @@ const enrichColumns = ({ columnsSource,
   };
 };
 
-const enrichMetadata = ({groupsSources, columnsSource}, columnNameToMetadata, sortOverride) => {
+const enrichMetadata = (
+  { groupsSources, columnsSource },
+  columnNameToMetadata,
+  sortOverride,
+) => {
   const fatColumns = [...groupsSources, ...columnsSource];
   const getMetadata = getMetadataBuilder(columnNameToMetadata, sortOverride);
   return fatColumns.reduce(
     (acc, column) => ({
       ...acc,
-      [column]: getMetadata(column) ,
+      [column]: getMetadata(column),
     }),
     {},
   );
-
 };
 
-const getWeight = (column : Column) => get(column, ['fingerprint', 'global', 'distinct-count'], Number.MAX_SAFE_INTEGER);
+const getWeight = (column: Column) =>
+  get(
+    column,
+    ["fingerprint", "global", "distinct-count"],
+    Number.MAX_SAFE_INTEGER,
+  );
 
-const getRawColumns = (cols, columns) =>{
+const getRawColumns = (cols, columns) => {
   const names = Set.of(...cols.map(p => p.name));
-  const weights = cols.reduce((acc, column) => set(acc, column.name, getWeight(column)) , {});
-  return sortBy(columns.filter(col => names.contains(col)), columnName => weights[columnName]);
+  const weights = cols.reduce(
+    (acc, column) => set(acc, column.name, getWeight(column)),
+    {},
+  );
+  return sortBy(
+    columns.filter(col => names.contains(col)),
+    columnName => weights[columnName],
+  );
 };
 
 export const enrichSettings = (
   stateSerialized,
   cols,
   columns,
-  sortOverride = {}
+  sortOverride = {},
 ): SummaryTableSettings => {
-
   const rawColumns = getRawColumns(cols, columns);
   const stateNormalized = { ...emptyStateSerialized, ...stateSerialized };
 
   const partColumns = enrichColumns(stateNormalized, cols, rawColumns);
-  const columnNameToMetadata = enrichMetadata(partColumns, stateNormalized.columnNameToMetadata, sortOverride);
-  return {...partColumns, columnNameToMetadata};
+  const columnNameToMetadata = enrichMetadata(
+    partColumns,
+    stateNormalized.columnNameToMetadata,
+    sortOverride,
+  );
+  return { ...partColumns, columnNameToMetadata };
 };
-
-

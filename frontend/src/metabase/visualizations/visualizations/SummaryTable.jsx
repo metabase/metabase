@@ -1,4 +1,3 @@
-
 import React, { Component } from "react";
 
 import TableInteractiveSummary from "../components/TableInteractiveSummary.jsx";
@@ -11,10 +10,7 @@ import _ from "underscore";
 import cx from "classnames";
 import RetinaImage from "react-retina-image";
 
-import type {
-  ColumnName,
-  DatasetData,
-} from "metabase/meta/types/Dataset";
+import type { ColumnName, DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 
 import type { RawSeries } from "metabase/meta/types/Visualization";
@@ -25,8 +21,11 @@ import {
 } from "metabase/visualizations/lib/settings/summary_table";
 import { connect } from "react-redux";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import {buildResultProvider, fetchAggregationsDataBuilder} from "metabase/visualizations/lib/summary_table";
-import {buildDatasetData} from "metabase/visualizations/lib/summary_table_datasetdata_builder";
+import {
+  buildResultProvider,
+  fetchAggregationsDataBuilder,
+} from "metabase/visualizations/lib/summary_table";
+import { buildDatasetData } from "metabase/visualizations/lib/summary_table_datasetdata_builder";
 
 type Props = {
   card: Card,
@@ -35,21 +34,23 @@ type Props = {
   settings: VisualizationSettings,
   isDashboard: boolean,
   query: AtomicQuery,
-  fetchAggregationsData: (SummaryTableSettings, Column[]) => DatasetData[]
+  fetchAggregationsData: (SummaryTableSettings, Column[]) => DatasetData[],
 };
 type State = {
   data: ?DatasetData,
   query: any,
-  sort: {[key: ColumnName] : string},
+  sort: { [key: ColumnName]: string },
   settings: SummaryTableSettings,
 };
 
 export const COLUMNS_SETTINGS = "summaryTable.columns";
 
-
-const mapDispatchToProps = (dispatch,{card, parameters}) => {
-  const fetchAggregationsData = fetchAggregationsDataBuilder(dispatch, parameters);
-  return {fetchAggregationsData};
+const mapDispatchToProps = (dispatch, { card, parameters }) => {
+  const fetchAggregationsData = fetchAggregationsDataBuilder(
+    dispatch,
+    parameters,
+  );
+  return { fetchAggregationsData };
 };
 
 @connect(null, mapDispatchToProps)
@@ -77,7 +78,11 @@ export default class SummaryTable extends Component {
       isValid: ([{ card, data }]) =>
         settingsAreValid(card.visualization_settings[COLUMNS_SETTINGS], data),
       getDefault: ([{ data }]): SummaryTableSettings =>
-         enrichSettings(null, (data || {}).cols || [], (data || {}).columns || []),
+        enrichSettings(
+          null,
+          (data || {}).cols || [],
+          (data || {}).columns || [],
+        ),
       getProps: ([{ data: { columns, cols } }]) => ({
         cols,
         columns,
@@ -92,7 +97,7 @@ export default class SummaryTable extends Component {
     this.state = {
       data: null,
       query: props.query,
-      sort: {}
+      sort: {},
     };
   }
 
@@ -105,52 +110,63 @@ export default class SummaryTable extends Component {
     if (
       newProps.data !== this.props.data ||
       !_.isEqual(newProps.settings, this.props.settings)
-
     ) {
       await this._updateData(newProps, this.state.sort);
     }
   }
 
-  async componentWillUpdate(newProps, nextState){
-    if(nextState.sort !== this.state.sort) {
+  async componentWillUpdate(newProps, nextState) {
+    if (nextState.sort !== this.state.sort) {
       await this._updateData(newProps, nextState.sort);
     }
   }
 
-  updateSort(columnName : ColumnName){
-    const {settings} = this.props;
-    const {sort} = this.state;
-    const oldOrder = sort[columnName] || getSortOrderFromSettings(settings[COLUMNS_SETTINGS], columnName);
-    const newOrder = oldOrder === 'asc' ? 'desc' : 'asc';
-    this.setState({sort:{...sort, [columnName] : newOrder}});
+  updateSort(columnName: ColumnName) {
+    const { settings } = this.props;
+    const { sort } = this.state;
+    const oldOrder =
+      sort[columnName] ||
+      getSortOrderFromSettings(settings[COLUMNS_SETTINGS], columnName);
+    const newOrder = oldOrder === "asc" ? "desc" : "asc";
+    this.setState({ sort: { ...sort, [columnName]: newOrder } });
   }
 
-  async _updateData({
-    data,
-    settings,
-    card
-  }: {
-    data: DatasetData,
-    settings: VisualizationSettings,
-  }, sort) {
-      const summarySettings = enrichSettings(
-        settings[COLUMNS_SETTINGS],
-        data.cols,
-        data.columns,
-        sort
-      );
+  async _updateData(
+    {
+      data,
+      settings,
+      card,
+    }: {
+      data: DatasetData,
+      settings: VisualizationSettings,
+    },
+    sort,
+  ) {
+    const summarySettings = enrichSettings(
+      settings[COLUMNS_SETTINGS],
+      data.cols,
+      data.columns,
+      sort,
+    );
 
-      const totalsData = await this.props.fetchAggregationsData(summarySettings, card, data.cols);
+    const totalsData = await this.props.fetchAggregationsData(
+      summarySettings,
+      card,
+      data.cols,
+    );
 
-      const resultProvider = buildResultProvider(data, totalsData);
+    const resultProvider = buildResultProvider(data, totalsData);
 
+    const reformattedDatasetData = buildDatasetData(
+      summarySettings,
+      data,
+      resultProvider,
+    );
 
-      const reformattedDatasetData = buildDatasetData(summarySettings, data, resultProvider);
-
-      this.setState({
-        data: reformattedDatasetData,
-        settings : summarySettings,
-      });
+    this.setState({
+      data: reformattedDatasetData,
+      settings: summarySettings,
+    });
   }
 
   render() {
@@ -187,16 +203,24 @@ export default class SummaryTable extends Component {
       );
     } else {
       return (
-        <TableComponent {...this.props} data={data} sort={sort} summarySettings={settings} updateSort={columnName => this.updateSort(columnName)} />
+        <TableComponent
+          {...this.props}
+          data={data}
+          sort={sort}
+          summarySettings={settings}
+          updateSort={columnName => this.updateSort(columnName)}
+        />
       );
     }
   }
 }
 
-
-const getSortOrderFromSettings = (setting: SummaryTableSettings, columnName : ColumnName) : string => {
+const getSortOrderFromSettings = (
+  setting: SummaryTableSettings,
+  columnName: ColumnName,
+): string => {
   const columnInfo = setting.columnNameToMetadata[columnName] || {};
-  return columnInfo.isAscSortOrder === false ? 'desc' : 'asc';
+  return columnInfo.isAscSortOrder === false ? "desc" : "asc";
 };
 
 /**

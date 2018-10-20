@@ -16,7 +16,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  const dimensions = (clicked && clicked.dimensions);
+  const dimensions = clicked && clicked.dimensions;
   if (!clicked || !dimensions) {
     return [];
   }
