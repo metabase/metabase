@@ -1,7 +1,6 @@
 ;TODO refactor (assoc nested?, attach-params)
 (ns metabase.query-processor.middleware.superquery
-  (:require [clojure.data :as data]
-            [metabase.query-processor.interface :as i]))
+  (:require [metabase.query-processor.interface :as i]))
 
 (defn- limit
   [max-results source-query]
@@ -21,7 +20,7 @@
   [{{:keys [max-results]} :constraints, :as query}]
   (if-let [super-query (:super-query query)]
     (let [type  (keyword (:type query))
-          sub-query (type query)
+          sub-query (get query type)
           source-query (native-to-source sub-query)
           limited-source-query (limit max-results source-query)
           new-query (assoc super-query :source-query limited-source-query)]

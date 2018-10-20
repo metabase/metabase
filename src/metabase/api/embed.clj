@@ -362,6 +362,8 @@
   (card-for-signed-token token dashcard-id card-id query-params ))
 
 (api/defendpoint POST "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/superquery"
+  "Fetch the results of a super-query based on a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key`"
   [token dashcard-id card-id  :as {{super-query :super-query parameters :parameters} :body}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])

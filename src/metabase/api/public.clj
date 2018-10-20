@@ -252,6 +252,8 @@
    (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
 
 (api/defendpoint POST "/dashboard/:uuid/card/:card-id/superquery"
+  "Fetch the results for a super-query based on query from a Card in a publicly-accessible Dashboard.
+  Does not require auth credentials. Public sharing must be enabled."
   [uuid card-id :as {{:keys [super-query parameters]} :body}]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
