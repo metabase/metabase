@@ -8,7 +8,7 @@
                i/absolute-max-results)
     :source-query source-query})
 
-(defn native-to-source
+(defn- native-to-source
   [maybe-native-query]
   (if-let [native (:query maybe-native-query)]
     (-> maybe-native-query
@@ -38,7 +38,9 @@
   (if (contains? query :params) (assoc-in (dissoc query :params) [:native :params] (:params query)) query))
 
 (defn expand-superquery [qp]
+  "Return the query built from original query and super-query"
   (comp qp expand-superquery*))
 
 (defn attach-params [qp]
+  "Attach parameters"
   (comp qp attach-params*))

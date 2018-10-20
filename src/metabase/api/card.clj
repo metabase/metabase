@@ -583,6 +583,7 @@
     (qp/process-query-and-save-execution! query options)))
 
 (defn run-superquery-for-card
+  "Run the super-query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
   [card-id super-query parameters ]
   {:pre [(u/maybe? sequential? parameters)]}

@@ -232,6 +232,8 @@
 
 
 (defn public-dashcard-superquery-results
+  "Return the results of running a SUPER-QUERY with PARAMETERS for Card with CARD-ID belonging to Dashboard with
+   DASHBOARD-ID. Throws a 404 if the Card isn't part of the Dashboard."
   [dashboard-id card-id parameters super-query]
   (check-card-is-in-dashboard card-id dashboard-id)
   (let [resolved-params (resolve-params dashboard-id (if (string? parameters)

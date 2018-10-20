@@ -32,6 +32,7 @@
     source-card-id))
 
 (defn download-dataset
+  "Execute a query and retrieve the results in the usual format."
   [{:keys [database], :as query}]
   {database s/Int}
   ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
