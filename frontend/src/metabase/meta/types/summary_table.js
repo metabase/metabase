@@ -13,7 +13,7 @@ export const DESC = "desc";
 
 export type Groups = Set<ColumnName>;
 export type Aggregations = Set<ColumnName>;
-export type Order = ASC | DESC;
+export type Order = 'asc' | 'desc';
 export type SortOrder = [Order, ColumnName];
 export type AggregationKey = [Groups, Aggregations, SortOrder[]];
 
