@@ -24,11 +24,10 @@ import {EmbedApi, MetabaseApi, PublicApi} from "metabase/services";
 import {getParametersBySlug} from "metabase/meta/Parameter";
 import {getDashboardComplete} from "metabase/dashboard/selectors";
 import {ASC, DESC} from "metabase/meta/types/summary_table";
+import type {ClickObject} from "metabase/meta/types/Visualization";
 
 
 export const grandTotalsLabel = "Grand totals";
-// export const grandTotalsLabelBuilder = () => "Grand totals";
-// export const totalsLabelBuilder = arg => `Totals for ${arg || ''}`;
 
 
 export function getTableCellClickedObjectForSummary(
@@ -306,7 +305,7 @@ export const getAllQueryKeys = (
 ): { totals: AggregationKey[][] } =>  groupings.map(group =>
     group.map(p => createKey(p, aggregations, sortOrder)));
 
-export const getAllAggregationKeysFlatten = (
+const getAllAggregationKeysFlatten = (
   qp: QueryPlan
 ): AggregationKey[][] => flatMap(getAllQueryKeys(qp));
 
