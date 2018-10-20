@@ -252,7 +252,6 @@ export const buildResultProvider = (
     throw new Error("InvalidArgumentException - BANG!!!!");
   };
 };
-export const getMainKey = (qp : QueryPlan) => createKey(qp.groupings[0].reduce((acc, current) => acc.size < current.size ? current : acc, Set.of()), qp.aggregations, qp.sortOrder);
 
 
 export const getQueryPlan = (

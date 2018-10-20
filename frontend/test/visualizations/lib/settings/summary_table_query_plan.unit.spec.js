@@ -3,6 +3,7 @@ import type {
 } from "metabase/meta/types/summary_table";
 import { Set } from "immutable";
 import zip from "lodash.zip";
+import set from "lodash.set";
 import type {ColumnName} from "metabase/meta/types/Dataset";
 import {getQueryPlan} from "metabase/visualizations/lib/summary_table";
 
@@ -24,16 +25,22 @@ const groupingsExpectToEqual = (
   );
 };
 
+const toValidSettings = (baseSettings) => {
+  const {groupsSources, columnsSource, valuesSources, columnNameToMetadata} = baseSettings;
+  const updatedColumnNameToMetadata = [...groupsSources, ...columnsSource, ...valuesSources].
+    reduce((acc, columnName) => set(acc, [columnName, 'isAscSortOrder'], true), {...columnNameToMetadata});
+  return {...baseSettings, columnNameToMetadata: updatedColumnNameToMetadata};
+};
+
 
 
 describe("summary table query plan", () => {
   describe("given query plan initialized by grouped columns: a,b,c", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: [],
       valuesSources: [],
-      columnNameToMetadata: {},
-    };
+    });
     const queryPlan = createQueryPlan(settings);
     it("should have empty aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of()));
@@ -44,12 +51,11 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by value columns: a,b,c where b is number", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: [],
       columnsSource: [],
       valuesSources: ["a", "b", "c"],
-      columnNameToMetadata: {},
-    };
+    });
     const queryPlan = createQueryPlan(settings, col => col === 'b');
     it("should have b aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("b")));
@@ -60,12 +66,11 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d,e where all values are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: [],
       valuesSources: ["d", "e"],
-      columnNameToMetadata: {},
-    };
+    });
     const queryPlan = createQueryPlan(settings);
     it("should have d, e aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("d", "e")));
@@ -76,12 +81,11 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d,e where e is number", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: [],
       valuesSources: ["d", "e"],
-      columnNameToMetadata: {},
-    };
+    });
     const queryPlan = createQueryPlan(settings, col => col === 'e');
     it("should have e aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("e")));
@@ -92,7 +96,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d,e and show totals for a,c where all values are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: [],
       valuesSources: ["d", "e"],
@@ -100,7 +104,7 @@ describe("summary table query plan", () => {
         a: { showTotals: true },
         c: { showTotals: true },
       },
-    };
+    });
     const queryPlan = createQueryPlan(settings);
     it("should have d,e aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("e", "d")));
@@ -113,7 +117,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d,e and show totals for a,c where a,d are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: [],
       valuesSources: ["d", "e"],
@@ -121,7 +125,7 @@ describe("summary table query plan", () => {
         a: { showTotals: true },
         c: { showTotals: true },
       },
-    };
+    });
     const queryPlan = createQueryPlan(settings, col => col === "d" || col === 'a');
     it("should have d,e aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("d")));
@@ -134,7 +138,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d and pivot for e and totals for a,b where all values are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: ["e"],
       valuesSources: ["d"],
@@ -142,7 +146,7 @@ describe("summary table query plan", () => {
         b: { showTotals: true },
         a: { showTotals: true },
       },
-    };
+    });
     const queryPlan = createQueryPlan(settings);
     it("should have d aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of("d")));
@@ -155,7 +159,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d and pivot for e and totals for a,b where e is number", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: ["e"],
       valuesSources: ["d"],
@@ -163,7 +167,7 @@ describe("summary table query plan", () => {
         b: { showTotals: true },
         a: { showTotals: true },
       },
-    };
+    });
     const queryPlan = createQueryPlan(settings, col => col === 'e');
     it("should have empty aggregation", () =>
       setsExpectToBeEqual(queryPlan.aggregations, Set.of()));
@@ -174,7 +178,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d, f and pivot for e and totals for a,c, e where all values are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: ["e"],
       valuesSources: ["d", "f"],
@@ -183,7 +187,7 @@ describe("summary table query plan", () => {
         c: { showTotals: true },
         e: { showTotals: true },
       },
-    };
+    });
 
 
     const queryPlan = createQueryPlan(settings);
@@ -198,7 +202,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d, f and pivot for e and totals for a,c, e where c, f are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: ["e"],
       valuesSources: ["d", "f"],
@@ -207,7 +211,7 @@ describe("summary table query plan", () => {
         c: { showTotals: true },
         e: { showTotals: true },
       },
-    };
+    });
 
 
     const queryPlan = createQueryPlan(settings, col => col === 'c' || col === 'f');
@@ -222,7 +226,7 @@ describe("summary table query plan", () => {
   });
 
   describe("given query plan initialized by grouped columns: a,b,c and values: d, f and pivot for e and totals for a,c, e where a, c are numbers", () => {
-    const settings: SummaryTableSettings = {
+    const settings: SummaryTableSettings = toValidSettings({
       groupsSources: ["a", "b", "c"],
       columnsSource: ["e"],
       valuesSources: ["d", "f"],
@@ -231,7 +235,7 @@ describe("summary table query plan", () => {
         c: { showTotals: true },
         e: { showTotals: true },
       },
-    };
+    });
 
 
     const queryPlan = createQueryPlan(settings, col => col === 'c' || col === 'a');
