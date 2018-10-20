@@ -34,13 +34,16 @@
              %))))
     query))
 
-(defn- attach-params* [query]
+(defn- attach-params*
+  [query]
   (if (contains? query :params) (assoc-in (dissoc query :params) [:native :params] (:params query)) query))
 
-(defn expand-superquery [qp]
+(defn expand-superquery
   "Return the query built from original query and super-query"
+  [qp]
   (comp qp expand-superquery*))
 
-(defn attach-params [qp]
+(defn attach-params
   "Attach parameters"
+  [qp]
   (comp qp attach-params*))
