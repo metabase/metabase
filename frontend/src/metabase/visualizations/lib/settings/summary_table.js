@@ -104,11 +104,11 @@ const enrichColumns = (
 };
 
 const enrichMetadata = (
-  { groupsSources, columnsSource },
+  { groupsSources, columnsSource, valuesSources },
   columnNameToMetadata,
   sortOverride,
 ) => {
-  const fatColumns = [...groupsSources, ...columnsSource];
+  const fatColumns = [...groupsSources, ...columnsSource, ...valuesSources];
   const getMetadata = getMetadataBuilder(columnNameToMetadata, sortOverride);
   return fatColumns.reduce(
     (acc, column) => ({
