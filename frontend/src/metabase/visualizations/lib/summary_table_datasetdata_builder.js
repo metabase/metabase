@@ -115,9 +115,17 @@ const buildColumnHeaders = (
       ...(hasGrandsTotalsColumn ? partValuesTotalized : []),
     ];
 
+    const dimensions = [
+      ...partGroupingsRaw.map(() => null),
+      ...flatMap(
+        partPivotRaw.map(({column, value, columnSpan}) => repeat([[{column, value}]], columnSpan)),
+        ...repeat([], grandTotalsSpan)
+      )
+    ];
+
     return {
       columnsHeaders: [topRow, bottomRow],
-      cols: bottomRow.map(p => p.column),
+      cols: bottomRow.map((p, index) => ({...p.column, dimensions : dimensions[index]})),
     };
   } else {
     const mainRow = [...partGroupingsRaw, ...partValuesRaw];

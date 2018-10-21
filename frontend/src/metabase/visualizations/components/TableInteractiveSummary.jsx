@@ -347,7 +347,7 @@ export default class TableInteractiveSummary extends Component {
     visualizationIsClickable,
     columnIsGrouped,
   ): (RenderCellType => void) => {
-    let value = row[columnIndex];
+    const value = row[columnIndex];
 
     const isTotalCell = row.isTotalColumnIndex === columnIndex + 1;
     const isTotalRow =
@@ -369,15 +369,9 @@ export default class TableInteractiveSummary extends Component {
       formattedRes = "Totals for " + formattedRes;
     }
 
-    const clicked = getTableCellClickedObjectForSummary(
-      this.props.data.cols,
-      column,
-      row,
-      value,
-    );
 
     const isClickable =
-      onVisualizationClick && visualizationIsClickable(clicked);
+      onVisualizationClick;
 
     return (
       <div
@@ -401,10 +395,18 @@ export default class TableInteractiveSummary extends Component {
         })}
         onMouseUp={
           isClickable
-            ? e => {
+            && (e => {
+
+              const clicked = getTableCellClickedObjectForSummary(
+                this.props.data.cols,
+                row,
+                columnIndex,
+                this.props.summarySettings.valuesSources
+              );
+              if(visualizationIsClickable(clicked)){
                 onVisualizationClick({ ...clicked, element: e.currentTarget });
               }
-            : undefined
+          })
         }
       >
         <div className="cellData">

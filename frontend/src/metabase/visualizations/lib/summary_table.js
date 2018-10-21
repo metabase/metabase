@@ -9,7 +9,7 @@ import type {
   AggregationKey,
   QueryPlan,
   ResultProvider,
-  SortOrder,
+  SortOrder, SummaryColumn, SummaryRow,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
 import type { DatasetQuery } from "metabase/meta/types/Card";
@@ -41,42 +41,33 @@ import type { ClickObject } from "metabase/meta/types/Visualization";
 export const grandTotalsLabel = "Grand totals";
 
 export function getTableCellClickedObjectForSummary(
-  cols: Column[],
-  column: Column,
-  row: Row,
-  value: any,
+  cols: SummaryColumn[],
+  row: SummaryRow,
+  columnIndex: Number,
+  valueColumns: ColumnName[]
 ): ClickObject {
-  if (row.isTotalColumnIndex !== undefined) {
-    let dimensions = cols
-      // $FlowFixMe: isTotalColumnIndex
-      .filter((column, index) => index < row.isTotalColumnIndex)
-      .map((column, index) => ({ value: row[index], column }))
-      .filter(dimension => dimension.column.source === "breakout");
-    if (column.pivotedDimension) {
-      dimensions.push(column.pivotedDimension);
-      return {
-        dimensions,
-      };
-    }
-  } else if (column.source === "aggregation") {
-    let dimensions = cols
-      .map((column, index) => ({ value: row[index], column }))
-      .filter(dimension => dimension.column.source === "breakout");
-    if (column.pivotedDimension) {
-      // $FlowFixMe: pivotedDimension
-      dimensions.push(column.pivotedDimension);
-    }
-    if (!value) {
-      value = "";
-    } // so that SortAction won't be available when dilling
-    return {
-      value,
-      column,
-      dimensions,
-    };
-  } else {
-    return { value, column };
+
+  const firstPivotValueIndex = cols.findIndex(p =>  valueColumns.includes(p.name));
+  const firstPivotValueIndexCorrected = firstPivotValueIndex === -1 ? Number.MAX_SAFE_INTEGER: firstPivotValueIndex;
+  const isTotalColumnIndexCorrected = Number.isInteger(row.isTotalColumnIndex) ? row.isTotalColumnIndex: Number.MAX_SAFE_INTEGER;
+
+  const groupingColumnsCount = Math.min(columnIndex, firstPivotValueIndexCorrected, isTotalColumnIndexCorrected);
+
+  const column = cols[columnIndex];
+
+  const dimensionsFromBreakouts  = row.slice(0, groupingColumnsCount)
+    .map((value, index) => ({value, column: cols[index]}));
+  const dimensionsFromPivot = column.dimensions || [];
+
+  const dimensions = [...dimensionsFromBreakouts, ...dimensionsFromPivot];
+
+  if(Number.isInteger(row.isTotalColumnIndex) || column.source === "aggregation"){
+    return {dimensions}
   }
+
+  const value = row[columnIndex];
+
+  return {value, column, dimensions};
 }
 
 export const getAggregationQueries = (
