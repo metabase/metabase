@@ -315,6 +315,7 @@ export default class TableSimpleSummary extends Component {
                                   row,
                                   columnStartIndex,
                                   this.props.summarySettings.valuesSources,
+                                  this.props.data.dimensions,
                                 );
                                 if (visualizationIsClickable(clicked)) {
                                   onVisualizationClick({

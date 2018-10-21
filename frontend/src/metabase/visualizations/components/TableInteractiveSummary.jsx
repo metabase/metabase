@@ -399,6 +399,7 @@ export default class TableInteractiveSummary extends Component {
               row,
               columnIndex,
               this.props.summarySettings.valuesSources,
+              this.props.data.dimensions,
             );
             if (visualizationIsClickable(clicked)) {
               onVisualizationClick({ ...clicked, element: e.currentTarget });

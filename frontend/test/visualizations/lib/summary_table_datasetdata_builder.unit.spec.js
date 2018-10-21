@@ -10,26 +10,31 @@ const columnText1 = {
   name: "C1",
   display_name: "Column 1",
   base_type: TYPE.Text,
+  source: "breakout",
 };
 const columnText2 = {
   name: "C2",
   display_name: "Column 2",
   base_type: TYPE.Text,
+  source: "breakout",
 };
 const columnText3 = {
   name: "C3",
   display_name: "Column 3",
   base_type: TYPE.Text,
+  source: "breakout",
 };
 const columnNumeric1 = {
   name: "CN1",
   display_name: "Column N 1",
   base_type: TYPE.Number,
+  source: "aggregation",
 };
 const columnNumeric2 = {
   name: "CN2",
   display_name: "Column N 2",
   base_type: TYPE.Number,
+  source: "aggregation",
 };
 const allColumns = [
   columnText1,

@@ -139,14 +139,16 @@ const buildColumnHeaders = (
 
     return {
       columnsHeaders: [topRow, bottomRow],
-      cols: bottomRow.map((p, index) => ({
-        ...p.column,
-        dimensions: dimensions[index],
-      })),
+      cols: bottomRow.map(p => p.column),
+      dimensions,
     };
   } else {
     const mainRow = [...partGroupingsRaw, ...partValuesRaw];
-    return { columnsHeaders: [mainRow], cols: mainRow.map(p => p.column) };
+    return {
+      columnsHeaders: [mainRow],
+      cols: mainRow.map(p => p.column),
+      dimensions: [],
+    };
   }
 };
 
@@ -410,7 +412,10 @@ export const buildDatasetData = (
   mainResults: DatasetData,
   resultsProvider: ResultProvider,
 ): SummaryTableDatasetData => {
-  const { columnsHeaders, cols } = buildColumnHeaders(settings, mainResults);
+  const { columnsHeaders, cols, dimensions } = buildColumnHeaders(
+    settings,
+    mainResults,
+  );
   const compressedColumnsHeaders = tryCompressColumnsHeaders(
     settings,
     columnsHeaders,
@@ -439,6 +444,7 @@ export const buildDatasetData = (
     columnIndexToFirstInGroupIndexes,
     isGrouped: columnIndex => columnIndex in columnIndexToFirstInGroupIndexes,
     rowIndexesToColSpans,
+    dimensions,
   };
 };
 

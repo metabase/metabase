@@ -6,10 +6,10 @@ import type {
 import flatMap from "lodash.flatmap";
 import type {
   AggregationKey,
+  Dimension,
   QueryPlan,
   ResultProvider,
   SortOrder,
-  SummaryColumn,
   SummaryRow,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
@@ -42,10 +42,11 @@ import type { ClickObject } from "metabase/meta/types/Visualization";
 export const grandTotalsLabel = "Grand totals";
 
 export function getTableCellClickedObjectForSummary(
-  cols: SummaryColumn[],
+  cols: Column[],
   row: SummaryRow,
   columnIndex: Number,
   valueColumns: ColumnName[],
+  colIndexToDimensions: Dimension[][],
 ): ClickObject {
   const firstPivotValueIndex = cols.findIndex(p =>
     valueColumns.includes(p.name),
@@ -69,7 +70,7 @@ export function getTableCellClickedObjectForSummary(
   const dimensionsFromBreakouts = row
     .slice(0, groupingColumnsCount)
     .map((value, index) => ({ value, column: cols[index] }));
-  const dimensionsFromPivot = column.dimensions || [];
+  const dimensionsFromPivot = colIndexToDimensions[columnIndex] || [];
 
   const dimensions = [...dimensionsFromBreakouts, ...dimensionsFromPivot];
 

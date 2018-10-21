@@ -53,7 +53,3 @@ export type Dimension = {
   value: any,
   column: Column,
 };
-
-export type SummaryColumn = {
-  dimensions?: Dimension[],
-} & Column;
