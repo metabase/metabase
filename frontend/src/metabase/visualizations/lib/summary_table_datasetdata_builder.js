@@ -19,7 +19,11 @@ import zip from "lodash.zip";
 import orderBy from "lodash.orderby";
 import sortBy from "lodash.sortby";
 import invert from "lodash.invert";
-import { canTotalizeByType } from "metabase/visualizations/lib/settings/summary_table";
+import {
+  AGGREGATION,
+  BREAKOUT,
+  canTotalizeByType,
+} from "metabase/visualizations/lib/settings/summary_table";
 import {
   getAllQueryKeys,
   getQueryPlan,
@@ -70,8 +74,16 @@ const buildColumnHeaders = (
   const showTotalsFor = columnName =>
     columnNameToMetadata[columnName].showTotals;
 
-  const partGroupingsRaw = groupsSources.map(getColumn).map(toColumnHeader);
-  const partValuesRaw = valuesSources.map(getColumn).map(toColumnHeader);
+  const setSource = source => col => ({ ...col, source });
+
+  const partGroupingsRaw = groupsSources
+    .map(getColumn)
+    .map(setSource(BREAKOUT))
+    .map(toColumnHeader);
+  const partValuesRaw = valuesSources
+    .map(getColumn)
+    .map(setSource(AGGREGATION))
+    .map(toColumnHeader);
 
   const isPivoted = columnsSource.length > 0;
   if (isPivoted) {
@@ -118,14 +130,19 @@ const buildColumnHeaders = (
     const dimensions = [
       ...partGroupingsRaw.map(() => null),
       ...flatMap(
-        partPivotRaw.map(({column, value, columnSpan}) => repeat([[{column, value}]], columnSpan)),
-        ...repeat([], grandTotalsSpan)
-      )
+        partPivotRaw.map(({ column, value, columnSpan }) =>
+          repeat([[{ column, value }]], columnSpan),
+        ),
+        ...repeat([], grandTotalsSpan),
+      ),
     ];
 
     return {
       columnsHeaders: [topRow, bottomRow],
-      cols: bottomRow.map((p, index) => ({...p.column, dimensions : dimensions[index]})),
+      cols: bottomRow.map((p, index) => ({
+        ...p.column,
+        dimensions: dimensions[index],
+      })),
     };
   } else {
     const mainRow = [...partGroupingsRaw, ...partValuesRaw];

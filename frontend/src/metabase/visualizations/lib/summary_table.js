@@ -9,7 +9,9 @@ import type {
   AggregationKey,
   QueryPlan,
   ResultProvider,
-  SortOrder, SummaryColumn, SummaryRow,
+  SortOrder,
+  SummaryColumn,
+  SummaryRow,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
 import type { DatasetQuery } from "metabase/meta/types/Card";
@@ -44,30 +46,44 @@ export function getTableCellClickedObjectForSummary(
   cols: SummaryColumn[],
   row: SummaryRow,
   columnIndex: Number,
-  valueColumns: ColumnName[]
+  valueColumns: ColumnName[],
 ): ClickObject {
+  const firstPivotValueIndex = cols.findIndex(p =>
+    valueColumns.includes(p.name),
+  );
+  const firstPivotValueIndexCorrected =
+    firstPivotValueIndex === -1
+      ? Number.MAX_SAFE_INTEGER
+      : firstPivotValueIndex;
+  const isTotalColumnIndexCorrected = Number.isInteger(row.isTotalColumnIndex)
+    ? row.isTotalColumnIndex
+    : Number.MAX_SAFE_INTEGER;
 
-  const firstPivotValueIndex = cols.findIndex(p =>  valueColumns.includes(p.name));
-  const firstPivotValueIndexCorrected = firstPivotValueIndex === -1 ? Number.MAX_SAFE_INTEGER: firstPivotValueIndex;
-  const isTotalColumnIndexCorrected = Number.isInteger(row.isTotalColumnIndex) ? row.isTotalColumnIndex: Number.MAX_SAFE_INTEGER;
-
-  const groupingColumnsCount = Math.min(columnIndex, firstPivotValueIndexCorrected, isTotalColumnIndexCorrected);
+  const groupingColumnsCount = Math.min(
+    columnIndex,
+    firstPivotValueIndexCorrected,
+    isTotalColumnIndexCorrected,
+  );
 
   const column = cols[columnIndex];
 
-  const dimensionsFromBreakouts  = row.slice(0, groupingColumnsCount)
-    .map((value, index) => ({value, column: cols[index]}));
+  const dimensionsFromBreakouts = row
+    .slice(0, groupingColumnsCount)
+    .map((value, index) => ({ value, column: cols[index] }));
   const dimensionsFromPivot = column.dimensions || [];
 
   const dimensions = [...dimensionsFromBreakouts, ...dimensionsFromPivot];
 
-  if(Number.isInteger(row.isTotalColumnIndex) || column.source === "aggregation"){
-    return {dimensions}
+  if (
+    Number.isInteger(row.isTotalColumnIndex) ||
+    column.source === "aggregation"
+  ) {
+    return { dimensions };
   }
 
   const value = row[columnIndex];
 
-  return {value, column, dimensions};
+  return { value, column, dimensions };
 }
 
 export const getAggregationQueries = (

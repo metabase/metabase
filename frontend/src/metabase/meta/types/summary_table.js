@@ -3,7 +3,8 @@
 import type {
   ColumnName,
   DatasetData,
-  Column, Row,
+  Column,
+  Row,
 } from "metabase/meta/types/Dataset";
 import type { ColumnMetadata } from "metabase/visualizations/components/settings/ChartSettingsSummaryTableColumns";
 import { Set } from "immutable";
@@ -44,16 +45,15 @@ export type SummaryTableDatasetData = {
   columnsHeaders: ColumnHeader[][],
 } & DatasetData;
 
-
 export type SummaryRow = {
-  isTotalColumnIndex? : Number
+  isTotalColumnIndex?: Number,
 } & Row;
 
 export type Dimension = {
   value: any,
   column: Column,
-}
+};
 
 export type SummaryColumn = {
-  dimensions?: Dimension[]
+  dimensions?: Dimension[],
 } & Column;

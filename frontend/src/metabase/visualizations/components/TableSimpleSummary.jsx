@@ -28,6 +28,7 @@ import {
   buildIndexGenerator,
   createKey,
 } from "metabase/visualizations/lib/table_virtualized";
+import { getTableCellClickedObjectForSummary } from "metabase/visualizations/lib/summary_table";
 
 type Props = VisualizationProps & {
   height: number,
@@ -247,15 +248,8 @@ export default class TableSimpleSummary extends Component {
                         return null;
                       }
                       let cell = row[columnStartIndex];
-                      const clicked = getTableCellClickedObject(
-                        data,
-                        rowStartIndex,
-                        columnStartIndex,
-                        isPivoted,
-                      );
-                      const isClickable =
-                        onVisualizationClick &&
-                        visualizationIsClickable(clicked);
+                      const isClickable = onVisualizationClick;
+
                       const rowSpan = rowStopIndex - rowStartIndex + 1;
                       const colSpan = columnStopIndex - columnStartIndex + 1;
 
@@ -318,14 +312,21 @@ export default class TableSimpleSummary extends Component {
                               "cursor-pointer text-brand-hover": isClickable,
                             })}
                             onClick={
-                              isClickable
-                                ? e => {
-                                    onVisualizationClick({
-                                      ...clicked,
-                                      element: e.currentTarget,
-                                    });
-                                  }
-                                : undefined
+                              isClickable &&
+                              (e => {
+                                const clicked = getTableCellClickedObjectForSummary(
+                                  cols,
+                                  row,
+                                  columnStartIndex,
+                                  this.props.summarySettings.valuesSources,
+                                );
+                                if (visualizationIsClickable(clicked)) {
+                                  onVisualizationClick({
+                                    ...clicked,
+                                    element: e.currentTarget,
+                                  });
+                                }
+                              })
                             }
                           >
                             {formatedRes}

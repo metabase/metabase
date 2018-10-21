@@ -369,9 +369,7 @@ export default class TableInteractiveSummary extends Component {
       formattedRes = "Totals for " + formattedRes;
     }
 
-
-    const isClickable =
-      onVisualizationClick;
+    const isClickable = onVisualizationClick;
 
     return (
       <div
@@ -394,18 +392,17 @@ export default class TableInteractiveSummary extends Component {
           link: !isTotalRow && isClickable && isID(column),
         })}
         onMouseUp={
-          isClickable
-            && (e => {
-
-              const clicked = getTableCellClickedObjectForSummary(
-                this.props.data.cols,
-                row,
-                columnIndex,
-                this.props.summarySettings.valuesSources
-              );
-              if(visualizationIsClickable(clicked)){
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
+          isClickable &&
+          (e => {
+            const clicked = getTableCellClickedObjectForSummary(
+              this.props.data.cols,
+              row,
+              columnIndex,
+              this.props.summarySettings.valuesSources,
+            );
+            if (visualizationIsClickable(clicked)) {
+              onVisualizationClick({ ...clicked, element: e.currentTarget });
+            }
           })
         }
       >
