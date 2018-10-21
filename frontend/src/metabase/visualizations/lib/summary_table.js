@@ -1,7 +1,6 @@
 import type {
   DatasetData,
   Column,
-  Row,
   ColumnName,
 } from "metabase/meta/types/Dataset";
 import flatMap from "lodash.flatmap";

@@ -11,10 +11,7 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import { formatColumn, formatValue } from "metabase/lib/formatting";
-import {
-  getTableCellClickedObject,
-  isColumnRightAligned,
-} from "metabase/visualizations/lib/table";
+import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import cx from "classnames";
 
@@ -101,7 +98,6 @@ export default class TableSimpleSummary extends Component {
       data,
       onVisualizationClick,
       visualizationIsClickable,
-      isPivoted,
       sort,
       updateSort,
     } = this.props;
