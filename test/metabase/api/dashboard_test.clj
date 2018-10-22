@@ -543,6 +543,28 @@
        (Dashboard dashboard-id)])))
 
 
+(expect (merge dashboard-defaults
+               {:name       "Test Dashboard - Copy"
+                :creator_id (user->id :rasta)})
+        (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+          (-> ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))
+              (dissoc :id)
+              (update :created_at boolean)
+              (update :updated_at boolean))))
+
+
+(expect (merge dashboard-defaults
+               {:name       "Test Dashboard - Copy"
+                :creator_id (user->id :rasta)})
+        (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                        Card          [{card-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+          (-> ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))
+              (dissoc :id)
+              (update :created_at boolean)
+              (update :updated_at boolean))))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
