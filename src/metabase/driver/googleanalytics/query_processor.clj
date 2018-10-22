@@ -8,6 +8,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :as ui18n :refer [tru]]
@@ -159,6 +160,9 @@
   (when filter-clause
     ;; remove all clauses that operate on datetime fields because we don't want to handle them here, we'll do that
     ;; seperately with the filter:interval stuff below
+    ;;
+    ;; (Recall that `auto-bucket-datetime-breakouts` guarantees all datetime Fields will be wrapped by
+    ;; `:datetime-field` clauses in a fully-preprocessed query.)
     (let [filter (parse-filter (mbql.u/replace filter-clause
                                  [_ [:datetime-field & _] & _] nil))]
 
@@ -172,7 +176,7 @@
 (defmethod parse-filter:interval :default [_] nil)
 
 (defmethod parse-filter:interval :between [[_ field min-val max-val]]
-  {:start-date min-val, :end-date max-val})
+  {:start-date (->rvalue min-val), :end-date (->rvalue max-val)})
 
 (defmethod parse-filter:interval :> [[_ field value]]
   {:start-date (->rvalue value), :end-date latest-date})
@@ -206,15 +210,23 @@
 (defmethod parse-filter:interval :not [[& _]]
   (throw (Exception. (str (tru ":not is not yet implemented")))))
 
+(defn- remove-non-datetime-filter-clauses
+  "Replace any filter clauses that operate on a non-datetime Field with `nil`."
+  [filter-clause]
+  (mbql.u/replace filter-clause
+    ;; we don't support any of the following as datetime filters
+    #{:= :!= :<= :>= :starts-with :ends-with :contains}
+    nil
+
+    [(_ :guard #{:< :> :between}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    nil))
+
 (defn- handle-filter:interval
   "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
   `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
   (or (when filter-clause
-        ;; filter out any filter clauses that aren't operating on `[:datetime-field ...]` forms. All other clauses
-        ;; will be using `:field-literal` since those are the only two options GA supports
-        (parse-filter:interval (mbql.u/replace filter-clause
-                                 [_ [:field-literal & _] & _] nil)))
+        (parse-filter:interval (remove-non-datetime-filter-clauses filter-clause)))
       {:start-date earliest-date, :end-date latest-date}))
 
 

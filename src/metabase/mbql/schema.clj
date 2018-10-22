@@ -597,6 +597,10 @@
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
    (s/optional-key :format-rows?)           s/Bool
+   ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
+   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
+   ;; pre-processed query without attempting to convert it to native.
+   (s/optional-key :disable-mbql->native?)  s/Bool
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
    s/Keyword                                s/Any})

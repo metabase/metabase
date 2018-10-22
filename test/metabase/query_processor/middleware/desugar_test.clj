@@ -131,3 +131,30 @@
                :filter       [:=
                               [:binning-strategy [:datetime-field [:field-id 1] :week] :default]
                               [:relative-datetime :current]]}}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Putting it all together                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; filters should get re-simplified after desugaring (if applicable)
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:and
+                             [:= [:field-id 1] "Run Query"]
+                             [:between
+                              [:datetime-field [:field-id 2] :day]
+                              [:relative-datetime -30 :day]
+                              [:relative-datetime -1 :day]]
+                             [:!= [:field-id 3] "(not set)"]
+                             [:!= [:field-id 3] "url"]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:and
+                              [:= [:field-id 1] "Run Query"]
+                              [:time-interval [:field-id 2] -30 :day]
+                              [:!= [:field-id 3] "(not set)" "url"]]}}))

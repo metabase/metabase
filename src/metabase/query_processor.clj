@@ -20,9 +20,9 @@
              [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
-             [check-features :as check-features]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
+             [check-features :as check-features]
              [cumulative-aggregations :as cumulative-ags]
              [desugar :as desugar]
              [dev :as dev]
@@ -99,6 +99,7 @@
   (-> f
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
+      ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
@@ -175,6 +176,15 @@
                   (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
     (recieve-native-query (qp-pipeline deliver-native-query))))
+
+(defn query->preprocessed
+  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
+  Especially helpful for debugging or testing driver QP implementations."
+  {:style/indent 0}
+  [query]
+  (-> (update query :middleware assoc :disable-mbql->native? true)
+      preprocess
+      (m/dissoc-in [:middleware :disable-mbql->native?])))
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled

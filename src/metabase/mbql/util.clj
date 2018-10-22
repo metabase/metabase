@@ -166,45 +166,11 @@
        form#
        (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
 
-(defn ^:deprecated clause-instances
-  "DEPRECATED: use `match` instead."
-  {:style/indent 1}
-  [k-or-ks x & {:keys [include-subclauses?], :or {include-subclauses? false}}]
-  (let [instances (atom [])]
-    (walk/prewalk
-     (fn [clause]
-       (if (is-clause? k-or-ks clause)
-         (do (swap! instances conj clause)
-             (when include-subclauses?
-               clause))
-         clause))
-     x)
-    (seq @instances)))
-
-(defn ^:deprecated replace-clauses
-  "DEPRECATED: use `replace` instead."
-  {:style/indent 2}
-  [query k-or-ks f]
-  (walk/postwalk
-   (fn [clause]
-     (if (is-clause? k-or-ks clause)
-       (f clause)
-       clause))
-   query))
-
-(defn ^:deprecated replace-clauses-in
-  "DEPRECATED: use `replace-in` instead!"
-  {:style/indent 3}
-  [query keypath k-or-ks f]
-  (update-in query keypath #(replace-clauses % k-or-ks f)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I think we actually should move this stuff into a `mbql.helpers` namespace so we can use the util functions
-;; above in the `schema.helpers` namespace instead of duplicating them
 (defn- combine-compound-filters-of-type [compound-type subclauses]
 
   (mapcat #(match-one %
@@ -218,7 +184,7 @@
 (s/defn simplify-compound-filter :- (s/maybe mbql.s/Filter)
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
-  from the clauses."
+  and duplicate subclauses from the clauses."
   [filter-clause]
   (replace filter-clause
     seq? (recur (vec &match))
