@@ -30,7 +30,9 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (def ^:private ExternalRemappingDimension
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -60,13 +62,16 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
-    (vec (for [field fields
-               :when (mbql.u/is-clause? :field-id field)
-               :let  [dimension (field-id->remapping-dimension (second field))]
-               :when dimension]
-           [field
-            [:fk-> field [:field-id (:human_readable_field_id dimension)]]
-            dimension]))))
+    (vec
+     (mbql.u/match fields
+       ;; don't match Field IDs nested in other clauses
+       [(_ :guard keyword?) [:field-id _] & _] nil
+
+       [:field-id (id :guard field-id->remapping-dimension)]
+       (let [dimension (field-id->remapping-dimension id)]
+         [&match
+          [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
+          dimension])))))
 
 (s/defn ^:private update-remapped-order-by :- [mbql.s/OrderBy]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
@@ -84,6 +89,7 @@
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by`
   clause as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [{{:keys [fields order-by]} :query, :as query} :- mbql.s/Query]
+  ;; TODO - I think we need to handle Fields in `:breakout` here as well...
   ;; fetch remapping column pairs if any exist...
   (if-let [remap-col-tuples (seq (create-remap-col-tuples fields))]
     ;; if they do, update `:fields` and `:order-by` clauses accordingly and add to the query
@@ -107,8 +113,8 @@
   To get this critical information, this uses the `remapping-dimensions` info saved by the pre-processing portion of
   this middleware for external remappings, and the internal-only remapped columns handled by post-processing
   middleware below for internal columns."
-  [remapping-dimensions   :- (s/maybe [ExternalRemappingDimension])
-   columns                :- [su/Map]
+  [columns                :- [su/Map]
+   remapping-dimensions   :- (s/maybe [ExternalRemappingDimension])
    internal-remap-columns :- (s/maybe [su/Map])]
   (let [column-id->column              (u/key-by :id columns)
         name->internal-remapped-to-col (u/key-by :remapped_from internal-remap-columns)
@@ -133,17 +139,14 @@
           :remapped_from (:name (get column-id->column remapped-from-id))})))))
 
 (defn- create-remapped-col [col-name remapped-from]
-  {:description     nil
-   :id              nil
-   :table_id        nil
-   :expression-name col-name
-   :source          :fields
-   :name            col-name
-   :display_name    col-name
-   :target          nil
-   :extra_info      {}
-   :remapped_from   remapped-from
-   :remapped_to     nil})
+  {:description   nil
+   :id            nil
+   :table_id      nil
+   :name          col-name
+   :display_name  col-name
+   :target        nil
+   :remapped_from remapped-from
+   :remapped_to   nil})
 
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
@@ -158,23 +161,40 @@
          identity)
        values))
 
-(defn- col->dim-map
-  [idx {{remap-to :dimension-name, remap-type :dimension-type, field-id :field-id} :dimensions, :as col}]
-  (when field-id
-    (let [remap-from (:name col)]
-      {:col-index      idx
-       :from           remap-from
-       :to             remap-to
-       :xform-fn       (zipmap (transform-values-for-col col (get-in col [:values :values]))
-                               (get-in col [:values :human-readable-values]))
-       :new-column     (create-remapped-col remap-to remap-from)
-       :dimension-type remap-type})))
+(def ^:private InternalDimensionInfo
+  {;; index of original column
+   :col-index       s/Int
+   ;; names
+   :from            su/NonBlankString
+   :to              su/NonBlankString
+   ;; map of original value -> human readable value
+   :value->readable su/Map
+   ;; Info about the new column we will tack on to end of `:cols`
+   :new-column      su/Map})
 
-(defn- row-map-fn [dim-seq]
+(s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
+  "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
+  it."
+  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+        {values :values, human-readable-values :human_readable_values} :values
+        :as                                                            col}]
+  (when (and field-id
+             (= remap-type :internal))
+    (let [remap-from (:name col)]
+      {:col-index       idx
+       :from            remap-from
+       :to              remap-to
+       :value->readable (zipmap (transform-values-for-col col values)
+                                human-readable-values)
+       :new-column      (create-remapped-col remap-to remap-from)})))
+
+(s/defn ^:private make-row-map-fn :- (s/pred fn? "function")
+  "Return a function that will add internally-remapped values to each row in the results."
+  [dim-seq :- [InternalDimensionInfo]]
   (fn [row]
-    (concat row (map (fn [{:keys [col-index xform-fn]}]
-                          (xform-fn (nth row col-index)))
-                        dim-seq))))
+    (concat row (map (fn [{:keys [col-index value->readable]}]
+                       (value->readable (nth row col-index)))
+                     dim-seq))))
 
 (s/defn ^:private remap-results
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
@@ -182,16 +202,24 @@
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
   [remapping-dimensions :- (s/maybe [ExternalRemappingDimension]), results]
-  (let [indexed-dims       (keep-indexed col->dim-map (:cols results))
-        internal-only-dims (filter #(= :internal (:dimension-type %)) indexed-dims)
-        remap-fn           (row-map-fn internal-only-dims)
+  (let [ ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info
+        ;; for each one that is `internal` type
+        internal-only-dims (->> (hydrate (:cols results) :values :dimensions)
+                                (keep-indexed col->dim-map)
+                                (filter identity))
+        ;; now using `indexed-dims` create a function that will add internal remapped values to each row in the results
+        remap-fn           (make-row-map-fn internal-only-dims)
+        ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
         internal-only-cols (map :new-column internal-only-dims)]
     (-> results
-        (update :columns into (map :to internal-only-dims))
-        (assoc  :cols    (map #(dissoc % :dimensions :values)
-                              (concat (add-remapping-info remapping-dimensions (:cols results) internal-only-cols)
-                                      internal-only-cols)))
-        (update :rows    #(map remap-fn %)))))
+        ;; add the names of each newly added column to the end of `:columns`
+        (update :columns concat (map :to internal-only-dims))
+        ;; add remapping info `:remapped_from` and `:remapped_to` to each existing `:col`
+        (update :cols add-remapping-info remapping-dimensions internal-only-cols)
+        ;; now add the entries for each newly added column to the end of `:cols`
+        (update :cols concat internal-only-cols)
+        ;; Call our `remap-fn` on each row to add the new values to the end
+        (update :rows (partial map remap-fn)))))
 
 
 ;;; --------------------------------------------------- middleware ---------------------------------------------------
@@ -201,7 +229,9 @@
   `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
   `remap-results` to munge the results after query execution."
   [qp]
-  (fn [query]
-    (let [[remapping-dimensions query] (add-fk-remaps query)
-          results                      (qp query)]
-      (remap-results remapping-dimensions results))))
+  (fn [{query-type :type, :as query}]
+    (if (= query-type :native)
+      (qp query)
+      (let [[remapping-dimensions query] (add-fk-remaps query)
+            results                      (qp query)]
+        (remap-results remapping-dimensions results)))))

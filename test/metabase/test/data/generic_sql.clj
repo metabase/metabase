@@ -252,7 +252,7 @@
                {(sql/escape-field-name k) v}))))
 
 (defn- do-insert!
-  "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
+  "Insert ROW-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
   [driver spec table-name row-or-rows]
   (let [prepare-key (comp keyword (partial prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)

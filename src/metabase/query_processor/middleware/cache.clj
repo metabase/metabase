@@ -141,11 +141,13 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  ;; choose the caching backend if needed
-  (when-not @backend-instance
-    (set-backend!))
-  ;; ok, now do the normal middleware thing
   (fn [query]
     (if-not (is-cacheable? query)
       (qp query)
-      (run-query-with-cache qp query))))
+      ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
+      ;; it when the files get compiled, because that would give it the wrong version of the
+      ;; `IQueryProcessorCacheBackend` protocol
+      (do
+        (when-not @backend-instance
+          (set-backend!))
+        (run-query-with-cache qp query)))))

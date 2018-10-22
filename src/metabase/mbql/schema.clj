@@ -1,6 +1,6 @@
 (ns metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not = < > <= >=])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not = < > <= >= time])
   (:require [clojure
              [core :as core]
              [set :as set]]
@@ -46,7 +46,7 @@
    "relative-datetime-unit"))
 
 (def ^:private LiteralDatetimeString
-  "Schema for an MBQL datetime string literal, in ISO-8601 format."
+  "Schema for an MBQL datetime string literal, in ISO-8601 format. (This also accepts literal time stings.)"
   (s/constrained su/NonBlankString du/date-string? "datetime-literal"))
 
 ;; TODO - `unit` is not allowed if `n` is `current`
@@ -64,27 +64,45 @@
 ;;
 ;; becomes:
 ;; [:= [:datetime-field [:field-id 10] :day] [:absolute-datetime #inst "2018-10-02" :day]]
-
 (defclause ^:internal absolute-datetime
   timestamp java.sql.Timestamp
   unit      DatetimeFieldUnit)
 
+;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
+;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
+;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
+(def TimeUnit
+  "Valid unit for time bucketing."
+  (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day}))
+
+;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
+;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
+;; time-bucketing unit
+(defclause ^:internval time
+  time java.sql.Time
+  unit TimeUnit)
+
 (def ^:private DatetimeLiteral
-  "Schema for valid absoulute datetime literals."
-  (s/if (partial is-clause? :absolute-datetime)
-    absolute-datetime
-    (s/cond-pre
-     ;; literal datetime strings and Java types will get transformed to `absolute-datetime` clauses automatically by
-     ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
-     ;; `absolute-datetime` clauses.
-     LiteralDatetimeString
-     java.sql.Date
-     java.util.Date)))
+  "Schema for valid absolute datetime literals."
+  (s/conditional
+   (partial is-clause? :absolute-datetime)
+   absolute-datetime
+
+   (partial is-clause? :time)
+   time
+
+   :else
+   (s/cond-pre
+    ;; literal datetime strings and Java types will get transformed to `absolute-datetime` clauses automatically by
+    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
+    ;; `absolute-datetime` clauses.
+    LiteralDatetimeString
+    java.util.Date)))
 
 (def DateTimeValue
   "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
   `relative-datetime` form."
-  (one-of absolute-datetime relative-datetime))
+  (one-of absolute-datetime relative-datetime time))
 
 
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
@@ -166,7 +184,7 @@
   strategy-name  BinningStrategyName
   strategy-param (optional (s/constrained s/Num (complement neg?) "strategy param must be >= 0."))
   ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
-  ;; replaced.
+  ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
 
 (def Field
@@ -263,12 +281,12 @@
 
 ;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
 
-(declare UnnamedAggregation)
+(declare Aggregation)
 
 (def ^:private ExpressionAggregationArg
   (s/if number?
     s/Num
-    (s/recursive #'UnnamedAggregation)))
+    (s/recursive #'Aggregation)))
 
 (defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
   x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
@@ -579,6 +597,10 @@
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
    (s/optional-key :format-rows?)           s/Bool
+   ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
+   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
+   ;; pre-processed query without attempting to convert it to native.
+   (s/optional-key :disable-mbql->native?)  s/Bool
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
    s/Keyword                                s/Any})

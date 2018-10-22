@@ -52,7 +52,7 @@ describe("query_time", () => {
       expect(
         expandTimeIntervalFilter(["time-interval", 100, -30, "day"]),
       ).toEqual([
-        "BETWEEN",
+        "between",
         ["datetime-field", 100, "as", "day"],
         ["relative-datetime", -31, "day"],
         ["relative-datetime", -1, "day"],
@@ -164,16 +164,6 @@ describe("query_time", () => {
         generateTimeFilterValuesDescriptions(["time-interval", null, 1, "day"]),
       ).toEqual(["Tomorrow"]);
     });
-    it("should format legacy 'TIME_INTERVAL' correctly", () => {
-      expect(
-        generateTimeFilterValuesDescriptions([
-          "TIME_INTERVAL",
-          null,
-          -30,
-          "day",
-        ]),
-      ).toEqual(["Past 30 Days"]);
-    });
   });
 
   describe("computeFilterTimeRange", () => {
@@ -201,9 +191,9 @@ describe("query_time", () => {
         );
         expect(end.year()).toBeGreaterThan(10000);
       });
-      it('should handle "BETWEEN"', () => {
+      it('should handle "between"', () => {
         let [start, end] = computeFilterTimeRange([
-          "BETWEEN",
+          "between",
           1,
           "2009-08-07",
           "2009-08-09",
@@ -253,9 +243,9 @@ describe("query_time", () => {
         );
         expect(end.year()).toBeGreaterThan(10000);
       });
-      it('should handle "BETWEEN"', () => {
+      it('should handle "between"', () => {
         let [start, end] = computeFilterTimeRange([
-          "BETWEEN",
+          "between",
           1,
           ["relative-datetime", -1, "day"],
           ["relative-datetime", 1, "day"],

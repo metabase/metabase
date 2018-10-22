@@ -44,24 +44,15 @@
          :else     [reservoir c])))
     ([[reservoir _]] (persistent! reservoir))))
 
-(defn rmse
+(defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
-   respectively, calculates the root mean squared error of the estimate.
-   https://en.wikipedia.org/wiki/Root-mean-square_deviation"
+   respectively, calculates the mean absolute error of the estimate.
+   https://en.wikipedia.org/wiki/Mean_absolute_error"
   [fy-hat fy]
-  (fn
-    ([] [0.0 0.0])
-    ([[^double c ^double mse :as acc] e]
-     (let [y-hat (fy-hat e)
-           y (fy e)]
-       (if (or (nil? y-hat) (nil? y))
-         acc
-         (let [se (math/sq (- y y-hat))
-               c' (inc c)]
-           [c' (+ mse (/ (- se mse) c'))]))))
-    ([[c mse]]
-     (when (pos? c)
-       (math/sqrt mse)))))
+  ((map (fn [x]
+          (when x
+            (math/abs (- (fy x) (fy-hat x))))))
+   stats/mean))
 
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
@@ -129,7 +120,7 @@
               (remove nil?)
               not-empty
               (apply min-key #(transduce identity
-                                         (rmse (comp (:model %) first) second)
+                                         (mae (comp (:model %) first) second)
                                          validation-set))
               :formula))))
 

@@ -312,6 +312,10 @@ export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
 
+export const TaskApi = {
+  get: GET("api/task"),
+};
+
 export function setPublicQuestionEndpoints(uuid: string) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }

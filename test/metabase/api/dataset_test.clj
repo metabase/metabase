@@ -52,11 +52,13 @@
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
   [ ;; API call response
-   {:data                   {:rows    [[1000]]
-                             :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count",
-                                        :display_name "count", :id nil, :table_id nil, :description nil, :target nil,
-                                        :extra_info {}, :source "aggregation", :settings nil}]
+   {:data                   {:rows        [[1000]]
+                             :columns     ["count"]
+                             :cols        [{:base_type    "type/Integer"
+                                            :special_type "type/Number"
+                                            :name         "count"
+                                            :display_name "count"
+                                            :source       "aggregation"}]
                              :native_form true}
     :row_count              1
     :status                 "completed"

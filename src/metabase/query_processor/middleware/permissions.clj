@@ -22,7 +22,7 @@
 (s/defn ^:private check-ad-hoc-query-perms
   [outer-query]
   (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set*
-              (query-perms/perms-set outer-query :throw-exceptions))
+              (query-perms/perms-set outer-query :throw-exceptions :already-preprocessed))
     (throw (Exception. (str (tru "You do not have permissions to run this query."))))))
 
 (s/defn ^:private check-query-permissions*
