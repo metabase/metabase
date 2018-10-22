@@ -7,7 +7,6 @@
   (:require [clojure
              [set :as set]
              [walk :as walk]]
-            [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -33,7 +32,6 @@
             FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
-
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
   [field]
@@ -325,6 +323,21 @@
     ;; now add a FieldPlaceholder for its parent if the Field has a parent-id so it can get resolved on the next pass
     (map add-parent-placeholder-if-needed fields)))
 
+(defn- resolve-field-alias[list-table field]
+  (let [match-table (filter #(= (:table-id %) (:table-id field)) list-table)
+        join-table (first match-table)
+        table-alias (:join-alias join-table)
+        f2 (assoc field :table-alias table-alias)]
+    f2))
+
+(defn get-table-info[table-id]
+  (db/select-one [Table :name :schema :id], :id table-id))
+
+(defn- resolve-field-full-name [table-info field]
+  (if (= (:table-id field) (:id table-info))
+    (assoc field :table-name (:name table-info) :schema-name (:schema table-info))
+    field))
+
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT. Record `:table-ids` referenced in the Query."
   [expanded-query-dict]
@@ -336,7 +349,10 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (fetch-fields field-ids)]
+        (let [f1 (fetch-fields field-ids)
+              f2 (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %) f1)
+              source-table-info (get-table-info (:source-table (:query expanded-query-dict)))
+              fields (map #(resolve-field-full-name source-table-info  %) f2)]
           (->>
            ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query
            ;; dict. Those will be used for Table resolution in the next step.
@@ -473,52 +489,6 @@
                                 node-with-print)))
                           expanded-query-dict)))
 
-
-(defn- resolve-field-alias[list-table field]
-  (let [match-table (filter #(= (:table-id %) (:table-id field)) list-table)
-        join-table (first match-table)
-        table-alias (:join-alias join-table)
-    f2 (assoc field :table-alias table-alias)]
-    (log/info f2)
-    f2))
-
-(defn resolve-breakout-alias
-  [expanded-query-dict]
-  (log/info (cheshire/generate-string expanded-query-dict))
-  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
-  (if (nil? (:breakout (:query expanded-query-dict)))
-    expanded-query-dict
-    (let [query (:query expanded-query-dict)
-          breakout (:breakout query)
-          resolved (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %1) breakout)
-          result (assoc (:query expanded-query-dict) :breakout resolved)
-          new-expanded (assoc expanded-query-dict :query result)]
-      (log/info (cheshire/generate-string new-expanded))
-      new-expanded)))
-
-(defn resolve-filter-alias
-  [expanded-query-dict]
-  (log/info (cheshire/generate-string expanded-query-dict))
-  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
-  (if (nil? (:filter (:query expanded-query-dict)))
-    expanded-query-dict
-    (let [query (:query expanded-query-dict)
-          filter (:filter query)
-          resolved (resolve-field-alias (:join-tables (:query expanded-query-dict)) (:field filter))
-          new-filter (assoc filter :field resolved)
-          result (assoc (:query expanded-query-dict) :filter new-filter)
-          new-expanded (assoc expanded-query-dict :query result)]
-      (log/info (cheshire/generate-string new-expanded))
-      new-expanded)))
-
-(defn resolve-alias
-  [expanded-query-dict]
-  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
-  (->>
-    (resolve-breakout-alias expanded-query-dict)
-    (resolve-filter-alias)))
-
-
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
 (defn resolve-fields-if-needed
@@ -537,8 +507,7 @@
           record-fk-field-ids
           resolve-tables
           resolve-fields
-          resolve-field-literals
-          resolve-alias))
+          resolve-field-literals))
 
 (defn resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"
