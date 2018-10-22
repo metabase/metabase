@@ -467,6 +467,16 @@
                                           [:= [:field-id 1] 2]
                                           [:= [:field-id 2] 3]]]))
 
+;; check that `simplify-compound-filter` doesn't remove `nil` from filters where it's being used as the value
+(expect
+  [:= [:field-id 1] nil]
+  (mbql.u/simplify-compound-filter [:= [:field-id 1] nil]))
+
+(expect
+  [:= [:field-id 1] nil]
+  (mbql.u/simplify-compound-filter [:and nil [:= [:field-id 1] nil]]))
+
+
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting

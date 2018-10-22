@@ -1,9 +1,7 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.string :as str]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util :as u]
@@ -166,45 +164,11 @@
        form#
        (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
 
-(defn ^:deprecated clause-instances
-  "DEPRECATED: use `match` instead."
-  {:style/indent 1}
-  [k-or-ks x & {:keys [include-subclauses?], :or {include-subclauses? false}}]
-  (let [instances (atom [])]
-    (walk/prewalk
-     (fn [clause]
-       (if (is-clause? k-or-ks clause)
-         (do (swap! instances conj clause)
-             (when include-subclauses?
-               clause))
-         clause))
-     x)
-    (seq @instances)))
-
-(defn ^:deprecated replace-clauses
-  "DEPRECATED: use `replace` instead."
-  {:style/indent 2}
-  [query k-or-ks f]
-  (walk/postwalk
-   (fn [clause]
-     (if (is-clause? k-or-ks clause)
-       (f clause)
-       clause))
-   query))
-
-(defn ^:deprecated replace-clauses-in
-  "DEPRECATED: use `replace-in` instead!"
-  {:style/indent 3}
-  [query keypath k-or-ks f]
-  (update-in query keypath #(replace-clauses % k-or-ks f)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I think we actually should move this stuff into a `mbql.helpers` namespace so we can use the util functions
-;; above in the `schema.helpers` namespace instead of duplicating them
 (defn- combine-compound-filters-of-type [compound-type subclauses]
 
   (mapcat #(match-one %
@@ -218,19 +182,20 @@
 (s/defn simplify-compound-filter :- (s/maybe mbql.s/Filter)
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
-  from the clauses."
+  and duplicate subclauses from the clauses."
   [filter-clause]
   (replace filter-clause
     seq? (recur (vec &match))
 
     ;; if this an an empty filter, toss it
-    nil              nil
-    []               nil
-    [(:or :and :or)] nil
+    nil                                  nil
+    [& (_ :guard (partial every? nil?))] nil
+    []                                   nil
+    [(:or :and :or)]                     nil
 
-    ;; if the clause contains any nils, toss them
-    [& (args :guard (partial some nil?))]
-    (recur (filterv some? args))
+    ;; if the COMPOUND clause contains any nils, toss them
+    [(clause-name :guard #{:and :or}) & (args :guard (partial some nil?))]
+    (recur (apply vector clause-name (filterv some? args)))
 
     ;; Rewrite a `:not` over `:and` using de Morgan's law
     [:not [:and & args]]

@@ -71,14 +71,17 @@
 
 
 (s/defn ^:private desugar* :- mbql.s/Query
-  [query]
-  (-> query
-      desugar-inside
-      desugar-is-null-and-not-null
-      desugar-time-interval
-      desugar-does-not-contain
-      desugar-equals-and-not-equals-with-extra-args
-      desugar-current-relative-datetime))
+  [{{filter-clause :filter} :query, :as query}]
+  (if-not (seq filter-clause)
+    query
+    (-> query
+        desugar-inside
+        desugar-is-null-and-not-null
+        desugar-time-interval
+        desugar-does-not-contain
+        desugar-equals-and-not-equals-with-extra-args
+        desugar-current-relative-datetime
+        (update-in [:query :filter] mbql.u/simplify-compound-filter))))
 
 (defn desugar
   "Middleware that replaces high-level 'syntactic sugar' clauses with lower-level clauses. This is done to minimize the

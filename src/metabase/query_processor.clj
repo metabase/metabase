@@ -20,9 +20,9 @@
              [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
-             [check-features :as check-features]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
+             [check-features :as check-features]
              [cumulative-aggregations :as cumulative-ags]
              [desugar :as desugar]
              [dev :as dev]
@@ -99,6 +99,7 @@
   (-> f
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
+      ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
@@ -142,11 +143,14 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
-(def ^{:arglists '([query]), :style/indent 1} preprocess
+(def ^:private ^{:arglists '([query])} preprocess
   "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
   get executed by `execute-query`. One important thing to note: if preprocessing fails for some reason, `preprocess`
   will throw an Exception, unlike `process-query`. Why? Preprocessing is something we use internally, so wrapping
-  catching Exceptions and wrapping them in frontend results format doesn't make sense."
+  catching Exceptions and wrapping them in frontend results format doesn't make sense.
+
+  (NOTE: Don't use this directly. You either want `query->preprocessed` (for the fully preprocessed query) or
+  `query->native` for the native form.)"
   ;; throwing pre-allocated exceptions can actually get optimized away into long jumps by the JVM, let's give it a
   ;; chance to happen here
   (let [quit-early-exception (Exception.)
@@ -175,6 +179,15 @@
                   (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
     (recieve-native-query (qp-pipeline deliver-native-query))))
+
+(defn query->preprocessed
+  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
+  Especially helpful for debugging or testing driver QP implementations."
+  {:style/indent 0}
+  [query]
+  (-> (update query :middleware assoc :disable-mbql->native? true)
+      preprocess
+      (m/dissoc-in [:middleware :disable-mbql->native?])))
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled

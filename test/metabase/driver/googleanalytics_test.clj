@@ -1,6 +1,9 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
   (:require [expectations :refer [expect]]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.models
              [card :refer [Card]]
@@ -9,7 +12,6 @@
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data.users :as users]
-            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -50,7 +52,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                   MBQL->NATIVE (EXPANDED QUERY -> GA QUERY)                                    |
+;;; |                                        MBQL->NATIVE (QUERY -> GA QUERY)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ga-query [inner-query]
@@ -150,6 +152,56 @@
 (expect
   (ga-query {:max-results 25})
   (mbql->native {:query {:limit 25}}))
+
+;; let's try a real-life GA query and see how it looks when it's all put together
+(expect
+  {:query {:ids                "ga:98765432"
+           :dimensions         "ga:eventLabel"
+           :metrics            "ga:totalEvents"
+           :start-date         "30daysAgo"
+           :end-date           "yesterday"
+           :filters            "ga:eventAction==Run Query;ga:eventLabel!=(not set);ga:eventLabel!=url"
+           :sort               "ga:eventLabel"
+           :max-results        10000
+           :include-empty-rows false}
+   :mbql? true}
+  (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
+                  Table    [table              {:name "98765432"}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text"}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text"}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date"}]]
+    (qp.store/with-store
+      (qp.store/store-table! table)
+      (doseq [field [event-action-field event-label-field date-field]]
+        (qp.store/store-field! field))
+      (ga.qp/mbql->native
+       {:database (u/get-id db)
+        :type     :query
+        :ga       {:metrics "ga:totalEvents"}
+        :query    {:source-table
+                   (u/get-id table)
+
+                   :filter
+                   [:and
+                    [:=
+                     [:field-id (u/get-id event-action-field)]
+                     [:value "Run Query" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+                    [:between
+                     [:datetime-field [:field-id (u/get-id date-field)] :day]
+                     [:relative-datetime -30 :day]
+                     [:relative-datetime -1 :day]]
+                    [:!=
+                     [:field-id (u/get-id event-label-field)]
+                     [:value "(not set)" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+                    [:!=
+                     [:field-id (u/get-id event-label-field)]
+                     [:value "url" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]]
+
+                   :breakout
+                   [[:field-id (u/get-id event-label-field)]]
+
+                   :order-by
+                   [[:asc [:field-id (u/get-id event-label-field)]]]}}))))
 
 
 ;;; ------------------------------------------------ Saving GA Cards -------------------------------------------------
