@@ -4,25 +4,17 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clojure.string :as str]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to `metabase.mbql.util`
 
 (defn ^:deprecated mbql-query? ;; not really needed anymore since we don't need to normalize tokens
-  "Is the given query an MBQL query?"
+  "Is the given query an MBQL query?
+   DEPRECATED: just look at `:type` directly since it is guaranteed to be normalized?"
   [query]
   (= :query (keyword (:type query))))
-
-(defn ^:deprecated datetime-field?
-  "Is FIELD a `DateTime` field?
-   (DEPRECATED because this only works for expanded queries.)"
-  [{:keys [base-type special-type]}]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -107,33 +99,3 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
-
-
-;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
-
-(defn ^:deprecated postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true
-
-  DEPRECATED: use `mbql.u/replace-clauses` instead, or if that's not sophisticated enough, use a `clojure.walk` fn
-  directly."
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
-(defn ^:deprecated postwalk-collect
-  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
-  results.
-
-  DEPRECATED: Use `mbql.u/clause-instances` instead to find all instances of a clause."
-  [pred collect-fn form]
-  (let [results (atom [])]
-    (postwalk-pred pred
-                   (fn [node]
-                     (when-let [result (collect-fn node)]
-                       (swap! results conj result))
-                     node)
-                   form)
-    @results))

@@ -3,7 +3,7 @@ import { t } from "c-3po";
 
 import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
 import HoursMinutesInput from "./HoursMinutesInput";
-import { mbqlEq } from "metabase/lib/query/util";
+
 import { parseTime } from "metabase/lib/time";
 
 const TimeInput = ({ value, onChange }) => {
@@ -95,12 +95,12 @@ export const TIME_OPERATORS: Operator[] = [
     name: "between",
     displayName: t`Between`,
     init: filter => [
-      "BETWEEN",
+      "between",
       getDateTimeFieldTarget(filter[1]),
       getTime(filter[2]),
       getTime(filter[3]),
     ],
-    test: ([op]) => mbqlEq(op, "between"),
+    test: ([op]) => op === "between",
     widget: MultiTimePicker,
   },
 ];

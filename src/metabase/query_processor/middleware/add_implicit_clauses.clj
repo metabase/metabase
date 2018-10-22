@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
-  (:require [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+  (:require [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -20,35 +19,34 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- datetime-field? [{:keys [base_type special_type]}]
-  (or (isa? base_type :type/DateTime)
-      (isa? special_type :type/DateTime)))
+;; this is a fn because we don't want to call mdb/isa before type hierarchy is loaded!
+(defn- default-sort-rules []
+  [ ;; sort first by position,
+   [:position :asc]
+   ;; or if that's the same, sort PKs first, followed by names, followed by everything else
+   [(hsql/call :case
+      (mdb/isa :special_type :type/PK)   0
+      (mdb/isa :special_type :type/Name) 1
+      :else                              2)
+    :asc]
+   ;; finally, sort by name (case-insensitive)
+   [:%lower.name :asc]])
+
+(defn- table->sorted-fields [table-or-id]
+  (db/select [Field :id :base_type :special_type]
+    :table_id        (u/get-id table-or-id)
+    :active          true
+    :visibility_type [:not-in ["sensitive" "retired"]]
+    :parent_id       nil
+    ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
+    {:order-by (default-sort-rules)}))
 
 (s/defn ^:private sorted-implicit-fields-for-table :- [mbql.s/Field]
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
-  (for [field (db/select [Field :id :base_type :special_type]
-                :table_id        table-id
-                :active          true
-                :visibility_type [:not-in ["sensitive" "retired"]]
-                :parent_id       nil
-                {:order-by [
-                            ;; we can skip 1-3 because queries w/ implicit Field IDs queries won't have
-                            ;; breakouts or fields clauses, and aggregation isn't an actual Field in the DB
-                            ;; anyway
-                            ;;
-                            ;; 4A. position
-                            [:position :asc]
-                            ;; 4B. special_type: :type/PK, :type/Name, then others
-                            [(hsql/call :case
-                               (mdb/isa :special_type :type/PK)   0
-                               (mdb/isa :special_type :type/Name) 1
-                               :else                              2)
-                             :asc]
-                            ;; 4C. name
-                            [:%lower.name :asc]]})]
-    (if (datetime-field? field)
+  (for [field (table->sorted-fields table-id)]
+    (if (mbql.u/datetime-field? field)
       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
       ;; default bucketing of `:day`
       [:datetime-field [:field-id (u/get-id field)] :default]
@@ -78,9 +76,10 @@
                         ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
                         ;; keywords as keys. We can remove this call once we fix that.
                         [:expression (u/keyword->qualified-name expression-name)])]
-      ;; if the Table has no Fields, log a warning.
+      ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (log/warn (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))))
+        (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
+                                     (:name (qp.store/table source-table-id)))))))
       ;; add the fields & expressions under the `:fields` clause
       (assoc-in query [:query :fields] (vec (concat fields expressions))))))
 

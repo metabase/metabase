@@ -3,12 +3,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
@@ -447,16 +446,11 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted, settings } = this.props;
+    const { sort, isPivoted, getColumnTitle } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle =
-      settings.column(column)["_column_title_full"] || formatColumn(column);
-
-    if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
-      columnTitle = t`Unset`;
-    }
+    const columnTitle = getColumnTitle(columnIndex);
 
     let clicked;
     if (isPivoted) {

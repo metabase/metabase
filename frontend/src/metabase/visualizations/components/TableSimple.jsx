@@ -11,7 +11,7 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import MiniBar from "./MiniBar";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
@@ -97,6 +97,7 @@ export default class TableSimple extends Component {
       visualizationIsClickable,
       isPivoted,
       settings,
+      getColumnTitle,
     } = this.props;
     const { rows, cols } = data;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
@@ -155,10 +156,7 @@ export default class TableSimple extends Component {
                             marginRight: 3,
                           }}
                         />
-                        <Ellipsified>
-                          {settings.column(col)["_column_title_full"] ||
-                            formatColumn(col)}
-                        </Ellipsified>
+                        <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
                       </div>
                     </th>
                   ))}

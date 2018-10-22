@@ -449,6 +449,23 @@
                                           :order-by     [[:asc [:field-id 10]]]}}
                               [:asc [:datetime-field [:field-id 10] :day]]))
 
+;; Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:and`
+(expect
+  [:or
+   [:not [:= [:field-id 1] 2]]
+   [:not [:= [:field-id 2] 3]]]
+  (mbql.u/simplify-compound-filter [:not [:and
+                                          [:= [:field-id 1] 2]
+                                          [:= [:field-id 2] 3]]]))
+
+;; Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:or`
+(expect
+  [:and
+   [:not [:= [:field-id 1] 2]]
+   [:not [:= [:field-id 2] 3]]]
+  (mbql.u/simplify-compound-filter [:not [:or
+                                          [:= [:field-id 1] 2]
+                                          [:= [:field-id 2] 3]]]))
 
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 

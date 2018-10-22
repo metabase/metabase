@@ -1,6 +1,8 @@
 (ns metabase.models.task-history
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -29,3 +31,13 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?  i/superuser?
           :can-write? i/superuser?}))
+
+(s/defn all
+  "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
+  [limit :- (s/maybe su/IntGreaterThanZero)
+   offset :- (s/maybe su/IntGreaterThanOrEqualToZero)]
+  (db/select TaskHistory (merge {:order-by [[:ended_at :desc]]}
+                                (when limit
+                                  {:limit limit})
+                                (when offset
+                                  {:offset offset}))))
