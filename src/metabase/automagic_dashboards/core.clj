@@ -52,17 +52,20 @@
 (defn ->field
   "Return `Field` instance for a given ID or name in the context of root."
   [root id-or-name]
-  (if (->> root :source (instance? (type Table)))
-    (Field id-or-name)
-    (when-let [field (->> root
-                          :source
-                          :result_metadata
-                          (m/find-first (comp #{id-or-name} :name)))]
-      (-> field
-          (update :base_type keyword)
-          (update :special_type keyword)
-          field/map->FieldInstance
-          (classify/run-classifiers {})))))
+  (let [id-or-name (if (sequential? id-or-name)
+                     (filters/field-reference->id id-or-name)
+                     id-or-name)]
+    (if (->> root :source (instance? (type Table)))
+      (Field id-or-name)
+      (when-let [field (->> root
+                            :source
+                            :result_metadata
+                            (m/find-first (comp #{id-or-name} :name)))]
+        (-> field
+            (update :base_type keyword)
+            (update :special_type keyword)
+            field/map->FieldInstance
+            (classify/run-classifiers {}))))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the soruce of a given root object."
@@ -120,7 +123,6 @@
      (if (adhoc-metric? metric)
        (tru "{0} of {1}" (metric-name metric) (or (some->> metric
                                                            second
-                                                           filters/field-reference->id
                                                            (->field root)
                                                            :display_name)
                                                   (source-name root)))
@@ -133,8 +135,7 @@
         dimensions   (->> (get-in question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
                           (map (comp :display_name
-                                     (partial ->field root)
-                                     filters/field-reference->id))
+                                     (partial ->field root)))
                           join-enumeration)]
     (if dimensions
       (tru "{0} by {1}" aggregations dimensions)
@@ -1039,7 +1040,6 @@
 (defn- collect-breakout-fields
   [root question]
   (map (comp (partial ->field root)
-             filters/field-reference->id
              first
              filters/collect-field-references)
        (get-in question [:dataset_query :query :breakout])))
@@ -1095,7 +1095,6 @@
   (cond-> (->> field-reference
                filters/collect-field-references
                first
-               filters/field-reference->id
                (->field root))
     (-> field-reference first qp.util/normalize-token (= :datetime-field))
     (assoc :unit (-> field-reference last qp.util/normalize-token))))
