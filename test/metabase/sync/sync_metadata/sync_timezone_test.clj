@@ -39,16 +39,15 @@
        ;; Check that the value was set again after sync
        (boolean (time/time-zone-for-id (db-timezone db)))])))
 
+;; TODO - this works for me ok with Postgres 9.6 & Java 10. Returns Australia/Hobart
 (datasets/expect-with-engines #{:postgres}
   ["UTC" "UTC"]
   (data/dataset test-data
     (let [db (data/db)]
       (sync-tz/sync-timezone! db)
       [(db-timezone db)
-       ;; This call fails as the dates on PostgreSQL return 'AEST'
-       ;; for the time zone name. The exception is logged, but the
-       ;; timezone column should be left alone and processing should
-       ;; continue
+       ;; This call fails as the dates on PostgreSQL return 'AEST' for the time zone name. The exception is logged,
+       ;; but the timezone column should be left alone and processing should continue
        (tu/with-temporary-setting-values [report-timezone "Australia/Sydney"]
          (do
            (sync-tz/sync-timezone! db)

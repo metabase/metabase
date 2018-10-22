@@ -10,7 +10,6 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
@@ -162,7 +161,7 @@
 
 (s/defn ^:private dimension->field-id :- su/IntGreaterThanZero
   [dimension]
-  (:field-id (ql/expand-ql-sexpr dimension)))
+  (second dimension))
 
 (s/defn ^:private dimension-value-for-tag :- (s/maybe Dimension)
   "Return the \"Dimension\" value of a param, if applicable. \"Dimension\" here means what is called a \"Field

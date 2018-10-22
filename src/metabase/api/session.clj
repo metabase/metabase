@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [metabase
+             [config :as config]
              [events :as events]
              [public-settings :as public-settings]
              [util :as u]]
@@ -73,13 +74,21 @@
     (when (pass/verify-password password (:password_salt user) (:password user))
       {:id (create-session! user)})))
 
+(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
+
+(defn- throttle-check
+  "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
+  [throttler throttle-key]
+  (when-not throttling-disabled?
+    (throttle/check throttler throttle-key)))
+
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, remote-address :remote-addr}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :username)   username)
+  (throttle-check (login-throttlers :ip-address) remote-address)
+  (throttle-check (login-throttlers :username)   username)
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or (ldap-login username password)  ; First try LDAP if it's enabled
       (email-login username password) ; Then try local authentication
@@ -113,8 +122,8 @@
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
   {email su/Email}
-  (throttle/check (forgot-password-throttlers :ip-address) remote-address)
-  (throttle/check (forgot-password-throttlers :email)      email)
+  (throttle-check (forgot-password-throttlers :ip-address) remote-address)
+  (throttle-check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth]
                                                         :email email, :is_active true)]
@@ -233,7 +242,7 @@
   "Login with Google Auth."
   [:as {{:keys [token]} :body, remote-address :remote-addr}]
   {token su/NonBlankString}
-  (throttle/check (login-throttlers :ip-address) remote-address)
+  (throttle-check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))

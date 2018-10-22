@@ -30,7 +30,8 @@
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
   (->> (driver/table-rows-sample (Table (data/id :checkins))
                                  [(Field (data/id :checkins :id))
-                                  (Field (data/id :checkins :venue_name))])
+                                  (Field (data/id :checkins :venue_name))
+                                  (Field (data/id :checkins :timestamp))])
        (sort-by first)
        (take 5)))
 
@@ -44,7 +45,8 @@
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))])
+                                    (Field (data/id :checkins :venue_name))
+                                    (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -58,7 +60,8 @@
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (driver/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))])
+                                    (Field (data/id :checkins :venue_name))
+                                    (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -101,7 +104,8 @@
                                    {:name "venue_name",  :display_name "Venue Name"}
                                    {:name "count",       :display_name "Count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
-  (process-native-query native-query-1))
+  (-> (process-native-query native-query-1)
+      (m/dissoc-in [:data :insights])))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
@@ -138,7 +142,7 @@
 ;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
 ;; have counted for the previous week
 (expect-with-engine :druid
-  [["2015-10-04T00:00:00.000Z" 9]]
+  [["2015-10-04" 9]]
   (druid-query-returning-rows
     {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
      :aggregation [[:count $id]]

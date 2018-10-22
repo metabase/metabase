@@ -96,7 +96,7 @@
    :native_form true}
   (->> (data/run-mbql-query checkins
          {:aggregation [[:count]]
-          :filter      [:between $date "2015-04-01" "2015-05-01"]})
+          :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
        booleanize-native-form
        (format-rows-by [int])))
 
@@ -145,9 +145,7 @@
                             {:aggregation [[:count]]
                              :filter      [:is-null $date]}))]
     ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
-    (or (= result [0])
-        (= result [0M])
-        (nil? result))))
+    (contains? #{[0] [0M] [nil] nil} result)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -155,6 +153,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; -------------------------------------------------- starts-with ---------------------------------------------------
+
 (expect-with-non-timeseries-dbs
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -284,8 +283,6 @@
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
 ;;
-;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all
-;; these extra queries?
 
 ;;; =
 (expect-with-non-timeseries-dbs

@@ -82,7 +82,7 @@ export default class LineAreaBarChart extends Component {
 
   static minSize = { width: 4, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return getChartTypeFromData(cols, rows, false) != null;
   }
 
@@ -378,40 +378,44 @@ function transformSingleSeries(s, series, seriesIndex) {
         ],
       },
     }));
-  }
+  } else {
+    // dimensions.length <= 1
+    const dimensionColumnIndex = dimensionColumnIndexes[0];
+    return metricColumnIndexes.map(metricColumnIndex => {
+      const col = cols[metricColumnIndex];
+      const rowColumnIndexes = [dimensionColumnIndex].concat(
+        metricColumnIndex,
+        extraColumnIndexes,
+      );
+      const name = [
+        // show series title if it's multiseries
+        series.length > 1 && card.name,
+        // show column name if there are multiple metrics or sigle series
+        (metricColumnIndexes.length > 1 || series.length === 1) &&
+          getFriendlyName(col),
+      ]
+        .filter(n => n)
+        .join(": ");
 
-  // dimensions.length <= 1
-  const dimensionColumnIndex = dimensionColumnIndexes[0];
-  return metricColumnIndexes.map(metricColumnIndex => {
-    const col = cols[metricColumnIndex];
-    const rowColumnIndexes = [dimensionColumnIndex].concat(
-      metricColumnIndex,
-      extraColumnIndexes,
-    );
-    return {
-      card: {
-        ...card,
-        name: [
-          // show series title if it's multiseries
-          series.length > 1 && card.name,
-          // show column name if there are multiple metrics
-          metricColumnIndexes.length > 1 && getFriendlyName(col),
-        ]
-          .filter(n => n)
-          .join(": "),
-        _transformed: true,
-        _seriesIndex: seriesIndex,
-      },
-      data: {
-        rows: rows.map((row, rowIndex) => {
-          const newRow = rowColumnIndexes.map(i => row[i]);
-          // $FlowFixMe: _origin not typed
-          newRow._origin = { seriesIndex, rowIndex, row, cols };
-          return newRow;
-        }),
-        cols: rowColumnIndexes.map(i => cols[i]),
-        _rawCols: cols,
-      },
-    };
-  });
+      return {
+        card: {
+          ...card,
+          name: name,
+          _transformed: true,
+          _seriesIndex: seriesIndex,
+          _seriesKey: seriesIndex === 0 ? getFriendlyName(col) : name,
+        },
+        data: {
+          rows: rows.map((row, rowIndex) => {
+            const newRow = rowColumnIndexes.map(i => row[i]);
+            // $FlowFixMe: _origin not typed
+            newRow._origin = { seriesIndex, rowIndex, row, cols };
+            return newRow;
+          }),
+          cols: rowColumnIndexes.map(i => cols[i]),
+          _rawCols: cols,
+        },
+      };
+    });
+  }
 }

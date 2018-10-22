@@ -29,12 +29,10 @@ type NestedSettingDef = SettingDef & {
     series: Series,
     object: NestedObject,
   ) => SettingDefs,
-  getObjectSettingsExtra?: (
-    series: Series,
-    settings: Settings,
+  getInheritedSettingsForObject?: (
     object: NestedObject,
   ) => { [key: string]: any },
-  component: React$Component<any, any, any>,
+  component: Class<React$Component<any, any, any>>,
   id?: SettingId,
 };
 
@@ -55,17 +53,18 @@ export function nestedSettings(
     getObjects,
     getObjectKey,
     getSettingDefintionsForObject,
-    getObjectSettingsExtra = () => ({}),
+    getInheritedSettingsForObject = () => ({}),
     component,
     ...def
   }: NestedSettingDef = {},
 ) {
   function getComputedSettingsForObject(series, object, storedSettings, extra) {
     const settingsDefs = getSettingDefintionsForObject(series, object);
+    const inheritedSettings = getInheritedSettingsForObject(object);
     const computedSettings = getComputedSettings(
       settingsDefs,
       object,
-      storedSettings,
+      { ...inheritedSettings, ...storedSettings },
       extra,
     );
     // remove undefined settings since they override other settings when merging object
@@ -107,6 +106,7 @@ export function nestedSettings(
     );
     const widgets = getSettingsWidgets(
       settingsDefs,
+      storedSettings,
       computedSettings,
       object,
       onChangeSettings,
@@ -150,14 +150,18 @@ export function nestedSettings(
         return (object: NestedObject) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
+            const inheritedSettings = getInheritedSettingsForObject(object);
+            const storedSettings = settings[id][key] || {};
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,
                 object,
-                settings[id][key] || {},
+                {
+                  ...inheritedSettings,
+                  ...storedSettings,
+                },
                 { series, settings },
               ),
-              ...getObjectSettingsExtra(series, settings, object),
             });
           }
           return cache.get(key);

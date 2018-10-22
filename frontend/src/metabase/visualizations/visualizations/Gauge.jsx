@@ -6,9 +6,12 @@ import { t } from "c-3po";
 import d3 from "d3";
 import cx from "classnames";
 
+import _ from "underscore";
+
 import colors from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 
@@ -60,7 +63,7 @@ export default class Gauge extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
@@ -77,6 +80,11 @@ export default class Gauge extends Component {
   _label: ?HTMLElement;
 
   static settings = {
+    ...columnSettings({
+      getColumns: ([{ data: { cols } }], settings) => [
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+      ],
+    }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
@@ -248,7 +256,9 @@ export default class Gauge extends Component {
                   end={angle(segment.max)}
                   fill={segment.color}
                   segment={segment}
-                  onHoverChange={this.props.onHoverChange}
+                  column={column}
+                  settings={settings}
+                  onHoverChange={!showLabels ? this.props.onHoverChange : null}
                 />
               ))}
               {/* NEEDLE */}
@@ -265,7 +275,7 @@ export default class Gauge extends Component {
                       OUTER_RADIUS * LABEL_OFFSET_PERCENT,
                     )}
                   >
-                    {formatValue(value, { column })}
+                    {formatValue(value, settings.column(column))}
                   </GaugeSegmentLabel>
                 ))}
               {/* TEXT LABELS */}
@@ -299,7 +309,7 @@ export default class Gauge extends Component {
                   transform: "translate(0,0.2em)",
                 }}
               >
-                {formatValue(value, { column })}
+                {formatValue(value, settings.column(column))}
               </text>
             </g>
           </svg>
@@ -309,7 +319,15 @@ export default class Gauge extends Component {
   }
 }
 
-const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
+const GaugeArc = ({
+  start,
+  end,
+  fill,
+  segment,
+  onHoverChange,
+  settings,
+  column,
+}) => {
   const arc = d3.svg
     .arc()
     .outerRadius(OUTER_RADIUS)
@@ -321,21 +339,30 @@ const GaugeArc = ({ start, end, fill, segment, onHoverChange }) => {
         endAngle: end,
       })}
       fill={fill}
-      onMouseMove={
-        onHoverChange && segment.label
-          ? e =>
-              onHoverChange({
-                data: [
-                  {
-                    key: segment.label,
-                    value: `${segment.min} - ${segment.max}`,
-                  },
-                ],
-                event: e.nativeEvent,
-              })
-          : null
-      }
-      onMouseLeave={onHoverChange ? () => onHoverChange(null) : null}
+      onMouseMove={e => {
+        if (onHoverChange) {
+          const options =
+            settings && settings.column && column
+              ? settings.column(column)
+              : {};
+          onHoverChange({
+            data: [
+              {
+                key: segment.label,
+                value: [segment.min, segment.max]
+                  .map(n => formatValue(n, options))
+                  .join(" - "),
+              },
+            ],
+            event: e.nativeEvent,
+          });
+        }
+      }}
+      onMouseLeave={() => {
+        if (onHoverChange) {
+          onHoverChange(null);
+        }
+      }}
     />
   );
 };

@@ -18,9 +18,7 @@
   (tu/with-temporary-setting-values [report-timezone "UTC"]
     (count (rows (data/dataset sad-toucan-incidents
                    (data/run-mbql-query incidents
-                     {:filter   [:and
-                                 [:> $timestamp "2015-06-01"]
-                                 [:< $timestamp "2015-06-03"]]
+                     {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
                       :order-by [[:asc $timestamp]]}))))))
 
 (expect-with-non-timeseries-dbs

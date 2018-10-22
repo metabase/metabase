@@ -6,6 +6,8 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
 
 import _ from "underscore";
 
+import { updateSettings } from "metabase/visualizations/lib/settings";
+
 import type {
   Settings,
   ExtraProps,
@@ -24,6 +26,10 @@ export type NestedSettingComponentProps = {
   object: ?NestedObject,
   objectSettingsWidgets: ?(WidgetDef[]),
   onChangeEditingObject: (editingObject: ?NestedObject) => void,
+  onChangeObjectSettings: (object: NestedObject, newSettings: Settings) => void,
+  getObjectKey: NestedObjectKeyGetter,
+  settings: Settings,
+  allComputedSettings: Settings,
 };
 type NestedSettingComponent = Class<
   React$Component<NestedSettingComponentProps, *, *>,
@@ -110,17 +116,15 @@ const chartSettingNestedSettings = ({
 
     handleChangeSettingsForObjectKey = (
       objectKey: NestedObjectKey,
-      newSettings: Settings,
+      changedSettings: Settings,
     ) => {
       const { onChange } = this.props;
       const objectsSettings = this.props.value || {};
       const objectSettings = objectsSettings[objectKey] || {};
+      const newSettings = updateSettings(objectSettings, changedSettings);
       onChange({
         ...objectsSettings,
-        [objectKey]: {
-          ...objectSettings,
-          ...newSettings,
-        },
+        [objectKey]: newSettings,
       });
     };
 

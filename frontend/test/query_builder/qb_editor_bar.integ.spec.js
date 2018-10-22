@@ -338,7 +338,7 @@ describe("QueryBuilder editor bar", () => {
       await store.waitForActions([SET_DATASET_QUERY]);
 
       const breakoutWidget = qb.find(BreakoutWidget).first();
-      expect(breakoutWidget.text()).toBe("Latitude: Auto binned");
+      expect(breakoutWidget.text()).toBe("UserLatitude: Auto binned");
     });
 
     it("produces correct results for default binning option", async () => {
@@ -374,7 +374,7 @@ describe("QueryBuilder editor bar", () => {
       click(qb.find(DimensionPicker).find('a[children="Bin every 1 degree"]'));
 
       await store.waitForActions([SET_DATASET_QUERY]);
-      expect(breakoutWidget.text()).toBe("Latitude: 1°");
+      expect(breakoutWidget.text()).toBe("UserLatitude: 1°");
     });
     it("produces correct results for 'Bin every 1 degree'", async () => {
       // Run the raw data query

@@ -11,7 +11,6 @@ const CollectionListLoader = ({ children, writable, ...props }: Props) => (
   <EntityListLoader
     entityType="collections"
     {...props}
-    // $FlowFixMe: flow doesn't know about dyanmically generated "collections" prop
     children={({ list, collections, ...props }) =>
       children({
         list: writable ? list && list.filter(c => c.can_write) : list,

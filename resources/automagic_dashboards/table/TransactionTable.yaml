@@ -120,6 +120,14 @@ cards:
       group: Overview
       width: 5
       height: 3
+  - IncomeGrowth:
+      visualization: smartscalar
+      title: Income growth
+      dimensions: Timestamp
+      metrics: TotalIncome
+      width: 5
+      height: 3
+      group: Overview
   - IncomeByMonth:
       visualization: line
       title: Sales per month

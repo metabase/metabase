@@ -7,6 +7,11 @@ import TableSimple from "../components/TableSimple.jsx";
 import { t } from "c-3po";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import {
+  getColumnCardinality,
+  columnsAreValid,
+} from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
@@ -20,7 +25,6 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
-import { columnsAreValid } from "metabase/visualizations/lib/utils";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -59,7 +63,7 @@ export default class Table extends Component {
 
   static minSize = { width: 4, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return true;
   }
 
@@ -80,6 +84,39 @@ export default class Table extends Component {
         Query.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
+    },
+    "table.pivot_column": {
+      section: t`Columns`,
+      title: t`Pivot column`,
+      widget: "field",
+      getDefault: ([{ data: { cols, rows } }], settings) => {
+        const col = _.min(cols.filter(isDimension), col =>
+          getColumnCardinality(cols, rows, cols.indexOf(col)),
+        );
+        return col && col.name;
+      },
+      getProps: ([{ data: { cols } }], settings) => ({
+        options: cols.filter(isDimension).map(getOptionFromColumn),
+      }),
+      getHidden: (series, settings) => !settings["table.pivot"],
+      readDependencies: ["table.pivot"],
+      persistDefault: true,
+    },
+    "table.cell_column": {
+      section: t`Columns`,
+      title: t`Cell column`,
+      widget: "field",
+      getDefault: ([{ data: { cols, rows } }], settings) => {
+        const col = cols.filter(isMetric)[0];
+        return col && col.name;
+      },
+      getProps: ([{ data: { cols } }], settings) => ({
+        options: cols.filter(isMetric).map(getOptionFromColumn),
+      }),
+      getHidden: ([{ data: { cols } }], settings) =>
+        !settings["table.pivot"] || cols.filter(isMetric).length < 2,
+      readDependencies: ["table.pivot", "table.pivot_column"],
+      persistDefault: true,
     },
     "table.columns": {
       section: t`Columns`,
@@ -211,8 +248,26 @@ export default class Table extends Component {
     settings: VisualizationSettings,
   }) {
     if (settings["table.pivot"]) {
+      const pivotIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.pivot_column"],
+      );
+      const cellIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.cell_column"],
+      );
+      const normalIndex = _.findIndex(
+        data.cols,
+        (col, index) => index !== pivotIndex && index !== cellIndex,
+      );
       this.setState({
-        data: DataGrid.pivot(data),
+        data: DataGrid.pivot(
+          data,
+          normalIndex,
+          pivotIndex,
+          cellIndex,
+          settings,
+        ),
       });
     } else {
       const { cols, rows, columns } = data;
@@ -233,6 +288,25 @@ export default class Table extends Component {
       });
     }
   }
+
+  // shared helpers for table implementations
+
+  getColumnTitle = (columnIndex: number): ?string => {
+    const cols = this.state.data && this.state.data.cols;
+    if (!cols) {
+      return null;
+    }
+    const { settings } = this.props;
+    const isPivoted = settings["table.pivot"];
+    const column = cols[columnIndex];
+    if (isPivoted) {
+      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
+    } else {
+      return (
+        settings.column(column)["_column_title_full"] || formatColumn(column)
+      );
+    }
+  };
 
   render() {
     const { card, isDashboard, settings } = this.props;
@@ -272,6 +346,7 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
+          getColumnTitle={this.getColumnTitle}
         />
       );
     }

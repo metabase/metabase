@@ -76,6 +76,7 @@ export default class SortWidget extends Component {
           setField={this.setField}
           isInitiallyOpen={this.state.field === null}
           enableSubDimensions={false}
+          useOriginalDimension={true}
         />
 
         <SelectionModule

@@ -3,18 +3,18 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isID } from "metabase/lib/schema_metadata";
+import { formatValue } from "metabase/lib/formatting";
+import { isID, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -27,7 +27,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
-const ROW_HEIGHT = 30;
+const ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 // if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
@@ -345,12 +345,15 @@ export default class TableInteractive extends Component {
           transition: dragColIndex != null ? "left 200ms" : null,
           backgroundColor,
         }}
-        className={cx("TableInteractive-cellWrapper", {
+        className={cx("TableInteractive-cellWrapper text-dark", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
+          "TableInteractive-emptyCell": value == null,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
+          "Table-ID": isID(column),
+          "Table-FK": isFK(column),
           link: isClickable && isID(column),
         })}
         onMouseUp={
@@ -443,15 +446,11 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted, settings } = this.props;
+    const { sort, isPivoted, getColumnTitle } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
-    let columnTitle =
-      settings.column(column).column_title || formatColumn(column);
-    if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
-      columnTitle = t`Unset`;
-    }
+    const columnTitle = getColumnTitle(columnIndex);
 
     let clicked;
     if (isPivoted) {
@@ -469,9 +468,12 @@ export default class TableInteractive extends Component {
     const isSortable = isClickable && column.source;
     const isRightAligned = isColumnRightAligned(column);
 
-    // the column id is in `["field-id", fieldId]` format
+    // TODO MBQL: use query lib to get the sort field
     const isSorted =
-      sort && sort[0] && sort[0][0] && sort[0][0][1] === column.id;
+      sort &&
+      sort[0] &&
+      sort[0][1] &&
+      Query.getFieldTargetId(sort[0][1]) === column.id;
     const isAscending = sort && sort[0] && sort[0][0] === "asc";
     return (
       <Draggable
@@ -531,7 +533,7 @@ export default class TableInteractive extends Component {
               : this.getColumnLeft(style, columnIndex),
           }}
           className={cx(
-            "TableInteractive-cellWrapper TableInteractive-headerCellData",
+            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
               "TableInteractive-cellWrapper--lastColumn":
