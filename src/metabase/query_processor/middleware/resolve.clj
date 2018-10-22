@@ -26,7 +26,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]])
+             [hydrate :refer [hydrate]]]
+            [cheshire.core :as cheshire])
   (:import java.util.TimeZone
            [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral
             FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
@@ -481,9 +482,9 @@
     (log/info f2)
     f2))
 
-(defn resolve-alias
+(defn resolve-breakout-alias
   [expanded-query-dict]
-  (log/info expanded-query-dict)
+  (log/info (cheshire/generate-string expanded-query-dict))
   ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
   (if (nil? (:breakout (:query expanded-query-dict)))
     expanded-query-dict
@@ -492,8 +493,30 @@
           resolved (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %1) breakout)
           result (assoc (:query expanded-query-dict) :breakout resolved)
           new-expanded (assoc expanded-query-dict :query result)]
-      (log/info new-expanded)
+      (log/info (cheshire/generate-string new-expanded))
       new-expanded)))
+
+(defn resolve-filter-alias
+  [expanded-query-dict]
+  (log/info (cheshire/generate-string expanded-query-dict))
+  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
+  (if (nil? (:filter (:query expanded-query-dict)))
+    expanded-query-dict
+    (let [query (:query expanded-query-dict)
+          filter (:filter query)
+          resolved (resolve-field-alias (:join-tables (:query expanded-query-dict)) (:field filter))
+          new-filter (assoc filter :field resolved)
+          result (assoc (:query expanded-query-dict) :filter new-filter)
+          new-expanded (assoc expanded-query-dict :query result)]
+      (log/info (cheshire/generate-string new-expanded))
+      new-expanded)))
+
+(defn resolve-alias
+  [expanded-query-dict]
+  ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
+  (->>
+    (resolve-breakout-alias expanded-query-dict)
+    (resolve-filter-alias)))
 
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
