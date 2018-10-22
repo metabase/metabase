@@ -25,8 +25,8 @@
    can be executed. For queries that are already native, this function is effectively a no-op."
   [qp]
   (fn [{query-type :type, {:keys [disable-mbql->native?]} :middleware, :as query}]
-    ;; disabling mbql->native is only used by the `qp/preprocess` function so we can get the fully pre-processed query
-    ;; *before* we convert it to native, which might fail for one reason or another
+    ;; disabling mbql->native is only used by the `qp/query->preprocessed` function so we can get the fully
+    ;; pre-processed query *before* we convert it to native, which might fail for one reason or another
     (if disable-mbql->native?
       (qp query)
       (let [native-form  (query->native-form query)

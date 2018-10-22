@@ -46,7 +46,7 @@
 (defn- process-card-activity! [topic {query :dataset_query, :as object}]
   (let [details-fn  #(select-keys % [:name :description])
         query       (when (seq query)
-                      (try (qp/preprocess query)
+                      (try (qp/query->preprocessed query)
                            (catch Throwable e
                              (log/error e (tru "Error preprocessing query:")))))
         database-id (some-> query :database u/get-id)

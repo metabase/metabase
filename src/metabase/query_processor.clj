@@ -143,11 +143,14 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
-(def ^{:arglists '([query]), :style/indent 1} preprocess
+(def ^:private ^{:arglists '([query])} preprocess
   "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
   get executed by `execute-query`. One important thing to note: if preprocessing fails for some reason, `preprocess`
   will throw an Exception, unlike `process-query`. Why? Preprocessing is something we use internally, so wrapping
-  catching Exceptions and wrapping them in frontend results format doesn't make sense."
+  catching Exceptions and wrapping them in frontend results format doesn't make sense.
+
+  (NOTE: Don't use this directly. You either want `query->preprocessed` (for the fully preprocessed query) or
+  `query->native` for the native form.)"
   ;; throwing pre-allocated exceptions can actually get optimized away into long jumps by the JVM, let's give it a
   ;; chance to happen here
   (let [quit-early-exception (Exception.)
