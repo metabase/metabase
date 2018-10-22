@@ -16,7 +16,6 @@
 
 (def ^:dynamic *driver*
   "The driver that will be used to run the query we are currently parsing.
-   Used by `assert-driver-supports` and other places.
    Always bound when running queries the normal way, e.g. via `metabase.driver/process-query`.
    Not neccesarily bound when using various functions like `fk->` in the REPL."
   nil)

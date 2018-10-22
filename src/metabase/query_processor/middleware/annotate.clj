@@ -2,8 +2,11 @@
   "Middleware for annotating (adding type information to) the results of a query and sorting the columns in the
   results."
   (:require [clojure.string :as str]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.mbql
+             [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.humanization :as humanization]
@@ -13,8 +16,7 @@
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [metabase.util :as u]))
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -92,9 +94,25 @@
    :/ "div"
    :* "mul"})
 
-;; TODO - I think this might be an appropriate thing to move to either `mbql.u` or somewhere else more general we can
-;; have the function take an ag clause and optional custom-name-formatting function so it doesn't need to worry about
-;; `*driver*
+(declare aggregation-name)
+
+(defn- expression-ag-arg->name
+  "Generate an appropriate name for an `arg` in an expression aggregation."
+  [arg]
+  (mbql.u/match-one arg
+    ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
+    [(_ :guard #{:+ :- :/ :*}) & _]
+    (str "(" (aggregation-name &match) ")")
+
+    ;; if the arg is another aggregation, recurse to get its name. (Only aggregations, nested expressions, or numbers
+    ;; are allowed as args to expression aggregations; thus anything that's an MBQL clause, but not a nested
+    ;; expression, is a ag clause.)
+    [(_ :guard keyword?) & _]
+    (aggregation-name &match)
+
+    ;; otherwise for things like numbers just use that directly
+    _ &match))
+
 (s/defn aggregation-name :- su/NonBlankString
   "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or
   expression). Takes an options map as schema won't support passing keypairs directly as a varargs. `{:top-level?
@@ -115,19 +133,7 @@
            (str (arithmetic-op->text operator)
                 "__"))
          (str/join (str " " (name operator) " ")
-                   ;; for each arg...
-                   (for [arg args]
-                     (mbql.u/match-one arg
-                       ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
-                       [(_ :guard #{:+ :- :/ :*}) & _]
-                       (str "(" (aggregation-name &match) ")")
-
-                       ;; if the arg is another aggregation, recurse to get its name
-                       [(_ :guard keyword?) & _]
-                       (aggregation-name &match)
-
-                       ;; otherwise for things like numbers just use that directly
-                       _ &match))))
+                   (map expression-ag-arg->name args)))
 
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
     ;; is called `:count` (WHY?)
@@ -160,7 +166,8 @@
             :special_type :type/Number}
            (ag->name-info &match))
 
-    ;; get info from a Field if we can
+    ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
+    ;; `col-info-for-ag-clause`, and this info is added into the results)
     [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :expression :binning-strategy}) & _]
     (select-keys (col-info-for-field-clause &match) [:base_type :special_type :settings])
 
@@ -169,8 +176,10 @@
     ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
     ;; for the purposes of a patch release.
     [(_ :guard #{:expression :+ :- :/ :*}) & _]
-    {:base_type    :type/Float
-     :special_type :type/Number}
+    (merge {:base_type    :type/Float
+            :special_type :type/Number}
+           (when (mbql.preds/Aggregation? &match)
+             (ag->name-info &match)))
 
     ;; get name/display-name of this ag
     [(_ :guard keyword?) arg]
