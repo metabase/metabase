@@ -15,8 +15,8 @@
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -38,22 +38,25 @@
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
+(def segmented-perm-regex
+  "Regex that matches a segmented permission"
+  #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$")
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (def ^:private ^:const valid-object-path-patterns
-  [#"^/db/(\d+)/$"                                              ; permissions for the entire DB -- native and all schemas
-   #"^/db/(\d+)/native/$"                                       ; permissions to create new native queries for the DB
-   #"^/db/(\d+)/schema/$"                                       ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^\\/]*)/$"                             ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"                 ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"            ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$"           ; Permissions to run any sort of query against a Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$" ; Permissions to run a query against a Table using GTAP
-   #"^/collection/(\d+)/$"                                      ; readwrite permissions for a collection
-   #"^/collection/(\d+)/read/$"                                 ; read permissions for a collection
-   #"^/collection/root/$"                                       ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
-   #"^/collection/root/read/$"])                                ; read permissions for the 'Root' Collection
+  [#"^/db/(\d+)/$"                                    ; permissions for the entire DB -- native and all schemas
+   #"^/db/(\d+)/native/$"                             ; permissions to create new native queries for the DB
+   #"^/db/(\d+)/schema/$"                             ; permissions for all schemas in the DB
+   #"^/db/(\d+)/schema/([^\\/]*)/$"                   ; permissions for a specific schema
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
+   segmented-perm-regex                               ; Permissions to run a query against a Table using GTAP
+   #"^/collection/(\d+)/$"                            ; readwrite permissions for a collection
+   #"^/collection/(\d+)/read/$"                       ; read permissions for a collection
+   #"^/collection/root/$"          ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
+   #"^/collection/root/read/$"])   ; read permissions for the 'Root' Collection
 
 (defn valid-object-path?
   "Does OBJECT-PATH follow a known, allowed format to an *object*?
@@ -79,7 +82,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ex-info (tru "You cannot create or revoke permissions for the 'Admin' group.")
+    (throw (ui18n/ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -89,7 +92,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
+    (throw (ui18n/ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -555,8 +558,8 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
-                         (tru "Please fetch new data and try again."))
+    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                               (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

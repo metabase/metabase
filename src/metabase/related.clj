@@ -93,29 +93,31 @@
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
 (def ^:private ^{:arglists '([entities])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type] :as entity}]
+  (partial filter (fn [{:keys [archived visibility_type active] :as entity}]
                     (and (or (nil? visibility_type)
-                             (= (name visibility_type) "normal"))
+                             (= (qp.util/normalize-token visibility_type) :normal))
                          (not archived)
+                         (not= active false)
                          (mi/can-read? entity)))))
 
 (defn- metrics-for-table
   [table]
   (filter-visible (db/select Metric
-                    :table_id  (:id table)
+                    :table_id (:id table)
                     :archived false)))
 
 (defn- segments-for-table
   [table]
   (filter-visible (db/select Segment
-                    :table_id  (:id table)
+                    :table_id (:id table)
                     :archived false)))
 
 (defn- linking-to
   [table]
   (->> (db/select-field :fk_target_field_id Field
-         :table_id (:id table)
-         :fk_target_field_id [:not= nil])
+         :table_id           (:id table)
+         :fk_target_field_id [:not= nil]
+         :active             true)
        (map (comp Table :table_id Field))
        distinct
        filter-visible
@@ -123,9 +125,12 @@
 
 (defn- linked-from
   [table]
-  (if-let [fields (not-empty (db/select-field :id Field :table_id (:id table)))]
+  (if-let [fields (not-empty (db/select-field :id Field
+                               :table_id (:id table)
+                               :active   true))]
     (->> (db/select-field :table_id Field
-           :fk_target_field_id [:in fields])
+           :fk_target_field_id [:in fields]
+           :active             true)
          (map Table)
          filter-visible
          (take max-matches))
@@ -134,10 +139,10 @@
 (defn- cards-sharing-dashboard
   [card]
   (if-let [dashboards (not-empty (db/select-field :dashboard_id DashboardCard
-                                     :card_id (:id card)))]
+                                   :card_id (:id card)))]
     (->> (db/select-field :card_id DashboardCard
            :dashboard_id [:in dashboards]
-           :card_id [:not= (:id card)])
+           :card_id      [:not= (:id card)])
          (map Card)
          filter-visible
          (take max-matches))
@@ -146,7 +151,7 @@
 (defn- similar-questions
   [card]
   (->> (db/select Card
-         :table_id (qp.util/get-normalized card :table-id)
+         :table_id (:table_id card)
          :archived false)
        filter-visible
        (rank-by-similarity card)
@@ -155,7 +160,7 @@
 (defn- canonical-metric
   [card]
   (->> (db/select Metric
-         :table_id (qp.util/get-normalized card :table-id)
+         :table_id (:table_id card)
          :archived false)
        filter-visible
        (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
@@ -165,8 +170,8 @@
 (defn- recently-modified-dashboards
   []
   (->> (db/select-field :model_id 'Revision
-         :model   "Dashboard"
-         :user_id api/*current-user-id*
+         :model     "Dashboard"
+         :user_id   api/*current-user-id*
          {:order-by [[:timestamp :desc]]})
        (map Dashboard)
        filter-visible
@@ -206,7 +211,7 @@
 
 (defmethod related (type Card)
   [card]
-  (let [table             (Table (qp.util/get-normalized card :table-id))
+  (let [table             (Table (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
@@ -266,7 +271,8 @@
                          :db_id           (:db_id table)
                          :schema          (:schema table)
                          :id              [:not= (:id table)]
-                         :visibility_type nil)
+                         :visibility_type nil
+                         :active          true)
                        (remove (set (concat linking-to linked-from)))
                        filter-visible
                        interesting-mix)}))
@@ -287,7 +293,8 @@
      :fields   (->> (db/select Field
                       :table_id        (:id table)
                       :id              [:not= (:id field)]
-                      :visibility_type "normal")
+                      :visibility_type "normal"
+                      :active          true)
                     filter-visible
                     interesting-mix)}))
 

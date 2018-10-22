@@ -8,9 +8,8 @@
              [setting :as setting :refer [defsetting]]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util
-             [i18n :refer [available-locales-with-names set-locale]]
+             [i18n :refer [available-locales-with-names set-locale tru]]
              [password :as password]]
-            [puppetlabs.i18n.core :refer [tru]]
             [toucan.db :as db])
   (:import [java.util TimeZone UUID]))
 
@@ -127,6 +126,11 @@
   :type :double
   :default 10.0)
 
+(defsetting custom-formatting
+  (tru "Object keyed by type, containing formatting settings")
+  :type    :json
+  :default {})
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
    won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
@@ -155,6 +159,7 @@
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
+   :custom_formatting     (setting/get :custom-formatting)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)

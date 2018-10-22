@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-08-08 15:18-0700\n"
+"POT-Creation-Date: 2018-09-05 12:05-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -127,7 +127,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:222
 #: frontend/src/metabase/components/ActionButton.jsx:52
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:429
 msgid "Saving..."
 msgstr ""
 
@@ -137,40 +137,44 @@ msgstr ""
 msgid "Server error encountered"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:53
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:51
+msgid "Just a heads up:"
+msgstr ""
+
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:54
 msgid "Delete this database?"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:58
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:59
 msgid ""
-"<strong>Just a heads up:</strong> without the Sample Dataset, the Query "
-"Builder tutorial won't work. You can always restore the Sample Dataset, but "
-"any questions you've saved using this data will be lost."
+"{0} without the Sample Dataset, the Query Builder tutorial won't work. You "
+"can always restore the Sample Dataset, but any questions you've saved using "
+"this data will be lost."
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:61
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
 msgid ""
 "All saved questions, metrics, and segments that rely on this database will "
 "be lost."
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:63
 msgid "This cannot be undone."
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "If you're sure, please type"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "DELETE"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "in this box:"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:77
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:78
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:50
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:87
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:93
@@ -210,7 +214,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:83
+#: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:84
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:123
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:397
 msgid "Delete"
@@ -319,7 +323,7 @@ msgstr ""
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:468
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:183
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:91
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:375
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:402
 #: frontend/src/metabase/containers/EntitySearch.jsx:26
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:218
 #: frontend/src/metabase/entities/collections.js:86
@@ -559,7 +563,7 @@ msgid "Create metrics to add them to the View dropdown in the query builder"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/database/SegmentsList.jsx:24
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:921
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:922
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:33
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:19
 #: frontend/src/metabase/reference/segments/SegmentList.jsx:56
@@ -2338,23 +2342,23 @@ msgid "Unarchive this {0}"
 msgstr ""
 
 #: frontend/src/metabase/components/BrowseApp.jsx:93
-#: frontend/src/metabase/components/BrowseApp.jsx:151
-#: frontend/src/metabase/components/BrowseApp.jsx:241
-#: frontend/src/metabase/containers/Overworld.jsx:217
+#: frontend/src/metabase/components/BrowseApp.jsx:152
+#: frontend/src/metabase/components/BrowseApp.jsx:243
+#: frontend/src/metabase/containers/Overworld.jsx:222
 msgid "Our data"
 msgstr ""
 
-#: frontend/src/metabase/components/BrowseApp.jsx:117
+#: frontend/src/metabase/components/BrowseApp.jsx:118
 msgid "X-ray this schema"
 msgstr ""
 
-#: frontend/src/metabase/components/BrowseApp.jsx:186
+#: frontend/src/metabase/components/BrowseApp.jsx:188
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:51
 msgid "X-ray this table"
 msgstr ""
 
-#: frontend/src/metabase/components/BrowseApp.jsx:199
-#: frontend/src/metabase/containers/Overworld.jsx:244
+#: frontend/src/metabase/components/BrowseApp.jsx:201
+#: frontend/src/metabase/containers/Overworld.jsx:249
 msgid "Learn about this table"
 msgstr ""
 
@@ -2523,11 +2527,22 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:247
+msgid "Use the Java Virtual Machine (JVM) timezone"
+msgstr ""
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+msgid ""
+"We suggest you leave this off unless you're doing manual timezone casting "
+"in\n"
+"many or most of your queries with this data."
+msgstr ""
+
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:274
 msgid ""
 "This is a large database, so let me choose when Metabase syncs and scans"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:276
 msgid ""
 "By default, Metabase does a lightweight hourly sync and an intensive daily "
 "scan of field values.\n"
@@ -2535,43 +2550,43 @@ msgid ""
 "when and how often the field value scans happen."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:265
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
 msgid "{0} to generate a Client ID and Client Secret for your project."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:267
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:294
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:329
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:321
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:356
 msgid "Click here"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:270
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:297
 msgid "Choose \"Other\" as the application type. Name it whatever you'd like."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:319
 msgid "{0} to get an auth code"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:304
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:331
 msgid "with Google Drive permissions"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:324
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:351
 msgid ""
 "To use Metabase with this data you must enable API access in the Google "
 "Developers Console."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:327
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:354
 msgid "{0} to go to the console if you haven't already done so."
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:376
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
 msgid "How would you like to refer to this database?"
 msgstr ""
 
-#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:403
+#: frontend/src/metabase/components/DatabaseDetailsForm.jsx:430
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:240
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:188
@@ -3037,25 +3052,40 @@ msgstr ""
 msgid "Don't tell anyone, but you're my favorite."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:102
+#: frontend/src/metabase/containers/Overworld.jsx:105
 msgid "Try these x-rays based on your data."
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:126
+#: frontend/src/metabase/containers/Overworld.jsx:131
+#: frontend/src/metabase/containers/Overworld.jsx:302
 #: frontend/src/metabase/reference/components/GuideHeader.jsx:12
 msgid "Start here"
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:183
+#: frontend/src/metabase/containers/Overworld.jsx:188
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:186
+#: frontend/src/metabase/containers/Overworld.jsx:191
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase/containers/Overworld.jsx:201
+#: frontend/src/metabase/containers/Overworld.jsx:206
 msgid "Browse all items"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:297
+#: frontend/src/metabase/entities/collections.js:140
+#: src/metabase/models/collection.clj
+msgid "Our analytics"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:313
+msgid "Your team's most important dashboards go here"
+msgstr ""
+
+#: frontend/src/metabase/containers/Overworld.jsx:314
+msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr ""
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:165
@@ -3343,11 +3373,6 @@ msgstr ""
 msgid "Collection it's saved in"
 msgstr ""
 
-#: frontend/src/metabase/entities/collections.js:140
-#: src/metabase/models/collection.clj
-msgid "Our analytics"
-msgstr ""
-
 #: frontend/src/metabase/entities/collections.js:157
 msgid "All personal collections"
 msgstr ""
@@ -3523,11 +3548,11 @@ msgstr ""
 msgid "View all"
 msgstr ""
 
-#: frontend/src/metabase/home/components/RecentViews.jsx:39
+#: frontend/src/metabase/home/components/RecentViews.jsx:40
 msgid "Recently Viewed"
 msgstr ""
 
-#: frontend/src/metabase/home/components/RecentViews.jsx:73
+#: frontend/src/metabase/home/components/RecentViews.jsx:75
 msgid "You haven't looked at any dashboards or questions recently"
 msgstr ""
 
@@ -4994,22 +5019,12 @@ msgstr ""
 msgid "X-Ray this question"
 msgstr ""
 
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
-msgid "X-ray {0} {1}"
+#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:27
+msgid "X-ray"
 msgstr ""
 
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
-#: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:32
-msgid "these"
-msgstr ""
-
-#: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
-#: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:32
-msgid "this"
-msgstr ""
-
-#: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:32
-msgid "Compare {0} {1} to the rest"
+#: frontend/src/metabase/qb/components/drill/CompareToRestDrill.js:27
+msgid "Compare to the rest"
 msgstr ""
 
 #: frontend/src/metabase/qb/components/drill/DistributionDrill.jsx:35
@@ -5269,28 +5284,28 @@ msgstr ""
 msgid "Select a table"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:784
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:785
 msgid "No tables found in this database."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:821
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:822
 msgid "Is a question missing?"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:825
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:826
 msgid "Learn more about nested queries"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:859
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:860
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:30
 msgid "Fields"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:937
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:938
 msgid "No segments were found."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:960
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:961
 msgid "Find a segment"
 msgstr ""
 
@@ -5391,25 +5406,21 @@ msgstr ""
 msgid "This metric has been retired.  It's no longer available for use."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:35
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:43
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:34
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:46
 msgid "Download full results"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:36
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:35
 msgid "Download this data"
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:46
-msgid "Warning"
-msgstr ""
-
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:47
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:52
 msgid ""
 "Your answer has a large number of rows so it could take a while to download."
 msgstr ""
 
-#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:48
+#: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:53
 msgid "The maximum download size is 1 million rows."
 msgstr ""
 
@@ -6905,35 +6916,43 @@ msgstr ""
 msgid "Rows {0}-{1} of {2}"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:186
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:35
+msgid "There was a problem displaying this chart."
+msgstr ""
+
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:36
+msgid "Sorry, you don't have permission to see this card."
+msgstr ""
+
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:184
 msgid "Data truncated to {0} rows."
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:351
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:349
 msgid "Could not find visualization"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:358
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:356
 msgid "Could not display this chart with this data."
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:456
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:454
 msgid "No results!"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:477
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "Still Waiting..."
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:480
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:478
 msgid "This usually takes an average of {0}."
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:486
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:484
 msgid "(This is a bit long for a dashboard)"
 msgstr ""
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:490
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:488
 msgid "This is usually pretty fast but seems to be taking awhile right now."
 msgstr ""
 
@@ -8348,6 +8367,10 @@ msgid ""
 "another instance."
 msgstr ""
 
+#: src/metabase/db.clj
+msgid "Unable to release the Liquibase lock after a migration failure"
+msgstr ""
+
 #. Set up liquibase and let it do its thing
 #: src/metabase/db.clj
 msgid "Setting up Liquibase..."
@@ -8540,6 +8563,10 @@ msgstr ""
 
 #: src/metabase/driver/bigquery.clj src/metabase/driver/googleanalytics.clj
 msgid "Auth Code"
+msgstr ""
+
+#: src/metabase/driver/bigquery.clj
+msgid "Use JVM Time Zone"
 msgstr ""
 
 #: src/metabase/driver/crate.clj

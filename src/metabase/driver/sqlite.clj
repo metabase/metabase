@@ -14,8 +14,8 @@
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]
-            [puppetlabs.i18n.core :refer [tru]]
+             [honeysql-extensions :as hx]
+             [i18n :refer [tru]]]
             [schema.core :as s])
   (:import [java.sql Time Timestamp]))
 

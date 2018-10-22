@@ -2,10 +2,13 @@
   (:require [expectations :refer :all]
             [metabase
              [db :as mdb]
-             [driver :as driver]]
+             [driver :as driver]
+             [query-processor :as qp]]
             [metabase.driver.h2 :as h2]
+            [metabase.models.database :refer [Database]]
             [metabase.test.data.datasets :refer [expect-with-engine]]
-            [metabase.test.util :as tu])
+            [metabase.test.util :as tu]
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 ;; Check that the functions for exploding a connection string's options work as expected
@@ -42,3 +45,13 @@
 (expect-with-engine :h2
   "UTC"
   (tu/db-timezone-id))
+
+;; Check that we're not allowed to run SQL against an H2 database with a non-admin account
+(expect "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
+  ;; Insert a fake Database. It doesn't matter that it doesn't actually exist since query processing should
+  ;; fail immediately when it realizes this DB doesn't have a USER
+  (let [db (db/insert! Database, :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
+    (try (:error (qp/process-query {:database (:id db)
+                                    :type     :native
+                                    :native   {:query "SELECT 1"}}))
+         (finally (db/delete! Database :name "Fake-H2-DB")))))

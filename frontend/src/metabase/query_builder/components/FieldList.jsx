@@ -68,7 +68,7 @@ export default class FieldList extends Component {
     if (segmentOptions) {
       specialOptions = segmentOptions.map(segment => ({
         name: segment.name,
-        value: ["SEGMENT", segment.id],
+        value: ["segment", segment.id],
         segment: segment,
       }));
     }

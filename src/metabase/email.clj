@@ -2,11 +2,12 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [tru trs]]
+             [schema :as su]]
             [postal
              [core :as postal]
              [support :refer [make-props]]]
-            [puppetlabs.i18n.core :refer [tru trs]]
             [schema.core :as s])
   (:import javax.mail.Session))
 
@@ -72,7 +73,7 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (let [^String msg (tru "SMTP host is not set.")]
+    (let [^String msg (str (tru "SMTP host is not set."))]
       (throw (Exception. msg))))
   ;; Now send the email
   (send-email! (smtp-settings)

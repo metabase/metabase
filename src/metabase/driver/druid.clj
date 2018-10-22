@@ -7,8 +7,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.druid.query-processor :as qp]
-            [metabase.util.ssh :as ssh]
-            [puppetlabs.i18n.core :refer [tru]]))
+            [metabase.util
+             [i18n :refer [tru]]
+             [ssh :as ssh]]))
 
 ;;; ### Request helper fns
 

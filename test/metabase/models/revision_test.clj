@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
-             [revision :refer :all]]
+             [revision :refer :all :as revision]]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
             [toucan.models :as models]
@@ -32,6 +32,12 @@
     :user-id  (user->id :rasta)
     :object   (dissoc object :message)
     :message  message))
+
+;; make sure we call the appropriate post-select methods on `:object` when a revision comes out of the DB. This is
+;; especially important for things like Cards where we need to make sure query is normalized
+(expect
+  {:model "Card", :object {:dataset_query {:type :query}}}
+  (#'revision/do-post-select-for-object {:model "Card", :object {:dataset_query {:type "query"}}}))
 
 
 ;;; # Default diff-* implementations

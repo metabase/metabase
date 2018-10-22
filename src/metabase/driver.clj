@@ -23,8 +23,9 @@
              [database :refer [Database]]
              [setting :refer [defsetting]]]
             [metabase.sync.interface :as si]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs tru]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
@@ -201,6 +202,7 @@
       \"sum(x) + count(y)\" or \"avg(x + y)\"
   *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
       are CTEs or subselects in SQL queries.
+  *  `:binning` - Does the driver support binning as specified by the `binning-strategy` clause?
   *  `:no-case-sensitivity-string-filter-options` - An anti-feature: does this driver not let you specify whether or not
       our string search filter clauses (`:contains`, `:starts-with`, and `:ends-with`, collectively the equivalent of
       SQL `LIKE` are case-senstive or not? This informs whether we should present you with the 'Case Sensitive' checkbox
@@ -449,7 +451,7 @@
   [values]
   (->> values
        (take 100)                                   ; take up to 100 values
-       (filter (complement nil?))                   ; filter out `nil` values
+       (remove nil?)                                ; filter out `nil` values
        (group-by (comp class->base-type class))     ; now group by their base-type
        (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
        ffirst))                                     ; take the base-type from the first pair

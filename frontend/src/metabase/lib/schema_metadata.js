@@ -170,7 +170,17 @@ export const isLatitude = field =>
 export const isLongitude = field =>
   isa(field && field.special_type, TYPE.Longitude);
 
+export const isCurrency = field =>
+  isa(field && field.special_type, TYPE.Currency);
+
 export const isID = field => isFK(field) || isPK(field);
+
+export const isURL = field => isa(field && field.special_type, TYPE.URL);
+export const isEmail = field => isa(field && field.special_type, TYPE.Email);
+export const isAvatarURL = field =>
+  isa(field && field.special_type, TYPE.AvatarURL);
+export const isImageURL = field =>
+  isa(field && field.special_type, TYPE.ImageURL);
 
 // operator argument constructors:
 

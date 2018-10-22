@@ -12,8 +12,8 @@
              [postgres :as postgres]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [puppetlabs.i18n.core :refer [tru]]))
+             [i18n :refer [tru]]
+             [ssh :as ssh]]))
 
 (defn- connection-details->spec
   "Create a database specification for a redshift database. Opts should include
@@ -90,7 +90,7 @@
                                                      :name         "db"
                                                      :placeholder  (tru "toucan_sightings"))
                                                    driver/default-user-details
-                                                   driver/default-port-details]))
+                                                   driver/default-password-details]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)
           :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatters)})
 

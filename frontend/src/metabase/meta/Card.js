@@ -43,7 +43,7 @@ export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
   type: "query",
   database: null,
   query: {
-    source_table: null,
+    "source-table": null,
     aggregation: undefined,
     breakout: undefined,
     filter: undefined,
@@ -55,7 +55,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
   native: {
     query: "",
-    template_tags: {},
+    "template-tags": {},
   },
 };
 
@@ -72,7 +72,7 @@ export function canRun(card: Card): boolean {
     const query = getQuery(card);
     return (
       query != null &&
-      query.source_table != undefined &&
+      query["source-table"] != undefined &&
       Query.hasValidAggregation(query)
     );
   } else if (card.dataset_query.type === "native") {
@@ -124,8 +124,8 @@ export function getTableMetadata(
   metadata: Metadata,
 ): ?TableMetadata {
   const query = getQuery(card);
-  if (query && query.source_table != null) {
-    return metadata.tables[query.source_table] || null;
+  if (query && query["source-table"] != null) {
+    return metadata.tables[query["source-table"]] || null;
   }
   return null;
 }
@@ -134,8 +134,8 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
   return card &&
     card.dataset_query &&
     card.dataset_query.type === "native" &&
-    card.dataset_query.native.template_tags
-    ? Object.values(card.dataset_query.native.template_tags)
+    card.dataset_query.native["template-tags"]
+    ? Object.values(card.dataset_query.native["template-tags"])
     : [];
 }
 

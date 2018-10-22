@@ -1,48 +1,63 @@
+/* @flow */
+
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
  * TODO Atte Keinänen 7/6/17: This uses the standard metadata API; we should migrate also other parts of admin section
  */
 
-import React, { Component } from "react";
+import React from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+
 import _ from "underscore";
-import cx from "classnames";
 import { t } from "c-3po";
+
+// COMPONENTS
+
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import MetabaseAnalytics from "metabase/lib/analytics";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import * as metadataActions from "metabase/redux/metadata";
-import * as datamodelActions from "../datamodel";
-
-import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import SelectButton from "metabase/components/SelectButton";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FieldList from "metabase/query_builder/components/FieldList";
+
+import AdminLayout from "metabase/components/AdminLayout.jsx";
+import {
+  LeftNavPane,
+  LeftNavPaneItem,
+} from "metabase/components/LeftNavPane.jsx";
+import Section, { SectionHeader } from "../components/Section";
+import SelectSeparator from "../components/SelectSeparator";
+
 import {
   FieldVisibilityPicker,
   SpecialTypeAndTargetPicker,
-} from "metabase/admin/datamodel/components/database/ColumnItem";
-import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Question from "metabase-lib/lib/Question";
-import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+} from "../components/database/ColumnItem";
+import FieldRemapping from "../components/FieldRemapping";
+import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
+import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
+// SELECTORS
+import { getMetadata } from "metabase/selectors/metadata";
+import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
+
+// ACTIONS
+import * as metadataActions from "metabase/redux/metadata";
+import * as datamodelActions from "../datamodel";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
+// LIB
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
 import colors from "metabase/lib/colors";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { isCurrency } from "metabase/lib/schema_metadata";
 
-const SelectClasses =
-  "h3 bordered border-dark shadowed p2 inline-block flex align-center rounded text-bold";
+import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { TableId } from "metabase/meta/types/Table";
+import type { FieldId } from "metabase/meta/types/Field";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -68,13 +83,17 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-export default class FieldApp extends Component {
+export default class FieldApp extends React.Component {
+  state = {
+    tab: "general",
+  };
+
   saveStatus: null;
 
   props: {
-    databaseId: number,
-    tableId: number,
-    fieldId: number,
+    databaseId: DatabaseId,
+    tableId: TableId,
+    fieldId: FieldId,
     metadata: Metadata,
     idfields: Object[],
 
@@ -83,11 +102,18 @@ export default class FieldApp extends Component {
     fetchFieldValues: number => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
-    updateFieldDimension: any => Promise<void>,
-    deleteFieldDimension: any => Promise<void>,
-    fetchDatabaseIdfields: number => Promise<void>,
+    updateFieldDimension: (FieldId, any) => Promise<void>,
+    deleteFieldDimension: FieldId => Promise<void>,
+    fetchDatabaseIdfields: DatabaseId => Promise<void>,
+
+    rescanFieldValues: FieldId => Promise<void>,
+    discardFieldValues: FieldId => Promise<void>,
+
+    location: any,
+    params: any,
   };
 
+  // $FlowFixMe
   async componentWillMount() {
     const {
       databaseId,
@@ -117,11 +143,11 @@ export default class FieldApp extends Component {
     await fetchDatabaseIdfields(databaseId);
   }
 
-  linkWithSaveStatus = saveMethod => {
+  linkWithSaveStatus = (saveMethod: Function) => {
     const self = this;
-    return async (...params) => {
+    return async (...args: any[]) => {
       self.saveStatus && self.saveStatus.setSaving();
-      await saveMethod(...params);
+      await saveMethod(...args);
       self.saveStatus && self.saveStatus.setSaved();
     };
   };
@@ -152,6 +178,11 @@ export default class FieldApp extends Component {
     this.props.deleteFieldDimension,
   );
 
+  // $FlowFixMe
+  onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
+    return this.onUpdateFieldProperties({ settings });
+  };
+
   render() {
     const {
       metadata,
@@ -159,7 +190,11 @@ export default class FieldApp extends Component {
       databaseId,
       tableId,
       idfields,
+      rescanFieldValues,
+      discardFieldValues,
       fetchTableMetadata,
+      location,
+      params: { section },
     } = this.props;
 
     const db = metadata.databases[databaseId];
@@ -171,127 +206,211 @@ export default class FieldApp extends Component {
     return (
       <LoadingAndErrorWrapper loading={isLoading} error={null} noWrapper>
         {() => (
-          <div className="relative">
-            <div className="wrapper wrapper--trim">
-              <BackButton databaseId={databaseId} tableId={tableId} />
-              <div className="my4 py1 ml-auto mr-auto">
-                <Breadcrumbs
-                  crumbs={[
-                    [db.name, `/admin/datamodel/database/${db.id}`],
-                    [
-                      table.display_name,
-                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                    ],
-                    t`${field.display_name} – Field Settings`,
-                  ]}
-                />
+          <AdminLayout
+            sidebar={
+              <div>
+                <Header>
+                  <BackButton databaseId={databaseId} tableId={tableId} />
+                </Header>
+                <LeftNavPane>
+                  <LeftNavPaneItem
+                    name={t`General`}
+                    path={location.pathname.replace(/[^/]+$/, "general")}
+                    index
+                  />
+                  <LeftNavPaneItem
+                    name={t`Formatting`}
+                    path={location.pathname.replace(/[^/]+$/, "formatting")}
+                  />
+                </LeftNavPane>
               </div>
-              <div className="absolute top right mt4 mr4">
-                <SaveStatus ref={ref => (this.saveStatus = ref)} />
-              </div>
+            }
+          >
+            <div className="wrapper">
+              <Header>
+                <div className="mb4 py1 ml-auto mr-auto">
+                  <Breadcrumbs
+                    crumbs={[
+                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [
+                        table.display_name,
+                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                      ],
+                      t`${field.display_name} – Field Settings`,
+                    ]}
+                  />
+                </div>
+                <div className="absolute top right mt4 mr4">
+                  <SaveStatus ref={ref => (this.saveStatus = ref)} />
+                </div>
+              </Header>
 
-              <Section>
-                <FieldHeader
+              {section == null || section === "general" ? (
+                <FieldGeneralPane
                   field={field}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldDimension={this.onUpdateFieldDimension}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Visibility`}
-                  description={t`Where this field will appear throughout Metabase`}
-                />
-                <FieldVisibilityPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader title={t`Type`} />
-                <SpecialTypeAndTargetPicker
-                  triggerClasses={SelectClasses}
-                  field={field.getPlainObject()}
-                  updateField={this.onUpdateField}
                   idfields={idfields}
-                  selectSeparator={<SelectSeparator />}
-                />
-              </Section>
-
-              <Section>
-                <SectionHeader
-                  title={t`Filtering on this field`}
-                  description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
-                />
-                <Select
-                  triggerClasses={SelectClasses}
-                  value={_.findWhere(has_field_values_options, {
-                    value: field.has_field_values,
-                  })}
-                  onChange={option =>
-                    this.onUpdateFieldProperties({
-                      has_field_values: option.value,
-                    })
-                  }
-                  options={has_field_values_options}
-                />
-              </Section>
-
-              <Section>
-                <FieldRemapping
-                  field={field}
                   table={table}
-                  fields={metadata.fields}
-                  updateFieldProperties={this.onUpdateFieldProperties}
-                  updateFieldValues={this.onUpdateFieldValues}
-                  updateFieldDimension={this.onUpdateFieldDimension}
-                  deleteFieldDimension={this.onDeleteFieldDimension}
+                  metadata={metadata}
+                  onUpdateField={this.onUpdateField}
+                  onUpdateFieldValues={this.onUpdateFieldValues}
+                  onUpdateFieldProperties={this.onUpdateFieldProperties}
+                  onUpdateFieldDimension={this.onUpdateFieldDimension}
+                  onDeleteFieldDimension={this.onDeleteFieldDimension}
+                  rescanFieldValues={rescanFieldValues}
+                  discardFieldValues={discardFieldValues}
                   fetchTableMetadata={fetchTableMetadata}
                 />
-              </Section>
-
-              <Section>
-                <UpdateCachedFieldValues
-                  rescanFieldValues={() =>
-                    this.props.rescanFieldValues(field.id)
-                  }
-                  discardFieldValues={() =>
-                    this.props.discardFieldValues(field.id)
-                  }
+              ) : section === "formatting" ? (
+                <FieldSettingsPane
+                  field={field}
+                  onUpdateFieldSettings={this.onUpdateFieldSettings}
                 />
-              </Section>
+              ) : null}
             </div>
-          </div>
+          </AdminLayout>
         )}
       </LoadingAndErrorWrapper>
     );
   }
 }
 
+const Header = ({ children, height = 50 }) => (
+  <div style={{ height }}>{children}</div>
+);
+
+const FieldGeneralPane = ({
+  field,
+  idfields,
+  table,
+  metadata,
+  onUpdateField,
+  onUpdateFieldValues,
+  onUpdateFieldProperties,
+  onUpdateFieldDimension,
+  onDeleteFieldDimension,
+  rescanFieldValues,
+  discardFieldValues,
+  fetchTableMetadata,
+}) => (
+  <div>
+    <Section first>
+      <FieldHeader
+        field={field}
+        updateFieldProperties={onUpdateFieldProperties}
+        updateFieldDimension={onUpdateFieldDimension}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Visibility`}
+        description={t`Where this field will appear throughout Metabase`}
+      />
+      <div style={{ maxWidth: 400 }}>
+        <FieldVisibilityPicker
+          field={field.getPlainObject()}
+          updateField={onUpdateField}
+        />
+      </div>
+    </Section>
+
+    <Section>
+      <SectionHeader title={t`Field Type`} />
+      <SpecialTypeAndTargetPicker
+        field={field.getPlainObject()}
+        updateField={onUpdateField}
+        idfields={idfields}
+        selectSeparator={<SelectSeparator />}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Filtering on this field`}
+        description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
+      />
+      <Select
+        value={_.findWhere(has_field_values_options, {
+          value: field.has_field_values,
+        })}
+        onChange={option =>
+          onUpdateFieldProperties({
+            has_field_values: option.value,
+          })
+        }
+        options={has_field_values_options}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Display values`}
+        description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
+      />
+      <FieldRemapping
+        field={field}
+        table={table}
+        fields={metadata.fields}
+        updateFieldProperties={onUpdateFieldProperties}
+        updateFieldValues={onUpdateFieldValues}
+        updateFieldDimension={onUpdateFieldDimension}
+        deleteFieldDimension={onDeleteFieldDimension}
+        fetchTableMetadata={fetchTableMetadata}
+      />
+    </Section>
+
+    <Section last>
+      <SectionHeader
+        title={t`Cached field values`}
+        description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+      />
+      <UpdateCachedFieldValues
+        rescanFieldValues={() => rescanFieldValues(field.id)}
+        discardFieldValues={() => discardFieldValues(field.id)}
+      />
+    </Section>
+  </div>
+);
+
+const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
+  <Section last>
+    <ColumnSettings
+      value={(field && field.settings) || {}}
+      onChange={onUpdateFieldSettings}
+      column={field}
+      blacklist={
+        new Set(
+          ["column_title"].concat(isCurrency(field) ? ["number_style"] : []),
+        )
+      }
+      inheritedSettings={getGlobalSettingsForColumn(field)}
+    />
+  </Section>
+);
+
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({ databaseId, tableId }) => (
+export const BackButton = ({
+  databaseId,
+  tableId,
+}: {
+  databaseId: DatabaseId,
+  tableId: TableId,
+}) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 mt3 ml3 flex align-center justify-center  absolute top left"
+    className="circle text-white p2 flex align-center justify-center inline"
     style={{ backgroundColor: colors["bg-dark"] }}
   >
     <Icon name="backArrow" />
   </Link>
 );
 
-const SelectSeparator = () => (
-  <Icon name="chevronright" size={12} className="mx2 text-medium" />
-);
-
-export class FieldHeader extends Component {
-  onNameChange = e => {
+export class FieldHeader extends React.Component {
+  onNameChange = (e: { target: HTMLInputElement }) => {
     this.updateNameDebounced(e.target.value);
   };
-  onDescriptionChange = e => {
+  onDescriptionChange = (e: { target: HTMLInputElement }) => {
     this.updateDescriptionDebounced(e.target.value);
   };
 
@@ -322,7 +441,7 @@ export class FieldHeader extends Component {
     return (
       <div>
         <InputBlurChange
-          className="h1 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
@@ -332,470 +451,6 @@ export class FieldHeader extends Component {
           value={this.props.field.description}
           onChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}
-        />
-      </div>
-    );
-  }
-}
-
-// consider renaming this component to something more descriptive
-export class ValueRemappings extends Component {
-  state = {
-    editingRemappings: new Map(),
-  };
-
-  componentWillMount() {
-    this._updateEditingRemappings(this.props.remappings);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.remappings !== this.props.remappings) {
-      this._updateEditingRemappings(nextProps.remappings);
-    }
-  }
-
-  _updateEditingRemappings(remappings) {
-    const editingRemappings = new Map(
-      [...remappings].map(([original, mappedOrUndefined]) => {
-        // Use currently the original value as the "default custom mapping" as the current backend implementation
-        // requires that all original values must have corresponding mappings
-
-        // Additionally, the defensive `.toString` ensures that the mapped value definitely will be string
-        const mappedString =
-          mappedOrUndefined !== undefined
-            ? mappedOrUndefined.toString()
-            : original.toString();
-
-        return [original, mappedString];
-      }),
-    );
-
-    const containsUnsetMappings = [...remappings].some(
-      ([_, mappedOrUndefined]) => {
-        return mappedOrUndefined === undefined;
-      },
-    );
-    if (containsUnsetMappings) {
-      // Save the initial values to make sure that we aren't left in a potentially broken state where
-      // the dimension type is "internal" but we don't have any values in metabase_fieldvalues
-      this.props.updateRemappings(editingRemappings);
-    }
-    this.setState({ editingRemappings });
-  }
-
-  onSetRemapping(original, newMapped) {
-    this.setState({
-      editingRemappings: new Map([
-        ...this.state.editingRemappings,
-        [original, newMapped],
-      ]),
-    });
-  }
-
-  onSaveClick = () => {
-    MetabaseAnalytics.trackEvent("Data Model", "Update Custom Remappings");
-    // Returns the promise so that ButtonWithStatus can show the saving status
-    return this.props.updateRemappings(this.state.editingRemappings);
-  };
-
-  customValuesAreNonEmpty = () => {
-    return Array.from(this.state.editingRemappings.values()).every(
-      value => value !== "",
-    );
-  };
-
-  render() {
-    const { editingRemappings } = this.state;
-
-    return (
-      <div className="bordered rounded py2 px4 border-dark">
-        <div className="flex align-center my1 pb2 border-bottom">
-          <h3>{t`Original value`}</h3>
-          <h3 className="ml-auto">{t`Mapped value`}</h3>
-        </div>
-        <ol>
-          {[...editingRemappings].map(([original, mapped]) => (
-            <li className="mb1">
-              <FieldValueMapping
-                original={original}
-                mapped={mapped}
-                setMapping={newMapped =>
-                  this.onSetRemapping(original, newMapped)
-                }
-              />
-            </li>
-          ))}
-        </ol>
-        <div className="flex align-center">
-          <ButtonWithStatus
-            className="ml-auto"
-            disabled={!this.customValuesAreNonEmpty()}
-            onClickOperation={this.onSaveClick}
-          >
-            {t`Save`}
-          </ButtonWithStatus>
-        </div>
-      </div>
-    );
-  }
-}
-
-export class FieldValueMapping extends Component {
-  onInputChange = e => {
-    this.props.setMapping(e.target.value);
-  };
-
-  render() {
-    const { original, mapped } = this.props;
-    return (
-      <div className="flex align-center">
-        <h3>{original}</h3>
-        <InputBlurChange
-          className="AdminInput input ml-auto"
-          value={mapped}
-          onChange={this.onInputChange}
-          placeholder={t`Enter value`}
-        />
-      </div>
-    );
-  }
-}
-
-export const Section = ({ children }) => (
-  <section className="my3">{children}</section>
-);
-
-export const SectionHeader = ({ title, description }) => (
-  <div className="border-bottom py2 mb2">
-    <h2 className="text-italic">{title}</h2>
-    {description && (
-      <p className="mb0 text-medium mt1 text-paragraph text-measure">
-        {description}
-      </p>
-    )}
-  </div>
-);
-
-const MAP_OPTIONS = {
-  original: { type: "original", name: t`Use original value` },
-  foreign: { type: "foreign", name: t`Use foreign key` },
-  custom: { type: "custom", name: t`Custom mapping` },
-};
-
-export class FieldRemapping extends Component {
-  state = {
-    isChoosingInitialFkTarget: false,
-    dismissedInitialFkTargetPopover: false,
-  };
-
-  constructor(props, context) {
-    super(props, context);
-  }
-
-  getMappingTypeForField = field => {
-    if (this.state.isChoosingInitialFkTarget) {
-      return MAP_OPTIONS.foreign;
-    }
-
-    if (_.isEmpty(field.dimensions)) {
-      return MAP_OPTIONS.original;
-    }
-    if (field.dimensions.type === "external") {
-      return MAP_OPTIONS.foreign;
-    }
-    if (field.dimensions.type === "internal") {
-      return MAP_OPTIONS.custom;
-    }
-
-    throw new Error(t`Unrecognized mapping type`);
-  };
-
-  getAvailableMappingTypes = () => {
-    const { field } = this.props;
-
-    const hasForeignKeys =
-      field.special_type === "type/FK" && this.getForeignKeys().length > 0;
-
-    // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
-    // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
-    const hasMappableNumeralValues =
-      field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(key => typeof key === "number");
-
-    return [
-      MAP_OPTIONS.original,
-      ...(hasForeignKeys ? [MAP_OPTIONS.foreign] : []),
-      ...(hasMappableNumeralValues > 0 ? [MAP_OPTIONS.custom] : []),
-    ];
-  };
-
-  getFKTargetTableEntityNameOrNull = () => {
-    const fks = this.getForeignKeys();
-    const fkTargetFields = fks[0] && fks[0].dimensions.map(dim => dim.field());
-
-    if (fkTargetFields) {
-      // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
-      const nameField = fkTargetFields.find(
-        field => field.special_type === "type/Name",
-      );
-      return nameField ? nameField.id : null;
-    } else {
-      throw new Error(
-        t`Current field isn't a foreign key or FK target table metadata is missing`,
-      );
-    }
-  };
-
-  clearEditingStates = () => {
-    this.setState({
-      isChoosingInitialFkTarget: false,
-      dismissedInitialFkTargetPopover: false,
-    });
-  };
-
-  onSetMappingType = async mappingType => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-      deleteFieldDimension,
-    } = this.props;
-
-    this.clearEditingStates();
-
-    if (mappingType.type === "original") {
-      MetabaseAnalytics.trackEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "No Remapping",
-      );
-      await deleteFieldDimension(field.id);
-      this.setState({ hasChanged: false });
-    } else if (mappingType.type === "foreign") {
-      // Try to find a entity name field from target table and choose it as remapping target field if it exists
-      const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
-
-      if (entityNameFieldId) {
-        MetabaseAnalytics.trackEvent(
-          "Data Model",
-          "Change Remapping Type",
-          "Foreign Key",
-        );
-        await updateFieldDimension(field.id, {
-          type: "external",
-          name: field.display_name,
-          human_readable_field_id: entityNameFieldId,
-        });
-      } else {
-        // Enter a special state where we are choosing an initial value for FK target
-        this.setState({
-          hasChanged: true,
-          isChoosingInitialFkTarget: true,
-        });
-      }
-    } else if (mappingType.type === "custom") {
-      MetabaseAnalytics.trackEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "Custom Remappings",
-      );
-      await updateFieldDimension(field.id, {
-        type: "internal",
-        name: field.display_name,
-        human_readable_field_id: null,
-      });
-      this.setState({ hasChanged: true });
-    } else {
-      throw new Error(t`Unrecognized mapping type`);
-    }
-
-    // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
-    // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
-    await fetchTableMetadata(table.id, true);
-  };
-
-  onForeignKeyFieldChange = async foreignKeyClause => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-    } = this.props;
-
-    this.clearEditingStates();
-
-    // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
-    if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
-      MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
-      await updateFieldDimension(field.id, {
-        type: "external",
-        name: field.display_name,
-        human_readable_field_id: foreignKeyClause[2],
-      });
-
-      await fetchTableMetadata(table.id, true);
-
-      this.refs.fkPopover.close();
-    } else {
-      throw new Error(t`The selected field isn't a foreign key`);
-    }
-  };
-
-  onUpdateRemappings = remappings => {
-    const { field, updateFieldValues } = this.props;
-    return updateFieldValues(field.id, Array.from(remappings));
-  };
-
-  // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
-  isValidFKRemappingTarget = dimension =>
-    !(dimension.defaultDimension() instanceof DatetimeFieldDimension);
-
-  getForeignKeys = () => {
-    const { table, field } = this.props;
-
-    // this method has a little odd structure due to using fieldOptions(); basically filteredFKs should
-    // always be an array with a single value
-    const metadata = table.metadata;
-    const fieldOptions = Question.create({
-      metadata,
-      databaseId: table.db.id,
-      tableId: table.id,
-    })
-      .query()
-      .fieldOptions();
-    const unfilteredFks = fieldOptions.fks;
-    const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
-
-    return filteredFKs.map(filteredFK => ({
-      field: filteredFK.field,
-      dimension: filteredFK.dimension,
-      dimensions: filteredFK.dimensions.filter(this.isValidFKRemappingTarget),
-    }));
-  };
-
-  onFkPopoverDismiss = () => {
-    const { isChoosingInitialFkTarget } = this.state;
-
-    if (isChoosingInitialFkTarget) {
-      this.setState({ dismissedInitialFkTargetPopover: true });
-    }
-  };
-
-  render() {
-    const { field, table, fields } = this.props;
-    const {
-      isChoosingInitialFkTarget,
-      hasChanged,
-      dismissedInitialFkTargetPopover,
-    } = this.state;
-
-    const mappingType = this.getMappingTypeForField(field);
-    const isFKMapping = mappingType === MAP_OPTIONS.foreign;
-    const hasFKMappingValue =
-      isFKMapping && field.dimensions.human_readable_field_id !== null;
-    const fkMappingField =
-      hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
-
-    return (
-      <div>
-        <SectionHeader
-          title={t`Display values`}
-          description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
-        />
-        <Select
-          triggerClasses={SelectClasses}
-          value={mappingType}
-          onChange={this.onSetMappingType}
-          options={this.getAvailableMappingTypes()}
-        />
-        {mappingType === MAP_OPTIONS.foreign && [
-          <SelectSeparator key="foreignKeySeparator" />,
-          <PopoverWithTrigger
-            ref="fkPopover"
-            triggerElement={
-              <SelectButton
-                hasValue={hasFKMappingValue}
-                className={cx(
-                  "flex inline-block no-decoration h3 p2 shadowed",
-                  {
-                    "border-error": dismissedInitialFkTargetPopover,
-                    "border-dark": !dismissedInitialFkTargetPopover,
-                  },
-                )}
-              >
-                {fkMappingField ? (
-                  fkMappingField.display_name
-                ) : (
-                  <span className="text-light">{t`Choose a field`}</span>
-                )}
-              </SelectButton>
-            }
-            isInitiallyOpen={isChoosingInitialFkTarget}
-            onClose={this.onFkPopoverDismiss}
-          >
-            <FieldList
-              className="text-purple"
-              field={fkMappingField}
-              fieldOptions={{
-                count: 0,
-                dimensions: [],
-                fks: this.getForeignKeys(),
-              }}
-              tableMetadata={table}
-              onFieldChange={this.onForeignKeyFieldChange}
-              hideSectionHeader
-            />
-          </PopoverWithTrigger>,
-          dismissedInitialFkTargetPopover && (
-            <div className="text-error my2">{t`Please select a column to use for display.`}</div>
-          ),
-          hasChanged && hasFKMappingValue && <RemappingNamingTip />,
-        ]}
-        {mappingType === MAP_OPTIONS.custom && (
-          <div className="mt3">
-            {hasChanged && <RemappingNamingTip />}
-            <ValueRemappings
-              remappings={field && field.remapping}
-              updateRemappings={this.onUpdateRemappings}
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
-}
-
-export const RemappingNamingTip = () => (
-  <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip:`}</span>
-    {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
-  </div>
-);
-
-export class UpdateCachedFieldValues extends Component {
-  render() {
-    return (
-      <div>
-        <SectionHeader
-          title={t`Cached field values`}
-          description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
-        />
-        <ActionButton
-          className="Button mr2"
-          actionFn={this.props.rescanFieldValues}
-          normalText={t`Re-scan this field`}
-          activeText={t`Starting…`}
-          failedText={t`Failed to start scan`}
-          successText={t`Scan triggered!`}
-        />
-        <ActionButton
-          className="Button Button--danger"
-          actionFn={this.props.discardFieldValues}
-          normalText={t`Discard cached field values`}
-          activeText={t`Starting…`}
-          failedText={t`Failed to discard values`}
-          successText={t`Discard triggered!`}
         />
       </div>
     );

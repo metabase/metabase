@@ -85,7 +85,7 @@
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- is-cacheable? ^Boolean [{cache-ttl :cache_ttl}]
+(defn- is-cacheable? ^Boolean [{:keys [cache-ttl]}]
   (boolean (and (public-settings/enable-query-caching)
                 cache-ttl)))
 
@@ -121,7 +121,8 @@
       (save-results-if-successful! query-hash results))
     results))
 
-(defn- run-query-with-cache [qp {cache-ttl :cache_ttl, :as query}]
+(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query}]
+  ;; TODO - Query should already have a `info.hash`, shouldn't it?
   (let [query-hash (qputil/query-hash query)]
     (or (cached-results query-hash cache-ttl)
         (run-query-and-save-results-if-successful! query-hash qp query))))
@@ -132,7 +133,7 @@
   In order for a query to be eligible for caching:
 
      *  Caching (the `enable-query-caching` Setting) must be enabled
-     *  The query must pass a `:cache_ttl` value. For Cards, this can be the value of `:cache_ttl`,
+     *  The query must pass a `:cache-ttl` value. For Cards, this can be the value of `:cache_ttl`,
         otherwise falling back to the value of the `query-caching-default-ttl` Setting.
      *  The query must already be permissions-checked. Since the cache bypasses the normal
         query processor pipeline, the ad-hoc permissions-checking middleware isn't applied for cached results.

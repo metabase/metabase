@@ -15,7 +15,7 @@
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.mongodb.DB))
@@ -178,7 +178,7 @@
                                                             (assoc driver/default-port-details :default 27017)
                                                             (assoc driver/default-dbname-details
                                                               :placeholder  (tru "carrierPigeonDeliveries"))
-                                                            driver/default-user-details
+                                                            (assoc driver/default-user-details :required false)
                                                             (assoc driver/default-password-details :name "pass")
                                                             {:name         "authdb"
                                                              :display-name (tru "Authentication Database")

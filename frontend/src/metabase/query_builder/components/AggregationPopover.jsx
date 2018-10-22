@@ -209,7 +209,7 @@ export default class AggregationPopover extends Component {
           name: METRICS_SECTION_NAME,
           items: metrics.map(metric => ({
             name: metric.name,
-            value: ["METRIC", metric.id],
+            value: ["metric", metric.id],
             isSelected: aggregation =>
               AggregationClause.getMetric(aggregation) === metric.id,
             metric: metric,

@@ -14,8 +14,9 @@
              [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
             [ring.core.protocols :as protocols]
             [ring.util.response :as response]
             [schema.core :as s]
@@ -75,9 +76,10 @@
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not tst
-       (throw (if (map? message)
-                (ex-info (:message message) (assoc message :status-code code))
-                (ex-info message            {:status-code code}))))
+       (throw (if (and (map? message)
+                       (not (ui18n/localized-string? message)))
+                (ui18n/ex-info (:message message) (assoc message :status-code code))
+                (ui18n/ex-info message            {:status-code code}))))
      (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
@@ -100,7 +102,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -216,23 +218,23 @@
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
-(def ^:private generic-403
+(defn- generic-403 []
   [403 (tru "You don''t have permissions to do that.")])
 
 (defn check-403
   "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
-  (check arg generic-403))
+  (check arg (generic-403)))
 (defmacro let-403
   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
   {:style/indent 1}
   [& body]
-  `(api-let ~generic-403 ~@body))
+  `(api-let (generic-403) ~@body))
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   []
-  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
@@ -280,7 +282,7 @@
   (let [fn-name                (route-fn-name method route)
         route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
-        [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
+        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
       (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
@@ -437,12 +439,12 @@
                           (finally
                             (async/close! error-chan))))]
     (async/go-loop []
-      (let [[response-or-timeout c] (async/alts!! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
+      (let [[response-or-timeout c] (async/alts! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
         (if response-or-timeout
           ;; We have a response since it's non-nil, write the results and close, we're done
           (do
             ;; If output-chan is closed, it's already too late, nothing else we need to do
-            (async/>!! output-chan response-or-timeout)
+            (async/>! output-chan response-or-timeout)
             (async/close! output-chan))
           (do
             ;; We don't have a result yet, but enough time has passed, let's assume it's not an error
@@ -451,7 +453,7 @@
             ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
             ;; no-ops when reading JSON which this depends upon.
             (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
-            (if (async/>!! output-chan \newline)
+            (if (async/>! output-chan \newline)
               ;; Success put the channel, wait and see if we get the response next time
               (recur)
               ;; The channel is closed, client has given up, we should give up too

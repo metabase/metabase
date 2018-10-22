@@ -30,7 +30,7 @@ describe("ObjectDetailDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 42],
     });
   });
@@ -42,7 +42,7 @@ describe("ObjectDetailDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: PRODUCT_TABLE_ID,
+      "source-table": PRODUCT_TABLE_ID,
       filter: ["=", ["field-id", PRODUCT_PK_FIELD_ID], 43],
     });
   });

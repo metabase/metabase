@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.joins-test
   "Test for JOIN behavior."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -19,11 +18,11 @@
    ["Irvine"       11]
    ["Lakeland"     11]]
   (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/aggregation (ql/count))
-           (ql/breakout $city_id->cities.name)
-           (ql/order-by (ql/desc (ql/aggregate-field 0)))
-           (ql/limit 10)))
+         (data/run-mbql-query sightings
+           {:aggregation [[:count]]
+            :breakout    [$city_id->cities.name]
+            :order-by    [[:desc [:aggregation 0]]]
+            :limit       10}))
        rows (format-rows-by [str int])))
 
 
@@ -33,9 +32,9 @@
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   [[60]]
   (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/aggregation (ql/count))
-           (ql/filter (ql/= $category_id->categories.id 8))))
+         (data/run-mbql-query sightings
+           {:aggregation [[:count]]
+            :filter      [:= $category_id->categories.id 8]}))
        rows (format-rows-by [int])))
 
 
@@ -54,10 +53,10 @@
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
   (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/fields $id $category_id->categories.name)
-           (ql/order-by (ql/desc $timestamp))
-           (ql/limit 10)))
+         (data/run-mbql-query sightings
+           {:fields   [$id $category_id->categories.name]
+            :order-by [[:desc $timestamp]]
+            :limit    10}))
        rows (format-rows-by [int str])))
 
 
@@ -79,25 +78,25 @@
    [2 13  77]
    [2 13 202]]
   (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/order-by (ql/asc $city_id->cities.name)
-                        (ql/desc $category_id->categories.name)
-                        (ql/asc $id))
-           (ql/limit 10)))
-       ;; drop timestamps. reverse ordering to make the results columns order match order_by
+         (data/run-mbql-query sightings
+           {:order-by [[:asc $city_id->cities.name]
+                       [:desc $category_id->categories.name]
+                       [:asc $id]]
+            :limit    10}))
+       ;; drop timestamps. reverse ordering to make the results columns order match order-by
        rows (map butlast) (map reverse) (format-rows-by [int int int])))
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
 (datasets/expect-with-engines (non-timeseries-engines-without-feature :foreign-keys)
   {:status :failed
-   :error "foreign-keys is not supported by this driver."}
+   :error  "foreign-keys is not supported by this driver."}
   (select-keys (data/dataset tupac-sightings
-                 (data/run-query sightings
-                   (ql/order-by (ql/asc $city_id->cities.name)
-                                (ql/desc $category_id->categories.name)
-                                (ql/asc $id))
-                   (ql/limit 10)))
+                 (data/run-mbql-query sightings
+                   {:order-by [[:asc $city_id->cities.name]
+                               [:desc $category_id->categories.name]
+                               [:asc $id]]
+                    :limit    10}))
                [:status :error]))
 
 
@@ -124,7 +123,7 @@
    ["Ronald Raven"     1]]
   (data/dataset avian-singles
     (format-rows-by [str int]
-      (rows (data/run-query messages
-              (ql/aggregation (ql/count))
-              (ql/breakout $sender_id->users.name)
-              (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))
+      (rows (data/run-mbql-query messages
+              {:aggregation [[:count]]
+               :breakout    [$sender_id->users.name]
+               :filter      [:= $reciever_id->users.name "Rasta Toucan"]})))))

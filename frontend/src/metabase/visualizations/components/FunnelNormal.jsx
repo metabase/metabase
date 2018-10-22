@@ -31,7 +31,7 @@ type StepInfo = {
   clicked?: ClickObject,
 };
 
-export default class Funnel extends Component {
+export default class FunnelNormal extends Component {
   props: VisualizationProps;
 
   render() {
@@ -43,6 +43,7 @@ export default class Funnel extends Component {
       onHoverChange,
       onVisualizationClick,
       visualizationIsClickable,
+      settings,
     } = this.props;
 
     const dimensionIndex = 0;
@@ -56,16 +57,15 @@ export default class Funnel extends Component {
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
-        column: cols[dimensionIndex],
+        ...settings.column(cols[dimensionIndex]),
         jsx,
         majorWidth: 0,
       });
     const formatMetric = (metric, jsx = true) =>
       formatValue(metric, {
-        column: cols[metricIndex],
+        ...settings.column(cols[metricIndex]),
         jsx,
         majorWidth: 0,
-        comma: true,
       });
     const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 
@@ -102,11 +102,13 @@ export default class Funnel extends Component {
           data: [
             {
               key: "Step",
-              value: formatDimension(row[dimensionIndex]),
+              value: row[dimensionIndex],
+              col: cols[dimensionIndex],
             },
             {
               key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(row[metricIndex]),
+              value: row[metricIndex],
+              col: cols[metricIndex],
             },
             {
               key: "Retained",
