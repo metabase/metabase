@@ -22,8 +22,8 @@
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
-            [metabase.util.i18n :refer [set-locale]]
-            [puppetlabs.i18n.core :refer [locale-negotiator trs]]
+            [metabase.util.i18n :refer [set-locale trs]]
+            [puppetlabs.i18n.core :refer [locale-negotiator]]
             [ring.adapter.jetty :as ring-jetty]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
@@ -105,6 +105,7 @@
       locale-negotiator                  ; Binds *locale* for i18n
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
+      mb-middleware/add-content-type     ; Adds a Content-Type header for any response that doesn't already have one
       wrap-gzip))                        ; GZIP response if client can handle it
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 

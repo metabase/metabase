@@ -14,9 +14,9 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
+             [i18n :refer [trs tru]]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -421,9 +421,9 @@
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone remapping-lookup cols rows bar-column max-value]
   (for [row rows]
-    {:bar-width (when bar-column
+    {:bar-width (when-let [bar-value (and bar-column (bar-column row))]
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
-                  (float (* 100 (/ (double (bar-column row)) max-value))))
+                  (float (* 100 (/ (double bar-value) max-value))))
      :row (for [[maybe-remapped-col maybe-remapped-row-cell] (map vector cols row)
                 :when (and (not (:remapped_from maybe-remapped-col))
                            (show-in-table? maybe-remapped-col))
@@ -499,14 +499,20 @@
                     (list results-attached table-body)
                     (list table-body))}))
 
+(defn- non-nil-rows
+  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
+  [x-axis-fn y-axis-fn rows]
+  (filter (every-pred x-axis-fn y-axis-fn) rows))
+
 (s/defn ^:private render:bar :- RenderedPulseCard
-  [timezone card {:keys [cols rows] :as data}]
+  [timezone card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        rows (non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
                    (render-table (color/make-color-selector data (:visualization_settings card))
-                                 (mapv :name (:cols data))
+                                 (mapv :name cols)
                                  (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
@@ -542,7 +548,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No appropriate image writer found!")]
+      (let [^String msg (str (tru "No appropriate image writer found!"))]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
@@ -650,10 +656,11 @@
         ft-row (if (datetime-field? (x-axis-rowfn cols))
                  #(.getTime ^Date (du/->Timestamp % timezone))
                  identity)
-        rows   (if (> (ft-row (x-axis-rowfn (first rows)))
-                      (ft-row (x-axis-rowfn (last rows))))
-                 (reverse rows)
-                 rows)
+        rows   (non-nil-rows x-axis-rowfn y-axis-rowfn
+                (if (> (ft-row (x-axis-rowfn (first rows)))
+                       (ft-row (x-axis-rowfn (last rows))))
+                  (reverse rows)
+                  rows))
         xs     (map (comp ft-row x-axis-rowfn) rows)
         xmin   (apply min xs)
         xmax   (apply max xs)
@@ -770,7 +777,7 @@
   [render-type timezone card {:keys [data error]}]
   (try
     (when error
-      (let [^String msg (tru "Card has errors: {0}" error)]
+      (let [^String msg (str (tru "Card has errors: {0}" error))]
         (throw (Exception. msg))))
     (case (detect-pulse-card-type card data)
       :empty     (render:empty     render-type card data)

@@ -27,8 +27,9 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -162,8 +163,8 @@
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
   "Fetch an Alert or Pulse, and do the 'standard' hydrations."
   [notification-or-id & additional-condtions]
-  (-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
-      hydrate-notification))
+  (some-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
+          hydrate-notification))
 
 (s/defn ^:private notification->alert :- PulseInstance
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just

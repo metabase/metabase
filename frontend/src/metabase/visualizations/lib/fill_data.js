@@ -15,47 +15,46 @@ import {
 // TODO: base on pixel width of chart?
 const MAX_FILL_COUNT = 10000;
 
-function fillMissingValues(datas, xValues, fillValue, getKey = v => v) {
+function fillMissingValues(rows, xValues, fillValue, getKey = v => v) {
   try {
-    return datas.map(rows => {
-      const fillValues = rows[0].slice(1).map(d => fillValue);
+    const fillValues = rows[0].slice(1).map(d => fillValue);
 
-      let map = new Map();
-      for (const row of rows) {
-        map.set(getKey(row[0]), row);
+    let map = new Map();
+    for (const row of rows) {
+      map.set(getKey(row[0]), row);
+    }
+    let newRows = xValues.map(value => {
+      const key = getKey(value);
+      const row = map.get(key);
+      if (row) {
+        map.delete(key);
+        return [value, ...row.slice(1)];
+      } else {
+        return [value, ...fillValues];
       }
-      let newRows = xValues.map(value => {
-        const key = getKey(value);
-        const row = map.get(key);
-        if (row) {
-          map.delete(key);
-          return [value, ...row.slice(1)];
-        } else {
-          return [value, ...fillValues];
-        }
-      });
-      if (map.size > 0) {
-        console.warn(t`xValues missing!`, map, newRows);
-      }
-      return newRows;
     });
+    if (map.size > 0) {
+      console.warn(t`xValues missing!`, map, newRows);
+    }
+    return newRows;
   } catch (e) {
     console.warn(e);
-    return datas;
+    return rows;
   }
 }
 
-export default function fillMissingValuesInDatas(
+function fillMissingValuesInData(
   props,
   { xValues, xDomain, xInterval },
-  datas,
+  seriesSettings,
+  rows,
 ) {
   const { settings } = props;
   if (
-    settings["line.missing"] === "zero" ||
-    settings["line.missing"] === "none"
+    seriesSettings["line.missing"] === "zero" ||
+    seriesSettings["line.missing"] === "none"
   ) {
-    const fillValue = settings["line.missing"] === "zero" ? 0 : null;
+    const fillValue = seriesSettings["line.missing"] === "zero" ? 0 : null;
     if (isTimeseries(settings)) {
       // $FlowFixMe
       const { interval, count } = xInterval;
@@ -64,8 +63,8 @@ export default function fillMissingValuesInDatas(
         xValues = d3.time[interval]
           .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
           .map(d => moment(d));
-        datas = fillMissingValues(
-          datas,
+        return fillMissingValues(
+          rows,
           xValues,
           fillValue,
           m => d3.round(m.toDate().getTime(), -1), // sometimes rounds up 1ms?
@@ -87,8 +86,8 @@ export default function fillMissingValuesInDatas(
           end += xInterval * 0.5;
         }
         xValues = d3.range(start, end, xInterval);
-        datas = fillMissingValues(
-          datas,
+        return fillMissingValues(
+          rows,
           xValues,
           fillValue,
           // NOTE: normalize to xInterval to avoid floating point issues
@@ -96,8 +95,26 @@ export default function fillMissingValuesInDatas(
         );
       }
     } else {
-      datas = fillMissingValues(datas, xValues, fillValue);
+      return fillMissingValues(rows, xValues, fillValue);
     }
+  } else {
+    return rows;
   }
-  return datas;
+}
+
+export default function fillMissingValuesInDatas(
+  props,
+  { xValues, xDomain, xInterval },
+  datas,
+) {
+  const { series, settings } = props;
+  return datas.map((rows, index) => {
+    const seriesSettings = settings.series(series[index]);
+    return fillMissingValuesInData(
+      props,
+      { xValues, xDomain, xInterval },
+      seriesSettings,
+      rows,
+    );
+  });
 }

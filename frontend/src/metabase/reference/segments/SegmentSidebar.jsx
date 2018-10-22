@@ -1,13 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
 import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
 import cx from "classnames";
 import pure from "recompose/pure";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
 
 const SegmentSidebar = ({ segment, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
@@ -38,13 +41,14 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         icon="all"
         name={t`Questions about this segment`}
       />
-      <SidebarItem
-        key={`/auto/dashboard/segment/${segment.id}`}
-        href={`/auto/dashboard/segment/${segment.id}`}
-        icon="bolt"
-        name={t`X-ray this segment`}
-      />
-
+      {MetabaseSettings.get("enable_xrays") && (
+        <SidebarItem
+          key={`/auto/dashboard/segment/${segment.id}`}
+          href={`/auto/dashboard/segment/${segment.id}`}
+          icon="bolt"
+          name={t`X-ray this segment`}
+        />
+      )}
       {user &&
         user.is_superuser && (
           <SidebarItem

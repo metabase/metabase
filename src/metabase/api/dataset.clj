@@ -14,8 +14,8 @@
             [metabase.util
              [date :as du]
              [export :as ex]
+             [i18n :refer [trs tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -120,8 +120,9 @@
   [export-format query]
   {query         su/JSONString
    export-format ExportFormat}
-  (let [query (json/parse-string query keyword)]
-    (api/read-check Database (:database query))
+  (let [{:keys [database] :as query} (json/parse-string query keyword)]
+    (when-not (= database database/virtual-id)
+      (api/read-check Database database))
     (as-format export-format
       (qp/process-query-and-save-execution! (-> query
                                                 (dissoc :constraints)

@@ -7,6 +7,7 @@ import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 import AutomaticDashboardDrill from "./AutomaticDashboardDrill";
 import CompareToRestDrill from "./CompareToRestDrill";
 import ZoomDrill from "./ZoomDrill";
+import FormatAction from "./FormatAction";
 
 export const DEFAULT_DRILLS = [
   ZoomDrill,
@@ -16,4 +17,5 @@ export const DEFAULT_DRILLS = [
   UnderlyingRecordsDrill,
   AutomaticDashboardDrill,
   CompareToRestDrill,
+  FormatAction,
 ];

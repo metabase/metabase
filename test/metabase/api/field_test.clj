@@ -18,7 +18,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.util :as u]))
 
 ;; Helper Fns
 
@@ -86,7 +87,8 @@
      :fk_target_field_id  nil
      :parent_id           nil
      :dimensions          []
-     :name_field          nil})
+     :name_field          nil
+     :settings            nil})
   ((user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
 
 
@@ -527,8 +529,8 @@
     :human_readable_field_id false
     :field_id                true}
    []]
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Text"})
@@ -544,13 +546,21 @@
              :name                    "some dimension name"
              :human_readable_field_id false
              :field_id                true})
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:has_field_values "list"})
       [(tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
+
+;; Can we update Field.settings, and fetch it?
+(expect
+  {:field_is_cool true}
+  (tt/with-temp Field [field {:name "Crissy Field"}]
+    ((user->client :crowberto) :put 200 (format "field/%d" (u/get-id field)) {:settings {:field_is_cool true}})
+    (-> ((user->client :crowberto) :get 200 (format "field/%d" (u/get-id field)))
+        :settings)))
 
 
 ;; make sure `search-values` works on with our various drivers

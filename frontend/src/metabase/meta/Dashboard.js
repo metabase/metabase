@@ -176,8 +176,8 @@ export function getCardDimensions(
 ): Array<Dimension> {
   if (card.dataset_query.type === "query") {
     const table =
-      card.dataset_query.query.source_table != null
-        ? metadata.tables[card.dataset_query.query.source_table]
+      card.dataset_query.query["source-table"] != null
+        ? metadata.tables[card.dataset_query.query["source-table"]]
         : null;
     if (table) {
       return getTableDimensions(table, 1, filter);
@@ -251,7 +251,7 @@ export function getCardVariables(
     for (const tag of getTemplateTags(card)) {
       if (!filter || filter(tag)) {
         variables.push({
-          name: tag.display_name || tag.name,
+          name: tag["display-name"] || tag.name,
           type: tag.type,
           target: ["template-tag", tag.name],
         });

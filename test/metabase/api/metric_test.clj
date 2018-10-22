@@ -27,7 +27,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {}})
+   :definition              nil})
 
 (defn- user-details [user]
   (tu/match-$ user
@@ -232,7 +232,7 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
+                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -245,17 +245,17 @@
                                             :points_of_interest      nil
                                             :how_is_this_calculated  nil
                                             :definition              {:database 123
-                                                                      :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                                                                      :query    {:filter [:= [:field-id 10] 20]}}}]
                   Revision [_              {:model       "Metric"
                                             :model_id    id
                                             :object      {:name "b"
-                                                          :definition {:filter ["AND" [">" 1 25]]}}
+                                                          :definition {:filter [:and [:> 1 25]]}}
                                             :is_creation true}]
                   Revision [_              {:model    "Metric"
                                             :model_id id
                                             :user_id  (user->id :crowberto)
                                             :object   {:name "c"
-                                                       :definition {:filter ["AND" [">" 1 25]]}}
+                                                       :definition {:filter [:and [:> 1 25]]}}
                                             :message  "updated"}]]
     (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
              (dissoc revision :timestamp :id)))))
@@ -306,7 +306,7 @@
      :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
                     :description {:after "One metric to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123
-                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
+                                          :query    {:filter ["=" ["field-id" 10] 20]}}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
@@ -327,7 +327,7 @@
                                                                          :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
-                                                                                                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                                                                                                   :query    {:filter [:= [:field-id 10] 20]}}}}]
                   Revision [{revision-id :id} {:model       "Metric"
                                                :model_id    id
                                                :object      {:creator_id              (user->id :crowberto)
@@ -339,7 +339,7 @@
                                                              :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
-                                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                       :query    {:filter [:= [:field-id 10] 20]}}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Metric"
                                                :model_id id
@@ -353,7 +353,7 @@
                                                           :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
-                                                                                    :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                    :query    {:filter [:= [:field-id 10] 20]}}}
                                                :message  "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]

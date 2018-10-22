@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [compojure.core :refer [GET]]
             [honeysql.helpers :as h]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint define-routes]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* check-403 defendpoint
+                                         define-routes]]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -45,7 +46,7 @@
   default-columns)
 
 (defn- ->column
-  "Returns the column name. If the column is aliased, i.e. [`:original_namd` `:aliased_name`], return the aliased
+  "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
   [column-or-aliased]
   (if (sequential? column-or-aliased)
@@ -95,7 +96,7 @@
   [query-map entity-type entity-columns]
   (let [col-name->column (u/key-by ->column entity-columns)
         cols-or-nils     (make-canonical-columns entity-type col-name->column)]
-    (apply h/merge-select query-map (concat cols-or-nils ))))
+    (apply h/merge-select query-map (concat cols-or-nils))))
 
 ;; TODO - not used anywhere except `merge-name-and-archived-search` anymore so we can roll it into that
 (s/defn ^:private merge-name-search

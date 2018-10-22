@@ -2,7 +2,7 @@ import moment from "moment";
 import inflection from "inflection";
 
 import { mbqlEq } from "metabase/lib/query/util";
-import { formatTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 export const DATETIME_UNITS = [
@@ -144,7 +144,7 @@ export function generateTimeValueDescription(value, bucketing) {
   if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
-      return formatTimeWithUnit(value, bucketing);
+      return formatDateTimeWithUnit(value, bucketing);
     } else if (m.hours() || m.minutes()) {
       return m.format("MMMM D, YYYY hh:mm a");
     } else {

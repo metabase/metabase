@@ -9,7 +9,7 @@
              [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (def ^Long grid-width
@@ -100,7 +100,9 @@
   (let [[display visualization-settings] visualization]
     {:display display
      :visualization_settings (-> visualization-settings
-                                 (assoc :graph.series_labels metrics)
+                                 (assoc :graph.series_labels (map :name metrics)
+                                        :graph.metrics       (map :op metrics)
+                                        :graph.dimensions    dimensions)
                                  (merge (colorize card))
                                  (cond->
                                      series_labels (assoc :graph.series_labels series_labels)
@@ -273,10 +275,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/infof (trs "Adding %s cards to dashboard %s:\n%s")
-                (count cards)
-                title
-                (str/join "; " (map :title cards)))
+     (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
+                    (count cards)
+                    title
+                    (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 

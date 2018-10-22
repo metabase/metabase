@@ -90,7 +90,8 @@
    :dimensions               []
    :dimension_options        []
    :has_field_values         nil
-   :default_dimension_option nil})
+   :default_dimension_option nil
+   :settings                 nil})
 
 (defn- field-details [field]
   (merge
@@ -165,6 +166,7 @@
 (defn- default-dimension-options []
   (->> #'table-api/dimension-options-for-response
        var-get
+       (m/map-vals #(update % :name str))
        walk/keywordize-keys))
 
 (defn- query-metadata-defaults []

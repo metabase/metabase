@@ -38,7 +38,7 @@ const getCard = ({
       ...(!isNative
         ? {
             query: {
-              ...(table ? { source_table: table } : {}),
+              ...(table ? { "source-table": table } : {}),
               ...queryFields,
             },
           }

@@ -79,6 +79,14 @@ cards:
       group: Overview
       width: 5
       height: 3
+  - UserbaseGrowth:
+      visualization: smartscalar
+      title: User growth
+      dimensions: JoinDate
+      metrics: Count
+      width: 5
+      height: 3
+      group: Overview
   - NewUsersByMonth:
       visualization: line
       title: New [[this.short-name]] per month

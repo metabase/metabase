@@ -7,7 +7,10 @@ import { assocIn } from "icepick";
 import { t } from "c-3po";
 
 import { POST, DELETE } from "metabase/lib/api";
-import { canonicalCollectionId } from "metabase/entities/collections";
+import {
+  canonicalCollectionId,
+  getCollectionType,
+} from "metabase/entities/collections";
 
 const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
@@ -108,6 +111,11 @@ const Dashboards = createEntity({
           colelctionId === undefined ? "Collection is required" : null,
       },
     ],
+  },
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.collection_id, getState());
+    return type && `collection=${type}`;
   },
 });
 
