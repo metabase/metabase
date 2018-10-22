@@ -8,7 +8,6 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :as ui18n :refer [tru]]
@@ -215,10 +214,10 @@
   [filter-clause]
   (mbql.u/replace filter-clause
     ;; we don't support any of the following as datetime filters
-    #{:= :!= :<= :>= :starts-with :ends-with :contains}
+    #{:!= :<= :>= :starts-with :ends-with :contains}
     nil
 
-    [(_ :guard #{:< :> :between}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    [(_ :guard #{:< :> :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
     nil))
 
 (defn- handle-filter:interval
@@ -240,7 +239,7 @@
               (str (case direction
                      :asc  ""
                      :desc "-")
-                   (mbql.u/match field
+                   (mbql.u/match-one field
                      [:datetime-field _ unit] (unit->ga-dimension unit)
                      [:aggregation index]     (mbql.u/aggregation-at-index query index)
                      [& _]                    (->rvalue &match)))))}))

@@ -157,12 +157,12 @@
 (expect
   {:query {:ids                "ga:98765432"
            :dimensions         "ga:eventLabel"
+           :metrics            "ga:totalEvents"
            :start-date         "30daysAgo"
            :end-date           "yesterday"
            :filters            "ga:eventAction==Run Query;ga:eventLabel!=(not set);ga:eventLabel!=url"
+           :sort               "ga:eventLabel"
            :max-results        10000
-           :segment            nil
-           :metrics            "ga:totalEvents"
            :include-empty-rows false}
    :mbql? true}
   (tt/with-temp* [Database [db                 {:engine :googleanalytics}]

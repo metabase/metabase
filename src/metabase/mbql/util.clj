@@ -1,9 +1,7 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  (:require [clojure
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.string :as str]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util :as u]
@@ -190,13 +188,14 @@
     seq? (recur (vec &match))
 
     ;; if this an an empty filter, toss it
-    nil              nil
-    []               nil
-    [(:or :and :or)] nil
+    nil                                  nil
+    [& (_ :guard (partial every? nil?))] nil
+    []                                   nil
+    [(:or :and :or)]                     nil
 
-    ;; if the clause contains any nils, toss them
-    [& (args :guard (partial some nil?))]
-    (recur (filterv some? args))
+    ;; if the COMPOUND clause contains any nils, toss them
+    [(clause-name :guard #{:and :or}) & (args :guard (partial some nil?))]
+    (recur (apply vector clause-name (filterv some? args)))
 
     ;; Rewrite a `:not` over `:and` using de Morgan's law
     [:not [:and & args]]
