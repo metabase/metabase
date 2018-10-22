@@ -7,23 +7,18 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [trs tru LocalizedString]]
              [schema :as su]]
             [schema
              [coerce :as sc]
              [core :as s]]
             [schema.spec.core :as spec]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path java.nio.file.FileSystems java.nio.file.FileSystem
-           java.nio.file.Files))
+  (:import [java.nio.file Files FileSystem FileSystems Path]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
   100)
-
-(s/defschema TranslatableStr
-  "String marked for translation."
-  (s/pred string?))
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
                                     (trs "0 <= score <= {0}" max-score)))
@@ -34,7 +29,7 @@
 
 (def ^:private Metric {Identifier {(s/required-key :metric) MBQL
                                    (s/required-key :score)  Score
-                                   (s/optional-key :name)   TranslatableStr}})
+                                   (s/optional-key :name)   LocalizedString}})
 
 (def ^:private Filter {Identifier {(s/required-key :filter) MBQL
                                    (s/required-key :score)  Score}})
@@ -93,28 +88,28 @@
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
 
 (def ^:private Card
-  {Identifier {(s/required-key :title)         TranslatableStr
+  {Identifier {(s/required-key :title)         LocalizedString
                (s/required-key :score)         Score
                (s/optional-key :visualization) Visualization
-               (s/optional-key :text)          TranslatableStr
+               (s/optional-key :text)          LocalizedString
                (s/optional-key :dimensions)    [CardDimension]
                (s/optional-key :filters)       [s/Str]
                (s/optional-key :metrics)       [s/Str]
                (s/optional-key :limit)         su/IntGreaterThanZero
                (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   TranslatableStr
+               (s/optional-key :description)   LocalizedString
                (s/optional-key :query)         s/Str
                (s/optional-key :width)         Width
                (s/optional-key :height)        Height
                (s/optional-key :group)         s/Str
-               (s/optional-key :y_label)       TranslatableStr
-               (s/optional-key :x_label)       TranslatableStr
-               (s/optional-key :series_labels) [TranslatableStr]}})
+               (s/optional-key :y_label)       LocalizedString
+               (s/optional-key :x_label)       LocalizedString
+               (s/optional-key :series_labels) [LocalizedString]}})
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)            TranslatableStr
-               (s/optional-key :comparison_title) TranslatableStr
-               (s/optional-key :description)      TranslatableStr}})
+  {Identifier {(s/required-key :title)            LocalizedString
+               (s/optional-key :comparison_title) LocalizedString
+               (s/optional-key :description)      LocalizedString}})
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -194,14 +189,14 @@
 (def Rule
   "Rules defining an automagic dashboard."
   (constrained-all
-   {(s/required-key :title)             TranslatableStr
+   {(s/required-key :title)             LocalizedString
     (s/required-key :rule)              s/Str
     (s/required-key :specificity)       s/Int
     (s/optional-key :cards)             [Card]
     (s/optional-key :dimensions)        [Dimension]
     (s/optional-key :applies_to)        AppliesTo
-    (s/optional-key :transient_title)   TranslatableStr
-    (s/optional-key :description)       TranslatableStr
+    (s/optional-key :transient_title)   LocalizedString
+    (s/optional-key :description)       LocalizedString
     (s/optional-key :metrics)           [Metric]
     (s/optional-key :filters)           [Filter]
     (s/optional-key :groups)            Groups
@@ -279,7 +274,7 @@
                           [(if (-> table-type ->entity table-type?)
                              (->entity table-type)
                              (->type table-type))])))
-    TranslatableStr #(tru %)}))
+    LocalizedString #(tru %)}))
 
 (def ^:private rules-dir "automagic_dashboards/")
 
@@ -373,7 +368,7 @@
       (fn [s params]
         (let [walk (spec/checker (s/spec s) params)]
           (fn [x]
-            (when (= TranslatableStr s)
+            (when (= LocalizedString s)
               (swap! strings conj x))
             (walk x))))
       false
