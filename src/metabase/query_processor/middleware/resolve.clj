@@ -485,13 +485,15 @@
   [expanded-query-dict]
   (log/info expanded-query-dict)
   ;(map #(assoc-table-name (:tables expanded-query-dict) %1) (:fields expanded-query-dict))
-  (let [query (:query expanded-query-dict)
-        breakout (:breakout query)
-    resolved (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %1) breakout)
-    result (assoc (:query expanded-query-dict) :breakout resolved)
-    new-expanded (assoc expanded-query-dict :query result)]
-    (log/info new-expanded)
-    new-expanded))
+  (if (nil? (:breakout (:query expanded-query-dict)))
+    expanded-query-dict
+    (let [query (:query expanded-query-dict)
+          breakout (:breakout query)
+          resolved (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %1) breakout)
+          result (assoc (:query expanded-query-dict) :breakout resolved)
+          new-expanded (assoc expanded-query-dict :query result)]
+      (log/info new-expanded)
+      new-expanded)))
 
 
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
