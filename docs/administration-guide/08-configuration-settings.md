@@ -14,7 +14,7 @@ The **report timezone** sets the default time zone for displaying times. The tim
 *Setting the default timezone will not change the timezone of any data in your database*. If the underlying times in your database aren't assigned to a timezone, Metabase will use the report timezone as the default timezone.
 
 ### Enable X-rays
-[X-rays](../users-guide/14-x-rays.md) are a great way to allow your users to quickly explore tables, question results, or interesting parts of charts. But if you'd prefer your users not use x-rays, you can turn them off here.
+[X-rays](../users-guide/14-x-rays.md) are a great way to allow your users to quickly explore your data or interesting parts of charts, or to see a comparison of different things. But if you're dealing with data sources where allowing users to run x-rays on them would incur burdonsome performance or monetary costs, you can turn them off here.
 
 ### Anonymous Tracking
 This option turns determines whether or not you allow anonymous data about your usage of Metabase to be sent back to us to help us improve the product. *Your database’s data is never tracked or sent*.
