@@ -118,14 +118,20 @@
                        {:model   (model offset slope)
                         :formula (formula offset slope)}))))
                 (apply redux/juxt))
-     :validation-set ((map (juxt fx fy)) (reservoir-sample validation-set-size))})
+     :validation-set ((keep (fn [row]
+                              (let [x (fx row)
+                                    y (fy row)]
+                                (when (and x y)
+                                  [x y]))))
+                      (reservoir-sample validation-set-size))})
    (fn [{:keys [validation-set fits]}]
-     (->> fits
-          (remove nil?)
-          (apply min-key #(transduce identity
-                                     (rmse (comp (:model %) first) second)
-                                     validation-set))
-          :formula))))
+     (some->> fits
+              (remove nil?)
+              not-empty
+              (apply min-key #(transduce identity
+                                         (rmse (comp (:model %) first) second)
+                                         validation-set))
+              :formula))))
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
