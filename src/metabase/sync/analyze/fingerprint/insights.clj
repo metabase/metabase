@@ -110,7 +110,9 @@
                   (redux/post-complete
                    (stats/simple-linear-regression (comp x-link-fn fx) (comp y-link-fn fy))
                    (fn [[offset slope]]
-                     (when-not (or (Double/isNaN offset)
+                     (when-not (or (nil? offset)
+                                   (nil? slope)
+                                   (Double/isNaN offset)
                                    (Double/isNaN slope))
                        {:model   (model offset slope)
                         :formula (formula offset slope)}))))
