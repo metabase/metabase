@@ -108,7 +108,8 @@
    (redux/fuse
     {:fits (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                   (redux/post-complete
-                   (stats/simple-linear-regression (comp x-link-fn fx) (comp y-link-fn fy))
+                   (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
+                                                   (comp (stats/somef y-link-fn) fy))
                    (fn [[offset slope]]
                      (when-not (or (nil? offset)
                                    (nil? slope)
@@ -151,7 +152,7 @@
                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
                      ;; at this stage in the pipeline the value is still an int, so we can use it
                      ;; directly.
-                     (comp ms->day #(nth % x-position)))]
+                     (comp (stats/somef ms->day) #(nth % x-position)))]
     (apply redux/juxt (for [number-col numbers]
                         (redux/post-complete
                          (let [y-position (:position number-col)
