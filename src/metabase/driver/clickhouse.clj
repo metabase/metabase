@@ -136,7 +136,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"system"})
-          :quote-style               (constantly :postgres)
+          :quote-style               (constantly :mysql)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :stddev-fn                 (constantly :stddevPop)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
