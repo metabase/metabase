@@ -455,7 +455,7 @@ export default class Question {
     cancelDeferred,
     isDirty = false,
     ignoreCache = false,
-  } = {}): Promise<[Dataset]> {
+  } = {}): Promise<Dataset[]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
 
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
