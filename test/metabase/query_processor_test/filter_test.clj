@@ -89,7 +89,6 @@
 ;;; FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-engines
   {:rows        [[29]]
-   :columns     ["count"]
    :cols        [(aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query checkins

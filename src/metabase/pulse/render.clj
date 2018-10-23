@@ -789,7 +789,9 @@
                  (class e)
                  (.getMessage e)
                  "\n"
-                 (u/pprint-to-str (u/filtered-stacktrace e)))
+                 (u/pprint-to-str (u/filtered-stacktrace e))
+                 "\n"
+                 (u/pprint-to-str 'red (ex-data e)))
       (render:error card data))))
 
 (s/defn ^:private render-pulse-card :- RenderedPulseCard

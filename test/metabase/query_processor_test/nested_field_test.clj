@@ -79,40 +79,40 @@
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
-  {:rows        [["facebook"   107]
-                 ["flare"      105]
-                 ["foursquare" 100]
-                 ["twitter"     98]
-                 ["yelp"        90]]
-   :columns     ["source.service" "count"]
-   :native_form true}
+  {:rows      [["facebook"   107]
+               ["flare"      105]
+               ["foursquare" 100]
+               ["twitter"     98]
+               ["yelp"        90]]
+   :col-names ["source.service" "count"]}
   (->> (data/dataset geographical-tips
          (data/run-mbql-query tips
            {:aggregation [[:count]]
             :breakout    [$tips.source.service]}))
        booleanize-native-form
-       :data (#(dissoc % :cols)) (format-rows-by [str int])))
+       rows+column-names
+       (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-fields)
-  {:columns ["venue.name"]
-   :rows    [["Lucky's Gluten-Free Café"]
-             ["Joe's Homestyle Eatery"]
-             ["Lower Pac Heights Cage-Free Coffee House"]
-             ["Oakland European Liquor Store"]
-             ["Tenderloin Gormet Restaurant"]
-             ["Marina Modern Sushi"]
-             ["Sunset Homestyle Grill"]
-             ["Kyle's Low-Carb Grill"]
-             ["Mission Homestyle Churros"]
-             ["Sameer's Pizza Liquor Store"]]}
-  (select-keys (:data (data/dataset geographical-tips
-                        (data/run-mbql-query tips
-                          {:fields   [$tips.venue.name]
-                           :order-by [[:asc $id]]
-                           :limit    10})))
-               [:columns :rows]))
+  {:col-names ["venue.name"]
+   :rows      [["Lucky's Gluten-Free Café"]
+               ["Joe's Homestyle Eatery"]
+               ["Lower Pac Heights Cage-Free Coffee House"]
+               ["Oakland European Liquor Store"]
+               ["Tenderloin Gormet Restaurant"]
+               ["Marina Modern Sushi"]
+               ["Sunset Homestyle Grill"]
+               ["Kyle's Low-Carb Grill"]
+               ["Mission Homestyle Churros"]
+               ["Sameer's Pizza Liquor Store"]]}
+  (rows+column-names
+    (data/dataset geographical-tips
+      (data/run-mbql-query tips
+        {:fields   [$tips.venue.name]
+         :order-by [[:asc $id]]
+         :limit    10}))))
 
 
 ;;; Nested Field w/ ordering by aggregation

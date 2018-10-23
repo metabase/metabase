@@ -8,6 +8,8 @@
    https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
   1048576)
 
+;; TODO - I think we could do this more generally by just changing the log level for the QP namespaces to error or
+;; warn with the help of a macro like `metabase.test.util/suppress-output`
 (def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."

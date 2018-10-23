@@ -56,20 +56,21 @@
 
 (expect
   com.jcraft.jsch.JSchException
-  (let [engine :oracle
-        details {:ssl false,
-                 :password "changeme",
-                 :tunnel-host "localhost",
-                 :tunnel-pass "BOGUS-BOGUS-BOGUS",
-                 :port 12345,
-                 :service-name "test",
-                 :sid "asdf",
-                 :host "localhost",
-                 :tunnel-enabled true,
-                 :tunnel-port 22,
-                 :user "postgres",
-                 :tunnel-user "example"}]
-    (#'oracle/can-connect? details)))
+  (tu/suppress-output
+    (let [engine  :oracle
+          details {:ssl            false
+                   :password       "changeme"
+                   :tunnel-host    "localhost"
+                   :tunnel-pass    "BOGUS-BOGUS-BOGUS"
+                   :port           12345
+                   :service-name   "test"
+                   :sid            "asdf"
+                   :host           "localhost"
+                   :tunnel-enabled true
+                   :tunnel-port    22
+                   :user           "postgres"
+                   :tunnel-user    "example"}]
+      (#'oracle/can-connect? details))))
 
 (expect-with-engine :oracle
   "UTC"

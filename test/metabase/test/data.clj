@@ -20,7 +20,8 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
 (declare get-or-create-database!)
@@ -277,7 +278,10 @@
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase
   `Databases`/`Tables`/`Fields`, and sync the `Database`. DRIVER should be an object that implements
   `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the current
-  dataset (`*driver*`), which is H2 by default."
+  dataset (`*driver*`), which is H2 by default.
+
+  You shouldn't need to use this manually, especially in combination with `with-db` -- use `data/with-copy-of-dataset`
+  instead."
   ([database-definition]
    (get-or-create-database! *driver* database-definition))
   ([driver database-definition]
@@ -285,6 +289,10 @@
          get-or-create! (fn []
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
+     ;; most of the time we need to reload test extensions anyway (see code below) for whatever reason so check if we
+     ;; need to do that *before* we end up pooping out a huge stacktrace
+     (when-not (satisfies? i/IDriverTestExtensions driver)
+       (reload-test-extensions engine))
      (try
        (get-or-create!)
        ;; occasionally we'll see an error like
@@ -296,7 +304,7 @@
          (get-or-create!))))))
 
 
-(defn do-with-temp-db
+(defn do-with-current-db
   "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was
   loaded and synced from DBDEF."
   [^DatabaseDefinition dbdef, f]
@@ -310,11 +318,11 @@
           (f db))))))
 
 
-(defmacro with-temp-db
+(defmacro with-current-db
   "Load and sync DATABASE-DEFINITION with DRIVER and execute BODY with the newly created `Database` bound to
   DB-BINDING, and make it the current database for `metabase.test.data` functions like `id`.
 
-     (with-temp-db [db tupac-sightings]
+     (with-current-db [db tupac-sightings]
        (driver/process-quiery {:database (:id db)
                                :type     :query
                                :query    {:source-table (:id &events)
@@ -324,7 +332,7 @@
   A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion
   of the suite."
   [[db-binding, ^DatabaseDefinition database-definition] & body]
-  `(do-with-temp-db ~database-definition
+  `(do-with-current-db ~database-definition
      (fn [~db-binding]
        ~@body)))
 
@@ -338,14 +346,14 @@
   "Load and sync a temporary `Database` defined by DATASET, make it the current DB (for `metabase.test.data` functions
   like `id`), and execute BODY.
 
-  Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
+  Like `with-current-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
   DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
 
      (dataset sad-toucan-incidents
        ...)"
   {:style/indent 1}
   [dataset & body]
-  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+  `(with-current-db [_# (resolve-dbdef '~dataset)]
      ~@body))
 
 (defn- delete-model-instance!
@@ -367,6 +375,9 @@
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
+
+;;; ------------------------------------------- venue category remappings --------------------------------------------
+
 (def venue-categories
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
@@ -376,10 +387,10 @@
   [remapping-name]
   (fn []
     [(db/insert! Dimension {:field_id (id :venues :category_id)
-                            :name remapping-name
-                            :type :internal})
-     (db/insert! FieldValues {:field_id (id :venues :category_id)
-                              :values (json/generate-string (range 0 (count venue-categories)))
+                            :name     remapping-name
+                            :type     :internal})
+     (db/insert! FieldValues {:field_id              (id :venues :category_id)
+                              :values                (json/generate-string (range 0 (count venue-categories)))
                               :human_readable_values (json/generate-string (map first venue-categories))})]))
 
 (defn create-venue-category-fk-remapping
@@ -391,3 +402,46 @@
                             :name remapping-name
                             :type :external
                             :human_readable_field_id (id :categories :name)})]))
+
+
+;;; -------------------------------------------- Temp copies of test DBs ---------------------------------------------
+
+(defn- copy-db-tables-and-fields! [source-db dest-db]
+  (doseq [source-table (db/select Table :db_id (u/get-id source-db))]
+    (let [dest-table (db/insert! Table (-> (dissoc source-table :id)
+                                           (assoc :db_id (u/get-id dest-db))))]
+      (db/insert-many! Field (u/prog1 (for [field (db/select Field :table_id (u/get-id source-table))]
+                                        (-> (dissoc field :id)
+                                            (assoc :table_id (u/get-id dest-table)))))))))
+
+(defn do-with-copy-of-db
+  "Execute `f` with `db` and `id` bound to a copy of Database `db`, recursively copying its Tables and Fields as well.
+  This doesn't not need to insert data or sync it, speeding things up significantly over recreating the DB from
+  scratch."
+  [db f]
+  (with-db db
+    (tt/with-temp Database [db-copy (dissoc db :id :features)]
+      (copy-db-tables-and-fields! db db-copy)
+      (with-db db-copy
+        (f)))))
+
+(defmacro with-copy-of-db
+  "Execute body with `db`, `id`, and the like bound to a temporary copy of a DB."
+  {:style/indent 1}
+  [db & body]
+  `(do-with-copy-of-db ~db (fn [] ~@body)))
+
+(defmacro with-copy-of-dataset
+  "Execute body with `db`, `id`, and the like bound to a temporary copy of a DB containing data defined by the symbol
+  `dataset`."
+  {:style/indent 1}
+  [dataset & body]
+  `(with-current-db [db# (resolve-dbdef '~dataset)]
+     (do-with-copy-of-db db# (fn [] ~@body))))
+
+(defmacro with-copy-of-test-db
+  "Execute `body` with `db`, `id`, and the like bound to a temporary copy of the standard test DB, which you can safely
+  modify as desired."
+  {:style/indent 0}
+  [& body]
+  `(with-copy-of-dataset ~'test-data ~@body))

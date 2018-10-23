@@ -24,9 +24,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [users :refer :all]]
-            [toucan
-             [db :as db]
-             [hydrate :as hydrate]]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;; HELPER FNS
@@ -645,14 +643,16 @@
 
 (expect
   {:valid false, :message "Error!"}
-  (with-redefs [database-api/test-database-connection test-database-connection]
-    (#'database-api/test-connection-details "h2" {:db "ABC"})))
+  (tu/suppress-output
+    (with-redefs [database-api/test-database-connection test-database-connection]
+      (#'database-api/test-connection-details "h2" {:db "ABC"}))))
 
 (expect
   {:valid false}
-  (with-redefs [database-api/test-database-connection test-database-connection]
-    ((user->client :crowberto) :post 200 "database/validate"
-     {:details {:engine :h2, :details {:db "ABC"}}})))
+  (tu/suppress-output
+    (with-redefs [database-api/test-database-connection test-database-connection]
+      ((user->client :crowberto) :post 200 "database/validate"
+       {:details {:engine :h2, :details {:db "ABC"}}}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

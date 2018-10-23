@@ -30,9 +30,7 @@
 
 ;;; order-by aggregate ["count"]
 (qp-expect-with-all-engines
-  {:columns     [(data/format-name "price")
-                 "count"]
-   :rows        [[4  6]
+  {:rows        [[4  6]
                  [3 13]
                  [1 22]
                  [2 59]]
@@ -49,9 +47,7 @@
 
 ;;; order-by aggregate ["sum" field-id]
 (qp-expect-with-all-engines
-  {:columns     [(data/format-name "price")
-                 "sum"]
-   :rows        [[2 2855]
+  {:rows        [[2 2855]
                  [1 1211]
                  [3  615]
                  [4  369]]
@@ -68,9 +64,7 @@
 
 ;;; order-by aggregate ["distinct" field-id]
 (qp-expect-with-all-engines
-  {:columns     [(data/format-name "price")
-                 "count"]
-   :rows        [[4  6]
+  {:rows        [[4  6]
                  [3 13]
                  [1 22]
                  [2 59]]
@@ -87,9 +81,7 @@
 
 ;;; order-by aggregate ["avg" field-id]
 (expect-with-non-timeseries-dbs
-  {:columns     [(data/format-name "price")
-                 "avg"]
-   :rows        [[3 22]
+  {:rows        [[3 22]
                  [2 28]
                  [1 32]
                  [4 53]]
@@ -108,9 +100,7 @@
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
-  {:columns     [(data/format-name "price")
-                 "stddev"]
-   :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
+  {:rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
                  [1 24]
                  [2 21]
                  [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]

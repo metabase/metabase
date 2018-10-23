@@ -50,10 +50,9 @@
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
-  {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}]}
+  {:cols [{:name "venue_id", :display_name "Venue ID", :base_type :type/Integer}
+          {:name "user_id", :display_name "User ID", :base_type :type/Integer}
+          {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}]}
 
   (select-keys (:data (qp/process-query
                         {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -63,18 +62,19 @@
                                                 "LIMIT 2")}
                          :type     :native
                          :database (data/id)}))
-               [:cols :columns]))
+               [:cols]))
 
 ;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
 (expect-with-engine :bigquery
-  {:rows    [[113]]
-   :columns ["User_ID_Plus_Venue_ID"]}
+  {:rows      [[113]]
+   :col-names ["User_ID_Plus_Venue_ID"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
                        :query    {:source-table (data/id :checkins)
-                                  :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
-                                                                      ["field-id" (data/id :checkins :venue_id)]]]
+                                  :aggregation  [["named" ["max" ["+"
+                                                                  ["field-id" (data/id :checkins :user_id)]
+                                                                  ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
 
 ;; can we generate unique names?
@@ -134,7 +134,7 @@
      [:min [:field-id (data/id :venues :id)]]])))
 
 (expect-with-engine :bigquery
-  {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
+  {:rows [[7929 7929]], :col-names ["sum" "sum_2"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
@@ -143,7 +143,7 @@
                                                 [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
 (expect-with-engine :bigquery
-  {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
+  {:rows [[7929 7929 7929]], :col-names ["sum" "sum_2" "sum_3"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"

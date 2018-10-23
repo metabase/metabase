@@ -49,7 +49,7 @@
 
 (defn- pulse-test-fixture
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
+  (data/with-copy-of-test-db
     (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
       (f))))
 

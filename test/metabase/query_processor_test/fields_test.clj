@@ -16,7 +16,6 @@
                  ["25°"                           8]
                  ["Krua Siri"                     9]
                  ["Fred 62"                      10]]
-   :columns     (->columns "name" "id")
    :cols        [(venues-col :name)
                  (venues-col :id)]
    :native_form true}

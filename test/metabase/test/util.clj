@@ -42,7 +42,7 @@
             [toucan.util.test :as test])
   (:import com.mchange.v2.c3p0.PooledDataSource
            java.util.TimeZone
-           org.apache.log4j.Logger
+           [org.apache.log4j Level Logger LogManager]
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -138,7 +138,13 @@
 (u/strict-extend (class Card)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
-                                :dataset_query          {}
+                                :dataset_query          {:database (data/id)
+                                                         :type     :query
+                                                         ;; first table fot the current DB
+                                                         :query    {:source-table (db/select-one-id Table
+                                                                                    :db_id (data/id)
+                                                                                    {:order-by [[:id :asc]]})
+                                                                    :limit        1}}
                                 :display                :table
                                 :name                   (random-name)
                                 :visualization_settings {}})})
@@ -668,3 +674,23 @@
 
     :else
     x))
+
+(defn do-with-suppressed-output [f]
+  (let [loggers          (enumeration-seq (LogManager/getCurrentLoggers))
+        logger+old-level (vec (for [^Logger logger loggers]
+                                [logger (.getLevel logger)]))]
+    (log/with-logs ""
+      (try
+        (doseq [^Logger logger loggers]
+          (.setLevel logger Level/OFF))
+        (f)
+        (finally
+          (doseq [[^Logger logger, ^Level old-level] logger+old-level]
+            (.setLevel logger old-level)))))))
+
+(defmacro suppress-output
+  "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output
+  for tests with stacktraces and error messages from tests that are supposed to fail."
+  {:style/indent 0}
+  [& body]
+  `(do-with-suppressed-output (fn [] ~@body)))

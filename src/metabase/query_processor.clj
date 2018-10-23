@@ -103,10 +103,10 @@
       ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
+      dev/check-results-format
       annotate/add-column-info
       perms/check-query-permissions
       resolve-joined-tables/resolve-joined-tables
-      dev/check-results-format
       limit/limit
       cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
@@ -223,6 +223,9 @@
 ;; `process-query-and-save-execution!` is the function used by various things like API endpoints and pulses;
 ;; `process-query` is more of an internal function
 
+;; TODO - shouldn't (or couldn't) all this stuff below be implemented as middleware? We could disable it by default
+;; and turn it on/off with a `:middleware` option. It's just cluttering up this namespace right now IMO
+
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [query-execution]
@@ -244,9 +247,7 @@
       (assoc :status    :failed
              :error     error-message
              :row_count 0
-             :data      {:rows    []
-                         :cols    []
-                         :columns []})))
+             :data      {:rows [], :cols []})))
 
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"

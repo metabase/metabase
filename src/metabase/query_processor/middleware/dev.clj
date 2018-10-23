@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.dev
-  "Middleware that's only active in dev and test scenarios. These middleware functions do additional checks
-   of query processor behavior that are undesirable in normal production use."
+  "Middleware that's only active in dev and test scenarios. These middleware functions do additional checks of query
+  processor behavior that are undesirable in normal production use."
   (:require [metabase.config :as config]
             [schema.core :as s]))
 
@@ -9,21 +9,22 @@
 
 (def QPResultsFormat
   "Schema for the expected format of results returned by a query processor."
-  {:columns               [(s/cond-pre s/Keyword s/Str)]
+  {;; driver QPs must return this. The `annotate` middleware uses this to generate the `:cols` map, and will discard
+   ;; this key when it's finished because it's not used anywhere else thereafter.
+   :columns               [s/Str]
    ;; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
    (s/optional-key :cols) [{s/Keyword s/Any}]
    :rows                  s/Any
    s/Keyword              s/Any})
 
 (def ^{:arglists '([results])} validate-results
-  "Validate that the RESULTS of executing a query match the `QPResultsFormat` schema.
-   Throws an `Exception` if they are not; returns RESULTS as-is if they are."
+  "Validate that the RESULTS of executing a query match the `QPResultsFormat` schema. Throws an `Exception` if they are
+  not; returns RESULTS as-is if they are."
   (s/validator QPResultsFormat))
 
 (def ^{:arglists '([qp])} check-results-format
-  "Make sure the results of a QP execution are in the expected format.
-   This takes place *after* the 'annotation' stage of post-processing.
-   This check is skipped in prod to avoid wasting CPU cycles."
+  "Make sure the results of a QP execution are in the expected format. This takes place *after* the 'annotation' stage
+  of post-processing. This check is skipped in prod to avoid wasting CPU cycles."
   (if config/is-prod?
     identity
     (fn [qp]

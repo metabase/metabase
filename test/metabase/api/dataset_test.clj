@@ -18,22 +18,13 @@
              [data :as data :refer :all]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :refer [expect-with-engine]]
              [users :refer :all]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn user-details [user]
-  (tu/match-$ user
-    {:email        $
-     :date_joined  $
-     :first_name   $
-     :last_name    $
-     :last_login   $
-     :is_superuser $
-     :is_qbnewb    $
-     :common_name  $}))
+  (select-keys user [:email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :common_name]))
 
 (defn format-response [m]
   (into {} (for [[k v] (-> m
@@ -51,9 +42,8 @@
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
-  [ ;; API call response
+  {:api-response
    {:data                   {:rows        [[1000]]
-                             :columns     ["count"]
                              :cols        [{:base_type    "type/Integer"
                                             :special_type "type/Number"
                                             :name         "count"
@@ -71,7 +61,8 @@
     :started_at             true
     :running_time           true
     :average_execution_time nil}
-   ;; QueryExecution record in the DB
+
+   :query-execution
    {:hash         true
     :row_count    1
     :result_rows  1
@@ -84,19 +75,21 @@
     :error        nil
     :id           true
     :started_at   true
-    :running_time true}]
+    :running_time true}}
   (let [result ((user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                             {:aggregation [[:count]]}))]
-    [(format-response result)
-     (format-response (most-recent-query-execution))]))
+    {:api-response
+     (format-response result)
+
+     :query-execution
+     (format-response (most-recent-query-execution))}))
 
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
-  [;; API call response
-   {:data         {:rows    []
-                   :columns []
-                   :cols    []}
+  {:api-response
+   {:data         {:rows []
+                   :cols []}
     :row_count    0
     :status       "failed"
     :context      "ad-hoc"
@@ -107,7 +100,8 @@
                    :constraints qp/default-query-constraints}
     :started_at   true
     :running_time true}
-   ;; QueryExecution entry in the DB
+
+   :query-execution
    {:hash         true
     :id           true
     :result_rows  0
@@ -120,17 +114,21 @@
     :native       true
     :pulse_id     nil
     :card_id      nil
-    :dashboard_id nil}]
+    :dashboard_id nil}}
   ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that
   ;; it exists and contains the substring "Syntax error in SQL statement"
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
-     (check-error-message (format-response (most-recent-query-execution)))]))
+        result              (tu/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (data/id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    {:api-response
+     (check-error-message (format-response result))
+
+     :query-execution
+     (check-error-message (format-response (most-recent-query-execution)))}))
 
 
 ;;; Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in XLSX (#5145, #5220, #5459)
@@ -139,7 +137,7 @@
 (generate/add-encoder
  SampleNastyClass
  (fn [obj, ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-   (.writeString json-generator (:v obj))))
+   (.writeString json-generator ^String (:v obj))))
 
 (defrecord ^:private AnotherNastyClass [^String v])
 
@@ -180,7 +178,7 @@
    ["3" "2014-09-15" "" "8" "56"]
    ["4" "2014-03-11" "" "5" "4"]
    ["5" "2013-05-05" "" "3" "49"]]
-  (with-db (get-or-create-database! defs/test-data-with-null-date-checkins)
+  (data/dataset test-data-with-null-date-checkins
     (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
                   (json/generate-string (data/mbql-query checkins)))]
       (take 5 (parse-and-sort-csv result)))))

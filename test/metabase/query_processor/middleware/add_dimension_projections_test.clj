@@ -116,18 +116,17 @@
    :display_name    "Foo"})
 
 (expect
-  {:rows    [[1 "Red Medicine"                  4 3 "Foo"]
-             [2 "Stout Burgers & Beers"        11 2 "Bar"]
-             [3 "The Apple Pan"                11 2 "Bar"]
-             [4 "Wurstküche"                   29 2 "Baz"]
-             [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
-   :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "Foo"]
-   :cols    [example-result-cols-id
-             example-result-cols-name
-             (assoc example-result-cols-category-id
-               :remapped_to "Foo")
-             example-result-cols-price
-             example-result-cols-foo]}
+  {:rows [[1 "Red Medicine"                  4 3 "Foo"]
+          [2 "Stout Burgers & Beers"        11 2 "Bar"]
+          [3 "The Apple Pan"                11 2 "Bar"]
+          [4 "Wurstküche"                   29 2 "Baz"]
+          [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
+   :cols [example-result-cols-id
+          example-result-cols-name
+          (assoc example-result-cols-category-id
+            :remapped_to "Foo")
+          example-result-cols-price
+          example-result-cols-foo]}
   ;; swap out `hydrate` with one that will add some fake dimensions and values for CATEGORY_ID.
   (with-redefs [hydrate/hydrate (fn [fields & _]
                                   (for [{field-name :name, :as field} fields]
@@ -138,16 +137,15 @@
                                                           :values                [4 11 29 20]}))))]
     (#'add-dim-projections/remap-results
      nil
-     {:rows    [[1 "Red Medicine"                  4 3]
-                [2 "Stout Burgers & Beers"        11 2]
-                [3 "The Apple Pan"                11 2]
-                [4 "Wurstküche"                   29 2]
-                [5 "Brite Spot Family Restaurant" 20 2]]
-      :columns ["ID" "NAME" "CATEGORY_ID" "PRICE"]
-      :cols    [example-result-cols-id
-                example-result-cols-name
-                example-result-cols-category-id
-                example-result-cols-price]})))
+     {:rows [[1 "Red Medicine"                  4 3]
+             [2 "Stout Burgers & Beers"        11 2]
+             [3 "The Apple Pan"                11 2]
+             [4 "Wurstküche"                   29 2]
+             [5 "Brite Spot Family Restaurant" 20 2]]
+      :cols [example-result-cols-id
+             example-result-cols-name
+             example-result-cols-category-id
+             example-result-cols-price]})))
 
 ;; test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info
 (def ^:private example-result-cols-category
@@ -165,22 +163,20 @@
     :base_type       :type/Text}))
 
 (expect
-  {:rows    []
-   :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "CATEGORY"]
-   :cols    [example-result-cols-id
-             example-result-cols-name
-             (assoc example-result-cols-category-id
-               :remapped_to "CATEGORY")
-             example-result-cols-price
-             (assoc example-result-cols-category
-               :remapped_from "CATEGORY_ID"
-               :display_name  "My Venue Category")]}
+  {:rows []
+   :cols [example-result-cols-id
+          example-result-cols-name
+          (assoc example-result-cols-category-id
+            :remapped_to "CATEGORY")
+          example-result-cols-price
+          (assoc example-result-cols-category
+            :remapped_from "CATEGORY_ID"
+            :display_name  "My Venue Category")]}
   (#'add-dim-projections/remap-results
    [{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
-   {:rows    []
-    :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "CATEGORY"]
-    :cols    [example-result-cols-id
-              example-result-cols-name
-              example-result-cols-category-id
-              example-result-cols-price
-              example-result-cols-category]}))
+   {:rows []
+    :cols [example-result-cols-id
+           example-result-cols-name
+           example-result-cols-category-id
+           example-result-cols-price
+           example-result-cols-category]}))

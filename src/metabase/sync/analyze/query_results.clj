@@ -21,7 +21,7 @@
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata
-  "Result metadata for a single column"
+  "Schema for result metadata for a single column, found in a QP response under `data.results_metadata.columns`."
   {:name                          su/NonBlankString
    :display_name                  su/NonBlankString
    (s/optional-key :description)  (s/maybe su/NonBlankString)
@@ -41,8 +41,9 @@
   special type with a nil special type"
   [result-metadata col]
   (update result-metadata :special_type (fn [original-value]
-                                          ;; If we already know the special type, becouse it is stored, don't classify again,
-                                          ;; but try to refine special type set upstream for aggregation cols (which come back as :type/Number).
+                                          ;; If we already know the special type, becouse it is stored, don't classify
+                                          ;; again, but try to refine special type set upstream for aggregation cols
+                                          ;; (which come back as :type/Number).
                                           (case original-value
                                             (nil :type/Number) (classify-name/infer-special-type col)
                                             original-value))))
@@ -54,7 +55,8 @@
   [column]
   (merge
    (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])
-   ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as DateTime columns
+   ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as
+   ;; DateTime columns
    (when (= (:unit column) :year)
      {:base_type :type/Text
       :unit      nil})))

@@ -23,7 +23,7 @@
      [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00.000Z" "16:15:00.000Z"]
      [4 "Simcha Yan" "2014-01-01T00:00:00.000Z" "08:30:00.000Z"]
      [5 "Quentin Sören" "2014-10-03T00:00:00.000Z" "17:30:00.000Z"]])
-  (->> (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+  (->> (data/dataset test-data-with-time
          (data/run-mbql-query users
            {:order-by [[:asc $id]]
             :limit    5}))
@@ -52,7 +52,7 @@
      [4 "Simcha Yan" "2014-01-01T00:00:00.000Z" "08:30:00.000Z"]
      [5 "Quentin Sören" "2014-10-03T00:00:00.000Z" "17:30:00.000Z"]])
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (->> (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+    (->> (data/dataset test-data-with-time
            (data/run-mbql-query users
              {:order-by [[:asc $id]]
               :limit    5}))

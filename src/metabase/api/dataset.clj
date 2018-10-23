@@ -96,12 +96,12 @@
 (defn as-format
   "Return a response containing the RESULTS of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [columns rows cols]} :data, :keys [status], :as response}]
+  [export-format {{:keys [rows cols]} :data, :keys [status], :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
-       :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
+       :body    ((:export-fn export-conf) (map :name cols) (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
                  "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}
       ;; failed query, send error message

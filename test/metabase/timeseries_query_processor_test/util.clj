@@ -21,12 +21,12 @@
   []
   (doseq [engine event-based-dbs]
     (datasets/with-engine-when-testing engine
-      (data/do-with-temp-db @flattened-db-def (constantly nil)))))
+      (data/do-with-current-db @flattened-db-def (constantly nil)))))
 
 (defn do-with-flattened-dbdef
   "Execute F with a flattened version of the test data DB as the current DB def."
   [f]
-  (data/do-with-temp-db @flattened-db-def (u/drop-first-arg f)))
+  (data/do-with-current-db @flattened-db-def (u/drop-first-arg f)))
 
 (defmacro with-flattened-dbdef
   "Execute BODY using the flattened test data DB definition."

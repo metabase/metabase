@@ -9,7 +9,8 @@
              [date :as du]
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.util :as u])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
@@ -332,8 +333,7 @@
         ^GaData response (do-query query)
         columns          (map header->column (.getColumnHeaders response))
         getters          (map header->getter-fn (.getColumnHeaders response))]
-    {:columns  (map :name columns)
-     :cols     columns
+    {:columns  (map (comp u/keyword->qualified-name :name) columns)
      :rows     (for [row (.getRows response)]
                  (for [[data getter] (map vector row getters)]
                    (getter data)))

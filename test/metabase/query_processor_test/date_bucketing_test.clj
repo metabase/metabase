@@ -25,7 +25,6 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets :refer [*driver* *engine*]]
              [interface :as i]])
   (:import org.joda.time.DateTime))
@@ -46,13 +45,13 @@
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
-   (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+   (->> (data/dataset sad-toucan-incidents
           (data/run-mbql-query incidents
             {:aggregation [[:count]]
              :breakout    [[:datetime-field $timestamp unit]]
              :limit       10}))
         rows (format-rows-by [->long-if-number int])))
-  ([unit tz]
+  ([unit, ^org.joda.time.DateTimeZone tz]
    (tu/with-temporary-setting-values [report-timezone (.getID tz)]
      (sad-toucan-incidents-with-bucketing unit))))
 
@@ -302,7 +301,7 @@
 
 (defn- offset-time
   "Add to `date` offset from UTC found in `tz`"
-  [tz date]
+  [^org.joda.time.DateTimeZone tz, ^org.joda.time.ReadableInstant date]
   (time/minus date
               (time/seconds
                (/ (.getOffset tz date) 1000))))
@@ -310,7 +309,7 @@
 (defn- find-events-in-range
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
-  (-> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+  (-> (data/dataset sad-toucan-incidents
         (data/run-mbql-query incidents
           {:aggregation [[:count]]
            :breakout    [[:datetime-field $timestamp :day]]
@@ -799,7 +798,7 @@
 (def ^:private checkins:1-per-day    (partial database-def-with-timestamps (* 60 60 24)))
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
-  (-> (data/with-temp-db [_ db]
+  (-> (data/with-current-db [_ db]
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:=
@@ -831,7 +830,7 @@
 ;; SYNTACTIC SUGAR
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   1
-  (-> (data/with-temp-db [_ (checkins:1-per-day)]
+  (-> (data/with-current-db [_ (checkins:1-per-day)]
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:time-interval $timestamp :current :day]}))
@@ -839,7 +838,7 @@
 
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   7
-  (-> (data/with-temp-db [_ (checkins:1-per-day)]
+  (-> (data/with-current-db [_ (checkins:1-per-day)]
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:time-interval $timestamp :last :week]}))
@@ -850,7 +849,7 @@
 ;; and the col info use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
                                         :or   {with-interval :current}}]
-  (let [results (data/with-temp-db [_ (checkins:1-per-day)]
+  (let [results (data/with-current-db [_ (checkins:1-per-day)]
                   (data/run-mbql-query checkins
                     {:aggregation [[:count]]
                      :breakout    [[:datetime-field $timestamp breakout-by]]

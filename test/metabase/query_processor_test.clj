@@ -80,14 +80,6 @@
      ~query-form))
 
 
-(defn ->columns
-  "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each
-  column name."
-  [& names]
-  (mapv (partial data/format-name)
-        names))
-
-
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
 
@@ -159,11 +151,6 @@
                                                           :latest   "2014-12-05T15:15:00.000Z"}}}})))
 
 ;; #### venues
-(defn venues-columns
-  "Names of all columns for the `venues` table."
-  []
-  (->columns "id" "name" "category_id" "latitude" "longitude" "price"))
-
 (defn venues-col
   "Return column information for the `venues` column named by keyword COL."
   [col]
@@ -337,8 +324,8 @@
   "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  {:rows    (rows results)
-   :columns (get-in results [:data :columns])})
+  {:rows      (rows results)
+   :col-names (map :name (get-in results [:data :cols]))})
 
 (defn first-row
   "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."

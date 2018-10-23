@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.annotate
-  "Middleware for annotating (adding type information to) the results of a query and sorting the columns in the
-  results."
+  "Middleware for annotating (adding type information to) the results of a query."
   (:require [clojure.string :as str]
             [metabase
              [driver :as driver]
@@ -22,6 +21,11 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - I've never liked the fact that we have to look at the values of the first 100 rows to attempt to guess the
+;; type of the column returned. This hurts our ability to stream results and also doesn't work if the first 100 values
+;; are `nil`. Couldn't JDBC tell us the column types returned, somehow? For non-SQL drivers where this isn't an
+;; option, we can use the implementation below as a fallback option.
+
 (defn- native-cols
   "Infer the types of columns by looking at the first value for each in the results, which will be added to the results
   as `:cols`. This is used for native queries, which don't have the type information from the original `Field` objects
@@ -31,6 +35,7 @@
              :let [col (nth columns i)]]
          {:name         (name col)
           :display_name (humanization/name->human-readable-name (name col))
+          ;; values->base-type, at the time of this writing, will only take up to the first 100 rows
           :base_type    (or (driver/values->base-type (for [row rows]
                                                         (nth row i)))
                             :type/*)})))
@@ -38,8 +43,7 @@
 (defn- add-native-column-info
   [{:keys [columns], :as results}]
   (assoc results
-    :columns (mapv name columns)
-    :cols    (native-cols results)))
+    :cols (native-cols results)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -243,14 +247,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- add-column-info* [{query-type :type, :as query} results]
-  (if-not (or (= query-type :query)
-              (:annotate? results))
-    (add-native-column-info results)
-    (add-mbql-column-info query results)))
+  (-> (if-not (or (= query-type :query)
+                  (:annotate? results))
+        (add-native-column-info results)
+        (add-mbql-column-info query results))
+      ;; remove the `columns` key since once it's used to generate `cols` it's not needed any more
+      (dissoc :columns)))
 
 (defn add-column-info
-  "Middleware for adding type information to columns returned by running a query, and sorting the columns in the
-  results."
+  "Adds `:cols` to the results; removes `:columns`.
+
+  `:cols` is a sequence of maps containing name, type, and other information about columns returned by running a
+  query. This information is dervied from the list of columns returned (the `:columns` key) and the query itself (for
+  MBQL queries) or the types of the objects returned by the first few rows (for SQL queries). `:columns` is not needed
+  after this middleware, and so is discarded here when we are finished with it."
   [qp]
   (fn [query]
     (let [results (qp query)]

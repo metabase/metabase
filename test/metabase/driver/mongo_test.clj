@@ -76,7 +76,6 @@
   {:status    :completed
    :row_count 1
    :data      {:rows        [[1]]
-               :columns     ["count"]
                :cols        [{:name "count", :display_name "Count", :base_type :type/Integer}]
                :native_form {:collection "venues"
                              :query      native-query}}}

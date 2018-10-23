@@ -15,7 +15,6 @@
 
 (qp-expect-with-all-engines
   {:rows        [[100]]
-   :columns     ["count"]
    :cols        [(aggregate-col :count)]
    :native_form true}
   (->> (data/run-mbql-query venues
@@ -27,7 +26,6 @@
 ;;; ----------------------------------------------- "SUM" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
   {:rows        [[203]]
-   :columns     ["sum"]
    :cols        [(aggregate-col :sum (venues-col :price))]
    :native_form true}
   (->> (data/run-mbql-query venues
@@ -39,7 +37,6 @@
 ;;; ----------------------------------------------- "AVG" AGGREGATION ------------------------------------------------
 (qp-expect-with-all-engines
   {:rows        [[35.5059]]
-   :columns     ["avg"]
    :cols        [(aggregate-col :avg (venues-col :latitude))]
    :native_form true}
   (->> (data/run-mbql-query venues
@@ -51,7 +48,6 @@
 ;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
 (qp-expect-with-all-engines
   {:rows        [[15]]
-   :columns     ["count"]
    :cols        [(aggregate-col :count (Field (data/id :checkins :user_id)))]
    :native_form true}
   (->> (data/run-mbql-query checkins
@@ -73,7 +69,6 @@
                  [ 8 "25°"                          11 34.1015 -118.342 2]
                  [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
                  [10 "Fred 62"                      20 34.1046 -118.292 2]]
-   :columns     (venues-columns)
    :cols        (venues-cols)
    :native_form true}
     (-> (data/run-mbql-query venues
@@ -87,8 +82,7 @@
 ;;; ----------------------------------------------- STDDEV AGGREGATION -----------------------------------------------
 
 (qp-expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
-  {:columns     ["stddev"]
-   :cols        [(aggregate-col :stddev (venues-col :latitude))]
+  {:cols        [(aggregate-col :stddev (venues-col :latitude))]
    :rows        [[3.4]]
    :native_form true}
   (-> (data/run-mbql-query venues
@@ -175,7 +169,6 @@
 ;;; cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-engines
   {:rows        [[120]]
-   :columns     ["sum"]
    :cols        [(aggregate-col :sum (users-col :id))]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -201,8 +194,6 @@
                  [13  91]
                  [14 105]
                  [15 120]]
-   :columns     [(data/format-name "id")
-                 "sum"]
    :cols        [(breakout-col (users-col :id))
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
@@ -230,8 +221,6 @@
                  ["Simcha Yan"          101]
                  ["Spiros Teofil"       112]
                  ["Szymon Theutrich"    120]]
-   :columns     [(data/format-name "name")
-                 "sum"]
    :cols        [(breakout-col (users-col :name))
                  (aggregate-col :sum (users-col :id))]
    :native_form true}
@@ -245,9 +234,7 @@
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
-  {:columns     [(data/format-name "price")
-                 "sum"]
-   :cols        [(breakout-col (venues-col :price))
+  {:cols        [(breakout-col (venues-col :price))
                  (aggregate-col :sum (venues-col :id))]
    :rows        [[1 1211]
                  [2 4066]
@@ -271,7 +258,6 @@
 ;;; cum_count w/o breakout should be treated the same as count
 (qp-expect-with-all-engines
   {:rows        [[15]]
-   :columns     ["count"]
    :cols        [(cumulative-count-col users-col :id)]
    :native_form true}
   (->> (data/run-mbql-query users
@@ -296,8 +282,6 @@
                  ["Simcha Yan"          13]
                  ["Spiros Teofil"       14]
                  ["Szymon Theutrich"    15]]
-   :columns     [(data/format-name "name")
-                 "count"]
    :cols        [(breakout-col (users-col :name))
                  (cumulative-count-col users-col :id)]
    :native_form true}
@@ -311,9 +295,7 @@
 
 ;; Cumulative count w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
-  {:columns     [(data/format-name "price")
-                 "count"]
-   :cols        [(breakout-col (venues-col :price))
+  {:cols        [(breakout-col (venues-col :price))
                  (cumulative-count-col venues-col :id)]
    :rows        [[1 22]
                  [2 81]

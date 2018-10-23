@@ -65,14 +65,14 @@
   (card-with-uuid uuid))
 
 (defn run-query-for-card-with-id
-  "Run the query belonging to Card with CARD-ID with PARAMETERS and other query options (e.g. `:constraints`)."
+  "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`)."
   {:style/indent 2}
   [card-id parameters & options]
   (u/prog1 (-> ;; run this query with full superuser perms
             (binding [api/*current-user-permissions-set*     (atom #{"/"})
                       qp/*allow-queries-with-no-executor-id* true]
               (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options))
-            (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
+            (u/select-nested-keys [[:data :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
     ;; if the query failed instead of returning anything about the query just return a generic error message
     (when (= (:status <>) :failed)
       (throw (ex-info "An error occurred while running the query." {:status-code 400})))))

@@ -135,20 +135,21 @@
 
 (expect
   #"com.jcraft.jsch.JSchException:"
-  (try
-    (let [engine  :presto
-          details {:ssl            false,
-                   :password       "changeme",
-                   :tunnel-host    "localhost",
-                   :tunnel-pass    "BOGUS-BOGUS",
-                   :catalog        "BOGUS"
-                   :host           "localhost",
-                   :tunnel-enabled true,
-                   :tunnel-port    22,
-                   :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
-    (catch Exception e
-      (.getMessage e))))
+  (tu/suppress-output
+    (try
+      (let [engine  :presto
+            details {:ssl            false
+                     :password       "changeme"
+                     :tunnel-host    "localhost"
+                     :tunnel-pass    "BOGUS-BOGUS"
+                     :catalog        "BOGUS"
+                     :host           "localhost"
+                     :tunnel-enabled true
+                     :tunnel-port    22
+                     :tunnel-user    "bogus"}]
+        (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (catch Exception e
+        (.getMessage e)))))
 
 (datasets/expect-with-engine :presto
   "UTC"

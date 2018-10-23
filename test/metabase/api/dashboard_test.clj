@@ -207,7 +207,7 @@
                            :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
-                  Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                  Card          [{card-id :id}      {:name "Dashboard Test Card", :dataset_query {}}]
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (with-dashboards-in-readable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id]
@@ -603,8 +603,8 @@
        :row   4}]
    3 #{0}}
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]
-                  Card      [{series-id-1 :id} {:name "Series Card"}]]
+                  Card      [{card-id :id}     {:dataset_query {}}]
+                  Card      [{series-id-1 :id} {:name "Series Card", :dataset_query {}}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
@@ -690,10 +690,10 @@
        :updated_at             true}]}
   ;; fetch a dashboard WITH a dashboard card on it
   (tt/with-temp* [Dashboard     [{dashboard-id :id}]
-                  Card          [{card-id :id}]
+                  Card          [{card-id :id}       {:dataset_query {}}]
                   DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  Card          [{series-id-1 :id}   {:name "Series Card"}]]
+                  Card          [{series-id-1 :id}   {:name "Series Card", :dataset_query {}}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (array-map
        1 [(remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))

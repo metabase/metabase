@@ -16,12 +16,7 @@
 (def ^:private mysql-driver (MySQLDriver.))
 
 (defn- call-with-timezones-db [f]
-  ;; Does the database exist?
-  (when-not (i/metabase-instance defs/test-data-with-timezones *engine*)
-    ;; The database doesn't exist, so we need to create it
-    (data/get-or-create-database! defs/test-data-with-timezones))
-  ;; The database can now be used in tests
-  (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
+  (data/dataset test-data-with-timezones
     (f)))
 
 (defmacro ^:private with-tz-db
@@ -114,14 +109,14 @@
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (process-query'
-       {:database (data/id)
-        :type :native
+       {:database   (data/id)
+        :type       :native
         :native     {:query         (format "select %s, %s, %s from %s where {{just_a_date}}"
                                             (field-identifier :users :id)
                                             (field-identifier :users :name)
                                             (field-identifier :users :last_login)
                                             (users-table-identifier))
-                     :template-tags {:just_a_date {:name "just_a_date", :display_name "Just A Date", :type "dimension",
+                     :template-tags {:just_a_date {:name      "just_a_date", :display_name "Just A Date", :type "dimension",
                                                    :dimension ["field-id" (data/id :users :last_login)]}}}
         :parameters [{:type "date/single", :target ["dimension" ["template-tag" "just_a_date"]], :value "2014-08-02"}]}))))
 

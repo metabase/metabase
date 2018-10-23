@@ -180,7 +180,7 @@
           :settings {:report-timezone \"US/Pacific\"
                      :other-setting   \"and its value\"}}
 
-  Results should look like:
+  Results returned by the driver should look like:
 
          {:columns [\"id\", \"name\"]
           :rows    [[1 \"Lucky Bird\"]
@@ -191,18 +191,28 @@
      features are:
 
   *  `:foreign-keys` - Does this database support foreign key relationships?
+
   *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
+
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
+
   *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently,
       everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
+
   *  `:standard-deviation-aggregations` - Does this driver support standard deviation aggregations?
+
   *  `:expressions` - Does this driver support expressions (e.g. adding the values of 2 columns together)?
+
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
+
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like
       \"sum(x) + count(y)\" or \"avg(x + y)\"
+
   *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples
       are CTEs or subselects in SQL queries.
+
   *  `:binning` - Does the driver support binning as specified by the `binning-strategy` clause?
+
   *  `:no-case-sensitivity-string-filter-options` - An anti-feature: does this driver not let you specify whether or not
       our string search filter clauses (`:contains`, `:starts-with`, and `:ends-with`, collectively the equivalent of
       SQL `LIKE` are case-senstive or not? This informs whether we should present you with the 'Case Sensitive' checkbox

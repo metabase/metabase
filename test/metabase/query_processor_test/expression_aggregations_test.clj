@@ -167,12 +167,12 @@
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
-  {:rows    [[1  44]
-             [2 177]
-             [3  52]
-             [4  30]]
-   :columns [(data/format-name "price")
-             (driver/format-custom-field-name *driver* "New Price")]} ; Redshift annoyingly always lowercases column aliases
+  {:rows      [[1  44]
+               [2 177]
+               [3  52]
+               [4  30]]
+   :col-names [(data/format-name "price")
+               (driver/format-custom-field-name *driver* "New Price")]} ; Redshift annoyingly always lowercases column aliases
     (format-rows-by [int int]
       (rows+column-names (data/run-mbql-query venues
                            {:aggregation [[:named [:sum [:+ $price 1]] "New Price"]]
@@ -180,12 +180,12 @@
 
 ;; check that we can name an expression aggregation w/ expression at top-level
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
-  {:rows    [[1 -19]
-             [2  77]
-             [3  -2]
-             [4 -17]]
-   :columns [(data/format-name "price")
-             (driver/format-custom-field-name *driver* "Sum-41")]}
+  {:rows      [[1 -19]
+               [2  77]
+               [3  -2]
+               [4 -17]]
+   :col-names [(data/format-name "price")
+               (driver/format-custom-field-name *driver* "Sum-41")]}
   (format-rows-by [int int]
     (rows+column-names (data/run-mbql-query venues
                          {:aggregation [[:named [:- [:sum $price] 41] "Sum-41"]]
@@ -206,26 +206,26 @@
 
 ;; check that we can handle METRICS (ick) inside a NAMED clause
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
-  {:rows    [[2 118]
-             [3  39]
-             [4  24]]
-   :columns [(data/format-name "price")
-             (driver/format-custom-field-name *driver* "My Cool Metric")]}
+  {:rows      [[2 118]
+               [3  39]
+               [4  24]]
+   :col-names [(data/format-name "price")
+               (driver/format-custom-field-name *driver* "My Cool Metric")]}
   (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]
       (rows+column-names (data/run-mbql-query venues
-                           {:aggregation  [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
-                            :breakout     [[:field-id $price]]})))))
+                           {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
+                            :breakout    [[:field-id $price]]})))))
 
 ;; check that METRICS (ick) with a nested aggregation still work inside a NAMED clause
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
-  {:rows    [[2 118]
-             [3  39]
-             [4  24]]
-   :columns [(data/format-name "price")
-             (driver/format-custom-field-name *driver* "My Cool Metric")]}
+  {:rows      [[2 118]
+               [3  39]
+               [4  24]]
+   :col-names [(data/format-name "price")
+               (driver/format-custom-field-name *driver* "My Cool Metric")]}
   (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]

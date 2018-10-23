@@ -183,8 +183,8 @@
 ;; middleware namespace for more details
 
 (s/defn ^:private result-metadata-for-query :- qr/ResultsMetadata
-  "Fetch the results metadata for a QUERY by running the query and seeing what the QP gives us in return.
-   This is obviously a bit wasteful so hopefully we can avoid having to do this."
+  "Fetch the results metadata for a `query` by running the query and seeing what the QP gives us in return. This is
+  obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
   (binding [qpi/*disable-qp-logging* true]
     (let [{:keys [status], :as results} (qp/process-query query)]

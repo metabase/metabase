@@ -35,7 +35,7 @@
                              :body    {"My Question Name" true}})
    :exceptions []}
   (et/with-fake-inbox
-    (data/with-db (data/get-or-create-database! defs/test-data)
+    (data/with-copy-of-test-db
       (let [exceptions (atom [])
             on-error   (fn [_ exception]
                          (swap! exceptions conj exception))]
@@ -65,7 +65,7 @@
                   PulseChannelRecipient [_               {:user_id          (users/user->id :rasta)
                                                           :pulse_channel_id pc-id}]]
     (et/with-fake-inbox
-      (data/with-db (data/get-or-create-database! defs/test-data)
+      (data/with-copy-of-test-db
         (let [exceptions (atom [])
               on-error   (fn [_ exception]
                            (swap! exceptions conj exception))]

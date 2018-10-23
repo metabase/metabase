@@ -1,5 +1,5 @@
 (ns metabase.test.data.dataset-definitions
-  "Definitions of various datasets for use in tests with `with-temp-db`."
+  "Definitions of various datasets for use in tests with `with-current-db` and related functions."
   (:require [clojure.tools.reader.edn :as edn]
             [metabase.test.data.interface :as di]
             [metabase.util.date :as du])

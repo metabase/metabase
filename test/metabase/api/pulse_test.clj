@@ -754,19 +754,18 @@
 ;; Check that a rando (e.g. someone without collection write access) isn't allowed to delete a pulse
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Database  [db]
-                  Table     [table {:db_id (u/get-id db)}]
-                  Card      [card  {:dataset_query {:database (u/get-id db)
-                                                    :type     "query"
-                                                    :query    {:source-table (u/get-id table)
-                                                               :aggregation  [[:count]]}}}]
-                  Pulse     [pulse {:name "Daily Sad Toucans"}]
-                  PulseCard [_     {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
-    (with-pulses-in-readable-collection [pulse]
-      ;; revoke permissions for default group to this database
-      (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-      ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
-      ((user->client :rasta) :delete 403 (format "pulse/%d" (u/get-id pulse))))))
+  (data/with-copy-of-test-db
+    (tt/with-temp* [Card      [card  {:dataset_query {:database (data/id)
+                                                      :type     "query"
+                                                      :query    {:source-table (data/id :venues)
+                                                                 :aggregation  [[:count]]}}}]
+                    Pulse     [pulse {:name "Daily Sad Toucans"}]
+                    PulseCard [_     {:pulse_id (u/get-id pulse), :card_id (u/get-id card)}]]
+      (with-pulses-in-readable-collection [pulse]
+        ;; revoke permissions for default group to this database
+        (perms/revoke-permissions! (perms-group/all-users) (data/id))
+        ;; now a user without permissions to the Card in question should *not* be allowed to delete the pulse
+        ((user->client :rasta) :delete 403 (format "pulse/%d" (u/get-id pulse)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -855,13 +854,11 @@
   (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (et/with-fake-inbox
-        (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+        (data/dataset sad-toucan-incidents
           (tt/with-temp* [Collection [collection]
-                          Database   [db]
-                          Table      [table {:db_id (u/get-id db)}]
-                          Card       [card  {:dataset_query {:database (u/get-id db)
+                          Card       [card  {:dataset_query {:database (data/id)
                                                              :type     "query"
-                                                             :query    {:source-table (u/get-id table),
+                                                             :query    {:source-table (data/id :incidents)
                                                                         :aggregation  [[:count]]}}}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (card-api-test/with-cards-in-readable-collection [card]

@@ -20,9 +20,6 @@
                  ["25°" 11 "Café"]
                  ["33 Taps" 7 "Beer Garden"]
                  ["800 Degrees Neapolitan Pizzeria" 58 "Ramen"]]
-   :columns     [(data/format-name "name")
-                 (data/format-name "category_id")
-                 "Foo"]
    :cols        [(venues-col :name)
                  (assoc (venues-col :category_id) :remapped_to "Foo")
                  (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
@@ -36,19 +33,17 @@
          booleanize-native-form
          (format-rows-by [str int str]))))
 
+;; TODO - Not sure if this is still needed now that QP refactor is in place.
 (defn- select-columns
-  "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
-  as part of the query, however there's a bug currently preventing that from working when remapped. This allows the
-  data compared to be smaller and avoid that bug."
+  "Focuses the given resultset to columns that return true when their `:name` is passed to `columns-pred`. Typically
+  this would be done as part of the query, however there's a bug currently preventing that from working when remapped.
+  This allows the data compared to be smaller and avoid that bug."
   [columns-pred results]
   (let [col-indexes (remove nil? (map-indexed (fn [idx col]
-                                                (when (columns-pred col)
+                                                (when (columns-pred (:name col))
                                                   idx))
-                                              (get-in results [:data :columns])))]
+                                              (get-in results [:data :cols])))]
     (-> results
-        (update-in [:data :columns]
-                   (fn [rows]
-                     (filterv columns-pred rows)))
         (update-in [:data :cols]
                    (fn [rows]
                      (filterv #(columns-pred (:name %)) rows)))
@@ -61,9 +56,6 @@
                  ["25°"                             2 "Burger"]
                  ["33 Taps"                         2 "Bar"]
                  ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
-   :columns     [(:name (venues-col :name))
-                 (:name (venues-col :price))
-                 (data/format-name "name_2")]
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
@@ -89,9 +81,6 @@
                  ["25°"                             2 "Burger"]
                  ["33 Taps"                         2 "Bar"]
                  ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
-   :columns     [(:name (venues-col :name))
-                 (:name (venues-col :price))
-                 (data/format-name "name_2")]
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
@@ -150,7 +139,7 @@
 ;; this is https://github.com/metabase/metabase/issues/8510
 (datasets/expect-with-engines (disj (non-timeseries-engines-with-feature :foreign-keys) :redshift :oracle :vertica)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-  (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
+  (data/dataset test-data-self-referencing-user
     (data/with-data
       (fn []
         [(db/insert! Dimension {:field_id (data/id :users :created_by)

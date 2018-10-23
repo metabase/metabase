@@ -31,8 +31,8 @@
   {:topic       :card-create
    :user_id     (user->id :rasta)
    :model       "card"
-   :database_id nil
-   :table_id    nil
+   :database_id (data/id)
+   :table_id    (data/id :venues)
    :details     {:name "My Cool Card", :description nil}}
   (tt/with-temp Card [card {:name "My Cool Card"}]
     (with-temp-activities
@@ -69,8 +69,8 @@
   {:topic       :card-update
    :user_id     (user->id :rasta)
    :model       "card"
-   :database_id nil
-   :table_id    nil
+   :database_id (data/id)
+   :table_id    (data/id :venues)
    :details     {:name "My Cool Card", :description nil}}
   (tt/with-temp Card [card {:name "My Cool Card"}]
     (with-temp-activities
@@ -85,8 +85,8 @@
   {:topic       :card-delete
    :user_id     (user->id :rasta)
    :model       "card"
-   :database_id nil
-   :table_id    nil
+   :database_id (data/id)
+   :table_id    (data/id :venues)
    :details     {:name "My Cool Card", :description nil}}
   (tt/with-temp Card [card {:name "My Cool Card"}]
     (with-temp-activities

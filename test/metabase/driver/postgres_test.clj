@@ -6,7 +6,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [rows]]
+             [query-processor-test :refer [rows rows+column-names]]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
@@ -62,7 +62,7 @@
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (expect-with-engine :postgres
   :type/SerializedJSON
-  (data/with-temp-db
+  (data/with-current-db
     [_
      (i/create-database-definition "Postgres with a JSON Field"
        ["venues"
@@ -131,13 +131,13 @@
       ["ouija_board"]]]])
 
 (expect-with-engine :postgres
-  {:columns ["id" "dotted.name"]
-   :rows    [[1 "toucan_cage"]
-             [2 "four_loko"]
-             [3 "ouija_board"]]}
+  {:col-names ["id" "dotted.name"]
+   :rows      [[1 "toucan_cage"]
+               [2 "four_loko"]
+               [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -152,12 +152,12 @@
     [["Cam" 1]]]])
 
 (expect-with-engine :postgres
-  {:columns ["name" "name_2"]
-   :rows    [["Cam" "Rasta"]]}
+  {:col-names ["name" "name_2"]
+   :rows      [["Cam" "Rasta"]]}
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;;; Check support for `inet` columns

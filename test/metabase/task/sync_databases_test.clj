@@ -125,15 +125,17 @@
 ;; Check that you can't UPDATE a DB's schedule to something invalid
 (expect
   Exception
-  (tt/with-temp Database [database {:engine :postgres}]
-    (db/update! Database (u/get-id database)
-      :metadata_sync_schedule "2 CANS PER DAY")))
+  (tu/suppress-output
+    (tt/with-temp Database [database {:engine :postgres}]
+      (db/update! Database (u/get-id database)
+        :metadata_sync_schedule "2 CANS PER DAY"))))
 
 (expect
   Exception
-  (tt/with-temp Database [database {:engine :postgres}]
-    (db/update! Database (u/get-id database)
-      :cache_field_values_schedule "2 CANS PER DAY")))
+  (tu/suppress-output
+    (tt/with-temp Database [database {:engine :postgres}]
+      (db/update! Database (u/get-id database)
+        :cache_field_values_schedule "2 CANS PER DAY"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

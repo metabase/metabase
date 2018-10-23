@@ -93,8 +93,7 @@
 (expect-with-engine :druid
   {:row_count 2
    :status    :completed
-   :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
-               :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
+   :data      {:rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
                :cols        (mapv #(merge col-defaults %)
                                   [{:name "timestamp",   :display_name "Timestamp"}
@@ -277,12 +276,12 @@
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
 (expect-with-engine :druid
-  {:rows    [["1"  442.0]
-             ["2" 1845.0]
-             ["3"  460.0]
-             ["4"  245.0]]
-   :columns ["venue_price"
-             "New Price"]}
+  {:rows      [["1"  442.0]
+               ["2" 1845.0]
+               ["3"  460.0]
+               ["4"  245.0]]
+   :col-names ["venue_price"
+               "New Price"]}
   (rows+column-names
     (druid-query
       {:aggregation [[:named [:sum [:+ $venue_price 1]] "New Price"]]
@@ -290,11 +289,11 @@
 
 ;; check that we can name an expression aggregation w/ expression at top-level
 (expect-with-engine :druid
-  {:rows    [["1"  180.0]
-             ["2" 1189.0]
-             ["3"  304.0]
-             ["4"  155.0]]
-   :columns ["venue_price" "Sum-41"]}
+  {:rows      [["1"  180.0]
+               ["2" 1189.0]
+               ["3"  304.0]
+               ["4"  155.0]]
+   :col-names ["venue_price" "Sum-41"]}
   (rows+column-names
     (druid-query
       {:aggregation [[:named [:- [:sum $venue_price] 41] "Sum-41"]]
@@ -317,21 +316,22 @@
 
 (expect
   #"com.jcraft.jsch.JSchException:"
-  (try
-    (let [engine :druid
-          details    {:ssl            false
-                      :password       "changeme"
-                      :tunnel-host    "localhost"
-                      :tunnel-pass    "BOGUS-BOGUS"
-                      :port           5432
-                      :dbname         "test"
-                      :host           "http://localhost"
-                      :tunnel-enabled true
-                      :tunnel-port    22
-                      :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
-       (catch Exception e
-         (.getMessage e))))
+  (tu/suppress-output
+    (try
+      (let [engine  :druid
+            details {:ssl            false
+                     :password       "changeme"
+                     :tunnel-host    "localhost"
+                     :tunnel-pass    "BOGUS-BOGUS"
+                     :port           5432
+                     :dbname         "test"
+                     :host           "http://localhost"
+                     :tunnel-enabled true
+                     :tunnel-port    22
+                     :tunnel-user    "bogus"}]
+        (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (catch Exception e
+        (.getMessage e)))))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together

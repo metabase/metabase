@@ -31,7 +31,7 @@
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "with_comment"), :description "comment"}
     {:name (data/format-name "no_comment"), :description nil}}
-  (data/with-temp-db [db basic-field-comments]
+  (data/with-current-db [db basic-field-comments]
      (db->fields db)))
 
 ;; test changing the description in metabase db so we can check it is not overwritten by comment in source db when resyncing
@@ -43,7 +43,7 @@
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "updated_desc"), :description "updated description"}}
-  (data/with-temp-db [db update-desc]
+  (data/with-current-db [db update-desc]
     ;; change the description in metabase while the source table comment remains the same
     (db/update-where! Field {:id (data/id "update_desc" "updated_desc")}, :description "updated description")
     ;; now sync the DB again, this should NOT overwrite the manually updated description
@@ -59,7 +59,7 @@
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "comment_after_sync"), :description "added comment"}}
-  (data/with-temp-db [db comment-after-sync]
+  (data/with-current-db [db comment-after-sync]
     ;; modify the source DB to add the comment and resync
     (i/create-db! ds/*driver* (assoc-in comment-after-sync [:table-definitions 0 :field-definitions 0 :field-comment] "added comment") true)
     (sync/sync-table! (Table (data/id "comment_after_sync")))
@@ -81,13 +81,13 @@
 ;; test basic comments on table
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "table_with_comment"), :description "table comment"}}
-  (data/with-temp-db [db (basic-table "table_with_comment" "table comment")]
+  (data/with-current-db [db (basic-table "table_with_comment" "table comment")]
     (db->tables db)))
 
 ;; test changing the description in metabase on table to check it is not overwritten by comment in source db when resyncing
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "table_with_updated_desc"), :description "updated table description"}}
-  (data/with-temp-db [db (basic-table "table_with_updated_desc" "table comment")]
+  (data/with-current-db [db (basic-table "table_with_updated_desc" "table comment")]
      ;; change the description in metabase while the source table comment remains the same
      (db/update-where! Table {:id (data/id "table_with_updated_desc")}, :description "updated table description")
      ;; now sync the DB again, this should NOT overwrite the manually updated description
@@ -97,7 +97,7 @@
 ;; test adding a comment to the source table that was initially empty, so we can check that the resync picks it up
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "table_with_comment_after_sync"), :description "added comment"}}
-  (data/with-temp-db [db (basic-table "table_with_comment_after_sync" nil)]
+  (data/with-current-db [db (basic-table "table_with_comment_after_sync" nil)]
      ;; modify the source DB to add the comment and resync
      (i/create-db! ds/*driver* (basic-table "table_with_comment_after_sync" "added comment") true)
      (metabase.sync.sync-metadata.tables/sync-tables! db)

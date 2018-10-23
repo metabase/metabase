@@ -641,7 +641,7 @@
 (defn- dimension-options-for-field [response field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name (:name %)))
+       (m/find-first #(.equalsIgnoreCase ^String field-name, ^String (:name %)))
        :dimension_options))
 
 (defn- extract-dimension-options
@@ -691,7 +691,7 @@
 
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   []
-  (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+  (data/dataset test-data-with-time
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
 
