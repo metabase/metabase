@@ -68,11 +68,10 @@ The Table option is good for looking at tabular data (duh), or for lists of thin
 
 Open up the visualization options for a table and you'll see the Columns tab, which displays all the columns currently being shown in the table, as well as more columns from linked tables that you can add to the current table view.
 
-To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked field, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear.
+To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns in a table is to simply click and drag on a column's heading to move it where you'd like it to go.
 
 **Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
 
-Another super easy way to rearrange columns in a table is to simply click and drag on a column's heading to move it where you'd like it to go.
 
 ##### Column formatting options
 
@@ -80,7 +79,7 @@ To format the display of any column in a table, click on the column heading and 
 
 ![Column formatting](images/visualizations/column-header-formatting.png)
 
-The options you see of course will be different depending on the kind of column it is:
+The options you see will be different depending on the type of column you're viewing:
 
 **Dates**
 * `Date style` gives you a bunch of different choices for how to display the date.
@@ -88,7 +87,7 @@ The options you see of course will be different depending on the kind of column 
 * `Show the time` lets you decide whether or not to display the time, and if so, how. You can include hours and minutes, and additionally seconds and milliseconds.
 
 **Numbers**
-* `Show a mini bar chart` will display a small horizontal bar chart next to each number in this column to show its size relative to the other values in the column.
+* `Show a mini bar chart` will display a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
 * `Style` lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
 * `Separator style` gives you various options for how commas and periods are used to separate the number.
 * `Minimum number of decimal places` forces the number to be displayed with exactly this many decimal places.
@@ -96,7 +95,7 @@ The options you see of course will be different depending on the kind of column 
 * `Add a prefix/suffix` lets you put a symbol, word, or whatever before or after each cell's value.
 
 **Currency**
-Currency columns have all the same options as numbers, and additionally the following:
+Currency columns have all the same options as numbers, plus the following:
 * `Unit of Currency` lets you change the unit of currency from whatever the system default is.
 * `Currency label style` allows you to switch between displaying the currency label as a symbol, a code like (USD), or the full name of the currency.
 * `Where to display the unit of currency` lets you toggle between showing the currency label in the column heading or in every cell in the column.
@@ -123,7 +122,7 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
 ##### Pivoted tables
-If your table is a result that contains one metric and two dimensions, Metabase will also automatically "pivot" your table, like in the example below. What this does is it takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
+If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. What this does is it takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
 
 ![Pivot table](images/visualizations/pivot.png)
 
@@ -150,16 +149,16 @@ Metabase will pick one of your series to display as a line, and another to displ
 
 ![Line + bar](images/visualizations/combo-chart-settings.png)
 
-To use a Line + Bar chart, you'll either need to have two or more metrics selected in the View section of your question, with one or two grouping fields, like this…
+To use a Line + Bar chart, you'll either need to have two or more numbers selected in the View section of your question, with one or two grouping columns, like this…
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-1.png)
 
-…or you'll need a question with a single item in the View section, with two grouping fields, like this:
+…or you'll need a question with a single item in the View section, with two grouping columns, like this:
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-2.png)
 
 #### Row charts
-If you're trying to group a number by a field that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a row chart. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
+If you're trying to group a number by a column that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a row chart. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
 
 ![Row chart](images/visualizations/row.png)
 
@@ -178,7 +177,7 @@ By default, Metabase will automatically choose a good way to bin your results. B
 These three charting types have very similar options, which are broken up into the following:
 
 * **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metric fields by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
-* **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). We've also recently added the ability to create a goal line for your chart, and to configure how your chart deals with x-axis points that have missing y-axis values.
+* **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). You can also set a goal line for your chart, and configure how your chart deals with x-axis points that have missing y-axis values.
 * **Axes** — this is where you can hide axis markers or change their ranges, and turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
 * **Labels** — if you want to hide axis labels or customize them, here's where to go.
 
