@@ -72,8 +72,8 @@
                 (redux/juxt
                  (apply f/col-wise (for [metadata result-metadata]
                                      (if-not (:fingerprint metadata)
-                                       (f/constant-fingerprinter (:fingerprint metadata))
-                                       (f/fingerprinter metadata))))
+                                       (f/fingerprinter metadata)
+                                       (f/constant-fingerprinter (:fingerprint metadata)))))
                  (insights/insights result-metadata))
                 (fn [[fingerprints insights]]
                   {:metadata (map (fn [fingerprint metadata]
