@@ -45,6 +45,9 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 @paginationState()
 @connect((state, props) => {
   let { entityDef, entityQuery, page, pageSize } = props;
+  if (typeof entityQuery === "function") {
+    entityQuery = entityQuery(state, props);
+  }
   if (typeof pageSize === "number" && typeof page === "number") {
     entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
   }
