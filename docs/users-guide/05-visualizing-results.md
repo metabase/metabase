@@ -51,7 +51,7 @@ Progress bars are for comparing a single number result to a goal value that you 
 ![Progress bar](images/visualizations/progress.png)
 
 #### Gauges
-Ah, gauges: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number, and where its value falls in a number of ranges that you can specify. By default when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
+Ah, gauges: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number and where its value falls within a set of colored ranges that you can specify. By default, when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
 
 ![Gauge](images/visualizations/gauge.png)
 
