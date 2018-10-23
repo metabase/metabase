@@ -71,24 +71,16 @@
                (redux/post-complete
                 (redux/juxt
                  (apply f/col-wise (for [metadata result-metadata]
-                                     (if (and (seq (:name metadata))
-                                              (nil? (:fingerprint metadata)))
-                                       (f/fingerprinter metadata)
-                                       (f/constant-fingerprinter (:fingerprint metadata)))))
+                                     (if-not (:fingerprint metadata)
+                                       (f/constant-fingerprinter (:fingerprint metadata))
+                                       (f/fingerprinter metadata))))
                  (insights/insights result-metadata))
                 (fn [[fingerprints insights]]
-                  ;; Rarely certain queries will return columns with no names. For example
-                  ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
-                  ;; can't use those as field literals in subsequent queries just filter them out
-                  {:metadata (->> (map (fn [fingerprint metadata]
-                                         (cond
-                                           (instance? Throwable fingerprint)
-                                           metadata
-
-                                           (not-empty (:name metadata))
-                                           (assoc metadata :fingerprint fingerprint)))
-                                       fingerprints
-                                       result-metadata)
-                                  (remove nil?))
+                  {:metadata (map (fn [fingerprint metadata]
+                                    (if (instance? Throwable fingerprint)
+                                      metadata
+                                      (assoc metadata :fingerprint fingerprint)))
+                                  fingerprints
+                                  result-metadata)
                    :insights insights}))
                (:rows results))))
