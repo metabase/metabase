@@ -5,7 +5,8 @@
              [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data])
+            [metabase.test.data :as data]
+            [metabase.query-processor.interface :as qp.i])
   (:import metabase.driver.h2.H2Driver))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -150,7 +151,31 @@
                        4]]]))
 
 (expect
+  "x"
+  (aggregation-name [:named [:+ [:min [:field-id 1]] [:* 2 [:avg [:field-id 2]]]] "x"]))
+
+(expect
   "My Cool Aggregation"
   (aggregation-name [:named [:avg [:field-id 2]] "My Cool Aggregation"]))
 
-;; TODO - more tests for info added for aggregations
+;; make sure custom aggregation names get included in the col info
+(defn- col-info-for-aggregation-clause [clause]
+  (binding [qp.i/*driver* (metabase.driver.h2.H2Driver.)]
+    (#'annotate/col-info-for-aggregation-clause clause)))
+
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "count / 2"
+   :display_name "count / 2"}
+  (col-info-for-aggregation-clause [:/ [:count] 2]))
+
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "sum"
+   :display_name "sum"}
+  (qp.store/with-store
+    (data/$ids venues
+      (qp.store/store-field! (Field $price))
+      (col-info-for-aggregation-clause [:sum [:+ [:field-id $price] 1]]))))

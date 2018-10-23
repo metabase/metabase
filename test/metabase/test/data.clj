@@ -119,8 +119,8 @@
 
     $$table -> (id :venues)"
   {:style/indent 1}
-  [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}]
-  ($->id (keyword table-name) body, :wrap-field-ids? wrap-field-ids?))
+  [table-name & body]
+  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
 
 
 (defn wrap-inner-mbql-query
@@ -147,7 +147,7 @@
   [table & [query]]
   `(wrap-inner-mbql-query
      ~(merge `{:source-table (id ~(keyword table))}
-             ($->id (keyword table) query))))
+             ($->id table query))))
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
