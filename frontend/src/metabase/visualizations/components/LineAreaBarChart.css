@@ -31,7 +31,8 @@
 }
 
 .LineAreaBarChart .dc-chart g.row text.outside {
-  fill: var(--color-text-light);
+  fill: var(--color-text-medium);
+  font-weight: 900;
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
