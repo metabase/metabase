@@ -37,16 +37,16 @@ This option is for displaying a single number, nice and big. The options for num
 ![Number](images/visualizations/number.png)
 
 #### Smart numbers
-The Smart Number visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a single Time field, like the Count of Orders by Created At. The Smart Number will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Smart Number will show you the most recent day compared to the day before that.
+The Smart Number visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Smart Number will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Smart Number will show you the most recent day compared to the day before that.
 
 ![Smart Number](images/visualizations/smart-number.png)
 
-By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
+By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
 
 ![Smart Number settings](images/visualizations/smart-scalar-settings.png)
 
 #### Progress bars
-Progress bars are for comparing a single number result to a goal value that you set. Open up the chart options for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
+Progress bars are for comparing a single number to a goal value that you set. Open up the chart options for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
 
 ![Progress bar](images/visualizations/progress.png)
 
@@ -60,15 +60,15 @@ Open up the visualization settings to define your own ranges, choose colors for 
 ![Gauge settings](images/visualizations/gauge-settings.png)
 
 #### Tables
-The Table option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at.
+The Table option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting.
 
 ##### Rearranging, adding, and removing columns
 
 ![Additional fields](images/visualizations/add-fields.png)
 
-Open up the visualization options for a table and you'll see the Columns tab, which displays all the columns currently being shown in the table, as well as more columns from linked tables that you can add to the current table view.
+Open up the visualization options for a table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables that you can add to the current table view.
 
-To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns in a table is to simply click and drag on a column's heading to move it where you'd like it to go.
+To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
 **Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
 
@@ -168,7 +168,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Histogram](images/histogram.png)
 
-By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the number field you're grouping by in the Question Builder, then clicking on the area to the right of the field name:
+By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the number field you're grouping by, then clicking on the area to the right of the field name:
 
 ![Binning options](images/binning.png)
 
@@ -176,24 +176,24 @@ By default, Metabase will automatically choose a good way to bin your results. B
 
 These three charting types have very similar options, which are broken up into the following:
 
-* **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metric fields by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
-* **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). You can also set a goal line for your chart, and configure how your chart deals with x-axis points that have missing y-axis values.
+* **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
+* **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). You can also set a goal line for your chart, display a trend line, or configure how your chart deals with x-axis points that have missing y-axis values.
 * **Axes** — this is where you can hide axis markers or change their ranges, and turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
 * **Labels** — if you want to hide axis labels or customize them, here's where to go.
 
 #### Scatterplots and bubble charts
 Scatterplots are useful for visualizing the correlation between two variables, like comparing the age of your users vs. how many dollars they've spent on your products. To use a scatterplot, you'll need to ask a question that results in two numeric columns, like `Count of Orders grouped by Customer Age`. Alternatively, you can use a raw data table and select the two numeric fields you want to use in the chart options.
 
-If you have a third numeric field, you can also create a bubble chart. Select the Scatter visualization, then open up the chart options and select a field in the bubble size dropdown. This field will be used to determine the size of each bubble on your chart. For example, you could use a field that contains the number or count of items for the given x-y pair — i.e., larger bubbles for larger total dollar amounts spent on orders.
+If you have a third numeric field, you can also create a bubble chart. Select the Scatter visualization, then open up the chart options and select a field in the `bubble size` dropdown. This field will be used to determine the size of each bubble on your chart. For example, you could use a field that contains the total dollar amount for each x-y pair — i.e., larger bubbles for larger total dollar amounts spent on orders.
 
-Scatterplots and bubble charts also have similar chart options as line, bar, and area charts.
+Scatterplots and bubble charts also have similar chart options as line, bar, and area charts, including the option to display trend or goal lines.
 
 ![Scatter](images/visualizations/scatter.png)
 
 #### Pie or donut charts
-A pie or donut chart can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender. If you have more than a few breakouts, like users by country, it's usually better to use a bar chart so that your users can more easily compare the relative sizes of each bar.
+A pie or donut chart can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender. If you have more than a few breakouts, like users per country, it's usually better to use a bar chart so that your users can more easily compare the relative sizes of each bar.
 
-The options for pie charts let you choose which field to use as your measurement, and which one to use for the dimension (i.e., the pie slices). You can also customize the pie chart's legend, whether or not to show each slice's percent of the whole in the legend, and the minimum size a slice needs to be in order for it to be displayed.
+The options for pie charts let you choose which field to use as your measurement, and which one to use for the dimension (i.e., the pie slices). You can also customize the color of each piece slice, the pie chart's legend, whether or not to show each slice's percent of the whole in the legend, and the minimum size a slice needs to be in order for it to be displayed.
 
 ![Donut](images/visualizations/donut.png)
 
@@ -207,7 +207,7 @@ For example, I might have an Opportunities table, and I could create a question 
 #### Maps
 When you select the Map visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set you're currently looking at. Here are the maps that Metabase uses:
 
-* **United States Map** — Creating a map of the United States from your data requires your results to contain a column field with states. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
+* **United States Map** — Creating a map of the United States from your data requires your results to contain a column that contains states. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
 * **Country Map** — To visualize your results in the format of a map of the world broken out by country, your result must contain a field with countries. (E.g., count of users by country.)
 
 ![Region map](images/visualizations/map.png)
@@ -218,7 +218,7 @@ When you select the Map visualization setting, Metabase will automatically try a
 
 When you open up the Map options, you can manually switch between a region map (i.e., United States or world) and a pin map. If you're using a region map, you can also choose which field to use as the measurement, and which to use as the region (i.e. State or Country).
 
-Metabase now also allows administrators to add custom region maps via GeoJSON files through the Metabase Admin Panel.
+Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase Admin Panel.
 
 ---
 
