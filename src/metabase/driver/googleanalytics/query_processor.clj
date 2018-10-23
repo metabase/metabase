@@ -3,10 +3,7 @@
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
   (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
-            [medley.core :as m]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
@@ -77,6 +74,14 @@
 (defn- handle-source-table [{source-table-id :source-table}]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
     {:ids (str "ga:" source-table-name)}))
+
+
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
+
+(defn- handle-aggregation
+  [{ags :aggregation}]
+  (when (seq ags)
+    {:metrics (str/join "," (mbql.u/match ags [:metric (metric-name :guard string?)] metric-name))}))
 
 
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
@@ -157,12 +162,13 @@
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
-    ;; remove all clauses that operate on datetime fields because we don't want to handle them here, we'll do that
-    ;; seperately with the filter:interval stuff below
+    ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
+    ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
     ;;
     ;; (Recall that `auto-bucket-datetime-breakouts` guarantees all datetime Fields will be wrapped by
     ;; `:datetime-field` clauses in a fully-preprocessed query.)
     (let [filter (parse-filter (mbql.u/replace filter-clause
+                                 [:segment (_ :guard mbql.u/ga-id?)] nil
                                  [_ [:datetime-field & _] & _] nil))]
 
       (when-not (str/blank? filter)
@@ -229,6 +235,23 @@
       {:start-date earliest-date, :end-date latest-date}))
 
 
+;;; ------------------------------------------- filter (built-in segments) -------------------------------------------
+
+(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankString)
+  [{filter-clause :filter}]
+  (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
+    (when (> (count segments) 1)
+      (throw (Exception. (str (tru "Only one Google Analytics segment allowed at a time.")))))
+    (first segments)))
+
+(defn- handle-filter:built-in-segment
+  "Handle a built-in GA segment (a `[:segment <ga id>]` filter clause), if present. This is added to the native query
+  under a separate `:segment` key."
+  [inner-query]
+  (when-let [built-in-segment (built-in-segment inner-query)]
+    {:segment built-in-segment}))
+
+
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
@@ -254,17 +277,19 @@
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{:keys [query], :as raw}]
-  {:query (merge (handle-source-table    query)
-                 (handle-breakout        query)
-                 (handle-filter:interval query)
-                 (handle-filter:filters  query)
-                 (handle-order-by        query)
-                 (handle-limit           query)
-                 ;; segments and metrics are pulled out in transform-query
-                 (get raw :ga)
-                 ;; set to false to match behavior of other drivers
-                 {:include-empty-rows false})
+  [{inner-query :query, :as raw}]
+  {:query (into
+           ;; set to false to match behavior of other drivers
+           {:include-empty-rows false}
+           (for [f [handle-source-table
+                    handle-aggregation
+                    handle-breakout
+                    handle-filter:interval
+                    handle-filter:filters
+                    handle-filter:built-in-segment
+                    handle-order-by
+                    handle-limit]]
+             (f inner-query)))
    :mbql? true})
 
 (defn- parse-number [s]
@@ -313,49 +338,3 @@
                  (for [[data getter] (map vector row getters)]
                    (getter data)))
      :annotate mbql?}))
-
-
-;;; ----------------------------------------------- "transform-query" ------------------------------------------------
-
-;;; metrics
-
-(defn- built-in-metrics
-  [{query :query}]
-  (when-let [ags (seq (:aggregation query))]
-    (str/join "," (mbql.u/match ags [:metric (metric-name :guard string?)] metric-name))))
-
-(defn- handle-built-in-metrics [query]
-  (-> query
-      (assoc-in [:ga :metrics] (built-in-metrics query))
-      (m/dissoc-in [:query :aggregation])))
-
-
-;;; segments
-
-(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankString)
-  [{{filter-clause :filter} :query}]
-  (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard string?)] segment-name)]
-    (when (> (count segments) 1)
-      (throw (Exception. (str (tru "Only one Google Analytics segment allowed at a time.")))))
-    (first segments)))
-
-(s/defn ^:private remove-built-in-segments :- (s/maybe mbql.s/Filter)
-  [filter-clause :- (s/maybe mbql.s/Filter)]
-  (mbql.u/simplify-compound-filter
-   (mbql.u/replace filter-clause
-     [:segment (_ :guard string?)] nil)))
-
-(defn- handle-built-in-segments [{{filters :filter} :query, :as query}]
-  (let [query   (assoc-in query [:ga :segment] (built-in-segment query))
-        filters (remove-built-in-segments filters)]
-    (if (seq filters)
-      (assoc-in    query [:query :filter] filters)
-      (m/dissoc-in query [:query :filter]))))
-
-
-;;; public
-
-(def ^{:arglists '([query])} transform-query
-  "Preprocess the incoming query to pull out built-in segments and metrics.
-   This removes customizations to the query dict and makes it compatible with MBQL."
-  (comp handle-built-in-metrics handle-built-in-segments))
