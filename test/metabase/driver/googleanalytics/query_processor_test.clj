@@ -3,25 +3,20 @@
             [metabase.driver.googleanalytics.query-processor :as ga.qp]))
 
 (expect
-  "WOW"
-  (#'ga.qp/built-in-segment {:query {:filter [:segment "WOW"]}}))
+  "ga::WOW"
+  (#'ga.qp/built-in-segment {:filter [:segment "ga::WOW"]}))
 
 ;; should work recursively
 (expect
-  "A"
-  (#'ga.qp/built-in-segment {:query {:filter [:and [:= [:field-id 1] 2] [:segment "A"]]}}))
+  "gaid::A"
+  (#'ga.qp/built-in-segment {:filter [:and [:= [:field-id 1] 2] [:segment "gaid::A"]]}))
 
 ;; should throw Exception if more than one segment is matched
 (expect
   Exception
-  (#'ga.qp/built-in-segment {:query {:filter [:and [:segment "A"] [:segment "B"]]}}))
+  (#'ga.qp/built-in-segment {:filter [:and [:segment "gaid::A"] [:segment "ga::B"]]}))
 
 ;; should ignore Metabase segments
 (expect
-  "B"
-  (#'ga.qp/built-in-segment {:query {:filter [:and [:segment 100] [:segment "B"]]}}))
-
-;; we should be able to remove built-in segments
-(expect
-  [:segment 100]
-  (#'ga.qp/remove-built-in-segments [:and [:segment 100] [:segment "B"]]))
+  "ga::B"
+  (#'ga.qp/built-in-segment {:filter [:and [:segment 100] [:segment "ga::B"]]}))
