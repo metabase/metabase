@@ -3,6 +3,7 @@
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -114,6 +115,12 @@
   (case seconds-or-milliseconds
     :seconds      (hsql/call :toDateTime expr)
     :milliseconds (recur (hx// expr 1000) :seconds)))
+
+;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
+;; convert these booleans to numbers.
+(defmethod sqlqp/->honeysql [ClickHouseDriver Boolean]
+  [_ bool]
+  (if bool 1 0))
 
 (u/strict-extend ClickHouseDriver
   driver/IDriver
