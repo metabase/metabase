@@ -21,8 +21,8 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-    copy: Dashboards.actions.copy,
-    onChangeLocation: push,
+  copy: Dashboards.actions.copy,
+  onChangeLocation: push,
 };
 
 @withRouter
@@ -32,23 +32,23 @@ class DashboardCopyModal extends React.Component {
     const { onClose, onChangeLocation, copy, dashboard, ...props } = this.props;
     return (
       <ModalContent
-        title={t`Copy ` + "\"" + dashboard.name + "\""}
+        title={t`Copy ` + '"' + dashboard.name + '"'}
         onClose={onClose}
       >
         <EntityForm
           entityType="dashboards"
           entityObject={{
             ...dissoc(dashboard, "id"),
-            name: dashboard.name + " - " + t`Copy`
+            name: dashboard.name + " - " + t`Copy`,
           }}
           create={async values => {
             return await copy(
               { id: this.props.params.dashboardId },
               dissoc(values, "id"),
-            )
+            );
           }}
           onClose={onClose}
-          onSaved={dashboard => onChangeLocation(Urls.dashboard(dashboard.id)) }
+          onSaved={dashboard => onChangeLocation(Urls.dashboard(dashboard.id))}
           submitTitle={t`Copy`}
           {...props}
         />

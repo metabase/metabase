@@ -4,7 +4,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { setRequestState } from "metabase/redux/requests";
 import { normalize } from "normalizr";
 
-import { createEntity, undo, notify } from "metabase/lib/entities";
+import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
@@ -65,13 +65,9 @@ const Dashboards = createEntity({
         return { type: UNFAVORITE_ACTION, payload: id };
       }
     },
-    
+
     copy: ({ id }, overrides, opts) =>
-      Dashboards.actions.copy(
-        { id },
-        overrides,
-        opts,
-      ),
+      Dashboards.actions.copy({ id }, overrides, opts),
   },
 
   actions: {
@@ -87,11 +83,16 @@ const Dashboards = createEntity({
     copy: createThunkAction(
       COPY_ACTION,
       (entityObject, overrides) => async (dispatch, getState) => {
-        const statePath = ["entities", entityObject.name, entityObject.id, "copy"];
+        const statePath = [
+          "entities",
+          entityObject.name,
+          entityObject.id,
+          "copy",
+        ];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
-            await Dashboards.api.copy({ id: entityObject.id, ...overrides}),
+            await Dashboards.api.copy({ id: entityObject.id, ...overrides }),
             Dashboards.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));

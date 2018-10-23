@@ -160,7 +160,12 @@ class DefaultLanding extends React.Component {
   handleBulkCopy = async collection => {
     try {
       await Promise.all(
-        this.state.selectedItems.map(item => { item.copy({name: item.name + " - " + t`Copy`, collection_id: collection.id}) }),
+        this.state.selectedItems.map(item => {
+          item.copy({
+            name: item.name + " - " + t`Copy`,
+            collection_id: collection.id,
+          });
+        }),
       );
       this.setState({ selectedItems: null, isCopy: null });
     } finally {
@@ -401,10 +406,16 @@ class DefaultLanding extends React.Component {
                                           selection={selection}
                                           onToggleSelected={onToggleSelected}
                                           onMove={selectedItems =>
-                                            this.setState({ selectedItems, isCopy: false })
+                                            this.setState({
+                                              selectedItems,
+                                              isCopy: false,
+                                            })
                                           }
-                                          onCopy={selectedItems => 
-                                            this.setState({ selectedItems, isCopy: true })
+                                          onCopy={selectedItems =>
+                                            this.setState({
+                                              selectedItems,
+                                              isCopy: true,
+                                            })
                                           }
                                         />
                                       </ItemDragSource>
@@ -505,8 +516,8 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) && (
-          isCopy ? ( 
+        {!_.isEmpty(selectedItems) &&
+          (isCopy ? (
             <Modal>
               <CollectionCopyModal
                 title={
@@ -514,11 +525,13 @@ class DefaultLanding extends React.Component {
                     ? t`Copy ${selectedItems.length} items?`
                     : t`Copy "${selectedItems[0].getName()}"?`
                 }
-                onClose={() => this.setState({ selectedItems: null, isCopy: null })}
+                onClose={() =>
+                  this.setState({ selectedItems: null, isCopy: null })
+                }
                 onCopy={this.handleBulkCopy}
               />
             </Modal>
-          ) : ( 
+          ) : (
             <Modal>
               <CollectionMoveModal
                 title={
@@ -526,12 +539,13 @@ class DefaultLanding extends React.Component {
                     ? t`Move ${selectedItems.length} items?`
                     : t`Move "${selectedItems[0].getName()}"?`
                 }
-                onClose={() => this.setState({ selectedItems: null, isCopy: null })}
+                onClose={() =>
+                  this.setState({ selectedItems: null, isCopy: null })
+                }
                 onMove={this.handleBulkMove}
               />
             </Modal>
-          )
-        )}
+          ))}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
@@ -572,9 +586,7 @@ export const NormalItem = ({
       onMove={
         collection.can_write && item.setCollection ? () => onMove([item]) : null
       }
-      onCopy={
-        item.copy ? () => onCopy([item]) : null
-      }
+      onCopy={item.copy ? () => onCopy([item]) : null}
       onArchive={
         collection.can_write && item.setArchived
           ? () => item.setArchived(true)
