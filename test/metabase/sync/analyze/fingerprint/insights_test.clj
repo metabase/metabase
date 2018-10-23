@@ -15,9 +15,21 @@
       first
       :last-value))
 
+(expect
+  700
+  (-> (transduce identity (insights cols) [["2017" 700]])
+      first
+      :last-value))
+
 ;; Here we just make sure we don't blow up on empty input
 (expect
   nil
   (-> (transduce identity (insights cols) [])
+      first
+      :last-value))
+
+(expect
+  nil
+  (-> (transduce identity (insights cols) [[nil nil]])
       first
       :last-value))

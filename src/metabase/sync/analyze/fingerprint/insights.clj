@@ -11,7 +11,8 @@
   [n]
   (fn
     ([] [])
-    ([acc] acc)
+    ([acc]
+     (concat (repeat (- n (count acc)) nil) acc))
     ([acc x]
      (if (< (count acc) n)
        (conj acc x)
