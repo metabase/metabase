@@ -43,7 +43,7 @@ const DEFAULT_OPTIONS: Options = {
 export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
 export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
 
-class Api extends EventEmitter {
+export class Api extends EventEmitter {
   basename: "";
 
   GET: APICreator;
