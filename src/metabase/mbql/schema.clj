@@ -153,12 +153,13 @@
 ;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
 ;; `:field-id` clauses when their Field derives from `:type/DateTime`.
 ;;
-;; Datetime Field can wrap any of the lowest-level Field clauses or expression references, but not other
-;; datetime-field clauses, because that wouldn't make sense
+;; Datetime Field can wrap any of the lowest-level Field clauses, but not other datetime-field clauses, because that
+;; wouldn't make sense. They similarly can not wrap expression references, because doing arithmetic on timestamps
+;; doesn't make a whole lot of sense (what does `"2018-10-23"::timestamp / 2` mean?).
 ;;
 ;; Field is an implicit Field ID
 (defclause datetime-field
-  field (one-of field-id field-literal fk-> expression)
+  field (one-of field-id field-literal fk->)
   unit  DatetimeFieldUnit)
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
@@ -537,6 +538,9 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
+(defn- distinct-non-empty [schema]
+  (s/constrained schema (every-pred (partial apply distinct?) seq) "non-empty sequence of distinct items"))
+
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
   (s/constrained
@@ -545,10 +549,10 @@
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
     (s/optional-key :expressions)  {s/Keyword ExpressionDef} ; TODO - I think expressions keys should be strings
-    (s/optional-key :fields)       (su/non-empty [Field])
+    (s/optional-key :fields)       (su/non-empty [Field])    ; TODO - should this be `distinct-non-empty`?
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
-    (s/optional-key :order-by)     (su/non-empty [OrderBy])
+    (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
     (s/optional-key :page)         {:page  su/IntGreaterThanOrEqualToZero
                                     :items su/IntGreaterThanZero}
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass

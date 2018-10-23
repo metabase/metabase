@@ -36,6 +36,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joined-tables :as resolve-joined-tables]
@@ -115,11 +116,14 @@
       resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
+      reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
       bucket-datetime/auto-bucket-datetime-breakouts
       resolve-source-table/resolve-source-table
       row-count-and-status/add-row-count-and-status
       ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
-      ;; TODO - I think we should do this much later, perhaps at the very end right before `catch-exceptions`
+      ;;
+      ;; TODO - I think we should add row count and status much later, perhaps at the very end right before
+      ;; `catch-exceptions`
       parameters/substitute-parameters
       expand-macros/expand-macros
       ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
