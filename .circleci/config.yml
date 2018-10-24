@@ -342,7 +342,7 @@ jobs:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
         environment:
-          JAVA_TOOL_OPTIONS: "-Xmx500m"
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
       - attach_workspace:
           at: /home/circleci/
