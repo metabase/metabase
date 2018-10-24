@@ -189,7 +189,7 @@
 
 (defn id
   "Get the ID of the current database or one of its `Tables` or `Fields`.
-   Relies on the dynamic variable `*get-db`, which can be rebound with `with-db`."
+   Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
   ([]
    {:post [(integer? %)]}
    (:id (db)))

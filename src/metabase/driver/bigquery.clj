@@ -246,7 +246,9 @@
                                       :let [parser-fn (type->parser (.getType field))]]
                                   (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
-                                 (set/rename-keys column {:base-type :base_type}))]
+                                 (-> column
+                                     (set/rename-keys {:base-type :base_type})
+                                     (dissoc :database-type)))]
        {:columns (map (comp u/keyword->qualified-name :name) columns)
         :cols    columns
         :rows    (for [^TableRow row (.getRows response)]
@@ -364,36 +366,19 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(s/defn ^:private bg-aggregate-name :- su/NonBlankString
+(s/defn ^:private bq-aggregate-name :- su/NonBlankString
+  "Return an approriate name for an `ag-clause`."
   [ag-clause :- mbql.s/Aggregation]
   (-> ag-clause annotate/aggregation-name format-custom-field-name))
 
-;; TODO - I think we should move `pre-alias-aggregations` into `mbql.util`
-(defn- unique-name-fn
-  "Return a function that used names with and returns a guaranteed unique name every time.
-
-    (let [unique-name (#'bigquery/unique-name-fn)]
-      [(unique-name \"count\")
-       (unique-name \"count\")])
-    ;; -> [\"count\", \"count_2\"]"
-  []
-  (let [aliases (atom {})]
-    (fn [original-name]
-      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
-                             original-name)]
-        (if (= total-count 1)
-          original-name
-          (recur (str original-name \_ total-count)))))))
-
-(defn- pre-alias-aggregations
+(s/defn ^:private pre-alias-aggregations
   "Expressions are not allowed in the order by clauses of a BQ query. To sort by a custom expression, that custom
   expression must be aliased from the order by. This code will find the aggregations and give them a name if they
   don't already have one. This name can then be used in the order by if one is present."
-  [outer-query]
-  (let [unique-name (unique-name-fn)]
-    (mbql.u/replace-in outer-query [:query :aggregation]
-      [:named ag ag-name]       [:named ag (unique-name ag-name)]
-      [(_ :guard keyword?) & _] [:named &match (unique-name (bg-aggregate-name &match))])))
+  [{{aggregations :aggregation} :query, :as outer-query}]
+  (if-not (seq aggregations)
+    outer-query
+    (update-in outer-query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations bq-aggregate-name))))
 
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)

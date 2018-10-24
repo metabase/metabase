@@ -17,6 +17,22 @@
              [schema :as su]]
             [schema.core :as s]))
 
+(def ^:private Col
+  "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
+  ;; name and display name can be blank because some wacko DBMSes like SQL Server return blank column names for
+  ;; unaliased aggregations like COUNT(*) (this only applies to native queries, since we determine our own names for
+  ;; MBQL.)
+  {:name                          s/Str
+   :display_name                  s/Str
+   ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
+   :base_type                     su/FieldType
+   (s/optional-key :special_type) (s/maybe su/FieldType)
+   ;; where this column came from in the original query.
+   :source                        (s/enum :aggregation :fields :breakout :native)
+   ;; various other stuff from the original Field can and should be included such as `:settings`
+   s/Any                          s/Any})
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -29,10 +45,12 @@
   (vec (for [i    (range (count columns))
              :let [col (nth columns i)]]
          {:name         (name col)
-          :display_name (humanization/name->human-readable-name (name col))
+          :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
+                            (u/keyword->qualified-name col))
           :base_type    (or (driver/values->base-type (for [row rows]
                                                         (nth row i)))
-                            :type/*)})))
+                            :type/*)
+          :source       :native})))
 
 (defn- add-native-column-info
   [{:keys [columns], :as results}]
@@ -236,19 +254,42 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Deduplicating names                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private ColsWithUniqueNames
+  (s/constrained [Col] #(distinct? (map :name %)) ":cols with unique names"))
+
+(s/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
+  [cols :- [Col]]
+  (map (fn [col unique-name]
+         (assoc col :name unique-name))
+       cols
+       (mbql.u/uniquify-names (map :name cols))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GENERAL MIDDLEWARE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-column-info* [{query-type :type, :as query} {cols-returned-by-driver :cols, :as results}]
-  (cond-> (if-not (= query-type :query)
-            (add-native-column-info results)
-            (add-mbql-column-info query results))
-    ;; If the driver returned a `:cols` map with its results, which is completely optional, merge our `:cols` derived
-    ;; from logic above with theirs. We'll prefer the values in theirs to ours. This is important for wacky drivers
-    ;; like GA that use things like native metrics, which we have no information about.
-    ;;
-    ;; It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order.
-    (seq cols-returned-by-driver) (update :cols #(map merge % cols-returned-by-driver))))
+(s/defn ^:private add-column-info* :- {:cols ColsWithUniqueNames, s/Keyword s/Any}
+  [{query-type :type, :as query} {cols-returned-by-driver :cols, :as results}]
+  (->
+   ;; add `:cols` info to the query, using the appropriate function based on query type
+   (if-not (= query-type :query)
+     (add-native-column-info results)
+     (add-mbql-column-info query results))
+   ;; If the driver returned a `:cols` map with its results, which is completely optional, merge our `:cols` derived
+   ;; from logic above with theirs. We'll prefer the values in theirs to ours. This is important for wacky drivers
+   ;; like GA that use things like native metrics, which we have no information about.
+   ;;
+   ;; It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order.
+   (update :cols (if (seq cols-returned-by-driver)
+                   #(map merge % cols-returned-by-driver)
+                   identity))
+   ;; Finally, make sure the `:name` of each map in `:cols` is unique, since the FE uses it as a key for stuff like
+   ;; column settings
+   (update :cols deduplicate-cols-names)))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
