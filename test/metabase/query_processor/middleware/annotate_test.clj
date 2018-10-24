@@ -179,3 +179,21 @@
     (data/$ids venues
       (qp.store/store-field! (Field $price))
       (col-info-for-aggregation-clause [:sum [:+ [:field-id $price] 1]]))))
+
+;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
+;; that information in the results. Their information should be preferred over ours
+(expect
+  {:cols    [{:name         "totalEvents"
+              :display_name "Total Events"
+              :base_type    :type/Text
+              :source       :aggregation}]
+   :columns ["totalEvents"]}
+  (binding [qp.i/*driver* (H2Driver.)]
+    ((annotate/add-column-info (constantly {:cols    [{:name         "totalEvents"
+                                                       :display_name "Total Events"
+                                                       :base_type    :type/Text}]
+                                            :columns ["totalEvents"]}))
+     {:database (data/id)
+      :type     :query
+      :query    {:source-table (data/id :venues)
+                 :aggregation  [[:metric "ga:totalEvents"]]}})))

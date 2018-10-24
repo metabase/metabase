@@ -5,6 +5,7 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :as ui18n :refer [tru]]
@@ -328,13 +329,11 @@
 (defn execute-query
   "Execute a QUERY using the provided DO-QUERY function, and return the results in the usual format."
   [do-query query]
-  (let [mbql?            (:mbql? (:native query))
-        ^GaData response (do-query query)
+  (let [^GaData response (do-query query)
         columns          (map header->column (.getColumnHeaders response))
         getters          (map header->getter-fn (.getColumnHeaders response))]
-    {:columns  (map :name columns)
-     :cols     columns
+    {:cols     columns
+     :columns  (map (comp u/keyword->qualified-name :name) columns)
      :rows     (for [row (.getRows response)]
                  (for [[data getter] (map vector row getters)]
-                   (getter data)))
-     :annotate mbql?}))
+                   (getter data)))}))
