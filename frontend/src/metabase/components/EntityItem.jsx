@@ -53,7 +53,7 @@ const EntityItem = ({
     },
     onCopy && {
       title: t`Copy this item`,
-      icon: "copy",
+      icon: "clone",
       action: onCopy,
       event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
     },
