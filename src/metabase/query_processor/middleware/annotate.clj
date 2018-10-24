@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.annotate
-  "Middleware for annotating (adding type information to) the results of a query and sorting the columns in the
-  results."
+  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require [clojure.string :as str]
             [metabase
              [driver :as driver]
@@ -187,9 +186,7 @@
            (ag->name-info &match))))
 
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Middleware                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
 (defn- check-correct-number-of-columns-returned [mbql-cols results]
   (let [expected-count (count mbql-cols)
@@ -242,17 +239,19 @@
 ;;; |                                               GENERAL MIDDLEWARE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-column-info* [{query-type :type, :as query} results]
-  (if-not (or (= query-type :query)
-              (:annotate? results))
-    (add-native-column-info results)
-    (add-mbql-column-info query results)))
+(defn- add-column-info* [{query-type :type, :as query} {cols-returned-by-driver :cols, :as results}]
+  (cond-> (if-not (= query-type :query)
+            (add-native-column-info results)
+            (add-mbql-column-info query results))
+    ;; If the driver returned a `:cols` map with its results, which is completely optional, merge our `:cols` derived
+    ;; from logic above with theirs. We'll prefer the values in theirs to ours. This is important for wacky drivers
+    ;; like GA that use things like native metrics, which we have no information about.
+    ;;
+    ;; It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order.
+    (seq cols-returned-by-driver) (update :cols #(map merge % cols-returned-by-driver))))
 
 (defn add-column-info
-  "Middleware for adding type information to columns returned by running a query, and sorting the columns in the
-  results."
+  "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
   (fn [query]
-    (let [results (qp query)]
-      (-> (add-column-info* query results)
-          (dissoc :annotate?)))))
+    (add-column-info* query (qp query))))

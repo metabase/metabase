@@ -1054,10 +1054,9 @@
     ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our
     ;; behind-the-scenes conversion and apply any other post-processing on the value such as parsing some units to int
     ;; and rounding up approximate cardinality values.
-    {:columns   (->> columns
-                     (replace {:timestamp___int :timestamp :distinct___count :count})
-                     (map u/keyword->qualified-name))
-     :rows      (for [row (:results post-proc-map)]
-                  (for [getter getters]
-                    (getter row)))
-     :annotate? mbql?}))
+    {:columns (->> columns
+                   (replace {:timestamp___int :timestamp :distinct___count :count})
+                   (map u/keyword->qualified-name))
+     :rows    (for [row (:results post-proc-map)]
+                (for [getter getters]
+                  (getter row)))}))

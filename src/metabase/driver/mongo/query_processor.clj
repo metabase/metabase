@@ -641,7 +641,6 @@
                           projections))]
     (when mbql?
       (check-columns columns results))
-    {:columns   (map name columns)
-     :rows      (for [row results]
-                  (mapv row columns))
-     :annotate? mbql?}))
+    {:columns (map name columns)
+     :rows    (for [row results]
+                (mapv row columns))}))

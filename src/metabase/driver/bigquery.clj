@@ -564,10 +564,9 @@
       (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                          (unprepare/unprepare (cons sql params))
                                                                          sql))
-            results (process-native* database sql)
-            results (cond->> results
-                      mbql? (post-process-mbql table-name))]
-        (assoc results :annotate? mbql?)))))
+            results (process-native* database sql)]
+        (cond->> results
+          mbql? (post-process-mbql table-name))))))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
