@@ -129,7 +129,7 @@
 
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
-  filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
+  filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
   because it keeps the code simple and doesn't make a significant performance difference."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))

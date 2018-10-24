@@ -20,6 +20,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -286,7 +287,10 @@
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
      (try
-       (get-or-create!)
+       ;; it's ok to ignore output here because it's usually the IllegalArgException, and if it fails again we don't
+       ;; suppress it
+       (tu.log/suppress-output
+         (get-or-create!))
        ;; occasionally we'll see an error like
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver

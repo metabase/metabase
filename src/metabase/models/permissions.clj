@@ -581,7 +581,7 @@
                      (u/pprint-to-str 'blue new))))
 
 (s/defn update-graph!
-  "Update the permissions graph, making any changes neccesary to make it match NEW-GRAPH.
+  "Update the permissions graph, making any changes necessary to make it match NEW-GRAPH.
    This should take in a graph that is exactly the same as the one obtained by `graph` with any changes made as
    needed. The graph is revisioned, so if it has been updated by a third party since you fetched it this function will
    fail and return a 409 (Conflict) exception. If nothing needs to be done, this function returns `nil`; otherwise it

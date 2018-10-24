@@ -130,21 +130,23 @@
 
 ;;; ------------------- Comparisons -------------------
 
-(def ^:private segment {:table_id (data/id :venues)
-                        :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}})
+(def ^:private segment
+  (delay
+   {:table_id   (data/id :venues)
+    :definition {:filter [:> [:field-id (data/id :venues :price)] 10]}}))
 
 (expect
-  (tt/with-temp* [Segment [{segment-id :id} segment]]
+  (tt/with-temp* [Segment [{segment-id :id} @segment]]
     (api-call "table/%s/compare/segment/%s"
               [(data/id :venues) segment-id])))
 
 (expect
-  (tt/with-temp* [Segment [{segment-id :id} segment]]
+  (tt/with-temp* [Segment [{segment-id :id} @segment]]
     (api-call "table/%s/rule/example/indepth/compare/segment/%s"
               [(data/id :venues) segment-id])))
 
 (expect
-  (tt/with-temp* [Segment [{segment-id :id} segment]]
+  (tt/with-temp* [Segment [{segment-id :id} @segment]]
     (api-call "adhoc/%s/cell/%s/compare/segment/%s"
               [(->> {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
                              :source-table (data/id :venues)}

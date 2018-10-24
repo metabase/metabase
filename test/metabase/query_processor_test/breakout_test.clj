@@ -17,6 +17,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -237,9 +238,10 @@
    :class  Exception
    :error  "Unable to bin Field without a min/max value"}
   (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-    (-> (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :breakout    [[:binning-strategy $latitude :default]]})
+    (-> (tu.log/suppress-output
+          (data/run-mbql-query venues
+            {:aggregation [[:count]]
+             :breakout    [[:binning-strategy $latitude :default]]}))
         (select-keys [:status :class :error]))))
 
 (defn- field->result-metadata [field]
@@ -267,9 +269,10 @@
 ;; Binning is not supported when there is no fingerprint to determine boundaries
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning :nested-queries)
   Exception
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :query
-                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
-    (-> (nested-venues-query card)
-        qp/process-query
-        rows)))
+  (tu.log/suppress-output
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-query {:source-table (data/id :venues)}}}}]
+      (-> (nested-venues-query card)
+          qp/process-query
+          rows))))
