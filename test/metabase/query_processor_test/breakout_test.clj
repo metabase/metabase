@@ -276,3 +276,15 @@
       (-> (nested-venues-query card)
           qp/process-query
           rows))))
+
+;; if we include a Field in both breakout and fields, does the query still work? (Normalization should be taking care
+;; of this) (#8760)
+(expect-with-non-timeseries-dbs
+  :completed
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-table (data/id :venues)
+                    :breakout     [[:field-id (data/id :venues :price)]]
+                    :fields       [["field_id" (data/id :venues :price)]]}})
+      :status))

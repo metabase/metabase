@@ -543,13 +543,15 @@
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
-  (s/constrained
+  (->
    {(s/optional-key :source-query) SourceQuery
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
-    (s/optional-key :expressions)  {s/Keyword ExpressionDef} ; TODO - I think expressions keys should be strings
-    (s/optional-key :fields)       (su/non-empty [Field])    ; TODO - should this be `distinct-non-empty`?
+    ; TODO - expressions keys should be strings; fix this when we get a chance
+    (s/optional-key :expressions)  {s/Keyword ExpressionDef}
+    ;; TODO - should this be `distinct-non-empty`?
+    (s/optional-key :fields)       (su/non-empty [Field])
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
     (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
@@ -559,9 +561,16 @@
     ;; info to other pieces of middleware. Everyone else can ignore them.
     (s/optional-key :join-tables)  (s/constrained [JoinInfo] (partial apply distinct?) "distinct JoinInfo")
     s/Keyword                      s/Any}
-   (fn [query]
-     (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
-   "Query must specify either `:source-table` or `:source-query`, but not both."))
+
+   (s/constrained
+    (fn [query]
+      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
+    "Query must specify either `:source-table` or `:source-query`, but not both.")
+
+   (s/constrained
+    (fn [{:keys [breakout fields]}]
+      (empty? (set/intersection (set breakout) (set fields))))
+    "Fields specified in `:breakout` should not be specified in `:fields`; this is implied.")))
 
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
