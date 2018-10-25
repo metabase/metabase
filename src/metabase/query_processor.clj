@@ -231,21 +231,26 @@
 
 (defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
-  [query-execution error-message]
+  [query-execution, ^Throwable e]
   ;; record our query execution and format response
   (-> query-execution
       (dissoc :start_time_millis)
-      (merge {:error        error-message
+      (merge {:error        (.getMessage e)
               :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))})
       save-query-execution!
       (dissoc :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
       ;; this is just for the response for client
       (assoc :status    :failed
-             :error     error-message
+             :error     (.getMessage e)
              :row_count 0
              :data      {:rows    []
                          :cols    []
-                         :columns []})))
+                         :columns []})
+      ;; include stacktrace and preprocessed/native stages of the query if available in the response which should make
+      ;; debugging queries a bit easier
+      (merge (some-> (ex-data e)
+                     (select-keys [:stacktrace :preprocessed :native])
+                     (m/dissoc-in [:preprocessed :info])))))
 
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
@@ -271,10 +276,12 @@
   "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
   [query-result]
   (when-not (contains? query-result :status)
-    (throw (Exception. "invalid response from database driver. no :status provided")))
+    (throw (ex-info (str (tru "Invalid response from database driver. No :status provided."))
+             query-result)))
   (when (= :failed (:status query-result))
     (log/warn (u/pprint-to-str 'red query-result))
-    (throw (Exception. (str (get query-result :error "general error"))))))
+    (throw (ex-info (str (get query-result :error (tru "General error")))
+             query-result))))
 
 (def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
   "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?  By default
@@ -316,7 +323,7 @@
             (log/warn (u/format-color 'red "Query failure: %s\n%s"
                                       (.getMessage e)
                                       (u/pprint-to-str (u/filtered-stacktrace e))))
-            (save-and-return-failed-query! query-execution (.getMessage e))))))))
+            (save-and-return-failed-query! query-execution e)))))))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!

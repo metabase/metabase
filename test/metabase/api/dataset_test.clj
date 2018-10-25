@@ -131,7 +131,7 @@
                               ((user->client :rasta) :post 200 "dataset" {:database (id)
                                                                           :type     "native"
                                                                           :native   {:query "foobar"}}))]
-    [(check-error-message (format-response result))
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 

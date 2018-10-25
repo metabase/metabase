@@ -1,7 +1,7 @@
 (ns metabase.mbql.normalize
   "Logic for taking any sort of weird MBQL query and normalizing it into a standardized, canonical form. You can think
   of this like taking any 'valid' MBQL query and rewriting it as-if it was written in perfect up-to-date MBQL in the
-  latest version. There are two main things done here, done as three separate steps:
+  latest version. There are four main things done here, done as four separate steps:
 
   #### NORMALIZING TOKENS
 
@@ -12,6 +12,16 @@
 
   Rewriting deprecated MBQL 95/98 syntax and other things that are still supported for backwards-compatibility in
   canonical MBQL 2000 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
+
+  #### WHOLE-QUERY TRANSFORMATIONS
+
+  Transformations and cleanup of the query structure as a whole to fix inconsistencies. Whereas the canonicalization
+  phase operates on a lower-level, transforming invidual clauses, this phase focuses on transformations that affect
+  multiple clauses, such as removing duplicate references to Fields if they are specified in both the `:breakout` and
+  `:fields` clauses.
+
+  This is not the only place that does such transformations; several pieces of QP middleware perform similar
+  individual transformations, such as `reconcile-breakout-and-order-by-bucketing`.
 
   #### REMOVING EMPTY CLAUSES
 
@@ -490,6 +500,26 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- remove-breakout-fields-from-fields
+  "Remove any Fields specified in both `:breakout` and `:fields` from `:fields`; it is implied that any breakout Field
+  will be returned, specifying it in both would imply it is to be returned twice, which tends to cause confusion for
+  the QP and drivers."
+  [{{:keys [breakout fields]} :query, :as query}]
+  (if-not (and (seq breakout) (seq fields))
+    query
+    (update-in query [:query :fields] (comp vec (partial remove (set breakout))))))
+
+(defn- perform-whole-query-transformations
+  "Perform transformations that operate on the query as a whole, making sure the structure as a whole is logical and
+  consistent."
+  [query]
+  (-> query
+      remove-breakout-fields-from-fields))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -543,6 +573,7 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   (comp remove-empty-clauses
+        perform-whole-query-transformations
         canonicalize
         normalize-tokens))
 

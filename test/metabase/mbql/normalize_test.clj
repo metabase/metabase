@@ -710,6 +710,22 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; If you specify a field in a breakout and in the Fields clause, we should go ahead and remove it from the Fields
+;; clause, because it is (obviously) implied that you should get that Field back.
+(expect
+  {:type  :query
+   :query {:breakout [[:field-id 1] [:field-id 2]]
+           :fields   [[:field-id 3]]}}
+  (#'normalize/perform-whole-query-transformations
+   {:type  :query
+    :query {:breakout [[:field-id 1] [:field-id 2]]
+            :fields   [[:field-id 2] [:field-id 3]]}}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
