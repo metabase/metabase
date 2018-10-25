@@ -1,6 +1,7 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
   (:require [expectations :refer [expect]]
+            [medley.core :as m]
             [metabase
              [query-processor :as qp]
              [util :as u]]
@@ -241,12 +242,15 @@
     (do-with-some-fields
      (fn [objects]
        (let [results {:columns [:ga:eventLabel :ga:totalEvents]
+                      :cols    [{}, {:base_type :type/Text}]
                       :rows    [["Toucan Sighting" 1000]]}
              qp      (#'metabase.query-processor/qp-pipeline (constantly results))
              query   (query-with-some-fields objects)]
          (-> (tu/doall-recursive (qp query))
              (update-in [:data :cols] #(for [col %]
-                                         (dissoc col :table_id :id)))))))))
+                                         (dissoc col :table_id :id)))
+             (m/dissoc-in [:data :results_metadata])
+             (m/dissoc-in [:data :insights])))))))
 
 
 ;;; ------------------------------------------------ Saving GA Cards -------------------------------------------------

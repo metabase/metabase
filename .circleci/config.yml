@@ -341,13 +341,15 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Wait for SparkSQL to be ready
+          name: Wait for Presto to be ready
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
             while ! nc -z localhost 8080; do sleep 0.1; done

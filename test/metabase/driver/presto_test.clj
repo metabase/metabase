@@ -71,10 +71,6 @@
   "\"weird . \"\"schema\".\"weird.table\"\" name\""
   (#'presto/quote+combine-names "weird . \"schema" "weird.table\" name"))
 
-(expect
-  ["name" "count" "count_2" "sum", "sum_2", "sum_3"]
-  (#'presto/rename-duplicates ["name" "count" "count" "sum" "sum" "sum"]))
-
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto
   {:tables #{{:name "categories" :schema "default"}
