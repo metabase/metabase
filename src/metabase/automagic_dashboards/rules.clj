@@ -379,10 +379,11 @@
 (defn- make-pot
   [strings]
   (->> strings
-       (sort-by second) ; keep the same context together
-       (map (fn [[s ctx]]
-              (let [ctx (str/join "/" ctx)]
-                (format "#: resources/%s%s.yaml\nmsgid \"%s\"\nmsgstr \"\"\n" rules-dir ctx s))))
+       (group-by first)
+       (mapcat (fn [[s ctxs]]
+                 (concat (for [[_ ctx] ctxs]
+                           (format "#: resources/%s%s.yaml" rules-dir (str/join "/" ctx)))
+                         [(format "msgid \"%s\"\nmsgstr \"\"\n" s)])))
        (str/join "\n")))
 
 (defn- all-rules
