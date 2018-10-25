@@ -361,7 +361,7 @@
   [path]
   (get-in @rules (concat path [::leaf])))
 
-(defn- extract-i18n-strings
+(defn- extract-localized-strings
   [[path rule]]
   (let [strings (atom [])]
     ((spec/run-checker
@@ -382,8 +382,7 @@
        (sort-by second) ; keep the same context together
        (map (fn [[s ctx]]
               (let [ctx (str/join "/" ctx)]
-                (format "#: resources/%s%s.yaml\nmsgctxt \"%s\"\nmsgid \"%s\"\nmsgstr \"\"\n"
-                        rules-dir ctx ctx s))))
+                (format "#: resources/%s%s.yaml\nmsgid \"%s\"\nmsgstr \"\"\n" rules-dir ctx s))))
        (str/join "\n")))
 
 (defn- all-rules
@@ -401,7 +400,7 @@
   "Entry point for lein task `generate-automagic-dashboards-pot`"
   [& _]
   (->> (all-rules)
-       (mapcat extract-i18n-strings)
+       (mapcat extract-localized-strings)
        make-pot
        (spit "locales/metabase-automatic-dashboards.pot"))
   (System/exit 0))
