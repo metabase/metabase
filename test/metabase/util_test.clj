@@ -201,3 +201,7 @@
 ;; make sure we can parse wacky version strings like `9-internal`: See #8282
 (expect
   (is-java-9-or-higher? "9-internal"))
+
+(expect
+  {:num_cans 2, :lisp_case? {:nested_maps? true}}
+  (snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))

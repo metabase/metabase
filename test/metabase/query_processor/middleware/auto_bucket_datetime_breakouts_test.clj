@@ -4,7 +4,8 @@
             [metabase.query-processor.middleware.auto-bucket-datetime-breakouts :as auto-bucket-datetime-breakouts]
             [metabase.test.data :as data]
             [metabase.util :as u]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.test.data :as data]))
 
 (defn- auto-bucket [query]
   ((auto-bucket-datetime-breakouts/auto-bucket-datetime-breakouts identity)

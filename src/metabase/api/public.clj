@@ -1,7 +1,6 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
-            [clojure.walk :as walk]
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase
@@ -14,6 +13,9 @@
              [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [field :as field-api]]
+            [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -29,8 +31,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.mbql.normalize :as normalize]))
+             [hydrate :refer [hydrate]]]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -263,18 +264,10 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (let [field-ids (atom [])]
-    (walk/postwalk
-     (fn [x]
-       (if (instance? metabase.query_processor.interface.Field x)
-         (swap! field-ids conj (:field-id x))
-         x))
-     (qp/expand query))
-    @field-ids))
+  (mbql.u/match (:query query) [:field-id id] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template

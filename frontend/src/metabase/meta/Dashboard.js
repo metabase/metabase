@@ -21,7 +21,6 @@ import { getTemplateTags } from "./Card";
 import { slugify, stripId } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { TYPE, isa } from "metabase/lib/types";
-import { mbqlEq } from "metabase/lib/query/util";
 
 import _ from "underscore";
 
@@ -188,7 +187,7 @@ export function getCardDimensions(
       if (
         tag.type === "dimension" &&
         Array.isArray(tag.dimension) &&
-        mbqlEq(tag.dimension[0], "field-id")
+        tag.dimension[0] === "field-id"
       ) {
         const field = metadata.fields[tag.dimension[1]];
         if (field && filter(field)) {
@@ -203,7 +202,7 @@ export function getCardDimensions(
 }
 
 function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
-  if (Array.isArray(target) && mbqlEq(target[0], "template-tag")) {
+  if (Array.isArray(target) && target[0] === "template-tag") {
     return null;
   } else {
     return Query.getFieldTargetId(target);

@@ -1,10 +1,13 @@
 (ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require [metabase.api.common :as api]
+            [metabase.mbql
+             [normalize :as normalize]
+             [schema :as mbql.s]]
             [metabase.models.user :as user]
-            [metabase.query-processor :as qp]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [schema.core :as s]))
 
 (defmacro with-rasta
   "Execute body with rasta as the current user."
@@ -38,8 +41,8 @@
                  ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
                                                                     (subs url 16)))))))
 
-(def ^:private valid-card?
-  (comp qp/expand :dataset_query))
+(defn- valid-card? [{query :dataset_query}]
+  (nil? (s/check mbql.s/Query (normalize/normalize query))))
 
 (defn valid-dashboard?
   "Is generated dashboard valid?

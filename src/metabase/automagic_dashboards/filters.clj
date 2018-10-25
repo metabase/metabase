@@ -12,7 +12,7 @@
   [(s/one (s/constrained su/KeywordOrString
                          (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
           "head")
-   (s/cond-pre s/Int su/KeywordOrString)])
+   (s/cond-pre s/Int su/KeywordOrString (s/recursive #'FieldReference))])
 
 (def ^:private ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
@@ -31,7 +31,9 @@
 
 (defmethod field-reference->id :fk->
   [[_ _ id]]
-  id)
+  (if (sequential? id)
+    (field-reference->id id)
+    id))
 
 (defmethod field-reference->id :field-literal
   [[_ name _]]
@@ -42,7 +44,9 @@
    form."
   [form]
   (->> form
-       (tree-seq (some-fn sequential? map?) identity)
+       (tree-seq (every-pred (some-fn sequential? map?)
+                             (complement field-reference?))
+                 identity)
        (filter field-reference?)))
 
 (def ^{:arglists '([field])} periodic-datetime?

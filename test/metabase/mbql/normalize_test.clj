@@ -173,7 +173,7 @@
   {:query {:filter [:= [:field-id 10] [:relative-datetime :current]]}}
   (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" "CURRENT"]]}}))
 
-;; and in datetime-field clauses (MBQL 98)
+;; and in datetime-field clauses (MBQL 98+)
 (expect
   {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}
   (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:datetime-field ["field_id" 10] "day"] "2018-09-05"]}}))
@@ -609,27 +609,6 @@
   {:query {:filter [:time-interval [:field-id 8] -30 :day]}}
   (#'normalize/canonicalize {:query {:filter [:time-interval [:datetime-field [:field-id 8] :month] -30 :day]}}))
 
-;;; ---------------------------------------------------- order-by ----------------------------------------------------
-
-;; ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98 [direction field]
-(expect
-  {:query {:order-by [[:asc [:field-id 10]]]}}
-  (#'normalize/canonicalize {:query {:order-by [[[:field-id 10] :asc]]}}))
-
-;; MBQL 95 old order-by names should be handled
-(expect
-  {:query {:order-by [[:asc [:field-id 10]]]}}
-  (#'normalize/canonicalize {:query {:order-by [[10 :ascending]]}}))
-
-;; field-id should be added if needed
-(expect
-  {:query {:order-by [[:asc [:field-id 10]]]}}
-  (#'normalize/canonicalize {:query {:order-by [[10 :asc]]}}))
-
-(expect
-  {:query {:order-by [[:asc [:field-id 10]]]}}
-  (#'normalize/canonicalize {:query {:order-by [[:asc 10]]}}))
-
 ;; fk-> clauses should get the field-id treatment
 (expect
   {:query {:filter [:= [:fk-> [:field-id 10] [:field-id 20]] "ABC"]}}
@@ -640,7 +619,7 @@
   {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}
   (#'normalize/canonicalize {:query {:filter [:= [:datetime-field 10 :day] "2018-09-05"]}}))
 
-;; MBQL 95 datetime-field clauses ([:datetime-field <field> :as <unit>]) should get converted to MBQL 98
+;; MBQL 95 datetime-field clauses ([:datetime-field <field> :as <unit>]) should get converted to MBQL 2000
 (expect
   {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}
   (#'normalize/canonicalize {:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}))
@@ -659,6 +638,41 @@
 (expect
   {:query {:filter [:= [:field-id 1] 10]}}
   (#'normalize/canonicalize {:query {:filter '(:= 1 10)}}))
+
+
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
+
+;; ORDER BY: MBQL 95 [field direction] should get translated to MBQL 98+ [direction field]
+(expect
+  {:query {:order-by [[:asc [:field-id 10]]]}}
+  (#'normalize/canonicalize {:query {:order-by [[[:field-id 10] :asc]]}}))
+
+;; MBQL 95 old order-by names should be handled
+(expect
+  {:query {:order-by [[:asc [:field-id 10]]]}}
+  (#'normalize/canonicalize {:query {:order-by [[10 :ascending]]}}))
+
+;; field-id should be added if needed
+(expect
+  {:query {:order-by [[:asc [:field-id 10]]]}}
+  (#'normalize/canonicalize {:query {:order-by [[10 :asc]]}}))
+
+(expect
+  {:query {:order-by [[:asc [:field-id 10]]]}}
+  (#'normalize/canonicalize {:query {:order-by [[:asc 10]]}}))
+
+;; we should handle seqs no prob
+(expect
+  {:query {:order-by [[:asc [:field-id 1]]]}}
+  (#'normalize/canonicalize {:query {:order-by '((1 :ascending))}}))
+
+;; duplicate order-by clauses should get removed
+(expect
+  {:query {:order-by [[:asc [:field-id 1]]
+                      [:desc [:field-id 2]]]}}
+  (#'normalize/canonicalize {:query {:order-by [[:asc [:field-id 1]]
+                                                [:desc [:field-id 2]]
+                                                [:asc 1]]}}))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
