@@ -1,7 +1,6 @@
 (ns metabase.test.data.snowflake
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.test.data
              [generic-sql :as generic]
@@ -9,7 +8,7 @@
             [metabase.util :as u])
   (:import metabase.driver.snowflake.SnowflakeDriver))
 
-(def driver (metabase.driver.snowflake.SnowflakeDriver.))
+(def ^:private ^SnowflakeDriver snowflake-driver (SnowflakeDriver.))
 
 (def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"
@@ -22,21 +21,15 @@
    :type/Text       "TEXT"
    :type/Time       "TIME"})
 
-(defn- database->connection-details [context {:keys [database-name] :as foo}]
-  (merge {:account                        (i/db-test-env-var-or-throw :snowflake :account)
-          :user                           (i/db-test-env-var-or-throw :snowflake :user)
-          :password                       (i/db-test-env-var-or-throw :snowflake :password)
-          :warehouse                      (i/db-test-env-var-or-throw :snowflake :warehouse)
-          ;; SESSION parameters
-          ;;
-          ;; Disabling the next param as it basically uppercases everything, tables, schemas,
-          ;; column literals in results which breaks our tests
-          ;;
-          ;; :quoted_identifiers_ignore_case true
-          :timezone                       "UTC"}
-         (when (= context :db)
-           {:db database-name})))
-
+(def ^:private connection-details
+  (delay
+   ;; don't bother trying to set `:db` or `:database` because Snowflake JDBC driver will ignore it
+   {:account   (i/db-test-env-var-or-throw :snowflake :account)
+    :user      (i/db-test-env-var-or-throw :snowflake :user)
+    :password  (i/db-test-env-var-or-throw :snowflake :password)
+    :warehouse (i/db-test-env-var-or-throw :snowflake :warehouse)
+    ;; SESSION parameters
+    :timezone  "UTC"}))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defn- qualified-name-components
@@ -46,7 +39,7 @@
 
 (defn- create-db-sql [driver {:keys [database-name]}]
   (let [db (generic/qualify+quote-name driver database-name)]
-    (format "CREATE DATABASE %s; USE DATABASE %s;" db db)))
+    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defn- load-data! [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
@@ -64,27 +57,38 @@
     :type/Number
     base-type))
 
+(defn- drop-database [_]) ; no-op since we shouldn't be trying to drop any databases anyway
+
+(defn- no-db-connection-spec
+  "Connection spec for connecting to our Snowflake instance without specifying a DB."
+  []
+  (sql/connection-details->spec snowflake-driver @connection-details))
+
+(defn- existing-dataset-names []
+  (let [db-spec (no-db-connection-spec)]
+    (jdbc/with-db-metadata [metadata db-spec]
+      ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making them
+      ;; all lower-case
+      (set (map str/lower-case (sql/get-catalogs metadata))))))
+
 (def ^:private existing-datasets
-  (atom #{}))
+  (atom nil))
 
-(defn- drop-database [db-name]
-  (let [db-spec (sql/connection-details->spec driver (database->connection-details nil nil))]
-    (with-open [conn (jdbc/get-connection db-spec)]
-      (jdbc/execute! db-spec [(str "DROP DATABASE \"" db-name "\"")]))))
-
-(defn existing-dataset-names []
-  (let [db-spec (sql/connection-details->spec driver (database->connection-details nil nil))]
-    (with-open [conn (jdbc/get-connection db-spec)]
-      (sql/get-catalogs (.getMetaData conn)))))
 
 (defn- create-db!
-  [driver {:keys [database-name] :as db-def}]
-  (when-not (seq @existing-datasets)
-    (reset! existing-datasets (set (existing-dataset-names)))
-    (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
-  (let [db-name (str/upper-case database-name)]
-    (when-not (contains? @existing-datasets db-name)
-      (generic/default-create-db! driver db-def))))
+  ([db-def]
+   (create-db! snowflake-driver db-def))
+  ([driver {:keys [database-name] :as db-def}]
+   ;; if `existing-datasets` atom isn't populated, then do so
+   (when-not (seq @existing-datasets)
+     (reset! existing-datasets (existing-dataset-names))
+     (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
+   ;; ok, now check if already created. If already created, no-op
+   (when-not (contains? @existing-datasets database-name)
+     ;; if not created, create the DB...
+     (generic/default-create-db! driver db-def)
+     ;; and add it to the set of DBs that have been created
+     (swap! existing-datasets conj database-name))))
 
 (u/strict-extend SnowflakeDriver
   generic/IGenericSQLTestExtensions
@@ -98,9 +102,35 @@
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
-         {:database->connection-details (u/drop-first-arg database->connection-details)
+         {:database->connection-details (fn [& _] @connection-details)
           :default-schema               (constantly "PUBLIC")
           :engine                       (constantly :snowflake)
           :id-field-type                (constantly :type/Number)
           :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)
           :create-db!                   create-db!}))
+
+
+;;; --------------------------------------------------- REPL STUFF ---------------------------------------------------
+
+#_(require '[metabase.test.data :as data]
+           '[metabase.test.data.datasets :as datasets]
+           '[toucan.db :as db]
+           '[metabase.query-processor :as qp])
+
+;; NOCOMMIT
+#_(defn- create-test-db! []
+  (datasets/with-engine :snowflake
+    (create-db! metabase.test.data.dataset-definitions/test-data)
+    (data/id)))
+
+;; NOCOMMIT
+#_(defn- run-mbql-query []
+  (metabase.driver.snowflake/-init-driver)
+  (datasets/with-engine :snowflake
+    (qp/process-query {:database (data/id)
+                       :type     :query
+                       :query    (data/$ids venues
+                                   {:source-table $$table
+                                    :expressions  {:wow [:- [:* $price 2] [:+ $price 0]]}
+                                    :limit        3
+                                    :order-by     [[:asc $id]]})})))

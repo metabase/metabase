@@ -37,6 +37,7 @@
              [parameters :as parameters]
              [permissions :as perms]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+             [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joined-tables :as resolve-joined-tables]
@@ -135,6 +136,7 @@
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
       fetch-source-query/fetch-source-query
+      resolve-database/resolve-database
       store/initialize-store
       query-throttle/maybe-add-query-throttle
       log-query/log-initial-query

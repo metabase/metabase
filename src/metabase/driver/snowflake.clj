@@ -6,26 +6,32 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sql.qp]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]]
+            [toucan.db :as db]))
 
-(defn connection-details->spec
+(defn- connection-details->spec
   "Create a database specification for a snowflake database."
-  [{:keys [account regionid db] :as opts}]
+  [{:keys [account regionid] :as opts}]
   (let [host (if regionid
                (str account "." regionid)
                account)]
+    ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
+    ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (merge {:subprotocol                                "snowflake"
             :classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
             :subname                                    (str "//" host ".snowflakecomputing.com/")
-            ;; This was dbname, not sure why as I didn't see any dbname populated, just db
-            :db                                         db
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true
             ;; other SESSION parameters
             :week_start                                 7}
-           (dissoc opts :host :port :db))))
+           (dissoc opts :host :port))))
 
 (defrecord SnowflakeDriver []
   :load-ns true
@@ -112,6 +118,33 @@
     :quarter-of-year (extract :quarter expr)
     :year            (extract :year expr)))
 
+(defn- query-db-name []
+  (or (-> (qp.store/database) :details :db)
+      (throw (Exception. "Missing DB name"))))
+
+(defmethod sql.qp/->honeysql [SnowflakeDriver (class Field)]
+  [driver field]
+  (let [table            (qp.store/table (:table_id field))
+        field-identifier (keyword
+                          (hx/qualify-and-escape-dots (query-db-name) (:schema table) (:name table) (:name field)))]
+    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
+
+(defmethod sql.qp/->honeysql [SnowflakeDriver (class Table)]
+  [_ table]
+  (let [{table-name :name, schema :schema} table]
+    (hx/qualify-and-escape-dots (query-db-name) schema table-name)))
+
+(defn- field->identifier
+  "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
+  ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
+  ;; currently only used for SQL params so it's not a huge deal at this point
+  ;;
+  ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
+  [driver {table-id :table_id, :as field}]
+  (qp.store/store-table! (db/select-one [Table :id :name :schema], :id (u/get-id table-id)))
+  (sql.qp/->honeysql driver field))
+
+
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :VARCHAR field-key)))
 
@@ -178,11 +211,11 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
           :date                      (u/drop-first-arg date)
+          :field->identifier         field->identifier
           :current-datetime-fn       (constantly :%current_timestamp)
           :set-timezone-sql          (constantly "ALTER SESSION SET TIMEZONE = %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
           :column->base-type         (u/drop-first-arg column->base-type)}))
-
 
 
 (defn -init-driver

@@ -131,7 +131,7 @@
   {:pre [(map? database)]}
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
-        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+        spec                (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
     (assoc (mdb/connection-pool (assoc spec
                                   :minimum-pool-size           1
                                   ;; prevent broken connections closed by dbs by testing them every 3 mins
@@ -270,14 +270,16 @@
 
 ;;; ## Database introspection methods used by sync process
 
-(defmacro with-metadata
+;; Don't use this anymore! Use the new `jdbc/with-db-metadata` fn
+(defmacro ^:deprecated with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
   `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
-(defmacro ^:private with-resultset-open
+;; Don't use this anymore! You can just `with-metadata` and `jdbc/result-set-seq` instead!!!
+(defmacro ^:private ^:deprecated with-resultset-open
   "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
   the the symbols provided in the binding form. The binding form is just like `let` or `with-open`, but yield a
   `ResultSet`. That `ResultSet` will be closed upon exit of `body`."
@@ -291,8 +293,7 @@
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"
   [^DatabaseMetaData metadata]
-  (with-resultset-open [rs-seq (.getCatalogs metadata)]
-    (set (map :table_cat rs-seq))))
+  (set (map :table_cat (jdbc/result-set-seq (.getCatalogs metadata)))))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
