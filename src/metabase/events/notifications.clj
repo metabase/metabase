@@ -26,8 +26,7 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
-
+;;; ------------------------------------------------ Event Processing ------------------------------------------------
 
 (def ^:private model->entity
   {:Card      Card
@@ -94,9 +93,7 @@
       (log/warn (format "Failed to process notifications event. %s" (:topic notification-event)) e))))
 
 
-
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
-
+;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn events-init
   "Automatically called during startup; start event listener for notifications events."

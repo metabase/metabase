@@ -79,6 +79,14 @@
   align-self: flex-end;
 }
 
+.align-self-center {
+  align-self: center;
+}
+
+.align-self-stretch {
+  align-self: stretch;
+}
+
 .flex-align-right,
 :local(.flex-align-right) {
   margin-left: auto;

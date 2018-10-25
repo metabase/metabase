@@ -4,13 +4,14 @@ import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 
-import { entities as entityDefs } from "metabase/redux/entities";
-
 export default (entityType?: string) => (
   ComposedComponent: Class<React$Component<*, *, *>>,
 ) => {
   const mapStateToProps = (state, props) => ({
-    entityDef: props.entityDef || entityDefs[entityType || props.entityType],
+    entityDef:
+      props.entityDef ||
+      // dynamic require due to dependency load order issues
+      require("metabase/entities")[entityType || props.entityType],
   });
   return connect(mapStateToProps)(
     class extends React.Component {

@@ -9,7 +9,6 @@
              [view-log :refer [ViewLog]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu :refer [match-$]]
-            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -128,9 +127,9 @@
                                         :display                "table"
                                         :dataset_query          {}
                                         :visualization_settings {}}]
-                      Dashboard [dash1 {:name         "rand-name"
-                                        :description  "rand-name"
-                                        :creator_id   (user->id :crowberto)}]
+                      Dashboard [dash1 {:name        "rand-name"
+                                        :description "rand-name"
+                                        :creator_id  (user->id :crowberto)}]
                       Card      [card2 {:name                   "rand-name"
                                         :creator_id             (user->id :crowberto)
                                         :display                "table"
@@ -140,25 +139,28 @@
     :user_id      (user->id :crowberto)
     :model        "card"
     :model_id     (:id card1)
-    :model_object {:id          (:id card1)
-                   :name        (:name card1)
-                   :description (:description card1)
-                   :display     (name (:display card1))}}
+    :model_object {:id            (:id card1)
+                   :name          (:name card1)
+                   :collection_id nil
+                   :description   (:description card1)
+                   :display       (name (:display card1))}}
    {:cnt          1
     :user_id      (user->id :crowberto)
     :model        "dashboard"
     :model_id     (:id dash1)
-    :model_object {:id          (:id dash1)
-                   :name        (:name dash1)
-                   :description (:description dash1)}}
+    :model_object {:id            (:id dash1)
+                   :name          (:name dash1)
+                   :collection_id nil
+                   :description   (:description dash1)}}
    {:cnt          1
     :user_id      (user->id :crowberto)
     :model        "card"
     :model_id     (:id card2)
-    :model_object {:id          (:id card2)
-                   :name        (:name card2)
-                   :description (:description card2)
-                   :display     (name (:display card2))}}]
+    :model_object {:id            (:id card2)
+                   :name          (:name card2)
+                   :collection_id nil
+                   :description   (:description card2)
+                   :display       (name (:display card2))}}]
   (do
     (create-view! (user->id :crowberto) "card"      (:id card2))
     (create-view! (user->id :crowberto) "dashboard" (:id dash1))

@@ -13,6 +13,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
+import FormattingWidget from "./components/widgets/FormattingWidget";
 
 import { UtilApi } from "metabase/services";
 
@@ -88,6 +89,11 @@ const SECTIONS = [
       {
         key: "enable-nested-queries",
         display_name: t`Enable Nested Queries`,
+        type: "boolean",
+      },
+      {
+        key: "enable-xrays",
+        display_name: t`Enable X-ray features`,
         type: "boolean",
       },
     ],
@@ -251,7 +257,13 @@ const SECTIONS = [
         key: "ldap-user-filter",
         display_name: t`User filter`,
         type: "string",
-        validations: [["ldap_filter", t`Check your parentheses`]],
+        validations: [
+          value =>
+            (value.match(/\(/g) || []).length !==
+            (value.match(/\)/g) || []).length
+              ? t`Check your parentheses`
+              : null,
+        ],
       },
       {
         key: "ldap-attribute-email",
@@ -300,6 +312,18 @@ const SECTIONS = [
         description: t`Add your own GeoJSON files to enable different region map visualizations`,
         widget: CustomGeoJSONWidget,
         noHeader: true,
+      },
+    ],
+  },
+  {
+    name: t`Formatting`,
+    slug: "formatting",
+    settings: [
+      {
+        display_name: t`Formatting Options`,
+        description: "",
+        key: "custom-formatting",
+        widget: FormattingWidget,
       },
     ],
   },
@@ -410,23 +434,6 @@ const SECTIONS = [
         display_name: t`Max Cache Entry Size`,
         type: "number",
         getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-    ],
-  },
-  {
-    name: t`X-Rays`,
-    slug: "x_rays",
-    settings: [
-      {
-        key: "enable-xrays",
-        display_name: t`Enable X-Rays`,
-        type: "boolean",
-        allowValueCollection: true,
-      },
-      {
-        key: "xray-max-cost",
-        type: "string",
         allowValueCollection: true,
       },
     ],

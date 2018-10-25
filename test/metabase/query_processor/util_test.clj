@@ -9,15 +9,15 @@
 (expect true  (qputil/mbql-query? {:type "query"}))
 
 ;; query-without-aggregations-or-limits?
-(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]}}))
-(expect true  (qputil/query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :rows}]}}))
-(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]
+(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [[:count]]}}))
+(expect true  (qputil/query-without-aggregations-or-limits? {:query {}}))
+(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [[:count]]
                                                                      :limit       10}}))
-(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]
+(expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [[:count]]
                                                                      :page        1}}))
 
 
-;;; ------------------------------------------------------------ Tests for qputil/query-hash ------------------------------------------------------------
+;;; ------------------------------------------ Tests for qputil/query-hash -------------------------------------------
 
 (defn- array= {:style/indent 0}
   ([a b]
@@ -88,7 +88,8 @@
     (qputil/query-hash {:query :abc})
     (qputil/query-hash {:query :abc, :parameters ["ABC"]})))
 
-;; similarly, the presence of a `nil` value for `:constraints` should produce the same hash as not including the key at all
+;; similarly, the presence of a `nil` value for `:constraints` should produce the same hash as not including the key
+;; at all
 (expect
   (array=
     (qputil/query-hash {:query :abc})
@@ -107,63 +108,60 @@
                         :native      {:query "SELECT pg_sleep(15), 2 AS two"}})))
 
 
-;;; ------------------------------------------------------------ Tests for get-normalized and get-in-normalized ------------------------------------------------------------
+(defrecord ^:private TestRecord1 [x])
+(defrecord ^:private TestRecord2 [x])
 
-(expect 2 (qputil/get-normalized {"num_toucans" 2} :num-toucans))
-(expect 2 (qputil/get-normalized {"NUM_TOUCANS" 2} :num-toucans))
-(expect 2 (qputil/get-normalized {"num-toucans" 2} :num-toucans))
-(expect 2 (qputil/get-normalized {:num_toucans 2}  :num-toucans))
-(expect 2 (qputil/get-normalized {:NUM_TOUCANS 2}  :num-toucans))
-(expect 2 (qputil/get-normalized {:num-toucans 2}  :num-toucans))
+(def ^:private test-tree
+  {:a {:aa (TestRecord1. 1)
+       :ab (TestRecord2. 1)}
+   :b (TestRecord1. 1)
+   :c (TestRecord2. 1)
+   :d [1 2 3 4]})
 
-(expect
-  false
-  (qputil/get-normalized {:case-sensitive false} :case-sensitive))
 
-(expect
-  false
-  (qputil/get-normalized {:case-sensitive false} :case-sensitive true))
+(def ^:private test-inner-map
+  {:test {:value 10}})
 
-(expect
-  true
-  (qputil/get-normalized {:explodes-database false} :case-sensitive true))
-
-(expect
-  nil
-  (qputil/get-normalized nil :num-toucans))
-
-(expect 2 (qputil/get-in-normalized {"BIRDS" {"NUM_TOUCANS" 2}} [:birds :num-toucans]))
-(expect 2 (qputil/get-in-normalized {"birds" {"num_toucans" 2}} [:birds :num-toucans]))
-(expect 2 (qputil/get-in-normalized {"birds" {"num-toucans" 2}} [:birds :num-toucans]))
-(expect 2 (qputil/get-in-normalized {:BIRDS  {:NUM_TOUCANS 2}}  [:birds :num-toucans]))
-(expect 2 (qputil/get-in-normalized {:birds  {:num_toucans 2}}  [:birds :num-toucans]))
-(expect 2 (qputil/get-in-normalized {:birds  {:num-toucans 2}}  [:birds :num-toucans]))
-
-(expect
-  2
-  (qputil/get-in-normalized {:num-toucans 2} [:num-toucans]))
-
-(expect
-  nil
-  (qputil/get-in-normalized nil [:birds :num-toucans]))
-
+;; get-in-query should work for a nested query
 (expect
   10
-  (qputil/get-in-normalized
-   {"dataset_query" {"query" {"source_table" 10}}}
-   [:dataset-query :query :source-table]))
+  (qputil/get-in-query {:query {:source-query test-inner-map}} [:test :value]))
 
-(expect {} (qputil/dissoc-normalized {"NUM_TOUCANS" 3} :num-toucans))
-(expect {} (qputil/dissoc-normalized {"num_toucans" 3} :num-toucans))
-(expect {} (qputil/dissoc-normalized {"num-toucans" 3} :num-toucans))
-(expect {} (qputil/dissoc-normalized {:NUM_TOUCANS 3}  :num-toucans))
-(expect {} (qputil/dissoc-normalized {:num_toucans 3}  :num-toucans))
-(expect {} (qputil/dissoc-normalized {:num-toucans 3}  :num-toucans))
-
+;; Not currently supported, but get-in-query should work for a double nested query
 (expect
-  {}
-  (qputil/dissoc-normalized {:num-toucans 3, "NUM_TOUCANS" 3, "num_toucans" 3} :num-toucans))
+  10
+  (qputil/get-in-query {:query {:source-query {:source-query test-inner-map}}} [:test :value]))
 
+;; get-in-query should also work with non-nested queries
+(expect
+  10
+  (qputil/get-in-query {:query test-inner-map} [:test :value]))
+
+;; Not providing a `not-found` value should just return nil
 (expect
   nil
-  (qputil/dissoc-normalized nil :num-toucans))
+  (qputil/get-in-query {} [:test]))
+
+;; Providing a `not-found` value should return that
+(let [not-found (gensym)]
+  (expect
+    not-found
+    (qputil/get-in-query {} [:test] not-found)))
+
+(def ^:private updated-test-map
+  {:test {:value 11}})
+
+;; assoc-in-query works with a non-nested query
+(expect
+  {:query updated-test-map}
+  (qputil/assoc-in-query {:query test-inner-map} [:test :value] 11))
+
+;; assoc-in-query works with a nested query
+(expect
+  {:query {:source-query updated-test-map}}
+  (qputil/assoc-in-query {:query {:source-query test-inner-map}} [:test :value] 11))
+
+;; Not supported yet, but assoc-in-query should do the right thing with a double nested query
+(expect
+  {:query {:source-query {:source-query updated-test-map}}}
+  (qputil/assoc-in-query {:query {:source-query {:source-query test-inner-map}}} [:test :value] 11))

@@ -69,7 +69,7 @@
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
   `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
   Order is important!"
-  [name/infer-special-type
+  [name/infer-and-assoc-special-type
    category/infer-is-category-or-list
    no-preview-display/infer-no-preview-display
    text-fingerprint/infer-special-type])

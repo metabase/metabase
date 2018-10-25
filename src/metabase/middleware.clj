@@ -1,6 +1,8 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -8,35 +10,24 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
-            [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]]
+            [toucan.db :as db])
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           java.sql.SQLException))
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
 (defn- api-call?
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]
-  (and (>= (count uri) 4)
-       (= (.substring uri 0 4) "/api")))
-
-(defn- index?
-  "Is this ring request one that will serve `index.html` or `init.html`?"
-  [{:keys [uri]}]
-  (or (zero? (count uri))
-      (not (or (re-matches #"^/app/.*$" uri)
-               (re-matches #"^/api/.*$" uri)
-               (re-matches #"^/public/.*$" uri)
-               (re-matches #"^/favicon.ico$" uri)))))
+  (str/starts-with? uri "/api"))
 
 (defn- public?
   "Is this ring request one that will serve `public.html`?"
@@ -47,6 +38,7 @@
   "Is this ring request one that will serve `public.html`?"
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
+
 
 ;;; ------------------------------------------- AUTH & SESSION MANAGEMENT --------------------------------------------
 
@@ -117,7 +109,10 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
+  (vec (cons User user/admin-or-self-visible-columns)))
+
+(defn- find-user [user-id]
+  (db/select-one current-user-fields, :id user-id))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
@@ -132,7 +127,7 @@
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id*              current-user-id
                 *is-superuser?*                (:is-superuser? request)
-                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user*                 (delay (find-user current-user-id))
                 *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
@@ -221,12 +216,8 @@
   (when-let [k (ssl-certificate-public-key)]
     {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
-(defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
-  (merge (cache-prevention-headers)
-         strict-transport-security-header
-         #_(public-key-pins-header)))
-
-(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
+(defn- security-headers [& {:keys [allow-iframes?]
+                            :or   {allow-iframes? false}}]
   (merge
    (cache-prevention-headers)
    strict-transport-security-header
@@ -243,15 +234,28 @@
     "X-Content-Type-Options"            "nosniff"}))
 
 (defn add-security-headers
-  "Add HTTP headers to tell browsers not to cache API responses."
+  "Add HTTP security and cache-busting headers."
   [handler]
   (fn [request]
     (let [response (handler request)]
-      (update response :headers merge (cond
-                                        (api-call? request) (api-security-headers)
-                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
-                                        (embed? request)    (html-page-security-headers, :allow-iframes? true)
-                                        (index? request)    (html-page-security-headers))))))
+      ;; add security headers to all responses, but allow iframes on public & embed responses
+      (update response :headers merge (security-headers :allow-iframes? ((some-fn public? embed?) request))))))
+
+(defn add-content-type
+  "Add an appropriate Content-Type header to response if it doesn't already have one. Most responses should already
+  have one, so this is a fallback for ones that for one reason or another do not."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (update-in
+       response
+       [:headers "Content-Type"]
+       (fn [content-type]
+         (or content-type
+             (when (api-call? request)
+               (if (string? (:body response))
+                 "text/plain"
+                 "application/json; charset=utf-8"))))))))
 
 
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
@@ -298,9 +302,6 @@
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
 ;; Encode BSON undefined like `nil`
-;;
-;; TODO - not sure this is actually needed anymore now that we are loading monger.json --
-;; see http://clojuremongodb.info/articles/integration.html
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
@@ -353,6 +354,12 @@
 
 ;;; ----------------------------------------------- EXCEPTION HANDLING -----------------------------------------------
 
+(def ^:dynamic ^:private ^Boolean *automatically-catch-api-exceptions*
+  "Should API exceptions automatically be caught? By default, this is `true`, but this can be disabled when we want to
+  catch Exceptions and return something generic to avoid leaking information, e.g. with the `api/public` and
+  `api/embed` endpoints. generic exceptions"
+  true)
+
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
   information available to bad actors when exceptions occur on public endpoints."
@@ -374,3 +381,46 @@
            (handler request))
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
+
+(defn- api-exception-response
+  "Convert an exception from an API endpoint into an appropriate HTTP response."
+  [^Throwable e]
+  (let [{:keys [status-code], :as info} (ex-data e)
+        other-info                      (dissoc info :status-code :schema :type)
+        message                         (.getMessage e)
+        body                            (cond
+                                          ;; Exceptions that include a status code *and* other info are things like
+                                          ;; Field validation exceptions. Return those as is
+                                          (and status-code
+                                               (seq other-info))
+                                          (ui18n/localized-strings->strings other-info)
+                                          ;; If status code was specified but other data wasn't, it's something like a
+                                          ;; 404. Return message as the (plain-text) body.
+                                          status-code
+                                          (str message)
+                                          ;; Otherwise it's a 500. Return a body that includes exception & filtered
+                                          ;; stacktrace for debugging purposes
+                                          :else
+                                          (let [stacktrace (u/filtered-stacktrace e)]
+                                            (merge (assoc other-info
+                                                     :message    message
+                                                     :type       (class e)
+                                                     :stacktrace stacktrace)
+                                                   (when (instance? SQLException e)
+                                                     {:sql-exception-chain
+                                                      (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                                 #"\s*\n\s*")}))))]
+    {:status  (or status-code 500)
+     :headers (security-headers)
+     :body    body}))
+
+(defn catch-api-exceptions
+  "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
+  Stacktrace page, which is not so useful for our frontend."
+  [handler]
+  (fn [request]
+    (if *automatically-catch-api-exceptions*
+      (try (handler request)
+           (catch Throwable e
+             (api-exception-response e)))
+      (handler request))))

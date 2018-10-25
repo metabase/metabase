@@ -5,7 +5,6 @@
             [metabase.api
              [activity :as activity]
              [alert    :as alert]
-             [async :as async]
              [automagic-dashboards :as magic]
              [card :as card]
              [collection :as collection]
@@ -16,8 +15,6 @@
              [embed :as embed]
              [field :as field]
              [geojson :as geojson]
-             [getting-started :as getting-started]
-             [label :as label]
              [ldap :as ldap]
              [metric :as metric]
              [notify :as notify]
@@ -26,6 +23,7 @@
              [public :as public]
              [pulse :as pulse]
              [revision :as revision]
+             [search :as search]
              [segment :as segment]
              [session :as session]
              [setting :as setting]
@@ -33,11 +31,11 @@
              [slack :as slack]
              [table :as table]
              [tiles :as tiles]
+             [task :as task]
              [user :as user]
-             [util :as util]
-             [x-ray :as x-ray]]
+             [util :as util]]
             [metabase.middleware :as middleware]
-            [puppetlabs.i18n.core :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 (def ^:private +generic-exceptions
   "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
@@ -60,7 +58,6 @@
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"             [] (+auth activity/routes))
   (context "/alert"                [] (+auth alert/routes))
-  (context "/async"                [] (+auth async/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
   (context "/collection"           [] (+auth collection/routes))
@@ -70,10 +67,7 @@
   (context "/email"                [] (+auth email/routes))
   (context "/embed"                [] (+message-only-exceptions embed/routes))
   (context "/field"                [] (+auth field/routes))
-  (context "/x-ray"                [] (+auth x-ray/routes))
-  (context "/getting_started"      [] (+auth getting-started/routes))
   (context "/geojson"              [] (+auth geojson/routes))
-  (context "/label"                [] (+auth label/routes))
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/metric"               [] (+auth metric/routes))
   (context "/notify"               [] (+apikey notify/routes))
@@ -82,12 +76,14 @@
   (context "/public"               [] (+generic-exceptions public/routes))
   (context "/pulse"                [] (+auth pulse/routes))
   (context "/revision"             [] (+auth revision/routes))
+  (context "/search"               [] (+auth search/routes))
   (context "/segment"              [] (+auth segment/routes))
   (context "/session"              [] session/routes)
   (context "/setting"              [] (+auth setting/routes))
   (context "/setup"                [] setup/routes)
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
+  (context "/task"                 [] (+auth task/routes))
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

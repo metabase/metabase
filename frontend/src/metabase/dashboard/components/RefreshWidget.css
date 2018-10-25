@@ -4,7 +4,7 @@
 }
 
 :local .title {
-  color: color(var(--base-grey) shade(40%));
+  color: var(--color-text-medium);
   font-weight: bold;
   font-size: 0.75em;
   text-transform: uppercase;
@@ -15,18 +15,18 @@
 :local .option {
   composes: cursor-pointer from "style";
 
-  color: var(--default-font-color);
+  color: var(--color-text-dark);
   font-weight: bold;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
 }
 :local .option:hover,
 :local .option:hover .valueLabel {
-  color: var(--brand-color) !important;
+  color: var(--color-brand) !important;
 }
 :local .option.on.selected,
 :local .option.on.selected .valueLabel {
-  color: var(--green-color);
+  color: var(--color-accent1);
 }
 
 :local .option :global(.Icon) {
@@ -41,5 +41,5 @@
 }
 
 :local .option .valueLabel {
-  color: color(var(--base-grey) shade(40%));
+  color: var(--color-text-medium);
 }

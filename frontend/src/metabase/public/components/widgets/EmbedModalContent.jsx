@@ -4,6 +4,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
 
+import { t } from "c-3po";
+
 import Icon from "metabase/components/Icon";
 
 import SharingPane from "./SharingPane";
@@ -14,6 +16,7 @@ import {
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
+import colors from "metabase/lib/colors";
 
 import {
   getSiteUrl,
@@ -176,7 +179,7 @@ export default class EmbedModalContent extends Component {
           style={{
             boxShadow:
               embedType === "application"
-                ? "0px 8px 15px -9px rgba(0,0,0,0.2)"
+                ? `0px 8px 15px -9px ${colors["text-dark"]}`
                 : undefined,
           }}
         >
@@ -187,7 +190,7 @@ export default class EmbedModalContent extends Component {
             />
           </h2>
           <Icon
-            className="text-grey-2 text-grey-4-hover cursor-pointer p2 ml-auto"
+            className="text-light text-medium-hover cursor-pointer p2 ml-auto"
             name="close"
             size={24}
             onClick={() => {
@@ -284,8 +287,8 @@ export const EmbedTitle = ({
   onClick: () => any,
 }) => (
   <a className="flex align-center" onClick={onClick}>
-    <span className="text-brand-hover">Sharing</span>
-    {type && <Icon name="chevronright" className="mx1 text-grey-3" />}
+    <span className="text-brand-hover">{t`Sharing`}</span>
+    {type && <Icon name="chevronright" className="mx1 text-medium" />}
     {type}
   </a>
 );

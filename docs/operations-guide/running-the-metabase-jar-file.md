@@ -19,7 +19,7 @@ You should see output such as:
     Java(TM) SE Runtime Environment (build 1.8.0_31-b13)
     Java HotSpot(TM) 64-Bit Server VM (build 25.31-b07, mixed mode)
 
-If you did not see the output above and instead saw either an error or your Java version is less than 1.7, then you need to install the Java Runtime.
+If you did not see the output above and instead saw either an error or your Java version is less than 1.8, then you need to install the Java Runtime.
 
 [OpenJDK Downloads](http://openjdk.java.net/install/)
 [Oracle's Java Downloads](http://www.oracle.com/technetwork/java/javase/downloads/index.html)

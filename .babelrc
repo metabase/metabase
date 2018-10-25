@@ -1,5 +1,6 @@
 {
   "plugins": [
+    "babel-plugin-styled-components",
     "transform-flow-strip-types",
     "add-react-displayname",
     "transform-decorators-legacy",

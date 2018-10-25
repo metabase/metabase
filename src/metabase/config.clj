@@ -61,7 +61,10 @@
 (defn- version-info-from-shell-script []
   (try
     (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-      {:tag tag, :hash hash, :branch branch, :date date})
+      {:tag    (or tag "?")
+       :hash   (or hash "?")
+       :branch (or branch "?")
+       :date   (or date "?")})
     ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
     (catch Throwable _
       {:tag "?", :hash "?", :branch "?", :date "?"})))
@@ -94,3 +97,14 @@
    with database connections so admins can identify them as Metabase ones.
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
+
+
+;; This only affects dev:
+;;
+;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
+;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
+(try
+  (require 'expectations)
+  ((resolve 'expectations/disable-run-on-shutdown))
+  ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
+  (catch Throwable _))

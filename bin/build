@@ -20,13 +20,23 @@ frontend-deps() {
 }
 
 frontend() {
+    frontend-deps
     echo "Running 'webpack' with NODE_ENV=production assemble and minify frontend assets..." &&
     NODE_ENV=production ./node_modules/.bin/webpack --bail
 }
 
 frontend-fast() {
+    frontend-deps
     echo "Running 'webpack' with NODE_ENV=development to assemble frontend assets..." &&
     NODE_ENV=development ./node_modules/.bin/webpack --bail --devtool eval
+}
+
+translations() {
+    echo "Running './bin/i18n/build-translation-resources' to build translation resources..."
+    if ! ./bin/i18n/build-translation-resources; then
+      echo "Building translation resources failed, please install 'gettext', or build without translations by running './bin/build no-translations'."
+      exit 1
+    fi
 }
 
 sample-dataset() {
@@ -44,7 +54,11 @@ uberjar() {
 }
 
 all() {
-    version && frontend-deps && frontend && sample-dataset && uberjar
+    version && translations && frontend && sample-dataset && uberjar
+}
+
+no-translations() {
+    version && frontend && sample-dataset && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

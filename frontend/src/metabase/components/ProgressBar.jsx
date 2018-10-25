@@ -2,12 +2,13 @@
 import React, { Component } from "react";
 import cxs from "cxs";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 type Props = {
   percentage: number,
   animated: boolean,
   color: string,
+  height: number,
 };
 
 export default class ProgressBar extends Component {
@@ -15,18 +16,19 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
-    color: normal.blue,
+    color: colors["brand"],
+    height: 10,
   };
 
   render() {
-    const { percentage, animated, color } = this.props;
+    const { percentage, animated, color, height } = this.props;
 
     const width = percentage * 100;
 
     const wrapperStyles = cxs({
       position: "relative",
       border: `1px solid ${color}`,
-      height: 10,
+      height,
       borderRadius: 99,
     });
 
@@ -48,7 +50,7 @@ export default class ProgressBar extends Component {
         left: 0,
         width: `${width / 4}%`,
         height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.12)",
+        backgroundColor: colors["bg-black"],
         animation: animated ? "progress-bar 1.5s linear infinite" : "none",
       },
     });

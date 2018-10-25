@@ -1,8 +1,9 @@
 (ns metabase.api.common-test
   (:require [clojure.core.async :as async]
             [expectations :refer :all]
-            [metabase.api.common :refer :all :as api]
+            [metabase.api.common :as api :refer :all]
             [metabase.api.common.internal :refer :all]
+            [metabase.middleware :as mb-middleware]
             [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
 
@@ -10,36 +11,63 @@
 
 (def ^:private four-oh-four
   "The expected format of a 404 response."
-  {:status 404
-   :body "Not found."})
+  {:status  404
+   :body    "Not found."
+   :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+             "Content-Security-Policy"           (-> @#'mb-middleware/content-security-policy-header vals first)
+             "Content-Type"                      "text/plain"
+             "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
+             "Last-Modified"                     true ; this will be current date, so do update-in ... string?
+             "Strict-Transport-Security"         "max-age=31536000"
+             "X-Content-Type-Options"            "nosniff"
+             "X-Frame-Options"                   "DENY"
+             "X-Permitted-Cross-Domain-Policies" "none"
+             "X-XSS-Protection"                  "1; mode=block"}})
 
-(defn ^:private my-mock-api-fn [_]
-  (catch-api-exceptions
-   (check-404 @*current-user*)
-   {:status 200
-    :body @*current-user*}))
+(defn- mock-api-fn [response-fn]
+  ((-> response-fn
+       mb-middleware/catch-api-exceptions
+       mb-middleware/add-content-type)
+   {:uri "/api/my_fake_api_call"}))
+
+(defn- my-mock-api-fn []
+  (mock-api-fn
+   (fn [_]
+     (check-404 @*current-user*)
+     {:status 200
+      :body   @*current-user*})))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
-(expect {:status 200
-         :body "Cam Saul"}
+(expect
+  {:status  200
+   :body    "Cam Saul"
+   :headers {"Content-Type" "text/plain"}}
   (binding [*current-user* (atom "Cam Saul")]
-    (my-mock-api-fn nil)))
+    (my-mock-api-fn)))
 
 ; check that 404 is returned otherwise
-(expect four-oh-four
-  (my-mock-api-fn nil))
+(expect
+  four-oh-four
+  (-> (my-mock-api-fn)
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;;let-404 should return nil if test fails
-(expect four-oh-four
-  (catch-api-exceptions
-    (let-404 [user nil]
-      {:user user})))
+(expect
+  four-oh-four
+  (-> (mock-api-fn
+       (fn [_]
+         (let-404 [user nil]
+           {:user user})))
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;; otherwise let-404 should bind as expected
-(expect {:user {:name "Cam"}}
-  (catch-api-exceptions
-    (let-404 [user {:name "Cam"}]
-      {:user user})))
+(expect
+  {:user {:name "Cam"}}
+  ((mb-middleware/catch-api-exceptions
+    (fn [_]
+      (let-404 [user {:name "Cam"}]
+        {:user user})))
+   nil))
 
 
 (defmacro ^:private expect-expansion
@@ -53,7 +81,8 @@
 
 
 ;;; TESTS FOR AUTO-PARSE
-;; TODO - these need to be moved to `metabase.api.common.internal-test`. But first `expect-expansion` needs to be put somewhere central
+;; TODO - these need to be moved to `metabase.api.common.internal-test`. But first `expect-expansion` needs to be put
+;; somewhere central
 
 ;; when auto-parse gets an args form where arg is present in *autoparse-types*
 ;; the appropriate let binding should be generated
@@ -88,10 +117,9 @@
   (expect-expansion
     (def GET_:id
       (GET ["/:id" :id "#[0-9]+"] [id]
-        (metabase.api.common.internal/catch-api-exceptions
-          (metabase.api.common.internal/auto-parse [id]
-            (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
-            (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))
+           (metabase.api.common.internal/auto-parse [id]
+             (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
+             (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id))))))
     (defendpoint GET "/:id" [id]
       {id su/IntGreaterThanZero}
       (select-one Card :id id))))

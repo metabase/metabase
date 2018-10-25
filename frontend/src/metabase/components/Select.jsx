@@ -8,8 +8,10 @@ import { t } from "c-3po";
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import SelectButton from "./SelectButton";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class Select extends Component {
   static propTypes = {
@@ -34,8 +36,11 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
+
     isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
     // NOTE - @kdoh
@@ -48,21 +53,29 @@ class BrowserSelect extends Component {
     // we should not allow this
     className: PropTypes.string,
     compact: PropTypes.bool,
+    multiple: PropTypes.bool,
   };
   static defaultProps = {
     className: "",
     width: 320,
     height: 320,
     rowHeight: 40,
+    multiple: false,
+    searchCaseInsensitive: true,
+    searchFuzzy: true,
   };
 
   isSelected(otherValue) {
-    const { value } = this.props;
-    return (
-      value === otherValue ||
-      ((value == null || value === "") &&
-        (otherValue == null || otherValue === ""))
-    );
+    const { value, multiple } = this.props;
+    if (multiple) {
+      return _.any(value, v => v === otherValue);
+    } else {
+      return (
+        value === otherValue ||
+        ((value == null || value === "") &&
+          (otherValue == null || otherValue === ""))
+      );
+    }
   }
 
   render() {
@@ -72,35 +85,39 @@ class BrowserSelect extends Component {
       onChange,
       searchProp,
       searchCaseInsensitive,
+      searchFuzzy,
       isInitiallyOpen,
       placeholder,
       triggerElement,
       width,
       height,
       rowHeight,
+      multiple,
     } = this.props;
 
     let children = this.props.children;
 
-    let selectedName;
-    for (const child of children) {
-      if (this.isSelected(child.props.value)) {
-        selectedName = child.props.children;
-      }
-    }
-    if (selectedName == null && placeholder) {
-      selectedName = placeholder;
+    let selectedNames = children
+      .filter(child => this.isSelected(child.props.value))
+      .map(child => child.props.children);
+    if (_.isEmpty(selectedNames) && placeholder) {
+      selectedNames = [placeholder];
     }
 
-    const { inputValue } = this.state;
+    let { inputValue } = this.state;
     let filter = () => true;
     if (searchProp && inputValue) {
       filter = child => {
         let childValue = String(child.props[searchProp] || "");
         if (!inputValue) {
           return false;
-        } else if (searchCaseInsensitive) {
-          return childValue.toLowerCase().startsWith(inputValue.toLowerCase());
+        }
+        if (searchCaseInsensitive) {
+          childValue = childValue.toLowerCase();
+          inputValue = inputValue.toLowerCase();
+        }
+        if (searchFuzzy) {
+          return childValue.indexOf(inputValue) >= 0;
         } else {
           return childValue.startsWith(inputValue);
         }
@@ -128,8 +145,20 @@ class BrowserSelect extends Component {
         className={className}
         triggerElement={
           triggerElement || (
-            <SelectButton hasValue={!!value}>{selectedName}</SelectButton>
+            <SelectButton hasValue={multiple ? value.length > 0 : !!value}>
+              {selectedNames.map((name, index) => (
+                <span key={index}>
+                  {name}
+                  {index < selectedNames.length - 1 ? ", " : ""}
+                </span>
+              ))}
+            </SelectButton>
           )
+        }
+        pinInitialAttachment={
+          // keep the popover from jumping around one its been opened,
+          // this can happen when filtering items via search
+          true
         }
         triggerClasses={className}
         verticalAttachments={["top", "bottom"]}
@@ -171,9 +200,18 @@ class BrowserSelect extends Component {
                     selected: this.isSelected(child.props.value),
                     onClick: () => {
                       if (!child.props.disabled) {
-                        onChange({ target: { value: child.props.value } });
+                        if (multiple) {
+                          const value = this.isSelected(child.props.value)
+                            ? this.props.value.filter(
+                                v => v !== child.props.value,
+                              )
+                            : this.props.value.concat([child.props.value]);
+                          onChange({ target: { value } });
+                        } else {
+                          onChange({ target: { value: child.props.value } });
+                          this.refs.popover.close();
+                        }
                       }
-                      this.refs.popover.close();
                     },
                   })}
                 </div>
@@ -185,27 +223,6 @@ class BrowserSelect extends Component {
     );
   }
 }
-
-export const SelectButton = ({ hasValue, children }) => (
-  <div
-    className={
-      "AdminSelect border-med flex align-center " +
-      (!hasValue ? " text-grey-3" : "")
-    }
-  >
-    <span className="AdminSelect-content mr1">{children}</span>
-    <Icon
-      className="AdminSelect-chevron flex-align-right"
-      name="chevrondown"
-      size={12}
-    />
-  </div>
-);
-
-SelectButton.propTypes = {
-  hasValue: PropTypes.bool,
-  children: PropTypes.any,
-};
 
 export class Option extends Component {
   static propTypes = {
@@ -312,7 +329,7 @@ class LegacySelect extends Component {
       <div
         className={cx(
           "flex align-center",
-          !value && (!values || values.length === 0) ? " text-grey-2" : "",
+          !value && (!values || values.length === 0) ? " text-medium" : "",
         )}
       >
         {values && values.length !== 0 ? (

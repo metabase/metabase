@@ -26,11 +26,8 @@
              [activity :refer [Activity]]
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
-             [card-label :refer [CardLabel]]
              [collection :refer [Collection]]
              [collection-revision :refer [CollectionRevision]]
-             [computation-job :refer [ComputationJob]]
-             [computation-job-result :refer [ComputationJobResult]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -40,7 +37,6 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
-             [label :refer [Label]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
              [permissions :refer [Permissions]]
@@ -56,6 +52,7 @@
              [session :refer [Session]]
              [setting :refer [Setting]]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]
              [view-log :refer [ViewLog]]]))
 
@@ -89,8 +86,6 @@
    PulseCard
    PulseChannel
    PulseChannelRecipient
-   Label
-   CardLabel
    PermissionsGroup
    PermissionsGroupMembership
    Permissions
@@ -99,8 +94,7 @@
    CollectionRevision
    DashboardFavorite
    Dimension
-   ComputationJob
-   ComputationJobResult
+   TaskHistory
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

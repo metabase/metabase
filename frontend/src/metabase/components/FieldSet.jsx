@@ -20,7 +20,7 @@ export default function FieldSet({
   return (
     <fieldset className={cx(className, fieldSetClassName)}>
       {legend && (
-        <legend className="h5 text-bold text-uppercase px1 text-nowrap text-grey-4">
+        <legend className="h5 text-bold text-uppercase px1 text-nowrap text-medium">
           {legend}
         </legend>
       )}

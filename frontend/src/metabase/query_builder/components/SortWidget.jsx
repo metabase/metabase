@@ -30,8 +30,8 @@ export default class SortWidget extends Component {
 
   componentWillReceiveProps(newProps) {
     this.setState({
-      field: newProps.sort[0], // id of the field
-      direction: newProps.sort[1], // sort direction
+      field: newProps.sort[1], // id of the field
+      direction: newProps.sort[0], // sort direction
     });
   }
 
@@ -44,7 +44,7 @@ export default class SortWidget extends Component {
 
   setField(value) {
     if (this.state.field !== value) {
-      this.props.updateOrderBy([value, this.state.direction]);
+      this.props.updateOrderBy([this.state.direction, value]);
       // Optimistically set field state so componentWillUnmount logic works correctly
       this.setState({ field: value });
     }
@@ -52,7 +52,7 @@ export default class SortWidget extends Component {
 
   setDirection(value) {
     if (this.state.direction !== value) {
-      this.props.updateOrderBy([this.state.field, value]);
+      this.props.updateOrderBy([value, this.state.field]);
       // Optimistically set direction state so componentWillUnmount logic works correctly
       this.setState({ direction: value });
     }
@@ -60,8 +60,8 @@ export default class SortWidget extends Component {
 
   render() {
     let directionOptions = [
-      { key: "ascending", val: "ascending" },
-      { key: "descending", val: "descending" },
+      { key: "ascending", val: "asc" },
+      { key: "descending", val: "desc" },
     ];
 
     return (
@@ -76,6 +76,7 @@ export default class SortWidget extends Component {
           setField={this.setField}
           isInitiallyOpen={this.state.field === null}
           enableSubDimensions={false}
+          useOriginalDimension={true}
         />
 
         <SelectionModule

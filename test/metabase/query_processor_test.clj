@@ -32,11 +32,13 @@
   (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn non-timeseries-engines-with-feature
-  "Set of engines that support a given FEATURE."
-  [feature]
-  (set (for [engine non-timeseries-engines
-             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
-         engine)))
+  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  supported."
+  [feature & more-features]
+  (let [features (set (cons feature more-features))]
+    (set (for [engine non-timeseries-engines
+               :when  (set/subset? features (driver/features (driver/engine->driver engine)))]
+           engine))))
 
 (defn non-timeseries-engines-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
@@ -92,19 +94,15 @@
 ;; #### categories
 
 (defn- col-defaults []
-  {:extra_info      {}
-   :target          nil
-   :description     nil
+  {:description     nil
    :visibility_type :normal
-   :schema_name     (data/default-schema)
-   :source          :fields
-   :fk_field_id     nil
-   :remapped_from   nil
-   :remapped_to     nil})
+   :settings        nil
+   :parent_id       nil
+   :source          :fields})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint)))
+    (dissoc field :target :schema_name :fk_field_id :remapped_from :remapped_to :fingerprint)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -141,7 +139,7 @@
                   :base_type    (data/id-field-type)
                   :name         (data/format-name "id")
                   :display_name "ID"
-                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 8.0}}}}
+                  :fingerprint  nil}
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
@@ -156,9 +154,9 @@
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default
-                  :fingerprint  {:global {:distinct-count 11}
-                                 :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
-                                                          :latest   "2014-12-05T00:00:00.000Z"}}}})))
+                  :fingerprint  {:global {:distinct-count 15}
+                                 :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z"
+                                                          :latest   "2014-12-05T15:15:00.000Z"}}}})))
 
 ;; #### venues
 (defn venues-columns
@@ -178,23 +176,21 @@
                    :base_type    (data/id-field-type)
                    :name         (data/format-name "id")
                    :display_name "ID"
-                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 50.5}}}}
-     :category_id {:extra_info   (if (data/fks-supported?)
-                                   {:target_table_id (data/id :categories)}
-                                   {})
-                   :target       (target-field (categories-col :id))
-                   :special_type (if (data/fks-supported?)
+                   :fingerprint  nil}
+     :category_id {:special_type (if (data/fks-supported?)
                                    :type/FK
                                    :type/Category)
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
                    :display_name "Category ID"
-                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}}}
+                   :fingerprint  (if (data/fks-supported?)
+                                   {:global {:distinct-count 28}}
+                                   {:global {:distinct-count 28}, :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
-                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}}
+                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03}}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
@@ -229,26 +225,23 @@
                 :base_type    (data/id-field-type)
                 :name         (data/format-name "id")
                 :display_name "ID"}
-     :venue_id {:extra_info   (if (data/fks-supported?)
-                                {:target_table_id (data/id :venues)}
-                                {})
-                :target       (target-field (venues-col :id))
-                :special_type (when (data/fks-supported?)
+     :venue_id {:special_type (when (data/fks-supported?)
                                 :type/FK)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"
-                :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 51.965}}}}
-     :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
-                                  {})
-                :target       (target-field (users-col :id))
-                :special_type (if (data/fks-supported?)
+                :fingerprint  (if (data/fks-supported?)
+                                {:global {:distinct-count 100}}
+                                {:global {:distinct-count 100}, :type {:type/Number {:min 1.0, :max 100.0, :avg 51.965}}})}
+     :user_id  {:special_type (if (data/fks-supported?)
                                 :type/FK
                                 :type/Category)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "user_id")
                 :display_name "User ID"
-                :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 7.929}}}})))
+                :fingerprint  (if (data/fks-supported?)
+                                {:global {:distinct-count 15}}
+                                {:global {:distinct-count 15}, :type {:type/Number {:min 1.0, :max 15.0, :avg 7.929}}})})))
 
 
 ;;; #### aggregate columns
@@ -261,36 +254,27 @@
     (aggregate-col :avg (venues-col :id))"
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
-   (case ag-col-kw
-     :count  {:base_type       :type/Integer
-              :special_type    :type/Number
-              :name            "count"
-              :display_name    "count"
-              :id              nil
-              :table_id        nil
-              :description     nil
-              :source          :aggregation
-              :extra_info      {}
-              :target          nil
-              :remapped_from   nil
-              :remapped_to     nil}))
+   (assert (= ag-col-kw) :count)
+   {:base_type    :type/Integer
+    :special_type :type/Number
+    :name         "count"
+    :display_name "count"
+    :source       :aggregation})
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
-   {:base_type    base_type
-    :special_type  special_type
-    :id            nil
-    :table_id      nil
-    :description   nil
-    :source        :aggregation
-    :extra_info    {}
-    :target        nil
-    :name          (name ag-col-kw)
-    :display_name  (name ag-col-kw)
-    :remapped_from nil
-    :remapped_to   nil}))
+   (merge
+    {:base_type    base_type
+     :special_type special_type
+     :settings     nil
+     :name         (name ag-col-kw)
+     :display_name (name ag-col-kw)
+     :source       :aggregation}
+    ;; count always gets the same special type regardless
+    (when (= ag-col-kw :count)
+      (aggregate-col :count)))))
 
-(defn breakout-col [column]
-  (assoc column :source :breakout))
+(defn breakout-col [col]
+  (assoc col :source :breakout))
 
 ;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
@@ -299,7 +283,8 @@
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence
@@ -314,7 +299,8 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
+                                    (throw (ex-info (:error rows) rows)))
 
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
@@ -330,12 +316,20 @@
   "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
-
-(defn rows
-  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
+(defn data
+  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (vec (or (get-in results [:data :rows])
+  (when (= (:status results) :failed)
+    (println "Error running query:" (u/pprint-to-str 'red results))
+    (throw (ex-info (:error results) results)))
+  (:data results))
+
+(defn rows
+  "Return the result rows from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (vec (or (:rows (data results))
            (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 

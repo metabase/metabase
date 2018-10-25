@@ -21,12 +21,6 @@ const BaseSidebar = ({ style, className }) => (
     </div>
     <ol>
       <SidebarItem
-        key="/reference/guide"
-        href="/reference/guide"
-        icon="reference"
-        name={t`Start here`}
-      />
-      <SidebarItem
         key="/reference/metrics"
         href="/reference/metrics"
         icon="ruler"

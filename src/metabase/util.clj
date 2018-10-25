@@ -3,19 +3,18 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
-             [string :as s]]
-            [clojure.java
-             [classpath :as classpath]
-             [jdbc :as jdbc]]
+             [string :as s]
+             [walk :as walk]]
+            [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
+            [medley.core :as m]
             [metabase.config :as config]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
-           java.sql.SQLException
            [java.text Normalizer Normalizer$Form]))
 
 ;; This is the very first log message that will get printed.  It's here because this is one of the very first
@@ -238,10 +237,10 @@
   {:style/indent 2}
   (^String [color x]
    {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color x))
+   (colorize color (str x)))
 
   (^String [color format-string & args]
-   (colorize color (apply format format-string args))))
+   (colorize color (apply format (str format-string) args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -259,7 +258,8 @@
 
 (defprotocol ^:private IFilteredStacktrace
   (filtered-stacktrace [this]
-    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Metabase
+    frame filtered out."))
 
 ;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
 ;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
@@ -282,52 +282,25 @@
   IFilteredStacktrace {:filtered-stacktrace (fn [this]
                                               (filtered-stacktrace (thread-get-stack-trace this)))})
 
+(defn- metabase-frame? [frame]
+  (re-find #"metabase" (str frame)))
+
 ;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                              (vec (for [frame this
-                                                         :let  [s (str frame)]
-                                                         :when (re-find #"metabase" s)]
-                                                     (s/replace s #"^metabase\." ""))))})
-
-(defn wrap-try-catch
-  "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
-   with `log/error` and returns `nil`."
-  ([f]
-   (wrap-try-catch f nil))
-  ([f f-name]
-   (let [exception-message (if f-name
-                             (format "Caught exception in %s: " f-name)
-                             "Caught exception: ")]
-     (fn [& args]
-       (try
-         (apply f args)
-         (catch SQLException e
-           (log/error (format-color 'red "%s\n%s\n%s"
-                                    exception-message
-                                    (with-out-str (jdbc/print-sql-exception-chain e))
-                                    (pprint-to-str (filtered-stacktrace e)))))
-         (catch Throwable e
-           (log/error (format-color 'red "%s %s\n%s"
-                                    exception-message
-                                    (or (.getMessage e) e)
-                                    (pprint-to-str (filtered-stacktrace e))))))))))
-
-(defn try-apply
-  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
-   (This is actaully more flexible than `apply` -- the last argument doesn't have to be
-   a sequence:
-
-     (try-apply vector :a :b [:c :d]) -> [:a :b :c :d]
-     (apply vector :a :b [:c :d])     -> [:a :b :c :d]
-     (try-apply vector :a :b :c :d)   -> [:a :b :c :d]
-     (apply vector :a :b :c :d)       -> Not ok - :d is not a sequence
-
-   This allows us to use `try-apply` in more situations than we'd otherwise be able to."
-  [^clojure.lang.IFn f & args]
-  (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
-                                                     (last args)
-                                                     [(last args)]))))
+  IFilteredStacktrace
+  {:filtered-stacktrace
+   (fn [this]
+     ;; keep all the frames before the last Metabase frame, but then filter out any other non-Metabase frames after
+     ;; that
+     (let [[frames-after-last-mb other-frames]     (split-with (complement metabase-frame?)
+                                                               (map str (seq this)))
+           [last-mb-frame & frames-before-last-mb] (map #(s/replace % #"^metabase\." "")
+                                                        (filter metabase-frame? other-frames))]
+       (concat
+        frames-after-last-mb
+        ;; add a little arrow to the frame so it stands out more
+        (cons (str "--> " last-mb-frame)
+              frames-before-last-mb))))})
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
@@ -515,15 +488,14 @@
                   (select-nested-keys v nested-keys))})))
 
 (defn base64-string?
-  "Is S a Base-64 encoded string?"
+  "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))
 
-(defn safe-inc
+(def ^{:arglists '([n])} safe-inc
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
-  [n]
-  (if n (inc n) 1))
+  (fnil inc 0))
 
 (defn occurances-of-substring
   "Return the number of times SUBSTR occurs in string S."
@@ -592,9 +564,30 @@
 
 (defn is-java-9-or-higher?
   "Are we running on Java 9 or above?"
-  []
-  (when-let [java-major-version (some-> (System/getProperty "java.version")
-                                        (s/split #"\.")
-                                        first
-                                        Integer/parseInt)]
-    (>= java-major-version 9)))
+  ([]
+   (is-java-9-or-higher? (System/getProperty "java.version")))
+  ([java-version-str]
+   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
+     (>= (Integer/parseInt java-major-version-str) 9))))
+
+
+(defn snake-key
+  "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
+  [k]
+  (if (keyword? k)
+    (keyword (snake-key (name k)))
+    (s/replace k #"-" "_")))
+
+(defn recursive-map-keys
+  "Recursively replace the keys in a map with the value of `(f key)`."
+  [f m]
+  (walk/postwalk
+   #(if (map? %)
+      (m/map-keys f %)
+      %)
+   m))
+
+(defn snake-keys
+  "Convert the keys in a map from `lisp-case` to `snake-case`."
+  [m]
+  (recursive-map-keys snake-key m))

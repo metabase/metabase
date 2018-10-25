@@ -1,39 +1,51 @@
 import MetabaseUtils from "metabase/lib/utils";
+import MetabaseSettings from "metabase/lib/settings";
 
 describe("utils", () => {
   describe("generatePassword", () => {
-    it("defaults to length 14 passwords", () => {
+    it("defaults to at least 14 characters even if password_complexity requirements are lower", () => {
+      MetabaseSettings.set("password_complexity", { total: 10 });
       expect(MetabaseUtils.generatePassword().length).toBe(14);
     });
 
+    it("defaults to complexity requirements if greater than 14", () => {
+      MetabaseSettings.set("password_complexity", { total: 20 });
+      expect(MetabaseUtils.generatePassword().length).toBe(20);
+    });
+
+    it("falls back to length 14 passwords", () => {
+      expect(MetabaseUtils.generatePassword({}).length).toBe(14);
+    });
+
     it("creates passwords for the length we specify", () => {
-      expect(MetabaseUtils.generatePassword(25).length).toBe(25);
+      expect(MetabaseUtils.generatePassword({ total: 25 }).length).toBe(25);
     });
 
     it("can enforce ", () => {
       expect(
-        MetabaseUtils.generatePassword(14, { digit: 2 }).match(/([\d])/g)
+        MetabaseUtils.generatePassword({ total: 14, digit: 2 }).match(/([\d])/g)
           .length >= 2,
       ).toBe(true);
     });
 
     it("can enforce digit requirements", () => {
       expect(
-        MetabaseUtils.generatePassword(14, { digit: 2 }).match(/([\d])/g)
+        MetabaseUtils.generatePassword({ total: 14, digit: 2 }).match(/([\d])/g)
           .length >= 2,
       ).toBe(true);
     });
 
     it("can enforce uppercase requirements", () => {
       expect(
-        MetabaseUtils.generatePassword(14, { uppercase: 2 }).match(/([A-Z])/g)
-          .length >= 2,
+        MetabaseUtils.generatePassword({ total: 14, uppercase: 2 }).match(
+          /([A-Z])/g,
+        ).length >= 2,
       ).toBe(true);
     });
 
     it("can enforce special character requirements", () => {
       expect(
-        MetabaseUtils.generatePassword(14, { special: 2 }).match(
+        MetabaseUtils.generatePassword({ total: 14, special: 2 }).match(
           /([!@#\$%\^\&*\)\(+=._-{}])/g,
         ).length >= 2,
       ).toBe(true);

@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { CSSTransitionGroup } from "react-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -11,9 +10,6 @@ import { constrainToScreen } from "metabase/lib/dom";
 import cx from "classnames";
 
 import "./Popover.css";
-
-const POPOVER_TRANSITION_ENTER = 100;
-const POPOVER_TRANSITION_LEAVE = 100;
 
 // space we should leave berween page edge and popover edge
 const PAGE_PADDING = 10;
@@ -36,6 +32,7 @@ export default class Popover extends Component {
     id: PropTypes.string,
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
+    hasBackground: PropTypes.bool,
     // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
@@ -61,6 +58,7 @@ export default class Popover extends Component {
   static defaultProps = {
     isOpen: true,
     hasArrow: true,
+    hasBackground: true,
     verticalAttachments: ["top", "bottom"],
     horizontalAttachments: ["center", "left", "right"],
     alignVerticalEdge: false,
@@ -101,14 +99,13 @@ export default class Popover extends Component {
     }
     if (this._popoverElement) {
       this._renderPopover(false);
-      setTimeout(() => {
-        ReactDOM.unmountComponentAtNode(this._popoverElement);
-        if (this._popoverElement.parentNode) {
-          this._popoverElement.parentNode.removeChild(this._popoverElement);
-        }
-        clearInterval(this._timer);
-        delete this._popoverElement, this._timer;
-      }, POPOVER_TRANSITION_LEAVE);
+      ReactDOM.unmountComponentAtNode(this._popoverElement);
+      if (this._popoverElement.parentNode) {
+        this._popoverElement.parentNode.removeChild(this._popoverElement);
+      }
+      delete this._popoverElement;
+      clearInterval(this._timer);
+      delete this._timer;
     }
   }
 
@@ -133,7 +130,9 @@ export default class Popover extends Component {
           className={cx(
             "PopoverBody",
             {
-              "PopoverBody--withArrow": this.props.hasArrow,
+              "PopoverBody--withBackground": this.props.hasBackground,
+              "PopoverBody--withArrow":
+                this.props.hasArrow && this.props.hasBackground,
               "PopoverBody--autoWidth": this.props.autoWidth,
             },
             // TODO kdoh 10/16/2017 we should eventually remove this
@@ -143,7 +142,9 @@ export default class Popover extends Component {
         >
           {typeof this.props.children === "function"
             ? this.props.children(childProps)
-            : React.Children.count(this.props.children) === 1
+            : React.Children.count(this.props.children) === 1 &&
+              // NOTE: workaround for https://github.com/facebook/react/issues/12136
+              !Array.isArray(this.props.children)
               ? React.cloneElement(
                   React.Children.only(this.props.children),
                   childProps,
@@ -271,17 +272,7 @@ export default class Popover extends Component {
     const popoverElement = this._getPopoverElement();
     ReactDOM.unstable_renderSubtreeIntoContainer(
       this,
-      <CSSTransitionGroup
-        transitionName="Popover"
-        transitionAppear
-        transitionEnter
-        transitionLeave
-        transitionAppearTimeout={POPOVER_TRANSITION_ENTER}
-        transitionEnterTimeout={POPOVER_TRANSITION_ENTER}
-        transitionLeaveTimeout={POPOVER_TRANSITION_LEAVE}
-      >
-        {isOpen ? this._popoverComponent() : null}
-      </CSSTransitionGroup>,
+      <span>{isOpen ? this._popoverComponent() : null}</span>,
       popoverElement,
     );
 

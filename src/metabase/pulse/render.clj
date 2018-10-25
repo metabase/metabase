@@ -10,12 +10,14 @@
             [hiccup
              [core :refer [h html]]
              [util :as hutil]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.pulse.color :as color]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
+             [i18n :refer [trs tru]]
              [ui-logic :as ui-logic]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
            [java.awt BasicStroke Color Dimension RenderingHints]
@@ -34,7 +36,7 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; ----------------------------------------------------- STYLES -----------------------------------------------------
+;;; ----------------------------------------------------- Styles -----------------------------------------------------
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 20)
@@ -87,40 +89,26 @@
                        :padding-bottom  :5px}))
 
 (defn- bar-td-style []
-  (merge (font-style) {:font-size     :16px
-                       :font-weight   400
-                       :text-align    :left
-                       :padding-right :1em
-                       :padding-top   :8px}))
-
-;; TO-DO for @senior: apply this style to headings of numeric columns
-(defn- bar-th-numeric-style []
-  (merge (font-style) {:text-align      :right
-                       :font-size       :14.22px
-                       :font-weight     700
-                       :color           color-gray-4
-                       :border-bottom   (str "1px solid " color-row-border)
-                       :padding-top     :20px
-                       :padding-bottom  :5px}))
-
-;; TO-DO for @senior: apply this style to numeric cells
-(defn- bar-td-style-numeric []
   (merge (font-style) {:font-size      :14.22px
                        :font-weight    400
-                       :color          color-dark-gray
-                       :text-align     :right
-                       :padding-right  :1em
-                       :padding-top    :2px
-                       :padding-bottom :1px
-                       :font-family    "Courier, Monospace"
-                       :border-bottom  (str "1px solid " color-row-border)}))
+                       :text-align     :left
+                       :padding-right  :0.5em
+                       :padding-left   :0.5em
+                       :padding-top    :4px
+                       :padding-bottom :4px}))
+
+(defn- bar-th-style-numeric []
+  (merge (font-style) (bar-th-style) {:text-align :right}))
+
+(defn- bar-td-style-numeric []
+  (merge (font-style) (bar-td-style) {:text-align :right}))
 
 (def ^:private RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   {:attachments (s/maybe {s/Str URL})
    :content [s/Any]})
 
-;;; --------------------------------------------------- HELPER FNS ---------------------------------------------------
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn style
   "Compile one or more CSS style maps into a string.
@@ -136,11 +124,6 @@
        first)
    (or (ui-logic/y-axis-rowfn card data)
        second)])
-
-(defn- datetime-field?
-  [field]
-  (or (isa? (:base_type field)    :type/DateTime)
-      (isa? (:special_type field) :type/DateTime)))
 
 (defn- number-field?
   [field]
@@ -165,7 +148,7 @@
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
            (> row-count 1)
-           (datetime-field? col-1)
+           (mbql.u/datetime-field? col-1)
            (number-field? col-2))                                  :sparkline
       (and (= col-count 2)
            (number-field? col-2))                                  :bar
@@ -193,7 +176,7 @@
   (count (filter show-in-table? cols)))
 
 
-;;; --------------------------------------------------- FORMATTING ---------------------------------------------------
+;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (defrecord ^:private NumericWrapper [num-str]
   hutil/ToString
@@ -224,7 +207,8 @@
                           " - "
                           (t/year timestamp-obj)))
 
-    (:year :hour-of-day :day-of-week :week-of-year :month-of-year); TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
     (str timestamp)
 
     (reformat-timestamp timezone timestamp "MMM d, YYYY")))
@@ -276,9 +260,9 @@
 (defn- format-cell
   [timezone value col]
   (cond
-    (datetime-field? col) (format-timestamp timezone value col)
-    (and (number? value) (not (datetime-field? col))) (format-number value)
-    :else (str value)))
+    (mbql.u/datetime-field? col)                             (format-timestamp timezone value col)
+    (and (number? value) (not (mbql.u/datetime-field? col))) (format-number value)
+    :else                                                    (str value)))
 
 (defn- render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"
@@ -286,7 +270,7 @@
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
 
-;;; --------------------------------------------------- RENDERING ----------------------------------------------------
+;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -355,7 +339,7 @@
 (defn- heading-style-for-type
   [cell]
   (if (instance? NumericWrapper cell)
-    (bar-th-numeric-style)
+    (bar-th-style-numeric)
     (bar-th-style)))
 
 (defn- row-style-for-type
@@ -365,32 +349,42 @@
     (bar-td-style)))
 
 (defn- render-table
-  [header+rows]
-  [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})}
-   (let [{header-row :row bar-width :bar-width} (first header+rows)]
+  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
+  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
+  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
+  create."
+  [color-selector column-names header+rows]
+  (let [{bar-width :bar-width :as header} (first header+rows)]
+    [:table {:style (style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
+             :cellpadding "0"
+             :cellspacing "0"}
      [:thead
       [:tr
-       (for [header-cell header-row]
+       (for [header-cell (:row header)]
          [:th {:style (style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
           (h header-cell)])
        (when bar-width
-         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
-   [:tbody
-    (map-indexed (fn [row-idx {:keys [row bar-width]}]
-                   [:tr {:style (style {:color color-gray-3})}
-                    (map-indexed (fn [col-idx cell]
-                                   [:td {:style (style (row-style-for-type cell) (when (and bar-width (= col-idx 1)) {:font-weight 700}))}
-                                    (h cell)])
-                                 row)
-                    (when bar-width
-                      [:td {:style (style (bar-td-style) {:width :99%})}
-                       [:div {:style (style {:background-color color-purple
-                                             :max-height       :10px
-                                             :height           :10px
-                                             :border-radius    :2px
-                                             :width            (str bar-width "%")})}
-                        "&#160;"]])])
-                 (rest header+rows))]])
+         [:th {:style (style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]]
+     [:tbody
+      (map-indexed (fn [row-idx {:keys [row bar-width]}]
+                     [:tr {:style (style {:color color-gray-3})}
+                      (map-indexed (fn [col-idx cell]
+                                     (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
+                                       [:td {:style (style (row-style-for-type cell)
+                                                           (merge {:background-color bg-color}
+                                                                  (when (and bar-width (= col-idx 1))
+                                                                    {:font-weight 700})))}
+                                        (h cell)]))
+                                   row)
+                      (when bar-width
+                        [:td {:style (style (bar-td-style) {:width :99%})}
+                         [:div {:style (style {:background-color color-purple
+                                               :max-height       :10px
+                                               :height           :10px
+                                               :border-radius    :2px
+                                               :width            (str bar-width "%")})}
+                          "&#160;"]])])
+                   (rest header+rows))]]))
 
 (defn- create-remapping-lookup
   "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
@@ -423,9 +417,9 @@
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone remapping-lookup cols rows bar-column max-value]
   (for [row rows]
-    {:bar-width (when bar-column
+    {:bar-width (when-let [bar-value (and bar-column (bar-column row))]
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
-                  (float (* 100 (/ (double (bar-column row)) max-value))))
+                  (float (* 100 (/ (double bar-value) max-value))))
      :row (for [[maybe-remapped-col maybe-remapped-row-cell] (map vector cols row)
                 :when (and (not (:remapped_from maybe-remapped-col))
                            (show-in-table? maybe-remapped-col))
@@ -492,20 +486,30 @@
 (s/defn ^:private render:table :- RenderedPulseCard
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
-                    (render-table (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                    (render-table (color/make-color-selector data (:visualization_settings card))
+                                  (mapv :name (:cols data))
+                                  (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments nil
      :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
                     (list results-attached table-body)
                     (list table-body))}))
 
+(defn- non-nil-rows
+  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
+  [x-axis-fn y-axis-fn rows]
+  (filter (every-pred x-axis-fn y-axis-fn) rows))
+
 (s/defn ^:private render:bar :- RenderedPulseCard
-  [timezone card {:keys [cols rows] :as data}]
+  [timezone card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
+        rows (non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+                   (render-table (color/make-color-selector data (:visualization_settings card))
+                                 (mapv :name cols)
+                                 (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defn ^:private render:scalar :- RenderedPulseCard
@@ -540,7 +544,7 @@
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
     (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (tru "No appropriate image writer found!")]
+      (let [^String msg (str (tru "No appropriate image writer found!"))]
         (throw (Exception. msg))))
     (.toByteArray os)))
 
@@ -645,13 +649,14 @@
 (s/defn ^:private render:sparkline :- RenderedPulseCard
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
-        ft-row (if (datetime-field? (x-axis-rowfn cols))
+        ft-row (if (mbql.u/datetime-field? (x-axis-rowfn cols))
                  #(.getTime ^Date (du/->Timestamp % timezone))
                  identity)
-        rows   (if (> (ft-row (x-axis-rowfn (first rows)))
-                      (ft-row (x-axis-rowfn (last rows))))
-                 (reverse rows)
-                 rows)
+        rows   (non-nil-rows x-axis-rowfn y-axis-rowfn
+                (if (> (ft-row (x-axis-rowfn (first rows)))
+                       (ft-row (x-axis-rowfn (last rows))))
+                  (reverse rows)
+                  rows))
         xs     (map (comp ft-row x-axis-rowfn) rows)
         xmin   (apply min xs)
         xmax   (apply max xs)
@@ -671,7 +676,7 @@
                     (image-bundle->attachment image-bundle))
      :content     [:div
                    [:img {:style (style {:display :block
-                                         :width :100%})
+                                         :width   :100%})
                           :src   (:image-src image-bundle)}]
                    [:table
                     [:tr
@@ -765,11 +770,11 @@
       (:include_xls card)))
 
 (s/defn ^:private render-pulse-card-body :- RenderedPulseCard
-  [render-type timezone card {:keys [data error]}]
+  [render-type timezone card {:keys [data error], :as results}]
   (try
     (when error
-      (let [^String msg (tru "Card has errors: {0}" error)]
-        (throw (Exception. msg))))
+      (let [^String msg (str (tru "Card has errors: {0}" error))]
+        (throw (ex-info msg results))))
     (case (detect-pulse-card-type card data)
       :empty     (render:empty     render-type card data)
       :scalar    (render:scalar    timezone card data)

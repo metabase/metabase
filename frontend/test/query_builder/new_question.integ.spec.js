@@ -86,8 +86,8 @@ describe("new question flow", async () => {
       expect(store.getPath()).toBe("/question/new");
     });
 
-    it("renders all options for both admins and normal users if metrics & segments exist", async () => {
-      await forBothAdminsAndNormalUsers(async () => {
+    forBothAdminsAndNormalUsers(() => {
+      it("renders all options for both admins and normal users if metrics & segments exist", async () => {
         const store = await createTestStore();
 
         store.pushPath(Urls.newQuestion());
@@ -181,8 +181,8 @@ describe("new question flow", async () => {
       );
     });
 
-    it("shows an empty state if there are no databases", async () => {
-      await forBothAdminsAndNormalUsers(async () => {
+    forBothAdminsAndNormalUsers(() => {
+      it("shows an empty state if there are no databases", async () => {
         await withApiMocks([[Databases.api, "list", () => []]], async () => {
           const store = await createTestStore();
 

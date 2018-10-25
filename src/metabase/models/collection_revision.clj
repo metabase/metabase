@@ -1,7 +1,8 @@
 (ns metabase.models.collection-revision
   (:require [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]]
             [toucan
              [db :as db]
              [models :as models]]))

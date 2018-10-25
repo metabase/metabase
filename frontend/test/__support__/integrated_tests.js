@@ -17,6 +17,8 @@ import {
   CardApi,
   MetricApi,
   SegmentApi,
+  CollectionsApi,
+  PermissionsApi,
 } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import normalReducers from "metabase/reducers-main";
@@ -53,18 +55,8 @@ let simulateOfflineMode = false;
 let apiRequestCompletedCallback = null;
 let skippedApiRequests = [];
 
-// These i18n settings are same is beginning of app.js
-
-// make the i18n function "t" global so we don't have to import it in basically every file
-import { t, jt } from "c-3po";
-global.t = t;
-global.jt = jt;
-
-// set the locale before loading anything else
-import { setLocalization } from "metabase/lib/i18n";
-if (window.MetabaseLocalization) {
-  setLocalization(window.MetabaseLocalization);
-}
+// load files that are loaded at the top if app.js
+import "metabase/lib/i18n";
 
 const warnAboutCreatingStoreBeforeLogin = () => {
   if (!loginSession && hasStartedCreatingStore) {
@@ -96,11 +88,15 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = async tests => {
-  useSharedAdminLogin();
-  await tests();
-  useSharedNormalLogin();
-  await tests();
+export const forBothAdminsAndNormalUsers = tests => {
+  describe("for admins", () => {
+    beforeEach(useSharedAdminLogin);
+    tests();
+  });
+  describe("for normal users", () => {
+    beforeEach(useSharedNormalLogin);
+    tests();
+  });
 };
 
 export function logout() {
@@ -225,7 +221,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
           actionWithTimestamp,
         );
 
-        if (store._onActionDispatched) store._onActionDispatched();
+        if (store._onActionDispatched) {
+          store._onActionDispatched();
+        }
         return result;
       },
 
@@ -245,6 +243,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
+
+        if (_.any(actionTypes, type => !type)) {
+          return Promise.reject(
+            new Error(
+              `You tried to wait for a null or undefined action type (${actionTypes})`,
+            ),
+          );
+        }
+
+        // supports redux-action style action creator that when cast to a string returns the action name
+        actionTypes = actionTypes.map(actionType => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
@@ -413,6 +422,22 @@ export const createDashboard = async details => {
   return savedDashboard;
 };
 
+// useful for tests where multiple users need access to the same questions
+export async function createAllUsersWritableCollection() {
+  const group = _.findWhere(await PermissionsApi.groups(), {
+    name: "All Users",
+  });
+  const collection = await CollectionsApi.create({
+    name: "test" + Math.random(),
+    description: "description",
+    color: "#F1B556",
+  });
+  const graph = await CollectionsApi.graph();
+  graph.groups[group.id][collection.id] = "write";
+  await CollectionsApi.updateGraph(graph);
+  return collection;
+}
+
 /**
  * Waits for a API request with a given method (GET/POST/PUT...) and a url which matches the given regural expression.
  * Useful in those relatively rare situations where React components do API requests inline instead of using Redux actions.
@@ -559,6 +584,7 @@ cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
@@ -566,6 +592,8 @@ export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
+export const deleteCollection = collection =>
+  CollectionsApi.update({ id: getId(collection), archived: true });
 
 const getId = o =>
   typeof o === "object" && o != null
@@ -609,6 +637,14 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       ? { status: 0, responseText: "" }
       : await fetch(api.basename + url, fetchOptions);
 
+    if (!window.document) {
+      console.warn(
+        "API request completed after test ended. Ignoring result.",
+        url,
+      );
+      return;
+    }
+
     if (isCancelled) {
       throw { status: 0, data: "", isCancelled: true };
     }
@@ -644,11 +680,23 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
         );
         console.log(error, { depth: null });
         console.log(`The original request: ${method} ${url}`);
-        if (requestBody) console.log(`Original payload: ${requestBody}`);
+        if (requestBody) {
+          console.log(`Original payload: ${requestBody}`);
+        }
       }
 
       throw error;
     }
+  } catch (e) {
+    if (!window.document) {
+      console.warn(
+        "API request failed after test ended. Ignoring result.",
+        url,
+        e,
+      );
+      return;
+    }
+    throw e;
   } finally {
     pendingRequests--;
     if (pendingRequests === 0 && pendingRequestsDeferred) {

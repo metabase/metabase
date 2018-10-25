@@ -30,7 +30,9 @@ export default class ExpandableString extends Component {
   }
 
   render() {
-    if (!this.props.str) return false;
+    if (!this.props.str) {
+      return false;
+    }
 
     let truncated = Humanize.truncate(this.props.str || "", 140);
 

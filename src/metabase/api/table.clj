@@ -1,25 +1,27 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET PUT POST]]
+            [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [related :as related]
              [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field with-normal-values]]
-             [field-values :refer [FieldValues] :as fv]
+             [database :as database]
+             [field :refer [Field]]
+             [field-values :as fv :refer [FieldValues]]
              [interface :as mi]
              [table :as table :refer [Table]]]
-            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -156,22 +158,21 @@
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= day-str (:name %))))
+  (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
   (and driver (contains? (driver/features driver) :binning)))
 
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/DateTime)
-           (isa? special_type :type/DateTime))
+  [{:keys [base_type], :as field}]
+  (and (mbql.u/datetime-field? field)
        (not (isa? base_type :type/Time))))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
@@ -212,16 +213,11 @@
                 (update field :values fv/field-values->pairs)
                 field)))))
 
-(api/defendpoint GET "/:id/query_metadata"
-  "Get metadata about a `Table` us eful for running queries.
-   Returns DB, fields, field FKs, and field values.
-
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (let [table (api/read-check Table id)
-        driver (driver/database-id->driver (:db_id table))]
+(defn fetch-query-metadata
+  "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
+  [table include_sensitive_fields]
+  (api/read-check table)
+  (let [driver (driver/database-id->driver (:db_id table))]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -234,6 +230,16 @@
                           (partial filter (fn [{:keys [visibility_type]}]
                                             (not= (keyword visibility_type) :sensitive))))))))
 
+(api/defendpoint GET "/:id/query_metadata"
+  "Get metadata about a `Table` useful for running queries.
+   Returns DB, fields, field FKs, and field values.
+
+  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
+  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
+  [id include_sensitive_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields))
+
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
@@ -245,12 +251,10 @@
           (assoc
               :table_id     (str "card__" card-id)
               :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't
-              ;; actually be used that way IRL
-              :special_type (when-let [special-type (keyword (:special_type col))]
-                              (when-not (or (isa? special-type :type/PK)
-                                            (isa? special-type :type/FK))
-                                special-type)))
+              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+              ;; the dimension options
+              :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn card->virtual-table
@@ -258,7 +262,7 @@
    'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (hydrate card :colllection)]
+  (let [card (hydrate card :collection)]
     (cond-> {:id           (str "card__" (u/get-id card))
              :db_id        database/virtual-id
              :display_name (:name card)
@@ -267,6 +271,16 @@
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
+
+(defn- remove-nested-pk-fk-special-types
+  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
+  type confuses the frontend and it can really used in the same way"
+  [{:keys [fields] :as metadata-response}]
+  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
+                                     (if (or (isa? special_type :type/PK)
+                                             (isa? special_type :type/FK))
+                                       (assoc field :special_type nil)
+                                       field))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
@@ -277,7 +291,8 @@
     (-> card
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver/database-id->driver database_id)))))
+        (assoc-dimension-options (driver/database-id->driver database_id))
+        remove-nested-pk-fk-special-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

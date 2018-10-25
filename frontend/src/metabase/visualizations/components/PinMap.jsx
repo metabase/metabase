@@ -48,7 +48,7 @@ export default class PinMap extends Component {
   static identifier = "pin_map";
   static iconName = "pinmap";
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return hasLatitudeAndLongitudeColumns(cols);
   }
 
@@ -81,9 +81,7 @@ export default class PinMap extends Component {
     if (
       newProps.series[0].data !== this.props.series[0].data ||
       !_.isEqual(
-        // $FlowFixMe
         _.pick(newProps.settings, ...SETTINGS_KEYS),
-        // $FlowFixMe
         _.pick(this.props.settings, ...SETTINGS_KEYS),
       )
     ) {

@@ -20,14 +20,14 @@
                  [org.clojure/java.jdbc "0.7.6"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
-                 [org.clojure/tools.logging "0.3.1"]                  ; logging framework
+                 [org.clojure/tools.logging "0.4.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-buffer "1.2.1"
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
-                 [aleph "0.4.5-alpha2"]                               ; Async HTTP library; WebSockets
-                 [bigml/histogram "4.1.3"]                            ; Streaming one-pass Histogram data structure
+                 [aleph "0.4.5-alpha2"                                ; Async HTTP library; WebSockets
+                  :exclusions [org.clojure/tools.logging]]
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -45,8 +45,10 @@
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
+                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
+                   :exclusions [org.slf4j/slf4j-api
+                                it.unimi.dsi/fastutil]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
-                 [com.github.brandtg/stl-java "0.1.1"]                ; STL decomposition
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev154-1.23.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
@@ -69,9 +71,8 @@
                  [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
-                 [kixi/stats "0.3.10"                                 ; Various statistic measures implemented as transducers
-                  :exclusions [org.clojure/test.check                 ; test.check and AVL trees are used in kixi.stats.random. Remove exlusion if using.
-                               org.clojure/data.avl]]
+                 [kixi/stats "0.4.1"                                  ; Various statistic measures implemented as transducers
+                  :exclusions [org.clojure/data.avl]]
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -82,35 +83,30 @@
                  [mysql/mysql-connector-java "5.1.45"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [jdistlib "0.5.1"                                    ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
-                 [net.cgrand/xforms "0.13.0"                          ; Additional transducers
-                  :exclusions [org.clojure/clojurescript]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
-                 [com.clearspring.analytics/stream "2.9.5"            ; Various sketching algorithms
-                  :exclusions [org.slf4j/slf4j-api
-                               it.unimi.dsi/fastutil]]
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
-                 [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.6.2"                ; migration management (Java lib)
+                  :exclusions [ch.qos.logback/logback-classic]]
                  [org.postgresql/postgresql "42.2.2"]                 ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
-                 [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [prismatic/schema "1.1.9"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
                  [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.1.7"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
-             :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
-            [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
+             :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
@@ -126,8 +122,9 @@
          :reload-paths ["src"]}
   :eastwood {:exclude-namespaces
              [:test-paths
-              metabase.driver.generic-sql                             ; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
-              metabase.query-processor.middleware.binning]            ; Similarly Eastwood gets confused because this namespace relies on defrecord :load-ns options which it seems to ignore :(
+              ;; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+              metabase.driver.generic-sql]
+             :config-files ["./test_resources/eastwood-config.clj"]
              :add-linters [:unused-private-vars
                            :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
@@ -136,15 +133,14 @@
                            ;; and re-enable them if we can get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-             :exclude-linters [#_:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
-                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
+             :exclude-linters [:deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]              ; unit tests
+  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]        ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-                             [jonase/eastwood "0.2.6"
+                             [jonase/eastwood "0.3.1"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
@@ -153,9 +149,10 @@
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"]
-                   ;; Log appender class needs to be compiled for log4j to use it,
-                   :aot [metabase.logger]}
-             :ci {:jvm-opts ["-Xmx3g"]}
+                   ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
+                   :aot [metabase.logger
+                         metabase.task.DynamicClassLoadHelper]}
+             :ci {:jvm-opts ["-Xmx2500m"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
                                                   'metabase.test.util)] ; for the toucan.util.test default values for temp models

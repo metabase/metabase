@@ -18,7 +18,9 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.util :as u]
+            [metabase.test.util.log :as tu.log]))
 
 ;; Helper Fns
 
@@ -46,7 +48,6 @@
   (tu/match-$ (Field (data/id :users :name))
     {:description         nil
      :table_id            (data/id :users)
-     :raw_column_id       $
      :fingerprint         $
      :fingerprint_version $
      :table               (tu/match-$ (Table (data/id :users))
@@ -66,7 +67,6 @@
                              :caveats                 nil
                              :points_of_interest      nil
                              :show_in_getting_started false
-                             :raw_table_id            $
                              :created_at              $
                              :fields_hash             $})
      :special_type        "type/Name"
@@ -88,19 +88,22 @@
      :fk_target_field_id  nil
      :parent_id           nil
      :dimensions          []
-     :name_field          nil})
+     :name_field          nil
+     :settings            nil})
   ((user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
 
 
-;; ## GET /api/field/:id/summary
+
+;;; ------------------------------------------- GET /api/field/:id/summary -------------------------------------------
+
 (expect [["count" 75]      ; why doesn't this come back as a dictionary ?
          ["distincts" 75]]
   ((user->client :rasta) :get 200 (format "field/%d/summary" (data/id :categories :name))))
 
 
-;; ## PUT /api/field/:id
+;;; ----------------------------------------------- PUT /api/field/:id -----------------------------------------------
 
-(defn- simple-field-details [field]
+(defn simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :special_type :fk_target_field_id]))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
@@ -141,15 +144,16 @@
 
 ;; when we set the special-type from :type/FK to something else, make sure fk_target_field_id is set to nil
 (expect
-  [true
-   nil]
+  {1 true
+   2 nil}
   (tt/with-temp* [Field [{fk-field-id :id}]
                   Field [{field-id :id}    {:special_type :type/FK, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
       ;; unset the :type/FK special-type
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :type/Name})
-      [original-val
-       (db/select-one-field :fk_target_field_id Field, :id field-id)])))
+      (array-map
+       1 original-val
+       2 (db/select-one-field :fk_target_field_id Field, :id field-id)))))
 
 
 ;; check that you *can* set it if it *is* the proper base type
@@ -189,9 +193,10 @@
   {:values [], :field_id (data/id :users :password)}
   ((user->client :rasta) :get 200 (format "field/%d/values" (data/id :users :password))))
 
-(def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
-;; ## POST /api/field/:id/values
+;;; ------------------------------------------- POST /api/field/:id/values -------------------------------------------
+
+(def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
 ;; Human readable values are optional
 (expect
@@ -223,12 +228,17 @@
 (expect
   [{:values [], :field_id true}
    {:status "success"}
+   {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
    {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} list-field]]
     (mapv tu/boolean-ids-and-timestamps
-          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+          [ ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
+           ;; exist; we can ignore that
+           (tu.log/suppress-output
+             ((user->client :crowberto) :get 200 (format "field/%d/values" field-id)))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
             {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
+           (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset values
@@ -525,8 +535,8 @@
     :human_readable_field_id false
     :field_id                true}
    []]
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Text"})
@@ -542,13 +552,21 @@
              :name                    "some dimension name"
              :human_readable_field_id false
              :field_id                true})
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:has_field_values "list"})
       [(tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
+
+;; Can we update Field.settings, and fetch it?
+(expect
+  {:field_is_cool true}
+  (tt/with-temp Field [field {:name "Crissy Field"}]
+    ((user->client :crowberto) :put 200 (format "field/%d" (u/get-id field)) {:settings {:field_is_cool true}})
+    (-> ((user->client :crowberto) :get 200 (format "field/%d" (u/get-id field)))
+        :settings)))
 
 
 ;; make sure `search-values` works on with our various drivers

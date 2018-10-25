@@ -1,45 +1,54 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt, ngettext, msgid } from "c-3po";
+import _ from "underscore";
+import cxs from "cxs";
 
+// components
 import Button from "metabase/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import ModalContent from "metabase/components/ModalContent";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Radio from "metabase/components/Radio";
+import Icon from "metabase/components/Icon";
+import ChannelSetupModal from "metabase/components/ChannelSetupModal";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
+import RetinaImage from "react-retina-image";
+
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+
+// actions
+import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
+import { apiUpdateQuestion } from "metabase/query_builder/actions";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
+
+// selectors
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import _ from "underscore";
-import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
 import {
-  formInputSelector,
+  getPulseFormInput,
   hasConfiguredAnyChannelSelector,
   hasConfiguredEmailChannelSelector,
   hasLoadedChannelInfoSelector,
-  userListSelector,
 } from "metabase/pulse/selectors";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { inflect } from "metabase/lib/formatting";
+
+// lib
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
 } from "metabase-lib/lib/Alert";
-import type { AlertType } from "metabase-lib/lib/Alert";
-import Radio from "metabase/components/Radio";
-import RetinaImage from "react-retina-image";
-import Icon from "metabase/components/Icon";
 import MetabaseCookies from "metabase/lib/cookies";
-import cxs from "cxs";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import { apiUpdateQuestion } from "metabase/query_builder/actions";
 import MetabaseAnalytics from "metabase/lib/analytics";
+
+// types
+import type { AlertType } from "metabase-lib/lib/Alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -362,7 +371,9 @@ export class DeleteAlertSection extends Component {
         c.channel_type === "email" ? (
           <span>{jt`This alert will no longer be emailed to ${(
             <strong>
-              {c.recipients.length} {inflect("address", c.recipients.length)}
+              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+                c.recipients.length,
+              )}
             </strong>
           )}.`}</span>
         ) : c.channel_type === "slack" ? (
@@ -547,7 +558,7 @@ export class AlertEditSchedule extends Component {
 
         <div className="bordered rounded mb2">
           {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-          <div className="p3 bg-grey-0">
+          <div className="p3 bg-light">
             <SchedulePicker
               schedule={schedule}
               scheduleOptions={["hourly", "daily", "weekly"]}
@@ -561,28 +572,28 @@ export class AlertEditSchedule extends Component {
   }
 }
 
+@entityListLoader({ entityType: "users" })
 @connect(
-  state => ({
+  (state, props) => ({
     user: getUser(state),
-    userList: userListSelector(state),
-    formInput: formInputSelector(state),
+    formInput: getPulseFormInput(state),
   }),
-  { fetchPulseFormInput, fetchUsers },
+  {
+    fetchPulseFormInput,
+  },
 )
 export class AlertEditChannels extends Component {
   props: {
     onChannelsChange: any => void,
     user: any,
-    userList: any[],
+    users: any[],
     // this stupidly named property contains different channel options, nothing else
     formInput: any,
-    fetchPulseFormInput: () => void,
-    fetchUsers: () => void,
+    fetchPulseFormInput: () => Promise<void>,
   };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    this.props.fetchUsers();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -600,7 +611,7 @@ export class AlertEditChannels extends Component {
   };
 
   render() {
-    const { alert, user, userList, formInput } = this.props;
+    const { alert, user, users, formInput } = this.props;
     return (
       <div className="mt4 pt2">
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
@@ -611,7 +622,7 @@ export class AlertEditChannels extends Component {
             pulseIsValid={true}
             formInput={formInput}
             user={user}
-            userList={userList}
+            users={users}
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
@@ -642,7 +653,7 @@ export class RawDataAlertTip extends Component {
 
     return (
       <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
+        <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
           <Icon name="lightbulb" size="20" />
         </div>
         {showMultiSeriesGoalAlert ? (

@@ -94,5 +94,5 @@ WHERE True
 
 ---
 
-## That’s it!
-If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
+## Next: automated x-ray explorations
+Learn about how to easily and quickly see automatic explorations of your data with Metabase's powerful [x-ray feature](14-x-rays.md).

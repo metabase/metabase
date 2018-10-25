@@ -285,7 +285,6 @@
      :apply-aggregation         apply-aggregation
      :apply-limit               (u/drop-first-arg apply-limit)
      :apply-page                (u/drop-first-arg apply-page)
-     :stddev-fn                 (constantly :STDDEV_SAMP)
      :field->identifier         (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
      :set-timezone-sql          (constantly nil)}))
 

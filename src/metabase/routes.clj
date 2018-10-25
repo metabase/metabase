@@ -16,7 +16,7 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [puppetlabs.i18n.core :refer [trs *locale*]]
+            [puppetlabs.i18n.core :refer [*locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
@@ -80,14 +80,14 @@
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
        [uuid export-format]
-       (redirect-including-query-string (format "/api/public/card/%s/query/%s" uuid export-format)))
+       (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
   (GET "*" [] public))
 
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 (defroutes ^:private embed-routes
   (GET ["/question/:token.:export-format", :export-format dataset-api/export-format-regex]
        [token export-format]
-       (redirect-including-query-string (format "/api/embed/card/%s/query/%s" token export-format)))
+       (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] embed))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

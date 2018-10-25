@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import { t } from "c-3po";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { SelectButton } from "metabase/components/Select";
+import SelectButton from "metabase/components/SelectButton";
 import Button from "metabase/components/Button";
 
 import * as Query from "metabase/lib/query/query";
@@ -100,9 +100,9 @@ export default class TimeseriesFilterWidget extends Component {
         currentDescription = t`After ${currentDescription}`;
       } else if (currentFilter[0] === "<") {
         currentDescription = t`Before ${currentDescription}`;
-      } else if (currentFilter[0] === "IS_NULL") {
+      } else if (currentFilter[0] === "is-null") {
         currentDescription = t`Is Empty`;
-      } else if (currentFilter[0] === "NOT_NULL") {
+      } else if (currentFilter[0] === "not-null") {
         currentDescription = t`Not Empty`;
       }
     } else {

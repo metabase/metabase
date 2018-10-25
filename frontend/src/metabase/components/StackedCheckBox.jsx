@@ -13,7 +13,7 @@ const StackedCheckBox = props => (
         zIndex: -1,
       }}
     >
-      <CheckBox {...props} />
+      <CheckBox {...props} noIcon />
     </span>
     <CheckBox {...props} />
   </div>

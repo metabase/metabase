@@ -116,8 +116,10 @@ You can change the application database to use Postgres using a few simple envir
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
-This will tell Metabase to look for its application database using the supplied Postgres connection information.
+This will tell Metabase to look for its application database using the supplied Postgres connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
 
+    export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
 
 #### [MySQL](http://www.mysql.com/)
 If you prefer to use MySQL we've got you covered.  You can change the application database to use MySQL using these environment variables. For example:
@@ -130,7 +132,10 @@ If you prefer to use MySQL we've got you covered.  You can change the applicatio
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
-This will tell Metabase to look for its application database using the supplied MySQL connection information.
+This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
+
+    export MB_DB_CONNECTION_URI="mysql://localhost:3306/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
 
 
 # Migrating from using the H2 database to MySQL or Postgres

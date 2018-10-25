@@ -11,11 +11,11 @@
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
-(expect "0" (#'stats-util/bin-micro-number 0))
-(expect "1" (#'stats-util/bin-micro-number 1))
-(expect "2" (#'stats-util/bin-micro-number 2))
-(expect "3+" (#'stats-util/bin-micro-number 3))
-(expect "3+" (#'stats-util/bin-micro-number 100))
+#_(expect "0" (#'stats-util/bin-micro-number 0))
+#_(expect "1" (#'stats-util/bin-micro-number 1))
+#_(expect "2" (#'stats-util/bin-micro-number 2))
+#_(expect "3+" (#'stats-util/bin-micro-number 3))
+#_(expect "3+" (#'stats-util/bin-micro-number 100))
 
 (expect "0" (#'stats-util/bin-small-number 0))
 (expect "1-5" (#'stats-util/bin-small-number 1))
@@ -104,7 +104,7 @@
 ;;  alert_condition character varying(254), -- Condition (i.e. "rows" or "goal") used as a guard for alerts
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
-(defn- x []
+(expect
   {:pulses {:pulses               3
             :with_table_cards     2
             :pulse_types          {"slack" 1, "email" 2}

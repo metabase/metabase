@@ -3,6 +3,7 @@ import "number-to-locale-string";
 import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
+  enable_xrays: true,
   timezones: [
     "GMT",
     "UTC",
@@ -16,6 +17,7 @@ window.MetabaseBootstrap = {
     "America/Costa_Rica",
   ],
   available_locales: [["en", "English"]],
+  // NOTE: update this when updating types.clj
   types: {
     "type/DruidHyperUnique": ["type/*"],
     "type/Longitude": ["type/Coordinate"],
@@ -41,6 +43,7 @@ window.MetabaseBootstrap = {
     "type/Source": ["type/Category"],
     "type/Name": ["type/Category", "type/Text"],
     "type/Decimal": ["type/Float"],
+    "type/Birthdate": ["type/Date"],
     "type/Date": ["type/DateTime"],
     "type/Text": ["type/*"],
     "type/FK": ["type/Special"],
@@ -48,6 +51,7 @@ window.MetabaseBootstrap = {
     "type/MongoBSONID": ["type/TextLike"],
     "type/Duration": ["type/Number"],
     "type/Float": ["type/Number"],
+    "type/Currency": ["type/Float"],
     "type/CreationTimestamp": ["type/DateTime"],
     "type/Email": ["type/Text"],
     "type/City": ["type/Category", "type/Address", "type/Text"],
@@ -75,7 +79,7 @@ window.MetabaseBootstrap = {
     "type/Income": ["type/Number"],
     "type/Comment": ["type/Text"],
     "type/Score": ["type/Number"],
-    "type/ZipCode": ["type/Integer", "type/Address"],
+    "type/ZipCode": ["type/Address", "type/Text"],
     "type/DateTime": ["type/*"],
     "type/UNIXTimestamp": ["type/Integer", "type/DateTime"],
     "type/Enum": ["type/Category", "type/*"],

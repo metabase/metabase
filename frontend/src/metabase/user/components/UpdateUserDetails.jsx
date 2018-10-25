@@ -35,7 +35,9 @@ export default class UpdateUserDetails extends Component {
     // required: first_name, last_name, email
     for (let fieldName in this.refs) {
       let node = ReactDOM.findDOMNode(this.refs[fieldName]);
-      if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
+      if (node.required && MetabaseUtils.isEmpty(node.value)) {
+        isValid = false;
+      }
     }
 
     if (isValid !== valid) {
@@ -142,7 +144,7 @@ export default class UpdateUserDetails extends Component {
               ref="email"
               className={cx("Form-offset full", {
                 "Form-input": !managed,
-                "text-grey-2 h1 borderless mt1": managed,
+                "text-light h1 borderless mt1": managed,
               })}
               name="email"
               defaultValue={user ? user.email : null}

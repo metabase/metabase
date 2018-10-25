@@ -5,133 +5,105 @@ import _ from "underscore";
 import { t } from "c-3po";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
+import Button from "metabase/components/Button";
+import Radio from "metabase/components/Radio";
+
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 
-const ChartSettingsTab = ({ name, active, onClick }) => (
-  <a
-    className={cx("block text-brand py1 text-centered", {
-      "bg-brand text-white": active,
-    })}
-    onClick={() => onClick(name)}
-  >
-    {name.toUpperCase()}
-  </a>
-);
-
-const ChartSettingsTabs = ({ tabs, selectTab, activeTab }) => (
-  <ul className="bordered rounded flex justify-around overflow-hidden">
-    {tabs.map((tab, index) => (
-      <li className="flex-full border-left" key={index}>
-        <ChartSettingsTab
-          name={tab}
-          active={tab === activeTab}
-          onClick={selectTab}
-        />
-      </li>
-    ))}
-  </ul>
-);
-
-const Widget = ({
-  title,
-  hidden,
-  disabled,
-  widget,
-  value,
-  onChange,
-  props,
-}) => {
-  const W = widget;
-  return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
-      {title && <h4 className="mb1">{title}</h4>}
-      {W && <W value={value} onChange={onChange} {...props} />}
-    </div>
-  );
-};
+const DEFAULT_TAB_PRIORITY = ["Display"];
 
 class ChartSettings extends Component {
   constructor(props) {
     super(props);
-    const initialSettings = props.series[0].card.visualization_settings;
     this.state = {
       currentTab: null,
-      settings: initialSettings,
-      series: this._getSeries(props.series, initialSettings),
+      showWidget: props.initialWidget,
+      ...this._getState(
+        props.series,
+        props.series[0].card.visualization_settings,
+      ),
     };
   }
 
-  selectTab = tab => {
-    this.setState({ currentTab: tab });
-  };
-
-  _getSeries(series, settings) {
-    if (settings) {
-      series = assocIn(series, [0, "card", "visualization_settings"], settings);
+  componentWillReceiveProps(nextProps) {
+    if (this.props.series !== nextProps.series) {
+      this.setState(this._getState(nextProps.series, this.state.settings));
     }
-    const transformed = getVisualizationTransformed(extractRemappings(series));
-    return transformed.series;
   }
 
-  onResetSettings = () => {
+  _getState(series, settings) {
+    const rawSeries = assocIn(
+      series,
+      [0, "card", "visualization_settings"],
+      settings,
+    );
+    const { series: transformedSeries } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+    return {
+      settings,
+      rawSeries,
+      transformedSeries,
+    };
+  }
+
+  handleSelectTab = tab => {
+    this.setState({ currentTab: tab, showWidget: null });
+  };
+
+  handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState({
-      settings: {},
-      series: this._getSeries(this.props.series, {}),
-    });
+    this.setState(this._getState(this.props.series, {}));
   };
 
-  onChangeSettings = newSettings => {
-    for (const key of Object.keys(newSettings)) {
-      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
-    }
-    const settings = {
-      ...this.state.settings,
-      ...newSettings,
-    };
-    this.setState({
-      settings: settings,
-      series: this._getSeries(this.props.series, settings),
-    });
+  handleChangeSettings = changedSettings => {
+    const newSettings = updateSettings(this.state.settings, changedSettings);
+    this.setState(this._getState(this.props.series, newSettings));
   };
 
-  onDone() {
+  handleDone = () => {
     this.props.onChange(this.state.settings);
     this.props.onClose();
-  }
+  };
 
-  getChartTypeName() {
-    let { CardVisualization } = getVisualizationTransformed(this.props.series);
-    switch (CardVisualization.identifier) {
-      case "table":
-        return "table";
-      case "scalar":
-        return "number";
-      case "funnel":
-        return "funnel";
-      default:
-        return "chart";
-    }
-  }
+  handleCancel = () => {
+    this.props.onClose();
+  };
+
+  // allows a widget to temporarily replace itself with a different widget
+  handleShowWidget = widget => {
+    this.setState({ showWidget: widget });
+  };
+  handleEndShowWidget = () => {
+    this.setState({ showWidget: null });
+  };
 
   render() {
-    const { onClose, isDashboard } = this.props;
-    const { series } = this.state;
+    const { isDashboard, question, addField } = this.props;
+    const { rawSeries, transformedSeries, showWidget } = this.state;
+
+    const widgetsById = {};
 
     const tabs = {};
-    for (const widget of getSettingsWidgets(
-      series,
-      this.onChangeSettings,
+    for (const widget of getSettingsWidgetsForSeries(
+      transformedSeries,
+      this.handleChangeSettings,
       isDashboard,
     )) {
-      tabs[widget.section] = tabs[widget.section] || [];
-      tabs[widget.section].push(widget);
+      widgetsById[widget.id] = widget;
+      if (widget.widget && !widget.hidden) {
+        tabs[widget.section] = tabs[widget.section] || [];
+        tabs[widget.section].push(widget);
+      }
     }
 
     // Move settings from the "undefined" section in the first tab
@@ -142,72 +114,124 @@ class ChartSettings extends Component {
     }
 
     const tabNames = Object.keys(tabs);
-    const currentTab = this.state.currentTab || tabNames[0];
-    const widgets = tabs[currentTab];
+    const currentTab =
+      this.state.currentTab ||
+      _.find(DEFAULT_TAB_PRIORITY, name => name in tabs) ||
+      tabNames[0];
+
+    let widgets;
+    let widget = showWidget && widgetsById[showWidget.id];
+    if (widget) {
+      widget = {
+        ...widget,
+        hidden: false,
+        props: {
+          ...(widget.props || {}),
+          ...(showWidget.props || {}),
+        },
+      };
+      widgets = [widget];
+    } else {
+      widgets = tabs[currentTab];
+    }
+
+    const extraWidgetProps = {
+      // NOTE: special props to support adding additional fields
+      question: question,
+      addField: addField,
+      onShowWidget: this.handleShowWidget,
+      onEndShowWidget: this.handleEndShowWidget,
+    };
 
     return (
-      <div className="flex flex-column spread p4">
-        <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
-
+      <div className="flex flex-column spread">
         {tabNames.length > 1 && (
-          <ChartSettingsTabs
-            tabs={tabNames}
-            selectTab={this.selectTab}
-            activeTab={currentTab}
-          />
+          <div className="border-bottom flex flex-no-shrink pl4">
+            <Radio
+              value={currentTab}
+              onChange={this.handleSelectTab}
+              options={tabNames}
+              optionNameFn={v => v}
+              optionValueFn={v => v}
+              underlined
+            />
+          </div>
         )}
-        <div className="Grid flex-full mt3">
-          <div className="Grid-cell Cell--1of3 scroll-y p1">
-            {widgets &&
-              widgets.map(widget => <Widget key={widget.id} {...widget} />)}
-          </div>
-          <div className="Grid-cell flex flex-column">
-            <div className="flex flex-column">
-              <Warnings
-                className="mx2 align-self-end text-gold"
-                warnings={this.state.warnings}
-                size={20}
+        <div className="full-height relative">
+          <div className="Grid spread">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+              {widgets.map(widget => (
+                <ChartSettingsWidget
+                  key={`${widget.id}`}
+                  {...widget}
+                  {...extraWidgetProps}
+                />
+              ))}
+            </div>
+            <div className="Grid-cell flex flex-column pt2">
+              <div className="mx4 flex flex-column">
+                <Warnings
+                  className="mx2 align-self-end text-gold"
+                  warnings={this.state.warnings}
+                  size={20}
+                />
+              </div>
+              <div className="mx4 flex-full relative">
+                <Visualization
+                  className="spread"
+                  rawSeries={rawSeries}
+                  showTitle
+                  isEditing
+                  isDashboard
+                  isSettings
+                  showWarnings
+                  onUpdateVisualizationSettings={this.handleChangeSettings}
+                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                />
+              </div>
+              <ChartSettingsFooter
+                onDone={this.handleDone}
+                onCancel={this.handleCancel}
+                onReset={
+                  !_.isEqual(this.state.settings, {})
+                    ? this.handleResetSettings
+                    : null
+                }
               />
             </div>
-            <div className="flex-full relative">
-              <Visualization
-                className="spread"
-                rawSeries={series}
-                isEditing
-                showTitle
-                isDashboard
-                showWarnings
-                onUpdateVisualizationSettings={this.onChangeSettings}
-                onUpdateWarnings={warnings => this.setState({ warnings })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="pt1">
-          {!_.isEqual(this.state.settings, {}) && (
-            <a
-              className="Button Button--danger float-right"
-              onClick={this.onResetSettings}
-              data-metabase-event="Chart Settings;Reset"
-            >{t`Reset to defaults`}</a>
-          )}
-
-          <div className="float-left">
-            <a
-              className="Button Button--primary ml2"
-              onClick={() => this.onDone()}
-              data-metabase-event="Chart Settings;Done"
-            >{t`Done`}</a>
-            <a
-              className="Button ml2"
-              onClick={onClose}
-              data-metabase-event="Chart Settings;Cancel"
-            >{t`Cancel`}</a>
           </div>
         </div>
       </div>
     );
   }
 }
+
+const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
+  <div className={cx("py2 px4", className)}>
+    <div className="float-right">
+      <Button
+        className="ml2"
+        onClick={onCancel}
+        data-metabase-event="Chart Settings;Cancel"
+      >{t`Cancel`}</Button>
+      <Button
+        primary
+        className="ml2"
+        onClick={onDone}
+        data-metabase-event="Chart Settings;Done"
+      >{t`Done`}</Button>
+    </div>
+
+    {onReset && (
+      <Button
+        borderless
+        icon="refresh"
+        className="float-right ml2"
+        data-metabase-event="Chart Settings;Reset"
+        onClick={onReset}
+      >{t`Reset to defaults`}</Button>
+    )}
+  </div>
+);
 
 export default ChartSettings;

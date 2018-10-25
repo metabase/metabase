@@ -20,7 +20,7 @@ export default class PulseEditSkip extends Component {
     return (
       <div className="py1">
         <h2>{t`Skip if no results`}</h2>
-        <p className="mt1 h4 text-bold text-grey-3">
+        <p className="mt1 h4 text-bold text-medium">
           {t`Skip a scheduled Pulse if none of its questions have any results`}.
         </p>
         <div className="my3">

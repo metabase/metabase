@@ -15,6 +15,7 @@
              [util :as tu]]
             [metabase.test.data.users :refer :all]
             [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -216,7 +217,9 @@
 (expect
   clojure.lang.ExceptionInfo
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
-    (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
+    (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
+                                                 :last_name  "Toucan"
+                                                 :email      "rasta@metabase.com"})))
 
 ;; should totally work if the email domains match up
 (expect
@@ -224,7 +227,9 @@
   (et/with-fake-inbox
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
-      (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+      (select-keys (u/prog1 (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
+                                                                         :last_name  "Toucan"
+                                                                         :email      "rasta@sf-toucannery.com"})
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                    [:first_name :last_name :email]))))
 
@@ -282,13 +287,13 @@
   (client :post 400 "session" (user->credentials :lucky))) ; NOTE: there's a different password in LDAP for Lucky
 
 ;; Test that login will fallback to local for broken LDAP settings
-;; NOTE: This will ERROR out in the logs, it's normal
 (expect-with-ldap-server
   true
   (tu/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
     ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
     (do (db/simple-delete! Session, :user_id (user->id :rasta))
-        (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta)))))))
+        (tu/is-uuid-string? (:id (tu.log/suppress-output
+                                   (client :post 200 "session" (user->credentials :rasta))))))))
 
 ;; Test that we can login with LDAP with new user
 (expect-with-ldap-server

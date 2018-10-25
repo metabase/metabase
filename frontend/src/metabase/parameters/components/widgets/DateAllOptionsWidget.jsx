@@ -102,7 +102,9 @@ export default class DateAllOptionsWidget extends Component {
   static defaultProps = {};
 
   static format = (urlEncoded: ?string) => {
-    if (urlEncoded == null) return null;
+    if (urlEncoded == null) {
+      return null;
+    }
     const filter = dateParameterValueToMBQL(urlEncoded, noopRef);
 
     return filter ? getFilterTitle(filter) : null;

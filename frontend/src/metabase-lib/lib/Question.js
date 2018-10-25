@@ -21,6 +21,7 @@ import {
   pivot,
   filter,
   breakout,
+  distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
 } from "metabase/qb/lib/actions";
@@ -39,6 +40,8 @@ import type {
 } from "metabase/meta/types/Card";
 
 import { MetabaseApi, CardApi } from "metabase/services";
+import Questions from "metabase/entities/questions";
+
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
@@ -188,7 +191,9 @@ export default class Question {
    */
   atomicQueries(): AtomicQuery[] {
     const query = this.query();
-    if (query instanceof AtomicQuery) return [query];
+    if (query instanceof AtomicQuery) {
+      return [query];
+    }
     return [];
   }
 
@@ -298,6 +303,9 @@ export default class Question {
   toUnderlyingData(): Question {
     return this.setDisplay("table");
   }
+  distribution(column) {
+    return this.setCard(distribution(this.card(), column));
+  }
 
   composeThisQuery(): ?Question {
     const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
@@ -309,7 +317,7 @@ export default class Question {
           type: "query",
           database: SAVED_QUESTIONS_FAUX_DATABASE,
           query: {
-            source_table: "card__" + this.id(),
+            "source-table": "card__" + this.id(),
           },
         },
       };
@@ -401,6 +409,31 @@ export default class Question {
     }
   }
 
+  getComparisonDashboardUrl(filters /*?: Filter[] = []*/) {
+    let cellQuery = "";
+    if (filters.length > 0) {
+      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+      cellQuery = `/cell/${Card_DEPRECATED.utf8_to_b64url(
+        JSON.stringify(mbqlFilter),
+      )}`;
+    }
+    const questionId = this.id();
+    const query = this.query();
+    if (query instanceof StructuredQuery) {
+      const tableId = query.tableId();
+      if (tableId) {
+        if (questionId != null && !isTransientId(questionId)) {
+          return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+        } else {
+          const adHocQuery = Card_DEPRECATED.utf8_to_b64url(
+            JSON.stringify(this.card().dataset_query),
+          );
+          return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+        }
+      }
+    }
+  }
+
   setResultsMetadata(resultsMetadata) {
     let metadataColumns = resultsMetadata && resultsMetadata.columns;
     let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
@@ -465,14 +498,28 @@ export default class Question {
     }
   }
 
+  // NOTE: prefer `reduxCreate` so the store is automatically updated
   async apiCreate() {
-    const createdCard = await CardApi.create(this.card());
+    const createdCard = await Questions.api.create(this.card());
     return this.setCard(createdCard);
   }
 
+  // NOTE: prefer `reduxUpdate` so the store is automatically updated
   async apiUpdate() {
-    const updatedCard = await CardApi.update(this.card());
+    const updatedCard = await Questions.api.update(this.card());
     return this.setCard(updatedCard);
+  }
+
+  async reduxCreate(dispatch) {
+    const action = await dispatch(Questions.actions.create(this.card()));
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
+  }
+
+  async reduxUpdate(dispatch) {
+    const action = await dispatch(
+      Questions.actions.update({ id: this.id() }, this.card()),
+    );
+    return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
   // TODO: Fix incorrect Flow signature
@@ -502,7 +549,7 @@ export default class Question {
     } else if (!this._card.id) {
       if (
         this._card.dataset_query.query &&
-        this._card.dataset_query.query.source_table
+        this._card.dataset_query.query["source-table"]
       ) {
         return true;
       } else if (

@@ -12,7 +12,9 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.util-test :as sut]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
@@ -151,26 +153,34 @@
   (db/select-one-field :fk_target_field_id Field, :id (data/id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [{:total-fks 3, :updated-fks 0, :total-failed 0}
-         {:special_type :type/FK, :fk_target_field_id true}
-         {:special_type nil,      :fk_target_field_id false}
-         {:total-fks 3, :updated-fks 1, :total-failed 0}
-         {:special_type :type/FK, :fk_target_field_id true}]
+(expect (concat
+         (repeat 2 {:total-fks 3, :updated-fks 0, :total-failed 0})
+         [{:special_type :type/FK, :fk_target_field_id true}
+          {:special_type nil,      :fk_target_field_id false}]
+         (repeat 2 {:total-fks 3, :updated-fks 1, :total-failed 0})
+         [{:special_type :type/FK, :fk_target_field_id true}])
   (let [field-id (data/id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
                                                          :id field-id)
-                                                       (update :fk_target_field_id #(db/exists? Field :id %)))))]
+                                                       (update :fk_target_field_id #(db/exists? Field :id %)))))
+        {before-step-info :step-info,
+         before-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))
+        before-special-type-exists? (get-special-type-and-fk-exists?)
+        _ (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
+        after-special-type-exists? (get-special-type-and-fk-exists?)
+        {after-step-info :step-info,
+         after-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))]
     [
-     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     (sut/only-step-keys before-step-info)
+     (:task_details before-task-history)
      ;; FK should exist to start with
-     (get-special-type-and-fk-exists?)
+     before-special-type-exists?
      ;; Clear out FK / special_type
-     (do (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
-         (get-special-type-and-fk-exists?))
-
+     after-special-type-exists?
      ;; Run sync-table and they should be set again
-     (sut/only-step-keys (sut/sync-database! "sync-fks" (Database (data/id))))
+     (sut/only-step-keys after-step-info)
+     (:task_details after-task-history)
      (get-special-type-and-fk-exists?)]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -180,11 +190,6 @@
 (defn- exec! [& statements]
   (doseq [statement statements]
     (jdbc/execute! one-off-dbs/*conn* [statement])))
-
-(defmacro ^:private throw-if-called {:style/indent 1} [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
-     ~@body))
 
 ;; Validate the changing of a column's type triggers a hash miss and sync
 (expect
@@ -212,7 +217,7 @@
             {new-db-type :database_type} (get-field)]
 
         ;; Syncing again with no change should not call sync-field-instances! or update the hash
-        (throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
+        (tu/throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
           (sync/sync-database! (data/db))
           [old-db-type
            new-db-type

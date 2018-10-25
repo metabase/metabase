@@ -4,30 +4,28 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
-            [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
             [metabase
-             [db :as db]
+             [db :as mdb]
              [driver :as driver]
              [util :as u]]
             [metabase.models
-             [field :as field]
-             [table :as table]]
-            metabase.query-processor.interface
+             [database :refer [Database]]
+             [field :as field]]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
            honeysql.types.SqlCall
            [java.sql DatabaseMetaData ResultSet]
            [java.util Date Map]
-           metabase.models.field.FieldInstance
-           [metabase.query_processor.interface Field Value]))
+           metabase.models.field.FieldInstance))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -86,9 +84,9 @@
      dataset name as well. (At the time of this writing, this is only used by the SQL parameters implementation; in
      the future it will probably be used in more places as well.)")
 
-  (field->alias ^String [this, ^Field field]
+  (field->alias ^String [this, ^FieldInstance field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation
-     calls `name`, which returns the *unqualified* name of `Field`.
+     calls `:name`, which returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
 
@@ -104,10 +102,6 @@
      current transaction. The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.`
 
        \"SET @@session.timezone = %s;\"")
-
-  (stddev-fn ^clojure.lang.Keyword [this]
-    "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults
-     to `:STDDEV`.")
 
   (string-length-fn ^clojure.lang.Keyword [this, ^Keyword field-key]
     "Return a HoneySQL form appropriate for getting the length of a `Field` identified by fully-qualified FIELD-KEY.
@@ -127,22 +121,23 @@
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 
-(def ^:dynamic ^:private database-id->connection-pool
+(def ^:private database-id->connection-pool
   "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))
 
 (defn- create-connection-pool
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
-  [{:keys [id engine details]}]
+  [{:keys [id engine details], :as database}]
+  {:pre [(map? database)]}
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
-    (assoc (db/connection-pool (assoc spec
-                                 :minimum-pool-size           1
-                                 ;; prevent broken connections closed by dbs by testing them every 3 mins
-                                 :idle-connection-test-period (* 3 60)
-                                 ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                                 :excess-timeout              (* 15 60)))
+    (assoc (mdb/connection-pool (assoc spec
+                                  :minimum-pool-size           1
+                                  ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                  :idle-connection-test-period (* 3 60)
+                                  ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                  :excess-timeout              (* 15 60)))
       :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
@@ -161,18 +156,20 @@
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
-  [{:keys [id], :as database}]
-  (if (contains? @database-id->connection-pool id)
+  [database-or-id]
+  (if (contains? @database-id->connection-pool (u/get-id database-or-id))
     ;; we have an existing pool for this database, so use it
-    (get @database-id->connection-pool id)
+    (get @database-id->connection-pool (u/get-id database-or-id))
     ;; create a new pool and add it to our cache, then return it
-    (u/prog1 (create-connection-pool database)
-      (swap! database-id->connection-pool assoc id <>))))
+    (let [db (if (map? database-or-id) database-or-id (db/select-one [Database :id :engine :details]
+                                                        :id database-or-id))]
+      (u/prog1 (create-connection-pool db)
+        (swap! database-id->connection-pool assoc (u/get-id database-or-id) <>)))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
-  [{:keys [engine details], :as database}]
-  (db->pooled-connection-spec database))
+  [database-or-id]
+  (db->pooled-connection-spec database-or-id))
 
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
@@ -279,11 +276,24 @@
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
+(defmacro ^:private with-resultset-open
+  "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
+  the the symbols provided in the binding form. The binding form is just like `let` or `with-open`, but yield a
+  `ResultSet`. That `ResultSet` will be closed upon exit of `body`."
+  [bindings & body]
+  (let [binding-pairs (partition 2 bindings)
+        rs-syms (repeatedly (count binding-pairs) gensym)]
+    `(with-open ~(vec (interleave rs-syms (map second binding-pairs)))
+       (let ~(vec (interleave (map first binding-pairs) (map #(list `~jdbc/result-set-seq %) rs-syms)))
+         ~@body))))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
   ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
-  (jdbc/result-set-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
-                                   (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))
+  (with-resultset-open [rs-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                                           (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
+    ;; Ensure we read all rows before exiting
+    (doall rs-seq)))
 
 (defn fast-active-tables
   "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like
@@ -293,21 +303,28 @@
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
    seconds vs 60)."
   [driver, ^DatabaseMetaData metadata]
-  (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
-        schemas     (set/difference all-schemas (excluded-schemas driver))]
-    (set (for [schema     schemas
-               table-name (mapv :table_name (get-tables metadata schema))]
-           {:name   table-name
-            :schema schema}))))
+  (with-resultset-open [rs-seq (.getSchemas metadata)]
+    (let [all-schemas (set (map :table_schem rs-seq))
+          schemas     (set/difference all-schemas (excluded-schemas driver))]
+      (set (for [schema schemas
+                 table  (get-tables metadata schema)]
+             (let [remarks (:remarks table)]
+               {:name        (:table_name table)
+                :schema      schema
+                :description (when-not (str/blank? remarks)
+                               remarks)}))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
-  (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (get-tables metadata nil))]
-         {:name   (:table_name table)
-          :schema (:table_schem table)})))
+  (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                             (get-tables metadata nil))]
+         (let [remarks (:remarks table)]
+           {:name        (:table_name  table)
+            :schema      (:table_schem table)
+            :description (when-not (str/blank? remarks)
+                           remarks)}))))
 
 (defn- database-type->base-type
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
@@ -326,24 +343,25 @@
     special-type))
 
 (defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
-  (set (for [{database-type :type_name, column-name :column_name} (jdbc/result-set-seq (.getColumns metadata nil schema table-name nil))]
-         (merge {:name          column-name
-                 :database-type database-type
-                 :base-type     (database-type->base-type driver database-type)}
-                (when-let [special-type (calculated-special-type driver column-name database-type)]
-                  {:special-type special-type})))))
+  (with-resultset-open [rs-seq (.getColumns metadata nil schema table-name nil)]
+    (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} rs-seq]
+           (merge {:name          column-name
+                   :database-type database-type
+                   :base-type     (database-type->base-type driver database-type)}
+                  (when (not (str/blank? remarks))
+                    {:field-comment remarks})
+                  (when-let [special-type (calculated-special-type driver column-name database-type)]
+                    {:special-type special-type}))))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
-  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
-                 jdbc/result-set-seq
-                 (mapv :column_name)
-                 set)]
-    (update table :fields (fn [fields]
-                            (set (for [field fields]
-                                   (if-not (contains? pks (:name field))
-                                     field
-                                     (assoc field :pk? true))))))))
+  (with-resultset-open [rs-seq (.getPrimaryKeys metadata nil nil (:name table))]
+    (let [pks (set (map :column_name rs-seq))]
+      (update table :fields (fn [fields]
+                              (set (for [field fields]
+                                     (if-not (contains? pks (:name field))
+                                       field
+                                       (assoc field :pk? true)))))))))
 
 (defn describe-database
   "Default implementation of `describe-database` for JDBC-based drivers. Uses various `ISQLDriver` methods and JDBC
@@ -363,11 +381,12 @@
 
 (defn- describe-table-fks [driver database table]
   (with-metadata [metadata driver database]
-    (set (for [result (jdbc/result-set-seq (.getImportedKeys metadata nil (:schema table) (:name table)))]
-           {:fk-column-name   (:fkcolumn_name result)
-            :dest-table       {:name   (:pktable_name result)
-                               :schema (:pktable_schem result)}
-            :dest-column-name (:pkcolumn_name result)}))))
+    (with-resultset-open [rs-seq (.getImportedKeys metadata nil (:schema table) (:name table))]
+      (set (for [result rs-seq]
+             {:fk-column-name   (:fkcolumn_name result)
+              :dest-table       {:name   (:pktable_name result)
+                                 :schema (:pktable_schem result)}
+              :dest-column-name (:pkcolumn_name result)})))))
 
 ;;; ## Native SQL parameter functions
 
@@ -446,10 +465,9 @@
    :current-datetime-fn  (constantly :%now)
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
-   :field->alias         (u/drop-first-arg name)
+   :field->alias         (u/drop-first-arg :name)
    :quote-style          (constantly :ansi)
-   :set-timezone-sql     (constantly nil)
-   :stddev-fn            (constantly :STDDEV)})
+   :set-timezone-sql     (constantly nil)})
 
 
 (defn IDriverSQLDefaultsMixin

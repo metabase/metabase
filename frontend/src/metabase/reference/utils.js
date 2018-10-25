@@ -76,9 +76,12 @@ export const getQuestion = ({
     )
     .updateIn(["display"], display => visualization || display)
     .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
-      if (fieldId && metadata && metadata.fields[fieldId])
+      if (fieldId && metadata && metadata.fields[fieldId]) {
         return [metadata.fields[fieldId].getDefaultBreakout()];
-      if (fieldId) return [fieldId];
+      }
+      if (fieldId) {
+        return [fieldId];
+      }
       return oldBreakout;
     })
     .value();
@@ -87,7 +90,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "aggregation"],
-      ["METRIC", metricId],
+      ["metric", metricId],
     );
   }
 
@@ -95,7 +98,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "filter"],
-      ["AND", ["SEGMENT", segmentId]],
+      ["and", ["segment", segmentId]],
     );
   }
 

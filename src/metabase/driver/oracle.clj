@@ -13,6 +13,7 @@
             [metabase.driver.generic-sql.util.deduplicate :as deduplicateutil]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :refer [tru]]
              [ssh :as ssh]]))
 
 (defrecord OracleDriver []
@@ -196,7 +197,7 @@
 (defn- remove-rownum-column
   "Remove the `:__rownum__` column from results, if present."
   [{:keys [columns rows], :as results}]
-  (if-not (contains? (set columns) :__rownum__)
+  (if-not (contains? (set columns) "__rownum__")
     results
     ;; if we added __rownum__ it will always be the last column and value so we can just remove that
     {:columns (butlast columns)
@@ -219,27 +220,18 @@
          {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [{:name         "host"
-                                                             :display-name "Host"
-                                                             :default      "localhost"}
-                                                            {:name         "port"
-                                                             :display-name "Port"
-                                                             :type         :integer
-                                                             :default      1521}
+                                                           [driver/default-host-details
+                                                            (assoc driver/default-port-details :default 1521)
                                                             {:name         "sid"
-                                                             :display-name "Oracle system ID (SID)"
-                                                             :placeholder  "Usually something like ORCL or XE. Optional if using service name"}
+                                                             :display-name (tru "Oracle system ID (SID)")
+                                                             :placeholder  (str (tru "Usually something like ORCL or XE.")
+                                                                                " "
+                                                                                (tru "Optional if using service name"))}
                                                             {:name         "service-name"
-                                                             :display-name "Oracle service name"
-                                                             :placeholder  "Optional TNS alias"}
-                                                            {:name         "user"
-                                                             :display-name "Database username"
-                                                             :placeholder  "What username do you use to login to the database?"
-                                                             :required     true}
-                                                            {:name         "password"
-                                                             :display-name "Database password"
-                                                             :type         :password
-                                                             :placeholder  "*******"}]))
+                                                             :display-name (tru "Oracle service name")
+                                                             :placeholder  (tru "Optional TNS alias")}
+                                                            driver/default-user-details
+                                                            driver/default-password-details]))
           :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :current-db-time                   (driver/make-current-db-time-fn oracle-db-time-query oracle-date-formatters)})

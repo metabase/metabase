@@ -29,7 +29,7 @@ export default class ObjectActionsSelect extends Component {
         <PopoverWithTrigger
           ref="popover"
           triggerElement={
-            <span className="text-grey-1 text-grey-4-hover">
+            <span className="text-light text-medium-hover">
               <Icon name={"ellipsis"} />
             </span>
           }

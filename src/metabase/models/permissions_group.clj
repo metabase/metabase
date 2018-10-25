@@ -10,7 +10,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -26,8 +26,8 @@
                    :name group-name)
                  (u/prog1 (db/insert! PermissionsGroup
                             :name group-name)
-                          (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
-                                                                group-name (:id <>)))))))))
+                   (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
+                                                         group-name (:id <>)))))))))
 
 (def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
   all-users
@@ -57,7 +57,7 @@
 (defn- check-name-not-already-taken
   [group-name]
   (when (exists-with-name? group-name)
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
+    (throw (ui18n/ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
 (defn- check-not-magic-group
   "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
@@ -67,7 +67,7 @@
                        (admin)
                        (metabot)]]
     (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+      (throw (ui18n/ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                {:status-code 400})))))
 
 
