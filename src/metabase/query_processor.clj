@@ -180,7 +180,6 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
     (recieve-native-query (qp-pipeline deliver-native-query))))
 

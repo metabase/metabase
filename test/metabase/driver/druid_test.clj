@@ -17,6 +17,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
+            [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan.util.test :as tt]))
 
@@ -329,7 +330,8 @@
                       :tunnel-enabled true
                       :tunnel-port    22
                       :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (tu.log/suppress-output
+        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
        (catch Exception e
          (.getMessage e))))
 

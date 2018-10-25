@@ -53,28 +53,32 @@
 (expect
   default-card-results-native
   (tt/with-temp Card [card]
-    (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
-                        :info {:card-id    (u/get-id card)
-                               :query-hash (qputil/query-hash {})}))
+    (u/prog1
+     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
+                         :info {:card-id    (u/get-id card)
+                                :query-hash (qputil/query-hash {})}))
+     (assert (= (:status <>) :completed)))
     (round-to-2-decimals (card-metadata card))))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
 (expect
-  {:name "NAME", :display_name "Name", :base_type "type/Text"}
+  [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
   (tt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
-                            :result_metadata {:name "NAME", :display_name "Name", :base_type "type/Text"}}]
-    (qp/process-query {:database database/virtual-id
-                       :type     :query
-                       :query    {:source-table (str "card__" (u/get-id card))}})
+                            :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
+    (u/prog1
+     (qp/process-query {:database database/virtual-id
+                        :type     :query
+                        :query    {:source-table (str "card__" (u/get-id card))}})
+     (assert (= (:status <>) :completed)))
     (card-metadata card)))
 
 ;; ...even when running via the API endpoint
 (expect
-  {:name "NAME", :display_name "Name", :base_type "type/Text"}
+  [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
   (tt/with-temp* [Collection [collection]
                   Card       [card {:collection_id   (u/get-id collection)
                                     :dataset_query   (native-query "SELECT * FROM VENUES")
-                                    :result_metadata {:name "NAME", :display_name "Name", :base_type "type/Text"}}]]
+                                    :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     ((users/user->client :rasta) :post 200 "dataset" {:database database/virtual-id
                                                       :type     :query
