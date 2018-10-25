@@ -5,7 +5,6 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :as ui18n :refer [tru]]
@@ -312,11 +311,10 @@
 (defn- header->column [^GaData$ColumnHeaders header]
   (let [date-parser (ga-dimension->date-format-fn (.getName header))]
     (if date-parser
-      {:name      (keyword "ga:date")
-       :base-type :type/DateTime}
-      {:name               (keyword (.getName header))
-       :base-type          (ga-type->base-type (.getDataType header))
-       :field-display-name "COOL"})))
+      {:name      "ga:date"
+       :base_type :type/DateTime}
+      {:name      (.getName header)
+       :base_type (ga-type->base-type (.getDataType header))})))
 
 (defn- header->getter-fn [^GaData$ColumnHeaders header]
   (let [date-parser (ga-dimension->date-format-fn (.getName header))
@@ -333,7 +331,7 @@
         columns          (map header->column (.getColumnHeaders response))
         getters          (map header->getter-fn (.getColumnHeaders response))]
     {:cols     columns
-     :columns  (map (comp u/keyword->qualified-name :name) columns)
+     :columns  (map :name columns)
      :rows     (for [row (.getRows response)]
                  (for [[data getter] (map vector row getters)]
                    (getter data)))}))
