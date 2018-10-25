@@ -1,6 +1,10 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
   (:require [expectations :refer [expect]]
+            [medley.core :as m]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.models
              [card :refer [Card]]
@@ -9,48 +13,13 @@
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data.users :as users]
-            [metabase.util :as u]
+            [metabase.test.util :as tu]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             QUERY "TRANSFORMATION"                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - I think we might want to move these to the GA QP test namespace?
-
-;; check that a built-in Metric gets removed from the query and put in `:ga`
-(expect
-  {:ga {:segment nil, :metrics "ga:users"}}
-  (ga.qp/transform-query {:query {:aggregation [[:metric "ga:users"]]}}))
-
-
-;; check that a built-in segment gets removed from the query and put in `:ga`
-(expect
-  {:ga {:segment "gaid::-4", :metrics nil}}
-  (ga.qp/transform-query {:query {:filter [:segment "gaid::-4"]}}))
-
-;; check that other things stay in the order-by clause
-(expect
-  {:query {:filter [:< [:field-id 100] 200]}
-   :ga    {:segment nil, :metrics nil}}
-  (ga.qp/transform-query {:query {:filter [:< [:field-id 100] 200]}}))
-
-(expect
-  {:query {:filter [:< [:field-id 100] 200]}
-   :ga    {:segment nil, :metrics nil}}
-  (ga.qp/transform-query {:query {:filter [:< [:field-id 100] 200]}}))
-
-(expect
-  {:query {:filter [:< [:field-id 100] 200]}
-   :ga    {:segment "gaid::-4", :metrics nil}}
-  (ga.qp/transform-query {:query {:filter [:and [:segment "gaid::-4"]
-                                           [:< [:field-id 100] 200]]}}))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                   MBQL->NATIVE (EXPANDED QUERY -> GA QUERY)                                    |
+;;; |                                        MBQL->NATIVE (QUERY -> GA QUERY)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ga-query [inner-query]
@@ -78,21 +47,21 @@
 ;; try a basic query with a metric (aggregation)
 (expect
   (ga-query {:metrics "ga:users"})
-  (mbql->native {:ga {:metrics "ga:users"}}))
+  (mbql->native {:query {:aggregation [[:metric "ga:users"]]}}))
 
 
 ;; query with metric (aggregation) + breakout
 (expect
   (ga-query {:metrics    "ga:users"
              :dimensions "ga:browser"})
-  (mbql->native {:query {:breakout [[:field-literal "ga:browser"]]}
-                 :ga    {:metrics "ga:users"}}))
+  (mbql->native {:query {:aggregation [[:metric "ga:users"]]
+                         :breakout    [[:field-literal "ga:browser"]]}}))
 
 
 ;; query w/ segment (filter)
 (expect
   (ga-query {:segment "gaid::-4"})
-  (mbql->native {:ga {:segment "gaid::-4"}}))
+  (mbql->native {:query {:filter [:segment "gaid::-4"]}}))
 
 
 ;; query w/ non-segment filter
@@ -104,8 +73,9 @@
 (expect
   (ga-query {:filters "ga:continent==North America"
              :segment "gaid::-4"})
-  (mbql->native {:query {:filter [:= [:field-literal "ga:continent"] [:value "North America"]]}
-                 :ga    {:segment "gaid::-4"}}))
+  (mbql->native {:query {:filter [:and
+                                  [:segment "gaid::-4"]
+                                  [:= [:field-literal "ga:continent"] [:value "North America"]]]}}))
 
 ;; query w/ date filter
 (defn- ga-date-field [unit]
@@ -150,6 +120,137 @@
 (expect
   (ga-query {:max-results 25})
   (mbql->native {:query {:limit 25}}))
+
+
+;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
+
+(defn- do-with-some-fields [f]
+  (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
+                  Table    [table              {:name "98765432"}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text"}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text"}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date"}]]
+    (f {:db                 db
+        :table              table
+        :event-action-field event-action-field
+        :event-label-field  event-label-field
+        :date-field         date-field})))
+
+;; let's try a real-life GA query and see how it looks when it's all put together. This one has already been
+;; preprocessed, so we're just checking it gets converted to the correct native query
+(def ^:private expected-ga-query
+  {:query {:ids                "ga:98765432"
+           :dimensions         "ga:eventLabel"
+           :metrics            "ga:totalEvents"
+           :segment            "gaid::-4"
+           :start-date         "30daysAgo"
+           :end-date           "yesterday"
+           :filters            "ga:eventAction==Run Query;ga:eventLabel!=(not set);ga:eventLabel!=url"
+           :sort               "ga:eventLabel"
+           :max-results        10000
+           :include-empty-rows false}
+   :mbql? true})
+
+(defn- preprocessed-query-with-some-fields [{:keys [db table event-action-field event-label-field date-field]}]
+  {:database (u/get-id db)
+   :type     :query
+   :query    {:source-table
+              (u/get-id table)
+
+              :aggregation
+              [[:metric "ga:totalEvents"]]
+
+              :breakout
+              [[:field-id (u/get-id event-label-field)]]
+
+              :filter
+              [:and
+               [:segment "gaid::-4"]
+               [:=
+                [:field-id (u/get-id event-action-field)]
+                [:value "Run Query" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+               [:between
+                [:datetime-field [:field-id (u/get-id date-field)] :day]
+                [:relative-datetime -30 :day]
+                [:relative-datetime -1 :day]]
+               [:!=
+                [:field-id (u/get-id event-label-field)]
+                [:value "(not set)" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]
+               [:!=
+                [:field-id (u/get-id event-label-field)]
+                [:value "url" {:base_type :type/Text, :special_type nil, :database_type "VARCHAR"}]]]
+
+              :order-by
+              [[:asc [:field-id (u/get-id event-label-field)]]]}})
+
+(expect
+  expected-ga-query
+  (do-with-some-fields
+   (fn [{:keys [table event-action-field event-label-field date-field], :as objects}]
+     (qp.store/with-store
+       (qp.store/store-table! table)
+       (doseq [field [event-action-field event-label-field date-field]]
+         (qp.store/store-field! field))
+       (ga.qp/mbql->native (preprocessed-query-with-some-fields objects))))))
+
+;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
+;; for the entire preprocessing process
+(defn- query-with-some-fields [{:keys [db table event-action-field event-label-field date-field]}]
+  {:database (u/get-id db)
+   :type     :query
+   :query    {:source-table (u/get-id table)
+              :aggregation  [[:metric "ga:totalEvents"]]
+              :filter       [:and
+                             [:segment "gaid::-4"]
+                             [:= [:field-id (u/get-id event-action-field)] "Run Query"]
+                             [:time-interval [:field-id (u/get-id date-field)] -30 :day]
+                             [:!= [:field-id (u/get-id event-label-field)] "(not set)" "url"]]
+              :breakout     [[:field-id (u/get-id event-label-field)]]}})
+
+(expect
+  expected-ga-query
+  (do-with-some-fields
+   (comp metabase.query-processor/query->native query-with-some-fields)))
+
+;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
+;; run externally.
+(expect
+  {:row_count 1
+   :status    :completed
+   :data      {:columns     [:ga:eventLabel :ga:totalEvents]
+               :rows        [["Toucan Sighting" 1000]]
+               :native_form expected-ga-query
+               :cols        [{:description     "This is ga:eventLabel"
+                              :special_type    nil
+                              :name            "ga:eventLabel"
+                              :settings        nil
+                              :source          :breakout
+                              :parent_id       nil
+                              :visibility_type :normal
+                              :display_name    "ga:eventLabel"
+                              :fingerprint     nil
+                              :base_type       :type/Text}
+                             {:name         "metric"
+                              :display_name "metric"
+                              :source       :aggregation
+                              :description  "This is metric"
+                              :base_type    :type/Text}]}}
+  (with-redefs [metabase.driver.googleanalytics/memoized-column-metadata (fn [_ column-name]
+                                                                           {:display_name column-name
+                                                                            :description  (str "This is " column-name)
+                                                                            :base_type    :type/Text})]
+    (do-with-some-fields
+     (fn [objects]
+       (let [results {:columns [:ga:eventLabel :ga:totalEvents]
+                      :cols    [{}, {:base_type :type/Text}]
+                      :rows    [["Toucan Sighting" 1000]]}
+             qp      (#'metabase.query-processor/qp-pipeline (constantly results))
+             query   (query-with-some-fields objects)]
+         (-> (tu/doall-recursive (qp query))
+             (update-in [:data :cols] #(for [col %]
+                                         (dissoc col :table_id :id)))
+             (m/dissoc-in [:data :results_metadata])
+             (m/dissoc-in [:data :insights])))))))
 
 
 ;;; ------------------------------------------------ Saving GA Cards -------------------------------------------------

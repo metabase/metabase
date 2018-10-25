@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
   (:require [metabase.driver :as driver]
             [metabase.mbql
+             [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.date :as du]
-            [schema.core :as s])
+            [metabase.util.date :as du])
   (:import java.util.TimeZone))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
@@ -60,7 +60,7 @@
   [:absolute-datetime this (get info :unit :default)])
 
 (defn- maybe-parse-as-time [datetime-str unit]
-  (when-not (s/check mbql.s/TimeUnit unit)
+  (when (mbql.preds/TimeUnit? unit)
     (du/str->time datetime-str (when-let [report-timezone (driver/report-timezone)]
                                  (TimeZone/getTimeZone ^String report-timezone)))))
 

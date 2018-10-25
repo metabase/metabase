@@ -3,7 +3,7 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.mbql.schema :as mbql.s]
+  (:require [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint
              [fingerprinters :as f]
@@ -17,7 +17,7 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   (s/constrained su/KeywordOrString
-                 #(not (s/check mbql.s/DatetimeFieldUnit (keyword %)))
+                 #(mbql.preds/DatetimeFieldUnit? (keyword %))
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata
@@ -71,24 +71,16 @@
                (redux/post-complete
                 (redux/juxt
                  (apply f/col-wise (for [metadata result-metadata]
-                                     (if (and (seq (:name metadata))
-                                              (nil? (:fingerprint metadata)))
+                                     (if-not (:fingerprint metadata)
                                        (f/fingerprinter metadata)
                                        (f/constant-fingerprinter (:fingerprint metadata)))))
                  (insights/insights result-metadata))
                 (fn [[fingerprints insights]]
-                  ;; Rarely certain queries will return columns with no names. For example
-                  ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name. Since we
-                  ;; can't use those as field literals in subsequent queries just filter them out
-                  {:metadata (->> (map (fn [fingerprint metadata]
-                                         (cond
-                                           (instance? Throwable fingerprint)
-                                           metadata
-
-                                           (not-empty (:name metadata))
-                                           (assoc metadata :fingerprint fingerprint)))
-                                       fingerprints
-                                       result-metadata)
-                                  (remove nil?))
+                  {:metadata (map (fn [fingerprint metadata]
+                                    (if (instance? Throwable fingerprint)
+                                      metadata
+                                      (assoc metadata :fingerprint fingerprint)))
+                                  fingerprints
+                                  result-metadata)
                    :insights insights}))
                (:rows results))))

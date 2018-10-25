@@ -164,7 +164,7 @@
 ;; so we can use it with Mongo
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo)
   [(aggregate-col :count)
-   (aggregate-col :count)]
+   (assoc (aggregate-col :count) :name "count_2")]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))

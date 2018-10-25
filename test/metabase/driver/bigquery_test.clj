@@ -51,9 +51,9 @@
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}]}
+   :cols    [{:name "venue_id",    :display_name "Venue ID",    :source :native, :base_type :type/Integer}
+             {:name "user_id",     :display_name  "User ID",    :source :native, :base_type :type/Integer}
+             {:name "checkins_id", :display_name "Checkins ID", :source :native, :base_type :type/Integer}]}
 
   (select-keys (:data (qp/process-query
                         {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -76,23 +76,6 @@
                                   :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
-
-;; can we generate unique names?
-(expect
-  ["count" "sum" "count_2" "count_3"]
-  (let [unique-name (#'bigquery/unique-name-fn)]
-    [(unique-name "count")
-     (unique-name "sum")
-     (unique-name "count")
-     (unique-name "count")]))
-
-;; what if we try to trick it by using a name it would have generated?
-(expect
-  ["count" "count_2" "count_2_2"]
-  (let [unique-name (#'bigquery/unique-name-fn)]
-    [(unique-name "count")
-     (unique-name "count")
-     (unique-name "count_2")]))
 
 ;; ok, make sure we actually wrap all of our ag clauses in `:named` clauses with unique names
 (defn- aggregation-names [query]
@@ -132,6 +115,13 @@
      [:avg [:field-id (data/id :venues :id)]]
      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
      [:min [:field-id (data/id :venues :id)]]])))
+
+;; if query has no aggregations then pre-alias-aggregations should do nothing
+(expect
+  {}
+  (binding [qpi/*driver* (driver/engine->driver :bigquery)]
+    (#'bigquery/pre-alias-aggregations {})))
+
 
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}

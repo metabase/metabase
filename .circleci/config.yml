@@ -359,13 +359,15 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Wait for SparkSQL to be ready
+          name: Wait for Presto to be ready
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
             while ! nc -z localhost 8080; do sleep 0.1; done
@@ -419,15 +421,22 @@ jobs:
       - restore_cache:
           <<: *restore-fe-deps-cache
       - run:
-          name: Run yarn
-          command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
+          name: Run yarn if yarn.lock checksum has changed
+          command: >
+            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
+              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
+            fi
           no_output_timeout: 5m
+      - run:
+          name: Save yarn checksum
+          command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
           key: fe-deps-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
+            - /home/circleci/yarn.lock.checksum
 
   fe-linter-eslint:
     <<: *defaults
@@ -502,7 +511,9 @@ jobs:
       - run:
           name: Build uberjar if needed
           command: >
-            if [ ! -f './target/uberjar/metabase.jar' ]; then ./bin/build version uberjar; fi
+            if [ ! -f './target/uberjar/metabase.jar' ];
+              then ./bin/build version uberjar;
+            fi
           no_output_timeout: 5m
       - save_cache:
           key: uberjar-{{ checksum "./backend-checksums.txt" }}

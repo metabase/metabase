@@ -20,9 +20,9 @@
              [auto-bucket-datetime-breakouts :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
-             [check-features :as check-features]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
+             [check-features :as check-features]
              [cumulative-aggregations :as cumulative-ags]
              [desugar :as desugar]
              [dev :as dev]
@@ -36,6 +36,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joined-tables :as resolve-joined-tables]
@@ -99,6 +100,7 @@
   (-> f
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
+      ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
@@ -114,11 +116,14 @@
       resolve-fields/resolve-fields
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
+      reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
       bucket-datetime/auto-bucket-datetime-breakouts
       resolve-source-table/resolve-source-table
       row-count-and-status/add-row-count-and-status
       ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
-      ;; TODO - I think we should do this much later, perhaps at the very end right before `catch-exceptions`
+      ;;
+      ;; TODO - I think we should add row count and status much later, perhaps at the very end right before
+      ;; `catch-exceptions`
       parameters/substitute-parameters
       expand-macros/expand-macros
       ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
@@ -142,11 +147,14 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
-(def ^{:arglists '([query]), :style/indent 1} preprocess
+(def ^:private ^{:arglists '([query])} preprocess
   "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
   get executed by `execute-query`. One important thing to note: if preprocessing fails for some reason, `preprocess`
   will throw an Exception, unlike `process-query`. Why? Preprocessing is something we use internally, so wrapping
-  catching Exceptions and wrapping them in frontend results format doesn't make sense."
+  catching Exceptions and wrapping them in frontend results format doesn't make sense.
+
+  (NOTE: Don't use this directly. You either want `query->preprocessed` (for the fully preprocessed query) or
+  `query->native` for the native form.)"
   ;; throwing pre-allocated exceptions can actually get optimized away into long jumps by the JVM, let's give it a
   ;; chance to happen here
   (let [quit-early-exception (Exception.)
@@ -172,9 +180,17 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
     (recieve-native-query (qp-pipeline deliver-native-query))))
+
+(defn query->preprocessed
+  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
+  Especially helpful for debugging or testing driver QP implementations."
+  {:style/indent 0}
+  [query]
+  (-> (update query :middleware assoc :disable-mbql->native? true)
+      preprocess
+      (m/dissoc-in [:middleware :disable-mbql->native?])))
 
 (defn query->native
   "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -215,21 +231,26 @@
 
 (defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
-  [query-execution error-message]
+  [query-execution, ^Throwable e]
   ;; record our query execution and format response
   (-> query-execution
       (dissoc :start_time_millis)
-      (merge {:error        error-message
+      (merge {:error        (.getMessage e)
               :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))})
       save-query-execution!
       (dissoc :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
       ;; this is just for the response for client
       (assoc :status    :failed
-             :error     error-message
+             :error     (.getMessage e)
              :row_count 0
              :data      {:rows    []
                          :cols    []
-                         :columns []})))
+                         :columns []})
+      ;; include stacktrace and preprocessed/native stages of the query if available in the response which should make
+      ;; debugging queries a bit easier
+      (merge (some-> (ex-data e)
+                     (select-keys [:stacktrace :preprocessed :native])
+                     (m/dissoc-in [:preprocessed :info])))))
 
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
@@ -255,10 +276,12 @@
   "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
   [query-result]
   (when-not (contains? query-result :status)
-    (throw (Exception. "invalid response from database driver. no :status provided")))
+    (throw (ex-info (str (tru "Invalid response from database driver. No :status provided."))
+             query-result)))
   (when (= :failed (:status query-result))
     (log/warn (u/pprint-to-str 'red query-result))
-    (throw (Exception. (str (get query-result :error "general error"))))))
+    (throw (ex-info (str (get query-result :error (tru "General error")))
+             query-result))))
 
 (def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
   "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?  By default
@@ -300,7 +323,7 @@
             (log/warn (u/format-color 'red "Query failure: %s\n%s"
                                       (.getMessage e)
                                       (u/pprint-to-str (u/filtered-stacktrace e))))
-            (save-and-return-failed-query! query-execution (.getMessage e))))))))
+            (save-and-return-failed-query! query-execution e)))))))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!

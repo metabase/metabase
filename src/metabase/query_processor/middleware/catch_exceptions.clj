@@ -5,12 +5,26 @@
             schema.utils)
   (:import [schema.utils NamedError ValidationError]))
 
-(defn- fail [query, ^Throwable e, & [additional-info]]
-  (merge {:status     :failed
-          :class      (class e)
-          :error      (or (.getMessage e) (str e))
-          :stacktrace (u/filtered-stacktrace e)
-          :query      (dissoc query :database :driver)}
+(def ^:dynamic ^:private *add-preprocessed-queries?* true)
+
+(defn- fail [{query-type :type, :as query}, ^Throwable e, & [additional-info]]
+  (merge {:status       :failed
+          :class        (class e)
+          :error        (or (.getMessage e) (str e))
+          :stacktrace   (u/filtered-stacktrace e)
+          ;; TODO - removing this stuff is not really needed anymore since `:database` is just the ID and not the
+          ;; entire map including `:details`
+          :query        (dissoc query :database :driver)}
+         ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
+         ;; useful for debugging purposes. Since generating them requires us to recursively run the query processor,
+         ;; make sure we can skip adding them if we end up back here so we don't recurse forever
+         (when (and (= (keyword query-type) :query)
+                    *add-preprocessed-queries?*)
+           (binding [*add-preprocessed-queries?* false]
+             {:preprocessed (u/ignore-exceptions
+                              ((resolve 'metabase.query-processor/query->preprocessed) query))
+              :native       (u/ignore-exceptions
+                              ((resolve 'metabase.query-processor/query->native) query))}))
          (when-let [data (ex-data e)]
            {:ex-data (dissoc data :schema)})
          additional-info))
@@ -19,7 +33,9 @@
   "Return a nice error message to explain the schema validation error."
   [error]
   (cond
-    (instance? NamedError error)      (let [nested-error (.error ^NamedError error)] ; recurse until we find the innermost nested named error, which is the reason we actually failed
+    (instance? NamedError error)      (let [nested-error (.error ^NamedError error)]
+                                        ;; recurse until we find the innermost nested named error, which is the reason
+                                        ;; we actually failed
                                         (if (instance? NamedError nested-error)
                                           (recur nested-error)
                                           (or (when (map? nested-error)
@@ -31,7 +47,8 @@
                                                    :let  [explanation (explain-schema-validation-error e)]
                                                    :when explanation]
                                                explanation))
-    ;; When an exception is thrown, a ValidationError comes back like (throws? ("foreign-keys is not supported by this driver." 10))
+    ;; When an exception is thrown, a ValidationError comes back like
+    ;;    (throws? ("foreign-keys is not supported by this driver." 10))
     ;; Extract the message if applicable
     (instance? ValidationError error) (let [explanation (schema.utils/validation-error-explain error)]
                                         (or (when (list? explanation)

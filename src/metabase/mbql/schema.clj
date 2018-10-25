@@ -153,12 +153,13 @@
 ;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
 ;; `:field-id` clauses when their Field derives from `:type/DateTime`.
 ;;
-;; Datetime Field can wrap any of the lowest-level Field clauses or expression references, but not other
-;; datetime-field clauses, because that wouldn't make sense
+;; Datetime Field can wrap any of the lowest-level Field clauses, but not other datetime-field clauses, because that
+;; wouldn't make sense. They similarly can not wrap expression references, because doing arithmetic on timestamps
+;; doesn't make a whole lot of sense (what does `"2018-10-23"::timestamp / 2` mean?).
 ;;
 ;; Field is an implicit Field ID
 (defclause datetime-field
-  field (one-of field-id field-literal fk-> expression)
+  field (one-of field-id field-literal fk->)
   unit  DatetimeFieldUnit)
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
@@ -537,27 +538,39 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
+(defn- distinct-non-empty [schema]
+  (s/constrained schema (every-pred (partial apply distinct?) seq) "non-empty sequence of distinct items"))
+
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
-  (s/constrained
+  (->
    {(s/optional-key :source-query) SourceQuery
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
-    (s/optional-key :expressions)  {s/Keyword ExpressionDef} ; TODO - I think expressions keys should be strings
+    ; TODO - expressions keys should be strings; fix this when we get a chance
+    (s/optional-key :expressions)  {s/Keyword ExpressionDef}
+    ;; TODO - should this be `distinct-non-empty`?
     (s/optional-key :fields)       (su/non-empty [Field])
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
-    (s/optional-key :order-by)     (su/non-empty [OrderBy])
+    (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
     (s/optional-key :page)         {:page  su/IntGreaterThanOrEqualToZero
                                     :items su/IntGreaterThanZero}
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
     (s/optional-key :join-tables)  (s/constrained [JoinInfo] (partial apply distinct?) "distinct JoinInfo")
     s/Keyword                      s/Any}
-   (fn [query]
-     (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
-   "Query must specify either `:source-table` or `:source-query`, but not both."))
+
+   (s/constrained
+    (fn [query]
+      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))
+    "Query must specify either `:source-table` or `:source-query`, but not both.")
+
+   (s/constrained
+    (fn [{:keys [breakout fields]}]
+      (empty? (set/intersection (set breakout) (set fields))))
+    "Fields specified in `:breakout` should not be specified in `:fields`; this is implied.")))
 
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
@@ -597,6 +610,10 @@
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
    (s/optional-key :format-rows?)           s/Bool
+   ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
+   ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
+   ;; pre-processed query without attempting to convert it to native.
+   (s/optional-key :disable-mbql->native?)  s/Bool
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
    s/Keyword                                s/Any})

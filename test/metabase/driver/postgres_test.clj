@@ -6,7 +6,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [rows]]
+             [query-processor-test :refer [rows rows+column-names]]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
@@ -137,7 +137,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -157,15 +157,15 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;;; Check support for `inet` columns
 (i/def-database-definition ^:private ip-addresses
   [["addresses"
-     [{:field-name "ip", :base-type {:native "inet"}}]
-     [[(hsql/raw "'192.168.1.1'::inet")]
-      [(hsql/raw "'10.4.4.15'::inet")]]]])
+    [{:field-name "ip", :base-type {:native "inet"}}]
+    [[(hsql/raw "'192.168.1.1'::inet")]
+     [(hsql/raw "'10.4.4.15'::inet")]]]])
 
 ;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
 ;; wouldn't work)

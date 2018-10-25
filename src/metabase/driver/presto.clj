@@ -149,14 +149,6 @@
 (defn- quote+combine-names [& names]
   (str/join \. (map quote-name names)))
 
-(defn- rename-duplicates [values]
-  ;; Appends _2, _3 and so on to duplicated values
-  (loop [acc [], [h & tail] values, seen {}]
-    (let [value (if (seen h) (str h "_" (inc (seen h))) h)]
-      (if tail
-        (recur (conj acc value) tail (assoc seen h (inc (get seen h 0))))
-        (conj acc value)))))
-
 ;;; IDriver implementation
 
 (defn- can-connect? [{:keys [catalog] :as details}]
@@ -241,18 +233,28 @@
   [_ [_ value]]
   (hx/cast :time (time->str value (driver/report-timezone))))
 
-(defn- execute-query [{database-id :database, :keys [settings], {sql :query, params :params} :native, :as outer-query}]
+(defn- execute-query [{database-id                  :database
+                       :keys                        [settings]
+                       {sql :query, params :params} :native
+                       query-type                   :type
+                       :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
         details                (merge (db/select-one-field :details Database :id (u/get-id database-id))
                                       settings)
         {:keys [columns rows]} (execute-presto-query! details sql)
-        columns                (for [[col name] (map vector columns (rename-duplicates (map :name columns)))]
+        columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
-    {:cols    columns
-     :columns (map (comp u/keyword->qualified-name :name) columns)
-     :rows    rows}))
+    (merge
+     {:columns (map (comp u/keyword->qualified-name :name) columns)
+      :rows    rows}
+     ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
+     ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want
+     ;; to deal with fixing a million tests to make it work at this second since it doesn't make a difference from an
+     ;; FE perspective. Perhaps when we get our test story sorted out a bit better we can fix this
+     (when (= query-type :native)
+       {:cols columns}))))
 
 
 (defn- humanize-connection-error-message [message]

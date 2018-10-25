@@ -82,7 +82,7 @@
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
   (binding [api/*current-user-id* nil]
-    ((resolve 'metabase.query-processor/preprocess) query)))
+    ((resolve 'metabase.query-processor/query->preprocessed) query)))
 
 ;; TODO - not sure how we can prevent circular source Cards if source Cards permissions are just collection perms now???
 (s/defn ^:private mbql-permissions-path-set :- #{perms/ObjectPath}

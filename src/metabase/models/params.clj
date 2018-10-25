@@ -143,7 +143,7 @@
 
 (defn- param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
-  Dashboard. These only contain the minimal amount of information neccesary needed to power public or embedded
+  Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids]
   (when (seq field-ids)

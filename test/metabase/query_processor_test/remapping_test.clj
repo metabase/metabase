@@ -69,7 +69,7 @@
                  (assoc (categories-col :name)
                    :fk_field_id   (data/id :venues :category_id)
                    :display_name  "Foo"
-                   :name          (data/format-name "name")
+                   :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
@@ -97,7 +97,7 @@
                  (assoc (categories-col :name)
                    :fk_field_id   (data/id :venues :category_id)
                    :display_name  "Foo"
-                   :name          (data/format-name "name")
+                   :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data

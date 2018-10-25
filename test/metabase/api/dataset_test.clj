@@ -21,6 +21,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-engine]]
              [users :refer :all]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -126,10 +127,11 @@
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
+        result              (tu.log/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 

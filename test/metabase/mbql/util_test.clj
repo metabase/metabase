@@ -467,6 +467,16 @@
                                           [:= [:field-id 1] 2]
                                           [:= [:field-id 2] 3]]]))
 
+;; check that `simplify-compound-filter` doesn't remove `nil` from filters where it's being used as the value
+(expect
+  [:= [:field-id 1] nil]
+  (mbql.u/simplify-compound-filter [:= [:field-id 1] nil]))
+
+(expect
+  [:= [:field-id 1] nil]
+  (mbql.u/simplify-compound-filter [:and nil [:= [:field-id 1] nil]]))
+
+
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting
@@ -497,3 +507,106 @@
 (expect
   [:min [:field-id 1]]
   (mbql.u/aggregation-at-index query-with-some-nesting 1 1))
+
+
+;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
+
+;; can we generate unique names?
+(expect
+  ["count" "sum" "count_2" "count_3"]
+  (mbql.u/uniquify-names ["count" "sum" "count" "count"]))
+
+(expect
+  [[:named [:count] "count"]
+   [:named [:sum [:field-id 1]] "sum"]
+   [:named [:count] "count_2"]
+   [:named [:count] "count_3"]]
+  (mbql.u/uniquify-named-aggregations [[:named [:count] "count"]
+                                       [:named [:sum [:field-id 1]] "sum"]
+                                       [:named [:count] "count"]
+                                       [:named [:count] "count"]]))
+
+;; what if we try to trick it by using a name it would have generated?
+(expect
+  ["count" "count_2" "count_2_2"]
+  (mbql.u/uniquify-names ["count" "count" "count_2"]))
+
+(expect
+  [[:named [:count] "count"]
+   [:named [:count] "count_2"]
+   [:named [:count] "count_2_2"]]
+  (mbql.u/uniquify-named-aggregations [[:named [:count] "count"]
+                                       [:named [:count] "count"]
+                                       [:named [:count] "count_2"]]))
+
+;; for wacky DBMSes like SQLServer that return blank column names sometimes let's make sure we handle those without
+;; exploding
+(expect
+  ["" "_2"]
+  (mbql.u/uniquify-names ["" ""]))
+
+;; can we wrap all of our aggregation clauses in `:named` clauses?
+(defn- simple-ag->name [[ag-name]]
+  (name ag-name))
+
+(expect
+  [[:named [:sum [:field-id 1]] "sum"]
+   [:named [:count [:field-id 1]] "count"]
+   [:named [:sum [:field-id 1]] "sum"]
+   [:named [:avg [:field-id 1]] "avg"]
+   [:named [:sum [:field-id 1]] "sum"]
+   [:named [:min [:field-id 1]] "min"]]
+  (mbql.u/pre-alias-aggregations simple-ag->name
+    [[:sum [:field-id 1]]
+     [:count [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:avg [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:min [:field-id 1]]]))
+
+;; we shouldn't change the name of ones that are already named
+(expect
+  [[:named [:sum [:field-id 1]] "sum"]
+   [:named [:count [:field-id 1]] "count"]
+   [:named [:sum [:field-id 1]] "sum"]
+   [:named [:avg [:field-id 1]] "avg"]
+   [:named [:sum [:field-id 1]] "sum_2"]
+   [:named [:min [:field-id 1]] "min"]]
+  (mbql.u/pre-alias-aggregations simple-ag->name
+    [[:sum [:field-id 1]]
+     [:count [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:avg [:field-id 1]]
+     [:named [:sum [:field-id 1]] "sum_2"]
+     [:min [:field-id 1]]]))
+
+;; ok, can we do the same thing as the tests above but make those names *unique* at the same time?
+(expect
+  [[:named [:sum [:field-id 1]] "sum"]
+   [:named [:count [:field-id 1]] "count"]
+   [:named [:sum [:field-id 1]] "sum_2"]
+   [:named [:avg [:field-id 1]] "avg"]
+   [:named [:sum [:field-id 1]] "sum_3"]
+   [:named [:min [:field-id 1]] "min"]]
+  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
+    [[:sum [:field-id 1]]
+     [:count [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:avg [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:min [:field-id 1]]]))
+
+(expect
+  [[:named [:sum [:field-id 1]] "sum"]
+   [:named [:count [:field-id 1]] "count"]
+   [:named [:sum [:field-id 1]] "sum_2"]
+   [:named [:avg [:field-id 1]] "avg"]
+   [:named [:sum [:field-id 1]] "sum_2_2"]
+   [:named [:min [:field-id 1]] "min"]]
+  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
+    [[:sum [:field-id 1]]
+     [:count [:field-id 1]]
+     [:sum [:field-id 1]]
+     [:avg [:field-id 1]]
+     [:named [:sum [:field-id 1]] "sum_2"]
+     [:min [:field-id 1]]]))

@@ -5,7 +5,8 @@
              [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data])
+            [metabase.test.data :as data]
+            [metabase.query-processor.interface :as qp.i])
   (:import metabase.driver.h2.H2Driver))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -14,8 +15,8 @@
 
 ;; make sure that `add-native-column-info` can still infer types even if the initial value(s) are `nil` (#4256)
 (expect
-  [{:name "a", :display_name "A", :base_type :type/Integer}
-   {:name "b", :display_name "B", :base_type :type/Integer}]
+  [{:name "a", :display_name "A", :base_type :type/Integer, :source :native}
+   {:name "b", :display_name "B", :base_type :type/Integer, :source :native}]
   (:cols (#'annotate/add-native-column-info {:columns [:a :b], :rows [[1 nil]
                                                                       [2 nil]
                                                                       [3 nil]
@@ -25,7 +26,7 @@
 ;; make sure that `add-native-column-info` defaults `base_type` to `type/*` if there are no non-nil
 ;; values when we peek.
 (expect
-  [{:name "a", :display_name "A", :base_type :type/*}]
+  [{:name "a", :display_name "A", :base_type :type/*, :source :native}]
   (:cols (#'annotate/add-native-column-info {:columns [:a], :rows [[nil]]})))
 
 
@@ -150,7 +151,91 @@
                        4]]]))
 
 (expect
+  "x"
+  (aggregation-name [:named [:+ [:min [:field-id 1]] [:* 2 [:avg [:field-id 2]]]] "x"]))
+
+(expect
   "My Cool Aggregation"
   (aggregation-name [:named [:avg [:field-id 2]] "My Cool Aggregation"]))
 
-;; TODO - more tests for info added for aggregations
+;; make sure custom aggregation names get included in the col info
+(defn- col-info-for-aggregation-clause [clause]
+  (binding [qp.i/*driver* (metabase.driver.h2.H2Driver.)]
+    (#'annotate/col-info-for-aggregation-clause clause)))
+
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "count / 2"
+   :display_name "count / 2"}
+  (col-info-for-aggregation-clause [:/ [:count] 2]))
+
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "sum"
+   :display_name "sum"}
+  (qp.store/with-store
+    (data/$ids venues
+      (qp.store/store-field! (Field $price))
+      (col-info-for-aggregation-clause [:sum [:+ [:field-id $price] 1]]))))
+
+;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
+;; that information in the results. Their information should be preferred over ours
+(expect
+  {:cols    [{:name         "totalEvents"
+              :display_name "Total Events"
+              :base_type    :type/Text
+              :source       :aggregation}]
+   :columns ["totalEvents"]}
+  (binding [qp.i/*driver* (H2Driver.)]
+    ((annotate/add-column-info (constantly {:cols    [{:name         "totalEvents"
+                                                       :display_name "Total Events"
+                                                       :base_type    :type/Text}]
+                                            :columns ["totalEvents"]}))
+     {:database (data/id)
+      :type     :query
+      :query    {:source-table (data/id :venues)
+                 :aggregation  [[:metric "ga:totalEvents"]]}})))
+
+;; Make sure columns always come back with a unique `:name` key (#8759)
+(expect
+  {:cols
+   [{:base_type    :type/Number
+     :special_type :type/Number
+     :name         "count"
+     :display_name "count"
+     :source       :aggregation}
+    {:source       :aggregation
+     :name         "sum"
+     :display_name "sum"
+     :base_type    :type/Number}
+    {:base_type    :type/Number
+     :special_type :type/Number
+     :name         "count_2"
+     :display_name "count"
+     :source       :aggregation}
+    {:base_type    :type/Number
+     :special_type :type/Number
+     :name         "count_2_2"
+     :display_name "count_2"
+     :source       :aggregation}]
+   :columns ["count" "sum" "count" "count_2"]}
+  (binding [qp.i/*driver* (H2Driver.)]
+    ((annotate/add-column-info (constantly {:cols    [{:name         "count"
+                                                       :display_name "count"
+                                                       :base_type    :type/Number}
+                                                      {:name         "sum"
+                                                       :display_name "sum"
+                                                       :base_type    :type/Number}
+                                                      {:name         "count"
+                                                       :display_name "count"
+                                                       :base_type    :type/Number}
+                                                      {:name         "count_2"
+                                                       :display_name "count_2"
+                                                       :base_type    :type/Number}]
+                                            :columns ["count" "sum" "count" "count_2"]}))
+     {:database (data/id)
+      :type     :query
+      :query    {:source-table (data/id :venues)
+                 :aggregation  [[:count] [:sum] [:count] [:named [:count] "count_2"]]}})))
