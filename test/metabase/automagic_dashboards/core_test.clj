@@ -495,20 +495,20 @@
               (date/date-extract :day-of-month dt tz)
               (date/date-extract :week-of-year dt tz)])
     (let [dt (t.format/unparse (t.format/formatters :date-hour-minute-second) dt)]
-      (map str [(#'magic/humanize-datetime dt :minute)
-                (#'magic/humanize-datetime dt :hour)
-                (#'magic/humanize-datetime dt :day)
-                (#'magic/humanize-datetime dt :week)
-                (#'magic/humanize-datetime dt :month)
-                (#'magic/humanize-datetime dt :quarter)
-                (#'magic/humanize-datetime dt :year)
-                (#'magic/humanize-datetime dt :day-of-week)
-                (#'magic/humanize-datetime dt :hour-of-day)
-                (#'magic/humanize-datetime dt :month-of-year)
-                (#'magic/humanize-datetime dt :quarter-of-year)
-                (#'magic/humanize-datetime dt :minute-of-hour)
-                (#'magic/humanize-datetime dt :day-of-month)
-                (#'magic/humanize-datetime dt :week-of-year)]))))
+      (map (comp str (partial #'magic/humanize-datetime dt)) [:minute
+                                                              :hour
+                                                              :day
+                                                              :week
+                                                              :month
+                                                              :quarter
+                                                              :year
+                                                              :day-of-week
+                                                              :hour-of-day
+                                                              :month-of-year
+                                                              :quarter-of-year
+                                                              :minute-of-hour
+                                                              :day-of-month
+                                                              :week-of-year]))))
 
 (expect
   (map str [(tru "{0}st" 1)
