@@ -321,9 +321,9 @@
 
 ;; dimension -- required but unspecified
 (expect Exception
-            (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                                           :dimension ["field-id" (data/id :checkins :date)]}
-                                          nil)))
+        (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
+                                       :dimension ["field-id" (data/id :checkins :date)]}
+                                      nil)))
 
 ;; dimension -- required and default specified
 (expect
