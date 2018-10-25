@@ -395,8 +395,8 @@ const Query = {
       Query.isRegularField(field) ||
       Query.isLocalField(field) ||
       (Query.isForeignKeyField(field) &&
-        (Query.isLocalField(field) || Query.isRegularField(field[1])) &&
-        (Query.isLocalField(field) || Query.isRegularField(field[2]))) ||
+        (Query.isLocalField(field[1]) || Query.isRegularField(field[1])) &&
+        (Query.isLocalField(field[2]) || Query.isRegularField(field[2]))) ||
       // datetime field can  be either 4-item (deprecated): ["datetime-field", <field>, "as", <unit>]
       // or 3 item (preferred style): ["datetime-field", <field>, <unit>]
       (Query.isDatetimeField(field) &&
