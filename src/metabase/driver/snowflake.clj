@@ -20,7 +20,6 @@
 (defn- connection-details->spec
   "Create a database specification for a snowflake database."
   [{:keys [account regionid] :as opts}]
-  (println "here") ; NOCOMMI
   (let [host (if regionid
                (str account "." regionid)
                account)]

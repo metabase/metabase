@@ -75,20 +75,19 @@
       ;; all lower-case
       (set (map str/lower-case (sql/get-catalogs metadata))))))
 
-(def ^:private existing-datasets
-  (atom nil))
-
+(let [datasets (atom nil)]
+  (defn- existing-datasets []
+    (when-not (seq @datasets)
+      (reset! datasets (existing-dataset-names))
+      (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @datasets))))
+    @datasets))
 
 (defn- create-db!
   ([db-def]
    (create-db! snowflake-driver db-def))
   ([driver {:keys [database-name] :as db-def}]
-   ;; if `existing-datasets` atom isn't populated, then do so
-   (when-not (seq @existing-datasets)
-     (reset! existing-datasets (existing-dataset-names))
-     (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
    ;; ok, now check if already created. If already created, no-op
-   (when-not (contains? @existing-datasets database-name)
+   (when-not (contains? (existing-datasets) database-name)
      ;; if not created, create the DB...
      (generic/default-create-db! driver db-def)
      ;; and add it to the set of DBs that have been created
