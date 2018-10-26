@@ -5,7 +5,11 @@
             [metabase.test.data
              [generic-sql :as generic]
              [interface :as i]]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
+            [metabase.util.honeysql-extensions :as hx]
+            [honeysql.format :as hformat])
   (:import metabase.driver.snowflake.SnowflakeDriver))
 
 (def ^:private ^SnowflakeDriver snowflake-driver (SnowflakeDriver.))
@@ -45,17 +49,6 @@
   (let [db (generic/qualify+quote-name driver database-name)]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
-(defn- load-data! [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
-    (.setAutoCommit (jdbc/get-connection conn) false)
-    (let [table    (generic/qualify+quote-name driver database-name table-name)
-          rows     (generic/add-ids (generic/load-data-get-rows driver dbdef tabledef))
-          col-kwds (keys (first rows))
-          cols     (map (comp #(generic/quote-name driver %) name) col-kwds)
-          vals     (for [row rows]
-                     (map row col-kwds))]
-      (jdbc/insert-multi! conn table cols vals))))
-
 (defn- expected-base-type->actual [base-type]
   (if (isa? base-type :type/Integer)
     :type/Number
@@ -80,7 +73,10 @@
     (when-not (seq @datasets)
       (reset! datasets (existing-dataset-names))
       (println "These Snowflake datasets have already been loaded:\n" (u/pprint-to-str (sort @datasets))))
-    @datasets))
+    @datasets)
+
+  (defn- add-existing-dataset! [database-name]
+    (swap! datasets conj database-name)))
 
 (defn- create-db!
   ([db-def]
@@ -89,9 +85,17 @@
    ;; ok, now check if already created. If already created, no-op
    (when-not (contains? (existing-datasets) database-name)
      ;; if not created, create the DB...
-     (generic/default-create-db! driver db-def)
-     ;; and add it to the set of DBs that have been created
-     (swap! existing-datasets conj database-name))))
+     (try
+       (generic/default-create-db! driver db-def)
+       ;; and add it to the set of DBs that have been created
+       (add-existing-dataset! database-name)
+       ;; if creating the DB failed, DROP it so we don't get stuck with a DB full of bad data and skip trying to
+       ;; load it next time around
+       (catch Throwable e
+         (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
+           (println "Creating DB failed; executing" drop-db-sql)
+           (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
+         (throw e))))))
 
 (u/strict-extend SnowflakeDriver
   generic/IGenericSQLTestExtensions
@@ -101,7 +105,7 @@
           :execute-sql!              generic/sequentially-execute-sql!
           :pk-sql-type               (constantly "INTEGER AUTOINCREMENT")
           :qualified-name-components qualified-name-components
-          :load-data!                load-data!})
+          :load-data!                generic/load-data-add-ids!})
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
