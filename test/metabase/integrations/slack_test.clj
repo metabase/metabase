@@ -1,10 +1,10 @@
 (ns metabase.integrations.slack-test
-  (:require [metabase.integrations.slack :as slack-integ :refer :all]
-            [expectations :refer :all]
+  (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
-            [metabase.test.util :as tu]
-            [cheshire.core :as json]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [expectations :refer :all]
+            [metabase.integrations.slack :as slack-integ :refer :all]
+            [metabase.test.util :as tu]))
 
 (def ^:private default-channels-response
   (delay (slurp (io/resource "slack_channels_response.json"))))
@@ -13,9 +13,10 @@
   (delay (:channels (json/parse-string @default-channels-response keyword))))
 
 (def ^:private channels-request
-  {:address "https://slack.com/api/channels.list"
-   :query-params {:token "test-token"
-                  :exclude_archived "1"}})
+  {:address      "https://slack.com/api/channels.list"
+   :query-params {:token            "test-token"
+                  :exclude_archived "true"
+                  :exclude_members  "true"}})
 
 (defn- expected-200-response [body]
   (fn [_]
@@ -91,7 +92,7 @@
        (users-list)))))
 
 (def ^:private files-request
-  (assoc-in channels-request [:query-params :exclude_archived] "0"))
+  (assoc-in channels-request [:query-params :exclude_archived] "false"))
 
 ;; Asking for the files channel when slack is not configured throws an exception
 (expect
