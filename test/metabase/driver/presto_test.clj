@@ -10,6 +10,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import metabase.driver.presto.PrestoDriver))
 
@@ -69,10 +70,6 @@
 (expect
   "\"weird . \"\"schema\".\"weird.table\"\" name\""
   (#'presto/quote+combine-names "weird . \"schema" "weird.table\" name"))
-
-(expect
-  ["name" "count" "count_2" "sum", "sum_2", "sum_3"]
-  (#'presto/rename-duplicates ["name" "count" "count" "sum" "sum" "sum"]))
 
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto
@@ -137,16 +134,17 @@
   #"com.jcraft.jsch.JSchException:"
   (try
     (let [engine  :presto
-          details {:ssl            false,
-                   :password       "changeme",
-                   :tunnel-host    "localhost",
-                   :tunnel-pass    "BOGUS-BOGUS",
+          details {:ssl            false
+                   :password       "changeme"
+                   :tunnel-host    "localhost"
+                   :tunnel-pass    "BOGUS-BOGUS"
                    :catalog        "BOGUS"
-                   :host           "localhost",
-                   :tunnel-enabled true,
-                   :tunnel-port    22,
+                   :host           "localhost"
+                   :tunnel-enabled true
+                   :tunnel-port    22
                    :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (tu.log/suppress-output
+        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
     (catch Exception e
       (.getMessage e))))
 

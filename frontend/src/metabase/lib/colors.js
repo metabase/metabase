@@ -6,9 +6,9 @@ import { Harmonizer } from "color-harmony";
 
 import { deterministicAssign } from "./deterministic";
 
-type ColorName = string;
-type ColorString = string;
-type ColorFamily = { [name: ColorName]: ColorString };
+export type ColorName = string;
+export type ColorString = string;
+export type ColorFamily = { [name: ColorName]: ColorString };
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
@@ -20,7 +20,7 @@ const colors = {
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
   accent5: "#F2A86F",
-  accent6: "#A6E7F3",
+  accent6: "#98D9D9",
   accent7: "#7172AD",
   white: "#FFFFFF",
   black: "#2E353B",
@@ -158,6 +158,11 @@ export const alpha = (color: ColorString, alpha: number): ColorString =>
 export const darken = (color: ColorString, factor: number): ColorString =>
   Color(color)
     .darken(factor)
+    .string();
+
+export const lighten = (color: ColorString, factor: number): ColorString =>
+  Color(color)
+    .lighten(factor)
     .string();
 
 const PREFERRED_COLORS = {

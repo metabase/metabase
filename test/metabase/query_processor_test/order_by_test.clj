@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require [clojure.math.numeric-tower :as math]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [*engine*]]
@@ -77,7 +78,7 @@
                  [1 22]
                  [2 59]]
    :cols        [(breakout-col (venues-col :price))
-                 (aggregate-col :count)]
+                 (aggregate-col :count (Field (data/id :venues :id)))]
    :native_form true}
   (->> (data/run-mbql-query venues
          {:aggregation [[:distinct $id]]
@@ -104,7 +105,7 @@
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       :data
+       data
        (format-rows-by [int int])
        tu/round-fingerprint-cols))
 
@@ -126,6 +127,6 @@
           :breakout    [$price]
           :order-by    [[:desc [:aggregation 0]]]})
        booleanize-native-form
-       :data
+       data
        (format-rows-by [int (comp int math/round)])
        tu/round-fingerprint-cols))

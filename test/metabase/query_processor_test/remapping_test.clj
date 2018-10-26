@@ -68,11 +68,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name_2")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")
@@ -97,11 +96,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name_2")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")

@@ -84,13 +84,18 @@ describe("Mode", () => {
 
     describe("for a question with an aggregation and a time breakout", () => {
       it("has pivot as mode actions 1 and 2", () => {
-        expect(timeBreakoutQuestionMode.actions().length).toBe(4);
         expect(timeBreakoutQuestionMode.actions()[0].name).toBe(
           "pivot-by-category",
         );
         expect(timeBreakoutQuestionMode.actions()[1].name).toBe(
           "pivot-by-location",
         );
+      });
+
+      describe("with xrays enabled", () => {
+        it("has the correct number of items", () => {
+          expect(timeBreakoutQuestionMode.actions().length).toBe(4);
+        });
       });
     });
   });

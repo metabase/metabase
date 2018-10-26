@@ -1,49 +1,21 @@
-import * as SchemaMetadata from "metabase/lib/schema_metadata";
 import { formatValue } from "metabase/lib/formatting";
 
-function compareNumbers(a, b) {
-  return a - b;
-}
-
-export function pivot(data) {
-  // find the lowest cardinality dimension and make it our "pivoted" column
-  // TODO: we assume dimensions are in the first 2 columns, which is less than ideal
-  let pivotCol = 0,
-    normalCol = 1,
-    cellCol = 2,
-    pivotColValues = distinctValues(data, pivotCol),
-    normalColValues = distinctValues(data, normalCol);
-  if (normalColValues.length <= pivotColValues.length) {
-    pivotCol = 1;
-    normalCol = 0;
-
-    let tmp = pivotColValues;
-    pivotColValues = normalColValues;
-    normalColValues = tmp;
-  }
-
-  // sort the column values sensibly
-  if (SchemaMetadata.isNumeric(data.cols[pivotCol])) {
-    pivotColValues.sort(compareNumbers);
-  } else {
-    pivotColValues.sort();
-  }
-
-  if (SchemaMetadata.isNumeric(data.cols[normalCol])) {
-    normalColValues.sort(compareNumbers);
-  } else {
-    normalColValues.sort();
-  }
+export function pivot(data, normalCol, pivotCol, cellCol) {
+  const { pivotValues, normalValues } = distinctValuesSorted(
+    data.rows,
+    pivotCol,
+    normalCol,
+  );
 
   // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
-  pivotColValues.unshift(data.cols[normalCol].display_name);
+  pivotValues.unshift(data.cols[normalCol].display_name);
 
   // start with an empty grid that we'll fill with the appropriate values
-  const pivotedRows = normalColValues.map((normalColValues, index) => {
-    const row = pivotColValues.map(() => null);
+  const pivotedRows = normalValues.map((normalValues, index) => {
+    const row = pivotValues.map(() => null);
     // for onVisualizationClick:
     row._dimension = {
-      value: normalColValues,
+      value: normalValues,
       column: data.cols[normalCol],
     };
     return row;
@@ -51,16 +23,15 @@ export function pivot(data) {
 
   // fill it up with the data
   for (let j = 0; j < data.rows.length; j++) {
-    let normalColIdx = normalColValues.lastIndexOf(data.rows[j][normalCol]);
-    let pivotColIdx = pivotColValues.lastIndexOf(data.rows[j][pivotCol]);
+    let normalColIdx = normalValues.lastIndexOf(data.rows[j][normalCol]);
+    let pivotColIdx = pivotValues.lastIndexOf(data.rows[j][pivotCol]);
 
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
-    // NOTE: we are hard coding the expectation that the metric is in the 3rd column
-    pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][2];
+    pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][cellCol];
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotColValues.map(function(value, idx) {
+  const cols = pivotValues.map(function(value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
@@ -81,21 +52,88 @@ export function pivot(data) {
 
   return {
     cols: cols,
-    columns: pivotColValues,
+    columns: pivotValues,
     rows: pivotedRows,
   };
 }
 
-export function distinctValues(data, colIdx) {
-  let vals = data.rows.map(function(r) {
-    return r[colIdx];
-  });
+export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
+  const normalSet = new Set();
+  const pivotSet = new Set();
 
-  return vals.filter(function(v, i) {
-    return i == vals.lastIndexOf(v);
-  });
+  const normalSortState = new SortState();
+  const pivotSortState = new SortState();
+
+  for (const row of rows) {
+    const pivotValue = row[pivotColIdx];
+    const normalValue = row[normalColIdx];
+
+    normalSet.add(normalValue);
+    pivotSet.add(pivotValue);
+
+    normalSortState.update(normalValue, pivotValue);
+    pivotSortState.update(pivotValue, normalValue);
+  }
+
+  const normalValues = Array.from(normalSet);
+  const pivotValues = Array.from(pivotSet);
+
+  normalSortState.sort(normalValues);
+  pivotSortState.sort(pivotValues);
+
+  return { normalValues, pivotValues };
 }
 
-export function cardinality(data, colIdx) {
-  return distinctValues(data, colIdx).length;
+// This should work for both strings and numbers
+const DEFAULT_COMPARE = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+class SortState {
+  constructor(compare = DEFAULT_COMPARE) {
+    this.compare = compare;
+
+    this.asc = true;
+    this.desc = true;
+    this.lastValue = undefined;
+
+    this.groupAsc = true;
+    this.groupDesc = true;
+    this.lastGroupKey = undefined;
+    this.isGrouped = false;
+  }
+  update(value, groupKey) {
+    // skip the first value since there's nothing to compare it to
+    if (this.lastValue !== undefined) {
+      // compare the current value with the previous value
+      const result = this.compare(value, this.lastValue);
+      // update global sort state
+      this.asc = this.asc && result >= 0;
+      this.desc = this.desc && result <= 0;
+      if (
+        // if current and last values are different
+        result !== 0 &&
+        // and current and last group are same
+        this.lastGroupKey !== undefined &&
+        this.lastGroupKey === groupKey
+      ) {
+        // update grouped sort state
+        this.groupAsc = this.groupAsc && result >= 0;
+        this.groupDesc = this.groupDesc && result <= 0;
+        this.isGrouped = true;
+      }
+    }
+    // update last value and group key
+    this.lastValue = value;
+    this.lastGroupKey = groupKey;
+  }
+  sort(array) {
+    if (this.isGrouped) {
+      if (this.groupAsc && this.groupDesc) {
+        console.warn("This shouldn't happen");
+      } else if (this.groupAsc && !this.asc) {
+        array.sort(this.compare);
+      } else if (this.groupDesc && !this.desc) {
+        array.sort((a, b) => this.compare(b, a));
+      }
+    }
+  }
 }

@@ -18,7 +18,6 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -703,7 +702,7 @@
 
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   []
-  (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+  (data/dataset test-data-with-time
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
 
