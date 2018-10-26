@@ -281,12 +281,13 @@ export const initializeQB = (location, params) => {
           card = null;
         }
 
-        // if a recent DB has been set grab it and then use it to start a new
+        // if we're starting a native query and  a recent DB has been set grab it and then use it to start a new
         // query based off of that DB
         const recentDb = window.localStorage.getItem(
           "METABASE_LAST_USED_DB_ID",
         );
-        if (recentDb) {
+
+        if (card.dataset_query.type === "native" && recentDb) {
           card = startNewCard("native", parseInt(recentDb));
         }
 
