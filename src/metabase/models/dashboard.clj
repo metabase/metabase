@@ -247,8 +247,8 @@
   [collection-name parent-collection-id]
   (let [c (db/count 'Collection
             :name     [:like (format "%s%%" collection-name)]
-            :location  (collection/children-location  (db/select-one ['Collection :location :id]
-                                                        :id parent-collection-id)))]
+            :location (collection/children-location (db/select-one ['Collection :location :id]
+                                                      :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -258,7 +258,7 @@
   [dashboard parent-collection-id]
   (let [dashcards  (:ordered_cards dashboard)
         collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
+                    (ensure-unique-collection-name (str (:name dashboard)) parent-collection-id)
                     (rand-nth magic.populate/colors)
                     "Automatically generated cards."
                     parent-collection-id)
