@@ -88,7 +88,8 @@
                                                           [:field-id $longitude]
                                                           [:field-id $category_id]
                                                           [:field-id $price]
-                                                          [:field-id $name]]})))}
+                                                          [:field-id $name]
+                                                          [:field-id $latitude]]})))}
                     :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
                     :limit        5}}))))
 
