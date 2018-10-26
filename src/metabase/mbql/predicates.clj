@@ -17,3 +17,7 @@
 (def ^{:arglists '([ag-clause])} Aggregation?
   "Is this a valid Aggregation clause?"
   (complement (s/checker mbql.s/Aggregation)))
+
+(def ^{:arglists '([field-clause])} Field?
+  "Is this a valid Field clause?"
+  (complement (s/checker mbql.s/Field)))
