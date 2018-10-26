@@ -35,7 +35,7 @@
     (long x)
     x))
 
-(defn- tz-shifted-engine-bug?
+(defn tz-shifted-engine-bug?
   "Returns true if `engine` is affected by the bug originally observed in
   Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
   applied correctly, but the date operations that we use aren't using that timezone. This function is used to
