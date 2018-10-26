@@ -155,11 +155,11 @@
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
     ;; is called `:count` (WHY?)
     [:distinct _]
-    (driver/format-aggregation-column-name i/*driver* "count")
+    "count"
 
     ;; for any other aggregation just use the name of the clause e.g. `sum`
     [clause-name & _]
-    (driver/format-aggregation-column-name i/*driver* (name clause-name))))
+    (name clause-name)))
 
 (defn- ag->name-info [ag]
   (let [ag-name (aggregation-name ag)]

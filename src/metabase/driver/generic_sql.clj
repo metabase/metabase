@@ -103,11 +103,6 @@
 
        \"SET @@session.timezone = %s;\"")
 
-  (parse-results-with-tz ^Boolean [this]
-    "*OPTIONAL*. Whether to apply timezone parsing to results after we have successfuly set a timezone. Default
-    `true`. (I have no idea why we need to do this, but for some reason we need to disable it for Snowflake to work
-    correctly.)")
-
   (string-length-fn ^clojure.lang.Keyword [this, ^Keyword field-key]
     "Return a HoneySQL form appropriate for getting the length of a `Field` identified by fully-qualified FIELD-KEY.
      An implementation should return something like:
@@ -485,8 +480,7 @@
    :field->identifier     (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias          (u/drop-first-arg :name)
    :quote-style           (constantly :ansi)
-   :set-timezone-sql      (constantly nil)
-   :parse-results-with-tz (constantly true)})
+   :set-timezone-sql      (constantly nil)})
 
 
 (defn IDriverSQLDefaultsMixin

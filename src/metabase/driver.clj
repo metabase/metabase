@@ -217,15 +217,6 @@
      name as passed to the `:named` clause. Certain drivers like Redshift always lowercase these names, so this method
      is provided for those situations.")
 
-  ;; DEPRECATED because I don't think we need this anymore -- we added for Snowflake and then turned out not to need it
-  (^:deprecated format-aggregation-column-name ^String [this, ^String aggregation-name]
-    "*OPTIONAL*. Return the name of an aggregate column in the results. This is used by the post-processing annotation
-     stage to find the correct metadata to include with aggregation columns in the results. The default implementation
-     is `identity`, meaning the resulting field will have exactly the same name as Metabase aliases it to, which is
-     the lowercase name of the aggregation, for example `count` aggregations will come back under a column named
-     `count`. Certain drivers like Snowflake always uppercase these names, so this method is provided for those
-     situations.")
-
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever
@@ -294,7 +285,6 @@
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
-   :format-aggregation-column-name    (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)

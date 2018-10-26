@@ -603,9 +603,7 @@
 (defn- run-query
   "Run the query itself."
   [driver {sql :query, params :params, remark :remark} timezone connection]
-  (let [timezone         (when (sql/parse-results-with-tz driver)
-                           timezone)
-        sql              (str "-- " remark "\n" (hx/unescape-dots sql))
+  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (cancellable-run-query connection sql params
                                                 {:identifiers    identity

@@ -35,7 +35,7 @@
             :week_start                                 7
             ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
             ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-            :timezone "UTC"}
+            :timezone                                   "UTC"}
            (dissoc opts :host :port :timezone))))
 
 (defrecord SnowflakeDriver []
@@ -179,46 +179,44 @@
 (u/strict-extend SnowflakeDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                  (u/drop-first-arg date-interval)
-          :details-fields                 (constantly (ssh/with-tunnel-config
-                                                        [{:name         "account"
-                                                          :display-name "Account"
-                                                          :placeholder  "Your snowflake account name."
-                                                          :required     true}
-                                                         {:name         "user"
-                                                          :display-name "Database username"
-                                                          :placeholder  "ken bier"
-                                                          :required     true}
-                                                         {:name         "password"
-                                                          :display-name "Database user password"
-                                                          :type         :password
-                                                          :placeholder  "*******"
-                                                          :required     true}
-                                                         {:name         "warehouse"
-                                                          :display-name "Warehouse"
-                                                          :placeholder  "my_warehouse"}
-                                                         {:name         "dbname"
-                                                          :display-name "Database name"
-                                                          :placeholder  "cockerel"}
-                                                         {:name         "regionid"
-                                                          :display-name "Region Id"
-                                                          :placeholder  "my_region"}
-                                                         {:name         "schema"
-                                                          :display-name "Schema"
-                                                          :placeholder  "my_schema"}
-                                                         {:name         "role"
-                                                          :display-name "Role"
-                                                          :placeholder  "my_role"}]))
-          :format-custom-field-name       (u/drop-first-arg str/lower-case)
-          :current-db-time                (driver/make-current-db-time-fn
-                                           snowflake-db-time-query
-                                           snowflake-date-formatters)
-          :table-rows-seq                 table-rows-seq
-          ;; This appears to be overwritten by `format-custom-field-name`
-          #_:format-aggregation-column-name #_(u/drop-first-arg str/lower-case)
-          :describe-database              describe-database
-          :describe-table                 describe-table
-          :describe-table-fks             describe-table-fks})
+         {:date-interval            (u/drop-first-arg date-interval)
+          :details-fields           (constantly (ssh/with-tunnel-config
+                                                  [{:name         "account"
+                                                    :display-name "Account"
+                                                    :placeholder  "Your snowflake account name."
+                                                    :required     true}
+                                                   {:name         "user"
+                                                    :display-name "Database username"
+                                                    :placeholder  "ken bier"
+                                                    :required     true}
+                                                   {:name         "password"
+                                                    :display-name "Database user password"
+                                                    :type         :password
+                                                    :placeholder  "*******"
+                                                    :required     true}
+                                                   {:name         "warehouse"
+                                                    :display-name "Warehouse"
+                                                    :placeholder  "my_warehouse"}
+                                                   {:name         "dbname"
+                                                    :display-name "Database name"
+                                                    :placeholder  "cockerel"}
+                                                   {:name         "regionid"
+                                                    :display-name "Region Id"
+                                                    :placeholder  "my_region"}
+                                                   {:name         "schema"
+                                                    :display-name "Schema"
+                                                    :placeholder  "my_schema"}
+                                                   {:name         "role"
+                                                    :display-name "Role"
+                                                    :placeholder  "my_role"}]))
+          :format-custom-field-name (u/drop-first-arg str/lower-case)
+          :current-db-time          (driver/make-current-db-time-fn
+                                     snowflake-db-time-query
+                                     snowflake-date-formatters)
+          :table-rows-seq           table-rows-seq
+          :describe-database        describe-database
+          :describe-table           describe-table
+          :describe-table-fks       describe-table-fks})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -229,8 +227,6 @@
           :field->identifier         field->identifier
           :current-datetime-fn       (constantly :%current_timestamp)
           :set-timezone-sql          (constantly "ALTER SESSION SET TIMEZONE = %s;")
-          ;; TODO - this fixes the issues in the `sql-test` namespace, but breaks `date-bucketing-test` :(
-          #_:parse-results-with-tz     #_(constantly false)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
           :column->base-type         (u/drop-first-arg column->base-type)}))
 
