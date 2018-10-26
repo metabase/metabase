@@ -330,8 +330,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
@@ -540,8 +541,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"

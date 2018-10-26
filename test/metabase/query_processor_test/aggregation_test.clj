@@ -258,7 +258,8 @@
          {:aggregation [[:cum-sum $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
@@ -324,8 +325,8 @@
          {:aggregation [[:cum-count $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
-
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;; Does Field.settings show up for aggregate Fields?
 (expect

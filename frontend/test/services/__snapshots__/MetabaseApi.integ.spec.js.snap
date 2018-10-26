@@ -426,6 +426,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10001,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -1575,6 +1576,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2308,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -1797,6 +1799,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -2784,6 +2787,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -3631,6 +3635,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
