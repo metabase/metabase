@@ -210,7 +210,7 @@
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [existing-dashboard (get-dashboard from-dashboard-id)]
-    (let [dashboard-data {:name                (or name (str (existing-dashboard :name) " - Copy"))
+    (let [dashboard-data {:name                (or name (existing-dashboard :name))
                           :description         (or description (existing-dashboard :description))
                           :parameters          (or (existing-dashboard :parameters) [])
                           :creator_id          api/*current-user-id*

@@ -309,7 +309,7 @@ export default class DashboardHeader extends Component {
         </Tooltip>,
       );
       buttons.push(
-        <Tooltip tooltip={t`Copy dashboard`}>
+        <Tooltip tooltip={t`Duplicate dashboard`}>
           <Link
             to={location.pathname + "/copy"}
             data-metabase-event={"Dashboard;Copy"}
