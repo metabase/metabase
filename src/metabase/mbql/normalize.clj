@@ -31,7 +31,9 @@
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [predicates :as mbql.pred]
+             [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
@@ -506,11 +508,27 @@
 (defn- remove-breakout-fields-from-fields
   "Remove any Fields specified in both `:breakout` and `:fields` from `:fields`; it is implied that any breakout Field
   will be returned, specifying it in both would imply it is to be returned twice, which tends to cause confusion for
-  the QP and drivers."
+  the QP and drivers. (This is done to work around historic bugs with the way queries were generated on the frontend;
+  I'm not sure this behavior makes sense, but removing it would break existing queries.)
+
+  We will remove either exact matches:
+
+    {:breakout [[:field-id 10]], :fields [[:field-id 10]]} ; -> {:breakout [[:field-id 10]]}
+
+  or unbucketed matches:
+
+    {:breakout [[:datetime-field [:field-id 10] :month]], :fields [[:field-id 10]]}
+    ;; -> {:breakout [[:field-id 10]]}"
   [{{:keys [breakout fields]} :query, :as query}]
   (if-not (and (seq breakout) (seq fields))
     query
-    (update-in query [:query :fields] (comp vec (partial remove (set breakout))))))
+    ;; get a set of all Field clauses (of any type) in the breakout. For `datetime-field` clauses, we'll include both
+    ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
+    (let [breakout-fields (set (reduce concat (mbql.u/match breakout
+                                                [:datetime-field field-clause _] [&match field-clause]
+                                                mbql.pred/Field?                 [&match])))]
+      ;; now remove all the Fields in `:fields` that match the ones in the set
+      (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
 
 (defn- perform-whole-query-transformations
   "Perform transformations that operate on the query as a whole, making sure the structure as a whole is logical and
