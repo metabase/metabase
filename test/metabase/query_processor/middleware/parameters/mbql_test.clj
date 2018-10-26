@@ -8,8 +8,7 @@
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util.date :as du])
-    (:import [metabase.query_processor.interface EqualityFilter BetweenFilter]))
+            [metabase.util.date :as du]))
 
 (defn- expand-parameters [query]
   (let [query (normalize/normalize query)]
