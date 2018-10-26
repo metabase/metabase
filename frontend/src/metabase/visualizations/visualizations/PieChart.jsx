@@ -125,7 +125,8 @@ export default class PieChart extends Component {
       getValue: ([{ data: { rows } }], settings) => {
         const dimensionIndex = settings["pie._dimensionIndex"];
         return dimensionIndex >= 0
-          ? rows.map(row => row[dimensionIndex])
+          ? // cast to string because getColorsForValues expects strings
+            rows.map(row => String(row[dimensionIndex]))
           : null;
       },
       readDependencies: ["pie._dimensionIndex"],
