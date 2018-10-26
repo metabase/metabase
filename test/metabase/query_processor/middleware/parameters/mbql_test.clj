@@ -128,44 +128,6 @@
                                     :value  "2014-05-10~2014-05-16"}]}))
 
 
-;; Test that the right filter is returned when selecting "Previous/Next x day/week/month/year
-;; in the date filter 
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "day" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "day"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "day" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "day"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "day" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "day"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "day" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "day"))
-
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "week" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "week"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "week" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "week"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "week" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "week"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "week" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "week"))
-
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "month" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "month"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "month" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "month"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "month" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "month"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "month" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "month"))
-
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -1 "year" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35) -1 "year"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "year" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)  -2 "year"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   1 "year" {:include-current true}))
-(expect EqualityFilter (ql/time-interval (ql/field-id 35)  1 "year"))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "year" {:include-current true}))
-(expect BetweenFilter (ql/time-interval (ql/field-id 35)   2 "year"))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -43,6 +43,36 @@
     :query    {:source-table 1
                :filter       [:time-interval [:field-id 1] 2 :month {:include-current true}]}}))
 
+
+;; `time-interval` with value = 1 or = -1 should generate an `=` clause
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:=
+                             [:datetime-field [:field-id 1] :month]
+                             [:relative-datetime 1 :month]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] 1 :month]}}))
+
+;; test the `include-current` option -- interval with value = 1 or = -1 should generate a `between` clause
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:between
+                             [:datetime-field [:field-id 1] :month]
+                             [:relative-datetime 0 :month]
+                             [:relative-datetime 1 :month]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] 1 :month {:include-current true}]}}))
+
 ;; test using keywords like `:current`
 (expect
   {:database 1
