@@ -90,10 +90,13 @@ export default class PieChart extends Component {
       title: t`Colors`,
       widget: "colors",
       getDefault: (series, settings) =>
-        getColorsForValues(settings["pie._dimensionValues"]),
+        settings["pie._dimensionValues"]
+          ? getColorsForValues(settings["pie._dimensionValues"])
+          : [],
       getProps: (series, settings) => ({
-        seriesTitles: settings["pie._dimensionValues"],
+        seriesTitles: settings["pie._dimensionValues"] || [],
       }),
+      getDisabled: (series, settings) => !settings["pie._dimensionValues"],
       readDependencies: ["pie._dimensionValues"],
     },
     // this setting recomputes color assignment using pie.colors as the existing
@@ -121,7 +124,9 @@ export default class PieChart extends Component {
     "pie._dimensionValues": {
       getValue: ([{ data: { rows } }], settings) => {
         const dimensionIndex = settings["pie._dimensionIndex"];
-        return rows.map(row => row[dimensionIndex]);
+        return dimensionIndex >= 0
+          ? rows.map(row => row[dimensionIndex])
+          : null;
       },
       readDependencies: ["pie._dimensionIndex"],
     },
