@@ -25,8 +25,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [cheshire.core :as cheshire])
+             [hydrate :refer [hydrate]]])
   (:import java.util.TimeZone
            [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldLiteral
             FieldPlaceholder RelativeDatetime RelativeDateTimeValue TimeField TimeValue Value ValuePlaceholder]))
@@ -323,21 +322,6 @@
     ;; now add a FieldPlaceholder for its parent if the Field has a parent-id so it can get resolved on the next pass
     (map add-parent-placeholder-if-needed fields)))
 
-(defn- resolve-field-alias[list-table field]
-  (let [match-table (filter #(= (:table-id %) (:table-id field)) list-table)
-        join-table (first match-table)
-        table-alias (:join-alias join-table)
-        f2 (assoc field :table-alias table-alias)]
-    f2))
-
-(defn get-table-info[table-id]
-  (db/select-one [Table :name :schema :id], :id table-id))
-
-(defn- resolve-field-full-name [table-info field]
-  (if (= (:table-id field) (:id table-info))
-    (assoc field :table-name (:name table-info) :schema-name (:schema table-info))
-    field))
-
 (defn- resolve-fields
   "Resolve the `Fields` in an EXPANDED-QUERY-DICT. Record `:table-ids` referenced in the Query."
   [expanded-query-dict]
@@ -349,10 +333,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [f1 (fetch-fields field-ids)
-              f2 (map #(resolve-field-alias (:join-tables (:query expanded-query-dict)) %) f1)
-              source-table-info (get-table-info (:source-table (:query expanded-query-dict)))
-              fields (map #(resolve-field-full-name source-table-info  %) f2)]
+        (let [fields (fetch-fields field-ids)]
           (->>
            ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query
            ;; dict. Those will be used for Table resolution in the next step.
@@ -489,6 +470,35 @@
                                 node-with-print)))
                           expanded-query-dict)))
 
+(defn- resolve-field-alias [list-table field]
+  (let [match-table (filter #(and (= (:field-id (:source-field %)) (:fk-field-id field)) (= (:table-id %) (:table-id field))) list-table)
+        join-table (first match-table)
+        table-alias (:join-alias join-table)
+        f2 (assoc field :table-alias table-alias)]
+    f2))
+
+(defn get-table-info [table-id]
+  (db/select-one [Table :name :schema :id], :id table-id))
+
+(defn- resolve-field-full-name [table-info field]
+  (if (= (:table-id field) (:id table-info))
+    (assoc field :table-name (:name table-info) :schema-name (:schema table-info))
+    field))
+
+(defn- resolve-field-info [field source-table-info join-tables]
+  (->>
+    (resolve-field-full-name source-table-info field)
+    (resolve-field-alias join-tables)))
+
+(defn resolve-alias [expanded-query-dict]
+  (let [join-tables (:join-tables (:query expanded-query-dict))
+        table-id  (:source-table (or (:source-query (:query expanded-query-dict)) (:query expanded-query-dict)))
+        source-table-info (get-table-info table-id)]
+    (clojure.walk/postwalk
+      (fn [x]
+        (if
+          (instance? Field x) (resolve-field-info x source-table-info join-tables)
+                              x)) expanded-query-dict)))
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
 (defn resolve-fields-if-needed
@@ -507,7 +517,8 @@
           record-fk-field-ids
           resolve-tables
           resolve-fields
-          resolve-field-literals))
+          resolve-field-literals
+          resolve-alias))
 
 (defn resolve-middleware
   "Wraps the `resolve` function in a query-processor middleware"

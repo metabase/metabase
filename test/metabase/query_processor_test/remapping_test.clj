@@ -66,6 +66,7 @@
                  (assoc (categories-col :name)
                    :fk_field_id (data/id :venues :category_id)
                    :display_name "Foo"
+                   :table-alias "CATEGORIES__via__CATEGORY_ID"
                    :name (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id")
                    :schema_name nil)]
@@ -95,6 +96,7 @@
                  (assoc (categories-col :name)
                    :fk_field_id (data/id :venues :category_id)
                    :display_name "Foo"
+                   :table-alias "CATEGORIES__via__CATEGORY_ID"
                    :name (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id")
                    :schema_name nil)]

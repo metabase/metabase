@@ -111,12 +111,13 @@
    :schema_name     (data/default-schema)
    :source          :fields
    :fk_field_id     nil
+   :table-alias     nil
    :remapped_from   nil
    :remapped_to     nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint :table-alias)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."

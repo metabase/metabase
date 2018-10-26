@@ -8,6 +8,8 @@
   ([schema l r]
    (let [x (+ r 1)]
   (cond
+    (not (nil? (re-find #"^array<[a-z0-9]*>" schema)))
+      (str "[]" (cool-parser (clojure.string/replace-first schema #"^array<[a-z0-9]*>" "") l r))
     (clojure.string/starts-with? schema "array<")
       (str "[" (cool-parser (clojure.string/replace-first schema #"array<" "") (conj l "]") x))
     (clojure.string/starts-with? schema "struct<")
