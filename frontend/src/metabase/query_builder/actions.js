@@ -281,6 +281,15 @@ export const initializeQB = (location, params) => {
           card = null;
         }
 
+        // if a recent DB has been set grab it and then use it to start a new
+        // query based off of that DB
+        const recentDb = window.localStorage.getItem(
+          "METABASE_LAST_USED_DB_ID",
+        );
+        if (recentDb) {
+          card = startNewCard("native", parseInt(recentDb));
+        }
+
         preserveParameters = true;
       } catch (error) {
         console.warn("initializeQb failed because of an error:", error);
@@ -1003,6 +1012,13 @@ export const setQueryDatabase = createThunkAction(
           if (tables && tables.length > 0) {
             updatedCard.dataset_query.native.collection = tables[0].name;
           }
+        }
+
+        // if the query is a native query set a local storage item
+        // to store the selected DB ID. this is used to prevent users having to
+        // select the DB every time they start a new native query
+        if (query instanceof NativeQuery) {
+          window.localStorage.setItem("METABASE_LAST_USED_DB_ID", databaseId);
         }
 
         dispatch(loadMetadataForCard(updatedCard));
