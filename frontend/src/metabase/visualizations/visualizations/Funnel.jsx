@@ -56,7 +56,7 @@ export default class Funnel extends Component {
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
         t`Which fields do you want to use?`,
-        t`Data`,
+        { section: t`Data` },
         t`Choose fields`,
       );
     }
