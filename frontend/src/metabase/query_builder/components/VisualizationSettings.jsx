@@ -90,8 +90,8 @@ export default class VisualizationSettings extends React.Component {
     );
   }
 
-  open = () => {
-    this.props.showChartSettings({});
+  open = initial => {
+    this.props.showChartSettings(initial || {});
   };
 
   close = () => {
@@ -123,7 +123,7 @@ export default class VisualizationSettings extends React.Component {
               ]}
               onChange={this.props.onReplaceAllVisualizationSettings}
               onClose={this.close}
-              initialWidget={chartSettings && chartSettings.widget}
+              initial={chartSettings}
             />
           </Modal>
         </div>

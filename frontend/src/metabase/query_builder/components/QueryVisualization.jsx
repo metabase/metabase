@@ -250,7 +250,7 @@ export default class QueryVisualization extends Component {
           <VisualizationResult
             lastRunDatasetQuery={this.state.lastRunDatasetQuery}
             onUpdateWarnings={warnings => this.setState({ warnings })}
-            onOpenChartSettings={() => this.refs.settings.open()}
+            onOpenChartSettings={initial => this.refs.settings.open(initial)}
             {...this.props}
             className="spread"
           />

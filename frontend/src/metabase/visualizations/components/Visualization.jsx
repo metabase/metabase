@@ -85,7 +85,7 @@ type Props = {
 
   // misc
   onUpdateWarnings: (string[]) => void,
-  onOpenChartSettings: () => void,
+  onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
 
   // number of grid cells wide and tall
   gridSize?: { width: number, height: number },
@@ -367,7 +367,7 @@ export default class Visualization extends Component {
                 <div className="mt2">
                   <button
                     className="Button Button--primary Button--medium"
-                    onClick={this.props.onOpenChartSettings}
+                    onClick={() => this.props.onOpenChartSettings(e.initial)}
                   >
                     {e.buttonText}
                   </button>
