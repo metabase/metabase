@@ -47,7 +47,11 @@ export class ChartSettingsError extends Error {
   initial: ?ChartSettingsInitial;
   buttonText: ?string;
 
-  constructor(message: string, initial?: ChartSettingsInitial, buttonText?: string) {
+  constructor(
+    message: string,
+    initial?: ChartSettingsInitial,
+    buttonText?: string,
+  ) {
     super(message || t`Please configure this chart in the chart settings`);
     this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;
