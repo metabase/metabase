@@ -350,6 +350,7 @@ const Query = {
     return this.cleanQuery(removeExpressionReferences(query));
   },
 
+  // DEPRECATED
   isRegularField(field) {
     return typeof field === "number";
   },
@@ -394,8 +395,8 @@ const Query = {
       Query.isRegularField(field) ||
       Query.isLocalField(field) ||
       (Query.isForeignKeyField(field) &&
-        Query.isRegularField(field[1]) &&
-        Query.isRegularField(field[2])) ||
+        (Query.isLocalField(field[1]) || Query.isRegularField(field[1])) &&
+        (Query.isLocalField(field[2]) || Query.isRegularField(field[2]))) ||
       // datetime field can  be either 4-item (deprecated): ["datetime-field", <field>, "as", <unit>]
       // or 3 item (preferred style): ["datetime-field", <field>, <unit>]
       (Query.isDatetimeField(field) &&
@@ -442,8 +443,9 @@ const Query = {
     } else if (Query.isLocalField(field)) {
       return Query.getFieldTarget(field[1], tableDef, path);
     } else if (Query.isForeignKeyField(field)) {
-      let fkFieldDef = Table.getField(tableDef, field[1]);
-      let targetTableDef = fkFieldDef && fkFieldDef.target.table;
+      const fkFieldId = Query.getFieldTargetId(field[1]);
+      const fkFieldDef = Table.getField(tableDef, fkFieldId);
+      const targetTableDef = fkFieldDef && fkFieldDef.target.table;
       return Query.getFieldTarget(
         field[2],
         targetTableDef,

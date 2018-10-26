@@ -279,8 +279,19 @@ describe("Legacy Query library", () => {
       expect(target.unit).toEqual("day");
     });
 
-    it("should return field object and table for fk field", () => {
+    it("should return field object and table for old-style fk field", () => {
       let target = Query.getFieldTarget(["fk->", 1, 2], table1);
+      expect(target.table).toEqual(table2);
+      expect(target.field).toEqual(field2);
+      expect(target.path).toEqual([field1]);
+      expect(target.unit).toEqual(undefined);
+    });
+
+    it("should return field object and table for new-style fk field", () => {
+      let target = Query.getFieldTarget(
+        ["fk->", ["field-id", 1], ["field-id", 2]],
+        table1,
+      );
       expect(target.table).toEqual(table2);
       expect(target.field).toEqual(field2);
       expect(target.path).toEqual([field1]);
@@ -305,6 +316,17 @@ describe("Legacy Query library", () => {
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
     });
+  });
+});
+
+describe("isValidField", () => {
+  it("should return true for old-style fk", () => {
+    expect(Query.isValidField(["fk->", 1, 2])).toBe(true);
+  });
+  it("should return true for new-style fk", () => {
+    expect(Query.isValidField(["fk->", ["field-id", 1], ["field-id", 2]])).toBe(
+      true,
+    );
   });
 });
 
