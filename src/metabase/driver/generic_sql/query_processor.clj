@@ -124,7 +124,9 @@
       (when table-id
         (qp.store/store-table! (assoc (qp.store/table table-id)
                                  :schema nil
-                                 :name   join-alias))))
+                                 :name   join-alias
+                                 ;; for drivers that need to know these things, like Snowflake
+                                 :alias? true))))
     (->honeysql driver dest-field-clause)))
 
 (defmethod ->honeysql [Object :field-literal]
@@ -444,7 +446,11 @@
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (qp.store/with-pushed-store
     (when-let [source-table-id (:source-table source-query)]
-      (qp.store/store-table! (assoc (qp.store/table source-table-id) :schema nil, :name (name source-query-alias))))
+      (qp.store/store-table! (assoc (qp.store/table source-table-id)
+                               :schema nil
+                               :name   (name source-query-alias)
+                               ;; some drivers like Snowflake need to know this so they don't include Database name
+                               :alias? true)))
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
@@ -596,8 +602,10 @@
 
 (defn- run-query
   "Run the query itself."
-  [{sql :query, params :params, remark :remark} timezone connection]
-  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
+  [driver {sql :query, params :params, remark :remark} timezone connection]
+  (let [timezone         (when (sql/parse-results-with-tz driver)
+                           timezone)
+        sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (cancellable-run-query connection sql params
                                                 {:identifiers    identity
@@ -657,14 +665,15 @@
     (log/debug (u/format-color 'green (tru "Setting timezone with statement: {0}" sql)))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [_ _ connection query]
-  (do-in-transaction connection (partial run-query query nil)))
+(defn- run-query-without-timezone [driver _ connection query]
+  (do-in-transaction connection (partial run-query driver query nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
-                                    (run-query query
+                                    (run-query driver
+                                               query
                                                (some-> report-timezone TimeZone/getTimeZone)
                                                transaction-connection)))
     (catch SQLException e
@@ -679,11 +688,11 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {settings :settings, database-id :database, query :native, :as outer-query}]
+  [driver {settings :settings, query :native, :as outer-query}]
   (let [query (assoc query :remark (qputil/query->remark outer-query))]
     (do-with-try-catch
       (fn []
-        (let [db-connection (sql/db->jdbc-connection-spec (Database (u/get-id database-id)))]
+        (let [db-connection (sql/db->jdbc-connection-spec (qp.store/database))]
           ((if (seq (:report-timezone settings))
              run-query-with-timezone
              run-query-without-timezone) driver settings db-connection query))))))

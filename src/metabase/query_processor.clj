@@ -135,8 +135,8 @@
       ;; TODO - I think we should do this much earlier
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
-      fetch-source-query/fetch-source-query
       resolve-database/resolve-database
+      fetch-source-query/fetch-source-query
       store/initialize-store
       query-throttle/maybe-add-query-throttle
       log-query/log-initial-query

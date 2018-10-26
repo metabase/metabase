@@ -72,13 +72,17 @@
 
 (def database-columns-to-fetch
   "Columns you should fetch for the Database referenced by the query before stashing in the store."
-  [:name
+  [:id
+   :engine
+   :name
    :details])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
    (class Database)
-   {:name    su/NonBlankString
+   {:id      su/IntGreaterThanZero
+    :engine  s/Keyword
+    :name    su/NonBlankString
     :details su/Map
     s/Any    s/Any}))
 

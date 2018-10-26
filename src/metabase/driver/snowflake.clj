@@ -14,11 +14,13 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clojure.java.jdbc :as jdbc]))
 
 (defn- connection-details->spec
   "Create a database specification for a snowflake database."
   [{:keys [account regionid] :as opts}]
+  (println "here") ; NOCOMMI
   (let [host (if regionid
                (str account "." regionid)
                account)]
@@ -30,8 +32,12 @@
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true
             ;; other SESSION parameters
-            :week_start                                 7}
-           (dissoc opts :host :port))))
+            ;; use the same week start we use for all the other drivers
+            :week_start                                 7
+            ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
+            ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
+            :timezone "UTC"}
+           (dissoc opts :host :port :timezone))))
 
 (defrecord SnowflakeDriver []
   :load-ns true
@@ -125,8 +131,10 @@
 (defmethod sql.qp/->honeysql [SnowflakeDriver (class Field)]
   [driver field]
   (let [table            (qp.store/table (:table_id field))
+        db-name          (when-not (:alias? table)
+                           (query-db-name))
         field-identifier (keyword
-                          (hx/qualify-and-escape-dots (query-db-name) (:schema table) (:name table) (:name field)))]
+                          (hx/qualify-and-escape-dots db-name (:schema table) (:name table) (:name field)))]
     (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
 
 (defmethod sql.qp/->honeysql [SnowflakeDriver (class Table)]
@@ -144,6 +152,13 @@
   (qp.store/store-table! (db/select-one [Table :id :name :schema], :id (u/get-id table-id)))
   (sql.qp/->honeysql driver field))
 
+
+(defn- table-rows-seq [driver database table]
+
+  (sql/query driver database {:select [:*]
+                              :from   [(qp.store/with-store
+                                         (qp.store/store-database! database)
+                                         (sql.qp/->honeysql driver table))]}))
 
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :VARCHAR field-key)))
@@ -199,8 +214,9 @@
           :current-db-time                (driver/make-current-db-time-fn
                                            snowflake-db-time-query
                                            snowflake-date-formatters)
+          :table-rows-seq                 table-rows-seq
           ;; This appears to be overwritten by `format-custom-field-name`
-          :format-aggregation-column-name (u/drop-first-arg str/lower-case)
+          #_:format-aggregation-column-name #_(u/drop-first-arg str/lower-case)
           :describe-database              describe-database
           :describe-table                 describe-table
           :describe-table-fks             describe-table-fks})
@@ -214,6 +230,8 @@
           :field->identifier         field->identifier
           :current-datetime-fn       (constantly :%current_timestamp)
           :set-timezone-sql          (constantly "ALTER SESSION SET TIMEZONE = %s;")
+          ;; TODO - this fixes the issues in the `sql-test` namespace, but breaks `date-bucketing-test` :(
+          #_:parse-results-with-tz     #_(constantly false)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
           :column->base-type         (u/drop-first-arg column->base-type)}))
 

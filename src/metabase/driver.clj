@@ -216,7 +216,8 @@
      name as passed to the `:named` clause. Certain drivers like Redshift always lowercase these names, so this method
      is provided for those situations.")
 
-  (format-aggregation-column-name ^String [this, ^String aggregation-name]
+  ;; DEPRECATED because I don't think we need this anymore -- we added for Snowflake and then turned out not to need it
+  (^:deprecated format-aggregation-column-name ^String [this, ^String aggregation-name]
     "*OPTIONAL*. Return the name of an aggregate column in the results. This is used by the post-processing annotation
      stage to find the correct metadata to include with aggregation columns in the results. The default implementation
      is `identity`, meaning the resulting field will have exactly the same name as Metabase aliases it to, which is

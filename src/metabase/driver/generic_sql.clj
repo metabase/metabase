@@ -95,13 +95,18 @@
      building a SQL statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and
      `:h2` (added in `metabase.util.honeysql-extensions`; like `:ansi`, but uppercases the result).
 
-        (hsql/format ... :quoting (quote-style driver))")
+        (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)")
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the
      current transaction. The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.`
 
        \"SET @@session.timezone = %s;\"")
+
+  (parse-results-with-tz ^Boolean [this]
+    "*OPTIONAL*. Whether to apply timezone parsing to results after we have successfuly set a timezone. Default
+    `true`. (I have no idea why we need to do this, but for some reason we need to disable it for Snowflake to work
+    correctly.)")
 
   (string-length-fn ^clojure.lang.Keyword [this, ^Keyword field-key]
     "Return a HoneySQL form appropriate for getting the length of a `Field` identified by fully-qualified FIELD-KEY.
@@ -238,7 +243,7 @@
 
 (def ^:private ^:dynamic *jdbc-options* {})
 
-(defn- query
+(defn query
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
   ([driver database honeysql-form]
    (jdbc/query (db->jdbc-connection-spec database)
@@ -427,7 +432,7 @@
 (s/defn ^:private honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver))]
+  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver), :allow-dashed-names? true)]
     (make-stmt-subs snippet args)))
 
 (s/defmethod ->prepared-substitution [Object nil] :- PreparedStatementSubstitution
@@ -462,25 +467,26 @@
   "Default implementations for methods in `ISQLDriver`."
   []
   (require 'metabase.driver.generic-sql.query-processor)
-  {:active-tables        fast-active-tables
+  {:active-tables         fast-active-tables
    ;; don't resolve the vars yet so during interactive dev if the underlying impl changes we won't have to reload all
    ;; the drivers
-   :apply-source-table   (resolve 'metabase.driver.generic-sql.query-processor/apply-source-table)
-   :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation)
-   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)
-   :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
-   :apply-filter         (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
-   :apply-join-tables    (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
-   :apply-limit          (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
-   :apply-order-by       (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
-   :apply-page           (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
-   :column->special-type (constantly nil)
-   :current-datetime-fn  (constantly :%now)
-   :excluded-schemas     (constantly nil)
-   :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
-   :field->alias         (u/drop-first-arg :name)
-   :quote-style          (constantly :ansi)
-   :set-timezone-sql     (constantly nil)})
+   :apply-source-table    (resolve 'metabase.driver.generic-sql.query-processor/apply-source-table)
+   :apply-aggregation     (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation)
+   :apply-breakout        (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)
+   :apply-fields          (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
+   :apply-filter          (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
+   :apply-join-tables     (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
+   :apply-limit           (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
+   :apply-order-by        (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
+   :apply-page            (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :column->special-type  (constantly nil)
+   :current-datetime-fn   (constantly :%now)
+   :excluded-schemas      (constantly nil)
+   :field->identifier     (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
+   :field->alias          (u/drop-first-arg :name)
+   :quote-style           (constantly :ansi)
+   :set-timezone-sql      (constantly nil)
+   :parse-results-with-tz (constantly true)})
 
 
 (defn IDriverSQLDefaultsMixin

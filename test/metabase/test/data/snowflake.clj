@@ -21,20 +21,24 @@
    :type/Text       "TEXT"
    :type/Time       "TIME"})
 
-(def ^:private connection-details
-  (delay
-   ;; don't bother trying to set `:db` or `:database` because Snowflake JDBC driver will ignore it
+(defn- database->connection-details [context {:keys [database-name]}]
+  (merge
    {:account   (i/db-test-env-var-or-throw :snowflake :account)
     :user      (i/db-test-env-var-or-throw :snowflake :user)
     :password  (i/db-test-env-var-or-throw :snowflake :password)
     :warehouse (i/db-test-env-var-or-throw :snowflake :warehouse)
     ;; SESSION parameters
-    :timezone  "UTC"}))
+    :timezone "UTC"}
+   ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
+   ;; `metabase.driver.snowflake`
+   (when (= context :db)
+     {:db database-name})))
+
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defn- qualified-name-components
-  ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name "PUBLIC" table-name])
+  ([_ db-name]                       [db-name])
   ([_ db-name table-name field-name] [db-name "PUBLIC" table-name field-name]))
 
 (defn- create-db-sql [driver {:keys [database-name]}]
@@ -62,7 +66,7 @@
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
   []
-  (sql/connection-details->spec snowflake-driver @connection-details))
+  (sql/connection-details->spec snowflake-driver (database->connection-details nil nil)))
 
 (defn- existing-dataset-names []
   (let [db-spec (no-db-connection-spec)]
@@ -102,35 +106,9 @@
 
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
-         {:database->connection-details (fn [& _] @connection-details)
+         {:database->connection-details (u/drop-first-arg database->connection-details)
           :default-schema               (constantly "PUBLIC")
           :engine                       (constantly :snowflake)
           :id-field-type                (constantly :type/Number)
           :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)
           :create-db!                   create-db!}))
-
-
-;;; --------------------------------------------------- REPL STUFF ---------------------------------------------------
-
-#_(require '[metabase.test.data :as data]
-           '[metabase.test.data.datasets :as datasets]
-           '[toucan.db :as db]
-           '[metabase.query-processor :as qp])
-
-;; NOCOMMIT
-#_(defn- create-test-db! []
-  (datasets/with-engine :snowflake
-    (create-db! metabase.test.data.dataset-definitions/test-data)
-    (data/id)))
-
-;; NOCOMMIT
-#_(defn- run-mbql-query []
-  (metabase.driver.snowflake/-init-driver)
-  (datasets/with-engine :snowflake
-    (qp/process-query {:database (data/id)
-                       :type     :query
-                       :query    (data/$ids venues
-                                   {:source-table $$table
-                                    :expressions  {:wow [:- [:* $price 2] [:+ $price 0]]}
-                                    :limit        3
-                                    :order-by     [[:asc $id]]})})))

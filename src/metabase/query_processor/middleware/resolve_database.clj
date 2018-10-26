@@ -8,7 +8,8 @@
 (defn- resolve-database* [{database-id :database, :as query}]
   (u/prog1 query
     (when-not (= database-id database/virtual-id)
-      (qp.store/store-database! (or (db/select-one [Database :details :name] :id (u/get-id database-id))
+      (qp.store/store-database! (or (db/select-one (apply vector Database qp.store/database-columns-to-fetch)
+                                      :id (u/get-id database-id))
                                     (throw (Exception. (str (tru "Database {0} does not exist." database-id)))))))))
 
 (defn resolve-database
