@@ -10,15 +10,16 @@
 
   #### CANONICALIZING THE QUERY
 
-  Rewriting deprecated MBQL 95 syntax and other things that are still supported for backwards-compatibility in
-  canonical MBQL 98 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
+  Rewriting deprecated MBQL 95/98 syntax and other things that are still supported for backwards-compatibility in
+  canonical MBQL 2000 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
 
   #### REMOVING EMPTY CLAUSES
 
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:require [clojure.walk :as walk]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
@@ -172,7 +173,7 @@
   [clauses]
   (vec (for [subclause clauses]
          (if (mbql-clause? subclause)
-           ;; MBQL 98 [direction field] style: normalize as normal
+           ;; MBQL 98+ [direction field] style: normalize as normal
            (normalize-mbql-clause-tokens subclause)
            ;; otherwise it's MBQL 95 [field direction] style: flip the args and *then* normalize the clause. And then
            ;; flip it back to put it back the way we found it.
@@ -314,7 +315,7 @@
     [ag-type (wrap-implicit-field-id field)]))
 
 (defn- wrap-single-aggregations
-  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98
+  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
   (mbql.u/replace aggregations
@@ -403,8 +404,11 @@
     [:ascending field]  (recur [:asc field])
     [:descending field] (recur [:desc field])
 
-    [:asc field]  [:asc (wrap-implicit-field-id field)]
-    [:desc field] [:desc (wrap-implicit-field-id field)]))
+    [:asc field]  [:asc  (wrap-implicit-field-id field)]
+    [:desc field] [:desc (wrap-implicit-field-id field)]
+
+    ;; this case should be the first one hit when we come in with a vector of clauses e.g. [[:asc 1] [:desc 2]]
+    [& clauses] (vec (distinct (map canonicalize-order-by clauses)))))
 
 (declare canonicalize-inner-mbql-query)
 
@@ -465,7 +469,11 @@
        (let [[clause-name & _] clause
              f                 (mbql-clause->canonicalization-fn clause-name)]
          (if f
-           (apply f clause)
+           (try
+             (apply f clause)
+             (catch Throwable e
+               (log/error (tru "Invalid clause:") clause)
+               (throw e)))
            clause))))
    mbql-query))
 
@@ -533,7 +541,7 @@
 ;; all mergable
 (def ^{:arglists '([outer-query])} normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
-  up-to-date MBQL 98, and remove empty clauses."
+  up-to-date MBQL 2000, and remove empty clauses."
   (comp remove-empty-clauses
         canonicalize
         normalize-tokens))

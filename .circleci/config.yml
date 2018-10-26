@@ -347,6 +347,12 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
+          name: Wait for SparkSQL to be ready
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            while ! nc -z localhost 8080; do sleep 0.1; done
+          no_output_timeout: 5m
+      - run:
           name: Run backend unit tests (Presto)
           environment:
             ENGINES: h2,presto

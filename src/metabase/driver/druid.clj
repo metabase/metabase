@@ -46,6 +46,7 @@
 ;;; ### Misc. Driver Fns
 
 (defn- can-connect? [details]
+  {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (= 200 (:status (http/get (details->url details-with-tunnel "/status"))))))
 
@@ -53,7 +54,7 @@
 ;;; ### Query Processing
 
 (defn- do-query [details query]
-  {:pre [(map? query)]}
+  {:pre [(map? details) (map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (try
       (POST (details->url details-with-tunnel "/druid/v2"), :body query)
@@ -70,6 +71,7 @@
           (throw (Exception. message e)))))))
 
 (defn- do-query-with-cancellation [details query]
+  {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
         query-fut (future (do-query details query))]
     (try
@@ -96,6 +98,7 @@
 ;;; ### Sync
 
 (defn- do-segment-metadata-query [details datasource]
+  {:pre [(map? details)]}
   (do-query details {"queryType"     "segmentMetadata"
                      "dataSource"    datasource
                      "intervals"     ["1999-01-01/2114-01-01"]

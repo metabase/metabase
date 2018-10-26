@@ -1,13 +1,11 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
-            [clojure.string :as s]
             [clj-time.core :as time]
+            [clojure
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
@@ -35,7 +33,6 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -48,7 +45,6 @@
            org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
-
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -431,12 +427,21 @@
                           [:cols])]
     (update-in query-results maybe-data-cols #(map round-fingerprint %))))
 
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
+
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (qputil/postwalk-pred double?
-                        #(u/round-to-decimals decimal-place %)
-                        data))
+  (postwalk-pred double?
+                 #(u/round-to-decimals decimal-place %)
+                 data))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -646,3 +651,20 @@
   admin has removed them."
   [& body]
   `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+
+
+(defn doall-recursive
+  "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
+  Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
+  `with-temp` form."
+  [x]
+  (cond
+    (map? x)
+    (into {} (for [[k v] (doall x)]
+               [k (doall-recursive v)]))
+
+    (sequential? x)
+    (mapv doall-recursive (doall x))
+
+    :else
+    x))

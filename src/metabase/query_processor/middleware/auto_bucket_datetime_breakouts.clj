@@ -14,13 +14,11 @@
    :special_type (s/maybe su/FieldType)
    s/Keyword     s/Any})
 
-(s/defn ^:private is-datetime-field?
-  [{base-type :base_type, special-type :special_type} :- (s/maybe FieldTypeInfo)]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
-
-;; TODO - we should check the store to see if these Fields have already been resolved! And if they haven't, we should
-;; go ahead and resolve them, and save them in the store...
+;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
+;; `:fields` clause, which happens after this
+;;
+;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
+;; which would save a bit of time when we do resolve them
 (s/defn ^:private unbucketed-breakouts->field-id->type-info :- {su/IntGreaterThanZero (s/maybe FieldTypeInfo)}
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-breakouts`."
   [unbucketed-breakouts :- (su/non-empty [mbql.s/field-id])]
@@ -31,16 +29,18 @@
   "Wrap each breakout in `breakouts` in a `:datetime-field` clause if appropriate; look at corresponing type
   information in `field-id->type-inf` to see if we should do so."
   [breakouts :- [mbql.s/Field], field-id->type-info :- {su/IntGreaterThanZero (s/maybe FieldTypeInfo)}]
-  (for [breakout breakouts]
-    (if (and (mbql.u/is-clause? :field-id breakout)
-             (is-datetime-field? (field-id->type-info (second breakout))))
-      [:datetime-field breakout :day]
-      breakout)))
+  (mbql.u/replace breakouts
+    ;; don't replace anything that's already wrapping a `field-id`
+    [(_ :guard keyword?) [:field-id _] & _]
+    &match
+
+    [:field-id (_ :guard (comp mbql.u/datetime-field? field-id->type-info))]
+    [:datetime-field &match :day]))
 
 (s/defn ^:private auto-bucket-datetime-breakouts* :- mbql.s/Query
   [{{breakouts :breakout} :query, :as query} :- mbql.s/Query]
   ;; find any breakouts in the query that are just plain `[:field-id ...]` clauses
-  (if-let [unbucketed-breakouts (seq (filter (partial mbql.u/is-clause? :field-id) breakouts))]
+  (if-let [unbucketed-breakouts (mbql.u/match breakouts, [(_ :guard keyword?) [:field-id _] & _] nil, [:field-id _] &match)]
     ;; if we found some unbuketed breakouts, fetch the Fields & type info that are referred to by those breakouts...
     (let [field-id->type-info (unbucketed-breakouts->field-id->type-info unbucketed-breakouts)]
       ;; ...and then update each breakout by wrapping it if appropriate

@@ -72,8 +72,7 @@
   "Calculate any dependent objects for a given Metric."
   [_ _ {:keys [definition]}]
   (when definition
-    {:Segment (set (for [[_ id] (mbql.u/clause-instances :segment definition)]
-                     id))}))
+    {:Segment (set (mbql.u/match definition [:segment id] id))}))
 
 (u/strict-extend (class Metric)
   dependency/IDependent

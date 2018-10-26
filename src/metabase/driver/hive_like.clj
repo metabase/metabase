@@ -3,8 +3,9 @@
             [honeysql
              [core :as hsql]
              [format :as hformat]]
-            [metabase.models.field :refer [Field]]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.models.field :refer [Field]]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import java.util.Date))
@@ -122,7 +123,7 @@
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
     {:rows    (or rows [])
-     :columns columns}))
+     :columns (map u/keyword->qualified-name columns)}))
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"
