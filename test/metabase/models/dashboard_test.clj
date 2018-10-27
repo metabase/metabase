@@ -236,7 +236,7 @@
                                                      users/user->id
                                                      user/permissions-set
                                                      atom)]
-      (let [dashboard (magic/automagic-analysis (Table (id :venues)) {})
+      (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
             rastas-personal-collection (db/select-one-field :id 'Collection
                                          :personal_owner_id api/*current-user-id*)]
         (->> (save-transient-dashboard! dashboard rastas-personal-collection)

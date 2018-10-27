@@ -21,6 +21,7 @@
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.interface :as qpi]
+            [metabase.util.i18n :as ui18n]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -256,9 +257,10 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashcards  (:ordered_cards dashboard)
+  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+        dashcards  (:ordered_cards dashboard)
         collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name (str (:name dashboard)) parent-collection-id)
+                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
                     (rand-nth magic.populate/colors)
                     "Automatically generated cards."
                     parent-collection-id)

@@ -191,20 +191,20 @@
                                              :nil%           0.0}}
                                    {:global {:distinct-count 28
                                              :nil%           0.0},
-                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.058108414099443}}})}
+                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
                    :fingerprint  {:global {:distinct-count 4
                                            :nil%           0.0},
-                                  :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0 :sd 0.7713951678941896}}}}
+                                  :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0 :sd 0.77}}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
                    :fingerprint  {:global {:distinct-count 84
                                            :nil%           0.0},
-                                  :type {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0 :sd 14.162810671348238}}}
+                                  :type {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0 :sd 14.16}}}
                    :display_name "Longitude"}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
@@ -212,7 +212,7 @@
                    :display_name "Latitude"
                    :fingerprint  {:global {:distinct-count 94
                                            :nil%           0.0},
-                                  :type {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.0, :q3 38.0 :sd 3.4346725397190827}}}}
+                                  :type {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.0, :q3 38.0 :sd 3.43}}}}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
@@ -249,7 +249,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 100
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0 :sd 28.508208884780377}}})}
+                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0 :sd 28.51}}})}
      :user_id  {:special_type (if (data/fks-supported?)
                                 :type/FK
                                 :type/Category)
@@ -261,7 +261,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 15
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0 :sd 3.9902231617894355}}})})))
+                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0 :sd 3.99}}})})))
 
 
 ;;; #### aggregate columns

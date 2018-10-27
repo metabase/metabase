@@ -418,7 +418,7 @@
   "Rounds the numerical fields of a fingerprint to 2 decimal places"
   [field]
   (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg])
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
       ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
