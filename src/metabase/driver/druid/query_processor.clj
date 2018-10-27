@@ -838,7 +838,7 @@
   (when limit
     (log/warn
      (u/format-color 'red
-         (tru "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause."))))
+         (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
   query-context)
 
 (defmethod handle-limit ::topN [_ {limit :limit} query-context]

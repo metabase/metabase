@@ -171,7 +171,7 @@ cards:
     height: 8
 - AvgQuantityBySource:
     group: Financial
-    title: Average qunatity per source
+    title: Average quantity per source
     visualization: table
     dimensions: SourceLarge
     metrics: AvgQuantity
