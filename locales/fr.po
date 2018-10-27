@@ -133,7 +133,7 @@ msgstr "SUPPRIMER"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "in this box:"
-msgstr "dans cette case :"
+msgstr "dans ce champ :"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:78
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:50
@@ -670,7 +670,7 @@ msgstr "Metabase peut analyser les valeurs de ce champ pour proposer des filtres
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:787
 msgid "Re-scan this field"
-msgstr "Analyse à nouveau ce champ"
+msgstr "Analyser à nouveau ce champ"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:795
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:119
@@ -725,7 +725,7 @@ msgstr "Modifier votre métrique et laisser un commentaire pour ces changements.
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:116
 msgid "You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."
-msgstr "Sauvegardez des métriques pour les rendre disponibles dans l'option de Vue de cette table. Les métriques se définissent par un type d'agrégation, un champ aggrégé, et optionnellement tous filtres que vous y ajouterez. Par exemple, vous pourriez vouloir créer une métrique pour définir la façon officielle de calculer le \"Prix moyen\" d'une table qui contient des Commandes."
+msgstr "Sauvegardez des métriques pour les rendre disponibles dans l'option de Vue de cette table. Les métriques se définissent par un type d'agrégation, un champ agrégé, et optionnellement tout filtre que vous y ajouterez. Par exemple, vous pourriez vouloir créer une métrique pour définir la façon officielle de calculer le \"Prix moyen\" d'une table qui contient des Commandes."
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:149
 msgid "Result: "
@@ -742,7 +742,7 @@ msgstr "Donnez un nom à votre métrique pour aider les autres à la retrouver."
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:162
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:166
 msgid "Something descriptive but not too long"
-msgstr "Description syntétique"
+msgstr "Description synthétique"
 
 #: frontend/src/metabase/admin/datamodel/containers/MetricForm.jsx:166
 msgid "Describe Your Metric"
@@ -772,7 +772,7 @@ msgstr "Sera affiché dans l'historique des révisions de cette métrique afin d
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:49
 msgid "At least one filter is required"
-msgstr "Un filter minimum est requis"
+msgstr "Au moins un filtre est nécessaire"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:116
 msgid "Edit Your Segment"
@@ -784,7 +784,7 @@ msgstr "Créez votre segment"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:121
 msgid "Make changes to your segment and leave an explanatory note."
-msgstr "Faites des changement à votre segment et laissez une note explicative"
+msgstr "Faites des changements à votre segment et laissez une note explicative"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:122
 msgid "Select and add filters to create your new segment for the {0} table"
@@ -808,11 +808,11 @@ msgstr "Donner une description à votre segment pour aider les autres à mieux l
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:175
 msgid "This is a good place to be more specific about less obvious segment rules"
-msgstr "C'est le bon endroit pour être plus spécifique sur les règles de segment moins évidentes"
+msgstr "C'est le bon endroit pour être plus spécifique sur des règles moins évidents de segment"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:185
 msgid "This will show up in the revision history for this segment to help everyone remember why things changed"
-msgstr "Ce sera affiché dans l'historique des révisions pour ce segement, afin d'aider tout le monde à se souvenir pour ça a été changé"
+msgstr "Ce sera affiché dans l'historique des révisions pour ce segment, afin d'aider tout le monde à se souvenir pourquoi ça a été changé"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:91
 #: frontend/src/metabase/admin/routes.jsx:79
@@ -877,7 +877,7 @@ msgstr "Faire de cet utilisateur un administrateur"
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:32
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Tous les utilisateurs appartiennent au groupe {0} et ne peuvent pas en être supprimé. Les réglages de permission pour ce groupe sont un bon moyen de s'assurer de ce que les nouveaux utilisateurs de Metabase verront."
+msgstr "Tous les utilisateurs appartiennent au groupe {0} et ne peuvent pas en être supprimés. Les réglages de permission pour ce groupe sont un bon moyen de s'assurer de ce que les nouveaux utilisateurs de Metabase verront."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:41
 msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
@@ -1128,7 +1128,7 @@ msgstr "Ajouter quelqu'un"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:478
 msgid "Last Login"
-msgstr "Dernier login"
+msgstr "Dernière connexion"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:501
 msgid "Signed up via Google"
@@ -1168,7 +1168,7 @@ msgstr " et "
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:56
 msgid "denied access to"
-msgstr "accès accordé à"
+msgstr "accès refusé à"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:70
 msgid " will no longer be able to "
@@ -1254,7 +1254,7 @@ msgstr "Révoquer"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:152
 msgid "access even though \"{0}\" has greater access?"
-msgstr "accéder même si \"{0}\" a accès supérieur?"
+msgstr "accéder même si \"{0}\" a un droit d'accès plus important ?"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:155
 #: frontend/src/metabase/admin/permissions/selectors.js:254
@@ -1269,7 +1269,7 @@ msgstr "Révoquer l'accès"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:164
 msgid "Change access to this database to limited?"
-msgstr "Changer l'accès de cette base de données à limité ?"
+msgstr "Limiter l'accès de cette base de données ?"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:165
 msgid "Change"
@@ -1393,12 +1393,12 @@ msgstr "Ce n'est pas un entier valide"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:223
 msgid "Changes saved!"
-msgstr "Modifications sauvegardées  !"
+msgstr "Modifications sauvegardées !"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:157
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:132
 msgid "Looks like we ran into some problems"
-msgstr "Il semble que nous avons rencontré des problèmes"
+msgstr "Il semble que nous ayons rencontré des problèmes"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:12
 msgid "Send test email"
@@ -1592,7 +1592,7 @@ msgstr "Utiliser l'intégration"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:9
 msgid "By enabling embedding you're agreeing to the embedding license located at"
-msgstr "En activant l'intégration vous donner votre accord à la licence d'intégration située à"
+msgstr "En activant l'intégration vous donnez votre accord à la licence d'intégration située à"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:19
 msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
@@ -1780,7 +1780,7 @@ msgstr "Adaptation des noms de table et de champ"
 
 #: frontend/src/metabase/admin/settings/selectors.js:80
 msgid "Only replace underscores and dashes with spaces"
-msgstr "Remplacer seulement les soulignés et tirés par un espace"
+msgstr "Remplacer seulement les soulignés et tirets par un espace"
 
 #: frontend/src/metabase/admin/settings/selectors.js:90
 msgid "Enable Nested Queries"
@@ -1980,11 +1980,11 @@ msgstr "Votre alerte a été mise à jour"
 
 #: frontend/src/metabase/alert/alert.js:149
 msgid "The alert was successfully deleted."
-msgstr "L'alerte a été supprimer avec succès."
+msgstr "L'alerte a été supprimée avec succès."
 
 #: frontend/src/metabase/auth/auth.js:33
 msgid "Please enter a valid formatted email address."
-msgstr "Veuillez saisir un adresse électronique valide."
+msgstr "Veuillez saisir une adresse électronique valide."
 
 #: frontend/src/metabase/auth/auth.js:116
 #: frontend/src/metabase/setup/components/UserStep.jsx:110
@@ -2088,7 +2088,7 @@ msgstr "Confirmer le nouveau mot de passe"
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:191
 #: frontend/src/metabase/user/components/SetUserPassword.jsx:159
 msgid "Make sure it matches the one you just entered"
-msgstr "Assurez-vous qu'il correspond à celui que vous venez de saisir"
+msgstr "Assurez-vous qu'il corresponde à celui que vous venez de saisir"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:216
 msgid "Your password has been reset."
@@ -2104,7 +2104,7 @@ msgstr "Vous connecter avec votre nouveau mot de passe"
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
 #: frontend/src/metabase/query_builder/components/QueryHeader.jsx:251
 msgid "Save failed"
-msgstr "La sauvegarde a échouée"
+msgstr "La sauvegarde a échoué"
 
 #: frontend/src/metabase/components/ActionButton.jsx:54
 #: frontend/src/metabase/components/SaveStatus.jsx:60
@@ -2335,7 +2335,7 @@ msgstr "C'est une grande base de données, laissez-moi donc choisir quand Metaba
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:276
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "Par défaut, Metabase effectue une synchronisation horaire légère et un analyse journalière intensive des valeurs de filtre.\n"
+msgstr "Par défaut, Metabase effectue une synchronisation horaire légère et une analyse journalière intensive des valeurs de filtre.\n"
 "Si vous avez une grande base de données, nous vous recommandons d'activer cette option et de définir quand et à quelle fréquence l'analyse des valeurs de filtre s'effectue."
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:292
@@ -2636,7 +2636,7 @@ msgstr "Bulletin d'information de Metabase"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:81
 msgid "Get infrequent emails about new releases and feature updates."
-msgstr "Obtenir des courriel ponctuels au sujet des nouvelles versions et des mises à jour de fonctionnalités."
+msgstr "Obtenir des courriels ponctuels au sujet des nouvelles versions et des mises à jour de fonctionnalités."
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:99
 msgid "Subscribe"
@@ -2769,7 +2769,7 @@ msgstr "Désolé, vous n'avez pas la permission de voir cela."
 
 #: frontend/src/metabase/components/form/FormMessage.jsx:5
 msgid "Unknown error encountered"
-msgstr "Un erreur inconnue a été rencontrée"
+msgstr "Une erreur inconnue a été rencontrée"
 
 #: frontend/src/metabase/components/form/StandardForm.jsx:63
 #: frontend/src/metabase/nav/containers/Navbar.jsx:300
@@ -3063,7 +3063,7 @@ msgstr "Sauvegarder tout cela"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:165
 msgid "Show more about this"
-msgstr "Afficher plus d'information à ce propos"
+msgstr "Afficher plus d'informations à ce propos"
 
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:140
 msgid "This card doesn't have any fields or parameters that can be mapped to this parameter type."
@@ -3080,7 +3080,7 @@ msgstr "Aucun champ valide"
 
 #: frontend/src/metabase/entities/collections.js:90
 msgid "Name must be 100 characters or less"
-msgstr "Le nom ne pas contenir plus de 100 caractères"
+msgstr "Le nom ne peut pas contenir plus de 100 caractères"
 
 #: frontend/src/metabase/entities/collections.js:104
 msgid "Color is required"
@@ -3195,7 +3195,7 @@ msgstr "a supprimé un pulse"
 #: frontend/src/metabase/home/components/Activity.jsx:347
 #: frontend/src/metabase/home/components/Activity.jsx:378
 msgid "added the filter"
-msgstr "a a jouté le filtre"
+msgstr "a ajouté le filtre"
 
 #: frontend/src/metabase/home/components/Activity.jsx:388
 #: frontend/src/metabase/home/components/Activity.jsx:419
@@ -3596,7 +3596,7 @@ msgstr[1] "{0} minutes"
 
 #: frontend/src/metabase/lib/greeting.js:4
 msgid "Hey there"
-msgstr "Héy"
+msgstr "Hé toi là"
 
 #: frontend/src/metabase/lib/greeting.js:5
 #: frontend/src/metabase/lib/greeting.js:29
@@ -3625,7 +3625,7 @@ msgstr "Qu'avez-vous en tête ?"
 
 #: frontend/src/metabase/lib/greeting.js:14
 msgid "What do you want to find out?"
-msgstr "Que voulez-vous déterminer ?"
+msgstr "Que voulez-vous découvrir ?"
 
 #: frontend/src/metabase/lib/query.js:613
 #: frontend/src/metabase/lib/schema_metadata.js:441
@@ -3667,7 +3667,7 @@ msgstr "Minimum du/de la "
 
 #: frontend/src/metabase/lib/query.js:664
 msgid "Grouped by "
-msgstr "Aggrégé par "
+msgstr "Agrégé par "
 
 #: frontend/src/metabase/lib/query.js:678
 msgid "Filtered by "
@@ -3970,7 +3970,7 @@ msgstr "Par exemple Janvier 2016"
 
 #: frontend/src/metabase/meta/Dashboard.js:36
 msgid "Quarter and Year"
-msgstr "Semestre et Année"
+msgstr "Trimestre et Année"
 
 #: frontend/src/metabase/meta/Dashboard.js:37
 msgid "Like Q1, 2016"
@@ -4308,7 +4308,7 @@ msgstr "Modifiable"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:105
 msgid "Locked"
-msgstr "Vérouillé"
+msgstr "Verrouillé"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:113
 msgid "Preview Locked Parameters"
@@ -4462,7 +4462,7 @@ msgstr "Désarchivage en cours..."
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:174
 msgid "Unarchive failed"
-msgstr "Le désarchivage à échoué"
+msgstr "Le désarchivage a échoué"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:175
 msgid "Unarchived"
@@ -5016,7 +5016,7 @@ msgstr "Ajouter une agrégation"
 msgid "Data"
 msgstr "Données"
 
-#. Si l'on tient à l'enchaînement Données/Fitré par/Vue/Groupé par, le non accord des participes passés jure un peu... Je propose Données/Fitre/Vue/Aggrégation
+#. Si l'on tient à l'enchaînement Données/Fitré par/Vue/Groupé par, le non accord des participes passés jure un peu... Je propose Données/Fitre/Vue/Agrégation
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:352
 msgid "Filtered by"
 msgstr "Filtre"
@@ -5210,11 +5210,11 @@ msgstr "Désolé, quelque chose s'est mal passé."
 
 #: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:40
 msgid "Group time by"
-msgstr "Aggréger le temps par"
+msgstr "Agréger le temps par"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:46
 msgid "Your question took too long"
-msgstr "Votre question a pris trop longtemps"
+msgstr "Votre question a pris trop de temps"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:47
 msgid "We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
@@ -5226,7 +5226,7 @@ msgstr "Nous rencontrons des problèmes sur le serveur"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:56
 msgid "Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
-msgstr "Essayez de rafraîchir la page après une ou deux minutes d'attente. Si le problème persiste, nous vous recommandons de contacter une administrateur."
+msgstr "Essayez de rafraîchir la page après une ou deux minutes d'attente. Si le problème persiste, nous vous recommandons de contacter un administrateur."
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:88
 msgid "There was a problem with your question"
@@ -5272,7 +5272,7 @@ msgstr "Questions potentiellement utiles"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:156
 msgid "Group by {0}"
-msgstr "Aggréger par {0}"
+msgstr "Agréger par {0}"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:165
 msgid "Sum of all values of {0}"
@@ -5289,7 +5289,7 @@ msgstr "Toutes les valeurs distinctes de {0}"
 #: frontend/src/metabase/reference/databases/FieldDetail.jsx:51
 #: frontend/src/metabase/reference/segments/SegmentFieldDetail.jsx:39
 msgid "Number of {0} grouped by {1}"
-msgstr "Nombre de {0} aggrégés par {1}"
+msgstr "Nombre de {0} agrégés par {1}"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:11
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:20
@@ -5364,7 +5364,7 @@ msgstr "Formule du champ"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:57
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
-msgstr "Imaginez cela comme étant une sorte de formule de tableur : vous pouvez utiliser des numbres, champs dans la table, opérations mathématiques comme +, et quelques fonctions. Vous pourriez donc écrire quelque chose comme Soustotal - Cout."
+msgstr "Imaginez cela comme étant une sorte de formule de tableur : vous pouvez utiliser des nombres, champs dans la table, opérations mathématiques comme +, et quelques fonctions. Vous pourriez donc écrire quelque chose comme Soustotal - Cout."
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:62
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:126
@@ -5568,7 +5568,7 @@ msgstr "Archiver cette question?"
 
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:57
 msgid "This question will be removed from any dashboards or pulses using it."
-msgstr "Cette question sera retirée de tous les tableaux de bords ou pulses qui l'utilisent."
+msgstr "Cette question sera retirée de tous les tableaux de bord ou pulses qui l'utilisent."
 
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:136
 msgid "Question"
@@ -5802,7 +5802,7 @@ msgstr "Vos bases de données apparaîtront ici une fois connectées"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:10
 msgid "Databases will appear here once your admins have added some"
-msgstr "Les bases de données apparaîtrons ici une fois que vos administrateurs en auront ajoutées"
+msgstr "Les bases de données apparaîtront ici une fois que vos administrateurs en auront ajoutées"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:12
 msgid "Connect a database"
@@ -5903,7 +5903,7 @@ msgstr "Voir tous les segments"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:293
 msgid "See all tables"
-msgstr "Voire toutes les tables"
+msgstr "Voir toutes les tables"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:301
 msgid "Other things to know about our data"
@@ -6030,7 +6030,7 @@ msgstr "Autres champs d'agrégation possibles pour cette métrique"
 
 #: frontend/src/metabase/reference/metrics/MetricDetail.jsx:294
 msgid "Fields you can group this metric by"
-msgstr "Champs sur lesquels vous pouvez aggréger cette métrique"
+msgstr "Champs sur lesquels vous pouvez agréger cette métrique"
 
 #: frontend/src/metabase/reference/metrics/MetricList.jsx:23
 msgid "Metrics are the official numbers that your team cares about"
@@ -6225,7 +6225,7 @@ msgstr "Emmenez-moi dans Metabase"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:155
 msgid "What should we call you?"
-msgstr "Comment devez-nous vous appeler ?"
+msgstr "Comment devons-nous vous appeler ?"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:156
 msgid "Hi, {0}. nice to meet you!"
@@ -6396,7 +6396,7 @@ msgstr "Sauvegardez vos questions"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:237
 msgid "By the way, you can save your questions so you can refer to them later. Saved Questions can also be put into dashboards or Pulses."
-msgstr "Par ailleurs, vous pouvez sauvegarder votre question pour la retrouver plus tard. Les questions sauvegardées peuvent aussi être aujoutées aux tableaux de bords ou aux Pulses."
+msgstr "Par ailleurs, vous pouvez sauvegarder votre question pour la retrouver plus tard. Les questions sauvegardées peuvent aussi être ajoutées aux tableaux de bords ou aux Pulses."
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:241
 msgid "Sounds good"
@@ -6559,7 +6559,7 @@ msgstr "différente de"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:169
 msgid "Conditional formatting"
-msgstr "Formattage conditionnel"
+msgstr "Formatage conditionnel"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:171
 msgid "You can add rules to make the cells in this table change color if\n"
@@ -6588,7 +6588,7 @@ msgstr "Les cellules de cette colonne seront teintées selon leur valeur."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:279
 msgid "When a cell in these columns is {0} it will be tinted this color."
-msgstr "Quand une cellule dans ces colonnes est {0} elle sera teinté de cette couleur."
+msgstr "Quand une cellule dans ces colonnes est {0} elle sera teintée de cette couleur."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:290
 msgid "Which columns should be affected?"
@@ -6596,7 +6596,7 @@ msgstr "Quelles colonnes devraient être affectées ?"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:300
 msgid "Formatting style"
-msgstr "Style de formattage"
+msgstr "Style de formatage"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:304
 msgid "Single color"
@@ -6702,7 +6702,7 @@ msgstr "Objectif"
 
 #: frontend/src/metabase/visualizations/lib/errors.js:9
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "Le résultat de votre requête n'est pas adapté au rendu choisi. Cette visualisation nécessite au moins {0} {1} de données."
+msgstr "Diantre ! Le résultat de votre requête n'est pas adapté au rendu choisi. Cette visualisation nécessite au moins {0} {1} de données."
 
 #: frontend/src/metabase/visualizations/lib/errors.js:9
 msgid "column"
@@ -7461,7 +7461,7 @@ msgstr "Heure"
 
 #: src/metabase/api/table.clj
 msgid "Quarter"
-msgstr "Semestre"
+msgstr "Trimestre"
 
 #: src/metabase/api/table.clj
 msgid "Minute of Hour"
@@ -7493,7 +7493,7 @@ msgstr "Mois dans l'année"
 
 #: src/metabase/api/table.clj
 msgid "Quarter of Year"
-msgstr "Semestre dans l'année"
+msgstr "Trimestre dans l'année"
 
 #: src/metabase/api/table.clj
 msgid "10 bins"
@@ -8872,7 +8872,7 @@ msgstr "cette valeur doit être une adresse électronique valide."
 
 #: src/metabase/util/schema.clj
 msgid "Insufficient password strength"
-msgstr "Force de mot de passe insuffisante"
+msgstr "Complexité de mot de passe insuffisante"
 
 #: src/metabase/util/schema.clj
 msgid "value must be a valid integer."
@@ -8916,7 +8916,7 @@ msgstr "Peut modifier cette collection et son contenu"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:285
 msgid "Can view items in this collection"
-msgstr "Peut voir les items de cette collection"
+msgstr "Peut voir les éléments de cette collection"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:745
 msgid "Collection Access"
@@ -8928,7 +8928,7 @@ msgstr "Ce groupe a la permission de voir au moins une sous-collection de cette 
 
 #: frontend/src/metabase/admin/permissions/selectors.js:826
 msgid "This group has permission to edit at least one subcollection of this collection."
-msgstr "Ce groupe a le droit de modifier au moins une sous-collection de cette colleciton."
+msgstr "Ce groupe a le droit de modifier au moins une sous-collection de cette collection."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:839
 msgid "View sub-collections"
@@ -9303,7 +9303,7 @@ msgstr "Utiliser le fuseau horaire de la machine virtuelle Java (JVM)"
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:249
 msgid "We suggest you leave this off unless you're doing manual timezone casting in\n"
 "many or most of your queries with this data."
-msgstr "Nous vous suggérons de le laisser cela désactivé à moins que vous ne procédiez à un paramétrage manuel du fuseau horaire dans la plupart de vos requêtes avec ces données."
+msgstr "Nous vous suggérons de laisser cela désactivé à moins que vous ne procédiez à un paramétrage manuel du fuseau horaire dans la plupart de vos requêtes avec ces données."
 
 #: frontend/src/metabase/containers/Overworld.jsx:313
 msgid "Your team's most important dashboards go here"
@@ -9320,4 +9320,3 @@ msgstr "Impossible de libérer le verrou Liquibase après un échec de migration
 #: src/metabase/driver/bigquery.clj
 msgid "Use JVM Time Zone"
 msgstr "Utiliser le fuseau horaire de la JVM"
-
