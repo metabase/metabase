@@ -10,14 +10,14 @@ Options and settings for your variables will appear in the `Variables` side pane
 ![Variables](images/sql-parameters/01-variables.png)
 
 ### Defining Variables
-Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than `field filter` will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
+Typing `{{variable_name}}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than `field filter` will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
 
 This example defines a variable called `cat`, allowing you to dynamically change the `WHERE` clause in this query:
 
 ```
 SELECT count(*)
 FROM products
-WHERE category = {% raw %}{{cat}}{% endraw %}
+WHERE category = {{cat}}
 ```
 
 #### The Field Filter variable type
@@ -30,11 +30,11 @@ Example:
 ```
 SELECT count(*)
 FROM products
-WHERE {% raw %}{{created_at}}{% endraw %}
+WHERE {{created_at}}
 ```
 
 ##### Creating SQL question filters using field filter variables
-First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`. Then, in the side panel, select the `Field Filter` variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose Type in the Data Model section of the Admin Panel is one of the following:
+First, insert a variable tag in your SQL, like `{{my_var}}`. Then, in the side panel, select the `Field Filter` variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose Type in the Data Model section of the Admin Panel is one of the following:
 - Category
 - City
 - Entity Key
@@ -65,19 +65,19 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 If you input a default value for your field filter, this value will be selected in the filter whenever you come back to this question. If you clear out the filter, though, no value will be passed (i.e., not even the default value). The default value has no effect on the behavior of your SQL question when viewed in a dashboard.
 
 ##### Connecting a SQL question to a dashboard filter
-In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
+In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{{var}}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
 
 ![Field filter](images/sql-parameters/state-field-filter.png)
 
 ### Optional Clauses
-To make an optional clause in your native query, type  `[[brackets around a {% raw %}{{variable}}{% endraw %}]]`. If `variable` is given a value, then the entire clause is placed into the template. If not, then the entire clause is ignored.
+To make an optional clause in your native query, type  `[[brackets around a {{variable}}]]`. If `variable` is given a value, then the entire clause is placed into the template. If not, then the entire clause is ignored.
 
 In this example, if no value is given to `cat` from its filter widget or URL, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like `Widget`, then the query will only grab the products with a category type of `Widget`:
 
 ```
 SELECT count(*)
 FROM products
-[[WHERE category = {% raw %}{{cat}}{% endraw %}]]
+[[WHERE category = {{cat}}]]
 ```
 
 To use multiple optional clauses you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`.
@@ -88,8 +88,8 @@ Example:
 SELECT count(*)
 FROM products
 WHERE True
-  [[AND id = {% raw %}{{id}}{% endraw %}]]
-  [[AND category = {% raw %}{{category}}{% endraw %}]]
+  [[AND id = {{id}}]]
+  [[AND category = {{category}}]]
 ```
 
 ---
