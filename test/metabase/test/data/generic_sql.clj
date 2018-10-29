@@ -68,6 +68,7 @@
   (pk-field-name ^String [this]
     "*Optional* Name of a PK field. Defaults to `\"id\"`.")
 
+  ;; TODO - WHAT ABOUT SCHEMA NAME???
   (qualified-name-components [this, ^String database-name]
                              [this, ^String database-name, ^String table-name]
                              [this, ^String database-name, ^String table-name, ^String field-name]
@@ -222,13 +223,19 @@
                                     (du/->Timestamp v du/utc)
                                     v))))))
 
+(defn add-ids
+  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
+  specified."
+  [rows]
+  (for [[i row] (m/indexed rows)]
+    (assoc row :id (inc i))))
+
 (defn load-data-add-ids
   "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or
   `load-data-one-at-a-time`."
   [insert!]
   (fn [rows]
-    (insert! (vec (for [[i row] (m/indexed rows)]
-                    (assoc row :id (inc i)))))))
+    (insert! (vec (add-ids rows)))))
 
 (defn load-data-chunked
   "Insert rows in chunks, which default to 200 rows each."
@@ -290,6 +297,7 @@
 (def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
 (def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
 (def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
+(def load-data-add-ids!                "Insert all rows at once; add IDs."                    (make-load-data-fn load-data-add-ids))
 (def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
 (def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do some profiling in order to pick the appropriate implementation
@@ -354,39 +362,42 @@
         (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
 
 (defn- create-db!
-  ([driver database-definition]
-    (create-db! driver database-definition false))
-  ([driver {:keys [table-definitions], :as dbdef} skip-drop-db?]
-    (when-not skip-drop-db?
-      ;; Exec SQL for creating the DB
-      (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
-                                              (create-db-sql driver dbdef))))
-    ;; Build combined statement for creating tables + FKs + comments
-    (let [statements (atom [])]
-      ;; Add the SQL for creating each Table
-      (doseq [tabledef table-definitions]
-        (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
-               (create-table-sql driver dbdef tabledef)))
-      ;; Add the SQL for adding FK constraints
-      (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-        (doseq [{:keys [fk], :as fielddef} field-definitions]
-          (when fk
-            (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
-      ;; Add the SQL for adding table comments
-      (doseq [{:keys [table-comment], :as tabledef} table-definitions]
-        (when table-comment
-          (swap! statements conj (standalone-table-comment-sql driver dbdef tabledef))))
-      ;; Add the SQL for adding column comments
-      (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-        (doseq [{:keys [field-comment], :as fielddef} field-definitions]
-          (when field-comment
-            (swap! statements conj (standalone-column-comment-sql driver dbdef tabledef fielddef)))))
-      ;; exec the combined statement
-      (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
+  "Default implementation of `create-db!` for SQL drivers."
+  ([driver db-def]
+   (create-db! driver db-def nil))
+  ([driver {:keys [table-definitions], :as dbdef} {:keys [skip-drop-db?]
+                                                   :or   {skip-drop-db? false}}]
+   (when-not skip-drop-db?
+     ;; Exec SQL for creating the DB
+     (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
+                                             (create-db-sql driver dbdef))))
+   ;; Build combined statement for creating tables + FKs + comments
+   (let [statements (atom [])]
+     ;; Add the SQL for creating each Table
+     (doseq [tabledef table-definitions]
+       (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
+              (create-table-sql driver dbdef tabledef)))
+
+     ;; Add the SQL for adding FK constraints
+     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+       (doseq [{:keys [fk], :as fielddef} field-definitions]
+         (when fk
+           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
+     ;; Add the SQL for adding table comments
+     (doseq [{:keys [table-comment], :as tabledef} table-definitions]
+       (when table-comment
+         (swap! statements conj (standalone-table-comment-sql driver dbdef tabledef))))
+     ;; Add the SQL for adding column comments
+     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+       (doseq [{:keys [field-comment], :as fielddef} field-definitions]
+         (when field-comment
+           (swap! statements conj (standalone-column-comment-sql driver dbdef tabledef fielddef)))))
+     ;; exec the combined statement
+     (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
    ;; Now load the data for each Table
    (doseq [tabledef table-definitions]
      (du/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
-        (load-data! driver dbdef tabledef)))))
+       (load-data! driver dbdef tabledef)))))
 
 
 (def IDriverTestExtensionsMixin

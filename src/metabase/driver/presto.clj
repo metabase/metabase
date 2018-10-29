@@ -18,14 +18,14 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
-             [ssh :as ssh]]
-            [toucan.db :as db])
+             [ssh :as ssh]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -241,7 +241,7 @@
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
-        details                (merge (db/select-one-field :details Database :id (u/get-id database-id))
+        details                (merge (:details (qp.store/database))
                                       settings)
         {:keys [columns rows]} (execute-presto-query! details sql)
         columns                (for [[col name] (map vector columns (map :name columns))]

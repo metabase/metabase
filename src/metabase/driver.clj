@@ -22,6 +22,7 @@
             [metabase.models
              [database :refer [Database]]
              [setting :refer [defsetting]]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.sync.interface :as si]
             [metabase.util
              [date :as du]
@@ -397,13 +398,16 @@
   parses the date returned preserving it's timezone"
   [native-query date-formatters]
   (fn [driver database]
+    {:pre [(map? database)]}
     (let [settings (when-let [report-tz (report-timezone-if-supported driver)]
                      {:settings {:report-timezone report-tz}})
           time-str (try
-                     (->> (merge settings {:database database, :native {:query native-query}})
-                          (execute-query driver)
-                          :rows
-                          ffirst)
+                     (qp.store/with-store
+                       (qp.store/store-database! database)
+                       (->> (merge settings {:database database, :native {:query native-query}})
+                            (execute-query driver)
+                            :rows
+                            ffirst))
                      (catch Exception e
                        (throw
                         (Exception.
@@ -414,8 +418,9 @@
         (catch Exception e
           (throw
            (Exception.
-            (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
-                    time-str (-> database :engine name)) e)))))))
+            (str
+             (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
+                  time-str (-> database :engine name))) e)))))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.

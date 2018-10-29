@@ -23,6 +23,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
+             [generic-sql :as sql.test]
              [datasets :as datasets]
              [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
@@ -62,26 +63,6 @@
                                    :limit        10}
                     :limit        5}}))))
 
-;; TODO - `identifier`, `quoted-identifier` might belong in some sort of shared util namespace
-(defn- identifier
-  "Return a properly formatted *UNQUOTED* identifier for a Table or Field.
-  (This handles DBs like H2 who require uppercase identifiers, or databases like Redshift do clever hacks
-   like prefixing table names with a unique schema for each test run because we're not
-   allowed to create new databases.)"
-  (^String [table-kw]
-   (let [{schema :schema, table-name :name} (db/select-one [Table :name :schema] :id (data/id table-kw))]
-     (name (hsql/qualify schema table-name))))
-  (^String [table-kw field-kw]
-   (db/select-one-field :name Field :id (data/id table-kw field-kw))))
-
-(defn- quote-identifier [identifier]
-  (first (hsql/format (keyword identifier)
-           :quoting (generic-sql/quote-style datasets/*driver*))))
-
-(def ^:private ^{:arglists '([table-kw] [table-kw field-kw])} ^String quoted-identifier
-  "Return a *QUOTED* identifier for a Table or Field. (This behaves just like `identifier`, but quotes the result)."
-  (comp quote-identifier identifier))
-
 ;; make sure we can do a basic query with a SQL source-query
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
@@ -89,10 +70,11 @@
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
           [4 -118.465 29 2 "Wurstküche"                   33.9997]
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-   :cols [{:name "id",          :base_type (data/expected-base-type->actual :type/Integer)}
+   ;; Oracle doesn't have Integer types, they always come back as DECIMAL
+   :cols [{:name "id",          :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
           {:name "longitude",   :base_type :type/Float}
-          {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "category_id", :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
+          {:name "price",       :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
           {:name "name",        :base_type :type/Text}
           {:name "latitude",    :base_type :type/Float}]}
   (format-rows-by [int (partial u/round-to-decimals 4) int int str (partial u/round-to-decimals 4)]
@@ -100,14 +82,15 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:native (format "SELECT %s, %s, %s, %s, %s, %s FROM %s"
-                                                   (quoted-identifier :venues :id)
-                                                   (quoted-identifier :venues :longitude)
-                                                   (quoted-identifier :venues :category_id)
-                                                   (quoted-identifier :venues :price)
-                                                   (quoted-identifier :venues :name)
-                                                   (quoted-identifier :venues :latitude)
-                                                   (quoted-identifier :venues))}
+         :query    {:source-query {:native (:query
+                                            (qp/query->native
+                                              (data/mbql-query venues
+                                                {:fields [[:field-id $id]
+                                                          [:field-id $longitude]
+                                                          [:field-id $category_id]
+                                                          [:field-id $price]
+                                                          [:field-id $name]
+                                                          [:field-id $latitude]]})))}
                     :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
                     :limit        5}}))))
 
@@ -197,13 +180,13 @@
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
-  breakout-results
+   breakout-results
   (rows+cols
     (format-rows-by [int int]
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:native (format "SELECT * FROM %s" (quoted-identifier :venues))}
+         :query    {:source-query {:native (:query (qp/query->native (data/mbql-query venues)))}
                     :aggregation  [:count]
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
@@ -502,6 +485,9 @@
                                  :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]])]
         (qp/process-query (query-with-source-card card)))
       results-metadata))
+
+(defn- identifier [table-kw field-kw]
+  (db/select-one-field :name Field :id (data/id table-kw field-kw)))
 
 ;; make sure using a time interval filter works
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)

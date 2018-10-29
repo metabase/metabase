@@ -95,7 +95,7 @@
      building a SQL statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and
      `:h2` (added in `metabase.util.honeysql-extensions`; like `:ansi`, but uppercases the result).
 
-        (hsql/format ... :quoting (quote-style driver))")
+        (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)")
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the
@@ -131,7 +131,7 @@
   {:pre [(map? database)]}
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
-        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+        spec                (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
     (assoc (mdb/connection-pool (assoc spec
                                   :minimum-pool-size           1
                                   ;; prevent broken connections closed by dbs by testing them every 3 mins
@@ -238,7 +238,7 @@
 
 (def ^:private ^:dynamic *jdbc-options* {})
 
-(defn- query
+(defn query
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
   ([driver database honeysql-form]
    (jdbc/query (db->jdbc-connection-spec database)
@@ -270,14 +270,16 @@
 
 ;;; ## Database introspection methods used by sync process
 
-(defmacro with-metadata
+;; Don't use this anymore! Use the new `jdbc/with-db-metadata` fn
+(defmacro ^:deprecated with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
   `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
-(defmacro ^:private with-resultset-open
+;; Don't use this anymore! You can just `with-metadata` and `jdbc/result-set-seq` instead!!!
+(defmacro ^:private ^:deprecated with-resultset-open
   "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
   the the symbols provided in the binding form. The binding form is just like `let` or `with-open`, but yield a
   `ResultSet`. That `ResultSet` will be closed upon exit of `body`."
@@ -288,10 +290,15 @@
        (let ~(vec (interleave (map first binding-pairs) (map #(list `~jdbc/result-set-seq %) rs-syms)))
          ~@body))))
 
+(defn get-catalogs
+  "Returns a set of all of the catalogs found via `metadata`"
+  [^DatabaseMetaData metadata]
+  (set (map :table_cat (jdbc/result-set-seq (.getCatalogs metadata)))))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
-  (with-resultset-open [rs-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil, ^String database-name-or-nil]
+  (with-resultset-open [rs-seq (.getTables metadata database-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
                                            (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
     ;; Ensure we read all rows before exiting
     (doall rs-seq)))
@@ -303,12 +310,12 @@
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
    seconds vs 60)."
-  [driver, ^DatabaseMetaData metadata]
+  [driver, ^DatabaseMetaData metadata, & [database-name-or-nil]]
   (with-resultset-open [rs-seq (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem rs-seq))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (get-tables metadata schema)]
+                 table  (get-tables metadata schema database-name-or-nil)]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      schema
@@ -318,9 +325,9 @@
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, ^DatabaseMetaData metadata]
+  [driver, ^DatabaseMetaData metadata  & [database-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (get-tables metadata nil))]
+                             (get-tables metadata nil nil))]
          (let [remarks (:remarks table)]
            {:name        (:table_name  table)
             :schema      (:table_schem table)
@@ -343,8 +350,10 @@
       (str "Invalid type: " special-type))
     special-type))
 
-(defn- describe-table-fields [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}]
-  (with-resultset-open [rs-seq (.getColumns metadata nil schema table-name nil)]
+(defn describe-table-fields
+  "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
+  [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}, & [database-name-or-nil]]
+  (with-resultset-open [rs-seq (.getColumns metadata database-name-or-nil schema table-name nil)]
     (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} rs-seq]
            (merge {:name          column-name
                    :database-type database-type
@@ -354,7 +363,8 @@
                   (when-let [special-type (calculated-special-type driver column-name database-type)]
                     {:special-type special-type}))))))
 
-(defn- add-table-pks
+(defn add-table-pks
+  "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata, table]
   (with-resultset-open [rs-seq (.getPrimaryKeys metadata nil nil (:name table))]
     (let [pks (set (map :column_name rs-seq))]
@@ -380,9 +390,11 @@
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn- describe-table-fks [driver database table]
+(defn describe-table-fks
+  "Default implementation of `describe-table-fks` for JDBC based drivers."
+  [driver database table & [database-name-or-nil]]
   (with-metadata [metadata driver database]
-    (with-resultset-open [rs-seq (.getImportedKeys metadata nil (:schema table) (:name table))]
+    (with-resultset-open [rs-seq (.getImportedKeys metadata database-name-or-nil (:schema table) (:name table))]
       (set (for [result rs-seq]
              {:fk-column-name   (:fkcolumn_name result)
               :dest-table       {:name   (:pktable_name result)
@@ -415,7 +427,7 @@
 (s/defn ^:private honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver x]
-  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver))]
+  (let [[snippet & args] (hsql/format x, :quoting (quote-style driver), :allow-dashed-names? true)]
     (make-stmt-subs snippet args)))
 
 (s/defmethod ->prepared-substitution [Object nil] :- PreparedStatementSubstitution

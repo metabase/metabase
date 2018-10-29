@@ -273,6 +273,7 @@
     (aggregate-col :count)
     (aggregate-col :avg (venues-col :id))"
   {:arglists '([ag-col-kw] [ag-col-kw field])}
+  ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
   ([ag-col-kw]
    (assert (= ag-col-kw) :count)
    {:base_type    :type/Integer

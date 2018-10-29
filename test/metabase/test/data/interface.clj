@@ -110,17 +110,21 @@
     "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database`
      details map). CONTEXT is one of:
 
-     *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
-                    creating/destroying databases)
-     *  `:db`     - Return details for connecting specifically to the DB.")
+ *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
+                creating/destroying databases)
+ *  `:db`     - Return details for connecting specifically to the DB.")
 
-  (create-db! [this, ^DatabaseDefinition database-definition]
-              [this, ^DatabaseDefinition database-definition, ^Boolean skip-drop-db?]
+  (create-db!
+    [this, ^DatabaseDefinition database-definition]
+    [this, ^DatabaseDefinition database-definition {:keys [skip-drop-db?]}]
     "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
-     and add the appropriate data. This method should drop existing databases with the same name if applicable,
-     unless the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates
-     the connection before dropping the DB and causes some tests to fail.
-     (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
+     and add the appropriate data. This method should drop existing databases with the same name if applicable, unless
+     the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates the
+     connection before dropping the DB and causes some tests to fail.
+     (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)
+
+ Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,`skip-drop-db?`
+ should default to `false`.")
 
   ;; TODO - this would be more useful if DATABASE-DEFINITION was a parameter
   (default-schema ^String [this]
@@ -129,7 +133,7 @@
   (expected-base-type->actual [this base-type]
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given
-     BASE-TYPE used in the test data can specifiy what type we should expect in the results instead.  For example,
+     BASE-TYPE used in the test data can specifiy what type we should expect in the results instead. For example,
      Oracle has no `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map
      to `:type/Decimal`.")
 
@@ -166,17 +170,19 @@
 (defn create-table-definition
   "Convenience for creating a `TableDefinition`."
   ^TableDefinition [^String table-name, field-definition-maps rows]
-  (s/validate TableDefinition (map->TableDefinition {:table-name        table-name
-                                                     :rows              rows
-                                                     :field-definitions (mapv create-field-definition field-definition-maps)})))
+  (s/validate TableDefinition (map->TableDefinition
+                               {:table-name        table-name
+                                :rows              rows
+                                :field-definitions (mapv create-field-definition field-definition-maps)})))
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
   {:style/indent 1}
   ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
-  (s/validate DatabaseDefinition (map->DatabaseDefinition {:database-name     database-name
-                                                           :table-definitions (mapv (partial apply create-table-definition)
-                                                                                    table-name+field-definition-maps+rows)})))
+  (s/validate DatabaseDefinition (map->DatabaseDefinition
+                                  {:database-name     database-name
+                                   :table-definitions (mapv (partial apply create-table-definition)
+                                                            table-name+field-definition-maps+rows)})))
 
 (def ^:private ^:const edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
@@ -184,12 +190,9 @@
   (edn/read-string (slurp (str edn-definitions-dir dbname ".edn"))))
 
 (defn update-table-def
-  "Function useful for modifying a table definition before it's
-  applied. Will invoke `UPDATE-TABLE-DEF-FN` on the vector of column
-  definitions and `UPDATE-ROWS-FN` with the vector of rows in the
-  database definition. `TABLE-DEF` is the database
-  definition (typically used directly in a `def-database-definition`
-  invocation)."
+  "Function useful for modifying a table definition before it's applied. Will invoke `UPDATE-TABLE-DEF-FN` on the vector
+  of column definitions and `UPDATE-ROWS-FN` with the vector of rows in the database definition. `TABLE-DEF` is the
+  database definition (typically used directly in a `def-database-definition` invocation)."
   [table-name-to-update update-table-def-fn update-rows-fn table-def]
   (vec
    (for [[table-name table-def rows :as orig-table-def] table-def]
