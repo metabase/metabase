@@ -611,6 +611,13 @@
      (= :presto datasets/*engine*)
      "2018-04-18"
 
+     ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with the SQL
+     ;; date parameter. The below value is not correct, but is what the driver returns right now. This bug is written
+     ;; up as https://github.com/metabase/metabase/issues/8804 and when fixed this should be removed as it should
+     ;; return the same value as the other drivers that support a report timezone
+     (= :snowflake datasets/*engine*)
+     "2018-04-17T17:00:00.000-07:00"
+
      (qpt/supports-report-timezone? datasets/*engine*)
      "2018-04-18T00:00:00.000-07:00"
 
@@ -621,8 +628,7 @@
       (process-native
         :native     {:query         (case datasets/*engine*
                                       :oracle "SELECT cast({{date}} as date) from dual"
-                                      "SELECT {{date}} as date"
-                                      #_"SELECT cast({{date}} as date)")
+                                      "SELECT cast({{date}} as date)")
                      :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
         :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
 
