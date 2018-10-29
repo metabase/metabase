@@ -364,7 +364,7 @@
 (defn default-create-db!
   "Default implementation of `create-db!` for SQL drivers."
   ([driver db-def]
-   (create-db! driver db-def nil))
+   (default-create-db! driver db-def nil))
   ([driver {:keys [table-definitions], :as dbdef} {:keys [skip-drop-db?]
                                                    :or   {skip-drop-db? false}}]
    (when-not skip-drop-db?
