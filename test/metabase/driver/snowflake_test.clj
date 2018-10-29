@@ -5,4 +5,3 @@
 (expect-with-engine :snowflake
                     "UTC"
                     (tu/db-timezone-id))
-

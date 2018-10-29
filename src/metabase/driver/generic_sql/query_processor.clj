@@ -14,7 +14,6 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor
