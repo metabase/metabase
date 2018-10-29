@@ -14,8 +14,8 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]]
-            [toucan.db :as db]
-            [clojure.java.jdbc :as jdbc]))
+            [toucan.db :as db])
+  (:import java.sql.Time))
 
 (defn- connection-details->spec
   "Create a database specification for a snowflake database."
@@ -140,6 +140,10 @@
   [_ table]
   (let [{table-name :name, schema :schema} table]
     (hx/qualify-and-escape-dots (query-db-name) schema table-name)))
+
+(defmethod sql.qp/->honeysql [SnowflakeDriver :time]
+  [driver [_ value unit]]
+  (hx/->time (sql.qp/->honeysql driver value)))
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
