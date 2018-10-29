@@ -86,9 +86,11 @@
 ;; Custom aggregation expressions should include their type
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :expressions)
   (conj #{{:name "x" :base_type :type/Float}}
-        (if (= datasets/*engine* :oracle)
-          {:name (data/format-name "category_id") :base_type :type/Decimal}
-          {:name (data/format-name "category_id") :base_type :type/Integer}))
+        {:name      (data/format-name "category_id")
+         :base_type (case datasets/*engine*
+                      :oracle    :type/Decimal
+                      :snowflake :type/Number
+                      :type/Integer)})
   (set (map #(select-keys % [:name :base_type])
             (-> (data/run-mbql-query venues
                   {:aggregation [:named [:sum [:* $price -1]] "x"]

@@ -79,6 +79,12 @@
     (= :mysql *engine*)
     []
 
+    ;; It looks like Snowflake is doing this conversion correctly. Snowflake's time field is stored as wall clock time
+    ;; (vs. PG and others storing it without a timezone). Originally, this time is 16:15 in UTC, which is 8:15 in
+    ;; pacific time. The other report timezone databases are not doing this timezone conversion.
+    (= :snowflake *engine*)
+    [[3 "Kaneonuskatew Eiran" "08:15:00.000-08:00"]]
+
     ;; Databases like PostgreSQL ignore timezone information when
     ;; using a time field, the result below is what happens when the
     ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific

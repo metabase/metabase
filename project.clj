@@ -87,6 +87,7 @@
                   :exclusions [com.github.wendykierp/JTransforms]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
+                 [net.snowflake/snowflake-jdbc "3.6.13"]              ; Snowflake JDBC Client Library
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.6.2"                ; migration management (Java lib)
                   :exclusions [ch.qos.logback/logback-classic]]

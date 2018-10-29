@@ -10,7 +10,11 @@
              [dataset-definitions :as defs]
              [datasets :refer [*engine*]]]))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
+(def ^:private dbs-exempt-from-format-rows-tests
+  "DBs to skip the tests below for. TODO - why are so many databases not running these tests?"
+  #{:oracle :mongo :redshift :presto :sparksql :snowflake})
+
+(qpt/expect-with-non-timeseries-dbs-except dbs-exempt-from-format-rows-tests
   (if (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
      [2 "Felipinho Asklepios" "2014-12-05 00:00:00" "15:15:00"]
@@ -29,7 +33,7 @@
             :limit    5}))
        qpt/rows))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
+(qpt/expect-with-non-timeseries-dbs-except dbs-exempt-from-format-rows-tests
   (cond
     (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
