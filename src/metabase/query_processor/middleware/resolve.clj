@@ -493,12 +493,22 @@
 (defn resolve-alias [expanded-query-dict]
   (let [join-tables (:join-tables (:query expanded-query-dict))
         table-id  (:source-table (or (:source-query (:query expanded-query-dict)) (:query expanded-query-dict)))
-        source-table-info (get-table-info table-id)]
-    (clojure.walk/postwalk
-      (fn [x]
-        (if
-          (instance? Field x) (resolve-field-info x source-table-info join-tables)
-                              x)) expanded-query-dict)))
+        source-table-info (get-table-info table-id)
+        source-query (:source-query (:query expanded-query-dict))]
+    (if (nil? source-query)
+      (clojure.walk/postwalk
+        (fn [x]
+          (if
+            (instance? Field x) (resolve-field-info x source-table-info join-tables)
+                                x)) expanded-query-dict)
+      (->>
+        (clojure.walk/postwalk
+          (fn [x]
+            (if
+              (instance? Field x) (resolve-field-info x source-table-info join-tables)
+                                  x)) source-query)
+        (assoc (:query expanded-query-dict) :source-query)
+        (assoc expanded-query-dict :query )))))
 ;;; ------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------
 
 (defn resolve-fields-if-needed
@@ -515,9 +525,9 @@
   [expanded-query-dict :- su/Map]
   (some-> expanded-query-dict
           record-fk-field-ids
-          resolve-tables
           resolve-fields
           resolve-field-literals
+          resolve-tables
           resolve-alias))
 
 (defn resolve-middleware

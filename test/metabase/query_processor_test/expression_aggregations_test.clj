@@ -167,7 +167,7 @@
              :breakout    [$price]}))))
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   {:rows    [[1  44]
              [2 177]
              [3  52]
@@ -180,7 +180,7 @@
                             :breakout    [$price]}))))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   {:rows    [[1 -19]
              [2  77]
              [3  -2]
@@ -206,7 +206,7 @@
                :breakout    [[:field-id $price]]})))))
 
 ;; check that we can handle METRICS (ick) inside a NAMED clause
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -221,7 +221,7 @@
                             :breakout     [[:field-id $price]]})))))
 
 ;; check that METRICS (ick) with a nested aggregation still work inside a NAMED clause
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -239,7 +239,7 @@
                                        :breakout     [[:field-id (data/id :venues :price)]]}})))))
 
 ;; check that named aggregations come back with the correct column metadata (#4002)
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-engines (set/difference (non-timeseries-engines-with-feature :expression-aggregations) (set #{:athena}))
   (let [col-name (driver/format-custom-field-name *driver* "Count of Things")]
     (assoc (aggregate-col :count)
       :name         col-name
