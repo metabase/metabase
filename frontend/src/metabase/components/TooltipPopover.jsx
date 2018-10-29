@@ -32,7 +32,14 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
   }
 
   return (
-    <Popover className="PopoverBody--tooltip" targetOffsetY={10} {...props}>
+    <Popover
+      className="PopoverBody--tooltip"
+      targetOffsetY={10}
+      // OnClickOutsideWrapper is unecessary and causes existing popovers not to
+      // be dismissed if a tooltip is visisble, so pass noOnClickOutsideWrapper
+      noOnClickOutsideWrapper
+      {...props}
+    >
       {popoverContent}
     </Popover>
   );
