@@ -153,7 +153,7 @@
   (plugins/setup-plugins!)
   (init-status/set-progress! 0.35)
 
-  ;; Load up all of our Database drivers, which are used for app db work
+  ;; Load up all of our Database drivers, which are used for connecting to external data warehouse DBs
   (driver/find-and-load-drivers!)
   (init-status/set-progress! 0.4)
 

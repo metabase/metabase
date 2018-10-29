@@ -309,7 +309,7 @@
 
      (register-driver! :postgres (PostgresDriver.))"
   [^Keyword engine, driver-instance]
-  {:pre [(keyword? engine) (map? driver-instance)]}
+  {:pre [(keyword? engine) driver-instance]}
   (swap! registered-drivers assoc engine driver-instance)
   (log/debug (trs "Registered driver {0} {1}" (u/format-color 'blue engine) (u/emoji "🚚"))))
 
@@ -328,12 +328,27 @@
     (register-driver-fn)
     (log/warn (trs "No -init-driver function found for ''{0}''" (name ns-symb)))))
 
+(defn possible-driver-namespaces
+  "Return a sequence of namespaces to look for drivers in."
+  []
+  ;; TODO - I think we should make this anything that ends in `metabase.driver.driver-name` because otherwise 3rd
+  ;; party drivers don't work since they can't be part of the `metabase` top-level module without being signed by us
+  (for [ns-symb @u/metabase-namespace-symbols
+        :when   (re-matches #"^metabase\.driver\.[a-z0-9_-]+$" (name ns-symb))]
+    ns-symb))
+
+(defn possible-driver-names
+  "Return a sequence of possible driver keywords. (Not all of these will be valid drivers; for example `generic-sql` or
+  `hive-like`.)"
+  []
+  (for [driver-ns (possible-driver-namespaces)]
+    (keyword (second (re-matches #"metabase\.driver\.(.*$)" (name driver-ns))))))
+
 (defn find-and-load-drivers!
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the
    `driver-init` function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [ns-symb @u/metabase-namespace-symbols
-          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
+  (doseq [ns-symb (possible-driver-namespaces)]
     (init-driver-in-namespace! ns-symb)))
 
 (defn is-engine?
@@ -465,13 +480,15 @@
 ;; ## Driver Lookup
 
 (defn engine->driver
-  "Return the driver instance that should be used for given ENGINE keyword.
-   This loads the corresponding driver if needed; this is done with a call like
+  "Return the driver instance that should be used for given ENGINE keyword. This loads the corresponding driver if
+  needed; this is done with a call like:
 
      (require 'metabase.driver.<engine>)
 
-   The namespace itself should register itself by passing an instance of a class that
-   implements `IDriver` to `metabase.driver/register-driver!`."
+  The namespace itself should register itself by passing an instance of a class that implements `IDriver` to
+  `metabase.driver/register-driver!`.
+
+  Returns `nil` if no matching driver could be found."
   [engine]
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)

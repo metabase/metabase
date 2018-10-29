@@ -7,7 +7,7 @@
              [query-processor :as qp]
              [query-processor-test :as qptest]
              [util :as u]]
-            [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.bigquery.query-processor :as bq.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [database :refer [Database]]
@@ -84,7 +84,7 @@
 
 (defn- pre-alias-aggregations [outer-query]
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (aggregation-names (#'bigquery/pre-alias-aggregations outer-query))))
+    (aggregation-names (#'bq.qp/pre-alias-aggregations outer-query))))
 
 (defn- query-with-aggregations
   [aggregations]
@@ -120,7 +120,7 @@
 (expect
   {}
   (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (#'bigquery/pre-alias-aggregations {})))
+    (#'bq.qp/pre-alias-aggregations {})))
 
 
 (expect-with-engine :bigquery
@@ -175,12 +175,12 @@
 ;; Make sure the BigQueryIdentifier class works as expected
 (expect
   ["SELECT `dataset.table`.`field`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier
+  (hsql/format {:select [(#'bq.qp/map->BigQueryIdentifier
                           {:dataset-name "dataset", :table-name "table", :field-name "field"})]}))
 
 (expect
   ["SELECT `dataset.table`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
+  (hsql/format {:select [(#'bq.qp/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
@@ -202,6 +202,15 @@
 ;; compared
 (expect-with-engine :bigquery
   "2018-08-31T00:00:00.000-05:00"
+  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (Database (data/id)))
+                                             :use-jvm-timezone true)}]]
+      (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
+
+;; NOCOMMIt
+(expect-with-engine :bigquery
+  1000
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
                                   :details (assoc (:details (Database (data/id)))

@@ -61,19 +61,17 @@
 
 ;;; ------------------------------- Functions That Get Ran On Test Suite Start / Stop --------------------------------
 
-;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for
-;; some of the unit tests work work properly
-(driver/find-and-load-drivers!)
-
 (defn test-startup
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
   ;; on a BG thread
+  ;;
   (let [start-jetty! (future (core/start-jetty!))]
     (try
       (plugins/setup-plugins!)
+      (driver/find-and-load-drivers!)
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
       ;; we don't want to actually start the task scheduler (we don't want sync or other stuff happening in the BG

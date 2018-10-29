@@ -4,9 +4,10 @@
              [format :as tformat]]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase.driver
-             [bigquery :as bigquery]
-             [google :as google]]
+            [metabase.driver.bigquery
+             [client :as bq.client]
+             [query-processor :as bq.qp]]
+            [metabase.driver.google :as google]
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
@@ -36,7 +37,7 @@
 
 (def ^:private ^Bigquery bigquery
   (datasets/when-testing-engine :bigquery
-    (#'bigquery/database->client {:details details})))
+    (bq.client/database->client {:details details})))
 
 (defn- database->connection-details
   ([_ {:keys [database-name]}]
@@ -86,7 +87,7 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (#'bigquery/post-process-native
+  (ffirst (:rows (#'bq.qp/post-process-native
                   (google/execute
                    (.query (.jobs bigquery) project-id
                            (doto (QueryRequest.)
@@ -159,7 +160,7 @@
   [t]
   (->> t
        tcoerce/to-date-time
-       (tformat/unparse #'bigquery/bigquery-time-format)))
+       (tformat/unparse #'bq.qp/bigquery-time-format)))
 
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."

@@ -1,6 +1,8 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql :refer :all]
             [metabase.models
              [field :refer [Field]]
@@ -16,12 +18,15 @@
 (def ^:private users-name-field (delay (Field (id :users :name))))
 
 (def ^:private generic-sql-engines
-  (delay (set (for [engine datasets/all-valid-engines
-                    :let   [driver (driver/engine->driver engine)]
-                    :when  (not (contains? #{:bigquery :presto :sparksql} engine))       ; bigquery, presto and sparksql don't use the generic sql implementations of things like `field-avg-length`
+  (delay (set (for [driver-name datasets/all-possible-driver-names
+                    ;; bigquery, presto and sparksql don't use the generic sql implementations of things like `field-avg-length`
+                    :when  (not (#{:bigquery :presto :sparksql} driver-name))
+                    :let   [driver (driver/engine->driver driver-name)]
+                    :when  driver
                     :when  (extends? ISQLDriver (class driver))]
-                (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
-                    engine)))))
+                ;; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
+                (do (require (symbol (str "metabase.test.data." (name driver-name))) :reload)
+                    driver-name)))))
 
 
 ;; DESCRIBE-DATABASE

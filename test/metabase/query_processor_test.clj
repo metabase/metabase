@@ -25,11 +25,11 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private ^:const timeseries-engines #{:druid})
+(def ^:private timeseries-engines #{:druid})
 
 (def ^:const non-timeseries-engines
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference datasets/all-valid-engines timeseries-engines))
+  (set/difference datasets/all-possible-driver-names timeseries-engines))
 
 (defn non-timeseries-engines-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
@@ -37,7 +37,9 @@
   [feature & more-features]
   (let [features (set (cons feature more-features))]
     (set (for [engine non-timeseries-engines
-               :when  (set/subset? features (driver/features (driver/engine->driver engine)))]
+               :let   [driver (driver/engine->driver engine)]
+               :when  (and driver
+                           (set/subset? features (driver/features driver)))]
            engine))))
 
 (defn non-timeseries-engines-without-feature

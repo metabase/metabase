@@ -16,9 +16,7 @@
 ;; Oracle driver won't show up in the list of valid drivers below
 (plugins/load-plugins!)
 
-(driver/find-and-load-drivers!)
-
-(def ^:const all-valid-engines (set (keys (driver/available-drivers))))
+(def all-possible-driver-names (set (driver/possible-driver-names)))
 
 ;; # Logic for determining which datasets to test against
 
@@ -31,34 +29,34 @@
 ;;    # just test against :h2 (default)
 ;;    ENGINES=generic-sql
 
-(defn- get-engines-from-env
-  "Return a set of dataset names to test against from the env var `ENGINES`."
+(defn- get-driver-names-from-env
+  "Return a set of driver names to test against from the env var `ENGINES`."
   []
-  (when-let [env-engines (some-> (env :engines) s/lower-case)]
-    (set (for [engine (s/split env-engines #",")
+  (when-let [env-driver-names (some-> (env :engines) s/lower-case)]
+    (set (for [engine (s/split env-driver-names #",")
                :when engine]
            (keyword engine)))))
 
-(def ^:const test-engines
+(def test-driver-names
   "Set of names of drivers we should run tests against.
    By default, this only contains `:h2` but can be overriden by setting env var `ENGINES`."
-  (let [engines (or (get-engines-from-env)
-                    #{:h2})]
+  (let [driver-names (or (get-driver-names-from-env)
+                         #{:h2})]
     (when config/is-test?
-      (log/info (color/cyan "Running QP tests against these engines: " engines)))
+      (log/info (color/cyan "Running QP tests against these driver-names: " driver-names)))
 
-    (when-not (every? all-valid-engines engines)
+    (when-not (every? all-possible-driver-names driver-names)
       (throw (Exception.
               (format "Testing on '%s', but the following drivers are not available '%s'"
-                      engines (set (remove all-valid-engines engines))))))
-    engines))
+                      driver-names (set (remove all-possible-driver-names driver-names))))))
+    driver-names))
 
 
 ;; # Helper Macros
 
 (def ^:private ^:const default-engine
-  (if (contains? test-engines :h2) :h2
-      (first test-engines)))
+  (if (contains? test-driver-names :h2) :h2
+      (first test-driver-names)))
 
 (def ^:dynamic *engine*
   "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
@@ -106,7 +104,7 @@
    (This does NOT bind `*driver*`; use `do-with-engine` if you want to do that.)"
   {:style/indent 1}
   [engine f]
-  (when (contains? test-engines engine)
+  (when (contains? test-driver-names engine)
     (f)))
 
 (defmacro when-testing-engine
@@ -156,11 +154,4 @@
   dataset. `*driver*` is bound to the current dataset inside each test."
   {:style/indent 0}
   [expected actual]
-  `(expect-with-engines all-valid-engines ~expected ~actual))
-
-
-;;; Load metabase.test.data.* namespaces for all available drivers
-(doseq [engine all-valid-engines]
-  (let [driver-test-namespace (engine->test-extensions-ns-symbol engine)]
-    (when (find-ns driver-test-namespace)
-      (require driver-test-namespace))))
+  `(expect-with-engines all-possible-driver-names ~expected ~actual))

@@ -107,9 +107,7 @@
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
-  :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
-            [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
-             :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
+  :plugins [[lein-environ "1.1.0"]]                                   ; easy access to environment variables
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
@@ -148,6 +146,8 @@
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
+                             [lein-ring "0.12.3"                      ; start the HTTP server with 'lein ring server'
+                              :exclusions [org.clojure/clojure]]
                              [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
@@ -155,7 +155,9 @@
                    :jvm-opts ["-Dlogfile.path=target/log"]
                    ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
                    :aot [metabase.logger
-                         metabase.task.DynamicClassLoadHelper]}
+                         metabase.task.DynamicClassLoadHelper
+                         ;; I think we need to AOT this class or otherwise the REPL will be confused about how to find it
+                         metabase.driver.bigquery.BigQueryDriver]}
              :ci {:jvm-opts ["-Xmx2500m"]}
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup  ; for test setup stuff
@@ -163,8 +165,7 @@
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
-                            :jvm-opts ["-Xms1024m"                    ; give JVM a decent heap size to start with
-                                       "-Duser.timezone=UTC"
+                            :jvm-opts ["-Duser.timezone=UTC"
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"

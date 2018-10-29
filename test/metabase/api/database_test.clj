@@ -184,7 +184,7 @@
 ;; Test that we can get all the DBs (ordered by name)
 ;; Database details *should not* come back for Rasta since she's not a superuser
 (expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
-  (set (filter some? (conj (for [engine datasets/all-valid-engines]
+  (set (filter some? (conj (for [engine datasets/all-possible-driver-names]
                              (datasets/when-testing-engine engine
                                (merge default-db-details
                                       (match-$ (data/get-or-create-test-data-db! (driver/engine->driver engine))
@@ -225,7 +225,7 @@
                        :native_permissions "write"
                        :tables             []
                        :features           (map name (driver/features (driver/engine->driver :postgres)))}))
-             (filter identity (for [engine datasets/all-valid-engines]
+             (filter identity (for [engine datasets/all-possible-driver-names]
                                 (datasets/when-testing-engine engine
                                   (let [database (data/get-or-create-test-data-db! (driver/engine->driver engine))]
                                     (merge default-db-details
