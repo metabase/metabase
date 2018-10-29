@@ -356,7 +356,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*), :allow-dashed-names? true)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 

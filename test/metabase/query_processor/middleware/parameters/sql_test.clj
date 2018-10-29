@@ -13,11 +13,11 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [generic-sql :as generic-sql]]
-            [metabase.util.date :as du]
-            [toucan.db :as db]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
+            [schema.core :as s]))
 
 ;;; ----------------------------------------------- basic parser tests -----------------------------------------------
 
@@ -554,19 +554,12 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(defn- quote-name [identifier]
-  (generic-sql/quote-name datasets/*driver* identifier))
-
-(defn- checkins-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
-  ;; Presto we will just hackily return the correct identifier here
-  (case datasets/*engine*
-    :bigquery "`test_data.checkins`"
-    :presto   "\"default\".\"checkins\""
-    (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
-      (str (when (seq schema)
-             (str (quote-name schema) \.))
-           (quote-name table-name)))))
+(s/defn ^:private checkins-identifier :- su/NonBlankString
+  "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
+  to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  []
+  (let [sql (:query (qp/query->native (data/mbql-query checkins)))]
+    (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
@@ -604,8 +597,8 @@
                                                      :dimension    [:field-id (data/id :checkins :date)]}}}
         :parameters []))))
 
-;; test that relative dates work correctly. It should be enough to try just one type of relative date here,
-;; since handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
+;; test that relative dates work correctly. It should be enough to try just one type of relative date here, since
+;; handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
 (datasets/expect-with-engines sql-parameters-engines
   [0]
   (first-row
@@ -647,18 +640,26 @@
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (first-row
       (process-native
-        :native     {:query         (cond
-                                      (= :bigquery datasets/*engine*)
+        :native     {:query         (case datasets/*engine*
+                                      :bigquery
                                       "SELECT {{date}} as date"
-                                      (= :oracle datasets/*engine*)
+
+                                      :oracle
                                       "SELECT cast({{date}} as date) from dual"
-                                      :else
+
                                       "SELECT cast({{date}} as date)")
                      :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
         :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
 
 
 ;;; -------------------------------------------- SQL PARAMETERS 2.0 TESTS --------------------------------------------
+
+;; make sure we handle quotes inside names correctly!
+(expect
+  {:replacement-snippet     "\"test-data\".\"PUBLIC\".\"checkins\".\"date\"",
+   :prepared-statement-args nil}
+  (binding [qp.i/*driver* (driver/engine->driver :postgres)]
+    (#'sql/honeysql->replacement-snippet-info :test-data.PUBLIC.checkins.date)))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 

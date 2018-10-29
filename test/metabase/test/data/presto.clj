@@ -71,18 +71,22 @@
       query
       (unprepare/unprepare (cons query params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))))
 
-(defn- create-db! [{:keys [table-definitions] :as dbdef}]
-  (let [details (database->connection-details :db dbdef)]
-    (doseq [tabledef table-definitions
-            :let [rows       (:rows tabledef)
-                  ;; generate an ID for each row because we don't have auto increments
-                  keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows)
-                  ;; make 100 rows batches since we have to inline everything
-                  batches    (partition 100 100 nil keyed-rows)]]
-      (#'presto/execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef))
-      (#'presto/execute-presto-query! details (create-table-sql dbdef tabledef))
-      (doseq [batch batches]
-        (#'presto/execute-presto-query! details (insert-sql dbdef tabledef batch))))))
+(defn- create-db!
+  ([db-def]
+   (create-db! db-def nil))
+  ([{:keys [table-definitions] :as dbdef} {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
+   (let [details (database->connection-details :db dbdef)]
+     (doseq [tabledef table-definitions
+             :let     [rows       (:rows tabledef)
+                       ;; generate an ID for each row because we don't have auto increments
+                       keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows)
+                       ;; make 100 rows batches since we have to inline everything
+                       batches    (partition 100 100 nil keyed-rows)]]
+       (when-not skip-drop-db?
+         (#'presto/execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef)))
+       (#'presto/execute-presto-query! details (create-table-sql dbdef tabledef))
+       (doseq [batch batches]
+         (#'presto/execute-presto-query! details (insert-sql dbdef tabledef batch)))))))
 
 ;;; IDriverTestExtensions implementation
 
