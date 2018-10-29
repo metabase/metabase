@@ -272,7 +272,7 @@ jobs:
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
             lein with-profile +ci test
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
   be-tests-sqlserver:
     <<: *defaults
