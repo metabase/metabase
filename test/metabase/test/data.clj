@@ -295,7 +295,7 @@
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
        ;; to fix this we just need to reload a couple namespaces and then try again
-       (catch IllegalArgumentException _
+       (catch Exception _
          (reload-test-extensions engine)
          (get-or-create!))))))
 
