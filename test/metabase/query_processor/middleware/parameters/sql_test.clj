@@ -558,7 +558,8 @@
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
-  (second (re-find #"FROM\s([^\s]+)" (:query (qp/query->native (data/mbql-query checkins))))))
+  (let [sql (:query (qp/query->native (data/mbql-query checkins)))]
+    (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
@@ -647,7 +648,12 @@
     (first-row
       (process-native
         :native     {:query         (case datasets/*engine*
-                                      :oracle "SELECT cast({{date}} as date) from dual"
+                                      :bigquery
+                                      "SELECT {{date}} as date"
+
+                                      :oracle
+                                      "SELECT cast({{date}} as date) from dual"
+
                                       "SELECT cast({{date}} as date)")
                      :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
         :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))

@@ -362,9 +362,11 @@
         (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
 
 (defn default-create-db!
-  ([driver database-definition]
-   (default-create-db! driver database-definition false))
-  ([driver {:keys [table-definitions], :as dbdef} skip-drop-db?]
+  "Default implementation of `create-db!` for SQL drivers."
+  ([driver db-def]
+   (create-db! driver db-def nil))
+  ([driver {:keys [table-definitions], :as dbdef} {:keys [skip-drop-db?]
+                                                   :or   {skip-drop-db? false}}]
    (when-not skip-drop-db?
      ;; Exec SQL for creating the DB
      (execute-sql! driver :server dbdef (str (drop-db-if-exists-sql driver dbdef) ";\n"
