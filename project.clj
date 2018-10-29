@@ -10,7 +10,8 @@
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
-            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
+            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
+            "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -28,6 +29,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.5-alpha2"                                ; Async HTTP library; WebSockets
                   :exclusions [org.clojure/tools.logging]]
+                 [bigml/histogram "4.1.3"]                            ; Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -177,4 +179,5 @@
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; get the H2 shell with 'lein h2'
-             :h2-shell {:main org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}
+             :generate-automagic-dashboards-pot {:main metabase.automagic-dashboards.rules}})

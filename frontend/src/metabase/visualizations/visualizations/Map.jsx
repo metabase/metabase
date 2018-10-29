@@ -223,17 +223,19 @@ export default class Map extends Component {
       ) {
         throw new ChartSettingsError(
           t`Please select longitude and latitude columns in the chart settings.`,
-          "Data",
+          { section: t`Data` },
         );
       }
     } else if (settings["map.type"] === "region") {
       if (!settings["map.region"]) {
-        throw new ChartSettingsError(t`Please select a region map.`, "Data");
+        throw new ChartSettingsError(t`Please select a region map.`, {
+          section: t`Data`,
+        });
       }
       if (!settings["map.dimension"] || !settings["map.metric"]) {
         throw new ChartSettingsError(
           t`Please select region and metric columns in the chart settings.`,
-          "Data",
+          { section: t`Data` },
         );
       }
     }

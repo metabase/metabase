@@ -181,16 +181,16 @@
 ;; TODO - binning strategy param is disallowed for `:default` and required for the others. For `num-bins` it must also
 ;; be an integer.
 (defclause ^{:requires-features #{:binning}} binning-strategy
-  field          BinnableField
-  strategy-name  BinningStrategyName
-  strategy-param (optional (s/constrained s/Num (complement neg?) "strategy param must be >= 0."))
+  field            BinnableField
+  strategy-name    BinningStrategyName
+  strategy-param   (optional (s/constrained s/Num (complement neg?) "strategy param must be >= 0."))
   ;; These are added in automatically by the `binning` middleware. Don't add them yourself, as they're just be
   ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
 
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
-  `:fk->`."
+  `:fk->` or an expression reference `[:expression <name>]`."
   (one-of field-id field-literal fk-> datetime-field expression binning-strategy))
 
 ;; aggregate field reference refers to an aggregation, e.g.

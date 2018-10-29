@@ -67,7 +67,7 @@
   localized string needs to be 'late bound' and only occur when the user's locale is in scope. Calling `str` on the
   results of this invocation will lookup the translated version of the string."
   [msg & args]
-  `(UserLocalizedString. (namespace-munge *ns*) ~msg ~(vec args)))
+  `(UserLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
 (defmacro trs
   "Similar to `puppetlabs.i18n.core/trs` but creates a `SystemLocalizedString` instance so that conversion to the
@@ -75,7 +75,7 @@
   overridden/changed by a setting. Calling `str` on the results of this invocation will lookup the translated version
   of the string."
   [msg & args]
-  `(SystemLocalizedString. (namespace-munge *ns*) ~msg ~(vec args)))
+  `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
 (def ^:private localized-string-checker
   "Compiled checker for `LocalizedString`s which is more efficient when used repeatedly like in `localized-string?`

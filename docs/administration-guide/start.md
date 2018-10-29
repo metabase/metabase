@@ -7,6 +7,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Enabling features that send email (SMTP)](02-setting-up-email.md)
 * [Setting up Slack integration](09-setting-up-slack.md)
 * [Configuring settings](08-configuration-settings.md)
+* [Setting formatting defaults for dates and numbers](19-formatting-settings.md)
 * [Caching query results](14-caching.md)
 * [Customizing how Metabase looks with white labeling<sup>*</sup>](15-whitelabeling.md)
 
