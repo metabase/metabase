@@ -10,7 +10,6 @@
             [clojure.tools.logging :as log]
             [metabase.driver.druid.js :as js]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -18,8 +17,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]]
-            [toucan.db :as db])
+             [i18n :as ui18n :refer [tru]]])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
@@ -1034,7 +1032,7 @@
     middleware                                   :middleware
     :as                                          query-context}]
   {:pre [query]}
-  (let [details       (db/select-one-field :details Database :id (u/get-id database-id))
+  (let [details       (:details (qp.store/database))
         query         (if (string? query)
                         (json/parse-string query keyword)
                         query)
