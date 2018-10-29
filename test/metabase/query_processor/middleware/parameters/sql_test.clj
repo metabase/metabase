@@ -616,7 +616,7 @@
      ;; up as https://github.com/metabase/metabase/issues/8804 and when fixed this should be removed as it should
      ;; return the same value as the other drivers that support a report timezone
      (= :snowflake datasets/*engine*)
-     "2018-04-17T17:00:00.000-07:00"
+     "2018-04-16T17:00:00.000-07:00"
 
      (qpt/supports-report-timezone? datasets/*engine*)
      "2018-04-18T00:00:00.000-07:00"
