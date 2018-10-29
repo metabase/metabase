@@ -25,7 +25,7 @@
 ;; These tests make up a fake driver and then confirm that sync uses the various methods defined by the driver to
 ;; correctly sync appropriate metadata rows (Table/Field/etc.) in the Application DB
 
-(def ^:private ^:const sync-test-tables
+(def ^:private sync-test-tables
   {"movie"  {:name   "movie"
              :schema "default"
              :fields #{{:name          "id"
@@ -51,8 +51,7 @@
 
 
 ;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
-(defrecord SyncTestDriver []
-  :load-ns true
+(defrecord ^:private SyncTestDriver []
   clojure.lang.Named
   (getName [_] "SyncTestDriver"))
 
@@ -88,9 +87,7 @@
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
                (assoc :fields (for [field (db/select Field, :table_id (:id table), {:order-by [:name]})]
-                                (into {} (-> (dissoc field
-                                                     :table :db :children :qualified-name :qualified-name-components
-                                                     :values :target)
+                                (into {} (-> field
                                              (update :fingerprint map?)
                                              (update :fingerprint_version (complement zero?))))))
                tu/boolean-ids-and-timestamps)))
@@ -130,7 +127,61 @@
    :special_type        nil
    :table_id            true
    :updated_at          true
-   :visibility_type     :normal})
+   :visibility_type     :normal
+   :settings            nil})
+
+(def ^:private field-defaults-with-fingerprint
+  (assoc field-defaults
+    :last_analyzed       true
+    :fingerprint_version true
+    :fingerprint         true))
+
+(def ^:private field:movie-id
+  (merge
+   field-defaults
+   {:name          "id"
+    :display_name  "ID"
+    :database_type "SERIAL"
+    :base_type     :type/Integer
+    :special_type  :type/PK}))
+
+(def ^:private field:movie-studio
+  (merge
+   field-defaults-with-fingerprint
+   {:name               "studio"
+    :display_name       "Studio"
+    :database_type      "VARCHAR"
+    :base_type          :type/Text
+    :fk_target_field_id true
+    :special_type       :type/FK}))
+
+(def ^:private field:movie-title
+  (merge
+   field-defaults-with-fingerprint
+   {:name          "title"
+    :display_name  "Title"
+    :database_type "VARCHAR"
+    :base_type     :type/Text
+    :special_type  :type/Title}))
+
+(def ^:private field:studio-name
+  (merge
+   field-defaults-with-fingerprint
+   {:name          "name"
+    :display_name  "Name"
+    :database_type "VARCHAR"
+    :base_type     :type/Text
+    :special_type  :type/Name}))
+
+;; `studio.studio`? huh?
+(def ^:private field:studio-studio
+  (merge
+   field-defaults
+   {:name          "studio"
+    :display_name  "Studio"
+    :database_type "VARCHAR"
+    :base_type     :type/Text
+    :special_type  :type/PK}))
 
 ;; ## SYNC DATABASE
 (expect
@@ -138,39 +189,14 @@
           {:schema       "default"
            :name         "movie"
            :display_name "Movie"
-           :fields       [(merge field-defaults
-                                 {:name          "id"
-                                  :display_name  "ID"
-                                  :database_type "SERIAL"
-                                  :base_type     :type/Integer
-                                  :special_type  :type/PK})
-                          (merge field-defaults
-                                 {:name               "studio"
-                                  :display_name       "Studio"
-                                  :database_type      "VARCHAR"
-                                  :base_type          :type/Text
-                                  :fk_target_field_id true
-                                  :special_type       :type/FK})
-                          (merge field-defaults
-                                 {:name          "title"
-                                  :display_name  "Title"
-                                  :database_type "VARCHAR"
-                                  :base_type     :type/Text
-                                  :special_type  :type/Title})]})
+           :fields       [field:movie-id
+                          field:movie-studio
+                          field:movie-title]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
-           :fields       [(merge field-defaults
-                                 {:name          "name"
-                                  :display_name  "Name"
-                                  :database_type "VARCHAR"
-                                  :base_type     :type/Text})
-                          (merge field-defaults
-                                 {:name          "studio"
-                                  :display_name  "Studio"
-                                  :database_type "VARCHAR"
-                                  :base_type     :type/Text
-                                  :special_type  :type/PK})]})]
+           :fields       [field:studio-name
+                          field:studio-studio]})]
   (tt/with-temp Database [db {:engine :sync-test}]
     (sync/sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
@@ -186,23 +212,10 @@
          {:schema       "default"
           :name         "movie"
           :display_name "Movie"
-          :fields       [(merge field-defaults
-                                {:name          "id"
-                                 :display_name  "ID"
-                                 :database_type "SERIAL"
-                                 :base_type     :type/Integer
-                                 :special_type  :type/PK})
-                         (merge field-defaults
-                                {:name          "studio"
-                                 :display_name  "Studio"
-                                 :database_type "VARCHAR"
-                                 :base_type     :type/Text})
-                         (merge field-defaults
-                                {:name          "title"
-                                 :display_name  "Title"
-                                 :database_type "VARCHAR"
-                                 :base_type     :type/Text
-                                 :special_type  :type/Title})]})
+          :fields       [field:movie-id
+                         ;; FKs only get synced when you sync the whole DB
+                         (assoc field:movie-studio :fk_target_field_id false, :special_type nil)
+                         field:movie-title]})
   (tt/with-temp* [Database [db    {:engine :sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"

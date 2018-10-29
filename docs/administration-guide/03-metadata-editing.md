@@ -64,11 +64,12 @@ Common detailed types include:
 * Longitude
 * Entity Name
 * Number
+* Currency
 * State
 * URL
 * Zip Code
 
-This is also where you set mark special fields in a table:
+This is also where you set special fields in a table:
 
 * Entity Key — the field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
@@ -101,5 +102,5 @@ If Metabase picked the wrong kind of filter UI for one of your fields, you can m
 
 ---
 
-## Next: managing users
-Let’s learn how to add, remove, and edit users in the [managing users section](04-managing-users.md).
+## Next: creating segments and metrics
+Learn how to create canonical definitions of your commonly used [segments and metrics](07-segments-and-metrics.md).

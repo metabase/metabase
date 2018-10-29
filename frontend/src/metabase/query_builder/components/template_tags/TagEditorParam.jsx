@@ -69,7 +69,7 @@ export default class TagEditorParam extends Component {
         ...this.props.tag,
         type: type,
         dimension: undefined,
-        widget_type: undefined,
+        "widget-type": undefined,
       });
     }
   }
@@ -83,16 +83,19 @@ export default class TagEditorParam extends Component {
         return;
       }
       const options = parameterOptionsForField(field);
-      let widget_type;
-      if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
-        widget_type = tag.widget_type;
+      let widgetType;
+      if (
+        tag["widget-type"] &&
+        _.findWhere(options, { type: tag["widget-type"] })
+      ) {
+        widgetType = tag["widget-type"];
       } else if (options.length > 0) {
-        widget_type = options[0].type;
+        widgetType = options[0].type;
       }
       onUpdate({
         ...tag,
         dimension,
-        widget_type,
+        "widget-type": widgetType,
       });
     }
   }
@@ -124,10 +127,10 @@ export default class TagEditorParam extends Component {
           <h5 className="pb1 text-normal">{t`Filter label`}</h5>
           <InputBlurChange
             type="text"
-            value={tag.display_name}
+            value={tag["display-name"]}
             className="AdminSelect p1 text-bold text-medium bordered border-med rounded full"
             onBlurChange={e =>
-              this.setParameterAttribute("display_name", e.target.value)
+              this.setParameterAttribute("display-name", e.target.value)
             }
           />
         </div>
@@ -176,11 +179,11 @@ export default class TagEditorParam extends Component {
               <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
               <Select
                 className="border-med bg-white block"
-                value={tag.widget_type}
+                value={tag["widget-type"]}
                 onChange={e =>
-                  this.setParameterAttribute("widget_type", e.target.value)
+                  this.setParameterAttribute("widget-type", e.target.value)
                 }
-                isInitiallyOpen={!tag.widget_type}
+                isInitiallyOpen={!tag["widget-type"]}
                 placeholder={t`Select…`}
               >
                 {[{ name: "None", type: undefined }]
@@ -194,24 +197,22 @@ export default class TagEditorParam extends Component {
             </div>
           )}
 
-        {tag.type !== "dimension" && (
-          <div className="flex align-center pb1">
-            <h5 className="text-normal mr1">{t`Required?`}</h5>
-            <Toggle
-              value={tag.required}
-              onChange={value => this.setRequired(value)}
-            />
-          </div>
-        )}
+        <div className="flex align-center pb1">
+          <h5 className="text-normal mr1">{t`Required?`}</h5>
+          <Toggle
+            value={tag.required}
+            onChange={value => this.setRequired(value)}
+          />
+        </div>
 
         {((tag.type !== "dimension" && tag.required) ||
-          (tag.type === "dimension" || tag.widget_type)) && (
+          (tag.type === "dimension" || tag["widget-type"])) && (
           <div className="pb1">
             <h5 className="pb1 text-normal">{t`Default filter widget value`}</h5>
             <ParameterValueWidget
               parameter={{
                 type:
-                  tag.widget_type ||
+                  tag["widget-type"] ||
                   (tag.type === "date" ? "date/single" : null),
               }}
               value={tag.default}

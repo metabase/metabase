@@ -10,7 +10,8 @@
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
-            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
+            "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
+            "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -28,6 +29,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.5-alpha2"                                ; Async HTTP library; WebSockets
                   :exclusions [org.clojure/tools.logging]]
+                 [bigml/histogram "4.1.3"]                            ; Histogram data structure
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
@@ -93,7 +95,7 @@
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
                  [org.xerial/sqlite-jdbc "3.21.0.1"]                  ; SQLite driver
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
-                 [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
+                 [prismatic/schema "1.1.9"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
                  [ring/ring-core "1.6.0"]
@@ -106,8 +108,7 @@
                  ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
-             :exclusions [org.clojure/clojure]]                       ; TODO - should this be a dev dependency ?
-            [puppetlabs/i18n "0.8.0"]]                                ; i18n helpers
+             :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
@@ -123,8 +124,9 @@
          :reload-paths ["src"]}
   :eastwood {:exclude-namespaces
              [:test-paths
-              metabase.driver.generic-sql                             ; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
-              metabase.query-processor.middleware.binning]            ; Similarly Eastwood gets confused because this namespace relies on defrecord :load-ns options which it seems to ignore :(
+              ;; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+              metabase.driver.generic-sql]
+             :config-files ["./test_resources/eastwood-config.clj"]
              :add-linters [:unused-private-vars
                            :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
@@ -133,15 +135,14 @@
                            ;; and re-enable them if we can get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-             :exclude-linters [#_:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
-                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
+             :exclude-linters [:deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated functions & macros
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]        ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-                             [jonase/eastwood "0.2.6"
+                             [jonase/eastwood "0.3.1"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
@@ -177,4 +178,5 @@
              :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; get the H2 shell with 'lein h2'
-             :h2-shell {:main org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}
+             :generate-automagic-dashboards-pot {:main metabase.automagic-dashboards.rules}})

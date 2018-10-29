@@ -1,5 +1,19 @@
 (ns metabase.query-processor-test.date-bucketing-test
-  "Tests for date bucketing."
+  "The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
+  timezones in play when querying using these date bucketing features. The most visible is how timestamps are returned
+  to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps regardless of
+  timezone of the database. Specifying a report timezone (if the database supports it) will return the timestamps in
+  that timezone (manifesting itself as an offset for that time). Using the JVM timezone that doesn't match the
+  database timezone (assuming the database doesn't support a report timezone) can lead to incorrect results.
+
+  The second place timezones can impact this is calculations in the database. A good example of this is grouping
+  something by day. In that case, the start (or end) of the day will be different depending on what timezone the
+  database is in. The start of the day in pacific time is 7 (or 8) hours earlier than UTC. This means there might be a
+  different number of results depending on what timezone we're in. Report timezone lets the user specify that, and it
+  gets pushed into the database so calculations are made in that timezone.
+
+  If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
+  their results."
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
@@ -7,7 +21,6 @@
              [driver :as driver]
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -16,23 +29,6 @@
              [datasets :as datasets :refer [*driver* *engine*]]
              [interface :as i]])
   (:import org.joda.time.DateTime))
-
-;; The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
-;; timezones in play when querying using these date bucketing features. The most visible is how timestamps are
-;; returned to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps
-;; regardless of timezone of the database. Specifying a report timezone (if the database supports it) will return the
-;; timestamps in that timezone (manifesting itself as an offset for that time). Using the JVM timezone that doesn't
-;; match the database timezone (assuming the database doesn't support a report timezone) can lead to incorrect
-;; results.
-;;
-;; The second place timezones can impact this is calculations in the database. A good example of this is grouping
-;; something by day. In that case, the start (or end) of the day will be different depending on what timezone the
-;; database is in. The start of the day in pacific time is 7 (or 8) hours earlier than UTC. This means there might be
-;; a different number of results depending on what timezone we're in. Report timezone lets the user specify that, and
-;; it gets pushed into the database so calculations are made in that timezone.
-;;
-;; If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries
-;; or their results.
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -51,10 +47,10 @@
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
    (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-          (data/run-query incidents
-            (ql/aggregation (ql/count))
-            (ql/breakout (ql/datetime-field $timestamp unit))
-            (ql/limit 10)))
+          (data/run-mbql-query incidents
+            {:aggregation [[:count]]
+             :breakout    [[:datetime-field $timestamp unit]]
+             :limit       10}))
         rows (format-rows-by [->long-if-number int])))
   ([unit tz]
    (tu/with-temporary-setting-values [report-timezone (.getID tz)]
@@ -315,13 +311,13 @@
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
   (-> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
-        (data/run-query incidents
-          (ql/aggregation (ql/count))
-          (ql/breakout (ql/datetime-field $timestamp :day))
-          (ql/filter
-           (ql/between (ql/datetime-field $timestamp :default)
-                       start-date-str
-                       end-date-str))))
+        (data/run-mbql-query incidents
+          {:aggregation [[:count]]
+           :breakout    [[:datetime-field $timestamp :day]]
+           :filter      [:between
+                         [:datetime-field $timestamp :default]
+                         start-date-str
+                         end-date-str]}))
       rows
       first
       second
@@ -804,10 +800,11 @@
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
   (-> (data/with-temp-db [_ db]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/= (ql/datetime-field $timestamp field-grouping)
-                           (apply ql/relative-datetime relative-datetime-args)))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:=
+                         [:datetime-field $timestamp field-grouping]
+                         (cons :relative-datetime relative-datetime-args)]}))
       first-row first int))
 
 ;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran
@@ -835,17 +832,17 @@
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   1
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/time-interval $timestamp :current :day))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:time-interval $timestamp :current :day]}))
       first-row first int))
 
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   7
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
-        (data/run-query checkins
-          (ql/aggregation (ql/count))
-          (ql/filter (ql/time-interval $timestamp :last :week))))
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:time-interval $timestamp :last :week]}))
       first-row first int))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
@@ -854,10 +851,10 @@
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
                                         :or   {with-interval :current}}]
   (let [results (data/with-temp-db [_ (checkins:1-per-day)]
-                  (data/run-query checkins
-                    (ql/aggregation (ql/count))
-                    (ql/breakout (ql/datetime-field $timestamp breakout-by))
-                    (ql/filter (ql/time-interval $timestamp with-interval filter-by))))]
+                  (data/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [[:datetime-field $timestamp breakout-by]]
+                     :filter      [:time-interval $timestamp with-interval filter-by]}))]
     {:rows (or (-> results :row_count)
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))

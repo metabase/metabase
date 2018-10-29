@@ -129,7 +129,8 @@
                                        :visibility_type  :keyword
                                        :description      :clob
                                        :has_field_values :keyword
-                                       :fingerprint      :json})
+                                       :fingerprint      :json
+                                       :settings         :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update

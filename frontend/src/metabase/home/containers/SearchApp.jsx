@@ -9,6 +9,7 @@ import { Box, Flex } from "grid-styled";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
 import Card from "metabase/components/Card";
+import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
 import ItemTypeFilterBar, {
@@ -44,15 +45,15 @@ export default class SearchApp extends React.Component {
             {({ list }) => {
               if (list.length === 0) {
                 return (
-                  <Flex align="center" justify="center" my={4} py={4}>
-                    <Box>
-                      <img src="../app/assets/img/no_results.svg" />
-                    </Box>
-                    <Box mt={4}>
-                      <Subhead>{t`It's quiet around here...`}</Subhead>
-                      <p>{t`Metabase couldn't find any results for this.`}</p>
-                    </Box>
-                  </Flex>
+                  <Card>
+                    <EmptyState
+                      title={t`No results`}
+                      message={t`Metabase couldn't find any results for your search.`}
+                      illustrationElement={
+                        <img src="../app/assets/img/no_results.svg" />
+                      }
+                    />
+                  </Card>
                 );
               }
 

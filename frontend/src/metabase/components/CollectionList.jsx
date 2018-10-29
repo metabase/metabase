@@ -14,6 +14,8 @@ import Link from "metabase/components/Link";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+
 @connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
@@ -24,6 +26,7 @@ class CollectionList extends React.Component {
       currentCollection,
       isRoot,
       w,
+      asCards,
     } = this.props;
     return (
       <Box className="relative">
@@ -43,6 +46,7 @@ class CollectionList extends React.Component {
                         highlighted={highlighted}
                         hovered={hovered}
                         event={`${analyticsContext};Collection List;Collection click`}
+                        asCard={asCards}
                       />
                     </ItemDragSource>
                   )}
@@ -64,6 +68,7 @@ class CollectionList extends React.Component {
                     highlighted={highlighted}
                     hovered={hovered}
                     event={`${analyticsContext};Collection List;Personal collection click`}
+                    asCard={asCards}
                   />
                 )}
               </CollectionDropTarget>
@@ -74,7 +79,7 @@ class CollectionList extends React.Component {
               <GridItem w={w}>
                 <CollectionItem
                   collection={{
-                    name: t`Everyone else's personal collections`,
+                    name: PERSONAL_COLLECTIONS.name,
                     // Bit of a hack. The route /collection/users lists
                     // user collections but is not itself a colllection,
                     // but using the fake id users here works
@@ -82,6 +87,7 @@ class CollectionList extends React.Component {
                   }}
                   iconName="person"
                   event={`${analyticsContext};Collection List;All user collecetions click`}
+                  asCard={asCards}
                 />
               </GridItem>
             )}
@@ -110,6 +116,7 @@ class CollectionList extends React.Component {
 
 CollectionList.defaultProps = {
   w: [1, 1 / 2, 1 / 4],
+  asCards: false,
 };
 
 export default CollectionList;

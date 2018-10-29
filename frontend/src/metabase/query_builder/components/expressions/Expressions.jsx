@@ -27,7 +27,7 @@ export default class Expressions extends Component {
     return (
       <div className="pb3">
         <div className="pb1 h6 text-uppercase text-medium text-bold">
-          Custom fields
+          {t`Custom fields`}
         </div>
 
         {sortedNames &&

@@ -31,10 +31,11 @@
              [slack :as slack]
              [table :as table]
              [tiles :as tiles]
+             [task :as task]
              [user :as user]
              [util :as util]]
             [metabase.middleware :as middleware]
-            [puppetlabs.i18n.core :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 (def ^:private +generic-exceptions
   "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
@@ -82,6 +83,7 @@
   (context "/setup"                [] setup/routes)
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
+  (context "/task"                 [] (+auth task/routes))
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

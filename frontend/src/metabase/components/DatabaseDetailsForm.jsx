@@ -226,6 +226,30 @@ export default class DatabaseDetailsForm extends Component {
     } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
       // don't show tunnel fields if tunnel isn't enabled
       return null;
+    } else if (field.name === "use-jvm-timezone") {
+      let on =
+        this.state.details["use-jvm-timezone"] == undefined
+          ? false
+          : this.state.details["use-jvm-timezone"];
+      return (
+        <FormField key={field.name} fieldName={field.name}>
+          <div className="flex align-center Form-offset">
+            <div className="Grid-cell--top">
+              <Toggle
+                value={on}
+                onChange={val => this.onChange("use-jvm-timezone", val)}
+              />
+            </div>
+            <div className="px2">
+              <h3>{t`Use the Java Virtual Machine (JVM) timezone`}</h3>
+              <div style={{ maxWidth: "40rem" }} className="pt1">
+                {t`We suggest you leave this off unless you're doing manual timezone casting in
+                                many or most of your queries with this data.`}
+              </div>
+            </div>
+          </div>
+        </FormField>
+      );
     } else if (field.name === "let-user-control-scheduling") {
       let on =
         this.state.details["let-user-control-scheduling"] == undefined
@@ -263,7 +287,7 @@ export default class DatabaseDetailsForm extends Component {
         <div className="flex align-center Form-offset">
           <div className="Grid-cell--top">
             {jt`${(
-              <a href={credentialsURL} target="_blank">
+              <a className="link" href={credentialsURL} target="_blank">
                 {t`Click here`}
               </a>
             )} to generate a Client ID and Client Secret for your project.`}
@@ -290,7 +314,7 @@ export default class DatabaseDetailsForm extends Component {
           <div className="flex align-center Form-offset">
             <div className="Grid-cell--top">
               {jt`${(
-                <a href={authURL} target="_blank">
+                <a className="link" href={authURL} target="_blank">
                   {t`Click here`}
                 </a>
               )} to get an auth code`}

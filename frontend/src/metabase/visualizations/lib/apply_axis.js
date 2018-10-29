@@ -144,7 +144,7 @@ export function applyChartTimeseriesXAxis(
         .utcOffset(dataOffset)
         .format();
       return formatValue(timestampFixed, {
-        column: dimensionColumn,
+        ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
@@ -217,7 +217,7 @@ export function applyChartQuantitativeXAxis(
       // don't show ticks that aren't multiples of xInterval
       if (isMultipleOf(d, xInterval, modulorScale)) {
         return formatValue(d, {
-          column: dimensionColumn,
+          ...chart.settings.column(dimensionColumn),
           type: "axis",
           compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
         });
@@ -281,7 +281,7 @@ export function applyChartOrdinalXAxis(
 
     chart.xAxis().tickFormat(d =>
       formatValue(d, {
-        column: dimensionColumn,
+        ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.labels_enabled"] === "compact",
         noRange: isHistogramBar,
@@ -324,7 +324,9 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       axis.label(axis.setting("title_text"), Y_LABEL_PADDING);
     } else {
       // only use the column name if all in the series are the same
-      const labels = _.uniq(series.map(s => getFriendlyName(s.data.cols[1])));
+      const labels = _.uniq(
+        series.map(single => chart.settings.series(single).title),
+      );
       if (labels.length === 1) {
         axis.label(labels[0], Y_LABEL_PADDING);
       }
@@ -337,6 +339,13 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
     if (chart.settings["stackable.stack_type"] === "normalized") {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
+    } else {
+      let metricColumn = series[0].data.cols[1];
+      axis
+        .axis()
+        .tickFormat(value =>
+          formatValue(value, chart.settings.column(metricColumn)),
+        );
     }
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());

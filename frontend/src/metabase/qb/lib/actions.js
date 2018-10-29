@@ -51,7 +51,7 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     const newCard = startNewCard(
       "query",
       card.dataset_query.database,
-      query.source_table,
+      query["source-table"],
     );
     newCard.dataset_query.query.filter = query.filter;
     return newCard;
@@ -116,7 +116,7 @@ export const drillFilter = (card, value, column) => {
   } else {
     const range = rangeForValue(value, column);
     if (range) {
-      filter = ["BETWEEN", getFieldRefFromColumn(column), range[0], range[1]];
+      filter = ["between", getFieldRefFromColumn(column), range[0], range[1]];
     } else {
       filter = ["=", getFieldRefFromColumn(column), value];
     }
@@ -244,7 +244,7 @@ export const distribution = (card, column) => {
   newCard.dataset_query = Utils.copy(card.dataset_query);
   newCard.dataset_query.query.aggregation = [["count"]];
   newCard.dataset_query.query.breakout = [breakout];
-  delete newCard.dataset_query.query.order_by;
+  delete newCard.dataset_query.query["order-by"];
   delete newCard.dataset_query.query.fields;
   newCard.display = "bar";
   return newCard;
@@ -298,9 +298,9 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
         start.format(),
       ]);
     } else {
-      // otherwise do a BETWEEN
+      // otherwise do a between
       return addOrUpdateFilter(newCard, [
-        "BETWEEN",
+        "between",
         ["datetime-field", fieldRef, "as", column.unit],
         start.format(),
         end.format(),
@@ -308,7 +308,7 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
   } else {
     return addOrUpdateFilter(newCard, [
-      "BETWEEN",
+      "between",
       fieldRef,
       start.format(),
       end.format(),
@@ -323,7 +323,7 @@ export function updateLatLonFilter(
   bounds,
 ) {
   return addOrUpdateFilter(card, [
-    "INSIDE",
+    "inside",
     latitudeColumn.id,
     longitudeColumn.id,
     bounds.getNorth(),
@@ -335,7 +335,7 @@ export function updateLatLonFilter(
 
 export function updateNumericFilter(card, column, start, end) {
   const fieldRef = getFieldRefFromColumn(column);
-  return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
+  return addOrUpdateFilter(card, ["between", fieldRef, start, end]);
 }
 
 export const pivot = (
@@ -374,7 +374,7 @@ export const pivot = (
     );
   }
 
-  guessVisualization(newCard, tableMetadata);
+  guessVisualization(newCard, tableMetadata, card.display);
 
   return newCard;
 };
@@ -389,7 +389,19 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: Table) => {
+const VISUALIZATIONS_LINE_AREA_BAR = new Set(["bar", "line", "area"]);
+
+// helper to preserve existing display if it's a line/area/bar, otherwise use default
+const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
+  VISUALIZATIONS_LINE_AREA_BAR.has(existingDisplay)
+    ? existingDisplay
+    : defaultDisplay;
+
+const guessVisualization = (
+  card: CardObject,
+  tableMetadata: Table,
+  existingDisplay: ?string = null,
+) => {
   const query = Card.getQuery(card);
   if (!query) {
     return;
@@ -412,14 +424,14 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
       card.visualization_settings["map.type"] = "region";
       card.visualization_settings["map.region"] = "world_countries";
     } else if (isDate(breakoutFields[0])) {
-      card.display = "line";
+      card.display = getLineAreaBarDisplay("line", existingDisplay);
     } else {
-      card.display = "bar";
+      card.display = getLineAreaBarDisplay("bar", existingDisplay);
     }
   } else if (aggregations.length === 1 && breakoutFields.length === 2) {
     if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
       if (isDate(breakoutFields[0])) {
-        card.display = "line";
+        card.display = getLineAreaBarDisplay("line", existingDisplay);
       } else if (_.all(breakoutFields, isCoordinate)) {
         card.display = "map";
         card.visualization_settings["map.type"] = "grid";

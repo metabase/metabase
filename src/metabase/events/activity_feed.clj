@@ -5,15 +5,16 @@
              [events :as events]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [activity :as activity :refer [Activity]]
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [table :as table]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
-(def activity-feed-topics
+(def ^:private activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:alert-create
     :alert-delete
@@ -42,20 +43,14 @@
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
-(defn- inner-query->source-table-id
-  "Recurse through INNER-QUERY source-queries as needed until we can return the ID of this query's source-table."
-  [inner-query]
-  (or (when-let [source-table (qputil/get-normalized inner-query :source-table)]
-        (u/get-id source-table))
-      (when-let [source-query (qputil/get-normalized inner-query :source-query)]
-        (recur source-query))))
-
-(defn- process-card-activity! [topic object]
+(defn- process-card-activity! [topic {query :dataset_query, :as object}]
   (let [details-fn  #(select-keys % [:name :description])
-        query       (u/ignore-exceptions (qp/expand (:dataset_query object)))
-        database-id (when-let [database (:database query)]
-                      (u/get-id database))
-        table-id    (inner-query->source-table-id (:query query))]
+        query       (when (seq query)
+                      (try (qp/query->preprocessed query)
+                           (catch Throwable e
+                             (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/get-id)
+        table-id    (mbql.u/query->source-table-id query)]
     (activity/record-activity!
       :topic       topic
       :object      object

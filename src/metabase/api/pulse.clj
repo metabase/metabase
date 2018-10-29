@@ -19,9 +19,9 @@
              [pulse-channel :refer [channel-types]]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [i18n :refer [tru]]
              [schema :as su]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -180,11 +180,13 @@
 
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
-  {name          su/NonBlankString
-   cards         (su/non-empty [pulse/CardRef])
-   channels      (su/non-empty [su/Map])
-   skip_if_empty s/Bool}
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position] :as body} :body}]
+  {name                su/NonBlankString
+   cards               (su/non-empty [pulse/CoercibleToCardRef])
+   channels            (su/non-empty [su/Map])
+   skip_if_empty       (s/maybe s/Bool)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
   {:ok true})

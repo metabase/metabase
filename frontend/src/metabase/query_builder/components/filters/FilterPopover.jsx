@@ -305,7 +305,7 @@ export default class FilterPopover extends Component {
     const { filter } = this.state;
     const [operatorName, fieldRef] = filter;
 
-    if (operatorName === "SEGMENT" || fieldRef == undefined) {
+    if (operatorName === "segment" || fieldRef == undefined) {
       return (
         <div className="FilterPopover">
           <FieldList

@@ -11,35 +11,54 @@
 
 (def ^:private four-oh-four
   "The expected format of a 404 response."
-  {:status 404
-   :body "Not found."})
+  {:status  404
+   :body    "Not found."
+   :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+             "Content-Security-Policy"           (-> @#'mb-middleware/content-security-policy-header vals first)
+             "Content-Type"                      "text/plain"
+             "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
+             "Last-Modified"                     true ; this will be current date, so do update-in ... string?
+             "Strict-Transport-Security"         "max-age=31536000"
+             "X-Content-Type-Options"            "nosniff"
+             "X-Frame-Options"                   "DENY"
+             "X-Permitted-Cross-Domain-Policies" "none"
+             "X-XSS-Protection"                  "1; mode=block"}})
 
-(defn ^:private my-mock-api-fn []
-  ((mb-middleware/catch-api-exceptions
-    (fn [_]
-      (check-404 @*current-user*)
-      {:status 200
-       :body @*current-user*}))
-   nil))
+(defn- mock-api-fn [response-fn]
+  ((-> response-fn
+       mb-middleware/catch-api-exceptions
+       mb-middleware/add-content-type)
+   {:uri "/api/my_fake_api_call"}))
+
+(defn- my-mock-api-fn []
+  (mock-api-fn
+   (fn [_]
+     (check-404 @*current-user*)
+     {:status 200
+      :body   @*current-user*})))
 
 ; check that `check-404` doesn't throw an exception if TEST is true
-(expect {:status 200
-         :body "Cam Saul"}
+(expect
+  {:status  200
+   :body    "Cam Saul"
+   :headers {"Content-Type" "text/plain"}}
   (binding [*current-user* (atom "Cam Saul")]
     (my-mock-api-fn)))
 
 ; check that 404 is returned otherwise
-(expect four-oh-four
-  (my-mock-api-fn))
+(expect
+  four-oh-four
+  (-> (my-mock-api-fn)
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;;let-404 should return nil if test fails
 (expect
   four-oh-four
-  ((mb-middleware/catch-api-exceptions
-    (fn [_]
-      (let-404 [user nil]
-        {:user user})))
-   nil))
+  (-> (mock-api-fn
+       (fn [_]
+         (let-404 [user nil]
+           {:user user})))
+      (update-in [:headers "Last-Modified"] string?)))
 
 ;; otherwise let-404 should bind as expected
 (expect

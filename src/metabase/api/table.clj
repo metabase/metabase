@@ -1,25 +1,27 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET PUT POST]]
+            [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [related :as related]
              [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field with-normal-values]]
-             [field-values :refer [FieldValues] :as fv]
+             [database :as database]
+             [field :refer [Field]]
+             [field-values :as fv :refer [FieldValues]]
              [interface :as mi]
              [table :as table :refer [Table]]]
-            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -156,22 +158,21 @@
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= day-str (:name %))))
+  (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
   (and driver (contains? (driver/features driver) :binning)))
 
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/DateTime)
-           (isa? special_type :type/DateTime))
+  [{:keys [base_type], :as field}]
+  (and (mbql.u/datetime-field? field)
        (not (isa? base_type :type/Time))))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]

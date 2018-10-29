@@ -6,7 +6,10 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import colors from "metabase/lib/colors";
 
-import { canonicalCollectionId } from "metabase/entities/collections";
+import {
+  canonicalCollectionId,
+  getCollectionType,
+} from "metabase/entities/collections";
 
 import { POST, DELETE } from "metabase/lib/api";
 
@@ -103,6 +106,11 @@ const Questions = createEntity({
     "result_metadata",
     "metadata_checksum",
   ],
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.collection_id, getState());
+    return type && `collection=${type}`;
+  },
 });
 
 export default Questions;

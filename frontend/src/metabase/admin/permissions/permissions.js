@@ -67,6 +67,10 @@ export const savePermissions = createThunkAction(
   },
 );
 
+const SET_PROPAGATE_PERMISSIONS =
+  "metabase/admin/permissions/SET_PROPAGATE_PERMISSIONS";
+export const setPropagatePermissions = createAction(SET_PROPAGATE_PERMISSIONS);
+
 const save = handleActions(
   {
     [RESET]: { next: (state, { payload }) => payload.save },
@@ -139,6 +143,13 @@ const saveError = handleActions(
   null,
 );
 
+const propagatePermissions = handleActions(
+  {
+    [SET_PROPAGATE_PERMISSIONS]: { next: (state, { payload }) => payload },
+  },
+  true,
+);
+
 export default combineReducers({
   save,
   load,
@@ -148,4 +159,6 @@ export default combineReducers({
   saveError,
   revision,
   groups,
+
+  propagatePermissions,
 });

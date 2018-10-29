@@ -7,7 +7,10 @@
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [puppetlabs.i18n.core :refer [trs]])
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
+            [schema.core :as s])
   (:import clojure.lang.Keyword
            [java.sql Time Timestamp]
            [java.util Calendar Date TimeZone]
@@ -58,13 +61,16 @@
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
           (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+                         " "
                          (trs "JVM timezone is {0} and detected database timezone is {1}."
                               (.getID jvm-timezone) (.getID data-timezone))
+                         " "
                          (trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
           (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+                         " "
                          (trs "JVM timezone is {0} and detected database timezone is {1}."
                               (.getID jvm-timezone) (.getID data-timezone)))))))))
 
@@ -307,7 +313,8 @@
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
 
-(def ^:private ^:const date-trunc-units
+(def ^:const date-trunc-units
+  "Valid date bucketing units"
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
@@ -456,3 +463,9 @@
    (some-> (str->date-time-with-formatters ordered-time-parsers date-str tz)
            coerce/to-long
            Time.)))
+
+(s/defn calculate-duration :- su/NonNegativeInt
+  "Given two datetimes, caculate the time between them, return the result in millis"
+  [begin-time :- (s/protocol coerce/ICoerce)
+   end-time :- (s/protocol coerce/ICoerce)]
+  (- (coerce/to-long end-time) (coerce/to-long begin-time)))

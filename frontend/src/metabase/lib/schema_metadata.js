@@ -170,7 +170,17 @@ export const isLatitude = field =>
 export const isLongitude = field =>
   isa(field && field.special_type, TYPE.Longitude);
 
+export const isCurrency = field =>
+  isa(field && field.special_type, TYPE.Currency);
+
 export const isID = field => isFK(field) || isPK(field);
+
+export const isURL = field => isa(field && field.special_type, TYPE.URL);
+export const isEmail = field => isa(field && field.special_type, TYPE.Email);
+export const isAvatarURL = field =>
+  isa(field && field.special_type, TYPE.AvatarURL);
+export const isImageURL = field =>
+  isa(field && field.special_type, TYPE.ImageURL);
 
 // operator argument constructors:
 
@@ -265,10 +275,10 @@ const OPERATORS = {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
   },
-  IS_NULL: {
+  "is-null": {
     validArgumentsFilters: [],
   },
-  NOT_NULL: {
+  "not-null": {
     validArgumentsFilters: [],
   },
   "<": {
@@ -283,7 +293,7 @@ const OPERATORS = {
   ">=": {
     validArgumentsFilters: [comparableArgument],
   },
-  INSIDE: {
+  inside: {
     validArgumentsFilters: [
       longitudeFieldSelectArgument,
       numberArgument,
@@ -306,25 +316,25 @@ const OPERATORS = {
       { column: { special_type: TYPE.Longitude }, compact: true },
     ],
   },
-  BETWEEN: {
+  between: {
     validArgumentsFilters: [comparableArgument, comparableArgument],
   },
-  STARTS_WITH: {
+  "starts-with": {
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
-  ENDS_WITH: {
+  "ends-with": {
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
-  CONTAINS: {
+  contains: {
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
-  DOES_NOT_CONTAIN: {
+  "does-not-contain": {
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
@@ -334,8 +344,8 @@ const OPERATORS = {
 const DEFAULT_OPERATORS = [
   { name: "=", verboseName: t`Is` },
   { name: "!=", verboseName: t`Is not` },
-  { name: "IS_NULL", verboseName: t`Is empty` },
-  { name: "NOT_NULL", verboseName: t`Not empty` },
+  { name: "is-null", verboseName: t`Is empty` },
+  { name: "not-null", verboseName: t`Not empty` },
 ];
 
 // ordered list of operators and metadata per type
@@ -345,51 +355,51 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "!=", verboseName: t`Not equal to` },
     { name: ">", verboseName: t`Greater than` },
     { name: "<", verboseName: t`Less than` },
-    { name: "BETWEEN", verboseName: t`Between` },
+    { name: "between", verboseName: t`Between` },
     { name: ">=", verboseName: t`Greater than or equal to` },
     { name: "<=", verboseName: t`Less than or equal to` },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
   ],
   [STRING]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "CONTAINS", verboseName: t`Contains` },
-    { name: "DOES_NOT_CONTAIN", verboseName: t`Does not contain` },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
-    { name: "STARTS_WITH", verboseName: t`Starts with` },
-    { name: "ENDS_WITH", verboseName: t`Ends with` },
+    { name: "contains", verboseName: t`Contains` },
+    { name: "does-not-contain", verboseName: t`Does not contain` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
+    { name: "starts-with", verboseName: t`Starts with` },
+    { name: "ends-with", verboseName: t`Ends with` },
   ],
   [STRING_LIKE]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
   ],
   [DATE_TIME]: [
     { name: "=", verboseName: t`Is` },
     { name: "<", verboseName: t`Before` },
     { name: ">", verboseName: t`After` },
-    { name: "BETWEEN", verboseName: t`Between` },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
+    { name: "between", verboseName: t`Between` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
   ],
   [LOCATION]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
   ],
   [COORDINATE]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "INSIDE", verboseName: t`Inside` },
+    { name: "inside", verboseName: t`Inside` },
   ],
   [BOOLEAN]: [
     { name: "=", verboseName: t`Is`, multi: false },
-    { name: "IS_NULL", verboseName: t`Is empty` },
-    { name: "NOT_NULL", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is empty` },
+    { name: "not-null", verboseName: t`Not empty` },
   ],
   [FOREIGN_KEY]: DEFAULT_OPERATORS,
   [UNKNOWN]: DEFAULT_OPERATORS,

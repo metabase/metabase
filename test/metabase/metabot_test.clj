@@ -1,7 +1,9 @@
 (ns metabase.metabot-test
   (:require [expectations :refer :all]
             [metabase.metabot :as metabot]
-            [metabase.util.date :as du]))
+            [metabase.models.card :refer [Card]]
+            [metabase.util.date :as du]
+            [toucan.util.test :as tt]))
 
 ;; test that if we're not the MetaBot based on Settings, our function to check is working correctly
 (expect
@@ -35,3 +37,10 @@
     (#'metabot/metabot-instance-last-checkin (#'metabot/current-timestamp-from-db))
     (#'metabot/check-and-update-instance-status!)
     (#'metabot/am-i-the-metabot?)))
+
+;; Check that `metabot/list` returns a string with card information and passes the permissions checks
+(expect
+  #"2 most recent cards"
+  (tt/with-temp* [Card [_]
+                  Card [_]]
+    (metabot/list)))

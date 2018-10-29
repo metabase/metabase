@@ -1,6 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
@@ -10,6 +9,8 @@ import {
   DateTimeColumn,
   StringColumn,
   dispatchUIEvent,
+  renderLineAreaBar,
+  getFormattedTooltips,
 } from "../__support__/visualizations";
 
 let formatTz = offset =>
@@ -34,32 +35,24 @@ describe("LineAreaBarRenderer", () => {
   });
 
   it("should display numeric year in X-axis and tooltip correctly", () => {
-    return new Promise((resolve, reject) => {
-      renderTimeseriesLine({
-        rowsOfSeries: [[[2015, 1], [2016, 2], [2017, 3]]],
-        unit: "year",
-        onHoverChange: hover => {
-          try {
-            expect(
-              formatValue(hover.data[0].value, { column: hover.data[0].col }),
-            ).toEqual("2015");
-
-            // Doesn't return the correct ticks in Jest for some reason
-            // expect(qsa(".tick text").map(e => e.textContent)).toEqual([
-            //     "2015",
-            //     "2016",
-            //     "2017"
-            // ]);
-
-            resolve();
-          } catch (e) {
-            reject(e);
-          }
-        },
-      });
-
-      dispatchUIEvent(qs(".dot"), "mousemove");
+    const onHoverChange = jest.fn();
+    renderTimeseriesLine({
+      rowsOfSeries: [[[2015, 1], [2016, 2], [2017, 3]]],
+      unit: "year",
+      onHoverChange,
     });
+    dispatchUIEvent(qs(".dot"), "mousemove");
+    expect(onHoverChange.mock.calls.length).toBe(1);
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "2015",
+      "1",
+    ]);
+    // Doesn't return the correct ticks in Jest for some reason
+    // expect(qsa(".tick text").map(e => e.textContent)).toEqual([
+    //     "2015",
+    //     "2016",
+    //     "2017"
+    // ]);
   });
 
   ["Z", ...ALL_TZS].forEach(tz =>
@@ -68,83 +61,72 @@ describe("LineAreaBarRenderer", () => {
         tz +
         " timezone) in X axis and tooltip consistently",
       () => {
-        return new Promise((resolve, reject) => {
-          const rows = [
-            ["2016-10-03T20:00:00.000" + tz, 1],
-            ["2016-10-03T21:00:00.000" + tz, 1],
-          ];
+        const onHoverChange = jest.fn();
 
-          renderTimeseriesLine({
-            rowsOfSeries: [rows],
-            unit: "hour",
-            onHoverChange: hover => {
-              try {
-                let expected = rows.map(row =>
-                  formatValue(row[0], {
-                    column: DateTimeColumn({ unit: "hour" }),
-                  }),
-                );
-                expect(
-                  formatValue(hover.data[0].value, {
-                    column: hover.data[0].col,
-                  }),
-                ).toEqual(expected[0]);
-                expect(
-                  qsa(".axis.x .tick text").map(e => e.textContent),
-                ).toEqual(expected);
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
-            },
-          });
+        const rows = [
+          ["2016-10-03T20:00:00.000" + tz, 1],
+          ["2016-10-03T21:00:00.000" + tz, 1],
+        ];
 
-          dispatchUIEvent(qs(".dot"), "mousemove");
+        renderTimeseriesLine({
+          rowsOfSeries: [rows],
+          unit: "hour",
+          onHoverChange,
         });
+
+        dispatchUIEvent(qs(".dot"), "mousemove");
+
+        let expected = rows.map(row =>
+          formatValue(row[0], {
+            column: DateTimeColumn({ unit: "hour" }),
+          }),
+        );
+        expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+          expected[0],
+          "1",
+        ]);
+        expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(
+          expected,
+        );
       },
     ),
   );
 
   it("should display hourly data (in the browser's timezone) in X axis and tooltip consistently and correctly", () => {
-    return new Promise((resolve, reject) => {
-      const tz = BROWSER_TZ;
-      const rows = [
-        ["2016-01-01T01:00:00.000" + tz, 1],
-        ["2016-01-01T02:00:00.000" + tz, 1],
-        ["2016-01-01T03:00:00.000" + tz, 1],
-        ["2016-01-01T04:00:00.000" + tz, 1],
-      ];
+    const onHoverChange = jest.fn();
+    const tz = BROWSER_TZ;
+    const rows = [
+      ["2016-01-01T01:00:00.000" + tz, 1],
+      ["2016-01-01T02:00:00.000" + tz, 1],
+      ["2016-01-01T03:00:00.000" + tz, 1],
+      ["2016-01-01T04:00:00.000" + tz, 1],
+    ];
 
-      renderTimeseriesLine({
-        rowsOfSeries: [rows],
-        unit: "hour",
-        onHoverChange: hover => {
-          try {
-            expect(
-              formatValue(rows[0][0], {
-                column: DateTimeColumn({ unit: "hour" }),
-              }),
-            ).toEqual("1 AM - January 1, 2016");
-            expect(
-              formatValue(hover.data[0].value, { column: hover.data[0].col }),
-            ).toEqual("1 AM - January 1, 2016");
-
-            expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-              "1 AM - January 1, 2016",
-              "2 AM - January 1, 2016",
-              "3 AM - January 1, 2016",
-              "4 AM - January 1, 2016",
-            ]);
-
-            resolve();
-          } catch (e) {
-            reject(e);
-          }
-        },
-      });
-
-      dispatchUIEvent(qs(".dot"), "mousemove");
+    renderTimeseriesLine({
+      rowsOfSeries: [rows],
+      unit: "hour",
+      onHoverChange,
     });
+
+    dispatchUIEvent(qs(".dot"), "mousemove");
+
+    expect(
+      formatValue(rows[0][0], {
+        column: DateTimeColumn({ unit: "hour" }),
+      }),
+    ).toEqual("January 1, 2016, 1:00 AM");
+
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "January 1, 2016, 1:00 AM",
+      "1",
+    ]);
+
+    expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
+      "January 1, 2016, 1:00 AM",
+      "January 1, 2016, 2:00 AM",
+      "January 1, 2016, 3:00 AM",
+      "January 1, 2016, 4:00 AM",
+    ]);
   });
 
   describe("should render correctly a compound line graph", () => {
@@ -226,6 +208,7 @@ describe("LineAreaBarRenderer", () => {
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": 30,
+          "graph.goal_label": "Goal",
         },
       });
 
@@ -234,22 +217,25 @@ describe("LineAreaBarRenderer", () => {
       expect(qs(".goal text").textContent).toEqual("Goal");
     });
 
-    it("should render a goal tooltip with the proper value", done => {
+    it("should render a goal tooltip with the proper value", () => {
       let rows = [["2016", 1], ["2017", 2]];
 
       const goalValue = 30;
+      const onHoverChange = jest.fn();
       renderTimeseriesLine({
         rowsOfSeries: [rows],
         settings: {
           "graph.show_goal": true,
           "graph.goal_value": goalValue,
+          "graph.goal_label": "Goal",
         },
-        onHoverChange: hover => {
-          expect(hover.data[0].value).toEqual(goalValue);
-          done();
-        },
+        onHoverChange,
       });
       dispatchUIEvent(qs(".goal text"), "mouseenter");
+
+      expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+        "30",
+      ]);
     });
   });
 
@@ -266,44 +252,49 @@ describe("LineAreaBarRenderer", () => {
     unit,
     settings,
   }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "line",
-      series: rowsOfSeries.map(rows => ({
+    renderLineAreaBar(
+      element,
+      rowsOfSeries.map(rows => ({
         data: {
           cols: [DateTimeColumn({ unit }), NumberColumn()],
           rows: rows,
         },
-        card: {},
+        card: {
+          display: "line",
+          visualization_settings: {
+            "graph.x_axis.scale": "timeseries",
+            "graph.x_axis.axis_enabled": true,
+            "graph.colors": ["#000000"],
+            ...settings,
+          },
+        },
       })),
-      settings: {
-        "graph.x_axis.scale": "timeseries",
-        "graph.x_axis.axis_enabled": true,
-        "graph.colors": ["#000000"],
-        ...settings,
+      {
+        onHoverChange,
       },
-      onHoverChange,
-    });
+    );
   };
 
   const renderScalarBar = ({ scalars, onHoverChange, unit }) => {
-    lineAreaBarRenderer(element, {
-      chartType: "bar",
-      series: scalars.map(scalar => ({
+    renderLineAreaBar(
+      element,
+      scalars.map(scalar => ({
         data: {
           cols: [StringColumn(), NumberColumn()],
           rows: [scalar],
         },
-        card: {},
+        card: {
+          display: "bar",
+          visualization_settings: {
+            "bar.scalar_series": true,
+            "funnel.type": "bar",
+            "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
+            "graph.x_axis.axis_enabled": true,
+            "graph.x_axis.scale": "ordinal",
+          },
+        },
       })),
-      settings: {
-        "bar.scalar_series": true,
-        "funnel.type": "bar",
-        "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
-        "graph.x_axis.axis_enabled": true,
-        "graph.x_axis.scale": "ordinal",
-        "graph.x_axis._is_numeric": false,
-      },
-      onHoverChange,
-    });
+      { onHoverChange },
+    );
   };
 });

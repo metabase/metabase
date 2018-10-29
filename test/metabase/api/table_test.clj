@@ -18,7 +18,6 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -90,7 +89,8 @@
    :dimensions               []
    :dimension_options        []
    :has_field_values         nil
-   :default_dimension_option nil})
+   :default_dimension_option nil
+   :settings                 nil})
 
 (defn- field-details [field]
   (merge
@@ -165,6 +165,7 @@
 (defn- default-dimension-options []
   (->> #'table-api/dimension-options-for-response
        var-get
+       (m/map-vals #(update % :name str))
        walk/keywordize-keys))
 
 (defn- query-metadata-defaults []
@@ -491,7 +492,12 @@
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 ;; Test date dimensions being included with a nested query
 (tt/expect-with-temp [Card [card {:name          "Users"
@@ -514,7 +520,8 @@
                           :special_type             "type/Name"
                           :default_dimension_option nil
                           :dimension_options        []
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                                                           :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
@@ -525,14 +532,20 @@
                           :special_type             nil
                           :default_dimension_option (var-get #'table-api/date-default-index)
                           :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z",
                                                                               :latest   "2014-12-05T15:15:00.000Z"}}}}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
@@ -689,7 +702,7 @@
 
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   []
-  (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+  (data/dataset test-data-with-time
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
 

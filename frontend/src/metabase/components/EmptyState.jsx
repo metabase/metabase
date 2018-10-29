@@ -1,83 +1,76 @@
 /* @flow */
 import React from "react";
-import { Link } from "react-router";
-import cx from "classnames";
-/*
- * EmptyState is a component that can
- *  1) introduce a new section of Metabase to a user and encourage the user to take an action
- *  2) indicate an empty result after a user-triggered search/query
- */
+import { Box, Flex } from "grid-styled";
 
-import Icon from "metabase/components/Icon.jsx";
+import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
+import Text from "metabase/components/Text";
 
 type EmptyStateProps = {
-  message: string | React$Element<any>,
+  message: React$Element<any>,
   title?: string,
-  icon?: string,
-  image?: string,
-  imageHeight?: string, // for reducing ui flickering when the image is loading
-  imageClassName?: string,
   action?: string,
   link?: string,
+  illustrationElement: React$Element<any>,
   onActionClick?: () => void,
-  smallDescription?: boolean,
 };
+
+// Don't break existing empty states
+// TODO - remove these and update empty states with proper usage of illustrationElement
+const LegacyIcon = props =>
+  props.icon ? <Icon name={props.icon} size={40} /> : null;
+const LegacyImage = props =>
+  props.image ? (
+    <img
+      src={`${props.image}.png`}
+      width="300px"
+      height={props.imageHeight}
+      alt={props.message}
+      srcSet={`${props.image}@2x.png 2x`}
+      className={props.imageClassName}
+    />
+  ) : null;
 
 const EmptyState = ({
   title,
   message,
-  icon,
-  image,
-  imageHeight,
-  imageClassName,
   action,
   link,
+  illustrationElement,
   onActionClick,
-  smallDescription = false,
+  ...rest
 }: EmptyStateProps) => (
-  <div
-    className="text-centered text-brand-light my2"
-    style={smallDescription ? {} : { width: "350px" }}
-  >
-    {title && <h2 className="text-brand mb4">{title}</h2>}
-    {icon && <Icon name={icon} size={40} />}
-    {image && (
-      <img
-        src={`${image}.png`}
-        width="300px"
-        height={imageHeight}
-        alt={message}
-        srcSet={`${image}@2x.png 2x`}
-        className={imageClassName}
-      />
-    )}
-    <div className="flex justify-center">
-      <h2
-        className={cx("text-light text-normal mt2 mb4", {
-          "text-paragraph": smallDescription,
-        })}
-        style={{ lineHeight: "1.5em" }}
-      >
-        {message}
-      </h2>
-    </div>
-    {action &&
-      link && (
-        <Link
-          to={link}
-          className="Button Button--primary mt4"
-          target={link.startsWith("http") ? "_blank" : ""}
-        >
-          {action}
-        </Link>
-      )}
-    {action &&
-      onActionClick && (
-        <a onClick={onActionClick} className="Button Button--primary mt4">
-          {action}
-        </a>
-      )}
-  </div>
+  <Box>
+    <Flex justify="center" flexDirection="column" align="center">
+      {illustrationElement && <Box mb={[2, 3]}>{illustrationElement}</Box>}
+      <Box>
+        <LegacyIcon {...rest} />
+        <LegacyImage {...rest} />
+      </Box>
+      {title && <h2>{title}</h2>}
+      {message && <Text color="medium">{message}</Text>}
+    </Flex>
+    {/* TODO - we should make this children or some other more flexible way to
+      add actions
+      */}
+    <Flex mt={2}>
+      <Flex align="center" ml="auto" mr="auto">
+        {action &&
+          link && (
+            <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
+              <Button primary>{action}</Button>
+            </Link>
+          )}
+        {action &&
+          onActionClick && (
+            <Button onClick={onActionClick} primary>
+              {action}
+            </Button>
+          )}
+      </Flex>
+    </Flex>
+  </Box>
 );
 
 export default EmptyState;

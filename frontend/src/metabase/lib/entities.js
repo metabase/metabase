@@ -17,6 +17,8 @@ import { normalize, denormalize, schema } from "normalizr";
 import { getIn, dissocIn, merge } from "icepick";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
 // name: plural, like "questions" or "dashboards"
@@ -141,6 +143,7 @@ export type Entity = {
   actionShouldInvalidateLists: (action: Action) => boolean,
 
   writableProperties?: string[],
+  getAnalyticsMetadata?: () => any,
 
   HACK_getObjectFromAction: (action: Action) => any,
 };
@@ -205,6 +208,7 @@ export function createEntity(def: EntityDefinition): Entity {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -249,6 +253,7 @@ export function createEntity(def: EntityDefinition): Entity {
         dispatch,
         getState,
       ) => {
+        trackAction("update", updatedObject, getState);
         // save the original object for undo
         const originalObject = entity.selectors.getObject(getState(), {
           entityId: entityObject.id,
@@ -305,6 +310,7 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: createThunkAction(
       DELETE_ACTION,
       entityObject => async (dispatch, getState) => {
+        trackAction("delete", getState);
         const statePath = [...getObjectStatePath(entityObject.id), "delete"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -338,11 +344,27 @@ export function createEntity(def: EntityDefinition): Entity {
           requestStatePath: getListStatePath(entityQuery),
           existingStatePath: getListStatePath(entityQuery),
           getData: async () => {
-            const { result, entities } = normalize(
-              await entity.api.list(entityQuery || {}),
-              [entity.schema],
-            );
-            return { result, entities, entityQuery };
+            const fetched = await entity.api.list(entityQuery || {});
+            let results = fetched;
+
+            // for now at least paginated endpoints have a 'data' property that
+            // contains the actual entries, if that is on the response we should
+            // use that as the 'results'
+            if (fetched.data) {
+              results = fetched.data;
+            }
+            const { result, entities } = normalize(results, [entity.schema]);
+            return {
+              result,
+              entities,
+              entityQuery,
+              // capture some extra details from the result just in case?
+              resultDetails: {
+                total: fetched.total,
+                offset: fetched.offset,
+                limit: fetched.limit,
+              },
+            };
           },
         }),
     ),
@@ -574,6 +596,20 @@ export function createEntity(def: EntityDefinition): Entity {
 
     entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
+  }
+
+  function trackAction(action, object, getState) {
+    try {
+      MetabaseAnalytics.trackEvent(
+        "entity actions",
+        entity.name,
+        action,
+        entity.getAnalyticsMetadata &&
+          entity.getAnalyticsMetadata(action, object, getState),
+      );
+    } catch (e) {
+      console.warn("trackAction threw an error:", e);
+    }
   }
 
   return entity;

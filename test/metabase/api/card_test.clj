@@ -57,8 +57,8 @@
    (mbql-count-query (data/id) (data/id :venues)))
   ([db-or-id table-or-id]
    {:database (u/get-id db-or-id)
-    :type     "query"
-    :query    {:source-table (u/get-id table-or-id), :aggregation {:aggregation-type "count"}}}))
+    :type     :query
+    :query    {:source-table (u/get-id table-or-id), :aggregation [[:count]]}}))
 
 (defn- card-with-name-and-query
   ([]
@@ -124,7 +124,7 @@
                         {:database (u/get-id db)
                          :type     :native
                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                    :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                    :template-tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
                                                                :name         "category"
                                                                :display_name "Category"
                                                                :type         "number"
@@ -274,6 +274,7 @@
             :can_write              true
             :dashboard_count        0
             :read_permissions       nil
+            :result_metadata        true
             :creator                (match-$ (fetch-user :rasta)
                                       {:common_name  "Rasta Toucan"
                                        :is_superuser false
@@ -285,20 +286,19 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})})
     (tu/with-non-admin-groups-no-root-collection-perms
-      (tt/with-temp* [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
-                      Collection [collection]]
+      (tt/with-temp* [Collection [collection]]
         (tu/with-model-cleanup [Card]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (-> ((user->client :rasta) :post 200 "card"
-               (assoc (card-with-name-and-query card-name (mbql-count-query (u/get-id db) (u/get-id table)))
+               (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
                  :collection_id (u/get-id collection)))
               (dissoc :created_at :updated_at :id)
               (update :table_id integer?)
               (update :database_id integer?)
               (update :collection_id integer?)
               (update :dataset_query map?)
-              (update :collection map?)))))))
+              (update :collection map?)
+              (update :result_metadata (partial every? map?))))))))
 
 ;; Make sure when saving a Card the query metadata is saved (if correct)
 (expect
@@ -330,8 +330,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
@@ -381,11 +382,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can fetch a card
-(tt/expect-with-temp [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
+(tt/expect-with-temp [Database   [db          (select-keys (data/db) [:engine :details])]
+                      Table      [table       (-> (Table (data/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (u/get-id db)))]
                       Collection [collection]
-                      Card       [card  {:collection_id (u/get-id collection)
-                                         :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+                      Card       [card        {:collection_id (u/get-id collection)
+                                               :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
   (merge card-defaults
          (match-$ card
            {:dashboard_count        0
@@ -402,7 +405,7 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})
             :updated_at             $
-            :dataset_query          $
+            :dataset_query          (tu/obj->json->obj (:dataset_query card))
             :read_permissions       nil
             :id                     $
             :display                "table"
@@ -538,8 +541,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"
@@ -590,6 +594,7 @@
       ((user->client :rasta) :put 403 (str "card/" (u/get-id card))
        {:collection_position nil})
       (db/select-one-field :collection_position Card :id (u/get-id card)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      UPDATING THE POSITION OF A CARDS                                          |
@@ -856,6 +861,7 @@
         ((user->client :rasta) :put 200 (str "card/" (u/get-id d))
          {:collection_position 1, :collection_id (u/get-id collection)})
         (name->position ((user->client :rasta) :get 200 (format "collection/%s/items" (u/get-id collection))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |

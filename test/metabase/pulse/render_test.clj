@@ -5,7 +5,7 @@
             [metabase.pulse
              [color :as color]
              [render :as render :refer :all]]
-            [metabase.query-processor.util :as qputil])
+            [metabase.test.util :as tu])
   (:import java.util.TimeZone))
 
 (def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
@@ -292,13 +292,26 @@
   (count-displayed-columns
    (concat test-columns [description-col detail-col sensitive-col retired-col])))
 
+(defn- postwalk-collect
+  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
+  results."
+  [pred collect-fn form]
+  (let [results (atom [])]
+    (tu/postwalk-pred pred
+                      (fn [node]
+                        (when-let [result (collect-fn node)]
+                          (swap! results conj result))
+                        node)
+                      form)
+    @results))
+
 (defn- find-table-body
   "Given the hiccup data structure, find the table body and return it"
   [results]
-  (qputil/postwalk-collect (every-pred vector? #(= :tbody (first %)))
-                           ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
-                           second
-                           results))
+  (postwalk-collect (every-pred vector? #(= :tbody (first %)))
+                    ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
+                    second
+                    results))
 
 (defn- style-map->background-color
   "Finds the background color in the style string of a Hiccup style map"
@@ -310,10 +323,10 @@
   "Returns a map of cell values to background colors of the pulse table found in the hiccup `results` data
   structure. This only includes the data cell values, not the header values."
   [results]
-  (into {} (qputil/postwalk-collect (every-pred vector? #(= :td (first %)))
-                                    (fn [[_ style-map cell-value]]
-                                      [cell-value (style-map->background-color style-map)])
-                                    results)))
+  (into {} (postwalk-collect (every-pred vector? #(= :td (first %)))
+                             (fn [[_ style-map cell-value]]
+                               [cell-value (style-map->background-color style-map)])
+                             results)))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -321,6 +334,22 @@
   (for [row-values (cons (map :name cols) rows)]
     {:row row-values
      :bar-width nil}))
+
+(def ^:private default-test-card
+  {:visualization_settings
+   {"table.column_formatting" [{:columns       ["a"]
+                                :type          :single
+                                :operator      ">"
+                                :value         5
+                                :color         "#ff0000"
+                                :highlight_row true}
+                               {:columns       ["c"]
+                                :type          "range"
+                                :min_type      "custom"
+                                :min_value     3
+                                :max_type      "custom"
+                                :max_value     9
+                                :colors        ["#00ff00" "#0000ff"]}]}})
 
 ;; Smoke test for background color selection. Background color decided by some shared javascript code. It's being
 ;; invoked and included in the cell color of the pulse table. This is somewhat fragile code as the only way to find
@@ -332,24 +361,108 @@
    {"1" "",                     "2" "",                     "3" "rgba(0, 255, 0, 0.75)"
     "4" "",                     "5" "",                     "6" "rgba(0, 128, 128, 0.75)"
     "7" "rgba(255, 0, 0, 0.65)" "8" "rgba(255, 0, 0, 0.2)"  "9" "rgba(0, 0, 255, 0.75)"}
-  (let [viz-settings  {"table.column_formatting" [{:columns       ["a"]
-                                                   :type          :single
-                                                   :operator      ">"
-                                                   :value         5
-                                                   :color         "#ff0000"
-                                                   :highlight_row true}
-                                                  {:columns       ["c"]
-                                                   :type          "range"
-                                                   :min_type      "custom"
-                                                   :min_value     3
-                                                   :max_type      "custom"
-                                                   :max_value     9
-                                                   :colors        ["#00ff00" "#0000ff"]}]}
-        query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
+  (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]]}]
-    (-> (color/make-color-selector query-results viz-settings)
+    (-> (color/make-color-selector query-results (:visualization_settings default-test-card))
         (#'render/render-table ["a" "b" "c"] (query-results->header+rows query-results))
         find-table-body
         cell-value->background-color)))
+
+;; Test rendering a bar graph
+;;
+;; These test render the bar graph to ensure no exceptions are thrown, then look at the flattened HTML data structures
+;; to see if the column names for the columns we're graphing are present in the result
+
+(defn- flatten-html-data
+  "Takes the tree-based Clojure HTML data structure and flattens it to a seq"
+  [html-data]
+  (tree-seq coll? seq html-data))
+
+(defn- render-bar-graph [results]
+  ;; `doall` here as the flatten won't force lazy-seqs
+  (doall (flatten-html-data (#'render/render:bar pacific-tz default-test-card results))))
+
+(def ^:private default-columns
+  [{:name         "Price",
+    :display_name "Price",
+    :base_type    :type/BigInteger
+    :special_type nil}
+   {:name         "NumPurchased",
+    :display_name "NumPurchased",
+    :base_type    :type/BigInteger
+    :special_type nil}])
+
+;; Render a bar graph with non-nil values for the x and y axis
+(expect
+  [true true]
+  (let [result (render-bar-graph {:cols default-columns
+                                  :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]})]
+    [(some #(= "Price" %) result)
+     (some #(= "NumPurchased" %) result)]))
+
+;; Check to make sure we allow nil values for the y-axis
+(expect
+  [true true]
+  (let [result (render-bar-graph {:cols default-columns
+                                  :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]})]
+    [(some #(= "Price" %) result)
+     (some #(= "NumPurchased" %) result)]))
+
+;; Check to make sure we allow nil values for the y-axis
+(expect
+  [true true]
+  (let [result (render-bar-graph {:cols default-columns
+                                  :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]})]
+    [(some #(= "Price" %) result)
+     (some #(= "NumPurchased" %) result)]))
+
+;; Check to make sure we allow nil values for both x and y on different rows
+(expect
+  [true true]
+  (let [result (render-bar-graph {:cols default-columns
+                                  :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})]
+    [(some #(= "Price" %) result)
+     (some #(= "NumPurchased" %) result)]))
+
+;; Test rendering a sparkline
+;;
+;; Sparklines are a binary image either in-line or as an attachment, so there's not much introspection that we can do
+;; with the result. The tests below just check that we can render a sparkline (without eceptions) and that the
+;; attachment is included
+
+(defn- render-sparkline [results]
+  (-> (#'render/render:sparkline :attachment pacific-tz default-test-card results)
+      :attachments
+      count))
+
+;; Test that we can render a sparkline with all valid values
+(expect
+  1
+  (render-sparkline {:cols default-columns
+                     :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))
+
+;; Tex that we can have a nil value in the middle
+(expect
+  1
+  (render-sparkline {:cols default-columns
+                     :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))
+
+;; Test that we can have a nil value for the y-axis at the end of the results
+(expect
+  1
+  (render-sparkline {:cols default-columns
+                     :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))
+
+;; Test that we can have a nil value for the x-axis at the end of the results
+(expect
+  1
+  (render-sparkline {:cols default-columns
+                     :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))
+
+;; Test that we can have a nil value for both x and y axis for different rows
+(expect
+  1
+  (render-sparkline {:cols default-columns
+                     :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]}))

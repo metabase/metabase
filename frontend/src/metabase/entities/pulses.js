@@ -2,7 +2,10 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 
-import { canonicalCollectionId } from "metabase/entities/collections";
+import {
+  canonicalCollectionId,
+  getCollectionType,
+} from "metabase/entities/collections";
 
 const Pulses = createEntity({
   name: "pulses",
@@ -50,6 +53,11 @@ const Pulses = createEntity({
         type: "collection",
       },
     ],
+  },
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.collection_id, getState());
+    return type && `collection=${type}`;
   },
 });
 

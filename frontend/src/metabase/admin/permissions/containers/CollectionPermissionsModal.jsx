@@ -53,9 +53,9 @@ export default class CollectionPermissionsModal extends Component {
         onClose={onClose}
         footer={[
           <Link className="link" to="/admin/permissions/collections">
-            See all collection permissions
+            {t`See all collection permissions`}
           </Link>,
-          <Button onClick={onClose}>Cancel</Button>,
+          <Button onClick={onClose}>{t`Cancel`}</Button>,
           <Button
             primary
             disabled={!isDirty}
@@ -68,7 +68,7 @@ export default class CollectionPermissionsModal extends Component {
               }
             }}
           >
-            Save
+            {t`Save`}
           </Button>,
         ]}
       >

@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t, jt } from "c-3po";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
@@ -24,6 +24,8 @@ import { getUser } from "metabase/home/selectors";
 
 import CollectionList from "metabase/components/CollectionList";
 
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Greeting from "metabase/lib/greeting";
 
@@ -32,6 +34,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 const PAGE_PADDING = [1, 2, 4];
 
 import { createSelector } from "reselect";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 // use reselect select to avoid re-render if list doesn't change
 const getParitionedCollections = createSelector(
@@ -66,17 +69,19 @@ const getParitionedCollections = createSelector(
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
   ...getParitionedCollections(state, props),
   user: getUser(state, props),
+  xraysEnabled: getXraysEnabled(state),
 }))
 class Overworld extends React.Component {
   render() {
-    const { user } = this.props;
+    const { user, xraysEnabled } = this.props;
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
-          <MetabotLogo />
+          <Tooltip tooltip={t`Don't tell anyone, but you're my favorite.`}>
+            <MetabotLogo />
+          </Tooltip>
           <Box ml={2}>
             <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
-            <p className="text-paragraph m0 text-medium">{t`Don't tell anyone, but you're my favorite.`}</p>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -85,34 +90,42 @@ class Overworld extends React.Component {
               d => d.model === "dashboard" && d.collection_position != null,
             );
 
-            if (!pinnedDashboards.length > 0) {
+            if (xraysEnabled && !pinnedDashboards.length > 0) {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
+                    // if there are no items to show then just hide the section
+                    if (!candidates && !sampleCandidates) {
+                      return null;
+                    }
                     return (
-                      <Box mx={PAGE_PADDING} mt={2}>
-                        <SectionHeading>
-                          {t`Not sure where to start? Try these x-rays based on your data.`}
-                        </SectionHeading>
-                        <Card mt={2} px={3} pb={1}>
-                          <ExplorePane
-                            candidates={candidates}
-                            withMetabot={false}
-                            title=""
-                            gridColumns={[1, 1 / 3]}
-                            asCards={false}
-                            description={
-                              isSample
-                                ? t`Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data.`
-                                : ``
-                            }
-                          />
-                        </Card>
+                      <Box mx={PAGE_PADDING} mt={[1, 3]}>
+                        {user.is_superuser && <AdminPinMessage />}
+                        <Box mt={[1, 3]}>
+                          <Flex align="center">
+                            <SectionHeading>
+                              {t`Try these x-rays based on your data.`}
+                            </SectionHeading>
+                          </Flex>
+                          <Box>
+                            <ExplorePane
+                              candidates={candidates}
+                              withMetabot={false}
+                              title=""
+                              gridColumns={[1, 1 / 3]}
+                              asCards={true}
+                            />
+                          </Box>
+                        </Box>
                       </Box>
                     );
                   }}
                 </CandidateListLoader>
               );
+            }
+
+            if (pinnedDashboards.length === 0) {
+              return null;
             }
 
             return (
@@ -154,14 +167,15 @@ class Overworld extends React.Component {
         </CollectionItemsLoader>
 
         <Box px={PAGE_PADDING} my={3}>
-          <SectionHeading>{t`Our analytics`}</SectionHeading>
-          <Card p={[1, 2]} mt={2}>
+          <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
+          <Box p={[1, 2]} mt={2} bg={colors["bg-medium"]}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
               <CollectionList
                 collections={this.props.collections}
                 analyticsContext="Homepage"
+                asCards={true}
               />
             ) : (
               <Box className="text-centered">
@@ -173,8 +187,12 @@ class Overworld extends React.Component {
                 </Box>
                 <h3 className="text-medium">
                   {user.is_superuser
-                    ? t`Save  dashboards, questions, and collections in "Our Analytics"`
-                    : t`Access dashboards, questions, and collections in "Our Analytics"`}
+                    ? t`Save dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`
+                    : t`Access dashboards, questions, and collections in "${
+                        ROOT_COLLECTION.name
+                      }"`}
                 </h3>
               </Box>
             )}
@@ -193,15 +211,18 @@ class Overworld extends React.Component {
                 </Box>
               </Flex>
             </Link>
-          </Card>
+          </Box>
         </Box>
 
-        <Box pt={2} px={PAGE_PADDING}>
-          <SectionHeading>{t`Our data`}</SectionHeading>
-          <Box mb={4}>
-            <DatabaseListLoader>
-              {({ databases }) => {
-                return (
+        <DatabaseListLoader>
+          {({ databases }) => {
+            if (databases.length === 0) {
+              return null;
+            }
+            return (
+              <Box pt={2} px={PAGE_PADDING}>
+                <SectionHeading>{t`Our data`}</SectionHeading>
+                <Box mb={4}>
                   <Grid>
                     {databases.map(database => (
                       <GridItem w={[1, 1 / 3]} key={database.id}>
@@ -245,11 +266,62 @@ class Overworld extends React.Component {
                       </GridItem>
                     ))}
                   </Grid>
-                );
-              }}
-            </DatabaseListLoader>
+                </Box>
+              </Box>
+            );
+          }}
+        </DatabaseListLoader>
+      </Box>
+    );
+  }
+}
+
+export const PIN_MESSAGE_STORAGE_KEY =
+  "mb-admin-homepage-pin-propaganda-hidden";
+
+export class AdminPinMessage extends React.Component {
+  state = {
+    showMessage: !window.localStorage.getItem(PIN_MESSAGE_STORAGE_KEY),
+  };
+
+  dismissPinMessage = () => {
+    window.localStorage.setItem(PIN_MESSAGE_STORAGE_KEY, "true");
+    this.setState({ showMessage: false });
+  };
+  render() {
+    const { showMessage } = this.state;
+
+    if (!showMessage) {
+      return null;
+    }
+
+    const link = (
+      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+    );
+
+    return (
+      <Box>
+        <SectionHeading>{t`Start here`}</SectionHeading>
+
+        <Flex
+          bg={colors["bg-medium"]}
+          p={2}
+          align="center"
+          style={{ borderRadius: 6 }}
+          className="hover-parent hover--visibility"
+        >
+          <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
+          <Box ml={1}>
+            <h3>{t`Your team's most important dashboards go here`}</h3>
+            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
           </Box>
-        </Box>
+          <Icon
+            className="hover-child text-brand-hover cursor-pointer bg-medium"
+            name="close"
+            ml="auto"
+            onClick={() => this.dismissPinMessage()}
+          />
+        </Flex>
       </Box>
     );
   }

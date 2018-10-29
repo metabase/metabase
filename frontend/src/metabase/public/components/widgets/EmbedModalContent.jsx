@@ -4,6 +4,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
 
+import { t } from "c-3po";
+
 import Icon from "metabase/components/Icon";
 
 import SharingPane from "./SharingPane";
@@ -285,7 +287,7 @@ export const EmbedTitle = ({
   onClick: () => any,
 }) => (
   <a className="flex align-center" onClick={onClick}>
-    <span className="text-brand-hover">Sharing</span>
+    <span className="text-brand-hover">{t`Sharing`}</span>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}
     {type}
   </a>

@@ -1,5 +1,7 @@
 import React from "react";
 
+import { t } from "c-3po";
+
 import Radio from "metabase/components/Radio";
 
 const PermissionsTabs = ({ tab, onChangeTab }) => (
@@ -7,8 +9,8 @@ const PermissionsTabs = ({ tab, onChangeTab }) => (
     <Radio
       value={tab}
       options={[
-        { name: `Data permissions`, value: `databases` },
-        { name: `Collection permissions`, value: `collections` },
+        { name: t`Data permissions`, value: `databases` },
+        { name: t`Collection permissions`, value: `collections` },
       ]}
       onChange={onChangeTab}
       underlined

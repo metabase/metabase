@@ -11,8 +11,9 @@
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name   su/NonBlankString
-   :schema (s/maybe su/NonBlankString)})
+  {:name          su/NonBlankString
+   :schema        (s/maybe su/NonBlankString)
+   (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -25,6 +26,7 @@
    :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
    (s/optional-key :special-type)  (s/maybe su/FieldType)
+   (s/optional-key :field-comment) (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataField)}
    (s/optional-key :custom)        {s/Any s/Any}})
@@ -33,7 +35,8 @@
   "Schema for the expected output of `describe-table`."
   {:name   su/NonBlankString
    :schema (s/maybe su/NonBlankString)
-   :fields #{TableMetadataField}})
+   :fields #{TableMetadataField}
+   (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
@@ -86,19 +89,23 @@
   [[s/Any]])
 
 
-(def GlobalFingerprint
-  "Fingerprint values that Fields of all types should have."
-  {(s/optional-key :distinct-count) s/Int})
-
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
   (s/constrained s/Num #(<= 0 % 1) "Valid percentage between (inclusive) 0 and 1."))
+
+(def GlobalFingerprint
+  "Fingerprint values that Fields of all types should have."
+  {(s/optional-key :distinct-count) s/Int
+   (s/optional-key :nil%)           (s/maybe Percent)})
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   {(s/optional-key :min) (s/maybe s/Num)
    (s/optional-key :max) (s/maybe s/Num)
-   (s/optional-key :avg) (s/maybe s/Num)})
+   (s/optional-key :avg) (s/maybe s/Num)
+   (s/optional-key :q1)  (s/maybe s/Num)
+   (s/optional-key :q3)  (s/maybe s/Num)
+   (s/optional-key :sd)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
@@ -109,8 +116,8 @@
 
 (def DateTimeFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/DateTime`."
-  {(s/optional-key :earliest) s/Str
-   (s/optional-key :latest)   s/Str})
+  {(s/optional-key :earliest) (s/maybe s/Str)
+   (s/optional-key :latest)   (s/maybe s/Str)})
 
 (def TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."
@@ -157,7 +164,8 @@
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
-   2 #{:type/DateTime}})
+   2 #{:type/Number}
+   3 #{:type/DateTime}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

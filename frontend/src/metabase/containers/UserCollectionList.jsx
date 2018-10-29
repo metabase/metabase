@@ -1,6 +1,5 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "c-3po";
 
 import * as Urls from "metabase/lib/urls";
 import colors from "metabase/lib/colors";
@@ -13,6 +12,11 @@ import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 
+import {
+  ROOT_COLLECTION,
+  PERSONAL_COLLECTIONS,
+} from "metabase/entities/collections";
+
 const UserListLoader = ({ children, ...props }) => (
   <EntityListLoader entityType="users" children={children} {...props} />
 );
@@ -22,8 +26,8 @@ const UserCollectionList = () => (
     <Box py={2}>
       <BrowserCrumbs
         crumbs={[
-          { title: t`Our analytics`, to: Urls.collection() },
-          { title: t`Everyone else’s personal collections` },
+          { title: ROOT_COLLECTION.name, to: Urls.collection() },
+          { title: PERSONAL_COLLECTIONS.name },
         ]}
       />
     </Box>

@@ -3,6 +3,7 @@ import "number-to-locale-string";
 import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
+  enable_xrays: true,
   timezones: [
     "GMT",
     "UTC",
@@ -50,6 +51,7 @@ window.MetabaseBootstrap = {
     "type/MongoBSONID": ["type/TextLike"],
     "type/Duration": ["type/Number"],
     "type/Float": ["type/Number"],
+    "type/Currency": ["type/Float"],
     "type/CreationTimestamp": ["type/DateTime"],
     "type/Email": ["type/Text"],
     "type/City": ["type/Category", "type/Address", "type/Text"],

@@ -6,8 +6,8 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": ">=6.7.0",
-    "npm": "2.15.9"
+    "node": ">=8.11.4",
+    "npm": "8.11.4"
   },
   "dependencies": {
     "ace-builds": "^1.2.2",
@@ -38,6 +38,7 @@
     "leaflet.heat": "^0.2.0",
     "lodash.memoize": "^4.1.2",
     "moment": "2.19.3",
+    "mustache": "^2.3.2",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
     "npm": "^5.8.0",
@@ -133,6 +134,7 @@
     "jasmine-reporters": "^2.2.0",
     "jasmine-spec-reporter": "^3.0.0",
     "jest": "^19.0.2",
+    "jest-localstorage-mock": "^2.2.0",
     "jscodeshift": "0.5.0",
     "jsonwebtoken": "^7.2.1",
     "karma": "^1.3.0",
@@ -159,7 +161,8 @@
     "webchauffeur": "^1.2.0",
     "webpack": "^3.8.1",
     "webpack-dev-server": "^2.9.1",
-    "webpack-postcss-tools": "^1.1.2"
+    "webpack-postcss-tools": "^1.1.2",
+    "xhr-mock": "^2.4.1"
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",

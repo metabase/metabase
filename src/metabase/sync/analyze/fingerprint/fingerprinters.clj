@@ -1,16 +1,22 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
-  (:require [cheshire.core :as json]
+  (:require [bigml.histogram.core :as hist]
+            [cheshire.core :as json]
             [clj-time.coerce :as t.coerce]
-            [kixi.stats.core :as stats]
+            [kixi.stats
+             [core :as stats]
+             [math :as math]]
             [metabase.models.field :as field]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [redux.core :as redux])
-  (:import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
+  (:import com.bigml.histogram.Histogram
+           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           org.joda.time.DateTime))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -59,7 +65,8 @@
 
 (def ^:private global-fingerprinter
   (redux/post-complete
-   (redux/fuse {:distinct-count cardinality})
+   (redux/fuse {:distinct-count cardinality
+                :nil%           (stats/share nil?)})
    (partial hash-map :global)))
 
 (defmethod fingerprinter :default
@@ -122,11 +129,13 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
+         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))
-  ([acc] (du/date->iso-8601 acc))
+  ([acc]
+   (when (not= acc (earliest))
+     (du/date->iso-8601 acc)))
   ([^java.util.Date acc dt]
    (if dt
      (if (.before ^java.util.Date dt acc)
@@ -136,7 +145,9 @@
 
 (defn- latest
   ([] (java.util.Date. 0))
-  ([acc] (du/date->iso-8601 acc))
+  ([acc]
+   (when (not= acc (latest))
+     (du/date->iso-8601 acc)))
   ([^java.util.Date acc dt]
    (if dt
      (if (.after ^java.util.Date dt acc)
@@ -144,8 +155,8 @@
        acc)
      acc)))
 
-(defprotocol ^:private IDateCoercible
-  "Protocol for converting objects to `java.util.Date`"
+(defprotocol IDateCoercible
+  "Protocol for converting objects in resultset to `java.util.Date`"
   (->date ^java.util.Date [this]
     "Coerce object to a `java.util.Date`."))
 
@@ -153,6 +164,7 @@
   nil                    (->date [_] nil)
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this)
+  DateTime               (->date [this] (t.coerce/to-date this))
   Long                   (->date [^Long this] (java.util.Date. this)))
 
 (deffingerprinter :type/DateTime
@@ -160,10 +172,23 @@
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
+(defn- histogram
+  "Transducer that summarizes numerical data with a histogram."
+  ([] (hist/create))
+  ([^Histogram histogram] histogram)
+  ([^Histogram histogram x] (hist/insert-simple! histogram x)))
+
 (deffingerprinter :type/Number
-  (redux/fuse {:min stats/min
-               :max stats/max
-               :avg stats/mean}))
+  (redux/post-complete
+   histogram
+   (fn [h]
+     (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
+       {:min (hist/minimum h)
+        :max (hist/maximum h)
+        :avg (hist/mean h)
+        :sd  (some-> h hist/variance math/sqrt)
+        :q1  q1
+        :q3  q3}))))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array."
@@ -186,6 +211,6 @@
   (apply col-wise (for [field fields]
                     (fingerprinter
                      (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with  on first sync
+                       ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :special_type :last_analyzed) field))
                        (assoc :special_type (classify.name/infer-special-type field)))))))

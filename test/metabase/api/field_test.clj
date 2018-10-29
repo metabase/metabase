@@ -18,7 +18,9 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.util :as u]
+            [metabase.test.util.log :as tu.log]))
 
 ;; Helper Fns
 
@@ -86,7 +88,8 @@
      :fk_target_field_id  nil
      :parent_id           nil
      :dimensions          []
-     :name_field          nil})
+     :name_field          nil
+     :settings            nil})
   ((user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
 
 
@@ -225,12 +228,17 @@
 (expect
   [{:values [], :field_id true}
    {:status "success"}
+   {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
    {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} list-field]]
     (mapv tu/boolean-ids-and-timestamps
-          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+          [ ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
+           ;; exist; we can ignore that
+           (tu.log/suppress-output
+             ((user->client :crowberto) :get 200 (format "field/%d/values" field-id)))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
             {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
+           (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset values
@@ -527,8 +535,8 @@
     :human_readable_field_id false
     :field_id                true}
    []]
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type "type/Text"})
@@ -544,13 +552,21 @@
              :name                    "some dimension name"
              :human_readable_field_id false
              :field_id                true})
-  (tt/with-temp* [Field [{field-id :id} {:name      "Field Test"
-                                         :base_type "type/Integer"}]]
+  (tt/with-temp Field [{field-id :id} {:name      "Field Test"
+                                       :base_type "type/Integer"}]
     (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
     (let [new-dim (dimension-for-field field-id)]
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:has_field_values "list"})
       [(tu/boolean-ids-and-timestamps new-dim)
        (tu/boolean-ids-and-timestamps (dimension-for-field field-id))])))
+
+;; Can we update Field.settings, and fetch it?
+(expect
+  {:field_is_cool true}
+  (tt/with-temp Field [field {:name "Crissy Field"}]
+    ((user->client :crowberto) :put 200 (format "field/%d" (u/get-id field)) {:settings {:field_is_cool true}})
+    (-> ((user->client :crowberto) :get 200 (format "field/%d" (u/get-id field)))
+        :settings)))
 
 
 ;; make sure `search-values` works on with our various drivers

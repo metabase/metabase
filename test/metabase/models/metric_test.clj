@@ -5,7 +5,7 @@
              [metric :as metric :refer :all]
              [table :refer [Table]]]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :refer [user->id fetch-user]]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
@@ -16,7 +16,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :archived                false
-   :definition              {}})
+   :definition              nil})
 
 (defn- user-details
   [username]
@@ -42,10 +42,10 @@
          {:creator_id (user->id :rasta)
           :creator    (user-details :rasta)
           :name       "I only want *these* things"
-          :definition {:clause ["a" "b"]}})
+          :definition {:filter [:= [:field-id 1] 2]}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]}      {:db_id database-id}]]
-    (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
+    (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:filter [:= [:field-id 1] 2]})))
 
 
 ;; exists?
@@ -55,8 +55,7 @@
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id   table-id
-                                               :definition {:database 45
-                                                            :query    {:filter ["yay"]}}}]]
+                                               :definition {:filter [:= [:field-id 1] 2]}}]]
     [(metric/exists? metric-id)
      (metric/exists? Integer/MAX_VALUE)])) ; a Metric that definitely doesn't exist
 
@@ -68,13 +67,11 @@
           :creator     (user-details :rasta)
           :name        "Toucans in the rainforest"
           :description "Lookin' for a blueberry"
-          :definition  {:database 45
-                        :query    {:filter ["yay"]}}})
+          :definition  {:filter [:= [:field-id 1] 2]}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id    table-id
-                                               :definition  {:database 45
-                                                             :query    {:filter ["yay"]}}}]]
+                                               :definition  {:filter [:= [:field-id 1] 2]}}]]
     (let [{:keys [creator] :as metric} (retrieve-metric metric-id)]
       (update (dissoc metric :id :table_id :created_at :updated_at)
               :creator (u/rpartial dissoc :date_joined :last_login)))))
@@ -110,8 +107,7 @@
          {:creator_id (user->id :rasta)
           :creator    (user-details :rasta)
           :name       "Costa Rica"
-          :definition {:database 2
-                       :query    {:filter ["not" "the toucans you're looking for"]}}})
+          :definition {:filter [:not [:= [:field-id 1] "toucans"]]}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table  [{table-id :id}  {:db_id database-id}]
                   Metric [{metric-id :id} {:table_id table-id}]]
@@ -124,8 +120,7 @@
                                  :points_of_interest      nil
                                  :creator_id              (user->id :crowberto)
                                  :table_id                456
-                                 :definition              {:database 2
-                                                           :query    {:filter ["not" "the toucans you're looking for"]}}
+                                 :definition              {:filter [:not [:= [:field-id 1] "toucans"]]}
                                  :revision_message        "Just horsing around"})))
 
 ;; delete-metric!
@@ -153,13 +148,13 @@
           :creator_id  (user->id :rasta)
           :name        "Toucans in the rainforest"
           :description "Lookin' for a blueberry"
-          :definition  {:aggregation ["count"]
-                        :filter      ["AND" [">" 4 "2014-10-19"]]}})
+          :definition  {:aggregation [[:count]]
+                        :filter      [:> [:field-id 4] "2014-10-19"]}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
-                                            :definition {:aggregation ["count"]
-                                                         :filter      ["AND" [">" 4 "2014-10-19"]]}}]]
+                                            :definition {:aggregation [[:count]]
+                                                         :filter      [:and [:> [:field-id 4] "2014-10-19"]]}}]]
     (-> (#'metric/serialize-metric Metric (:id metric) metric)
         (update :id boolean)
         (update :table_id boolean))))
@@ -167,8 +162,8 @@
 ;; #'metric/diff-metrics
 
 (expect
-  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
-                 :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}
+  {:definition  {:before {:filter [:> [:field-id 4] "2014-10-19"]}
+                 :after  {:filter [:between [:field-id 4] "2014-07-01" "2014-10-19"]}}
    :description {:before "Lookin' for a blueberry"
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
@@ -176,11 +171,11 @@
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
-                                            :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]
+                                            :definition {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}]]
     (#'metric/diff-metrics Metric metric (assoc metric
                                            :name        "Something else"
                                            :description "BBB"
-                                           :definition  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}))))
+                                           :definition  {:filter [:between [:field-id 4] "2014-07-01" "2014-10-19"]}))))
 
 ;; test case where definition doesn't change
 (expect
@@ -189,33 +184,33 @@
   (#'metric/diff-metrics Metric
                          {:name        "A"
                           :description "Unchanged"
-                          :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}
+                          :definition  {:filter [:and [:> 4 "2014-10-19"]]}}
                          {:name        "B"
                           :description "Unchanged"
-                          :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+                          :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))
 
 ;; first version, so comparing against nil
 (expect
   {:name        {:after  "A"}
    :description {:after "Unchanged"}
-   :definition  {:after {:filter ["AND" [">" 4 "2014-10-19"]]}}}
+   :definition  {:after {:filter [:and [:> 4 "2014-10-19"]]}}}
   (#'metric/diff-metrics Metric
                          nil
                          {:name        "A"
                           :description "Unchanged"
-                          :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+                          :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))
 
 ;; removals only
 (expect
-  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}
-                 :after  {:filter ["AND" [">" 4 "2014-10-19"]]}}}
+  {:definition  {:before {:filter [:and [:> 4 "2014-10-19"] [:= 5 "yes"]]}
+                 :after  {:filter [:and [:> 4 "2014-10-19"]]}}}
   (#'metric/diff-metrics Metric
                          {:name        "A"
                           :description "Unchanged"
-                          :definition  {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}}
+                          :definition  {:filter [:and [:> 4 "2014-10-19"] [:= 5 "yes"]]}}
                          {:name        "A"
                           :description "Unchanged"
-                          :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+                          :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))
 
 
 
@@ -223,16 +218,24 @@
 
 (expect
   {:Segment #{2 3}}
-  (metric-dependencies Metric 12 {:definition {:aggregation ["rows"]
-                                               :breakout    [4 5]
-                                               :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}))
+  (metric-dependencies Metric 12 {:definition {:breakout [[:field-id 4] [:field-id 5]]
+                                               :filter   [:and
+                                                          [:> 4 "2014-10-19"]
+                                                          [:= 5 "yes"]
+                                                          [:segment 2]
+                                                          [:segment 3]]}}))
 
 (expect
   {:Segment #{1}}
-  (metric-dependencies Metric 12 {:definition {:aggregation ["METRIC" 7]
-                                               :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}))
+  (metric-dependencies Metric 12 {:definition {:aggregation [:metric 7]
+                                               :filter      [:and
+                                                             [:> 4 "2014-10-19"]
+                                                             [:= 5 "yes"]
+                                                             [:or
+                                                              [:segment 1]
+                                                              [:!= 5 "5"]]]}}))
 
 (expect
-  {:Segment nil}
+  {:Segment #{}}
   (metric-dependencies Metric 12 {:definition {:aggregation nil
                                                :filter      nil}}))

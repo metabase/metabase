@@ -1,13 +1,16 @@
 (ns metabase.models.metric
+  "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
+  It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
+  clauses."
   (:require [medley.core :as m]
             [metabase
              [events :as events]
              [util :as u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [dependency :as dependency]
              [interface :as i]
              [revision :as revision]]
-            [metabase.util.query :as q]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -26,7 +29,7 @@
 (u/strict-extend (class Metric)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:definition :json, :description :clob})
+         {:types      (constantly {:definition :metric-segment-definition, :description :clob})
           :properties (constantly {:timestamped? true})
           :pre-delete pre-delete})
   i/IObjectPermissions
@@ -36,8 +39,7 @@
           :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
-;;; ## ---------------------------------------- REVISIONS ----------------------------------------
-
+;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
 (defn- serialize-metric [_ _ instance]
   (dissoc instance :created_at :updated_at))
@@ -64,14 +66,13 @@
           :diff-map           diff-metrics}))
 
 
-;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
-
+;;; -------------------------------------------------- DEPENDENCIES --------------------------------------------------
 
 (defn metric-dependencies
-  "Calculate any dependent objects for a given `Metric`."
+  "Calculate any dependent objects for a given Metric."
   [_ _ {:keys [definition]}]
   (when definition
-    {:Segment (q/extract-segment-ids definition)}))
+    {:Segment (set (mbql.u/match definition [:segment id] id))}))
 
 (u/strict-extend (class Metric)
   dependency/IDependent
@@ -81,9 +82,9 @@
 ;; ## Persistence Functions
 
 (defn create-metric!
-  "Create a new `Metric`.
+  "Create a new Metric.
 
-   Returns the newly created `Metric` or throws an Exception."
+   Returns the newly created Metric or throws an Exception."
   [table-id metric-name description creator-id definition]
   {:pre [(integer? table-id)
          (string? metric-name)
@@ -99,21 +100,21 @@
         (hydrate :creator))))
 
 (defn exists?
-  "Does an *active* `Metric` with ID exist?"
+  "Does an *active* Metric with ID exist?"
   ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Metric :id id, :archived false))
 
 (defn retrieve-metric
-  "Fetch a single `Metric` by its ID value. Hydrates its `:creator`."
+  "Fetch a single Metric by its ID value. Hydrates its `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Metric id)
       (hydrate :creator)))
 
 (defn retrieve-metrics
-  "Fetch all `Metrics` for a given `Table`.  Optional second argument allows filtering by active state by
-   providing one of 3 keyword values: `:active`, `:deleted`, `:all`.  Default filtering is for `:active`."
+  "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
+  of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
   ([table-id]
    (retrieve-metrics table-id :active))
   ([table-id state]
@@ -128,9 +129,9 @@
        (hydrate :creator))))
 
 (defn update-metric!
-  "Update an existing `Metric`.
+  "Update an existing Metric.
 
-   Returns the updated `Metric` or throws an Exception."
+   Returns the updated Metric or throws an Exception."
   [{:keys [id name definition revision_message], :as body} user-id]
   {:pre [(integer? id)
          (string? name)
@@ -139,18 +140,19 @@
          (string? revision_message)]}
   ;; update the metric itself
   (db/update! Metric id
-    (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest :show_in_getting_started}))
+    (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest
+                        :show_in_getting_started}))
   (u/prog1 (retrieve-metric id)
     (events/publish-event! :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 ;; TODO - rename to `delete!`
 (defn delete-metric!
-  "Delete a `Metric`.
+  "Delete a Metric.
 
-   This does a soft delete and simply marks the `Metric` as deleted but does not actually remove the
-   record from the database at any time.
+  This does a soft delete and simply marks the Metric as deleted but does not actually remove the record from the
+  database at any time.
 
-   Returns the final state of the `Metric` is successful, or throws an Exception."
+  Returns the final state of the Metric is successful, or throws an Exception."
   [id user-id revision-message]
   {:pre [(integer? id)
          (integer? user-id)

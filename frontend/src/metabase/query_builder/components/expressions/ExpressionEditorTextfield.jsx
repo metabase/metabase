@@ -26,6 +26,14 @@ import { isExpression } from "metabase/lib/expressions";
 
 const MAX_SUGGESTIONS = 30;
 
+const SUGGESTION_SECTION_NAMES = {
+  fields: t`Fields`,
+  aggregations: t`Aggregations`,
+  operators: t`Operators`,
+  metrics: t`Metrics`,
+  other: t`Other`,
+};
+
 export default class ExpressionEditorTextfield extends Component {
   constructor(props, context) {
     super(props, context);
@@ -316,7 +324,8 @@ export default class ExpressionEditorTextfield extends Component {
                       ref={"header-" + i}
                       className="mx2 h6 text-uppercase text-bold text-medium py1 pt2"
                     >
-                      {suggestion.type}
+                      {SUGGESTION_SECTION_NAMES[suggestion.type] ||
+                        suggestion.type}
                     </li>
                   ),
                   <li

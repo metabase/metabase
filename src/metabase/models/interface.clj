@@ -1,6 +1,7 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [metabase.mbql.normalize :as normalize]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
@@ -22,7 +23,9 @@
 
 ;;; types
 
-(defn- json-in [obj]
+(defn- json-in
+  "Default in function for Fields given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
   (if (string? obj)
     obj
     (json/generate-string obj)))
@@ -33,7 +36,9 @@
       (json/parse-string s keywordize-keys?)
       obj)))
 
-(defn- json-out-with-keywordization [obj]
+(defn- json-out-with-keywordization
+  "Default out function for Fields given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
+  [obj]
   (json-out obj true))
 
 (defn- json-out-without-keywordization [obj]
@@ -46,6 +51,35 @@
 (models/add-type! :json-no-keywordization
   :in  json-in
   :out json-out-without-keywordization)
+
+;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
+(defn- maybe-normalize [query]
+  (when query (normalize/normalize query)))
+
+(models/add-type! :metabase-query
+  :in  (comp json-in maybe-normalize)
+  :out (comp maybe-normalize json-out-with-keywordization))
+
+;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
+(defn- normalize-metric-segment-definition [definition]
+  (when definition
+    (normalize/normalize-fragment [:query] definition)))
+
+;; For inner queries like those in Metric definitions
+(models/add-type! :metric-segment-definition
+  :in  (comp json-in normalize-metric-segment-definition)
+  :out (comp normalize-metric-segment-definition json-out-with-keywordization))
+
+;; For DashCard parameter lists
+(defn- normalize-parameter-mapping-targets [parameter-mappings]
+  (for [{:keys [target], :as mapping} parameter-mappings]
+    (cond-> mapping
+      target (update :target normalize/normalize-tokens :ignore-path))))
+
+(models/add-type! :parameter-mappings
+  :in  (comp json-in normalize-parameter-mapping-targets)
+  :out (comp normalize-parameter-mapping-targets json-out-with-keywordization))
+
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set

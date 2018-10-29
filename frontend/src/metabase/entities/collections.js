@@ -5,7 +5,11 @@ import colors from "metabase/lib/colors";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
-import { getUser, getUserDefaultCollectionId } from "metabase/selectors/user";
+import {
+  getUser,
+  getUserDefaultCollectionId,
+  getUserPersonalCollectionId,
+} from "metabase/selectors/user";
 
 import { t } from "c-3po";
 
@@ -79,6 +83,7 @@ const Collections = createEntity({
     ) => [
       {
         name: "name",
+        title: t`Name`,
         placeholder: "My new fantastic collection",
         validate: name =>
           (!name && t`Name is required`) ||
@@ -86,22 +91,29 @@ const Collections = createEntity({
       },
       {
         name: "description",
+        title: t`Description`,
         type: "text",
         placeholder: "It's optional but oh, so helpful",
         normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
         name: "color",
+        title: t`Color`,
         type: "hidden",
         initial: () => colors.brand,
         validate: color => !color && t`Color is required`,
       },
       {
         name: "parent_id",
-        title: "Collection it's saved in",
+        title: t`Collection it's saved in`,
         type: "collection",
       },
     ],
+  },
+
+  getAnalyticsMetadata(action, object, getState) {
+    const type = object && getCollectionType(object.parent_id, getState());
+    return type && `collection=${type}`;
   },
 });
 
@@ -115,6 +127,13 @@ export const canonicalCollectionId = (
   collectionId == null || collectionId === "root"
     ? null
     : parseInt(collectionId, 10);
+
+export const getCollectionType = (collectionId: string, state: {}) =>
+  collectionId === null || collectionId === "root"
+    ? "root"
+    : collectionId === getUserPersonalCollectionId(state)
+      ? "personal"
+      : collectionId !== undefined ? "other" : null;
 
 export const ROOT_COLLECTION = {
   id: "root",
@@ -135,7 +154,7 @@ export const PERSONAL_COLLECTION = {
 // fake collection for admins that contains all other user's collections
 export const PERSONAL_COLLECTIONS = {
   id: "personal", // placeholder id
-  name: t`Personal Collections`,
+  name: t`All personal collections`,
   location: "/",
   path: ["root"],
   can_write: false,

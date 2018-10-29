@@ -106,7 +106,7 @@ describe("Reference utils.js", () => {
           database: database,
           type: "query",
           query: {
-            source_table: table,
+            "source-table": table,
           },
         },
       };
@@ -217,7 +217,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["METRIC", 3],
+          aggregation: ["metric", 3],
         }),
       );
     });
@@ -232,7 +232,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["METRIC", 3],
+          aggregation: ["metric", 3],
           breakout: [4],
         }),
       );
@@ -249,7 +249,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          filter: ["AND", ["SEGMENT", 4]],
+          filter: ["and", ["segment", 4]],
         }),
       );
     });
@@ -267,7 +267,7 @@ describe("Reference utils.js", () => {
           database: 2,
           table: 3,
           aggregation: ["count"],
-          filter: ["AND", ["SEGMENT", 4]],
+          filter: ["and", ["segment", 4]],
         }),
       );
     });

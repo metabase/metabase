@@ -22,24 +22,26 @@ import type { Metadata } from "metabase/meta/types/Metadata";
 import moment from "moment";
 
 import Q from "metabase/lib/query";
-import { mbqlEq } from "metabase/lib/query/util";
+
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
   return tags
     .filter(
-      tag => tag.type != null && (tag.widget_type || tag.type !== "dimension"),
+      tag =>
+        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
     .map(tag => ({
       id: tag.id,
       type:
-        tag.widget_type || (tag.type === "date" ? "date/single" : "category"),
+        tag["widget-type"] ||
+        (tag.type === "date" ? "date/single" : "category"),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
           : ["variable", ["template-tag", tag.name]],
-      name: tag.display_name,
+      name: tag["display-name"],
       slug: tag.name,
       default: tag.default,
     }));
@@ -65,10 +67,10 @@ export function getParameterTargetFieldId(
 ): ?FieldId {
   if (target && target[0] === "dimension") {
     let dimension = target[1];
-    if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
+    if (Array.isArray(dimension) && dimension[0] === "template-tag") {
       if (datasetQuery.type === "native") {
         let templateTag =
-          datasetQuery.native.template_tags[String(dimension[1])];
+          datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
           return Q.getFieldTargetId(templateTag.dimension);
         }
@@ -140,13 +142,14 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^([0-9-T:]+)$/,
     deserialize: (matches, fieldRef) => ["=", fieldRef, matches[0]],
   },
-  // TODO 3/27/17 Atte Keinänen
-  // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
   {
     testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/,
-    deserialize: (matches, fieldRef) =>
-      // $FlowFixMe
-      ["BETWEEN", fieldRef, matches[0], matches[1]],
+    deserialize: (matches, fieldRef) => [
+      "between",
+      fieldRef,
+      matches[0],
+      matches[1],
+    ],
   },
 ];
 

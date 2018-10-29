@@ -54,11 +54,13 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "--add-modules=java.xml.bind", // Tell Java 9 we want to use java.xml stuff
+          "-Duser.timezone=US/Pacific",
           "-jar",
           "target/uberjar/metabase.jar",
         ],
         {
           env: {
+            MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
             MB_JETTY_PORT: server.port,
           },

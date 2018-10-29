@@ -2,8 +2,10 @@
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
+            [clojure
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
@@ -29,13 +31,13 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]
+             [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.middleware.expand :as ql]
-            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]]
+            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
   (:import com.mchange.v2.c3p0.PooledDataSource
@@ -111,8 +113,9 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login}
-                         #(.endsWith (name %) "_id")))
+                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                         #(s/ends-with? % "_id")
+                         #(s/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -225,6 +228,17 @@
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class TaskHistory)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_]
+                         (let [started (time/now)
+                               ended   (time/plus started (time/millis 10))]
+                           {:db_id      (data/id)
+                            :task       (random-name)
+                            :started_at (du/->Timestamp started)
+                            :ended_at   (du/->Timestamp ended)
+                            :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
   test/WithTempDefaults
@@ -392,33 +406,49 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map fields]
+(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
                                                      num
-                                                     (u/round-to-decimals 3 num)))))
+                                                     (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
 (defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  "Rounds the numerical fields of a fingerprint to 2 decimal places"
   [field]
   (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
-      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
+      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols [query-results]
-  (let [maybe-data-cols (if (contains? query-results :data)
-                          [:data :cols]
-                          [:cols])]
-    (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+(defn round-fingerprint-cols
+  ([query-results]
+   (if (map? query-results)
+     (let [maybe-data-cols (if (contains? query-results :data)
+                             [:data :cols]
+                             [:cols])]
+       (round-fingerprint-cols maybe-data-cols query-results))
+     (map round-fingerprint query-results)))
+  ([k query-results]
+   (update-in query-results k #(map round-fingerprint %))))
+
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
 
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (qputil/postwalk-pred double?
-                        #(u/round-to-decimals decimal-place %)
-                        data))
+  (postwalk-pred double?
+                 #(u/round-to-decimals decimal-place %)
+                 data))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -518,7 +548,8 @@
       (DateTimeZone/setDefault dtz)
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
-      (f)
+      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
+        (f))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures
@@ -576,8 +607,8 @@
           pause-query                (promise)
           before-query-called-cancel (realized? called-cancel?)
           before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-query checkins
-                                              (ql/aggregation (ql/count))))
+          query-thunk                (fn [] (data/run-mbql-query checkins
+                                              {:aggregation [[:count]]}))
           ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
           ;; which should cause an interrupt
           query-future               (f query-thunk called-query? called-cancel? pause-query)]
@@ -627,3 +658,20 @@
   admin has removed them."
   [& body]
   `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+
+
+(defn doall-recursive
+  "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
+  Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
+  `with-temp` form."
+  [x]
+  (cond
+    (map? x)
+    (into {} (for [[k v] (doall x)]
+               [k (doall-recursive v)]))
+
+    (sequential? x)
+    (mapv doall-recursive (doall x))
+
+    :else
+    x))

@@ -231,7 +231,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     return arg == null ? [agg] : [agg, arg];
   }
   _metricReference(metricName, metricId) {
-    return ["METRIC", metricId];
+    return ["metric", metricId];
   }
   _fieldReference(fieldName, fieldId) {
     return ["field-id", fieldId];

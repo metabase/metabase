@@ -5,7 +5,11 @@ import _ from "underscore";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  getGroupNameLocalized,
+} from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import { PermissionsApi } from "metabase/services";
@@ -175,9 +179,12 @@ function GroupRow({
           className="link no-decoration"
         >
           <span className="text-white inline-block">
-            <UserAvatar background={color} user={{ first_name: group.name }} />
+            <UserAvatar
+              background={color}
+              user={{ first_name: getGroupNameLocalized(group) }}
+            />
           </span>
-          <span className="ml2 text-bold">{group.name}</span>
+          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
         </Link>
       </td>
       <td>{group.members || 0}</td>

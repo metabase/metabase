@@ -5,15 +5,18 @@
   (:require [buddy.core.hash :as hash]
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
-            [metabase.query-processor.interface :as i]
+            [metabase.driver :as driver]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
+            [metabase.util
+             [encryption :as encryption]
+             [i18n :refer [tru]]]
             [ring.util.codec :as codec]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.util :as u]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
-;; metadata as part of the query context so we can compare for changes
+;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
+;; Card metadata as part of the query context so we can compare for changes
 (defn- record-metadata! [card-id metadata]
   (when metadata
     (db/update! 'Card card-id
@@ -52,19 +55,25 @@
       (if (-> query :middleware :skip-results-metadata?)
         results
         (try
-          (let [metadata (seq (qr/results->column-metadata results))]
+          (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
             ;; At the very least we can skip the Extra DB call to update this Card's metadata results
             ;; if its DB doesn't support nested queries in the first place
-            (when (and (i/driver-supports? :nested-queries)
+            (when (and qp.i/*driver*
+                       (driver/driver-supports? qp.i/*driver* :nested-queries)
                        card-id
                        (not nested?))
               (record-metadata! card-id metadata))
             ;; add the metadata and checksum to the response
-            (assoc results :results_metadata {:checksum (metadata-checksum metadata)
-                                              :columns  metadata}))
+            (assoc results
+              :results_metadata {:checksum (metadata-checksum metadata)
+                                 :columns  metadata}
+              :insights insights))
           ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
           ;; rather than failing the entire query
           (catch Throwable e
-            (log/error "Error recording results metadata for query:" (.getMessage e) "\n"
+            (log/error (tru "Error recording results metadata for query:")
+                       "\n"
+                       (class e) (.getMessage e)
+                       "\n"
                        (u/pprint-to-str (u/filtered-stacktrace e)))
             results))))))
