@@ -172,7 +172,7 @@
       Is this property required? Defaults to `false`.")
 
   (^{:style/indent 1} execute-query ^java.util.Map [this, ^java.util.Map query]
-   "Execute a query against the database and return the results.
+    "Execute a query against the database and return the results.
 
   The query passed in will contain:
 
@@ -255,7 +255,7 @@
            (qp query)))")
 
   (^{:style/indent 2} sync-in-context [this database ^clojure.lang.IFn f]
-   "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
+    "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as
      `sync-database!`. The sync operation itself is encapsulated as the lambda F, which must be called with no
      arguments.
 

@@ -179,7 +179,6 @@
                     :limit        5}}))))
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
-
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
    breakout-results
   (rows+cols

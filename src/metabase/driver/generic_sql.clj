@@ -462,25 +462,25 @@
   "Default implementations for methods in `ISQLDriver`."
   []
   (require 'metabase.driver.generic-sql.query-processor)
-  {:active-tables         fast-active-tables
+  {:active-tables        fast-active-tables
    ;; don't resolve the vars yet so during interactive dev if the underlying impl changes we won't have to reload all
    ;; the drivers
-   :apply-source-table    (resolve 'metabase.driver.generic-sql.query-processor/apply-source-table)
-   :apply-aggregation     (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation)
-   :apply-breakout        (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)
-   :apply-fields          (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
-   :apply-filter          (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
-   :apply-join-tables     (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
-   :apply-limit           (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
-   :apply-order-by        (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
-   :apply-page            (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
-   :column->special-type  (constantly nil)
-   :current-datetime-fn   (constantly :%now)
-   :excluded-schemas      (constantly nil)
-   :field->identifier     (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
-   :field->alias          (u/drop-first-arg :name)
-   :quote-style           (constantly :ansi)
-   :set-timezone-sql      (constantly nil)})
+   :apply-source-table   (resolve 'metabase.driver.generic-sql.query-processor/apply-source-table)
+   :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation)
+   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)
+   :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
+   :apply-filter         (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
+   :apply-join-tables    (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
+   :apply-limit          (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
+   :apply-order-by       (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
+   :apply-page           (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :column->special-type (constantly nil)
+   :current-datetime-fn  (constantly :%now)
+   :excluded-schemas     (constantly nil)
+   :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
+   :field->alias         (u/drop-first-arg :name)
+   :quote-style          (constantly :ansi)
+   :set-timezone-sql     (constantly nil)})
 
 
 (defn IDriverSQLDefaultsMixin
