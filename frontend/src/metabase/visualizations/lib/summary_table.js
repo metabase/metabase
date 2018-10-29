@@ -13,7 +13,7 @@ import type {
   SummaryRow,
   SummaryTableSettings,
 } from "metabase/meta/types/summary_table";
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { Card, DatasetQuery } from "metabase/meta/types/Card";
 import {
   AGGREGATION,
   BREAKOUT,
@@ -86,14 +86,47 @@ export function getTableCellClickedObjectForSummary(
   return { value, column, dimensions };
 }
 
+const extractNameKind = aggregation => {
+  if (aggregation.length === 3 && aggregation[0] === "named") {
+    return { name: aggregation[2], kind: aggregation[1][0] };
+  }
+
+  if (aggregation.length === 2) {
+    return { name: aggregation[0], kind: aggregation[0] };
+  }
+
+  return null;
+};
+
+const getAggregationTypeBuilder = (
+  { dataset_query }: Card,
+  cols: Column[],
+): (ColumnName => string) => {
+  const aggregations =
+    (dataset_query && dataset_query.query && dataset_query.query.aggregation) ||
+    [];
+  const columnNameToAggregation = aggregations
+    .map(extractNameKind)
+    .filter(p => p)
+    .reduce((acc, { name, kind }) => set(acc, name, kind), {});
+  return columnName => columnNameToAggregation[columnName] || "sum";
+};
+
 export const getAggregationQueries = (
   settings: SummaryTableSettings,
   cols: Column[],
+  card: Card,
 ): DatasetQuery[] => {
+  const getAggregationType = getAggregationTypeBuilder(card, cols);
+
   const nameToTypeMap = getNameToTypeMap(cols);
 
   const createLiteral = name => ["field-literal", name, nameToTypeMap[name]];
-  const createTotal = name => ["named", ["sum", createLiteral(name)], name];
+  const createTotal = name => [
+    "named",
+    [getAggregationType(name), createLiteral(name)],
+    name,
+  ];
 
   const canTotalize = shouldTotalizeDefaultBuilder(cols);
   const queryPlan = getQueryPlan(settings, p => canTotalize(p));
@@ -442,7 +475,7 @@ export const fetchAggregationsDataBuilder = (dispatch, parameters) => (
     const fetchSuperQuery = dashboard
       ? getFetchForDashboard(dashboard, card, state)
       : getFetchForQuestion(card, state, parameters);
-    const totalsTasks = getAggregationQueries(settings, cols).map(
+    const totalsTasks = getAggregationQueries(settings, cols, card).map(
       fetchSuperQuery,
     );
     return [...(await Promise.all(totalsTasks))]
