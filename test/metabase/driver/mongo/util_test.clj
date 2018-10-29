@@ -1,7 +1,8 @@
 (ns metabase.driver.mongo.util-test
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.util :as mongo-util])
+            [metabase.driver.mongo.util :as mongo-util]
+            [metabase.test.util.log :as tu.log])
   (:import com.mongodb.ReadPreference))
 
 ;; test that people can specify additional connection options like `?readPreference=nearest`
@@ -41,6 +42,7 @@
                    :tunnel-enabled true
                    :tunnel-port    22
                    :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (tu.log/suppress-output
+        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
        (catch Exception e
          (.getMessage e))))

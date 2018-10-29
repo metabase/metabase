@@ -87,7 +87,7 @@ Some questions come up over and over again. Check here first:
 
 # Security Disclosure
 
-Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
+Security is very important to us. If you discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
 
 
 # Contributing

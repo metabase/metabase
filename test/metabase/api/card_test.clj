@@ -274,6 +274,7 @@
             :can_write              true
             :dashboard_count        0
             :read_permissions       nil
+            :result_metadata        true
             :creator                (match-$ (fetch-user :rasta)
                                       {:common_name  "Rasta Toucan"
                                        :is_superuser false
@@ -285,20 +286,19 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})})
     (tu/with-non-admin-groups-no-root-collection-perms
-      (tt/with-temp* [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
-                      Collection [collection]]
+      (tt/with-temp* [Collection [collection]]
         (tu/with-model-cleanup [Card]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (-> ((user->client :rasta) :post 200 "card"
-               (assoc (card-with-name-and-query card-name (mbql-count-query (u/get-id db) (u/get-id table)))
+               (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
                  :collection_id (u/get-id collection)))
               (dissoc :created_at :updated_at :id)
               (update :table_id integer?)
               (update :database_id integer?)
               (update :collection_id integer?)
               (update :dataset_query map?)
-              (update :collection map?)))))))
+              (update :collection map?)
+              (update :result_metadata (partial every? map?))))))))
 
 ;; Make sure when saving a Card the query metadata is saved (if correct)
 (expect
@@ -330,8 +330,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
@@ -381,11 +382,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can fetch a card
-(tt/expect-with-temp [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
+(tt/expect-with-temp [Database   [db          (select-keys (data/db) [:engine :details])]
+                      Table      [table       (-> (Table (data/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (u/get-id db)))]
                       Collection [collection]
-                      Card       [card  {:collection_id (u/get-id collection)
-                                         :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+                      Card       [card        {:collection_id (u/get-id collection)
+                                               :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
   (merge card-defaults
          (match-$ card
            {:dashboard_count        0
@@ -538,8 +541,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"

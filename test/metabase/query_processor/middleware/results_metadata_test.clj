@@ -47,34 +47,41 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98}}))
+  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))
 
 ;; test that Card result metadata is saved after running a Card
 (expect
   default-card-results-native
   (tt/with-temp Card [card]
-    (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
-                        :info {:card-id    (u/get-id card)
-                               :query-hash (qputil/query-hash {})}))
-    (round-to-2-decimals (card-metadata card))))
+    (u/prog1
+     (qp/process-query (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
+                         :info {:card-id    (u/get-id card)
+                                :query-hash (qputil/query-hash {})}))
+     (assert (= (:status <>) :completed)))
+    (-> card
+        card-metadata
+        round-to-2-decimals
+        tu/round-fingerprint-cols)))
 
 ;; check that using a Card as your source doesn't overwrite the results metadata...
 (expect
-  {:name "NAME", :display_name "Name", :base_type "type/Text"}
+  [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
   (tt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
-                            :result_metadata {:name "NAME", :display_name "Name", :base_type "type/Text"}}]
-    (qp/process-query {:database database/virtual-id
-                       :type     :query
-                       :query    {:source-table (str "card__" (u/get-id card))}})
+                            :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
+    (u/prog1
+     (qp/process-query {:database database/virtual-id
+                        :type     :query
+                        :query    {:source-table (str "card__" (u/get-id card))}})
+     (assert (= (:status <>) :completed)))
     (card-metadata card)))
 
 ;; ...even when running via the API endpoint
 (expect
-  {:name "NAME", :display_name "Name", :base_type "type/Text"}
+  [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
   (tt/with-temp* [Collection [collection]
                   Card       [card {:collection_id   (u/get-id collection)
                                     :dataset_query   (native-query "SELECT * FROM VENUES")
-                                    :result_metadata {:name "NAME", :display_name "Name", :base_type "type/Text"}}]]
+                                    :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     ((users/user->client :rasta) :post 200 "dataset" {:database database/virtual-id
                                                       :type     :query
@@ -104,7 +111,8 @@
                          :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
-      round-to-2-decimals))
+      round-to-2-decimals
+      (->> (tu/round-fingerprint-cols [:columns]))))
 
 ;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
 ;; do datetime breakouts on years
@@ -114,14 +122,15 @@
     :name         "DATE"
     :unit         nil
     :special_type nil
-    :fingerprint  {:global {:distinct-count 618}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+    :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
                                                                          :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 3}
-                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33}}}}]
+    :fingerprint  {:global {:distinct-count 3
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]
   (tt/with-temp Card [card]
     (qp/process-query {:database (data/id)
                        :type     :query
@@ -130,4 +139,7 @@
                                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
                        :info     {:card-id    (u/get-id card)
                                   :query-hash (qputil/query-hash {})}})
-    (round-to-2-decimals (card-metadata card))))
+    (-> card
+        card-metadata
+        round-to-2-decimals
+        tu/round-fingerprint-cols)))

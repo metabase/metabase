@@ -55,10 +55,8 @@
 }
 
 .ColumnarSelector-row--selected {
-  color: inherit !important;
+  color: var(--color-brand);
   background: white;
-  border-top: var(--border-size) var(--border-style) var(--color-border);
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .ColumnarSelector-row--disabled {

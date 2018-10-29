@@ -5,9 +5,7 @@
              [format :as tformat]]
             [clojure
              [set :as set]
-             [string :as str]
-             [walk :as walk]]
-            [clojure.tools.logging :as log]
+             [string :as str]]
             [honeysql
              [core :as hsql]
              [format :as hformat]
@@ -21,14 +19,20 @@
              [google :as google]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
+            [metabase.models.table :as table]
             [metabase.query-processor
-             [annotate :as annotate]
              [store :as qp.store]
              [util :as qputil]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
+             [i18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
@@ -37,8 +41,7 @@
             TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
            java.sql.Time
-           [java.util Collections Date]
-           [metabase.query_processor.interface AggregationWithField AggregationWithoutField Expression Field TimeValue]))
+           [java.util Collections Date]))
 
 (defrecord BigQueryDriver []
   :load-ns true
@@ -62,7 +65,7 @@
   you will want to avoid this function for SQL queries."
   []
   {:pre [(map? sqlqp/*query*)], :post [(valid-bigquery-identifier? %)]}
-  (get-in sqlqp/*query* [:database :details :dataset-id]))
+  (:dataset-id sqlqp/*query*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -241,8 +244,10 @@
                                       :let [parser-fn (type->parser (.getType field))]]
                                   (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
-                                 (set/rename-keys column {:base-type :base_type}))]
-       {:columns (map :name columns)
+                                 (-> column
+                                     (set/rename-keys {:base-type :base_type})
+                                     (dissoc :database-type)))]
+       {:columns (map (comp u/keyword->qualified-name :name) columns)
         :cols    columns
         :rows    (for [^TableRow row (.getRows response)]
                    (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
@@ -254,6 +259,7 @@
                          (parser v)))))}))))
 
 (defn- process-native* [database query-string]
+  {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute` so operations going through `process-native*` may be retried up to 3 times.
   (u/auto-retry 1
@@ -307,6 +313,8 @@
 ;; This record type used for BigQuery table and field identifiers, since BigQuery has some stupid rules about how to
 ;; quote them (tables are like `dataset.table` and fields are like `dataset.table`.`field`)
 ;; This implements HoneySql's ToSql protocol, so we can just output this directly in most of our QP code below
+;;
+;; TODO - this is totally unnecessary now, we can just override `->honeysql` for `Field` and `Table` instead. FIXME!
 (defrecord ^:private BigQueryIdentifier [dataset-name ; optional; will use (dataset-name-for-current-query) otherwise
                                          table-name
                                          field-name]
@@ -331,7 +339,6 @@
 
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
-  ;; replace identifiers like `shakespeare`.`word` with ones like `shakespeare.word` since that's what BigQuery expects
   (let [[sql & args] (sql/honeysql-form->sql+args bq-driver honeysql-form)]
     (when (seq args)
       (throw (Exception. (str (tru "BigQuery statements can't be parameterized!")))))
@@ -343,8 +350,7 @@
   ;; we can go ahead and strip off the table name from the alias since we don't want it to show up in the result
   ;; column names
   (let [demangle-name #(str/replace % (re-pattern (str \^ table-name "___")) "")
-        columns       (for [column columns]
-                        (keyword (demangle-name column)))
+        columns       (map demangle-name columns)
         rows          (for [row rows]
                         (zipmap columns row))
         columns       (vec (keys (first rows)))]
@@ -360,34 +366,19 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(defn- agg-or-exp? [x]
-  (or (instance? Expression x)
-      (instance? AggregationWithField x)
-      (instance? AggregationWithoutField x)))
+(s/defn ^:private bq-aggregate-name :- su/NonBlankString
+  "Return an approriate name for an `ag-clause`."
+  [ag-clause :- mbql.s/Aggregation]
+  (-> ag-clause annotate/aggregation-name format-custom-field-name))
 
-(defn- bg-aggregate-name [aggregate]
-  (-> aggregate annotate/aggregation-name format-custom-field-name))
-
-(defn- pre-alias-aggregations
+(s/defn ^:private pre-alias-aggregations
   "Expressions are not allowed in the order by clauses of a BQ query. To sort by a custom expression, that custom
   expression must be aliased from the order by. This code will find the aggregations and give them a name if they
   don't already have one. This name can then be used in the order by if one is present."
-  [query]
-  (let [aliases (atom {})]
-    (walk/postwalk (fn [maybe-agg]
-                     (if-let [exp-name (and (agg-or-exp? maybe-agg)
-                                            (bg-aggregate-name maybe-agg))]
-                       (if-let [usage-count (get @aliases exp-name)]
-                         (let [new-custom-name (str exp-name "_" (inc usage-count))]
-                           (swap! aliases assoc
-                                  exp-name (inc usage-count)
-                                  new-custom-name 1)
-                           (assoc maybe-agg :custom-name new-custom-name))
-                         (do
-                           (swap! aliases assoc exp-name 1)
-                           (assoc maybe-agg :custom-name exp-name)))
-                       maybe-agg))
-                   query)))
+  [{{aggregations :aggregation} :query, :as outer-query}]
+  (if-not (seq aggregations)
+    outer-query
+    (update-in outer-query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations bq-aggregate-name))))
 
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)
@@ -404,67 +395,79 @@
   [_ date]
   (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver TimeValue]
-  [driver {:keys [value]}]
+(defmethod sqlqp/->honeysql [BigQueryDriver :time]
+  [driver [_ value unit]]
   (->> value
        (unparse-bigquery-time *bigquery-timezone*)
        (sqlqp/->honeysql driver)
+       (sql/date driver unit)
        hx/->time))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver Field]
-  [_ {:keys [table-name field-name special-type] :as field}]
-  (let [field (map->BigQueryIdentifier {:table-name table-name, :field-name field-name})]
+(defmethod sqlqp/->honeysql [Object :datetime-field]
+  [driver [_ field unit]]
+  (sql/date driver unit (sqlqp/->honeysql driver field)))
+
+(defmethod sqlqp/->honeysql [BigQueryDriver :field-id]
+  [_ [_ field-id]]
+  (let [{field-name :name, special-type :special_type, table-id :table_id} (qp.store/field field-id)
+        {table-name :name}                                                 (qp.store/table table-id)
+        field                                                              (map->BigQueryIdentifier
+                                                                            {:table-name table-name
+                                                                             :field-name field-name})]
     (cond
       (isa? special-type :type/UNIXTimestampSeconds)      (unix-timestamp->timestamp field :seconds)
       (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
       :else                                               field)))
 
+(defn- ag-ref->alias [[_ index]]
+  (let [{{aggregations :aggregation} :query} sqlqp/*query*
+        [ag-type :as ag]                     (nth aggregations index)]
+    (mbql.u/match-one ag
+      [:distinct _]              "count"
+      [:expression operator & _] operator
+      [:named _ ag-name]         ag-name
+      [ag-type & _]              ag-type)))
+
 (defn- field->alias
   "Generate an appropriate alias for a `field`. This will normally be something like `tableName___fieldName` (done this
   way because BigQuery will not let us include symbols in identifiers, so we can't make our alias be
   `tableName.fieldName`, like we do for other drivers)."
-  [driver {:keys [^String field-name, ^String table-name, ^Integer index, field], :as this}]
-  {:pre [(map? this) (or field
-                         index
-                         (and (seq field-name) (seq table-name))
-                         (log/error "Don't know how to alias: " this))]}
-  (cond
-    field (recur driver field) ; type/DateTime
-    index (let [{{aggregations :aggregation} :query} sqlqp/*query*
-                {ag-type :aggregation-type :as agg}  (nth aggregations index)]
-            (cond
-              (= ag-type :distinct)
-              "count"
-
-              (instance? Expression agg)
-              (:custom-name agg)
-
-              :else
-              (name ag-type)))
-
-    :else (str table-name "___" field-name)))
+  [driver {field-name :name, table-id :table_id, :as field}]
+  (let [{table-name :name} (qp.store/table table-id)]
+    (str table-name "___" field-name)))
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
-  ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is
+  ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
+  ;;
+  ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
   [{table-id :table_id, :as field}]
-  (let [{table-name :name, database-id :db_id} (db/select-one ['Table :name :db_id], :id (u/get-id table-id))
-        details                                (db/select-one-field :details 'Database, :id (u/get-id database-id))]
+  (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))
+        details    (:details (qp.store/database))]
     (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
 
-(defn- field->breakout-identifier [driver field]
-  (hsql/raw (str \` (field->alias driver field) \`)))
+(defn- field-clause->field [field-clause]
+  (when field-clause
+    (let [id-or-name (mbql.u/field-clause->id-or-literal field-clause)]
+      (when (integer? id-or-name)
+        (qp.store/field id-or-name)))))
 
-(defn- apply-breakout [driver honeysql-form {breakout-fields :breakout, fields-fields :fields}]
+(defn- field->breakout-identifier [driver field-clause]
+  (let [alias (if (mbql.u/is-clause? :aggregation field-clause)
+                (ag-ref->alias field-clause)
+                (field->alias driver (field-clause->field field-clause)))]
+    (hsql/raw (str \` alias \`))))
+
+(defn- apply-breakout [driver honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields
-      ((partial apply h/group)  (map #(field->breakout-identifier driver %) breakout-fields))
+      ((partial apply h/group) (map #(field->breakout-identifier driver %) breakout-field-clauses))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field breakout-fields
-                                            :when (not (contains? (set fields-fields) field))]
-                                        (sqlqp/as driver (sqlqp/->honeysql driver field) field)))))
+      ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
+                                            :when        (not (contains? (set fields-field-clauses) field-clause))]
+                                        (sqlqp/as driver (sqlqp/->honeysql driver field-clause) field-clause)))))
 
 (defn apply-source-table
   "Copy of the Generic SQL implementation of `apply-source-table` that prepends the current dataset ID to the table
@@ -477,24 +480,26 @@
   "Copy of the Generic SQL implementation of `apply-join-tables`, but prepends the current dataset ID to join-alias."
   [honeysql-form {join-tables :join-tables, source-table-id :source-table}]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
-    (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field join-alias]} & more] join-tables]
-      (let [honeysql-form
+    (loop [honeysql-form honeysql-form, [{:keys [table-id pk-field-id fk-field-id join-alias]} & more] join-tables]
+      (let [{table-name :name} (qp.store/table table-id)
+            source-field       (qp.store/field fk-field-id)
+            pk-field           (qp.store/field pk-field-id)
+
+            honeysql-form
             (h/merge-left-join honeysql-form
               [(map->BigQueryIdentifier {:table-name table-name})
                (map->BigQueryIdentifier {:table-name join-alias})]
               [:=
-               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:field-name source-field)})
-               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:field-name pk-field)})])]
+               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:name source-field)})
+               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:name pk-field)})])]
         (if (seq more)
           (recur honeysql-form more)
           honeysql-form)))))
 
-(defn- apply-order-by [driver honeysql-form {subclauses :order-by}]
-  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier driver field)
-                                                         (case direction
-                                                           :ascending  :asc
-                                                           :descending :desc)])]
+(defn- apply-order-by [driver honeysql-form {subclauses :order-by, :as query}]
+  (loop [honeysql-form honeysql-form, [[direction field-clause] & more] subclauses]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier driver field-clause)
+                                                         direction])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -516,16 +521,18 @@
      *  Runs our customs `honeysql-form->sql` method
      *  Incldues `table-name` in the resulting map (do not remember why we are doing so, perhaps it is needed to run the
         query)"
-  [{{{:keys [dataset-id]} :details, :as database} :database
-    {source-table-id :source-table}               :query
-    :as                                           outer-query}]
-  {:pre [(map? database) (seq dataset-id)]}
-  (let [aliased-query      (pre-alias-aggregations outer-query)
+  [{database-id                     :database
+    {source-table-id :source-table} :query
+    :as                             outer-query}]
+  {:pre [(integer? database-id)]}
+  (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
+        aliased-query      (pre-alias-aggregations outer-query)
         {table-name :name} (qp.store/table source-table-id)]
-    (binding [sqlqp/*query* aliased-query]
+    (assert (seq dataset-id))
+    (binding [sqlqp/*query* (assoc aliased-query :dataset-id dataset-id)]
       {:query      (->> aliased-query
-                       (sqlqp/build-honeysql-form bq-driver)
-                       honeysql-form->sql)
+                        (sqlqp/build-honeysql-form bq-driver)
+                        honeysql-form->sql)
        :table-name table-name
        :mbql?      true})))
 
@@ -535,18 +542,16 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defn- execute-query [{database                                               :database
-                       {sql :query, params :params, :keys [table-name mbql?]} :native
+(defn- execute-query [{{sql :query, params :params, :keys [table-name mbql?]} :native
                        :as                                                    outer-query}]
-  (binding [*bigquery-timezone* (effective-query-timezone database)]
-    (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                       (unprepare/unprepare (cons sql params))
-                                                                       sql))
-          results (process-native* database sql)
-          results (if mbql?
-                    (post-process-mbql table-name results)
-                    (update results :columns (partial map keyword)))]
-      (assoc results :annotate? mbql?))))
+  (let [database (qp.store/database)]
+    (binding [*bigquery-timezone* (effective-query-timezone database)]
+      (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                         (unprepare/unprepare (cons sql params))
+                                                                         sql))
+            results (process-native* database sql)]
+        (cond->> results
+          mbql? (post-process-mbql table-name))))))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC

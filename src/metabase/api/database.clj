@@ -97,7 +97,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (seq (mbql.u/clause-instances #{:cum-count :cum-sum} aggregations)))
+  (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."

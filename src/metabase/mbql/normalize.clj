@@ -1,7 +1,7 @@
 (ns metabase.mbql.normalize
   "Logic for taking any sort of weird MBQL query and normalizing it into a standardized, canonical form. You can think
   of this like taking any 'valid' MBQL query and rewriting it as-if it was written in perfect up-to-date MBQL in the
-  latest version. There are two main things done here, done as three separate steps:
+  latest version. There are four main things done here, done as four separate steps:
 
   #### NORMALIZING TOKENS
 
@@ -10,17 +10,30 @@
 
   #### CANONICALIZING THE QUERY
 
-  Rewriting deprecated MBQL 95 syntax and other things that are still supported for backwards-compatibility in
-  canonical MBQL 98 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
+  Rewriting deprecated MBQL 95/98 syntax and other things that are still supported for backwards-compatibility in
+  canonical MBQL 2000 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
+
+  #### WHOLE-QUERY TRANSFORMATIONS
+
+  Transformations and cleanup of the query structure as a whole to fix inconsistencies. Whereas the canonicalization
+  phase operates on a lower-level, transforming invidual clauses, this phase focuses on transformations that affect
+  multiple clauses, such as removing duplicate references to Fields if they are specified in both the `:breakout` and
+  `:fields` clauses.
+
+  This is not the only place that does such transformations; several pieces of QP middleware perform similar
+  individual transformations, such as `reconcile-breakout-and-order-by-bucketing`.
 
   #### REMOVING EMPTY CLAUSES
 
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
-  (:require [clojure.walk :as walk]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [predicates :as mbql.pred]
+             [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
@@ -172,7 +185,7 @@
   [clauses]
   (vec (for [subclause clauses]
          (if (mbql-clause? subclause)
-           ;; MBQL 98 [direction field] style: normalize as normal
+           ;; MBQL 98+ [direction field] style: normalize as normal
            (normalize-mbql-clause-tokens subclause)
            ;; otherwise it's MBQL 95 [field direction] style: flip the args and *then* normalize the clause. And then
            ;; flip it back to put it back the way we found it.
@@ -314,7 +327,7 @@
     [ag-type (wrap-implicit-field-id field)]))
 
 (defn- wrap-single-aggregations
-  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98
+  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
   (mbql.u/replace aggregations
@@ -403,8 +416,11 @@
     [:ascending field]  (recur [:asc field])
     [:descending field] (recur [:desc field])
 
-    [:asc field]  [:asc (wrap-implicit-field-id field)]
-    [:desc field] [:desc (wrap-implicit-field-id field)]))
+    [:asc field]  [:asc  (wrap-implicit-field-id field)]
+    [:desc field] [:desc (wrap-implicit-field-id field)]
+
+    ;; this case should be the first one hit when we come in with a vector of clauses e.g. [[:asc 1] [:desc 2]]
+    [& clauses] (vec (distinct (map canonicalize-order-by clauses)))))
 
 (declare canonicalize-inner-mbql-query)
 
@@ -465,7 +481,11 @@
        (let [[clause-name & _] clause
              f                 (mbql-clause->canonicalization-fn clause-name)]
          (if f
-           (apply f clause)
+           (try
+             (apply f clause)
+             (catch Throwable e
+               (log/error (tru "Invalid clause:") clause)
+               (throw e)))
            clause))))
    mbql-query))
 
@@ -480,6 +500,42 @@
     (:query outer-query)      (update :query canonicalize-inner-mbql-query)
     (:parameters outer-query) (update :parameters (partial mapv canonicalize-mbql-clauses))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- remove-breakout-fields-from-fields
+  "Remove any Fields specified in both `:breakout` and `:fields` from `:fields`; it is implied that any breakout Field
+  will be returned, specifying it in both would imply it is to be returned twice, which tends to cause confusion for
+  the QP and drivers. (This is done to work around historic bugs with the way queries were generated on the frontend;
+  I'm not sure this behavior makes sense, but removing it would break existing queries.)
+
+  We will remove either exact matches:
+
+    {:breakout [[:field-id 10]], :fields [[:field-id 10]]} ; -> {:breakout [[:field-id 10]]}
+
+  or unbucketed matches:
+
+    {:breakout [[:datetime-field [:field-id 10] :month]], :fields [[:field-id 10]]}
+    ;; -> {:breakout [[:field-id 10]]}"
+  [{{:keys [breakout fields]} :query, :as query}]
+  (if-not (and (seq breakout) (seq fields))
+    query
+    ;; get a set of all Field clauses (of any type) in the breakout. For `datetime-field` clauses, we'll include both
+    ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
+    (let [breakout-fields (set (reduce concat (mbql.u/match breakout
+                                                [:datetime-field field-clause _] [&match field-clause]
+                                                mbql.pred/Field?                 [&match])))]
+      ;; now remove all the Fields in `:fields` that match the ones in the set
+      (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
+
+(defn- perform-whole-query-transformations
+  "Perform transformations that operate on the query as a whole, making sure the structure as a whole is logical and
+  consistent."
+  [query]
+  (-> query
+      remove-breakout-fields-from-fields))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
@@ -533,8 +589,9 @@
 ;; all mergable
 (def ^{:arglists '([outer-query])} normalize
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
-  up-to-date MBQL 98, and remove empty clauses."
+  up-to-date MBQL 2000, and remove empty clauses."
   (comp remove-empty-clauses
+        perform-whole-query-transformations
         canonicalize
         normalize-tokens))
 

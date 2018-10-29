@@ -1,7 +1,9 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]))
 
 ;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
@@ -92,11 +94,14 @@
    :columns     ["count"]
    :cols        [(aggregate-col :count)]
    :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :filter      [:between $date "2015-04-01" "2015-05-01"]})
-       booleanize-native-form
-       (format-rows-by [int])))
+  (do
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    (when (= :snowflake datasets/*engine*) (tu/clear-connection-pool (data/id)))
+    (->> (data/run-mbql-query checkins
+           {:aggregation [[:count]]
+            :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
+         booleanize-native-form
+         (format-rows-by [int]))))
 
 ;;; FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
@@ -143,9 +148,7 @@
                             {:aggregation [[:count]]
                              :filter      [:is-null $date]}))]
     ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
-    (or (= result [0])
-        (= result [0M])
-        (nil? result))))
+    (contains? #{[0] [0M] [nil] nil} result)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -283,8 +286,6 @@
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
 ;;
-;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all
-;; these extra queries?
 
 ;;; =
 (expect-with-non-timeseries-dbs

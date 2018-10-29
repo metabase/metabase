@@ -6,9 +6,10 @@
             [colorize.core :as color]
             [environ.core :refer [env]]
             [expectations :refer [expect]]
-            (metabase [config :as config]
-                      [driver :as driver]
-                      [plugins :as plugins])
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [plugins :as plugins]]
             [metabase.test.data.interface :as i]))
 
 ;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the
@@ -75,6 +76,7 @@
   [engine]
   (try (i/engine (driver/engine->driver engine))
        (catch IllegalArgumentException _
+         (println "Reloading test extensions: (require " (engine->test-extensions-ns-symbol engine) ":reload)")
          (require (engine->test-extensions-ns-symbol engine) :reload)))
   (driver/engine->driver engine))
 

@@ -5,10 +5,10 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.test.data :refer :all]
+            [metabase.test.data :as data :refer :all]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db]
-            [metabase.test.data :as data])
+            [metabase.test.util.log :as tu.log]
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -84,9 +84,9 @@
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
    {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
    {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (#'sql/table-rows-seq datasets/*driver*
-                                   (db/select-one 'Database :id (id))
-                                   (db/select-one 'Table :id (id :venues)))))]
+  (for [row (take 5 (sort-by :id (driver/table-rows-seq datasets/*driver*
+                                                        (db/select-one 'Database :id (id))
+                                                        (db/select-one 'Table :id (id :venues)))))]
     ;; different DBs use different precisions for these
     (-> (dissoc row :latitude :longitude)
         (update :price int)
@@ -97,19 +97,20 @@
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (expect
   #"com.jcraft.jsch.JSchException:"
-  (try (let [engine :postgres
-             details {:ssl false,
-                      :password "changeme",
-                      :tunnel-host "localhost", ;; this test works if sshd is running or not
-                      :tunnel-pass "BOGUS-BOGUS-BOGUS",
-                      :port 5432,
-                      :dbname "test",
-                      :host "localhost",
-                      :tunnel-enabled true,
-                      :tunnel-port 22,
-                      :engine :postgres,
-                      :user "postgres",
-                      :tunnel-user "example"}]
-         (driver/can-connect-with-details? engine details :rethrow-exceptions))
+  (try (let [engine  :postgres
+             details {:ssl            false
+                      :password       "changeme"
+                      :tunnel-host    "localhost" ; this test works if sshd is running or not
+                      :tunnel-pass    "BOGUS-BOGUS-BOGUS"
+                      :port           5432
+                      :dbname         "test"
+                      :host           "localhost"
+                      :tunnel-enabled true
+                      :tunnel-port    22
+                      :engine         :postgres
+                      :user           "postgres"
+                      :tunnel-user    "example"}]
+         (tu.log/suppress-output
+           (driver/can-connect-with-details? engine details :rethrow-exceptions)))
        (catch Exception e
          (.getMessage e))))

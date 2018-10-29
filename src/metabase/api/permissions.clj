@@ -67,7 +67,7 @@
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
-  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever neccesary. This
+  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
   permissions graph; use this as a base for any further modifications.
 
