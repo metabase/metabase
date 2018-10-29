@@ -1,7 +1,9 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]))
 
 ;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
@@ -92,11 +94,14 @@
    :columns     ["count"]
    :cols        [(aggregate-col :count)]
    :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
-       booleanize-native-form
-       (format-rows-by [int])))
+  (do
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    (when (= :snowflake datasets/*engine*) (tu/clear-connection-pool (data/id)))
+    (->> (data/run-mbql-query checkins
+           {:aggregation [[:count]]
+            :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
+         booleanize-native-form
+         (format-rows-by [int]))))
 
 ;;; FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
