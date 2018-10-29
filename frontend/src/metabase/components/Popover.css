@@ -20,7 +20,6 @@
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
   border-radius: 4px;
-  overflow: hidden;
 }
 
 /* remove the max-width in cases where the popover content needs to expand
