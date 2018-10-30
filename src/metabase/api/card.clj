@@ -187,7 +187,7 @@
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
   (binding [qpi/*disable-qp-logging* true]
-    (let [{:keys [status], :as results} (qp/process-query query)]
+    (let [{:keys [status], :as results} (qp/process-query-without-save! api/*current-user-id* query)]
       (if (= status :failed)
         (log/error (trs "Error running query to determine Card result metadata:")
                    (u/pprint-to-str 'red results))

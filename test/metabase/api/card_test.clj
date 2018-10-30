@@ -390,6 +390,45 @@
           ;; now check the correct metadata was fetched and was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
 
+;; Check that the generated query to fetch the query result metadata includes user information in the generated query
+(expect
+  {:metadata-results     [{:base_type    "type/Integer"
+                           :display_name "count"
+                           :name         "count"
+                           :special_type "type/Quantity"
+                           :fingerprint  {:global {:distinct-count 1
+                                                   :nil%           0.0},
+                                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+   :has-user-id-remark? true}
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (let [metadata  [{:base_type    :type/Integer
+                      :display_name "Count Chocula"
+                      :name         "count_chocula"
+                      :special_type :type/Quantity}]
+          card-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (tu/with-model-cleanup [Card]
+          ;; Rebind the `cancellable-run-query` function so that we can capture the generated SQL and inspect it
+          (let [orig-fn    (var-get #'metabase.driver.generic-sql.query-processor/cancellable-run-query)
+                sql-result (atom [])]
+            (with-redefs [metabase.driver.generic-sql.query-processor/cancellable-run-query (fn [db sql params opts]
+                                                                                              (swap! sql-result conj sql)
+                                                                                              (orig-fn db sql params opts))]
+              ;; create a card with the metadata
+              ((user->client :rasta) :post 200 "card"
+               (assoc (card-with-name-and-query card-name)
+                 :collection_id      (u/get-id collection)
+                 :result_metadata    metadata
+                 :metadata_checksum  "ABCDEF"))) ; bad checksum
+            ;; now check the correct metadata was fetched and was saved in the DB
+            {:metadata-results    (db/select-one-field :result_metadata Card :name card-name)
+             ;; Was the user id found in the generated SQL?
+             :has-user-id-remark? (-> (str "userID: " (user->id :rasta))
+                                      re-pattern
+                                      (re-find (first @sql-result))
+                                      boolean)}))))))
+
 ;; Make sure we can create a Card with a Collection position
 (expect
   #metabase.models.card.CardInstance{:collection_id true, :collection_position 1}
