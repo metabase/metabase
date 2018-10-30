@@ -41,9 +41,14 @@
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
 (def ^:private TokenStatus
-  {:valid                     s/Bool
-   :status                    su/NonBlankString
-   (s/optional-key :features) [su/NonBlankString]})
+  {:valid                          s/Bool
+   :status                         su/NonBlankString
+   (s/optional-key :error-details) (s/maybe su/NonBlankString)
+   (s/optional-key :features)      [su/NonBlankString]
+   (s/optional-key :trial)         s/Bool
+   (s/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
+   ;; don't explode in the future if we add more to the response! lol
+   s/Any                           s/Any})
 
 (s/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
