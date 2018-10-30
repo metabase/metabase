@@ -75,9 +75,9 @@ class Nav extends Component {
   render() {
     const { db, table } = this.props;
     return (
-      <div>
+      <div className="flex align-center my2">
         <BackButton databaseId={db.id} tableId={table.id} />
-        <div className="my4 py1 ml-auto mr-auto">
+        <div className="my4 py1 ml2">
           <Breadcrumbs
             crumbs={[
               db && [db.name, `/admin/datamodel/database/${db.id}`],
