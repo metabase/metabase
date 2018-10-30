@@ -4,7 +4,7 @@
 
 * Pending changelog
 
-## 0.31.0-ccddeec (Built: October 08, 2018 | Pre-release)
+## 0.31.0-ccddeec (Built: October 08, 2018 | Released: October 30, 2018)
 
 * [DGPB-1426] Error de agregacion de fechas
 * [DGPB-1357] Upgrade to metabase 0.30.1
