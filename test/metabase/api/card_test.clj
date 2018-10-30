@@ -9,6 +9,7 @@
              [http-client :as http :refer :all]
              [middleware :as middleware]
              [util :as u]]
+            [metabase.api.card :as card-api]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -323,6 +324,44 @@
              :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
           ;; now check the metadata that was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
+
+(defn- fingerprint-integers->doubles
+  "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
+  new card"
+  [metadata]
+  (update metadata :fingerprint (fn [fingerprint] (-> fingerprint
+                                                      (update-in [:type :type/Number :min] double)
+                                                      (update-in [:type :type/Number :max] double)))))
+
+;; When integer values are passed to the FE, they will be returned as floating point values. Our hashing should ensure
+;; that integer and floating point values hash the same so we don't needlessly rerun the query
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"
+    :fingerprint  {:global {:distinct-count 285},
+                   :type {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (let [metadata  [{:base_type    :type/Integer
+                      :display_name "Count Chocula"
+                      :name         "count_chocula"
+                      :special_type :type/Number
+                      :fingerprint  {:global {:distinct-count 285},
+                                     :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
+          card-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (tu/throw-if-called card-api/result-metadata-for-query
+          (tu/with-model-cleanup [Card]
+            ;; create a card with the metadata
+            ((user->client :rasta) :post 200 "card"
+             (assoc (card-with-name-and-query card-name)
+               :collection_id      (u/get-id collection)
+               :result_metadata    (map fingerprint-integers->doubles metadata)
+               :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
+            ;; now check the metadata that was saved in the DB
+            (db/select-one-field :result_metadata Card :name card-name)))))))
 
 ;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
 (expect
