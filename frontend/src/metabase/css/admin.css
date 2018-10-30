@@ -7,7 +7,7 @@
 }
 
 .AdminNav {
-  background: var(--color-accent2);
+  background: var(--color-admin-navbar);
   color: var(--color-text-white);
   font-size: 0.85rem;
 }
