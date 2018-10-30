@@ -19,6 +19,7 @@ const ArchivedItem = ({
   color = colors["text-light"],
   isAdmin = false,
   onUnarchive,
+  onDelete,
 
   selected,
   onToggleSelected,
@@ -36,13 +37,22 @@ const ArchivedItem = ({
     </IconWrapper>
     {name}
     {isAdmin && (
-      <Tooltip tooltip={t`Unarchive this ${type}`}>
-        <Icon
-          onClick={onUnarchive}
-          className="ml-auto cursor-pointer text-brand-hover hover-child"
-          name="unarchive"
-        />
-      </Tooltip>
+      <span className="ml-auto">
+        <Tooltip tooltip={t`Unarchive this ${type}`}>
+          <Icon
+            onClick={onUnarchive}
+            className="cursor-pointer text-brand-hover hover-child mx1"
+            name="unarchive"
+          />
+        </Tooltip>
+        <Tooltip tooltip={t`Delete this ${type}`}>
+          <Icon
+            onClick={onDelete}
+            className="cursor-pointer text-brand-hover hover-child"
+            name="trash"
+          />
+        </Tooltip>
+      </span>
     )}
   </div>
 );
@@ -54,6 +64,7 @@ ArchivedItem.propTypes = {
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
   onUnarchive: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
 
   selected: PropTypes.bool.isRequired,
   onToggleSelected: PropTypes.func.isRequired,
