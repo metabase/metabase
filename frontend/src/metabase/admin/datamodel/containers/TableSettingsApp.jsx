@@ -7,12 +7,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { t } from "c-3po";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  BackButton,
-  Section,
-  SectionHeader,
-} from "metabase/admin/datamodel/containers/FieldApp";
+import { BackButton } from "metabase/admin/datamodel/containers/FieldApp";
 import ActionButton from "metabase/components/ActionButton.jsx";
+import Section, { SectionHeader } from "../components/Section";
 
 import { rescanTableFieldValues, discardTableFieldValues } from "../table";
 
