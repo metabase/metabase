@@ -766,3 +766,11 @@
     (perms/revoke-permissions! (perms-group/all-users) database-id)
     (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
     (map :name ((user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))
+
+;; GET /api/database/:id/schema/:schema should exclude inactive Tables
+(expect
+  ["table"]
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [_ {:db_id database-id, :schema "public", :name "table"}]
+                  Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
+    (map :name ((user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))
