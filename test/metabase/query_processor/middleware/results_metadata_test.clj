@@ -16,6 +16,7 @@
              [util :as tu]]
             [metabase.test.data.users :as users]
             [metabase.test.mock.util :as mutil]
+            [metabase.util.encryption :as encrypt]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -119,15 +120,23 @@
   [m]
   (apply hash-map (apply concat m)))
 
+(defn- metadata-checksum
+  "Invoke `metadata-checksum` without a `default-secret-key` specified. If the key is specified, it will encrypt the
+  checksum. The encryption includes random data that will cause the checksum string to be different each time, so the
+  checksum strings can't be directly compared."
+  [metadata]
+  (with-redefs [encrypt/default-secret-key nil]
+    (#'results-metadata/metadata-checksum metadata)))
+
 ;; tests that the checksum is consistent when an array-map is switched to a hash-map
 (expect
-  (#'results-metadata/metadata-checksum example-metadata)
-  (#'results-metadata/metadata-checksum (mapv array-map->hash-map example-metadata)))
+  (metadata-checksum example-metadata)
+  (metadata-checksum (mapv array-map->hash-map example-metadata)))
 
 ;; tests that the checksum is consistent with an integer and with a double
 (expect
-  (#'results-metadata/metadata-checksum example-metadata)
-  (#'results-metadata/metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int)))
+  (metadata-checksum example-metadata)
+  (metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int)))
 
 ;; make sure that queries come back with metadata
 (expect
