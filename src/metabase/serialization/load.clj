@@ -19,15 +19,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [yaml.core :as yaml]))
-
-(defn- insert
-  [entity model]
-  (let [old-id (:id entity)]
-    (->> (dissoc entity :id)
-         (db/insert! model)
-         :id
-         (hash-map old-id))))
+            [yaml.core :as yaml])
+  (:refer-clojure :exclude [load]))
 
 (defn- slurp-dir
   [f path]
@@ -35,7 +28,9 @@
        io/file
        file-seq
        (filter #(.isFile %))
-       (map (comp f yaml/from-file))
+       (map (fn [file]
+              (let [entity (yaml/from-file file)]
+                {(:id entity) (:id (f (dissoc entity :id)))})))
        (apply merge)))
 
 (defn- fully-qualified-name->id
@@ -86,58 +81,69 @@
 (defmulti
   ^{:doc      ""
     :private  true
-    :arglists '([dir model])}
+    :arglists '([dir model context])}
   load (fn [_ model _]
          model))
 
 (defmethod load Database
-  [path _ _]
-  (let [context (assoc context :databases (slurp-dir (partial db/insert! Database) path))]
-    (load (str path "/tables") Table context)))
+  [path _ context]
+  (let [context (assoc context
+                  :databases (slurp-dir
+                              (fn [database]
+                                (let [database (db/insert! Database database)]
+                                  (load (format "%s/databases/%s" path (:name db)) Table context)))
+                              (str path "/databases")))]
+    (reduce (fn [context db]
+              (load (format "%s/databases/%s" path db) Table context))
+            context
+            (db/select-field :name Database [:in :id (-> context :databases vals)]))))
 
 (defmethod load Table
   [path _ context]
-  (->> (assoc context
-         :tables (slurp-dir (fn [table]
-                              (-> collection
-                                  (update :db_id (:databases context))
-                                  (insert Table)))
-                            path))
-       (load (str path "/fields") Fields)
-       (load (str path "/metrics") Fields)
-       (load (str path "/segments") Fields)))
+  (let [context (assoc context
+                  :tables (slurp-dir (fn [table]
+                                       (db/insert! Table
+                                         (update collection :db_id (:databases context))))
+                                     (str path "/tables")))]
+    (reduce (fn [context table]
+              (let [path (format "%s/tables/%s" path table)]
+                (->> context
+                     (load (str path "/fields") Fields)
+                     (load (str path "/metrics") Fields)
+                     (load (str path "/segments") Fields))))
+            context
+            (db/select-field :name Table [:in :id (-> context :tables vals)]))))
 
 (defmethod load Field
   [path _ context]
   (assoc context
     :fields (slurp-dir (fn [field]
-                         (-> field
-                             (update :table_id (:tables context))
-                             (insert Field)))
+                         (db/insert! Field
+                           (update field :table_id (:tables context))))
                        (str path "/fields"))))
 
 (defmethod load Metric
   [path _ context]
   (assoc context
     :metrics (slurp-dir (fn [metric]
-                          (-> metric
-                              (update :table_id (:tables context))
-                              (update :creator_id (:users context))
-                              (update-in [:definition :source-table] (:tables context))
-                              (humanized-field-references->ids context)
-                              (insert Metric)))
+                          (db/insert! Metric
+                            (-> metric
+                                (update :table_id (:tables context))
+                                (update :creator_id (:users context))
+                                (update-in [:definition :source-table] (:tables context))
+                                (humanized-field-references->ids context))))
                         (str path "/metrics"))))
 
 (defmethod load Segment
   [path _ context]
   (assoc context
     :segments (slurp-dir (fn [segment]
-                           (-> segment
-                               (update :table_id (:tables context))
-                               (update :creator_id (:users context))
-                               (update-in [:definition :source-table] (:tables context))
-                               (humanized-field-references->ids context)
-                               (insert Segment)))
+                           (db/insert! Segment
+                             (-> segment
+                                 (update :table_id (:tables context))
+                                 (update :creator_id (:users context))
+                                 (update-in [:definition :source-table] (:tables context))
+                                 (humanized-field-references->ids context))))
                          (str path "/segments"))))
 
 (defmethod load User
@@ -146,36 +152,39 @@
     :users (slurp-dir (fn [user]
                         (if (db/exists? User :email (:email user))
                           {(:id user) (:id user)}
-                          (insert user User)))
+                          (db/insert! User user)))
                       (str path "/users"))))
 
 (defmethod load Dashboard
   [path _ context]
-  (->> (assoc context
-         :dashbboards (slurp-dir (fn [dashbboard]
-                                   (-> dashbboard
-                                       (update :collection_id (:collections context))
-                                       (update :creator_id (:users context))
-                                       (humanized-field-references->ids context)
-                                       (insert Segment)))
-                                 path))
-       (load (str path "/dashboard-cards") DashboardCard)))
+  (let [context (assoc context
+                  :dashbboards (slurp-dir (fn [dashbboard]
+                                            (db/insert! Dashboard
+                                              (-> dashbboard
+                                                  (update :collection_id (:collections context))
+                                                  (update :creator_id (:users context))
+                                                  (humanized-field-references->ids context))))
+                                          path))]
+    (reduce (fn [context db]
+              (load (format "%s/dashboards/%s" path db) DashboardCard context))
+            context
+            (db/select-field :name Dashboard [:in :id (-> context :dashboards vals)]))))
 
 (defmethod load Card
   [path _ context]
   (assoc context
     :cards (slurp-dir (fn [card]
-                        (-> card
-                            (update :table_id (:tables context))
-                            (update :creator_id (:users context))
-                            (update :database_id (:databases context))
-                            (update-in [:dataset_query :database] (:databases context))
-                            (cond->
-                                (-> metric :dataset_query :type qp.util/normalize-token (= :query))
-                              (update-in [:dataset_query :query :source-table] (:tables context)))
-                            (humanized-field-references->ids context)
-                            (insert Card)))
-                      path)))
+                        (db/insert! Card
+                          (-> card
+                              (update :table_id (:tables context))
+                              (update :creator_id (:users context))
+                              (update :database_id (:databases context))
+                              (update-in [:dataset_query :database] (:databases context))
+                              (cond->
+                                  (-> metric :dataset_query :type qp.util/normalize-token (= :query))
+                                (update-in [:dataset_query :query :source-table] (:tables context)))
+                              (humanized-field-references->ids context))))
+                      (str path "/cards"))))
 
 (defn- update-parameter-mappings
   [parameter-mappings context]
@@ -185,21 +194,20 @@
   [path _ context]
   (assoc context
     :dashboard-cards (slurp-dir (fn [dashboard-card]
-                                  (-> dashboard-card
-                                      (update :card_id (:card context))
-                                      (update :dashboard_id (:dashboards context))
-                                      (update :parameter-mappings update-parameter-mappings)
-                                      (humanized-field-references->ids context)
-                                      (insert DashboardCard)))
-                                path)))
+                                  (db/insert! DashboardCard
+                                    (-> dashboard-card
+                                        (update :card_id (:card context))
+                                        (update :dashboard_id (:dashboards context))
+                                        (update :parameter-mappings update-parameter-mappings)
+                                        (humanized-field-references->ids context))))
+                                (str path "/dashboard-cards"))))
 
 (defmethod load Collection
   [path _ context]
   (assoc context :collections (slurp-dir (fn [collection]
-                                           (-> collection
-                                               (update :personal_owner_id (:users context))
-                                               (insert Collection)))
-                                         path)))
+                                           (db/insert! Collection
+                                             (update collection :personal_owner_id (:users context))))
+                                         (str path "/collections"))))
 
 (defn -main
   [path & _]
@@ -209,6 +217,3 @@
        (load path Collection)
        (load path Card)
        (load path Dashboard)))
-
-;; segments referencing other segments
-;; cards referencing other cards
