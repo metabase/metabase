@@ -7,6 +7,8 @@ import _ from "underscore";
 import cx from "classnames";
 import { dissoc } from "icepick";
 
+import withToast from "metabase/hoc/Toast";
+
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 
@@ -140,7 +142,10 @@ class DefaultLanding extends React.Component {
   };
 
   handleBulkMoveStart = () => {
-    this.setState({ selectedItems: this.props.selected, selectedAction: "move" });
+    this.setState({
+      selectedItems: this.props.selected,
+      selectedAction: "move",
+    });
   };
 
   handleBulkMove = async collection => {
@@ -492,28 +497,23 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) && selectedAction == "copy" &&
-          <Modal>
-            <EntityCopyModal
-              entityType={entityTypeForObject(selectedItems[0])}
-              entityObject={selectedItems[0]}
-              copy={async values => {
-                return selectedItems[0].copy(
-                  { id: selectedItems[0].id },
-                  dissoc(values, "id"),
-                );
-              }}
-              onClose={() =>
-                this.setState({ selectedItems: null, selectedAction: null })
-              }
-              onSaved={entityObject => {
-                this.setState({ selectedItems: null, selectedAction: null })
-                this.handleBulkActionSuccess()
-              }}
-            />
-          </Modal>
-        }
-        {!_.isEmpty(selectedItems) && selectedAction == "move" &&
+        {!_.isEmpty(selectedItems) &&
+          selectedAction == "copy" && (
+            <Modal>
+              <CollectionCopyEntityModal
+                entityObject={selectedItems[0]}
+                onClose={() =>
+                  this.setState({ selectedItems: null, selectedAction: null })
+                }
+                onSaved={newEntityObject => {
+                  this.setState({ selectedItems: null, selectedAction: null });
+                  this.handleBulkActionSuccess();
+                }}
+              />
+            </Modal>
+          )}
+        {!_.isEmpty(selectedItems) &&
+          selectedAction == "move" && (
             <Modal>
               <CollectionMoveModal
                 title={
@@ -527,7 +527,7 @@ class DefaultLanding extends React.Component {
                 onMove={this.handleBulkMove}
               />
             </Modal>
-        }
+          )}
         )}
         <ItemsDragLayer selected={selected} />
       </Box>
@@ -724,5 +724,38 @@ const CollectionBurgerMenu = () => (
     triggerIcon="burger"
   />
 );
+@withToast
+class CollectionCopyEntityModal extends React.Component {
+  render() {
+    const { entityObject, onClose, onSaved, triggerToast } = this.props;
+
+    return (
+      <EntityCopyModal
+        entityType={entityTypeForObject(entityObject)}
+        entityObject={entityObject}
+        copy={async values => {
+          return entityObject.copy(dissoc(values, "id"));
+        }}
+        onClose={onClose}
+        onSaved={newEntityObject => {
+          triggerToast(
+            <div className="flex align-center">
+              {t`Duplicated ${entityObject.model}`}
+              <Link
+                className="link text-bold ml1"
+                to={Urls.modelToUrl(entityObject.model, newEntityObject.id)}
+              >
+                {t`See it`}
+              </Link>
+            </div>,
+            { icon: entityObject.model },
+          );
+
+          onSaved(newEntityObject);
+        }}
+      />
+    );
+  }
+}
 
 export default CollectionLanding;

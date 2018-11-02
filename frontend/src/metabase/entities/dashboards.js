@@ -10,6 +10,8 @@ import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
 import { t } from "c-3po";
 
+import { addUndo } from "metabase/redux/undo";
+
 import { POST, DELETE } from "metabase/lib/api";
 import {
   canonicalCollectionId,
@@ -80,9 +82,13 @@ const Dashboards = createEntity({
       };
     },
 
+    // TODO move into more common area as copy is implemented for more entities
     copy: createThunkAction(
       COPY_ACTION,
-      (entityObject, overrides) => async (dispatch, getState) => {
+      (entityObject, overrides, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
         const statePath = [
           "entities",
           entityObject.name,
@@ -96,6 +102,9 @@ const Dashboards = createEntity({
             Dashboards.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
           dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
           return result;
         } catch (error) {

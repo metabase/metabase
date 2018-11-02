@@ -297,7 +297,23 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen) {
+    if (!isFullscreen && !isEditing && canEdit) {
+      buttons.push(
+        <Tooltip tooltip={t`Edit dashboard`}>
+          <a
+            data-metabase-event="Dashboard;Edit"
+            key="edit"
+            title={t`Edit Dashboard Layout`}
+            className="text-brand-hover cursor-pointer"
+            onClick={() => this.onEdit()}
+          >
+            <Icon name="pencil" size={16} />
+          </a>
+        </Tooltip>,
+      );
+    }
+
+    if (!isFullscreen && !isEditing) {
       buttons.push(
         <Tooltip tooltip={t`Move dashboard`}>
           <Link
@@ -316,22 +332,6 @@ export default class DashboardHeader extends Component {
           >
             <Icon className="text-brand-hover" name="clone" size={18} />
           </Link>
-        </Tooltip>,
-      );
-    }
-
-    if (!isFullscreen && !isEditing && canEdit) {
-      buttons.push(
-        <Tooltip tooltip={t`Edit dashboard`}>
-          <a
-            data-metabase-event="Dashboard;Edit"
-            key="edit"
-            title={t`Edit Dashboard Layout`}
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onEdit()}
-          >
-            <Icon name="pencil" size={16} />
-          </a>
         </Tooltip>,
       );
     }
