@@ -34,7 +34,8 @@
             :order-by [[:asc $name]]
             :limit    4})
          booleanize-native-form
-         (format-rows-by [str int str]))))
+         (format-rows-by [str int str])
+         tu/round-fingerprint-cols)))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -67,11 +68,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name_2")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")
@@ -96,11 +96,10 @@
    :cols        [(venues-col :name)
                  (venues-col :price)
                  (assoc (categories-col :name)
-                   :fk_field_id (data/id :venues :category_id)
-                   :display_name "Foo"
-                   :name (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id")
-                   :schema_name nil)]
+                   :fk_field_id   (data/id :venues :category_id)
+                   :display_name  "Foo"
+                   :name          (data/format-name "name_2")
+                   :remapped_from (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")

@@ -19,7 +19,8 @@
              [db :as db]
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.test.util.log :as tu.log]))
 
 ;; Helper Fns
 
@@ -227,12 +228,17 @@
 (expect
   [{:values [], :field_id true}
    {:status "success"}
+   {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
    {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
   (tt/with-temp* [Field [{field-id :id} list-field]]
     (mapv tu/boolean-ids-and-timestamps
-          [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+          [ ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
+           ;; exist; we can ignore that
+           (tu.log/suppress-output
+             ((user->client :crowberto) :get 200 (format "field/%d/values" field-id)))
            ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
             {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
+           (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
            ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
 ;; Can unset values

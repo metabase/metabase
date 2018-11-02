@@ -10,14 +10,6 @@
             [metabase.util :as u])
   (:import java.util.concurrent.Semaphore))
 
-(defmacro ^:private exception-and-message [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       {:ex-class (class e#)
-        :msg      (.getMessage e#)
-        :data     (ex-data e#)})))
-
 (defmacro ^:private with-query-wait-time-in-seconds [time-in-seconds & body]
   `(with-redefs [throttle/max-query-wait-time-in-millis ~(* 1000 time-in-seconds)]
      ~@body))
@@ -30,7 +22,7 @@
    :data     {:status-code 503
               :type        ::throttle/concurrent-query-limit-reached}}
   (with-query-wait-time-in-seconds 1
-    (exception-and-message
+    (tu/exception-and-message
      (let [semaphore (Semaphore. 5)]
        (.acquire semaphore 5)
        ((#'throttle/throttle-queries semaphore (constantly "Should never be returned")) {})))))
@@ -43,7 +35,7 @@
    :data     {:status-code 503
               :type        ::throttle/concurrent-query-limit-reached}}
   (with-query-wait-time-in-seconds 1
-    (exception-and-message
+    (tu/exception-and-message
      (let [semaphore (Semaphore. 5)
            my-qp     (->> identity
                           (#'throttle/throttle-queries semaphore)

@@ -20,6 +20,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -119,8 +120,8 @@
 
     $$table -> (id :venues)"
   {:style/indent 1}
-  [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}]
-  ($->id (keyword table-name) body, :wrap-field-ids? wrap-field-ids?))
+  [table-name & body]
+  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
 
 
 (defn wrap-inner-mbql-query
@@ -147,7 +148,7 @@
   [table & [query]]
   `(wrap-inner-mbql-query
      ~(merge `{:source-table (id ~(keyword table))}
-             ($->id (keyword table) query))))
+             ($->id table query))))
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
@@ -189,7 +190,7 @@
 
 (defn id
   "Get the ID of the current database or one of its `Tables` or `Fields`.
-   Relies on the dynamic variable `*get-db`, which can be rebound with `with-db`."
+   Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
   ([]
    {:post [(integer? %)]}
    (:id (db)))
@@ -286,12 +287,15 @@
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
      (try
-       (get-or-create!)
+       ;; it's ok to ignore output here because it's usually the IllegalArgException, and if it fails again we don't
+       ;; suppress it
+       (tu.log/suppress-output
+         (get-or-create!))
        ;; occasionally we'll see an error like
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
        ;; to fix this we just need to reload a couple namespaces and then try again
-       (catch IllegalArgumentException _
+       (catch Exception _
          (reload-test-extensions engine)
          (get-or-create!))))))
 

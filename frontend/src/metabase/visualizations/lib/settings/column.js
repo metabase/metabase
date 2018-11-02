@@ -414,17 +414,6 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency_header_only",
     ],
   },
-  _column_title_full: {
-    getValue: (column: Column, settings: ColumnSettings) => {
-      let columnTitle = settings["column_title"] || formatColumn(column);
-      const headerUnit = settings["_header_unit"];
-      if (headerUnit) {
-        columnTitle += ` (${headerUnit})`;
-      }
-      return columnTitle;
-    },
-    readDependencies: ["column_title", "_header_unit"],
-  },
 };
 
 const COMMON_COLUMN_SETTINGS = {
@@ -437,6 +426,17 @@ const COMMON_COLUMN_SETTINGS = {
   // },
   column: {
     getValue: column => column,
+  },
+  _column_title_full: {
+    getValue: (column: Column, settings: ColumnSettings) => {
+      let columnTitle = settings["column_title"] || formatColumn(column);
+      const headerUnit = settings["_header_unit"];
+      if (headerUnit) {
+        columnTitle += ` (${headerUnit})`;
+      }
+      return columnTitle;
+    },
+    readDependencies: ["column_title", "_header_unit"],
   },
 };
 

@@ -15,7 +15,10 @@ import SelectSeparator from "../components/SelectSeparator";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension, {
+  DatetimeFieldDimension,
+  FKDimension,
+} from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
 
 const MAP_OPTIONS = {
@@ -168,12 +171,13 @@ export default class FieldRemapping extends React.Component {
     this.clearEditingStates();
 
     // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
-    if (foreignKeyClause.length === 3 && foreignKeyClause[0] === "fk->") {
+    const dimension = Dimension.parseMBQL(foreignKeyClause);
+    if (dimension && dimension instanceof FKDimension) {
       MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
       await updateFieldDimension(field.id, {
         type: "external",
         name: field.display_name,
-        human_readable_field_id: foreignKeyClause[2],
+        human_readable_field_id: dimension.destination().field().id,
       });
 
       await fetchTableMetadata(table.id, true);

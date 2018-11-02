@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.date :as du]))
 
@@ -95,7 +97,9 @@
   {:database 1
    :type     :query
    :query    {:source-table 1000
-              :filter       [:= [:field-id (data/id :users :last_login)] [:relative-datetime -1 :day]]
+              :filter       [:=
+                             [:datetime-field [:field-id (data/id :users :last_login)] :day]
+                             [:relative-datetime -1 :day]]
               :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -111,7 +115,9 @@
   {:database 1
    :type     :query
    :query    {:source-table 1000
-              :filter       [:between [:field-id (data/id :users :last_login)] "2014-05-10" "2014-05-16"]
+              :filter       [:between [:datetime-field [:field-id (data/id :users :last_login)] :day]
+                             "2014-05-10"
+                             "2014-05-16"]
               :breakout     [[:field-id 17]]}}
   (expand-parameters {:database   1
                       :type       :query
@@ -129,22 +135,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; for some reason param substitution tests fail on Redshift & (occasionally) Crate so just don't run those for now
-(def ^:private ^:const params-test-engines (disj non-timeseries-engines :redshift :crate))
+(def ^:private params-test-engines (disj non-timeseries-engines :redshift :crate))
 
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines
   [29]
-  (first-row
-    (format-rows-by [int]
-      (qp/process-query {:database   (data/id)
-                         :type       :query
-                         :query      {:source-table (data/id :checkins)
-                                      :aggregation  [[:count]]}
-                         :parameters [{:hash   "abc123"
-                                       :name   "foo"
-                                       :type   "date"
-                                       :target [:dimension [:field-id (data/id :checkins :date)]]
-                                       :value  "2015-04-01~2015-05-01"}]}))))
+  (do
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    (when (= :snowflake datasets/*engine*) (tu/clear-connection-pool (data/id)))
+    (first-row
+      (format-rows-by [int]
+        (qp/process-query {:database   (data/id)
+                           :type       :query
+                           :query      {:source-table (data/id :checkins)
+                                        :aggregation  [[:count]]}
+                           :parameters [{:hash   "abc123"
+                                         :name   "foo"
+                                         :type   "date"
+                                         :target [:dimension [:field-id (data/id :checkins :date)]]
+                                         :value  "2015-04-01~2015-05-01"}]})))))
 
 ;; check that IDs work correctly (passed in as numbers)
 (datasets/expect-with-engines params-test-engines
@@ -223,33 +232,37 @@
                 "FROM \"PUBLIC\".\"VENUES\" "
                 "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
    :params nil}
-  (let [outer-query (-> (data/mbql-query venues
-                          {:aggregation [[:count]]})
-                        (assoc :parameters [{:name   "price"
-                                             :type   :category
-                                             :target [:field-id (data/id :venues :price)]
-                                             :value  [3 4]}]))]
-    (-> (qp/process-query outer-query)
-        :data :native_form)))
+  (let [query (-> (data/mbql-query venues
+                    {:aggregation [[:count]]})
+                  (assoc :parameters [{:name   "price"
+                                       :type   :category
+                                       :target [:field-id (data/id :venues :price)]
+                                       :value  [3 4]}]))]
+    (-> query qp/process-query :data :native_form)))
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
+;;
+;; TODO - If we actually wanted to generate efficient queries we should be doing something like
+;;
+;;    WHERE (cast(DATE as date) IN ((cast(? AS date), cast(? AS date)))
+;;
+;; instead of all these BETWEENs
 (datasets/expect-with-engine :h2
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date) "
-                "OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date)"
+                " OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
    :params [(du/->Timestamp #inst "2014-06-01")
             (du/->Timestamp #inst "2014-06-30")
             (du/->Timestamp #inst "2015-06-01")
             (du/->Timestamp #inst "2015-06-30")]}
-  (let [outer-query (-> (data/mbql-query checkins
-                          {:aggregation [[:count]]})
-                        (assoc :parameters [{:name   "date"
-                                             :type   "date/month"
-                                             :target [:field-id (data/id :checkins :date)]
-                                             :value  ["2014-06" "2015-06"]}]))]
-    (-> (qp/process-query outer-query)
-        :data :native_form)))
+  (let [query (-> (data/mbql-query checkins
+                    {:aggregation [[:count]]})
+                  (assoc :parameters [{:name   "date"
+                                       :type   "date/month"
+                                       :target [:field-id (data/id :checkins :date)]
+                                       :value  ["2014-06" "2015-06"]}]))]
+    (-> query qp/process-query :data :native_form)))
 
 ;; make sure that "ID" type params get converted to numbers when appropriate
 (expect

@@ -21,6 +21,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-engine]]
              [users :refer :all]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -52,11 +53,13 @@
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
   [ ;; API call response
-   {:data                   {:rows    [[1000]]
-                             :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count",
-                                        :display_name "count", :id nil, :table_id nil, :description nil, :target nil,
-                                        :extra_info {}, :source "aggregation", :settings nil}]
+   {:data                   {:rows        [[1000]]
+                             :columns     ["count"]
+                             :cols        [{:base_type    "type/Integer"
+                                            :special_type "type/Number"
+                                            :name         "count"
+                                            :display_name "count"
+                                            :source       "aggregation"}]
                              :native_form true}
     :row_count              1
     :status                 "completed"
@@ -124,10 +127,11 @@
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
+        result              (tu.log/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 

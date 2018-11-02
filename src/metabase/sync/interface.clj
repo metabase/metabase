@@ -89,19 +89,23 @@
   [[s/Any]])
 
 
-(def GlobalFingerprint
-  "Fingerprint values that Fields of all types should have."
-  {(s/optional-key :distinct-count) s/Int})
-
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
   (s/constrained s/Num #(<= 0 % 1) "Valid percentage between (inclusive) 0 and 1."))
+
+(def GlobalFingerprint
+  "Fingerprint values that Fields of all types should have."
+  {(s/optional-key :distinct-count) s/Int
+   (s/optional-key :nil%)           (s/maybe Percent)})
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   {(s/optional-key :min) (s/maybe s/Num)
    (s/optional-key :max) (s/maybe s/Num)
-   (s/optional-key :avg) (s/maybe s/Num)})
+   (s/optional-key :avg) (s/maybe s/Num)
+   (s/optional-key :q1)  (s/maybe s/Num)
+   (s/optional-key :q3)  (s/maybe s/Num)
+   (s/optional-key :sd)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
@@ -160,6 +164,7 @@
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
+   2 #{:type/Number}
    3 #{:type/DateTime}})
 
 (def latest-fingerprint-version

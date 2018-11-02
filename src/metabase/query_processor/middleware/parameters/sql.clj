@@ -10,7 +10,6 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
@@ -155,6 +154,8 @@
 (s/defn ^:private default-value-for-dimension :- (s/maybe DimensionValue)
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
+  (when (and (:required tag) (not (:default tag)))
+    (throw (Exception. (str (tru "''{0}'' is a required param." (:display-name tag))))))
   (when-let [default (:default tag)]
     {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
@@ -162,7 +163,7 @@
 
 (s/defn ^:private dimension->field-id :- su/IntGreaterThanZero
   [dimension]
-  (:field-id (ql/expand-ql-sexpr dimension)))
+  (second dimension))
 
 (s/defn ^:private dimension-value-for-tag :- (s/maybe Dimension)
   "Return the \"Dimension\" value of a param, if applicable. \"Dimension\" here means what is called a \"Field
@@ -355,7 +356,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*), :allow-dashed-names? true)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 

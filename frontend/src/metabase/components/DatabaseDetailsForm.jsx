@@ -287,7 +287,7 @@ export default class DatabaseDetailsForm extends Component {
         <div className="flex align-center Form-offset">
           <div className="Grid-cell--top">
             {jt`${(
-              <a href={credentialsURL} target="_blank">
+              <a className="link" href={credentialsURL} target="_blank">
                 {t`Click here`}
               </a>
             )} to generate a Client ID and Client Secret for your project.`}
@@ -314,7 +314,7 @@ export default class DatabaseDetailsForm extends Component {
           <div className="flex align-center Form-offset">
             <div className="Grid-cell--top">
               {jt`${(
-                <a href={authURL} target="_blank">
+                <a className="link" href={authURL} target="_blank">
                   {t`Click here`}
                 </a>
               )} to get an auth code`}

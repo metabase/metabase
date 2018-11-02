@@ -1,9 +1,11 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require [clojure.math.numeric-tower :as math]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
+            [metabase.test.data.datasets :as datasets :refer [*engine*]]
+            [metabase.test.util :as tu]))
 
 (expect-with-non-timeseries-dbs
   [[1 12 375]
@@ -43,7 +45,8 @@
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["sum" field-id]
@@ -62,7 +65,8 @@
           :breakout    [$price]
           :order-by    [[:desc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["distinct" field-id]
@@ -74,14 +78,15 @@
                  [1 22]
                  [2 59]]
    :cols        [(breakout-col (venues-col :price))
-                 (aggregate-col :count)]
+                 (aggregate-col :count (Field (data/id :venues :id)))]
    :native_form true}
   (->> (data/run-mbql-query venues
          {:aggregation [[:distinct $id]]
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["avg" field-id]
@@ -100,7 +105,9 @@
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       :data (format-rows-by [int int])))
+       data
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;;; ### order-by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
@@ -120,4 +127,6 @@
           :breakout    [$price]
           :order-by    [[:desc [:aggregation 0]]]})
        booleanize-native-form
-       :data (format-rows-by [int (comp int math/round)])))
+       data
+       (format-rows-by [int (comp int math/round)])
+       tu/round-fingerprint-cols))

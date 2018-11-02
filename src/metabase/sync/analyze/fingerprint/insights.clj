@@ -11,7 +11,8 @@
   [n]
   (fn
     ([] [])
-    ([acc] acc)
+    ([acc]
+     (concat (repeat (- n (count acc)) nil) acc))
     ([acc x]
      (if (< (count acc) n)
        (conj acc x)
@@ -44,24 +45,15 @@
          :else     [reservoir c])))
     ([[reservoir _]] (persistent! reservoir))))
 
-(defn rmse
+(defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
-   respectively, calculates the root mean squared error of the estimate.
-   https://en.wikipedia.org/wiki/Root-mean-square_deviation"
+   respectively, calculates the mean absolute error of the estimate.
+   https://en.wikipedia.org/wiki/Mean_absolute_error"
   [fy-hat fy]
-  (fn
-    ([] [0.0 0.0])
-    ([[^double c ^double mse :as acc] e]
-     (let [y-hat (fy-hat e)
-           y (fy e)]
-       (if (or (nil? y-hat) (nil? y))
-         acc
-         (let [se (math/sq (- y y-hat))
-               c' (inc c)]
-           [c' (+ mse (/ (- se mse) c'))]))))
-    ([[c mse]]
-     (when (pos? c)
-       (math/sqrt mse)))))
+  ((map (fn [x]
+          (when x
+            (math/abs (- (fy x) (fy-hat x))))))
+   stats/mean))
 
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
@@ -108,21 +100,30 @@
    (redux/fuse
     {:fits (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                   (redux/post-complete
-                   (stats/simple-linear-regression (comp x-link-fn fx) (comp y-link-fn fy))
+                   (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
+                                                   (comp (stats/somef y-link-fn) fy))
                    (fn [[offset slope]]
-                     (when-not (or (Double/isNaN offset)
+                     (when-not (or (nil? offset)
+                                   (nil? slope)
+                                   (Double/isNaN offset)
                                    (Double/isNaN slope))
                        {:model   (model offset slope)
                         :formula (formula offset slope)}))))
                 (apply redux/juxt))
-     :validation-set ((map (juxt fx fy)) (reservoir-sample validation-set-size))})
+     :validation-set ((keep (fn [row]
+                              (let [x (fx row)
+                                    y (fy row)]
+                                (when (and x y)
+                                  [x y]))))
+                      (reservoir-sample validation-set-size))})
    (fn [{:keys [validation-set fits]}]
-     (->> fits
-          (remove nil?)
-          (apply min-key #(transduce identity
-                                     (rmse (comp (:model %) first) second)
-                                     validation-set))
-          :formula))))
+     (some->> fits
+              (remove nil?)
+              not-empty
+              (apply min-key #(transduce identity
+                                         (mae (comp (:model %) first) second)
+                                         validation-set))
+              :formula))))
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
@@ -149,7 +150,7 @@
                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
                      ;; at this stage in the pipeline the value is still an int, so we can use it
                      ;; directly.
-                     (comp ms->day #(nth % x-position)))]
+                     (comp (stats/somef ms->day) #(nth % x-position)))]
     (apply redux/juxt (for [number-col numbers]
                         (redux/post-complete
                          (let [y-position (:position number-col)

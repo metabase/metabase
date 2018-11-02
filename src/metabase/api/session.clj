@@ -65,7 +65,7 @@
       (catch com.unboundid.util.LDAPSDKException e
         (log/error
          (u/format-color 'red
-             (trs "Problem connecting to LDAP server, will fallback to local authentication {0}" (.getMessage e))))))))
+             (trs "Problem connecting to LDAP server, will fall back to local authentication: {0}" (.getMessage e))))))))
 
 (defn- email-login
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."

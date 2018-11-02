@@ -116,7 +116,7 @@ export const drillFilter = (card, value, column) => {
   } else {
     const range = rangeForValue(value, column);
     if (range) {
-      filter = ["BETWEEN", getFieldRefFromColumn(column), range[0], range[1]];
+      filter = ["between", getFieldRefFromColumn(column), range[0], range[1]];
     } else {
       filter = ["=", getFieldRefFromColumn(column), value];
     }
@@ -298,9 +298,9 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
         start.format(),
       ]);
     } else {
-      // otherwise do a BETWEEN
+      // otherwise do a between
       return addOrUpdateFilter(newCard, [
-        "BETWEEN",
+        "between",
         ["datetime-field", fieldRef, "as", column.unit],
         start.format(),
         end.format(),
@@ -308,7 +308,7 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
   } else {
     return addOrUpdateFilter(newCard, [
-      "BETWEEN",
+      "between",
       fieldRef,
       start.format(),
       end.format(),
@@ -323,7 +323,7 @@ export function updateLatLonFilter(
   bounds,
 ) {
   return addOrUpdateFilter(card, [
-    "INSIDE",
+    "inside",
     latitudeColumn.id,
     longitudeColumn.id,
     bounds.getNorth(),
@@ -335,7 +335,7 @@ export function updateLatLonFilter(
 
 export function updateNumericFilter(card, column, start, end) {
   const fieldRef = getFieldRefFromColumn(column);
-  return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
+  return addOrUpdateFilter(card, ["between", fieldRef, start, end]);
 }
 
 export const pivot = (

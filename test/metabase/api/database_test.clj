@@ -24,9 +24,8 @@
             [metabase.test.data
              [datasets :as datasets]
              [users :refer :all]]
-            [toucan
-             [db :as db]
-             [hydrate :as hydrate]]
+            [metabase.test.util.log :as tu.log]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;; HELPER FNS
@@ -50,12 +49,12 @@
       (finally
         (db/delete! Database :id (:id db))))))
 
-(defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
+(defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[db-binding & [options]] expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since
   ;; expectations hashes its body to generate function names it will treat every usage this as the same test and only
   ;; a single one will end up being ran
   (let [result (gensym "result-")]
-    `(let [~result (delay (do-with-temp-db-created-via-api ~options (fn [~binding]
+    `(let [~result (delay (do-with-temp-db-created-via-api ~options (fn [~db-binding]
                                                                       [~expected
                                                                        ~actual])))]
        (expect
@@ -181,62 +180,40 @@
                 :fields_hash     $}))
       (update :entity_type (comp (partial str "entity/") name))))
 
-
-;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One
-;; day we should be able to remove this! If you're writing a NEW test that needs this, fix your brain and your test!
-;; To reïterate, this is BAD BAD BAD BAD BAD BAD! It will break tests if you use it! Don't use it!
-(defn- ^:deprecated delete-randomly-created-databases!
-  "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
-  [& {:keys [skip]}]
-  (let [ids-to-skip (into (set skip)
-                          (for [engine datasets/all-valid-engines
-                                :let   [id (datasets/when-testing-engine engine
-                                             (:id (data/get-or-create-test-data-db! (driver/engine->driver engine))))]
-                                :when  id]
-                            id))]
-    (when-let [dbs (seq (db/select [Database :name :engine :id] :id [:not-in ids-to-skip]))]
-      (println (u/format-color 'red (str "\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-                                         "WARNING: deleting randomly created databases:\n%s"
-                                         "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
-                 (u/pprint-to-str (for [db dbs]
-                                    (dissoc db :features))))))
-    (db/delete! Database :id [:not-in ids-to-skip])))
-
-
 ;; ## GET /api/database
 ;; Test that we can get all the DBs (ordered by name)
 ;; Database details *should not* come back for Rasta since she's not a superuser
-(expect-with-temp-db-created-via-api [{db-id :id}]
-  (set (filter identity (conj (for [engine datasets/all-valid-engines]
-                                (datasets/when-testing-engine engine
-                                  (merge default-db-details
-                                         (match-$ (data/get-or-create-test-data-db! (driver/engine->driver engine))
-                                           {:created_at         $
-                                            :engine             (name $engine)
-                                            :id                 $
-                                            :updated_at         $
-                                            :timezone           $
-                                            :name               "test-data"
-                                            :native_permissions "write"
-                                            :features           (map name (driver/features (driver/engine->driver engine)))}))))
-                              (merge default-db-details
-                                     (match-$ (Database db-id)
-                                       {:created_at         $
-                                        :engine             "postgres"
-                                        :id                 $
-                                        :updated_at         $
-                                        :name               $
-                                        :timezone           $
-                                        :native_permissions "write"
-                                        :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
-  (do
-    (delete-randomly-created-databases! :skip [db-id])
-    (set ((user->client :rasta) :get 200 "database"))))
+(expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
+  (set (filter some? (conj (for [engine datasets/all-valid-engines]
+                             (datasets/when-testing-engine engine
+                               (merge default-db-details
+                                      (match-$ (data/get-or-create-test-data-db! (driver/engine->driver engine))
+                                        {:created_at         $
+                                         :engine             (name $engine)
+                                         :id                 $
+                                         :updated_at         $
+                                         :timezone           $
+                                         :name               "test-data"
+                                         :native_permissions "write"
+                                         :features           (map name (driver/features (driver/engine->driver engine)))}))))
+                           (merge default-db-details
+                                  (match-$ (Database db-id)
+                                    {:created_at         $
+                                     :engine             "postgres"
+                                     :id                 $
+                                     :updated_at         $
+                                     :name               $
+                                     :timezone           $
+                                     :native_permissions "write"
+                                     :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
+  (->> ((user->client :rasta) :get 200 "database")
+       (filter #(#{"test-data" db-name} (:name %)))
+       set))
 
 
 
 ;; GET /api/databases (include tables)
-(expect-with-temp-db-created-via-api [{db-id :id}]
+(expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
   (set (cons (merge default-db-details
                     (match-$ (Database db-id)
                       {:created_at         $
@@ -263,9 +240,9 @@
                                               :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
                                                                                    (table-details table)))
                                               :features           (map name (driver/features (driver/engine->driver engine)))}))))))))
-  (do
-    (delete-randomly-created-databases! :skip [db-id])
-    (set ((user->client :rasta) :get 200 "database" :include_tables true))))
+  (->> ((user->client :rasta) :get 200 "database" :include_tables true)
+       (filter #(#{"test-data" db-name} (:name %)))
+       set))
 
 (def ^:private default-field-details
   {:description        nil
@@ -646,13 +623,15 @@
 (expect
   {:valid false, :message "Error!"}
   (with-redefs [database-api/test-database-connection test-database-connection]
-    (#'database-api/test-connection-details "h2" {:db "ABC"})))
+    (tu.log/suppress-output
+      (#'database-api/test-connection-details "h2" {:db "ABC"}))))
 
 (expect
   {:valid false}
   (with-redefs [database-api/test-database-connection test-database-connection]
-    ((user->client :crowberto) :post 200 "database/validate"
-     {:details {:engine :h2, :details {:db "ABC"}}})))
+    (tu.log/suppress-output
+      ((user->client :crowberto) :post 200 "database/validate"
+       {:details {:engine :h2, :details {:db "ABC"}}}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -786,4 +765,12 @@
                   Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
     (perms/revoke-permissions! (perms-group/all-users) database-id)
     (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
+    (map :name ((user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))
+
+;; GET /api/database/:id/schema/:schema should exclude inactive Tables
+(expect
+  ["table"]
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [_ {:db_id database-id, :schema "public", :name "table"}]
+                  Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
     (map :name ((user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))

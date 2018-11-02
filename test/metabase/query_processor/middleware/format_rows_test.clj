@@ -1,5 +1,8 @@
 (ns metabase.query-processor.middleware.format-rows-test
-  (:require [metabase.query-processor-test :as qpt]
+  (:require [clj-time.coerce :as tc]
+            [expectations :refer :all]
+            [metabase.query-processor-test :as qpt]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -7,7 +10,11 @@
              [dataset-definitions :as defs]
              [datasets :refer [*engine*]]]))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
+(def ^:private dbs-exempt-from-format-rows-tests
+  "DBs to skip the tests below for. TODO - why are so many databases not running these tests?"
+  #{:oracle :mongo :redshift :presto :sparksql :snowflake})
+
+(qpt/expect-with-non-timeseries-dbs-except dbs-exempt-from-format-rows-tests
   (if (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
      [2 "Felipinho Asklepios" "2014-12-05 00:00:00" "15:15:00"]
@@ -26,7 +33,7 @@
             :limit    5}))
        qpt/rows))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :presto :sparksql}
+(qpt/expect-with-non-timeseries-dbs-except dbs-exempt-from-format-rows-tests
   (cond
     (= :sqlite *engine*)
     [[1 "Plato Yeshua" "2014-04-01 00:00:00" "08:30:00"]
@@ -54,3 +61,20 @@
              {:order-by [[:asc $id]]
               :limit    5}))
          qpt/rows)))
+
+
+(expect
+  {:rows [["2011-04-18T10:12:47.232Z"]
+          ["2011-04-18T00:00:00.000Z"]
+          ["2011-04-18T10:12:47.232Z"]]}
+  ((format-rows/format-rows (constantly {:rows [[(tc/to-sql-time 1303121567232)]
+                                         [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
+                                         [(tc/to-date 1303121567232)]]})) {:settings {}}))
+
+(expect
+  {:rows [["2011-04-18T19:12:47.232+09:00"]
+          ["2011-04-18T09:00:00.000+09:00"]
+          ["2011-04-18T19:12:47.232+09:00"]]}
+  ((format-rows/format-rows (constantly {:rows [[(tc/to-sql-time 1303121567232)]
+                                         [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
+                                         [(tc/to-date 1303121567232)]]})) {:settings {:report-timezone "Asia/Tokyo"}}))
