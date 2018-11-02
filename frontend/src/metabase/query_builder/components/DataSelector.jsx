@@ -714,7 +714,7 @@ export const DatabaseSchemaPicker = ({
   }
 
   return (
-    <div>
+    <div className="scroll-y">
       <AccordianList
         id="DatabaseSchemaPicker"
         key="databaseSchemaPicker"
