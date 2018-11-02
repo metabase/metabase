@@ -1,6 +1,7 @@
 (ns metabase.serialization.load
   ""
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.automagic-dashboards.filters :refer [field-reference?]]
             [metabase.models
@@ -26,10 +27,10 @@
   [f path]
   (->> path
        io/file
-       file-seq
-       (filter #(.isFile %))
+       (.listFiles)
+       (filter #(-> % (.getName) (str/ends-with? ".yaml")))
        (map (fn [file]
-              (let [entity (yaml/from-file file)]
+              (let [entity (yaml/from-file file true)]
                 {(:id entity) (:id (f (dissoc entity :id)))})))
        (apply merge)))
 
@@ -89,8 +90,8 @@
   [path _ context]
   (let [context (assoc context
                   :databases (slurp-dir (partial db/insert! Database) (str path "/databases")))]
-    (reduce (fn [context db]
-              (load (format "%s/databases/%s" path db) Table context))
+    (reduce (fn [context dbname]
+              (load (format "%s/databases/%s" path dbname) Table context))
             context
             (db/select-field :name Database [:in :id (-> context :databases vals)]))))
 

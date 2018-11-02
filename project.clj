@@ -70,7 +70,7 @@
                  [honeysql "0.9.2"                                    ; Transform Clojure data structures to SQL
                   :exclusions [org.clojure/clojurescript]]
                  [io.crate/crate-jdbc "2.3.0"]                        ; Crate JDBC driver
-                 [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
+                 [io.forward/yaml "1.0.9"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
                  [kixi/stats "0.4.1"                                  ; Various statistic measures implemented as transducers

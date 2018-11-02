@@ -131,7 +131,6 @@
 
 (defmethod dump (type DashboardCard)
   [path dashboard-card]
-  (println dashboard-card)
   (->> dashboard-card
        humanize-field-references
        (spit-yaml (str path "/dashboard-cards"))))
