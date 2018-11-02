@@ -93,7 +93,7 @@
     (reduce (fn [context dbname]
               (load (format "%s/databases/%s" path dbname) Table context))
             context
-            (db/select-field :name Database [:in :id (-> context :databases vals)]))))
+            (db/select-field :name Database :id [:in (-> context :databases vals)]))))
 
 (defmethod load Table
   [path _ context]
@@ -109,7 +109,7 @@
                      (load (str path "/metrics") Metric)
                      (load (str path "/segments") Segment))))
             context
-            (db/select-field :name Table [:in :id (-> context :tables vals)]))))
+            (db/select-field :name Table :id [:in (-> context :tables vals)]))))
 
 (defmethod load Field
   [path _ context]
@@ -165,7 +165,7 @@
     (reduce (fn [context db]
               (load (format "%s/dashboards/%s" path db) DashboardCard context))
             context
-            (db/select-field :name Dashboard [:in :id (-> context :dashboards vals)]))))
+            (db/select-field :name Dashboard :id [:in (-> context :dashboards vals)]))))
 
 (defmethod load Card
   [path _ context]
@@ -214,3 +214,5 @@
        (load path Collection)
        (load path Card)
        (load path Dashboard)))
+
+(-main "dump")
