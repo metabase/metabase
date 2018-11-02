@@ -39,7 +39,7 @@
   [field]
   (concat (-> field :table_id Table fully-qualified-name) [(:name field)]))
 
-(defn field-reference->fully-qualified-name
+(defn- field-reference->fully-qualified-name
   [field-reference]
   (cond
     (number? field-reference)
@@ -87,10 +87,11 @@
 
 (defmethod dump (type Table)
   [path {:keys [id] :as table}]
-  (spit-yaml (str path "/tables") table)
-  (dump-all path (db/select Field :table_id id))
-  (dump-all path (db/select Metric :table_id id))
-  (dump-all path (db/select Segment :table_id id)))
+  (let [path (format "%s/tables/%s" path (:name table))]
+    (spit-yaml path table)
+    (dump-all path (db/select Field :table_id id))
+    (dump-all path (db/select Metric :table_id id))
+    (dump-all path (db/select Segment :table_id id))))
 
 (defmethod dump (type Field)
   [path field]
