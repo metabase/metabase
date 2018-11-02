@@ -34,6 +34,14 @@
                 {(:id entity) (:id (f (dissoc entity :id)))})))
        (apply merge)))
 
+(defn- list-dirs
+  [path]
+  (->> path
+       io/file
+       (.listFiles)
+       (filter #(.isDirectory %))
+       (map #(.getPath %))))
+
 (defn- fully-qualified-name->id
   [[db schema table field]]
   (let [db    (db/select-one Database :name db)
@@ -88,12 +96,15 @@
 
 (defmethod load Database
   [path _ context]
-  (let [context (assoc context
-                  :databases (slurp-dir (partial db/insert! Database) (str path "/databases")))]
-    (reduce (fn [context dbname]
-              (load (format "%s/databases/%s" path dbname) Table context))
-            context
-            (db/select-field :name Database :id [:in (-> context :databases vals)]))))
+  (reduce (fn [context path]
+            (let [context (assoc context
+                            :databases (slurp-dir (partial db/insert! Database) path))]
+              (reduce (fn [context dbname]
+                        (load (format "%s/databases/%s" path dbname) Table context))
+                      context
+                      (db/select-field :name Database :id [:in (-> context :databases vals)]))))
+          context
+          (list-dirs (str path "/databases"))))
 
 (defmethod load Table
   [path _ context]
@@ -214,5 +225,3 @@
        (load path Collection)
        (load path Card)
        (load path Dashboard)))
-
-(-main "dump")
