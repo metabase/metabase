@@ -88,11 +88,7 @@
 (defmethod load Database
   [path _ context]
   (let [context (assoc context
-                  :databases (slurp-dir
-                              (fn [database]
-                                (let [database (db/insert! Database database)]
-                                  (load (format "%s/databases/%s" path (:name db)) Table context)))
-                              (str path "/databases")))]
+                  :databases (slurp-dir (partial db/insert! Database) (str path "/databases")))]
     (reduce (fn [context db]
               (load (format "%s/databases/%s" path db) Table context))
             context
@@ -103,14 +99,14 @@
   (let [context (assoc context
                   :tables (slurp-dir (fn [table]
                                        (db/insert! Table
-                                         (update collection :db_id (:databases context))))
+                                         (update table :db_id (:databases context))))
                                      (str path "/tables")))]
     (reduce (fn [context table]
               (let [path (format "%s/tables/%s" path table)]
                 (->> context
-                     (load (str path "/fields") Fields)
-                     (load (str path "/metrics") Fields)
-                     (load (str path "/segments") Fields))))
+                     (load (str path "/fields") Field)
+                     (load (str path "/metrics") Metric)
+                     (load (str path "/segments") Segment))))
             context
             (db/select-field :name Table [:in :id (-> context :tables vals)]))))
 
@@ -181,7 +177,7 @@
                               (update :database_id (:databases context))
                               (update-in [:dataset_query :database] (:databases context))
                               (cond->
-                                  (-> metric :dataset_query :type qp.util/normalize-token (= :query))
+                                  (-> card :dataset_query :type qp.util/normalize-token (= :query))
                                 (update-in [:dataset_query :query :source-table] (:tables context)))
                               (humanized-field-references->ids context))))
                       (str path "/cards"))))
