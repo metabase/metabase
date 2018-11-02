@@ -15,7 +15,8 @@
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]))
+           [java.text Normalizer Normalizer$Form]
+           java.util.concurrent.TimeoutException))
 
 ;; This is the very first log message that will get printed.  It's here because this is one of the very first
 ;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
@@ -307,7 +308,7 @@
   [futur timeout-ms]
   (let [result (deref futur timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (Exception. (format "Timed out after %d milliseconds." timeout-ms))))
+      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
     result))
 
 (defmacro with-timeout
