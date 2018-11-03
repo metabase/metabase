@@ -259,14 +259,14 @@
   run manually. Then throw an exception to short circuit the setup process and make it clear we can't proceed."
   [liquibase]
   (when (has-unrun-migrations? liquibase)
-    (println (let [sql (migrations-sql liquibase)]
-      (log/info (str "Database Upgrade Required\n\n"
-                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                     "Please execute the following sql commands on your database before proceeding.\n\n"
-                     sql
-                     "\n\n"
-                     "Once your database is updated try running the application again.\n"))
-      (throw (Exception. "Database requires manual upgrade."))))))
+    (let [sql (migrations-sql liquibase)]
+      (println (str "Database Upgrade Required\n\n"
+                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                    "Please execute the following sql commands on your database before proceeding.\n\n"
+                    sql
+                    "\n\n"
+                    "Once your database is updated try running the application again.\n"))
+      (throw (Exception. "Database requires manual upgrade.")))))
 
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run

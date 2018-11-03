@@ -7,7 +7,6 @@
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cemerick.friend.credentials :as creds]
-            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
