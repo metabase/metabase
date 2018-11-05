@@ -38,7 +38,8 @@
                                commons-io
                                slingshot]]
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
-                 [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
+                 [clojurewerkz/quartzite "2.0.0"                      ; scheduling library
+                  :exclusions [c3p0]]
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc42-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
                   "1.2.12.1017"]
