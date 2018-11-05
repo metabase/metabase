@@ -1,8 +1,8 @@
 #!/bin/bash
 
-log "INFO" "$USER"
+INFO "$USER"
 if [ "$MB_DB_SSL" = "true" ]; then
-    log "INFO" "Obtaining and setting TLS secrets for SSL secured Postgres"
+    INFO "Obtaining and setting TLS secrets for SSL secured Postgres"
 
     SSL_CLUSTER=${SSL_CLUSTER:="userland"}
     SSL_INSTANCE=${TENANT_NAME:="crossdata-1"}
@@ -23,9 +23,9 @@ if [ "$MB_DB_SSL" = "true" ]; then
     SSL_PEM_KEY="$POSTGRESQL_SSL_KEY_LOCATION/$POSTGRESQL_SSL_KEY_FILENAME"
     SSL_KEY="$POSTGRESQL_SSL_KEY_LOCATION/$SSL_FQDN.pk8"
     openssl pkcs8 -topk8 -inform pem -outform der -in $SSL_PEM_KEY -out $SSL_KEY -nocrypt
-    log "INFO" "SSL cert and key downloaded"
+    INFO "SSL cert and key downloaded"
     getCAbundle $CA_BUNDLE_LOCATION "PEM" $CA_BUNDLE_PEM_FILENAME $CA_BUNDLE_CLUSTER $CA_BUNDLE_INSTANCE
-    log "INFO" "CA in PEM format downloaded"
+    INFO "CA in PEM format downloaded"
     SSL_ROOT_CERT="$CA_BUNDLE_LOCATION/$CA_BUNDLE_PEM_FILENAME"
     chmod -R 777 $POSTGRESQL_SSL_CERT_LOCATION
     chmod 777 $POSTGRESQL_SSL_CERT_LOCATION
@@ -34,7 +34,7 @@ if [ "$MB_DB_SSL" = "true" ]; then
 
     CONNECTION_STRING="postgres://$MB_DB_HOST:$MB_DB_PORT/$MB_DB_DBNAME?user=$MB_DB_USER&password=$MB_DB_PASS&sslmode=verify-full&sslcert=$SSL_PEM_CERT&sslkey=$SSL_KEY&sslrootcert=$SSL_ROOT_CERT"
 else
-    log "INFO" "Connection to PostgresSQL MD5"
+    INFO "Connection to PostgresSQL MD5"
 
     CONNECTION_STRING="postgres://$MB_DB_HOST:$MB_DB_PORT/$MB_DB_DBNAME?user=$MB_DB_USER&password=$MB_DB_PASS"
 fi
@@ -44,7 +44,7 @@ if [[ -z "$MB_DB_CONNECTION_URI" ]]; then
     if [[ -z "$MB_JDBC_PARAMETERS" ]]; then
         export MB_DB_CONNECTION_URI=${CONNECTION_STRING}
     else
-        log "INFO" "Found additional JDBC parameters"
+        INFO "Found additional JDBC parameters: " $MB_JDBC_PARAMETERS
         export MB_DB_CONNECTION_URI="$CONNECTION_STRING&$MB_JDBC_PARAMETERS"
     fi
 fi

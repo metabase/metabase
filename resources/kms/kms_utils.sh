@@ -12,10 +12,17 @@
 #@@@@        - VAULT_ROLE_ID [string]                                    @@@@@@@
 #@@@@        - VAULT_SECRET_ID [string]                                  @@@@@@@
 #@@@@        - [optional] VAULT_TOKEN [string]                           @@@@@@@
+#@@@@        - [optional] DOCKER_LOG_LEVEL[string]                       @@@@@@@
 #@@@@                                                                    @@@@@@@
 #@@@@      To read an array from comma separted string                   @@@@@@@
 #@@@@          IFS=',' read -r -a VAULT_HOSTS <<< "$STRING_VAULT_HOST"   @@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+source "$(dirname "$( realpath ${BASH_SOURCE[0]} )" )"/b-log.sh
+B_LOG --stdout true
+DOCKER_LOG_LEVEL=${DOCKER_LOG_LEVEL:-INFO}
+eval LOG_LEVEL_${DOCKER_LOG_LEVEL}
+
 #
 # login
 #     INPUTS:
@@ -30,8 +37,9 @@ function login() {
     if [[ $status_code == 200 ]];
     then
         export VAULT_TOKEN=$(echo $rawdata | jq .auth.client_token | cut -d'"' -f2)
+        export ACCESSOR_TOKEN=$(echo $rawdata | jq .auth.accessor | cut -d'"' -f2)
     else
-        _log ">> login - error 1 http_code: $status_code"
+        ERROR "login - error 1 while log in vault http_code: $status_code"
         return 1
     fi
 
@@ -73,14 +81,14 @@ function getPass() {
         do
             underscore_key=${key//[.-]/_}
             if [[ ${secret_map[$key]} = "null" ]]; then
-                _log "<< getpass - error 2 looking for key $key on $instance $secret"
+                ERROR "<< getpass - error 2 looking for key $key on $instance $secret"
                 return 2
             fi
             export "${underscore_instance^^}"_"${underscore_secret^^}"_"${underscore_key^^}"="${secret_map[$key]}"
-            _log "<< getpass - $instance $secret obtained succesfully"
+            INFO "<< getpass - $instance $secret obtained succesfully"
         done
     else
-        _log "<< getpass - error 1 requesting $instance $secret http_code: $status_code"
+        ERROR "<< getpass - error 1 requesting $instance $secret from ${vault_path} http_code: $status_code"
         return 1
     fi
 
@@ -125,27 +133,27 @@ function getKrb() {
         local principal_value
         principal_value=$(echo "$krb_credentials" | jq -cMSr --arg fqdn "$json_princ_key" '.data[$fqdn]')
         if [[ $principal_value = "null" ]]; then
-            _log "<< getkrb - error 2 looking for key $json_princ_key in kerberos credentials $fqdn"
+            ERROR "<< getkrb - error 2 looking for key $json_princ_key in kerberos credentials $fqdn"
             return 2
         fi
         eval "$principal=$principal_value"
         encoded_ktab=$(echo "$krb_credentials" | jq -cMSr --arg fqdn "$json_ktab_key" '.data[$fqdn]')
         if [[ $encoded_ktab = "null" ]]; then
-            _log "<< getkrb - error 2 looking for key $json_ktab_key in kerberos credentials $fqdn"
+            ERROR "<< getkrb - error 2 looking for key $json_ktab_key in kerberos credentials $fqdn"
             return 2
         fi
-        _log "<< getkrb - credentials to $fqdn downloaded"
+        INFO "<< getkrb - credentials to $fqdn downloaded"
 
         echo "$encoded_ktab" | base64 -d > "$store_path/$fqdn.keytab"
         if [[ $? == 0 ]]; then
-            _log ">> getkrb - keytab saved to $principal in $store_path"
+            INFO ">> getkrb - keytab saved to $principal in $store_path"
         else
-            _log ">> getkrb - error 1 saving keytab to $store_path"
+            ERROR ">> getkrb - error 1 saving keytab to $store_path"
             return 1
         fi
     else
-        _log "<< getkrb - error $status_code downloading kerberos credentials to $fqdn http_code: $status_code"
-        return "$status_code"
+        ERROR "<< getkrb - error 3 requesting kerberos credentials from ${vault_path} to ${store_path} http_code: $status_code"
+        return 3
     fi
 
     IFS=$OLD_IFS
@@ -197,11 +205,11 @@ function getCert() {
         public_key=$(echo "$certificates" | jq -cMSr --arg fqdn "$json_crt_key" '.data[$fqdn]')
         private_key=$(echo "$certificates" | jq -cMSr --arg fqdn "$json_key_key" '.data[$fqdn]')
         if [[ $public_key = "null" ]]; then
-            _log "<< getcertificate - error 2 looking for key $json_crt_key in certificate $fqdn"
+            ERROR "<< getcertificate - error 2 looking for key $json_crt_key in certificate $fqdn"
             return 2
         fi
         if [[ $private_key = "null" ]]; then
-            _log "<< getcertificate - error 2 looking for key $json_key_key in certificate $fqdn"
+            ERROR "<< getcertificate - error 2 looking for key $json_key_key in certificate $fqdn"
             return 2
         fi
         echo "$public_key" | sed \
@@ -209,9 +217,9 @@ function getCert() {
             -e 's/-----END CERTIFICATE-----/\n-----END CERTIFICATE-----/g' \
             -e 's/-----END CERTIFICATE----------BEGIN CERTIFICATE-----/-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----/g'> "$temp_pem_pub"
         if [[ $? == 0 ]]; then
-            _log ">> getcertificate - public key $fqdn downloaded"
+            INFO ">> getcertificate - public key $fqdn downloaded"
         else
-            _log ">> getcertificate - error 2 while $fqdn was downloaded http_code: $status_code"
+            ERROR ">> getcertificate - error 2 while $fqdn was downloaded http_code: $status_code"
             rm -rf "$temp_pem_pub" \
             rm -rf "$temp_pem_priv" \
             return 2
@@ -221,9 +229,9 @@ function getCert() {
             -e 's/-----BEGIN RSA PRIVATE KEY-----/-----BEGIN RSA PRIVATE KEY-----\n/g' \
             -e 's/-----END RSA PRIVATE KEY-----/\n-----END RSA PRIVATE KEY-----/g' > "$temp_pem_priv"
         if [[ $? == 0 ]]; then
-            _log ">> getcertificate - private key $fqdn downloaded"
+            INFO ">> getcertificate - private key $fqdn downloaded"
         else
-            _log ">> getcertificate - error 3 while $fqdn was downloaded http_code: $status_code"
+            ERROR ">> getcertificate - error 3 while $fqdn was downloaded http_code: $status_code"
             rm -rf "$temp_pem_pub" \
             rm -rf "$temp_pem_priv" \
             return 3
@@ -246,9 +254,9 @@ function getCert() {
                     -passout pass:"${!ptr_password}" \
                     -out "$p12_temp"
                 if [[ $? == 0 ]]; then
-                    _log ">> getcertificate - P12 created"
+                    INFO ">> getcertificate - P12 created"
                 else
-                    _log ">> getcertificate - error 4 creating P12"
+                    ERROR ">> getcertificate - error 4 creating P12"
                     rm -rf "$p12_temp"
                     rm -rf "$temp_pem_pub"
                     rm -rf "$temp_pem_priv"
@@ -262,11 +270,11 @@ function getCert() {
                            -srcstorepass "${!ptr_password}" \
                            -srcstoretype PKCS12 \
                            -destkeystore "$store_path/$fqdn.jks" \
-                           -deststorepass "${!ptr_password}" 2>/dev/null
+                           -deststorepass "${!ptr_password}" 2>&1 | DEBUG
                     if [[ $? == 0 ]]; then
-                        _log ">> getcertificate - JKS created"
+                        INFO ">> getcertificate - JKS created"
                     else
-                        _log ">> getcertificate - error 5 creating JKS"
+                        ERROR ">> getcertificate - error 5 creating JKS"
                         rm -rf "$p12_temp"
                         rm -rf "$temp_pem_pub"
                         rm -rf "$temp_pem_priv"
@@ -276,22 +284,20 @@ function getCert() {
                 rm -rf "$p12_temp"
                 ;;
             *)
-                _log "<< getcertificate - error 6 Invalid keystore format"
+                ERROR "<< getcertificate - error 6 Invalid keystore format"
                 return 6
         esac
-
-    	rm -rf "$temp_pem_pub"
-	    rm -rf "$temp_pem_priv"
-	    IFS=$OLD_IFS
-    	return 0
     else
-        _log "The connection with the Vault Server was unsuccessful $status_code"
+        ERROR "<< getCert - error 7  requesting certificates from ${vault_path} to ${store_path} http_code: ${status_code}"
         rm -rf "$temp_pem_pub"
         rm -rf "$temp_pem_priv"
-        IFS=$OLD_IFS
-        return 1
+        return 7
     fi
 
+    rm -rf "$temp_pem_pub"
+    rm -rf "$temp_pem_priv"
+    IFS=$OLD_IFS
+    return 0
 }
 
 
@@ -342,12 +348,12 @@ function getCAbundle() {
             IFS=',' read -r status_code ca_pub_key <<< "$result"
             if [[ $status_code == 200 ]]; then
 
-                ca_public_key=$(echo "$ca_pub_key" | jq -cMSr ".data .${ca}_crt")
+                ca_public_key=$(echo "$ca_pub_key" | jq -cMSr --arg ca "${ca}_crt" '.data[$ca]')
                 if [[ $ca_public_key = "null" ]]; then
-                    _log "<< getcabundle - error 2 looking for key $ca_pub_key in $ca"
+                    ERROR "<< getcabundle - error 2 looking for key $ca_pub_key in $ca"
                     return 2
                 fi
-                echo "$ca_pub_key" | jq -cMSr ".data .${ca}_crt" | sed \
+                echo "$ca_pub_key" | jq -cMSr --arg ca "${ca}_crt" '.data[$ca]' | sed \
                     -e 's/-----BEGIN CERTIFICATE-----/-----BEGIN CERTIFICATE-----\n/g' \
                     -e 's/-----END CERTIFICATE-----/\n-----END CERTIFICATE-----/g' \
                     -e 's/-----END CERTIFICATE----------BEGIN CERTIFICATE-----/-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----/g'> "$formated_pem"
@@ -359,9 +365,9 @@ function getCAbundle() {
                     fi
                     cat "$formated_pem" >> "$store_path/$bundle_file"
                     if [[ $? == 0 ]]; then
-                      _log ">> getcabundle - $ca saved to $store_path/$bundle_file"
+                      INFO ">> getcabundle - $ca saved to $store_path/$bundle_file"
                     else
-                      _log ">> getcabundle - error 252 while saving $ca to $store_path/$bundle_file"
+                      ERROR ">> getcabundle - error 252 while saving $ca to $store_path/$bundle_file"
                       return 252
                     fi
 
@@ -374,11 +380,11 @@ function getCAbundle() {
                     upcase_instance=${instance^^}
                     ptr_password="${upcase_instance//[.-]/_}_KEYSTORE_PASS"
                     keytool -import -noprompt -alias "$ca" -keystore "$store_path/$bundle_file" \
-                        -storepass "${!ptr_password}" -file "$formated_pem" >/dev/null 2>&1
+                        -storepass "${!ptr_password}" -file "$formated_pem" 2>&1 | DEBUG
                     if [[ $? == 0 ]]; then
-                        _log ">> getcabundle - $ca saved to $store_path/$bundle_file"
+                        INFO ">> getcabundle - $ca saved to $store_path/$bundle_file"
                     else
-                        _log ">> getcabundle - error 3 while saving $ca to $store_path/$bundle_file"
+                        ERROR ">> getcabundle - error 3 while saving $ca to $store_path/$bundle_file"
                         return 3
                     fi
                 fi
@@ -386,7 +392,7 @@ function getCAbundle() {
                 > "$formated_pem"
                 > "$temp_pem"
             else
-                _log "<< getcabundle - error 2 requesting $ca"
+                ERROR "<< getcabundle - error 2 requesting $ca"
                 rm -f "$temp_pem"
                 rm -f "$formated_pem"
                 echo 2
@@ -398,7 +404,7 @@ function getCAbundle() {
         rm -f "$formated_pem"
         return 0
     else
-        _log "<< getcabundle - error 1 requesting CA list from /ca-trust/certificates"
+        ERROR "<< getcabundle - error 1 requesting CA list from /ca-trust/certificates to ${store_path} http_code: ${status_code}"
         echo 1
         return 1
     fi
@@ -406,6 +412,45 @@ function getCAbundle() {
     return 0
 }
 
+#
+# Renew the current Token
+#     INPUTS:
+#
+#     OUTPUTS:
+#          STDOUT << http_code,data
+#
+function token_renewal() {
+    result=$(_post_to_vault "v1/auth/token/renew-self" "")
+    IFS=',' read -r status_code rawdata <<< "$result"
+    if [[ $status_code == 200 ]];
+    then
+        echo "$status_code,$rawdata"
+    else
+        ERROR ">>renewal - error 1 http_code: $status_code"
+        return 1
+    fi
+}
+
+#
+# Get the Token info
+#     INPUTS:
+#     OUTPUTS:
+#          STDOUT << http_code,data (Json with the token info)
+#
+#
+function token_info() {
+	local accessor=$ACCESSOR_TOKEN
+        result=$(_post_to_vault "v1/auth/token/lookup-accessor" \
+                "{\"accessor\":\"$accessor\"}")
+        IFS=',' read -r status_code rawdata <<< "$result"
+        if [[ $status_code == 200 ]];
+        then
+            echo "$status_code,$rawdata"
+        else
+            ERROR ">>>token_info - error 1 http_code: $status_code"
+            return 1
+        fi
+}
 
 #
 # Send a HTTP GET method to vault server
@@ -416,14 +461,14 @@ function getCAbundle() {
 #
 function _get_from_vault() {
     local path=$1
-    local vault_hosts=$VAULT_HOST
+    local vault_hosts=(${VAULT_HOSTS[@]})
     local vault_port=$VAULT_PORT
     local vault_token=$VAULT_TOKEN
     local response=''
     local data=''
     local status_code=1
-    local curl_opts="-fLs --tlsv1.2 -k"
-    #local curl_opts='-sLf'
+    local curl_opts=" --connect-timeout 5 --retry 5 --retry-delay 2 -fLs --tlsv1.2 -k"
+    # local curl_opts='-sLf'
 
     for Vhost in "${vault_hosts[@]}"
         do
@@ -452,23 +497,26 @@ function _get_from_vault() {
 function _post_to_vault() {
     local path="$1"
     local payload="$2"
-    local vault_hosts=$VAULT_HOST
+    local vault_hosts=(${VAULT_HOSTS[@]})
     local vault_port=$VAULT_PORT
     local vault_token=${VAULT_TOKEN:-x}
     local response=''
     local data=''
     local status_code=-1
-    local curl_opts="-fLs --tlsv1.2 -k -X POST"
-    #local curl_opts='-sLf'
+    local curl_opts="-fLs --tlsv1.2 -k -X POST --connect-timeout 5 --retry 5 --retry-delay 2 "
+    # local curl_opts='-sLf'
+    if [ -n "$payload" ]; then
+      payload="-d $payload"
+    fi
 
     if [ "x$vault_token" != "xx" ];
     then
-        curl_opts+=" -H X-Vault-Token:$vault_token "
+        curl_opts+="-H X-Vault-Token:$vault_token "
     fi
 
     for Vhost in "${vault_hosts[@]}"
         do
-            response=$(curl $curl_opts -w "%{response_code}" -d $payload \
+            response=$(curl $curl_opts -w "%{response_code}" $payload \
                 "https://$Vhost:$vault_port/$path")
 
             data=$(echo "$response" |head -1 )
@@ -502,30 +550,15 @@ function key_substitution() {
     local eol=$4
 
     if [[ $eol ]]; then
-        sed -ri "s#(\"|)($key)(\s|\"|)(=|:| )(\s|)(\"|)([a-zA-Z_0-9/@.-_]+).*(\"|)#\1\2\3\4\5\6$value\8#g" "$file"
+        sed -ri "s#^(\"|)($key)(\s|\"|)(=|:| )(\s|)(\"|)([a-zA-Z0-9\/@._ \-]*).*(\"|)#\1\2\3\4\5\6$value\8#g" "$file"
     else
-        sed -ri "s#(\"|)($key)(\s|\"|)(=|:| )(\s|)(\"|)([a-zA-Z_0-9/@.-_]+)(\"|)(,|\s|)#\1\2\3\4\5\6$value\8\9#g" "$file"
+        sed -ri "s#^(\"|)($key)(\s|\"|)(=|:| )(\s|)(\"|)([a-zA-Z0-9\/@._ \-]*)(\"|)(,|\s|)#\1\2\3\4\5\6$value\8\9#g" "$file"
     fi
     if [[ $? == 0 ]]; then
-        _log "key_substitution - $key configured in $file"
+        INFO "key_substitution - $key configured in $file"
     else
-        _log "key_substitution - error 1 something went wrong when $key was configured in $file"
+        ERROR "key_substitution - error 1 something went wrong when $key was configured in $file"
         return 1
     fi
     return 0
 }
-
-function _log() {
-    local message=$1
-
-    if [[ "$JOURNAL_LOG" == "true" ]]; then
-        echo "$(date +'%b %d %R:%S.%N') $message" | systemd-cat -t vault
-    else
-        echo -e "$(date +'%b %d %R:%S.%N') [vault-utils] $message\n" | tee -a "$PWD/vault-utils.log"
-    fi
-}
-
-#if [[ $(systemd-cat 1>&2 2>/dev/null && echo $?) -eq 0 ]]; then
-#    JOURNAL_LOG=false
-#fi
-JOURNAL_LOG=false
