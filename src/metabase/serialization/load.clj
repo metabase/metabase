@@ -84,8 +84,8 @@
                    (cond
                      (field-reference? form)  (fully-qualified-name->field-reference form)
                      (entity-reference? form) (update-entity-reference-id form context)
-                     :else                    form)))
-                 entity)
+                     :else                    form))
+                 entity))
 
 (defmulti
   ^{:doc      ""
@@ -97,10 +97,10 @@
 (defmethod load Database
   [path _ context]
   (reduce (fn [context path]
-            (let [context (assoc context
-                            :databases (slurp-dir (partial db/insert! Database) path))]
+            (let [context (update context :databases merge
+                                  (slurp-dir (partial db/insert! Database) path))]
               (reduce (fn [context dbname]
-                        (load (format "%s/databases/%s" path dbname) Table context))
+                        (load path Table context))
                       context
                       (db/select-field :name Database :id [:in (-> context :databases vals)]))))
           context
@@ -108,22 +108,26 @@
 
 (defmethod load Table
   [path _ context]
-  (let [context (assoc context
-                  :tables (slurp-dir (fn [table]
-                                       (db/insert! Table
-                                         (update table :db_id (:databases context))))
-                                     (str path "/tables")))]
-    (reduce (fn [context table]
-              (let [path (format "%s/tables/%s" path table)]
-                (->> context
-                     (load (str path "/fields") Field)
-                     (load (str path "/metrics") Metric)
-                     (load (str path "/segments") Segment))))
+  (reduce (fn [context path]
+            (let [context (update context :tables merge
+                                  (slurp-dir (fn [table]
+                                               (db/insert! Table
+                                                 (update table :db_id (:databases context))))
+                                             path))]
+              (reduce (fn [context table]
+                        (let [path path]
+                          (->> context
+                               (load path Field)
+                               (load path Metric)
+                               (load path Segment))))
             context
-            (db/select-field :name Table :id [:in (-> context :tables vals)]))))
+            (db/select-field :name Table :id [:in (-> context :tables vals)])) ))
+          context
+          (list-dirs (str path "/tables"))))
 
 (defmethod load Field
   [path _ context]
+  (println context)
   (assoc context
     :fields (slurp-dir (fn [field]
                          (db/insert! Field
@@ -158,41 +162,46 @@
   [path _ context]
   (assoc context
     :users (slurp-dir (fn [user]
-                        (if (db/exists? User :email (:email user))
-                          {(:id user) (:id user)}
-                          (db/insert! User user)))
+                        (or (db/select-one User :email (:email user))
+                            (db/insert! User user)))
                       (str path "/users"))))
 
 (defmethod load Dashboard
   [path _ context]
-  (let [context (assoc context
-                  :dashbboards (slurp-dir (fn [dashbboard]
-                                            (db/insert! Dashboard
-                                              (-> dashbboard
-                                                  (update :collection_id (:collections context))
-                                                  (update :creator_id (:users context))
-                                                  (humanized-field-references->ids context))))
-                                          path))]
-    (reduce (fn [context db]
-              (load (format "%s/dashboards/%s" path db) DashboardCard context))
-            context
-            (db/select-field :name Dashboard :id [:in (-> context :dashboards vals)]))))
+  (reduce (fn [context path]
+            (let [context (update context :dashboards merge
+                                  (slurp-dir (fn [dashbboard]
+                                               (db/insert! Dashboard
+                                                 (-> dashbboard
+                                                     (update :collection_id (:collections context))
+                                                     (update :creator_id (:users context))
+                                                     (humanized-field-references->ids context))))
+                                             path))]
+              (reduce (fn [context dbname]
+                        (load path DashboardCard context))
+                      context
+                      (db/select-field :name Dashboard :id [:in (-> context :dashboards vals)]))))
+          context
+          (list-dirs (str path "/dashboards"))))
 
 (defmethod load Card
   [path _ context]
+  (println context)
   (assoc context
-    :cards (slurp-dir (fn [card]
-                        (db/insert! Card
-                          (-> card
-                              (update :table_id (:tables context))
-                              (update :creator_id (:users context))
-                              (update :database_id (:databases context))
-                              (update-in [:dataset_query :database] (:databases context))
-                              (cond->
-                                  (-> card :dataset_query :type qp.util/normalize-token (= :query))
-                                (update-in [:dataset_query :query :source-table] (:tables context)))
-                              (humanized-field-references->ids context))))
-                      (str path "/cards"))))
+    :cards (slurp-dir
+            (fn [card]
+              (db/insert! Card
+                (-> card
+                    (update :table_id (:tables context))
+                    (update :creator_id (:users context))
+                    (update :database_id (:databases context))
+                    (update-in [:dataset_query :database] (:databases context))
+                    (cond->
+                        (-> card :dataset_query :type qp.util/normalize-token (= :query))
+                      (update-in [:dataset_query :query :source-table] (:tables context)))
+                    (humanized-field-references->ids context))))
+            (str path "/cards"))))
+
 
 (defn- update-parameter-mappings
   [parameter-mappings context]
@@ -201,21 +210,27 @@
 (defmethod load DashboardCard
   [path _ context]
   (assoc context
-    :dashboard-cards (slurp-dir (fn [dashboard-card]
-                                  (db/insert! DashboardCard
-                                    (-> dashboard-card
-                                        (update :card_id (:card context))
-                                        (update :dashboard_id (:dashboards context))
-                                        (update :parameter-mappings update-parameter-mappings)
-                                        (humanized-field-references->ids context))))
-                                (str path "/dashboard-cards"))))
+    :dashboard-cards (slurp-dir
+                      (fn [dashboard-card]
+                        (db/insert! DashboardCard
+                          (-> dashboard-card
+                              (update :card_id (:cards context))
+                              (update :dashboard_id (:dashboards context))
+                              (update :parameter_mappings update-parameter-mappings context)
+                              (humanized-field-references->ids context))))
+                      (str path "/dashboard-cards"))))
 
 (defmethod load Collection
   [path _ context]
-  (assoc context :collections (slurp-dir (fn [collection]
-                                           (db/insert! Collection
-                                             (update collection :personal_owner_id (:users context))))
-                                         (str path "/collections"))))
+  (assoc context
+    :collections (slurp-dir
+                  (fn [collection]
+                    (or (db/select-one Collection
+                          :location          "/"
+                          :personal_owner_id (:personal_owner_id collection))
+                        (db/insert! Collection
+                          (u/update-when collection :personal_owner_id (:users context)))))
+                  (str path "/collections"))))
 
 (defn -main
   [path & _]

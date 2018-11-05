@@ -70,7 +70,7 @@
 (defn- spit-yaml
   [path entity]
   ;; TODO -- ensure names are unique (or id)
-  (let [fname (str path "/" ((some-fn :name :email :id) entity) ".yaml")]
+  (let [fname (str path "/" (:id entity) "_" ((some-fn :name :email :id) entity) ".yaml")]
     (io/make-parents fname)
     (spit fname (yaml/generate-string entity :dumper-options {:flow-style :block}))))
 
@@ -82,7 +82,7 @@
 (defmethod dump (type Database)
   [path db]
   (let [path (format "%s/databases/%s" path (:name db))]
-    (spit-yaml path db)
+    (spit-yaml path (dissoc db :features))
     (dump-all path (db/select Table :db_id (u/get-id db)))))
 
 (defmethod dump (type Table)
@@ -121,7 +121,9 @@
 
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml (str path "/collections") collection))
+  (spit-yaml (str path "/collections") (if (nil? (:personal_owner_id collection))
+                                         (dissoc collection :personal_owner_id)
+                                         collection)))
 
 (defmethod dump (type Card)
   [path card]
