@@ -25,6 +25,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 * Presto
 * Google Analytics
 * [SparkSQL](databases/spark.md)
+* Snowflake
 
 To add a database, you'll need its connection information.
 
