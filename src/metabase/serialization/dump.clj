@@ -121,9 +121,7 @@
 
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml (str path "/collections") (if (nil? (:personal_owner_id collection))
-                                         (dissoc collection :personal_owner_id)
-                                         collection)))
+  (spit-yaml (str path "/collections") collection))
 
 (defmethod dump (type Card)
   [path card]
