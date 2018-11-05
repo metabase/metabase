@@ -28,30 +28,29 @@ const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
 );
 
 export const ScalarTitle = ({ title, description, onClick }) => (
-  <div>
-    <Ellipsified tooltip={title}>
-      <span
-        onClick={onClick}
-        className={cx(
-          "fullscreen-normal-text fullscreen-night-text text-brand-hover",
-          {
-            "cursor-pointer": !!onClick,
-          },
-        )}
-      >
-        <h3 className="Scalar-title">{title}</h3>
-      </span>
-    </Ellipsified>
-    {description && (
-      <div
-        className="absolute top bottom hover-child flex align-center justify-center"
-        style={{ right: -20, top: 2 }}
-      >
-        <Tooltip tooltip={description} maxWidth={"22em"}>
-          <Icon name="infooutlined" />
-        </Tooltip>
-      </div>
-    )}
+  <div className="flex align-center full justify-center px2">
+    <h3
+      onClick={onClick}
+      className={cx(
+        "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
+        {
+          "cursor-pointer": !!onClick,
+        },
+      )}
+    >
+      <Ellipsified tooltip={title}>{title}</Ellipsified>
+    </h3>
+    {description &&
+      description.length > 0 && (
+        <div
+          className="hover-child cursor-pointer ml1 text-brand-hover"
+          style={{ marginTop: 5 }}
+        >
+          <Tooltip tooltip={description} maxWidth={"22em"}>
+            <Icon name="infooutlined" />
+          </Tooltip>
+        </div>
+      )}
   </div>
 );
 
