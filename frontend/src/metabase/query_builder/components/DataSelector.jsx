@@ -798,7 +798,7 @@ export const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300 }}>
+      <div style={{ width: 300 }} className="scroll-y">
         <AccordianList
           id="TablePicker"
           key="tablePicker"
