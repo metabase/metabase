@@ -191,10 +191,10 @@
   "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-Dimension
    (non-Field Filter) params. Default values for Dimension (Field Filter) params are handled above in
    `default-value-for-dimension`."
-  [{:keys [default display_name required]} :- TagParam]
+  [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (str (tru "''{0}'' is a required param." display_name)))))))
+        (throw (Exception. (str (tru "''{0}'' is a required param." display-name)))))))
 
 
 ;;; Parsing Values

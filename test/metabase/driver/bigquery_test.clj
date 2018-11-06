@@ -216,3 +216,28 @@
                                   :details (assoc (:details (Database (data/id)))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
+
+;; if I run a BigQuery query, does it get a remark added to it?
+(expect-with-engine :bigquery
+  (str
+   "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
+   "SELECT `test_data.venues`.`id` AS `venues___id`,"
+   " `test_data.venues`.`name` AS `venues___name`,"
+   " `test_data.venues`.`category_id` AS `venues___category_id`,"
+   " `test_data.venues`.`latitude` AS `venues___latitude`,"
+   " `test_data.venues`.`longitude` AS `venues___longitude`,"
+   " `test_data.venues`.`price` AS `venues___price` "
+   "FROM `test_data.venues` "
+   "LIMIT 1")
+  (let [native-query (atom nil)]
+    (with-redefs [bigquery/process-native* (fn [_ sql]
+                                             (reset! native-query sql)
+                                             (throw (Exception. "Done.")))]
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    {:source-table (data/id :venues)
+                                    :limit        1}
+                         :info     {:executed-by 1000
+                                    :query-type  "MBQL"
+                                    :query-hash  (byte-array [1 2 3 4])}})
+      @native-query)))
