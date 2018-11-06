@@ -10,6 +10,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -233,6 +234,17 @@
              (destroy-dataset! database-name))
            (throw e)))))))
 
+(defn aggregate-column-info
+  ([driver aggregation-type]
+   (i/default-aggregate-column-info driver aggregation-type))
+  ([driver aggregation-type field]
+   (merge
+    (i/default-aggregate-column-info driver aggregation-type field)
+    ;; BigQuery averages, standard deviations come back as Floats. This might apply to some other ag types as well;
+    ;; add them as we come across them.
+    (when (#{:avg :stddev} aggregation-type)
+      {:base_type :type/Float}))))
+
 
 ;;; --------------------------------------------- IDriverTestExtensions ----------------------------------------------
 
@@ -241,4 +253,5 @@
   (merge i/IDriverTestExtensionsDefaultsMixin
          {:engine                       (constantly :bigquery)
           :database->connection-details (u/drop-first-arg database->connection-details)
-          :create-db!                   (u/drop-first-arg create-db!)}))
+          :create-db!                   (u/drop-first-arg create-db!)
+          :aggregate-column-info        aggregate-column-info}))

@@ -9,7 +9,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [datasets :as datasets]
+             [interface :as di]]
             [metabase.util.date :as du]))
 
 ;; make sure all the driver test extension namespaces are loaded <3 if this isn't done some things will get loaded at
@@ -272,27 +274,9 @@
 
     (aggregate-col :count)
     (aggregate-col :avg (venues-col :id))"
-  {:arglists '([ag-col-kw] [ag-col-kw field])}
-  ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
-  ([ag-col-kw]
-   (assert (= ag-col-kw) :count)
-   {:base_type    :type/Integer
-    :special_type :type/Number
-    :name         "count"
-    :display_name "count"
-    :source       :aggregation})
-  ([ag-col-kw {:keys [base_type special_type]}]
-   {:pre [base_type special_type]}
-   (merge
-    {:base_type    base_type
-     :special_type special_type
-     :settings     nil
-     :name         (name ag-col-kw)
-     :display_name (name ag-col-kw)
-     :source       :aggregation}
-    ;; count always gets the same special type regardless
-    (when (= ag-col-kw :count)
-      (aggregate-col :count)))))
+  {:arglists '([ag-type] [ag-type field])}
+  [& args]
+  (apply di/aggregate-column-info datasets/*driver* args))
 
 (defn breakout-col [col]
   (assoc col :source :breakout))

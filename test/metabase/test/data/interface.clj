@@ -71,6 +71,30 @@
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
+(defn default-aggregate-column-info
+  "Default implementation of `aggregate-column-info` for drivers using the `IDriverTestExtensionsDefaultsMixin`."
+  {:arglists '([driver aggregation-type] [driver aggregation-type field])}
+  ([_ aggregation-type]
+   ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
+   (assert (= aggregation-type) :count)
+   {:base_type    :type/Integer
+    :special_type :type/Number
+    :name         "count"
+    :display_name "count"
+    :source       :aggregation})
+  ([driver aggregation-type {:keys [base_type special_type]}]
+   {:pre [base_type special_type]}
+   (merge
+    {:base_type    base_type
+     :special_type special_type
+     :settings     nil
+     :name         (name aggregation-type)
+     :display_name (name aggregation-type)
+     :source       :aggregation}
+    ;; count always gets the same special type regardless
+    (when (= aggregation-type :count)
+      (default-aggregate-column-info driver :count)))))
+
 
 (defprotocol IMetabaseInstance
   (metabase-instance [this context]
@@ -148,7 +172,11 @@
 
   (id-field-type ^clojure.lang.Keyword [this]
     "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to
-    `:type/Integer`."))
+    `:type/Integer`.")
+
+  (aggregate-column-info [this aggregation-type] [this aggregation-type field]
+    "*OPTIONAL*. Return the expected type information that should come back for QP results as part of `:cols` for an
+     aggregation of a given type (and applied to a given Field, when applicable)."))
 
 (def IDriverTestExtensionsDefaultsMixin
   "Default implementations for the `IDriverTestExtensions` methods marked *OPTIONAL*."
@@ -157,7 +185,8 @@
    :format-name                        (u/drop-first-arg identity)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
-   :id-field-type                      (constantly :type/Integer)})
+   :id-field-type                      (constantly :type/Integer)
+   :aggregate-column-info              default-aggregate-column-info})
 
 
 ;; ## Helper Functions for Creating New Definitions
