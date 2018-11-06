@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.walk :as walk]
             [metabase.automagic-dashboards.filters :refer [field-reference?]]
+            [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -136,7 +137,8 @@
        (spit-yaml (str path "/dashboard-cards"))))
 
 (defn -main
-  [path]
+  [& [path & _]]
+  (mdb/setup-db-if-needed!)
   (dump-all path (Database))
   (dump-all path (User))
   (dump-all path (Dashboard))

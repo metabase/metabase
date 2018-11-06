@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.automagic-dashboards.filters :refer [field-reference?]]
+            [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -233,7 +234,8 @@
                   (str path "/collections"))))
 
 (defn -main
-  [path & _]
+  [& [path & _]]
+  (mdb/setup-db-if-needed!)
   (->> {}
        (load path Database)
        (load path User)
