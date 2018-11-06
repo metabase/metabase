@@ -5079,3 +5079,18 @@ databaseChangeLog:
               name: settings
               type: text
               remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+#
+# Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
+#
+  - changeSet:
+      id: 97
+      author: senior
+      comment: 'Added 0.32.0'
+      preconditions:
+        - onFail: MARK_RAN
+        - dbms: mysql, mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob

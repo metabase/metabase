@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.cache-backend.db
-  (:require [metabase.models
+  (:require [clojure.tools.logging :as log]
+            [metabase.models
              [interface :as models]
              [query-cache :refer [QueryCache]]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
+            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]))
 
@@ -23,17 +25,28 @@
     :updated_at [:<= (du/->Timestamp (- (System/currentTimeMillis)
                                         (* 1000 (public-settings/query-caching-max-ttl))))]))
 
+
+(defn- results-below-max-threshold? [compressed-result-bytes]
+  (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
+    (> max-bytes (alength compressed-result-bytes))))
+
 (defn- save-results!
   "Save the RESULTS of query with QUERY-HASH, updating an existing QueryCache entry
   if one already exists, otherwise creating a new entry."
   [query-hash results]
-  (purge-old-cache-entries!)
-  (or (db/update-where! QueryCache {:query_hash query-hash}
-        :updated_at (du/new-sql-timestamp)
-        :results    (models/compress results)) ; have to manually call these here since Toucan doesn't call type conversion fns for update-where! (yet)
-      (db/insert! QueryCache
-        :query_hash query-hash
-        :results    results))
+  ;; Explicitly compressing the results here rather than having Toucan compress it automatically. This allows us to
+  ;; get the size of the compressed output to decide whether or not to store it.
+  (let [compressed-results (models/compress results)]
+    (if (results-below-max-threshold? compressed-results)
+      (do
+        (purge-old-cache-entries!)
+        (or (db/update-where! QueryCache {:query_hash query-hash}
+              :updated_at (du/new-sql-timestamp)
+              :results    compressed-results)
+            (db/insert! QueryCache
+              :query_hash query-hash
+              :results    compressed-results)))
+      (log/info "Results are too large to cache." (u/emoji "😫"))))
   :ok)
 
 (def instance

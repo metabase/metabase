@@ -109,7 +109,9 @@
 (defn compress
   "Compress OBJ, returning a byte array."
   [obj]
-  (nippy/freeze obj {:compressor nippy/snappy-compressor}))
+  (if (bytes? obj)
+    obj
+    (nippy/freeze obj {:compressor nippy/snappy-compressor})))
 
 (defn decompress
   "Decompress COMPRESSED-BYTES."
