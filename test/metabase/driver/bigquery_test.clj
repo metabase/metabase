@@ -151,13 +151,12 @@
 ;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
 ;; databases do. (#4218)
 (expect-with-engine :bigquery
-  (str "SELECT `test_data.categories__via__category_id`.`name` AS `categories___name`,"
-       " count(*) AS `count` "
-       "FROM `test_data.venues` "
+  (str "SELECT `test_data.categories__via__category_id`.`name` AS `name`,"
+       " count(*) AS `count` FROM `test_data.venues` "
        "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
        " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
-       "GROUP BY `categories___name` "
-       "ORDER BY `categories___name` ASC")
+       "GROUP BY `name` "
+       "ORDER BY `name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
   (with-redefs [driver/driver-supports?         (constantly true)
@@ -218,20 +217,10 @@
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
 
 ;; if I run a BigQuery query, does it get a remark added to it?
-(expect-with-engine :bigquery
-  (str
-   "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
-   "SELECT `test_data.venues`.`id` AS `venues___id`,"
-   " `test_data.venues`.`name` AS `venues___name`,"
-   " `test_data.venues`.`category_id` AS `venues___category_id`,"
-   " `test_data.venues`.`latitude` AS `venues___latitude`,"
-   " `test_data.venues`.`longitude` AS `venues___longitude`,"
-   " `test_data.venues`.`price` AS `venues___price` "
-   "FROM `test_data.venues` "
-   "LIMIT 1")
-  (let [native-query (atom nil)]
+(defn- query->native [query]
+  (with-local-vars [native-query nil]
     (with-redefs [bigquery/process-native* (fn [_ sql]
-                                             (reset! native-query sql)
+                                             (var-set native-query sql)
                                              (throw (Exception. "Done.")))]
       (qp/process-query {:database (data/id)
                          :type     :query
@@ -241,3 +230,23 @@
                                     :query-type  "MBQL"
                                     :query-hash  (byte-array [1 2 3 4])}})
       @native-query)))
+
+(expect-with-engine :bigquery
+  (str
+   "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
+   "SELECT `test_data.venues`.`id` AS `id`,"
+   " `test_data.venues`.`name` AS `name`,"
+   " `test_data.venues`.`category_id` AS `category_id`,"
+   " `test_data.venues`.`latitude` AS `latitude`,"
+   " `test_data.venues`.`longitude` AS `longitude`,"
+   " `test_data.venues`.`price` AS `price` "
+   "FROM `test_data.venues` "
+   "LIMIT 1")
+  (query->native
+   {:database (data/id)
+    :type     :query
+    :query    {:source-table (data/id :venues)
+               :limit        1}
+    :info     {:executed-by 1000
+               :query-type  "MBQL"
+               :query-hash  (byte-array [1 2 3 4])}}))

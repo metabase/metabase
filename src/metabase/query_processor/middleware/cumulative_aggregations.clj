@@ -31,16 +31,14 @@
   [[index & more] last-row row]
   (if-not index
     row
-    (recur more last-row (update row index (partial + (nth last-row index))))))
+    (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
 
 (defn- sum-rows
   "Sum the values in `rows` at `indexes-to-sum`.
 
     (sum-rows #{0} [[1] [2] [3]]) ; -> [[1] [3] [6]]"
   [indexes-to-sum rows]
-  (reductions (partial add-rows indexes-to-sum)
-              (first rows)
-              (rest rows)))
+  (reductions (partial add-rows indexes-to-sum) rows))
 
 (defn handle-cumulative-aggregations
   "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`

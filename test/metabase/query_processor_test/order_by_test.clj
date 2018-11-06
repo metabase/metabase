@@ -115,10 +115,10 @@
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
   {:columns     [(data/format-name "price")
                  "stddev"]
-   :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
+   :rows        [[3 (if (#{:mysql :crate} *engine*) 25 26)]
                  [1 24]
                  [2 21]
-                 [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
+                 [4 (if (#{:mysql :crate} *engine*) 14 15)]]
    :cols        [(breakout-col (venues-col :price))
                  (aggregate-col :stddev (venues-col :category_id))]
    :native_form true}

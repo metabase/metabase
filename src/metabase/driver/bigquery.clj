@@ -344,20 +344,6 @@
       (throw (Exception. (str (tru "BigQuery statements can't be parameterized!")))))
     sql))
 
-(defn- post-process-mbql [table-name {:keys [columns rows]}]
-  ;; Say we have an identifier like `veryNiceDataset.shakespeare`.`corpus`. We will alias it like
-  ;; `shakespeare___corpus` (because BigQuery does not let you include symbols in identifiers); during post-processing
-  ;; we can go ahead and strip off the table name from the alias since we don't want it to show up in the result
-  ;; column names
-  (let [demangle-name #(str/replace % (re-pattern (str \^ table-name "___")) "")
-        columns       (map demangle-name columns)
-        rows          (for [row rows]
-                        (zipmap columns row))
-        columns       (vec (keys (first rows)))]
-    {:columns columns
-     :rows    (for [row rows]
-                (mapv row columns))}))
-
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
 ;; at most 128 characters long.
 (defn- format-custom-field-name ^String [^String custom-field-name]
@@ -428,14 +414,6 @@
       [:named _ ag-name]         ag-name
       [ag-type & _]              ag-type)))
 
-(defn- field->alias
-  "Generate an appropriate alias for a `field`. This will normally be something like `tableName___fieldName` (done this
-  way because BigQuery will not let us include symbols in identifiers, so we can't make our alias be
-  `tableName.fieldName`, like we do for other drivers)."
-  [driver {field-name :name, table-id :table_id, :as field}]
-  (let [{table-name :name} (qp.store/table table-id)]
-    (str table-name "___" field-name)))
-
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
   ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
@@ -456,7 +434,7 @@
 (defn- field->breakout-identifier [driver field-clause]
   (let [alias (if (mbql.u/is-clause? :aggregation field-clause)
                 (ag-ref->alias field-clause)
-                (field->alias driver (field-clause->field field-clause)))]
+                (sql/field->alias driver (field-clause->field field-clause)))]
     (hsql/raw (str \` alias \`))))
 
 (defn- apply-breakout [driver honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
@@ -546,12 +524,10 @@
                        :as                                                    outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
-      (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                         (unprepare/unprepare (cons sql params))
-                                                                         sql))
-            results (process-native* database sql)]
-        (cond->> results
-          mbql? (post-process-mbql table-name))))))
+      (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                     (unprepare/unprepare (cons sql params))
+                                                                     sql))]
+        (process-native* database sql)))))
 
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
@@ -570,7 +546,6 @@
           :connection-details->spec  (constantly nil)
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
-          :field->alias              field->alias
           :field->identifier         (u/drop-first-arg field->identifier)
           :quote-style               (constantly :mysql)
           :string-length-fn          (u/drop-first-arg string-length-fn)
