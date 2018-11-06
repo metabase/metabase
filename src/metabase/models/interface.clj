@@ -12,7 +12,9 @@
             [toucan
              [models :as models]
              [util :as toucan-util]])
-  (:import java.sql.Blob))
+  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
+           java.sql.Blob
+           java.util.zip.GZIPInputStream))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -106,22 +108,19 @@
   :in  encryption/maybe-encrypt
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
-(defn compress
-  "Compress OBJ, returning a byte array."
-  [obj]
-  (if (bytes? obj)
-    obj
-    (nippy/freeze obj {:compressor nippy/snappy-compressor})))
-
 (defn decompress
   "Decompress COMPRESSED-BYTES."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
-    (nippy/thaw compressed-bytes {:compressor nippy/snappy-compressor})))
+    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                bif     (BufferedInputStream. bis)
+                gz-in   (GZIPInputStream. bif)
+                data-in (DataInputStream. gz-in)]
+      (nippy/thaw-from-in! data-in))))
 
 (models/add-type! :compressed
-  :in  compress
+  :in  identity
   :out decompress)
 
 (defn- validate-cron-string [s]

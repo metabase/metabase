@@ -6,11 +6,11 @@
 (defn- in-kb [x]
   (* 1024 x))
 
+;; We should successfully compress data smaller than the max and return the byte array
 (expect
-  (tu/with-temporary-setting-values [query-caching-max-kb 128]
-    (#'cache-db/results-below-max-threshold? (byte-array (in-kb 100)))))
+  (bytes? (#'cache-db/compress-until-max (in-kb 10) (range 1 10))))
 
+;; If the data is more than the max allowed, return `:exceeded-max-bytes`
 (expect
-  false
-  (tu/with-temporary-setting-values [query-caching-max-kb 1]
-    (#'cache-db/results-below-max-threshold? (byte-array (in-kb 2)))))
+  ::cache-db/exceeded-max-bytes
+  (#'cache-db/compress-until-max 10 (repeat 10000 (range 1 10))))
