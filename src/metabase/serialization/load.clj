@@ -120,7 +120,8 @@
                           (->> context
                                (load path Field)
                                (load path Metric)
-                               (load path Segment))))
+                               (load path Segment)
+                               (load path Card))))
             context
             (db/select-field :name Table :id [:in (-> context :tables vals)])) ))
           context
@@ -128,7 +129,6 @@
 
 (defmethod load Field
   [path _ context]
-  (println context)
   (assoc context
     :fields (slurp-dir (fn [field]
                          (db/insert! Field
@@ -187,7 +187,6 @@
 
 (defmethod load Card
   [path _ context]
-  (println context)
   (assoc context
     :cards (slurp-dir
             (fn [card]
@@ -240,5 +239,4 @@
        (load path Database)
        (load path User)
        (load path Collection)
-       (load path Card)
        (load path Dashboard)))

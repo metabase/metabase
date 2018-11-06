@@ -92,7 +92,8 @@
     (spit-yaml path table)
     (dump-all path (db/select Field :table_id id))
     (dump-all path (db/select Metric :table_id id))
-    (dump-all path (db/select Segment :table_id id))))
+    (dump-all path (db/select Segment :table_id id))
+    (dump-all path (db/select Card :table_id id))))
 
 (defmethod dump (type Field)
   [path field]
@@ -142,5 +143,4 @@
   (dump-all path (Database))
   (dump-all path (User))
   (dump-all path (Dashboard))
-  (dump-all path (Collection))
-  (dump-all path (Card)))
+  (dump-all path (Collection)))
