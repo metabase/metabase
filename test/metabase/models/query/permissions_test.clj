@@ -13,9 +13,9 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]
+            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
-            [toucan.util.test :as tt]
-            [metabase.test.util.log :as tu.log]))
+            [toucan.util.test :as tt]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 

@@ -1,8 +1,6 @@
 (ns metabase.test.data.dataset-definitions
   "Definitions of various datasets for use in tests with `with-temp-db`."
-  (:require [clojure.tools.reader.edn :as edn]
-            [metabase.test.data.interface :as di]
-            [metabase.util.date :as du])
+  (:require [metabase.test.data.interface :as di])
   (:import java.sql.Time
            java.util.Calendar))
 
@@ -23,7 +21,7 @@
 (di/def-database-definition-edn places-cam-likes)
 
 ;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
-;; sender and reciever -- allowing us to test situations where multiple joins for a *single* table should occur.
+;; sender and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.
 (di/def-database-definition-edn avian-singles)
 
 (defn- date-only

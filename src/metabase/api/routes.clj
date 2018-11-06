@@ -4,7 +4,7 @@
              [route :as route]]
             [metabase.api
              [activity :as activity]
-             [alert    :as alert]
+             [alert :as alert]
              [automagic-dashboards :as magic]
              [card :as card]
              [collection :as collection]
@@ -30,8 +30,8 @@
              [setup :as setup]
              [slack :as slack]
              [table :as table]
-             [tiles :as tiles]
              [task :as task]
+             [tiles :as tiles]
              [user :as user]
              [util :as util]]
             [metabase.middleware :as middleware]

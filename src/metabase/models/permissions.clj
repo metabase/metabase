@@ -559,6 +559,7 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                               " "
                                (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 

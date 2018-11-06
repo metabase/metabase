@@ -169,7 +169,7 @@
 
         ;; ...which ends up getting caught by the `catch-exceptions` middleware. Add a final post-processing function
         ;; around that which will return whatever we delivered into the `:results-promise`.
-        recieve-native-query
+        receive-native-query
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
@@ -183,7 +183,7 @@
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
-    (recieve-native-query (qp-pipeline deliver-native-query))))
+    (receive-native-query (qp-pipeline deliver-native-query))))
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.

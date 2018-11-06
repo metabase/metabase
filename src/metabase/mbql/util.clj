@@ -265,7 +265,7 @@
     (throw
      (Exception.
       (str
-       (tru "Error: query's source query has not been resolved. You probably need to `preprocess` the query first."))))
+       (tru "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."))))
 
     ;; otherwise resolve the source Table
     :else
