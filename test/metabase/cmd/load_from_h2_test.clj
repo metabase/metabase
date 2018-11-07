@@ -12,8 +12,7 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{"LegacyQueryExecution"
-    "Query"
+  #{"Query"
     "QueryCache"
     "QueryExecution"})
 
