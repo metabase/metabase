@@ -45,8 +45,7 @@
    :cache_ttl              nil
    :query_type             :query
    :table_id               (data/id :categories)
-   :visualization_settings {}
-   :result_metadata        nil})
+   :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil

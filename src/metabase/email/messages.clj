@@ -23,6 +23,8 @@
             [toucan.db :as db])
   (:import [java.io File IOException]))
 
+(alter-meta! #'stencil.core/render-file assoc :style/indent 1)
+
 ;; Dev only -- disable template caching
 (when config/is-dev?
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
@@ -47,7 +49,7 @@
    :link         "https://www.metabase.com/feedback/inactive"})
 
 (defn- follow-up-context []
-  {:heading      (str (trs "We hope you've been enjoying Metabase."))
+  {:heading      (str (trs "We hope you''ve been enjoying Metabase."))
    :callToAction (str (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?"))
    :link         "https://www.metabase.com/feedback/active"})
 
@@ -90,10 +92,9 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-      :subject      (format (if google-auth?
-                              "%s created a Metabase account"
-                              "%s accepted their Metabase invite")
-                            (:common_name new-user))
+      :subject      (str (if google-auth?
+                           (trs "{0} created a Metabase account"     (:common_name new-user))
+                           (trs "{0} accepted their Metabase invite" (:common_name new-user))))
       :recipients   recipients
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
@@ -121,7 +122,7 @@
                         :passwordResetUrl password-reset-url
                         :logoHeader       true})]
     (email/send-message!
-      :subject      "[Metabase] Password Reset Request"
+      :subject      (str (trs "[Metabase] Password Reset Request"))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -160,7 +161,7 @@
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
-      :subject      "[Metabase] Notification"
+      :subject      (str (trs "[Metabase] Notification"))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -169,9 +170,9 @@
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
   {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
-  (let [subject      (if (= "abandon" msg-type)
-                       "[Metabase] Help make Metabase better."
-                       "[Metabase] Tell us how things are going.")
+  (let [subject      (str (if (= "abandon" msg-type)
+                            (trs "[Metabase] Help make Metabase better.")
+                            (trs "[Metabase] Tell us how things are going.")))
         context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)

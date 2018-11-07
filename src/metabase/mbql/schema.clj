@@ -492,7 +492,7 @@
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(declare MBQLQuery)
+(declare Query MBQLQuery)
 
 (def ^:private SourceQuery
   "Schema for a valid value for a `:source-query` clause."
@@ -518,10 +518,10 @@
 
 (def JoinQueryInfo
   "Schema for information about about a JOIN (or equivalent) that should be performed using a recursive MBQL or native
-  query. "
-  {:join-alias su/NonBlankString
-   ;; TODO - put a proper schema in here once I figure out what it is. I think it's (s/recursive #'Query)?
-   :query      s/Any})
+  query."
+  ;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
+  (assoc JoinTableInfo
+    :query (s/recursive #'Query)))
 
 (def JoinInfo
   "Schema for information about a JOIN (or equivalent) that needs to be performed, either `JoinTableInfo` or

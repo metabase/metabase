@@ -102,6 +102,7 @@
   (assert-not-admin-group permissions)
   (assert-valid-object permissions))
 
+
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
 (def ^:private MapOrID
@@ -569,8 +570,10 @@
   [current-revision old new]
   (when *current-user-id*
     (db/insert! PermissionsRevision
-      :id     (inc current-revision) ; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second
-      :before  old                   ; since we called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+      ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+      ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+      :id     (inc current-revision)
+      :before  old
       :after   new
       :user_id *current-user-id*)))
 

@@ -118,7 +118,7 @@
     (try
       (when (seq new-value)
         (when (s/check ValidToken new-value)
-          (throw (ex-info (tru "Token format is invalid. Token should be 64 hexadecimal characters.")
+          (throw (ex-info (str (tru "Token format is invalid. Token should be 64 hexadecimal characters."))
                    {:status-code 400})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))

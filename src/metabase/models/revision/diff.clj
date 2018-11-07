@@ -16,6 +16,9 @@
     [:updated_at _ _]
     nil
 
+    [:result_metadata _ _]
+    nil
+
     [:dataset_query _ _]
     "modified the query"
 
