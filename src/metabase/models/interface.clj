@@ -23,8 +23,8 @@
 
 ;;; types
 
-(defn- json-in
-  "Default in function for Fields given a Toucan type `:json`. Serializes object as JSON."
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
   (if (string? obj)
     obj
@@ -36,12 +36,15 @@
       (json/parse-string s keywordize-keys?)
       obj)))
 
-(defn- json-out-with-keywordization
-  "Default out function for Fields given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
+(defn json-out-with-keywordization
+  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
   [obj]
   (json-out obj true))
 
-(defn- json-out-without-keywordization [obj]
+(defn json-out-without-keywordization
+  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
+  as strings."
+  [obj]
   (json-out obj false))
 
 (models/add-type! :json
