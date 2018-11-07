@@ -4989,6 +4989,38 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: raw_column_id
 
+# Add database_id column to query_execution
+
+  - changeSet:
+      id: 92
+      author: camsaul
+      comment: 'Added 0.31.0'
+      validCheckSum: 8:a875945f36824a0667c740888c00c37f
+      validCheckSum: 8:83ded48e18fe8f70d6ec09add042124d
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              name: database_id
+              type: integer
+              remarks: 'ID of the database this query was ran against.'
+        - sql:
+            sql: UPDATE query_execution SET database_id = (select database_id from report_card where id = query_execution.card_id);
+
+# Start recording the actual query dictionary that's been executed
+
+  - changeSet:
+      id: 93
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: query
+            columns:
+              name: query
+              type: text
+              remarks: 'The actual "query dictionary" for this query.'
+
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
       id: 94
