@@ -130,6 +130,7 @@
   (engine ^clojure.lang.Keyword [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
+  ;; TODO - should rename this to `database-definition->connection-details` to avoid confusion
   (database->connection-details [this, ^Keyword context, ^DatabaseDefinition database-definition]
     "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database`
      details map). CONTEXT is one of:

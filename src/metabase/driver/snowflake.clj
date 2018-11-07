@@ -1,6 +1,8 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -13,6 +15,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :refer [tru]]
              [ssh :as ssh]]
             [toucan.db :as db])
   (:import java.sql.Time))
@@ -36,7 +39,11 @@
             ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
             ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
             :timezone                                   "UTC"}
-           (dissoc opts :host :port :timezone))))
+           (-> opts
+               ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
+               ;; `db`. If we run across `dbname`, correct our behavior
+               (set/rename-keys {:dbname :db})
+               (dissoc :host :port :timezone)))))
 
 (defrecord SnowflakeDriver []
   :load-ns true
@@ -166,19 +173,29 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length (hx/cast :VARCHAR field-key)))
 
+(defn- db-name
+  "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
+  tests (and Snowflake itself) expected `db`. This has since been fixed, but for legacy support we'll still accept
+  either. Throw an Exception if neither key can be found."
+  {:arglists '([database])}
+  [{details :details}]
+  (or (:db details)
+      (:dbname details)
+      (throw (Exception. (str (tru "Invalid Snowflake connection details: missing DB name."))))))
+
 (defn- describe-database [driver database]
   (sql/with-metadata [metadata driver database]
-    {:tables (sql/fast-active-tables driver metadata (:name database))}))
+    {:tables (sql/fast-active-tables driver metadata (db-name database))}))
 
 (defn- describe-table [driver database table]
   (sql/with-metadata [metadata driver database]
     (->> (assoc (select-keys table [:name :schema])
-           :fields (sql/describe-table-fields metadata driver table (:name database)))
+           :fields (sql/describe-table-fields metadata driver table (db-name database)))
          ;; find PKs and mark them
          (sql/add-table-pks metadata))))
 
 (defn- describe-table-fks [driver database table]
-  (sql/describe-table-fks driver database table (:name database)))
+  (sql/describe-table-fks driver database table (db-name database)))
 
 (u/strict-extend SnowflakeDriver
   driver/IDriver
@@ -201,7 +218,7 @@
                                                    {:name         "warehouse"
                                                     :display-name "Warehouse"
                                                     :placeholder  "my_warehouse"}
-                                                   {:name         "dbname"
+                                                   {:name         "db"
                                                     :display-name "Database name"
                                                     :placeholder  "cockerel"}
                                                    {:name         "regionid"
