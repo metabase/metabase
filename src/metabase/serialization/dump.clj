@@ -10,6 +10,7 @@
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -71,8 +72,9 @@
 
 (defn- spit-yaml
   [path entity]
-  ;; TODO -- ensure names are unique (or id)
-  (let [fname (str path "/" (:id entity) "_" ((some-fn :name :email :id) entity) ".yaml")]
+  (let [fname (if-let [entity-name ((some-fn :name :email) entity)]
+                (format "%s/%s_%s.yaml" path (:id entity) entity-name)
+                (format "%s/%s.yaml" path (:id entity)))]
     (io/make-parents fname)
     (spit fname (yaml/generate-string entity :dumper-options {:flow-style :block}))))
 
@@ -83,13 +85,13 @@
 
 (defmethod dump (type Database)
   [path db]
-  (let [path (format "%s/databases/%s" path (:name db))]
+  (let [path (format "%s/databases/%s_%s" path (:id db) (:name db))]
     (spit-yaml path (dissoc db :features))
     (dump-all path (db/select Table :db_id (u/get-id db)))))
 
 (defmethod dump (type Table)
   [path {:keys [id] :as table}]
-  (let [path (format "%s/tables/%s" path (:name table))]
+  (let [path (format "%s/tables/%s_%s" path (:id table) (:name table))]
     (spit-yaml path table)
     (dump-all path (db/select Field :table_id id))
     (dump-all path (db/select Metric :table_id id))
@@ -114,7 +116,9 @@
 
 (defmethod dump (type User)
   [path user]
-  (spit-yaml (str path "/users") user))
+  (spit-yaml (str path "/users") (-> user
+                                     (dissoc :common_name)
+                                     (assoc :password "dummy"))))
 
 (defmethod dump (type Dashboard)
   [path dashboard]
@@ -122,31 +126,48 @@
     (spit-yaml path dashboard)
     (dump-all path (db/select DashboardCard :dashboard_id (u/get-id dashboard)))))
 
+(defn- collection-location->dir
+  [location]
+  (if (= location "/")
+    ""
+    (->> (str/split location #"/")
+         rest
+         (map (fn [parent]
+                (let [parent (Collection (Integer/parseInt parent))]
+                  (format "%s_%s/collections" (:id parent) (:name parent)))))
+         (str/join "/")
+         (format "/%s/"))))
+
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml (str path "/collections") collection))
+  (spit-yaml (format "%s/collections/%s/%s_%s"
+                     path
+                     (-> collection :location collection-location->dir)
+                     (:id collection)
+                     (:name collection))
+             collection))
 
 (defmethod dump (type Card)
   [path card]
-  (let [source-table (get-in card [:dataset_query :query :source-table])
-        path         (if (and (string? source-table)
-                              (str/starts-with? source-table "card__"))
-                       (str path "/cards/" (-> source-table
-                                               (str/split #"__")
-                                               second
-                                               Integer/parseInt
-                                               Card
-                                               :name))
-                       path)]
+  (let [path (if-let [parent (-> card :dataset_query qp.util/query->source-card-id Card)]
+               (format "%s/cards/%s_%s" path (:id parent) (:name parent))
+               path)]
     (->> card
          humanize-field-references
-         (spit-yaml (str path "/cards/" (:name card))))))
+         (spit-yaml (format "%s/cards/%s_%s" path (:id card) (:name card))))))
+
 
 (defmethod dump (type DashboardCard)
   [path dashboard-card]
-  (->> dashboard-card
-       humanize-field-references
-       (spit-yaml (str path "/dashboard-cards"))))
+  (let [path (format "%s/dashboard-cards/%s" path (:id dashboard-card))]
+    (->> dashboard-card
+         humanize-field-references
+         (spit-yaml path))
+    (dump-all path (db/select DashboardCardSeries :dashboardcard_id (:id dashboard-card)))))
+
+(defmethod dump (type DashboardCardSeries)
+  [path dashboard-card-series]
+  (spit-yaml (str path "/dashboard-card-series") dashboard-card-series))
 
 (defn -main
   [& [path & _]]
@@ -155,12 +176,3 @@
   (dump-all path (User))
   (dump-all path (Dashboard))
   (dump-all path (Collection)))
-
-(-main "dump")
-;; (first (metabase.models.field-values/FieldValues))
-
-;; (first (metabase.models.permissions-group-membership/PermissionsGroupMembership))
-
-;; * PermissionsGroup
-;; ** Permission
-;; * PermissionsGroupMembership

@@ -10,6 +10,7 @@
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -175,26 +176,39 @@
           context
           (list-dirs (str path "/dashboards"))))
 
+(defn- update-source-table
+  [source-table context]
+  ((:tables context) (if (and (string? source-table)
+                              (str/starts-with? source-table "card__"))
+                       (-> source-table
+                           (str/split #"__")
+                           second
+                           Integer/parseInt)
+                       source-table)))
+
 (defmethod load Card
   [context path _]
-  (reduce (fn [context path]
-            (-> context
-                (update :cards merge
-                        (slurp-dir
-                         (fn [card]
-                           (db/insert! Card
-                             (-> card
-                                 (update :table_id (:tables context))
-                                 (update :creator_id (:users context))
-                                 (update :database_id (:databases context))
-                                 (update-in [:dataset_query :database] (:databases context))
-                                 (cond->
-                                   (-> card :dataset_query :type qp.util/normalize-token (= :query))
-                                   (update-in [:dataset_query :query :source-table] (:tables context)))
-                                 (humanized-field-references->ids context))))))
-                (load path Card)))
-          context
-          (list-dirs (str path "/cards"))))
+  (reduce
+   (fn [context path]
+     (-> context
+         (update :cards merge
+                 (slurp-dir
+                  (fn [card]
+                    (db/insert! Card
+                      (-> card
+                          (update :table_id (:tables context))
+                          (update :creator_id (:users context))
+                          (update :database_id (:databases context))
+                          (update-in [:dataset_query :database] (:databases context))
+                          (cond->
+                              (-> card :dataset_query :type qp.util/normalize-token (= :query))
+                            (update-in [:dataset_query :query :source-table]
+                                       update-source-table context))
+                          (humanized-field-references->ids context))))
+                  path))
+         (load path Card)))
+   context
+   (list-dirs (str path "/cards"))))
 
 
 (defn- update-parameter-mappings
@@ -203,34 +217,54 @@
 
 (defmethod load DashboardCard
   [context path _]
+  (reduce (fn [context path]
+            (-> context
+                (update :dashboard-cards merge
+                        (slurp-dir
+                         (fn [dashboard-card]
+                           (db/insert! DashboardCard
+                             (-> dashboard-card
+                                 (update :card_id (:cards context))
+                                 (update :dashboard_id (:dashboards context))
+                                 (update :parameter_mappings update-parameter-mappings context)
+                                 (humanized-field-references->ids context))))
+                         path))
+                (load path DashboardCardSeries)))
+          context
+          (list-dirs (str path "/cards"))))
+
+(defmethod load DashboardCardSeries
+  [context path _]
   (assoc context
-    :dashboard-cards (slurp-dir
-                      (fn [dashboard-card]
-                        (db/insert! DashboardCard
-                          (-> dashboard-card
-                              (update :card_id (:cards context))
-                              (update :dashboard_id (:dashboards context))
-                              (update :parameter_mappings update-parameter-mappings context)
-                              (humanized-field-references->ids context))))
-                      (str path "/dashboard-cards"))))
+    :dashboard-card-series (slurp-dir (fn [dashboard-card-series]
+                                        (db/insert! DashboardCardSeries
+                                          (-> dashboard-card-series
+                                              (update :dashboardcard_id (:dashboard-cards context))
+                                              (update :card_id (:cards context)))))
+                                      (str path "/dashboard-card-series"))))
 
 (defmethod load Collection
   [context path _]
-  (assoc context
-    :collections (slurp-dir
-                  (fn [collection]
-                    (or (db/select-one Collection
-                          :location          "/"
-                          :personal_owner_id (:personal_owner_id collection))
-                        (db/insert! Collection
-                          (u/update-when collection :personal_owner_id (:users context)))))
-                  (str path "/collections"))))
+  (reduce (fn [context path]
+            (-> context
+                (update :collections merge
+                        (slurp-dir
+                         (fn [collection]
+                           (or (db/select-one Collection
+                                 :location          "/"
+                                 :personal_owner_id (:personal_owner_id collection))
+                               (db/insert! Collection
+                                 (update collection :personal_owner_id (:users context)))))
+                         path))
+                (load path Collection)))
+          context
+          (list-dirs (str path "/collections"))))
 
 (defn -main
   [& [path & _]]
   (mdb/setup-db-if-needed!)
   (-> {}
-      (load path Database)
       (load path User)
+      (load path Database)
       (load path Collection)
       (load path Dashboard)))
