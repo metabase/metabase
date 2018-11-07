@@ -341,7 +341,7 @@
   {:pre [(map? honeysql-form)]}
   (let [[sql & args] (sql/honeysql-form->sql+args bq-driver honeysql-form)]
     (when (seq args)
-      (throw (Exception. (str (tru "BigQuery statements can't be parameterized!")))))
+      (throw (Exception. (str (tru "BigQuery statements can''t be parameterized!")))))
     sql))
 
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
@@ -405,15 +405,6 @@
       (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
       :else                                               field)))
 
-(defn- ag-ref->alias [[_ index]]
-  (let [{{aggregations :aggregation} :query} sqlqp/*query*
-        [ag-type :as ag]                     (nth aggregations index)]
-    (mbql.u/match-one ag
-      [:distinct _]              "count"
-      [:expression operator & _] operator
-      [:named _ ag-name]         ag-name
-      [ag-type & _]              ag-type)))
-
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
   ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
@@ -425,27 +416,18 @@
         details    (:details (qp.store/database))]
     (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
 
-(defn- field-clause->field [field-clause]
-  (when field-clause
-    (let [id-or-name (mbql.u/field-clause->id-or-literal field-clause)]
-      (when (integer? id-or-name)
-        (qp.store/field id-or-name)))))
-
-(defn- field->breakout-identifier [driver field-clause]
-  (let [alias (if (mbql.u/is-clause? :aggregation field-clause)
-                (ag-ref->alias field-clause)
-                (sql/field->alias driver (field-clause->field field-clause)))]
-    (hsql/raw (str \` alias \`))))
-
 (defn- apply-breakout [driver honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
   (-> honeysql-form
-      ;; Group by all the breakout fields
-      ((partial apply h/group) (map #(field->breakout-identifier driver %) breakout-field-clauses))
+      ;; Group by all the breakout fields.
+      ;;
+      ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
+      ;; `SELECT` clause, rather than repeating their definitions.
+      ((partial apply h/group) (map (partial sqlqp/field-clause->alias driver) breakout-field-clauses))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
                                             :when        (not (contains? (set fields-field-clauses) field-clause))]
-                                        (sqlqp/as driver (sqlqp/->honeysql driver field-clause) field-clause)))))
+                                        (sqlqp/as driver field-clause)))))
 
 (defn apply-source-table
   "Copy of the Generic SQL implementation of `apply-source-table` that prepends the current dataset ID to the table
@@ -474,13 +456,25 @@
           (recur honeysql-form more)
           honeysql-form)))))
 
+(defn- ag-ref->alias [[_ index]]
+  (let [{{aggregations :aggregation} :query} sqlqp/*query*
+        [ag-type :as ag]                     (nth aggregations index)]
+    (mbql.u/match-one ag
+      [:distinct _]              :count
+      [:expression operator & _] operator
+      [:named _ ag-name]         (keyword ag-name)
+      [ag-type & _]              ag-type)))
+
 (defn- apply-order-by [driver honeysql-form {subclauses :order-by, :as query}]
   (loop [honeysql-form honeysql-form, [[direction field-clause] & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier driver field-clause)
+    (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field-clause)
+                                                           (ag-ref->alias field-clause)
+                                                           (sqlqp/field-clause->alias driver field-clause))
                                                          direction])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
@@ -499,19 +493,21 @@
      *  Runs our customs `honeysql-form->sql` method
      *  Incldues `table-name` in the resulting map (do not remember why we are doing so, perhaps it is needed to run the
         query)"
-  [{database-id                     :database
-    {source-table-id :source-table} :query
-    :as                             outer-query}]
+  [{database-id                                                 :database
+    {source-table-id :source-table, source-query :source-query} :query
+    :as                                                         outer-query}]
   {:pre [(integer? database-id)]}
   (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
         aliased-query      (pre-alias-aggregations outer-query)
-        {table-name :name} (qp.store/table source-table-id)]
+        {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
     (binding [sqlqp/*query* (assoc aliased-query :dataset-id dataset-id)]
       {:query      (->> aliased-query
                         (sqlqp/build-honeysql-form bq-driver)
                         honeysql-form->sql)
-       :table-name table-name
+       :table-name (or table-name
+                       (when source-query
+                         sqlqp/source-query-alias))
        :mbql?      true})))
 
 (defn- effective-query-timezone [database]
@@ -593,6 +589,7 @@
                                                              :native-parameters
                                                              :expression-aggregations
                                                              :binning
+                                                             :nested-queries
                                                              :native-query-params}
                                                            (when-not config/is-test?
                                                              ;; during unit tests don't treat bigquery as having FK

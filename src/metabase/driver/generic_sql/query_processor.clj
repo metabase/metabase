@@ -41,34 +41,6 @@
   0)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Other Formatting                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-
-(s/defn ^:private qualified-alias
-  "Convert the given `FIELD` to a stringified alias, for use in a SQL `AS` clause."
-  [driver, field :- (class Field)]
-  (some->> field
-           (sql/field->alias driver)
-           hx/qualify-and-escape-dots))
-
-(defn as
-  "Generate a FORM `AS` FIELD alias using the name information of FIELD."
-  [driver form field-clause]
-  (let [expression-name (when (mbql.u/is-clause? :expression field-clause)
-                          (second field-clause))
-        field           (when-not expression-name
-                          (let [id-or-name (mbql.u/field-clause->id-or-literal field-clause)]
-                            (when (integer? id-or-name)
-                              (qp.store/field id-or-name))))]
-    (if-let [alias (cond
-                     expression-name expression-name
-                     field           (qualified-alias driver field))]
-      [form alias]
-      form)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              ->honeysql multimethod def & low-level method impls                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -214,6 +186,52 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Field Aliases (AS Forms)                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private qualified-alias :- s/Keyword
+  "Convert the given `field` to a stringified alias, for use in a SQL `AS` clause."
+  [driver, field :- (class Field)]
+  (some->> field
+           (sql/field->alias driver)
+           hx/qualify-and-escape-dots))
+
+(s/defn field-clause->alias :- s/Keyword
+  "Generate an approriate alias (e.g., for use with SQL `AN`) for a Field clause of any type."
+  [driver, field-clause :- mbql.s/Field]
+  (let [expression-name (when (mbql.u/is-clause? :expression field-clause)
+                          (second field-clause))
+        id-or-name      (when-not expression-name
+                          (mbql.u/field-clause->id-or-literal field-clause))
+        field           (when (integer? id-or-name)
+                          (qp.store/field id-or-name))]
+    (cond
+      expression-name      (keyword (hx/escape-dots expression-name))
+      field                (qualified-alias driver field)
+      (string? id-or-name) (keyword (hx/escape-dots id-or-name)))))
+
+(defn as
+  "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
+  HoneySQL representation of on `AS` clause is a tuple like `[<form> <alias>]`.
+
+  In some cases where the alias would be redundant, such as unwrapped field literals, this returns the form as-is.
+
+    (as [:field-literal \"x\" :type/Text])
+    ;; -> <compiled-form>
+    ;; -> SELECT \"x\"
+
+    (as [:datetime-field [:field-literal \"x\" :type/Text] :month])
+    ;; -> [<compiled-form> :x]
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+  ([driver field-clause]
+   (as driver (->honeysql driver field-clause) field-clause))
+  ([driver form field-clause]
+   (if (mbql.u/is-clause? :field-literal field-clause)
+     form
+     [form (field-clause->alias driver field-clause)])))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -239,14 +257,14 @@
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (for [field-clause breakout-fields
                                          :when        (not (contains? (set fields-fields) field-clause))]
-                                     (as driver (->honeysql driver field-clause) field-clause)))
+                                     (as driver field-clause)))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
   [driver honeysql-form {fields :fields}]
   (apply h/merge-select honeysql-form (for [field fields]
-                                        (as driver (->honeysql driver field) field))))
+                                        (as driver field))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -425,7 +443,12 @@
 
 ;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
 ;; a different alias
-(def ^:private source-query-alias :source)
+(def source-query-alias
+  "Alias to use for source queries, e.g.:
+
+    SELECT source.*
+    FROM ( SELECT * FROM some_table ) source"
+  :source)
 
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
