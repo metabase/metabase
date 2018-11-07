@@ -3,7 +3,6 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk]
-            [metabase.automagic-dashboards.filters :refer [field-reference?]]
             [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
@@ -72,6 +71,18 @@
 (def ^{:arglists '([form])} entity-reference?
   "Is given form an MBQL entity reference (metric or segment)?"
   (complement (s/checker EntityReference)))
+
+(def ^:private FieldReference
+  [(s/one (s/constrained su/KeywordOrString
+                         (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
+          "head")
+   (s/cond-pre su/KeywordOrString [s/Str] (s/recursive #'FieldReference))])
+
+(def ^:private ^{:arglists '([form])} field-reference?
+  "Is given form a serialized MBQL field reference?
+   Note this function is slightly different as `metabase.automgaic-dashboards.filters/field-reference?`
+  in that it alows vectors as arguments, but not ints."
+  (complement (s/checker FieldReference)))
 
 (defn- update-entity-reference-id
   [[op id] context ]
