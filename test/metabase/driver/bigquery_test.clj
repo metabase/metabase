@@ -151,10 +151,11 @@
 ;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
 ;; databases do. (#4218)
 (expect-with-engine :bigquery
-  (str "SELECT `test_data.categories__via__category_id`.`name` AS `name`,"
-       " count(*) AS `count` FROM `test_data.venues` "
-       "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
-       " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
+  (str "SELECT `categories__via__category_id`.`name` AS `name`,"
+       " count(*) AS `count` "
+       "FROM `test_data.venues` "
+       "LEFT JOIN `test_data.categories` `categories__via__category_id`"
+       " ON `test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
        "GROUP BY `name` "
        "ORDER BY `name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and

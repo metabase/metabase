@@ -22,7 +22,9 @@
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.models.table :as table]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table]]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -317,7 +319,8 @@
 ;; TODO - this is totally unnecessary now, we can just override `->honeysql` for `Field` and `Table` instead. FIXME!
 (defrecord ^:private BigQueryIdentifier [dataset-name ; optional; will use (dataset-name-for-current-query) otherwise
                                          table-name
-                                         field-name]
+                                         field-name
+                                         alias?]
   honeysql.format/ToSql
   (to-sql [{:keys [dataset-name table-name field-name], :as bq-id}]
     ;; Check to make sure the identifiers are valid and don't contain any sorts of escape characters since we are
@@ -333,9 +336,13 @@
       (assert (valid-bigquery-identifier? field-name)
         (tru "Invalid BigQuery identifier: ''{0}''" field-name)))
     ;; BigQuery identifiers should look like `dataset.table` or `dataset.table`.`field` (SAD!)
-    (str (format "`%s.%s`" (or dataset-name (dataset-name-for-current-query)) table-name)
-         (when (seq field-name)
-           (format ".`%s`" field-name)))))
+    (let [dataset-name (or dataset-name (dataset-name-for-current-query))]
+      (str
+       (if alias?
+         (format "`%s`" table-name)
+         (format "`%s.%s`" dataset-name table-name))
+       (when (seq field-name)
+         (format ".`%s`" field-name))))))
 
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
@@ -393,17 +400,14 @@
   [driver [_ field unit]]
   (sql/date driver unit (sqlqp/->honeysql driver field)))
 
-(defmethod sqlqp/->honeysql [BigQueryDriver :field-id]
-  [_ [_ field-id]]
-  (let [{field-name :name, special-type :special_type, table-id :table_id} (qp.store/field field-id)
-        {table-name :name}                                                 (qp.store/table table-id)
-        field                                                              (map->BigQueryIdentifier
-                                                                            {:table-name table-name
-                                                                             :field-name field-name})]
-    (cond
-      (isa? special-type :type/UNIXTimestampSeconds)      (unix-timestamp->timestamp field :seconds)
-      (isa? special-type :type/UNIXTimestampMilliseconds) (unix-timestamp->timestamp field :milliseconds)
-      :else                                               field)))
+(defmethod sqlqp/->honeysql [BigQueryDriver (class Field)]
+  [driver field]
+  (let [{table-name :name, :as table} (qp.store/table (:table_id field))
+        field-identifier              (map->BigQueryIdentifier
+                                       {:table-name table-name
+                                        :field-name (:name field)
+                                        :alias?     (:alias? table)})]
+    (sqlqp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
 
 (defn- field->identifier
   "Generate appropriate identifier for a Field for SQL parameters. (NOTE: THIS IS ONLY USED FOR SQL PARAMETERS!)"
@@ -448,10 +452,10 @@
             honeysql-form
             (h/merge-left-join honeysql-form
               [(map->BigQueryIdentifier {:table-name table-name})
-               (map->BigQueryIdentifier {:table-name join-alias})]
+               (map->BigQueryIdentifier {:table-name join-alias, :alias? true})]
               [:=
                (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:name source-field)})
-               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:name pk-field)})])]
+               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:name pk-field), :alias? true})])]
         (if (seq more)
           (recur honeysql-form more)
           honeysql-form)))))
