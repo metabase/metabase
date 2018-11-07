@@ -571,6 +571,11 @@
    (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
      (>= (Integer/parseInt java-major-version-str) 9))))
 
+(defn hexadecimal-string?
+  "Returns truthy if `new-value` is a hexadecimal-string"
+  [new-value]
+  (and (string? new-value)
+       (re-matches #"[0-9a-f]{64}" new-value)))
 
 (defn snake-key
   "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
