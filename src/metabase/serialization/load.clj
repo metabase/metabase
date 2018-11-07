@@ -112,7 +112,8 @@
   (reduce (fn [context path]
             (-> context
                 (update :databases merge (slurp-dir (partial db/insert! Database) path))
-                (load path Table)))
+                (load path Table)
+                (load path Card)))
           context
           (list-dirs (str path "/databases"))))
 
@@ -171,21 +172,42 @@
                             (db/insert! User user)))
                       (str path "/users"))))
 
+(defn- update-parameter-mappings
+  [parameter-mappings context]
+  (map #(update % :card_id (:cards context)) parameter-mappings))
+
 (defmethod load Dashboard
   [context path _]
-  (reduce (fn [context path]
-            (-> context
-                (update :dashboards merge
-                        (slurp-dir (fn [dashbboard]
-                                     (db/insert! Dashboard
-                                       (-> dashbboard
-                                           (update :collection_id (:collections context))
-                                           (update :creator_id (:users context))
-                                           (humanized-field-references->ids context))))
-                                   path))
-                (load path DashboardCard)))
-          context
-          (list-dirs (str path "/dashboards"))))
+  (reduce
+   (fn [context path]
+     (update context :dashboards merge
+             (slurp-dir
+              (fn [dashboard]
+                (let [dashboard-cards (:dashboard_cards dashboard)
+                      dashboard       (db/insert! Dashboard
+                                        (-> dashboard
+                                            (dissoc :dashboard_cards)
+                                            (update :collection_id (:collections context))
+                                            (update :creator_id (:users context))
+                                            (humanized-field-references->ids context)))]
+                  (doseq [dashboard-card dashboard-cards]
+                    (let [series         (:series dashboard-card)
+                          dashboard-card (db/insert! DashboardCard
+                                           (-> dashboard-card
+                                               (dissoc :series)
+                                               (update :card_id (:cards context))
+                                               (assoc :dashboard_id (:id dashboard))
+                                               (update :parameter_mappings update-parameter-mappings context)
+                                               (humanized-field-references->ids context)))]
+                      (doseq [dashboard-card-series series]
+                        (db/insert! DashboardCardSeries
+                          (-> dashboard-card-series
+                              (assoc :dashboardcard_id (:id dashboard-card))
+                              (update :card_id (:cards context)))))))
+                  dashboard))
+              path)))
+   context
+   (list-dirs (str path "/dashboards"))))
 
 (defn- update-source-table
   [source-table context]
@@ -221,39 +243,6 @@
          (load path Card)))
    context
    (list-dirs (str path "/cards"))))
-
-
-(defn- update-parameter-mappings
-  [parameter-mappings context]
-  (map #(update % :card_id (:cards context)) parameter-mappings))
-
-(defmethod load DashboardCard
-  [context path _]
-  (reduce (fn [context path]
-            (-> context
-                (update :dashboard-cards merge
-                        (slurp-dir
-                         (fn [dashboard-card]
-                           (db/insert! DashboardCard
-                             (-> dashboard-card
-                                 (update :card_id (:cards context))
-                                 (update :dashboard_id (:dashboards context))
-                                 (update :parameter_mappings update-parameter-mappings context)
-                                 (humanized-field-references->ids context))))
-                         path))
-                (load path DashboardCardSeries)))
-          context
-          (list-dirs (str path "/dashboard-cards"))))
-
-(defmethod load DashboardCardSeries
-  [context path _]
-  (assoc context
-    :dashboard-card-series (slurp-dir (fn [dashboard-card-series]
-                                        (db/insert! DashboardCardSeries
-                                          (-> dashboard-card-series
-                                              (update :dashboardcard_id (:dashboard-cards context))
-                                              (update :card_id (:cards context)))))
-                                      (str path "/dashboard-card-series"))))
 
 (defmethod load Collection
   [context path _]

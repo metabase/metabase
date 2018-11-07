@@ -85,9 +85,11 @@
 
 (defmethod dump (type Database)
   [path db]
-  (let [path (format "%s/databases/%s_%s" path (:id db) (:name db))]
+  (let [path   (format "%s/databases/%s_%s" path (:id db) (:name db))
+        tables (db/select Table :db_id (u/get-id db))]
     (spit-yaml path (dissoc db :features))
-    (dump-all path (db/select Table :db_id (u/get-id db)))))
+    (dump-all path tables)
+    (dump-all path (db/select Card :table_id [:in (map u/get-id tables)]))))
 
 (defmethod dump (type Table)
   [path {:keys [id] :as table}]
@@ -95,8 +97,7 @@
     (spit-yaml path table)
     (dump-all path (db/select Field :table_id id))
     (dump-all path (db/select Metric :table_id id))
-    (dump-all path (db/select Segment :table_id id))
-    (dump-all path (db/select Card :table_id id))))
+    (dump-all path (db/select Segment :table_id id))))
 
 (defmethod dump (type Field)
   [path field]
@@ -122,9 +123,16 @@
 
 (defmethod dump (type Dashboard)
   [path dashboard]
-  (let [path (format "%s/dashboards/%s" path (:name dashboard))]
-    (spit-yaml path dashboard)
-    (dump-all path (db/select DashboardCard :dashboard_id (u/get-id dashboard)))))
+  (spit-yaml (format "%s/dashboards/%s" path (:name dashboard))
+             (assoc dashboard
+               :dashboard_cards (->> dashboard
+                                     u/get-id
+                                     (db/select DashboardCard :dashboard_id)
+                                     (map (fn [dashboard-card]
+                                            (-> dashboard-card
+                                                (assoc :series (db/select DashboardCardSeries
+                                                                 :dashboardcard_id (:id dashboard-card)))
+                                                humanize-field-references)))))))
 
 (defn- collection-location->dir
   [location]
@@ -155,19 +163,6 @@
     (->> card
          humanize-field-references
          (spit-yaml (format "%s/cards/%s_%s" path (:id card) (:name card))))))
-
-
-(defmethod dump (type DashboardCard)
-  [path dashboard-card]
-  (let [path (format "%s/dashboard-cards/%s" path (:id dashboard-card))]
-    (->> dashboard-card
-         humanize-field-references
-         (spit-yaml path))
-    (dump-all path (db/select DashboardCardSeries :dashboardcard_id (:id dashboard-card)))))
-
-(defmethod dump (type DashboardCardSeries)
-  [path dashboard-card-series]
-  (spit-yaml (str path "/dashboard-card-series") dashboard-card-series))
 
 (defn -main
   [& [path & _]]
