@@ -17,12 +17,12 @@
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
-                 [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
+                 [org.clojure/java.classpath "0.3.0"]                 ; examine the Java classpath from Clojure programs
                  [org.clojure/java.jdbc "0.7.6"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.4.1"]                  ; logging framework
-                 [org.clojure/tools.namespace "0.2.10"]
+                 [org.clojure/tools.namespace "0.2.11"]
                  [amalloy/ring-buffer "1.2.1"
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
