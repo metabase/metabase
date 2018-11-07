@@ -243,8 +243,11 @@
 
 (s/defn query->source-table-id :- (s/maybe su/IntGreaterThanZero)
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
-  `nil`, returns `nil`."
-  {:argslists '([outer-query])}
+  `nil`, returns `nil`.
+
+  Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
+  form), because it cannot return an accurate result for a query that has not yet been preprocessed."
+  {:arglists '([outer-query])}
   [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query}]
   (cond
     ;; for native queries, there's no source table to resolve
@@ -265,7 +268,7 @@
     (throw
      (Exception.
       (str
-       (tru "Error: query's source query has not been resolved. You probably need to `preprocess` the query first."))))
+       (tru "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."))))
 
     ;; otherwise resolve the source Table
     :else

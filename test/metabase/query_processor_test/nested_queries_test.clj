@@ -646,3 +646,22 @@
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
         (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+
+;; make sure that if we refer to a Field that is actually inside the source query, the QP is smart enough to figure
+;; out what you were referring to and behave appropriately
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+  [[10]]
+  (format-rows-by [int]
+    (rows
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :venues)
+                                   :fields       [(data/id :venues :id)
+                                                  (data/id :venues :name)
+                                                  (data/id :venues :category_id)
+                                                  (data/id :venues :latitude)
+                                                  (data/id :venues :longitude)
+                                                  (data/id :venues :price)]}
+                    :aggregation  [[:count]]
+                    :filter       [:= [:field-id (data/id :venues :category_id)] 50]}}))))
