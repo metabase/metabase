@@ -48,10 +48,10 @@
   [#"^/db/(\d+)/$"                                    ; permissions for the entire DB -- native and all schemas
    #"^/db/(\d+)/native/$"                             ; permissions to create new native queries for the DB
    #"^/db/(\d+)/schema/$"                             ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^\\/]*)/$"                   ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
+   #"^/db/(\d+)/schema/([^/]*)/$"                   ; permissions for a specific schema
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
    segmented-perm-regex                               ; Permissions to run a query against a Table using GTAP
    #"^/collection/(\d+)/$"                            ; readwrite permissions for a collection
    #"^/collection/(\d+)/read/$"                       ; read permissions for a collection
