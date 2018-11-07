@@ -1,6 +1,7 @@
 (ns metabase.serialization.dump
   ""
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.automagic-dashboards.filters :refer [field-reference?]]
             [metabase.db :as mdb]
@@ -127,9 +128,19 @@
 
 (defmethod dump (type Card)
   [path card]
-  (->> card
-       humanize-field-references
-       (spit-yaml (str path "/cards"))))
+  (let [source-table (get-in card [:dataset_query :query :source-table])
+        path         (if (and (string? source-table)
+                              (str/starts-with? source-table "card__"))
+                       (str path "/cards/" (-> source-table
+                                               (str/split #"__")
+                                               second
+                                               Integer/parseInt
+                                               Card
+                                               :name))
+                       path)]
+    (->> card
+         humanize-field-references
+         (spit-yaml (str path "/cards/" (:name card))))))
 
 (defmethod dump (type DashboardCard)
   [path dashboard-card]
@@ -144,3 +155,12 @@
   (dump-all path (User))
   (dump-all path (Dashboard))
   (dump-all path (Collection)))
+
+(-main "dump")
+;; (first (metabase.models.field-values/FieldValues))
+
+;; (first (metabase.models.permissions-group-membership/PermissionsGroupMembership))
+
+;; * PermissionsGroup
+;; ** Permission
+;; * PermissionsGroupMembership
