@@ -34,7 +34,7 @@
   "The outer query currently being processed."
   nil)
 
-(def ^:private ^:dynamic *nested-query-level*
+(def ^:dynamic *nested-query-level*
   "How many levels deep are we into nested queries? (0 = top level.) We keep track of this so we know what level to
   find referenced aggregations (otherwise something like [:aggregation 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
