@@ -225,6 +225,24 @@
                                                 :target [:dimension [:template-tag :date]]
                                                 :value  "Q1-2014"}]))))))
 
+;; make sure we include all the relevant fields like `:insights`
+(defn- card-with-trendline []
+  (assoc (shared-obj)
+    :dataset_query {:database (data/id)
+                    :type     :query
+                    :query   {:source-table (data/id :checkins)
+                              :breakout     [[:datetime-field [:field-id (data/id :checkins :date)]  :month]]
+                              :aggregation  [[:count]]}}))
+
+(expect
+  #{:cols :rows :insights :columns}
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
+      (-> (http/client :get 200 (str "public/card/" uuid "/query"))
+          :data
+          keys
+          set))))
+
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
