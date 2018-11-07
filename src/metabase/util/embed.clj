@@ -57,8 +57,8 @@
   (tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :setter (fn [new-value]
             (when (seq new-value)
-              (assert (re-matches #"[0-9a-f]{64}" new-value)
-                "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
+              (assert (u/hexadecimal-string? new-value)
+                (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
             (setting/set-string! :embedding-secret-key new-value)))
 
 (defn- jwt-header
@@ -73,9 +73,9 @@
   [^String message]
   (let [{:keys [alg]} (jwt-header message)]
     (when-not alg
-      (throw (Exception. "JWT is missing `alg`.")))
+      (throw (Exception. (str (trs "JWT is missing `alg`.")))))
     (when (= alg "none")
-      (throw (Exception. "JWT `alg` cannot be `none`.")))))
+      (throw (Exception. (str (trs "JWT `alg` cannot be `none`.")))))))
 
 (defn unsign
   "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation.
@@ -87,9 +87,10 @@
       (check-valid-alg message)
       (jwt/unsign message
                   (or (embedding-secret-key)
-                      (throw (ex-info "The embedding secret key has not been set." {:status-code 400})))
-                  ;; The library will reject tokens with a created at timestamp in the future, so to account for clock skew tell the library
-                  ;; that "now" is actually two minutes ahead of whatever the system time is so tokens don't get inappropriately rejected
+                      (throw (ex-info (str (tru "The embedding secret key has not been set.")) {:status-code 400})))
+                  ;; The library will reject tokens with a created at timestamp in the future, so to account for clock
+                  ;; skew tell the library that "now" is actually two minutes ahead of whatever the system time is so
+                  ;; tokens don't get inappropriately rejected
                   {:now (+ (buddy-util/now) 120)})
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
@@ -99,4 +100,4 @@
   "Find KEYSEQ in the UNSIGNED-TOKEN (a JWT token decoded by `unsign`) or throw a 400."
   [unsigned-token keyseq]
   (or (get-in unsigned-token keyseq)
-      (throw (ex-info (str "Token is missing value for keypath" keyseq) {:status-code 400}))))
+      (throw (ex-info (str (tru "Token is missing value for keypath") " " keyseq) {:status-code 400}))))
