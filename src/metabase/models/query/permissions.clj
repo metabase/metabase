@@ -123,3 +123,9 @@
     (= (keyword query-type) :query)  (mbql-permissions-path-set query throw-exceptions? already-preprocessed?)
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
     :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))
+
+(s/defn can-run-query?
+  "Return `true` if the current-user has sufficient permissions to run `query`."
+  [query]
+  (let [user-perms @api/*current-user-permissions-set*]
+    (perms/set-has-full-permissions-for-set? user-perms (perms-set query))))
