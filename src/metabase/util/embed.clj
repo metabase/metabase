@@ -7,12 +7,14 @@
             [cheshire.core :as json]
             [clojure.string :as str]
             [hiccup.core :refer [html]]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.models.setting :as setting]
-            [metabase.public-settings :as public-settings]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]))
 
-;;; ------------------------------------------------------------ PUBLIC LINKS UTIL FNS ------------------------------------------------------------
+;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
 
 (defn- oembed-url
   "Return an oEmbed URL for the RELATIVE-PATH.
@@ -51,7 +53,7 @@
                   :frameborder 0}]))
 
 
-;;; ------------------------------------------------------------ EMBEDDING UTIL FNS ------------------------------------------------------------
+;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
 (setting/defsetting ^:private embedding-secret-key
   (tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
@@ -68,8 +70,9 @@
     (json/parse-string (codecs/bytes->str (codec/base64-decode header)) keyword)))
 
 (defn- check-valid-alg
-  "Check that the JWT `alg` isn't `none`. `none` is valid per the standard, but for obvious reasons we want to make sure our keys are signed.
-   Unfortunately, I don't think there's an easy way to do this with the JWT library we use, so manually parse the token and check the alg."
+  "Check that the JWT `alg` isn't `none`. `none` is valid per the standard, but for obvious reasons we want to make sure
+  our keys are signed. Unfortunately, I don't think there's an easy way to do this with the JWT library we use, so
+  manually parse the token and check the alg."
   [^String message]
   (let [{:keys [alg]} (jwt-header message)]
     (when-not alg
@@ -78,9 +81,9 @@
       (throw (Exception. (str (trs "JWT `alg` cannot be `none`.")))))))
 
 (defn unsign
-  "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation.
-   Check that the signature is valid (i.e., check that it was signed with `embedding-secret-key`)
-   and it's otherwise a valid JWT (e.g., not expired), or throw an Exception."
+  "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation. Check that the signature is
+  valid (i.e., check that it was signed with `embedding-secret-key`) and it's otherwise a valid JWT (e.g., not
+  expired), or throw an Exception."
   [^String message]
   (when (seq message)
     (try
