@@ -67,13 +67,14 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns ["count"]
-                 :cols    [{:base_type    "type/Integer"
-                            :special_type "type/Number"
-                            :name         "count"
-                            :display_name "count"
-                            :source       "aggregation"}]
-                 :rows    [[100]]}
+   {:data       {:columns  ["count"]
+                 :cols     [{:base_type    "type/Integer"
+                             :special_type "type/Number"
+                             :name         "count"
+                             :display_name "count"
+                             :source       "aggregation"}]
+                 :rows     [[100]]
+                 :insights nil}
     :json_query {:parameters nil}
     :status     "completed"})
   ([results-format]
