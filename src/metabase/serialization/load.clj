@@ -198,6 +198,7 @@
                       (-> card
                           (update :table_id (:tables context))
                           (update :creator_id (:users context))
+                          (update :collection_id (:collections context))
                           (update :database_id (:databases context))
                           (update-in [:dataset_query :database] (:databases context))
                           (cond->
@@ -231,7 +232,7 @@
                          path))
                 (load path DashboardCardSeries)))
           context
-          (list-dirs (str path "/cards"))))
+          (list-dirs (str path "/dashboard-cards"))))
 
 (defmethod load DashboardCardSeries
   [context path _]
@@ -265,6 +266,6 @@
   (mdb/setup-db-if-needed!)
   (-> {}
       (load path User)
-      (load path Database)
       (load path Collection)
+      (load path Database)
       (load path Dashboard)))
