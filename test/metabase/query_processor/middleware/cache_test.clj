@@ -54,31 +54,6 @@
   (tu/with-temporary-setting-values [enable-query-caching true]
     (#'cache/is-cacheable? {:cache-ttl nil})))
 
-
-;;; ------------------------------------- results-are-below-max-byte-threshold? --------------------------------------
-
-(expect
-  (tu/with-temporary-setting-values [query-caching-max-kb 128]
-    (#'cache/results-are-below-max-byte-threshold? {:data {:rows [[1 "ABCDEF"]
-                                                                  [3 "GHIJKL"]]}})))
-
-(expect
-  false
-  (tu/with-temporary-setting-values [query-caching-max-kb 1]
-    (#'cache/results-are-below-max-byte-threshold? {:data {:rows (repeat 500 [1 "ABCDEF"])}})))
-
-;; check that `#'cache/results-are-below-max-byte-threshold?` is lazy and fails fast if the query is over the
-;; threshold rather than serializing the entire thing
-(expect
-  false
-  (let [lazy-seq-realized? (atom false)]
-    (tu/with-temporary-setting-values [query-caching-max-kb 1]
-      (#'cache/results-are-below-max-byte-threshold? {:data {:rows (lazy-cat (repeat 500 [1 "ABCDEF"])
-                                                                             (do (reset! lazy-seq-realized? true)
-                                                                                 [2 "GHIJKL"]))}})
-      @lazy-seq-realized?)))
-
-
 ;;; ------------------------------------------ End-to-end middleware tests -------------------------------------------
 
 ;; if there's nothing in the cache, cached results should *not* be returned
