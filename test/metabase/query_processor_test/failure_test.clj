@@ -45,7 +45,8 @@
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (expect
-  {:started_at   true
+  {:database_id  (data/id)
+   :started_at   true
    :json_query   (bad-query)
    :native       bad-query:native
    :status       :failed
