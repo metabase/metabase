@@ -166,7 +166,7 @@ export default class Smart extends React.Component {
               {changeDisplay}
             </Flex>
             <h4
-              className="flex align-center hide md-show"
+              className="flex align-center hide lg-show"
               style={{
                 color: colors["text-medium"],
               }}

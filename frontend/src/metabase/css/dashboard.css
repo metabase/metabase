@@ -378,7 +378,6 @@
 
 .Dashboard .SmartWrapper {
   position: relative;
-  margin-top: 20px;
   font-size: inherit;
 }
 
@@ -386,17 +385,10 @@
   .ScalarValue {
     font-size: 2.2rem;
   }
-  .Dashboard .SmartWrapper {
-    position: absolute;
-    bottom: 10px;
-  }
 }
 
 @media screen and (min-width: 1540px) {
   .ScalarValue {
     font-size: 2.8rem;
-  }
-  .Dashboard .SmartWrapper {
-    bottom: 20px;
   }
 }
