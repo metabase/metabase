@@ -45,29 +45,37 @@
     ;; for root MBQL queries just return source-table + join-tables
     :else        (cons source-table (map :table-id join-tables))))
 
+(def ^:private PermsOptions
+  "Map of options to be passed to the permissions checking functions."
+  (s/maybe
+   {(s/optional-key :throw-exceptions?)     (s/maybe s/Bool)
+    (s/optional-key :already-preprocessed?) s/Bool}))
+
+(def ^:private TableOrIDOrNativePlaceholder
+  (s/cond-pre
+   (s/eq ::native)
+   su/IntGreaterThanZero
+   {:id                      su/IntStringGreaterThanZero
+    (s/optional-key :schema) (s/maybe su/NonBlankString)
+    s/Keyword                s/Any}))
+
 (s/defn ^:private tables->permissions-path-set :- #{perms/ObjectPath}
-  "Given a sequence of `tables` referenced by a query, return a set of required permissions."
-  [database-or-id :- (s/cond-pre su/IntGreaterThanZero su/Map) tables]
-  (let [table-ids        (filter integer? tables)
-        table-id->schema (when (seq table-ids)
-                           (db/select-id->field :schema Table :id [:in table-ids]))]
-    (set (for [table tables]
-           (cond
+  "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions."
+  [database-or-id :- (s/cond-pre su/IntGreaterThanZero su/Map), tables-or-ids :- [TableOrIDOrNativePlaceholder]]
+  (let [table-ids           (filter integer? tables-or-ids)
+        table-id->schema    (when (seq table-ids)
+                              (db/select-id->field :schema Table :id [:in table-ids]))
+        table-or-id->schema #(if (integer? %)
+                               (table-id->schema %)
+                               (:schema %))]
+    (set (for [table-or-id tables-or-ids]
+           (if (= ::native table-or-id)
              ;; Any `::native` placeholders from above mean we need native ad-hoc query permissions for this DATABASE
-             (= ::native table)
              (perms/adhoc-native-query-path database-or-id)
-
-             ;; If Table is an ID then fetch its schema from the DB and require normal table perms
-             ;; TODO - we should check and see if Table is in the QP store here so we don't do the extra fetch
-             (integer? table)
-             (perms/object-path (u/get-id database-or-id) (table-id->schema table) table)
-
-             ;; for a TableInstance require normal table perms
-             :else
+             ;; anything else (i.e., a normal table) just gets normal table permissions
              (perms/object-path (u/get-id database-or-id)
-                                (:schema table)
-                                ;; TODO - don't think we use `:table-id` anywhere anymore
-                                (or (:id table) (:table-id table))))))))
+                                (table-or-id->schema table-or-id)
+                                (u/get-id table-or-id)))))))
 
 (s/defn ^:private source-card-read-perms :- #{perms/ObjectPath}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
@@ -92,8 +100,8 @@
   things when a single Card is busted (e.g. API endpoints that filter out unreadable Cards) and instead returns 'only
   admins can see this' permissions -- `#{\"db/0\"}` (DB 0 will never exist, thus normal users will never be able to
   get permissions for it, but admins have root perms and will still get to see (and hopefully fix) it)."
-  [query :- {:query su/Map, s/Keyword s/Any} & [throw-exceptions?     :- (s/maybe (s/eq :throw-exceptions))
-                                                already-preprocessed? :- (s/maybe (s/eq :already-preprocessed))]]
+  [query :- {:query su/Map, s/Keyword s/Any}
+   {:keys [throw-exceptions? already-preprocessed?], :as perms-opts} :- PermsOptions]
   (try
     ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
     (if-let [source-card-id (qputil/query->source-card-id query)]
@@ -112,14 +120,23 @@
                 (u/pprint-to-str (u/filtered-stacktrace e)))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
-(s/defn perms-set :- #{perms/ObjectPath}
-  "Calculate the set of permissions required to run an ad-hoc `query`."
-  {:arglists '([outer-query & [throw-exceptions? already-preprocessed?]])}
-  ;; TODO - I think we can remove the `throw-exceptions?` optional param because nothing uses it anymore
-  [{query-type :type, database :database, :as query} & [throw-exceptions?     :- (s/maybe (s/eq :throw-exceptions))
-                                                        already-preprocessed? :- (s/maybe (s/eq :already-preprocessed))]]
+(s/defn ^:private perms-set* :- #{perms/ObjectPath}
+  [{query-type :type, database :database, :as query}, perms-opts :- PermsOptions]
   (cond
     (empty? query)                   #{}
-    (= (keyword query-type) :query)  (mbql-permissions-path-set query throw-exceptions? already-preprocessed?)
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
+    (= (keyword query-type) :query)  (mbql-permissions-path-set query perms-opts)
     :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))
+
+(defn perms-set
+  "Calculate the set of permissions required to run an ad-hoc `query`. Returns permissions for full table access.
+  Options default to `false`."
+  {:arglists '([query & {:keys [throw-exceptions? already-preprocessed?]}])}
+  [query & {:as perms-opts}]
+  (perms-set* query perms-opts))
+
+(s/defn can-run-query?
+  "Return `true` if the current-user has sufficient permissions to run `query`."
+  [query]
+  (let [user-perms @api/*current-user-permissions-set*]
+    (perms/set-has-full-permissions-for-set? user-perms (perms-set query))))

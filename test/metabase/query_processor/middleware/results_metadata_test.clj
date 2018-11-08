@@ -16,6 +16,7 @@
              [util :as tu]]
             [metabase.test.data.users :as users]
             [metabase.test.mock.util :as mutil]
+            [metabase.util.encryption :as encrypt]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -97,6 +98,45 @@
   false
   (results-metadata/valid-checksum? "ABCD" (#'results-metadata/metadata-checksum "ABCDE")))
 
+(def ^:private example-metadata
+  [{:base_type    "type/Text"
+    :display_name "Date"
+    :name         "DATE"
+    :unit         nil
+    :special_type nil
+    :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
+                                                                                   :latest   "2015-12-29T00:00:00.000Z"}}}}
+   {:base_type    "type/Integer"
+    :display_name "count"
+    :name         "count"
+    :special_type "type/Quantity"
+    :fingerprint  {:global {:distinct-count 3
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
+
+(defn- array-map->hash-map
+  "Calling something like `(into (hash-map) ...)` will only return a hash-map if there are enough elements to push it
+  over the limit of an array-map. By passing the keyvals into `hash-map`, you can be sure it will be a hash-map."
+  [m]
+  (apply hash-map (apply concat m)))
+
+(defn- metadata-checksum
+  "Invoke `metadata-checksum` without a `default-secret-key` specified. If the key is specified, it will encrypt the
+  checksum. The encryption includes random data that will cause the checksum string to be different each time, so the
+  checksum strings can't be directly compared."
+  [metadata]
+  (with-redefs [encrypt/default-secret-key nil]
+    (#'results-metadata/metadata-checksum metadata)))
+
+;; tests that the checksum is consistent when an array-map is switched to a hash-map
+(expect
+  (metadata-checksum example-metadata)
+  (metadata-checksum (mapv array-map->hash-map example-metadata)))
+
+;; tests that the checksum is consistent with an integer and with a double
+(expect
+  (metadata-checksum example-metadata)
+  (metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int)))
 
 ;; make sure that queries come back with metadata
 (expect

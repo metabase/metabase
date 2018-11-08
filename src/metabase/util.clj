@@ -15,11 +15,12 @@
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]))
+           [java.text Normalizer Normalizer$Form]
+           java.util.concurrent.TimeoutException))
 
-;; This is the very first log message that will get printed.  It's here because this is one of the very first
-;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-;; the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+;; This is the very first log message that will get printed.
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 (log/info (trs "Loading Metabase..."))
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
@@ -307,7 +308,7 @@
   [futur timeout-ms]
   (let [result (deref futur timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (Exception. (format "Timed out after %d milliseconds." timeout-ms))))
+      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
     result))
 
 (defmacro with-timeout
@@ -493,6 +494,16 @@
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))
 
+(defn decode-base64
+  "Decodes a Base64 string to a UTF-8 string"
+  [input]
+  (new java.lang.String (javax.xml.bind.DatatypeConverter/parseBase64Binary input) "UTF-8"))
+
+(defn encode-base64
+  "Encodes a string to a Base64 string"
+  [^String input]
+  (javax.xml.bind.DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+
 (def ^{:arglists '([n])} safe-inc
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
@@ -570,6 +581,11 @@
    (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
      (>= (Integer/parseInt java-major-version-str) 9))))
 
+(defn hexadecimal-string?
+  "Returns truthy if `new-value` is a hexadecimal-string"
+  [new-value]
+  (and (string? new-value)
+       (re-matches #"[0-9a-f]{64}" new-value)))
 
 (defn snake-key
   "Convert a keyword or string `k` from `lisp-case` to `snake-case`."

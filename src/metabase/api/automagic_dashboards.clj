@@ -66,7 +66,7 @@
   [query]
   (api/check-403 (perms/set-has-full-permissions-for-set?
                    @api/*current-user-permissions-set*
-                   (query-perms/perms-set (:dataset_query query) :throw-exceptions)))
+                   (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
   query)
 
 (defn- ensure-int

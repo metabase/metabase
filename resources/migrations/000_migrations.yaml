@@ -4989,6 +4989,38 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: raw_column_id
 
+# Add database_id column to query_execution
+
+  - changeSet:
+      id: 92
+      author: camsaul
+      comment: 'Added 0.31.0'
+      validCheckSum: 8:a875945f36824a0667c740888c00c37f
+      validCheckSum: 8:83ded48e18fe8f70d6ec09add042124d
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              name: database_id
+              type: integer
+              remarks: 'ID of the database this query was ran against.'
+        - sql:
+            sql: UPDATE query_execution SET database_id = (select database_id from report_card where id = query_execution.card_id);
+
+# Start recording the actual query dictionary that's been executed
+
+  - changeSet:
+      id: 93
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: query
+            columns:
+              name: query
+              type: text
+              remarks: 'The actual "query dictionary" for this query.'
+
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
       id: 94
@@ -5079,3 +5111,18 @@ databaseChangeLog:
               name: settings
               type: text
               remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+#
+# Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
+#
+  - changeSet:
+      id: 97
+      author: senior
+      comment: 'Added 0.32.0'
+      preconditions:
+        - onFail: MARK_RAN
+        - dbms: mysql, mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob

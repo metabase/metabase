@@ -106,10 +106,10 @@
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
       perms/check-query-permissions
+      cumulative-ags/handle-cumulative-aggregations
       resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit
-      cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
       desugar/desugar
@@ -226,9 +226,9 @@
 
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [query-execution]
+  [{query :json_query, :as query-execution}]
   (u/prog1 query-execution
-    (query/update-average-execution-time! (:hash query-execution) (:running_time query-execution))
+    (query/save-query-and-update-average-execution-time! query (:hash query-execution) (:running_time query-execution))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-and-return-failed-query!
@@ -293,10 +293,14 @@
 
 (defn- query-execution-info
   "Return the info for the `QueryExecution` entry for this QUERY."
-  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info, :as query}]
+  {:arglists '([query])}
+  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info
+    database-id                                                                       :database
+    :as                                                                               query}]
   {:pre [(instance? (Class/forName "[B") query-hash)
          (string? query-type)]}
-  {:executor_id       executed-by
+  {:database_id       database-id
+   :executor_id       executed-by
    :card_id           card-id
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
@@ -327,6 +331,11 @@
                                       (u/pprint-to-str (u/filtered-stacktrace e))))
             (save-and-return-failed-query! query-execution e)))))))
 
+(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
+  (assoc query :info (assoc options
+                       :query-hash (qputil/query-hash query)
+                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))))
+
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
@@ -342,9 +351,7 @@
   OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (run-and-save-query! (assoc query :info (assoc options
-                                            :query-hash (qputil/query-hash query)
-                                            :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))
+  (run-and-save-query! (assoc-query-info query options)))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -364,3 +371,8 @@
   {:style/indent 1}
   [query, options :- mbql.s/Info]
   (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))
+
+(s/defn process-query-without-save!
+  "Invokes `process-query` with info needed for the included remark."
+  [user query]
+  (process-query (assoc-query-info query {:executed-by user})))

@@ -1,6 +1,6 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [metabase.db.spec :as dbspec]
             metabase.driver.h2 ; because we import metabase.driver.h2.H2Driver below
             [metabase.test.data
@@ -28,7 +28,7 @@
 
 
 (defn- quote-name [nm]
-  (str \" (s/upper-case nm) \"))
+  (str \" (str/upper-case nm) \"))
 
 (def ^:private ^:const ^String create-db-sql
   (str
@@ -69,7 +69,7 @@
             :load-data!                   generic/load-data-all-at-once!
             :pk-field-name                (constantly "ID")
             :pk-sql-type                  (constantly "BIGINT AUTO_INCREMENT")
-            :prepare-identifier           (u/drop-first-arg s/upper-case)
+            :prepare-identifier           (u/drop-first-arg str/upper-case)
             :quote-name                   (u/drop-first-arg quote-name)
             :inline-column-comment-sql    generic/standard-inline-column-comment-sql
             :standalone-table-comment-sql generic/standard-standalone-table-comment-sql}))
@@ -77,8 +77,7 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
-          :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
-          :format-name                        (u/drop-first-arg s/upper-case)
+          :format-name                        (u/drop-first-arg str/upper-case)
           :has-questionable-timezone-support? (constantly true)
           :id-field-type                      (constantly :type/BigInteger)}))

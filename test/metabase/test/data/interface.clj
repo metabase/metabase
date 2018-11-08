@@ -130,6 +130,7 @@
   (engine ^clojure.lang.Keyword [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
+  ;; TODO - should rename this to `database-definition->connection-details` to avoid confusion
   (database->connection-details [this, ^Keyword context, ^DatabaseDefinition database-definition]
     "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database`
      details map). CONTEXT is one of:
@@ -149,10 +150,6 @@
 
  Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,`skip-drop-db?`
  should default to `false`.")
-
-  ;; TODO - this would be more useful if DATABASE-DEFINITION was a parameter
-  (default-schema ^String [this]
-    "*OPTIONAL* Return the default schema name that tables for this DB should be expected to have.")
 
   (expected-base-type->actual [this base-type]
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
@@ -181,7 +178,6 @@
 (def IDriverTestExtensionsDefaultsMixin
   "Default implementations for the `IDriverTestExtensions` methods marked *OPTIONAL*."
   {:expected-base-type->actual         (u/drop-first-arg identity)
-   :default-schema                     (constantly nil)
    :format-name                        (u/drop-first-arg identity)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))

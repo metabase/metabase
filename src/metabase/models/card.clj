@@ -6,6 +6,7 @@
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
@@ -56,17 +57,17 @@
       :Segment (extract-ids :segment inner-query)})))
 
 
-;;; -------------------------------------------------- Revisions --------------------------------------------------
+;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-instance
   "Serialize a `Card` for use in a `Revision`."
   ([instance]
    (serialize-instance nil nil instance))
   ([_ _ instance]
-   (dissoc instance :created_at :updated_at)))
+   (dissoc instance :created_at :updated_at :result_metadata)))
 
 
-;;; -------------------------------------------------- Lifecycle --------------------------------------------------
+;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn populate-query-fields
   "Lift `database_id`, `table_id`, and `query_type` from query definition."
@@ -112,8 +113,7 @@
     ;; Make sure the User saving the Card has the appropriate permissions to run its query. We don't want Users saving
     ;; Cards with queries they wouldn't be allowed to run!
     (when *current-user-id*
-      (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set*
-                  (query-perms/perms-set query :throw-exceptions))
+      (when-not (query-perms/can-run-query? query)
         (throw (Exception. (str (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
                                      (:database query)))))))
     ;; make sure this Card doesn't have circular source query references

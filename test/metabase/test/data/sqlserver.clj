@@ -72,7 +72,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
-          :default-schema               (constantly "dbo")
           :engine                       (constantly :sqlserver)}))
 
 

@@ -2,8 +2,8 @@
   "Tests for how the query processor as a whole handles failures."
   (:require [expectations :refer [expect]]
             [metabase.query-processor :as qp]
-            [metabase.test.data :as data]
-            [metabase.query-processor.interface :as qp.i])
+            [metabase.query-processor.interface :as qp.i]
+            [metabase.test.data :as data])
   (:import metabase.driver.h2.H2Driver))
 
 (defn- bad-query []
@@ -45,7 +45,8 @@
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (expect
-  {:started_at   true
+  {:database_id  (data/id)
+   :started_at   true
    :json_query   (bad-query)
    :native       bad-query:native
    :status       :failed

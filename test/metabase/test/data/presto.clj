@@ -1,4 +1,5 @@
 (ns metabase.test.data.presto
+  "Presto driver test extensions."
   (:require [clojure.string :as str]
             [honeysql
              [core :as hsql]
@@ -12,19 +13,23 @@
 
 ;;; IDriverTestExtensions implementation
 
+;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
+;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
+;; `db-qualified-table-name` like everyone else.
+(def ^:private test-catalog-name "test-data")
+
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host (i/db-test-env-var-or-throw :presto :host)
-          :port (i/db-test-env-var-or-throw :presto :port)
-          :user (i/db-test-env-var-or-throw :presto :user "metabase")
-          :ssl  false}
-         (when (= context :db)
-           {:catalog database-name})))
+  (merge {:host    (i/db-test-env-var-or-throw :presto :host "localhost")
+          :port    (i/db-test-env-var-or-throw :presto :port "8080")
+          :user    (i/db-test-env-var-or-throw :presto :user "metabase")
+          :ssl     false
+          :catalog test-catalog-name}))
 
 (defn- qualify-name
-  ;; we have to use the default schema from the in-memory connectory
-  ([db-name]                       [db-name])
-  ([db-name table-name]            [db-name "default" table-name])
-  ([db-name table-name field-name] [db-name "default" table-name field-name]))
+  ;; use the default schema from the in-memory connector
+  ([db-name]                       [test-catalog-name "default"])
+  ([db-name table-name]            [test-catalog-name "default" (i/db-qualified-table-name db-name table-name)])
+  ([db-name table-name field-name] [test-catalog-name "default" (i/db-qualified-table-name db-name table-name) field-name]))
 
 (defn- qualify+quote-name [& names]
   (apply #'presto/quote+combine-names (apply qualify-name names)))
@@ -74,8 +79,9 @@
 (defn- create-db!
   ([db-def]
    (create-db! db-def nil))
-  ([{:keys [table-definitions] :as dbdef} {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
-   (let [details (database->connection-details :db dbdef)]
+  ([{:keys [table-definitions database-name] :as dbdef} {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
+   (let [details  (database->connection-details :db dbdef)
+         execute! (partial #'presto/execute-presto-query! details)]
      (doseq [tabledef table-definitions
              :let     [rows       (:rows tabledef)
                        ;; generate an ID for each row because we don't have auto increments
@@ -83,10 +89,10 @@
                        ;; make 100 rows batches since we have to inline everything
                        batches    (partition 100 100 nil keyed-rows)]]
        (when-not skip-drop-db?
-         (#'presto/execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef)))
-       (#'presto/execute-presto-query! details (create-table-sql dbdef tabledef))
+         (execute! (drop-table-if-exists-sql dbdef tabledef)))
+       (execute! (create-table-sql dbdef tabledef))
        (doseq [batch batches]
-         (#'presto/execute-presto-query! details (insert-sql dbdef tabledef batch)))))))
+         (execute! (insert-sql dbdef tabledef batch)))))))
 
 ;;; IDriverTestExtensions implementation
 
@@ -96,7 +102,6 @@
          {:engine                             (constantly :presto)
           :database->connection-details       (u/drop-first-arg database->connection-details)
           :create-db!                         (u/drop-first-arg create-db!)
-          :default-schema                     (constantly "default")
           :format-name                        (u/drop-first-arg str/lower-case)
           ;; FIXME Presto actually has very good timezone support
           :has-questionable-timezone-support? (constantly true)}))
