@@ -150,6 +150,7 @@
     "DATETIME"  :type/DateTime
     "TIMESTAMP" :type/DateTime
     "TIME"      :type/Time
+    "NUMERIC"   :type/Decimal
     :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -220,6 +221,7 @@
   {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
    "FLOAT"     (constantly #(Double/parseDouble %))
    "INTEGER"   (constantly #(Long/parseLong %))
+   "NUMERIC"   (constantly #(bigdec %))
    "RECORD"    (constantly identity)
    "STRING"    (constantly identity)
    "DATE"      parse-timestamp-str

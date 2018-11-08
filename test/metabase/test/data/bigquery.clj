@@ -138,7 +138,7 @@
    :type/Date           :TIMESTAMP
    :type/DateTime       :TIMESTAMP
    :type/DateTimeWithTZ :TIMESTAMP
-   :type/Decimal        :FLOAT
+   :type/Decimal        :NUMERIC
    :type/Dictionary     :RECORD
    :type/Float          :FLOAT
    :type/Integer        :INTEGER
