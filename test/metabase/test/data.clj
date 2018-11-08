@@ -286,11 +286,10 @@
          get-or-create! (fn []
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
+     ;; attempt to make sure test extensions are loaded for the driver. This might still fail (see below)
+     (require (symbol (str "metabase.test.data." (name engine))))
      (try
-       ;; it's ok to ignore output here because it's usually the IllegalArgException, and if it fails again we don't
-       ;; suppress it
-       (tu.log/suppress-output
-         (get-or-create!))
+       (get-or-create!)
        ;; occasionally we'll see an error like
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
@@ -371,7 +370,7 @@
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
-(def venue-categories
+(def ^:private venue-categories
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 (defn create-venue-category-remapping
