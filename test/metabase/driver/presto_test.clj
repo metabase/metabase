@@ -82,7 +82,11 @@
       ;; we load all Presto tables into the same "catalog" (i.e. DB) using the db-prefixed-table-name stuf so we don't
       ;; have to update the docker image every time we add a new dataset. So make sure we ignore the ones that are in
       ;; different datasets in the results here
-      (update :tables (comp set (partial filter #(str/starts-with? (:name %) "test_data_"))))))
+      (update :tables (comp set (partial filter (comp #{"test_data_categories"
+                                                        "test_data_venues"
+                                                        "test_data_checkins"
+                                                        "test_data_users"}
+                                                      :name))))))
 
 ;; DESCRIBE-TABLE
 (datasets/expect-with-engine :presto
