@@ -219,7 +219,6 @@
   []
   (contains? (driver/features *driver*) :binning))
 
-(defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
 (defn expected-base-type->actual
@@ -348,7 +347,7 @@
        ...)"
   {:style/indent 1}
   [dataset & body]
-  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+  `(with-temp-db [~'_ (resolve-dbdef '~dataset)]
      ~@body))
 
 (defn- delete-model-instance!

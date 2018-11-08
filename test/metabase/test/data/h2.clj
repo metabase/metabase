@@ -77,7 +77,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
-          :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
           :format-name                        (u/drop-first-arg s/upper-case)
           :has-questionable-timezone-support? (constantly true)

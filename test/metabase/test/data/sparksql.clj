@@ -122,5 +122,4 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
-          :default-schema               (constantly "test_data")
           :engine                       (constantly :sparksql)}))

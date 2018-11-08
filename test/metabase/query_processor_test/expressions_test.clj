@@ -106,7 +106,7 @@
 ;;
 ;; e.g. scarcity = 100.0 / num-birds
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
-  `(metabase.test.data/dataset ~'daily-bird-counts
+  `(data/dataset ~'daily-bird-counts
      (->> (data/run-mbql-query ~'bird-count
             {:expressions {"bird-scarcity" ~formula}
              :fields      [[:expression "bird-scarcity"]]
