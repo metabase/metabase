@@ -382,7 +382,7 @@
 }
 
 .AutomaticDashboard.AutomaticDashboard--withSidebar #SmartScalar-PreviousValue {
-  display: none;
+  display: none !important;
 }
 
 @media screen and (min-width: 1280px) {
