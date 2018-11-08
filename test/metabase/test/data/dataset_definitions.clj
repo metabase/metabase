@@ -24,6 +24,10 @@
 ;; sender and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.
 (di/def-database-definition-edn avian-singles)
 
+;; A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
+;; expressions to make sure they behave correctly
+(di/def-database-definition-edn daily-bird-counts)
+
 (defn- date-only
   "This function emulates a date only field as it would come from the
   JDBC driver. The hour/minute/second/millisecond fields should be 0s"

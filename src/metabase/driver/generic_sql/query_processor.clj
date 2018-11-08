@@ -142,12 +142,19 @@
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
+;;
+;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
+;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
 (defmethod ->honeysql [Object :/]
   [driver [_ & args]]
-  (apply hsql/call :/ (for [arg args]
-                        (->honeysql driver (if (integer? arg)
-                                             (double arg)
-                                             arg)))))
+  (let [args (for [arg args]
+               (->honeysql driver (if (integer? arg)
+                                    (double arg)
+                                    arg)))]
+    (apply hsql/call :/ (first args) (for [arg (rest args)]
+                                       (hsql/call :case
+                                         (hsql/call := arg 0) nil
+                                         :else                arg)))))
 
 (defmethod ->honeysql [Object :named] [driver [_ ag ag-name]]
   (->honeysql driver ag))
