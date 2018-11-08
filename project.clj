@@ -55,7 +55,7 @@
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev154-1.23.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                   "v2-rev387-1.23.0"]
+                   "v2-rev410-1.25.0"]
                  [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
                  [com.h2database/h2 "1.4.197"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
