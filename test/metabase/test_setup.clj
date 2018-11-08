@@ -13,7 +13,8 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models.setting :as setting]))
+            [metabase.models.setting :as setting]
+            [metabase.util.date :as du]))
 
 ;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
 
@@ -63,7 +64,8 @@
 
 ;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for
 ;; some of the unit tests work work properly
-(driver/find-and-load-drivers!)
+(du/profile "(driver/find-and-load-drivers!) (in metabase.test-setup)"
+  (driver/find-and-load-drivers!))
 
 (defn test-startup
   {:expectations-options :before-run}
@@ -85,10 +87,11 @@
 
       ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we
       ;; get wacky 'method in protocol not implemented' errors when running tests against an individual namespace
-      (doseq [engine (keys (driver/available-drivers))
-              :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
-        (u/ignore-exceptions
-          (require driver-test-ns :reload)))
+      (du/profile "Load all drivers & reload test extensions"
+        (doseq [engine (keys (driver/available-drivers))
+                :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
+          (u/ignore-exceptions
+            (require driver-test-ns :reload))))
 
       ;; If test setup fails exit right away
       (catch Throwable e

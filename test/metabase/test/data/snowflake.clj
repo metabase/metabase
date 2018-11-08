@@ -110,7 +110,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
-          :default-schema               (constantly "PUBLIC")
           :engine                       (constantly :snowflake)
           :id-field-type                (constantly :type/Number)
           :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)

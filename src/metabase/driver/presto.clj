@@ -1,4 +1,5 @@
 (ns metabase.driver.presto
+  "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [clj-http.client :as http]
             [clj-time
              [coerce :as tcoerce]
@@ -25,7 +26,9 @@
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import java.sql.Time
            java.util.Date))
 
@@ -39,7 +42,8 @@
 (defn- details->uri
   [{:keys [ssl host port]} path]
   {:pre [(string? host) (seq host) ((some-fn integer? string?) port)]}
-  (str (if ssl "https" "http") "://" host ":" port path))
+  (str (if ssl "https" "http") "://" host ":" port
+       path))
 
 (defn- details->request [{:keys [user password catalog report-timezone]}]
   (merge {:headers (merge {"X-Presto-Source" "metabase"
@@ -110,9 +114,8 @@
 (defn- execute-presto-query! [details query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error id]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                             (assoc (details->request details-with-tunnel) :body query, :as :json))]
-
+    (let [{{:keys [columns data nextUri error id]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                     (assoc (details->request details-with-tunnel) :body query, :as :json))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -152,25 +155,31 @@
 ;;; IDriver implementation
 
 (defn- can-connect? [{:keys [catalog] :as details}]
-  (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
+  (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog)
+                                                          " LIKE 'information_schema'"))]
     (= v "information_schema")))
 
 (defn- date-interval [unit amount]
   (hsql/call :date_add (hx/literal unit) amount :%now))
 
+(s/defn ^:private database->all-schemas :- #{su/NonBlankString}
+  "Return a set of all schema names in this `database`."
+  [{{:keys [catalog schema] :as details} :details :as database}]
+  (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
+        {:keys [rows]} (execute-presto-query! details sql)]
+    (set (map first rows))))
+
 (defn- describe-schema [{{:keys [catalog] :as details} :details} {:keys [schema]}]
   (let [sql            (str "SHOW TABLES FROM " (quote+combine-names catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
-    (set (for [name tables]
-           {:name name, :schema schema}))))
+    (set (for [table-name tables]
+           {:name table-name, :schema schema}))))
 
-(defn- describe-database [{{:keys [catalog] :as details} :details :as database}]
-  (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
-        {:keys [rows]} (execute-presto-query! details sql)
-        schemas        (remove #{"information_schema"} (map first rows))] ; inspecting "information_schema" breaks weirdly
-    {:tables (apply set/union (for [name schemas]
-                                (describe-schema database {:schema name})))}))
+(defn- describe-database [driver database]
+  (let [schemas (remove (sql/excluded-schemas driver) (database->all-schemas database))]
+    {:tables (reduce set/union (for [schema schemas]
+                                 (describe-schema database {:schema schema})))}))
 
 (defn- presto-type->base-type [field-type]
   (condp re-matches field-type
@@ -330,7 +339,7 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
-          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-database                 describe-database
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
           :details-fields                    (constantly (ssh/with-tunnel-config

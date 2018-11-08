@@ -78,7 +78,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (fn [& _] @db-connection-details)
-          :default-schema                     (constantly session-schema)
           :engine                             (constantly :oracle)
           :expected-base-type->actual         (u/drop-first-arg expected-base-type->actual)
           :id-field-type                      (constantly :type/Decimal)
@@ -89,8 +88,8 @@
   (sql/connection-details->spec (OracleDriver.) @db-connection-details))
 
 (defn- non-session-schemas
-  "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should be ignored).
-   (This is used as part of the implementation of `excluded-schemas` for the Oracle driver during tests.)"
+  "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should
+  be ignored). (This is used as part of the implementation of `excluded-schemas` for the Oracle driver during tests.)"
   []
   (set (map :username (jdbc/query (dbspec) ["SELECT username FROM dba_users WHERE username <> ?" session-schema]))))
 

@@ -68,5 +68,4 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details database->connection-details
-          :engine                       (constantly :crate)
-          :default-schema               (constantly "doc")}))
+          :engine                       (constantly :crate)}))

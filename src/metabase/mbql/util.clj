@@ -353,7 +353,7 @@
           (-> query :query :join-tables))))
 
 
-(s/defn expression-with-name :- mbql.s/ExpressionDef
+(s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [query :- mbql.s/Query, expression-name :- su/NonBlankString]
   (or (get-in query, [:query :expressions (keyword expression-name)])

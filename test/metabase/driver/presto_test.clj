@@ -11,7 +11,8 @@
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util.log :as tu.log]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [clojure.string :as str])
   (:import metabase.driver.presto.PrestoDriver))
 
 ;;; HELPERS
@@ -73,15 +74,19 @@
 
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto
-  {:tables #{{:name "categories" :schema "default"}
-             {:name "venues"     :schema "default"}
-             {:name "checkins"   :schema "default"}
-             {:name "users"      :schema "default"}}}
-  (driver/describe-database (PrestoDriver.) (data/db)))
+  {:tables #{{:name "test_data_categories" :schema "default"}
+             {:name "test_data_venues"     :schema "default"}
+             {:name "test_data_checkins"   :schema "default"}
+             {:name "test_data_users"      :schema "default"}}}
+  (-> (driver/describe-database (PrestoDriver.) (data/db))
+      ;; we load all Presto tables into the same "catalog" (i.e. DB) using the db-prefixed-table-name stuf so we don't
+      ;; have to update the docker image every time we add a new dataset. So make sure we ignore the ones that are in
+      ;; different datasets in the results here
+      (update :tables (comp set (partial filter #(str/starts-with? (:name %) "test_data_"))))))
 
 ;; DESCRIBE-TABLE
 (datasets/expect-with-engine :presto
-  {:name   "venues"
+  {:name   "test_data_venues"
    :schema "default"
    :fields #{{:name          "name",
               :database-type "varchar(255)"
