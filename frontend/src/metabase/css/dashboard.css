@@ -381,14 +381,26 @@
   font-size: inherit;
 }
 
+.AutomaticDashboard.AutomaticDashboard--withSidebar #SmartScalar-PreviousValue {
+  display: none;
+}
+
 @media screen and (min-width: 1280px) {
   .ScalarValue {
     font-size: 2.2rem;
+  }
+  .AutomaticDashboard.AutomaticDashboard--withSidebar
+    #SmartScalar-PreviousValue {
+    display: none;
   }
 }
 
 @media screen and (min-width: 1540px) {
   .ScalarValue {
     font-size: 2.8rem;
+  }
+  .AutomaticDashboard.AutomaticDashboard--withSidebar
+    #SmartScalar-PreviousValue {
+    display: inherit;
   }
 }

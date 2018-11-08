@@ -166,6 +166,7 @@ export default class Smart extends React.Component {
               {changeDisplay}
             </Flex>
             <h4
+              id="SmartScalar-PreviousValue"
               className="flex align-center hide lg-show"
               style={{
                 color: colors["text-medium"],
