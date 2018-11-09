@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [find sort])
   (:require [cheshire.core :as json]
             [clojure
+             [data :as data]
              [set :as set]
              [string :as str]
              [walk :as walk]]
@@ -608,9 +609,15 @@
   (when (seq results)
     (let [expected-cols columns
           actual-cols   (keys (first results))]
-      (when (not= (set expected-cols) (set actual-cols))
-        (throw (Exception. (str (tru "Error: mismatched columns in results! Expected: {0} Got: {1}"
-                                     (vec expected-cols) (vec actual-cols)))))))))
+      (let [expected-cols-set (set expected-cols)
+            actual-cols-set   (set actual-cols)]
+        (when-let [[expected-only actual-only _] (and (not= expected-cols-set actual-cols-set)
+                                                      (data/diff expected-cols-set actual-cols-set))]
+          (throw (Exception. (str (tru "Error: mismatched columns in results!")
+                                  " "
+                                  (tru "The following were expected but not found {0}." expected-only)
+                                  " "
+                                  (tru "The following were found but were not expected {0}." actual-only)))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."
