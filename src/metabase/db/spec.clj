@@ -3,8 +3,8 @@
   Only databases that are supported as application DBs should have functions in this namespace;
   otherwise, similar functions are only needed by drivers, and belong in those namespaces."
   (:require [clojure.string :as str]
+            [medley.core :as m]
             [ring.util.codec :as codec]))
-
 
 (defn h2
   "Create a database specification for a h2 database. Opts should include a key
@@ -18,11 +18,14 @@
          (dissoc opts :db)))
 
 (defn- remove-required-keys [db-spec & more-keys]
-  (apply dissoc db-spec (concat [:host :port :db :user :password :additional-options]
+  (apply dissoc db-spec (concat [:host :port :db :dbname :user :password :additional-options]
                                 more-keys)))
 
+(defn- purge-nil-values [m]
+  (m/remove-kv (fn [k v] (or (nil? k) (nil? v))) m))
+
 (defn- make-subname [host port db extra-connection-params]
-  (let [query-params (codec/form-encode extra-connection-params)]
+  (let [query-params (codec/form-encode (purge-nil-values extra-connection-params))]
     (str "//" host ":" port "/" db (when-not (str/blank? query-params)
                                      (str "?" query-params)))))
 
