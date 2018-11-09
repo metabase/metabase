@@ -85,11 +85,9 @@
 
 (defmethod dump (type Database)
   [path db]
-  (let [path   (format "%s/databases/%s_%s" path (:id db) (:name db))
-        tables (db/select Table :db_id (u/get-id db))]
+  (let [path   (format "%s/databases/%s_%s" path (:id db) (:name db))]
     (spit-yaml path (dissoc db :features))
-    (dump-all path tables)
-    (dump-all path (db/select Card :table_id [:in (map u/get-id tables)]))))
+    (dump-all path (db/select Table :db_id (u/get-id db)))))
 
 (defmethod dump (type Table)
   [path {:keys [id] :as table}]
@@ -123,7 +121,7 @@
 
 (defmethod dump (type Dashboard)
   [path dashboard]
-  (spit-yaml (format "%s/dashboards/%s" path (:name dashboard))
+  (spit-yaml (str path "/dashboards")
              (assoc dashboard
                :dashboard_cards (->> dashboard
                                      u/get-id
@@ -148,12 +146,14 @@
 
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml (format "%s/collections/%s/%s_%s"
+  (let [path (format "%s/collections/%s/%s_%s"
                      path
                      (-> collection :location collection-location->dir)
                      (:id collection)
-                     (:name collection))
-             collection))
+                     (:name collection))]
+    (spit-yaml path collection)
+    (dump-all path (db/select Card :collection_id (u/get-id collection)))
+    (dump-all path (db/select Dashboard :collection_id (u/get-id collection)))))
 
 (defmethod dump (type Card)
   [path card]
@@ -169,5 +169,6 @@
   (mdb/setup-db-if-needed!)
   (dump-all path (Database))
   (dump-all path (User))
-  (dump-all path (Dashboard))
   (dump-all path (Collection)))
+
+(-main "dump")
