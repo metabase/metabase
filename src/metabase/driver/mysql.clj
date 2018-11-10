@@ -175,7 +175,7 @@
   (let [date-str (du/format-date :date-hour-minute-second-ms date)]
     (sql/make-stmt-subs (-> (create-hsql-for-date date date-str)
                             hx/->date
-                            (hsql/format :quoting (sql/quote-style (MySQLDriver.)))
+                            (hsql/format :quoting :mysql, :allow-dashed-names? true)
                             first)
                         [date-str])))
 

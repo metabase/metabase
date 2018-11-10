@@ -170,7 +170,7 @@
   (when-let [ga-column (column-with-name database-id column-name)]
     (merge
      {:display_name (column-attribute ga-column :uiName)
-      :description   (column-attribute ga-column :description)}
+      :description  (column-attribute ga-column :description)}
      (let [data-type (column-attribute ga-column :dataType)]
        (when-let [base-type (cond
                               (= column-name "ga:date") :type/Date
@@ -190,9 +190,9 @@
   (update-in results [:data :cols] (partial map (partial add-col-metadata query))))
 
 (defn- process-query-in-context [qp]
-  (comp (fn [query]
-          (add-built-in-column-metadata query (qp query)))
-        qp/transform-query))
+  (fn [query]
+    (let [results (qp query)]
+      (add-built-in-column-metadata query results))))
 
 (defn- mbql-query->request ^Analytics$Data$Ga$Get [{{:keys [query]} :native, database :database}]
   (let [query  (if (string? query)

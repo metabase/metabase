@@ -4,10 +4,12 @@
             [metabase
              [config :as config]
              [util :as u]]
+            [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
             [monger
              [core :as mg]
-             [credentials :as mcred]])
+             [credentials :as mcred]]
+            [toucan.db :as db])
   (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
@@ -80,6 +82,7 @@
    values for DATABASE, such as plain strings or the usual MB details map."
   [database]
   (cond
+    (integer? database)           (db/select-one [Database :details] :id database)
     (string? database)            {:dbname database}
     (:dbname (:details database)) (:details database) ; entire Database obj
     (:dbname database)            database            ; connection details map only

@@ -15,7 +15,7 @@
              [generic-sql :as sql]
              [hive-like :as hive-like]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -23,8 +23,7 @@
              [honeysql-extensions :as hx]
              [i18n :refer [trs tru]]])
   (:import clojure.lang.Reflector
-           java.sql.DriverManager
-           metabase.query_processor.interface.Field))
+           java.sql.DriverManager))
 
 (defrecord SparkSQLDriver []
   :load-ns true
@@ -34,41 +33,18 @@
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
-(def ^:private source-table-alias "t1")
+(def ^:private source-table-alias
+  "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
+  "t1")
 
-(defn- resolve-table-alias [{:keys [schema-name table-name special-type field-name] :as field}]
-  (let [source-table (qp.store/table (mbql.u/query->source-table-id sqlqp/*query*))]
-    (if (and (= schema-name (:schema source-table))
-             (= table-name (:name source-table)))
-      (-> (assoc field :schema-name nil)
-          (assoc :table-name source-table-alias))
-      (if-let [matching-join-table (->> (get-in sqlqp/*query* [:query :join-tables])
-                                        (filter #(and (= schema-name (:schema %))
-                                                      (= table-name (:table-name %))))
-                                        first)]
-        (-> (assoc field :schema-name nil)
-            (assoc :table-name (:join-alias matching-join-table)))
-        field))))
-
-(defmethod  sqlqp/->honeysql [SparkSQLDriver Field]
-  [driver field-before-aliasing]
-  (let [{:keys [schema-name table-name special-type field-name] :as foo} (resolve-table-alias field-before-aliasing)
-        field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-    (cond
-      (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp driver field :seconds)
-      (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp driver field :milliseconds)
-      :else                                               field)))
-
-(defn- apply-join-tables
-  [honeysql-form {join-tables :join-tables}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
-    (let [honeysql-form (h/merge-left-join honeysql-form
-                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-table-alias (:field-name source-field))
-                           (hx/qualify-and-escape-dots join-alias         (:field-name pk-field))])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+(defmethod sqlqp/->honeysql [SparkSQLDriver (class Field)]
+  [driver field]
+  (let [table            (qp.store/table (:table_id field))
+        table-name       (if (:alias? table)
+                           (:name table)
+                           source-table-alias)
+        field-identifier (keyword (hx/qualify-and-escape-dots table-name (:name field)))]
+    (sqlqp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
 
 (defn- apply-page-using-row-number-for-offset
   "Apply `page` clause to HONEYSQL-FROM, using row_number() for drivers that do not support offsets"
@@ -190,7 +166,6 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-page                (u/drop-first-arg apply-page-using-row-number-for-offset)
           :apply-source-table        (u/drop-first-arg apply-source-table)
-          :apply-join-tables         (u/drop-first-arg apply-join-tables)
           :column->base-type         (u/drop-first-arg hive-like/column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg hive-like/date)

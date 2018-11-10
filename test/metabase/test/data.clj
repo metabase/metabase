@@ -20,6 +20,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -119,8 +120,8 @@
 
     $$table -> (id :venues)"
   {:style/indent 1}
-  [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}]
-  ($->id (keyword table-name) body, :wrap-field-ids? wrap-field-ids?))
+  [table-name & body]
+  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
 
 
 (defn wrap-inner-mbql-query
@@ -147,7 +148,7 @@
   [table & [query]]
   `(wrap-inner-mbql-query
      ~(merge `{:source-table (id ~(keyword table))}
-             ($->id (keyword table) query))))
+             ($->id table query))))
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
@@ -166,9 +167,11 @@
 
 (defn- get-table-id-or-explode [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
-  (let [table-name (format-name table-name)]
-    (or (db/select-one-id Table, :db_id db-id, :name table-name)
-        (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
+  (let [table-name        (format-name table-name)
+        table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
+    (or (table-id-for-name table-name)
+        (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
+                             (i/db-qualified-table-name db-name table-name)))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
@@ -189,7 +192,7 @@
 
 (defn id
   "Get the ID of the current database or one of its `Tables` or `Fields`.
-   Relies on the dynamic variable `*get-db`, which can be rebound with `with-db`."
+   Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
   ([]
    {:post [(integer? %)]}
    (:id (db)))
@@ -218,7 +221,6 @@
   []
   (contains? (driver/features *driver*) :binning))
 
-(defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
 (defn expected-base-type->actual
@@ -285,13 +287,15 @@
          get-or-create! (fn []
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
+     ;; attempt to make sure test extensions are loaded for the driver. This might still fail (see below)
+     (require (symbol (str "metabase.test.data." (name engine))))
      (try
        (get-or-create!)
        ;; occasionally we'll see an error like
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
        ;; to fix this we just need to reload a couple namespaces and then try again
-       (catch IllegalArgumentException _
+       (catch Exception _
          (reload-test-extensions engine)
          (get-or-create!))))))
 
@@ -345,7 +349,7 @@
        ...)"
   {:style/indent 1}
   [dataset & body]
-  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+  `(with-temp-db [~'_ (resolve-dbdef '~dataset)]
      ~@body))
 
 (defn- delete-model-instance!
@@ -367,7 +371,7 @@
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
-(def venue-categories
+(def ^:private venue-categories
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 (defn create-venue-category-remapping

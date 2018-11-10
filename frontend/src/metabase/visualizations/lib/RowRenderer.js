@@ -25,8 +25,6 @@ export default function rowRenderer(
   // disable clicks
   chart.onClick = () => {};
 
-  const colors = settings["graph.colors"];
-
   const formatDimension = row =>
     formatValue(row[0], { column: cols[0], type: "axis" });
 
@@ -93,7 +91,7 @@ export default function rowRenderer(
   });
 
   chart
-    .ordinalColors([colors[0]])
+    .ordinalColors([settings.series(series[0]).color])
     .x(d3.scale.linear().domain(xDomain))
     .elasticX(true)
     .dimension(dimension)

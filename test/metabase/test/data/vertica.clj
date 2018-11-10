@@ -52,7 +52,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (fn [& _] @db-connection-details)
-          :default-schema                     (constantly "public")
           :engine                             (constantly :vertica)
           :has-questionable-timezone-support? (constantly true)}))
 

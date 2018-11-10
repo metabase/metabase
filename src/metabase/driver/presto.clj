@@ -1,4 +1,5 @@
 (ns metabase.driver.presto
+  "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [clj-http.client :as http]
             [clj-time
              [coerce :as tcoerce]
@@ -18,15 +19,18 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import java.sql.Time
-           java.util.Date
-           metabase.query_processor.interface.TimeValue))
+           java.util.Date))
 
 (defrecord PrestoDriver []
   :load-ns true
@@ -37,7 +41,9 @@
 
 (defn- details->uri
   [{:keys [ssl host port]} path]
-  (str (if ssl "https" "http") "://" host ":" port path))
+  {:pre [(string? host) (seq host) ((some-fn integer? string?) port)]}
+  (str (if ssl "https" "http") "://" host ":" port
+       path))
 
 (defn- details->request [{:keys [user password catalog report-timezone]}]
   (merge {:headers (merge {"X-Presto-Source" "metabase"
@@ -88,9 +94,10 @@
 (defn- parse-presto-results [report-timezone columns data]
   (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
     (for [row data]
-      (for [[value parser] (partition 2 (interleave row parsers))]
-        (when (some? value)
-          (parser value))))))
+      (vec
+       (for [[value parser] (partition 2 (interleave row parsers))]
+         (when (some? value)
+           (parser value)))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
@@ -105,10 +112,10 @@
             (fetch-presto-results! details results nextUri))))))
 
 (defn- execute-presto-query! [details query]
+  {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error id]} :body :as foo} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                             (assoc (details->request details-with-tunnel) :body query, :as :json))]
-
+    (let [{{:keys [columns data nextUri error id]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                     (assoc (details->request details-with-tunnel) :body query, :as :json))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -145,36 +152,34 @@
 (defn- quote+combine-names [& names]
   (str/join \. (map quote-name names)))
 
-(defn- rename-duplicates [values]
-  ;; Appends _2, _3 and so on to duplicated values
-  (loop [acc [], [h & tail] values, seen {}]
-    (let [value (if (seen h) (str h "_" (inc (seen h))) h)]
-      (if tail
-        (recur (conj acc value) tail (assoc seen h (inc (get seen h 0))))
-        (conj acc value)))))
-
 ;;; IDriver implementation
 
 (defn- can-connect? [{:keys [catalog] :as details}]
-  (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
+  (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog)
+                                                          " LIKE 'information_schema'"))]
     (= v "information_schema")))
 
 (defn- date-interval [unit amount]
   (hsql/call :date_add (hx/literal unit) amount :%now))
 
+(s/defn ^:private database->all-schemas :- #{su/NonBlankString}
+  "Return a set of all schema names in this `database`."
+  [{{:keys [catalog schema] :as details} :details :as database}]
+  (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
+        {:keys [rows]} (execute-presto-query! details sql)]
+    (set (map first rows))))
+
 (defn- describe-schema [{{:keys [catalog] :as details} :details} {:keys [schema]}]
   (let [sql            (str "SHOW TABLES FROM " (quote+combine-names catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
-    (set (for [name tables]
-           {:name name, :schema schema}))))
+    (set (for [table-name tables]
+           {:name table-name, :schema schema}))))
 
-(defn- describe-database [{{:keys [catalog] :as details} :details :as database}]
-  (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
-        {:keys [rows]} (execute-presto-query! details sql)
-        schemas        (remove #{"information_schema"} (map first rows))] ; inspecting "information_schema" breaks weirdly
-    {:tables (apply set/union (for [name schemas]
-                                (describe-schema database {:schema name})))}))
+(defn- describe-database [driver database]
+  (let [schemas (remove (sql/excluded-schemas driver) (database->all-schemas database))]
+    {:tables (reduce set/union (for [schema schemas]
+                                 (describe-schema database {:schema schema})))}))
 
 (defn- presto-type->base-type [field-type]
   (condp re-matches field-type
@@ -220,6 +225,10 @@
   [_ date]
   (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
 
+(defmethod sqlqp/->honeysql [PrestoDriver :stddev]
+  [driver [_ field]]
+  (hsql/call :stddev_samp (sqlqp/->honeysql driver field)))
+
 (def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
 
 (defn- time->str
@@ -229,25 +238,32 @@
    (let [tz (time/time-zone-for-id tz-id)]
      (tformat/unparse (tformat/with-zone time-format tz) (tcoerce/to-date-time t)))))
 
-(defmethod sqlqp/->honeysql [PrestoDriver TimeValue]
-  [_ {:keys [value timezone-id]}]
-  (hx/cast :time (time->str value timezone-id)))
+(defmethod sqlqp/->honeysql [PrestoDriver :time]
+  [_ [_ value]]
+  (hx/cast :time (time->str value (driver/report-timezone))))
 
-(defmethod sqlqp/->honeysql [PrestoDriver Time]
-  [_ {:keys [value]}]
-  (hx/->time (time->str value)))
-
-(defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
+(defn- execute-query [{database-id                  :database
+                       :keys                        [settings]
+                       {sql :query, params :params} :native
+                       query-type                   :type
+                       :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
-        details                (merge (:details database) settings)
+        details                (merge (:details (qp.store/database))
+                                      settings)
         {:keys [columns rows]} (execute-presto-query! details sql)
-        columns                (for [[col name] (map vector columns (rename-duplicates (map :name columns)))]
+        columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
-    {:cols    columns
-     :columns (map (comp keyword :name) columns)
-     :rows    rows}))
+    (merge
+     {:columns (map (comp u/keyword->qualified-name :name) columns)
+      :rows    rows}
+     ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
+     ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want
+     ;; to deal with fixing a million tests to make it work at this second since it doesn't make a difference from an
+     ;; FE perspective. Perhaps when we get our test story sorted out a bit better we can fix this
+     (when (= query-type :native)
+       {:cols columns}))))
 
 
 (defn- humanize-connection-error-message [message]
@@ -323,7 +339,7 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:can-connect?                      (u/drop-first-arg can-connect?)
           :date-interval                     (u/drop-first-arg date-interval)
-          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-database                 describe-database
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
           :details-fields                    (constantly (ssh/with-tunnel-config
@@ -359,7 +375,6 @@
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"information_schema"})
           :quote-style               (constantly :ansi)
-          :stddev-fn                 (constantly :stddev_samp)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 

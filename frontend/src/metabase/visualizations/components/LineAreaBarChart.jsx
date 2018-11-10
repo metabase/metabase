@@ -99,7 +99,7 @@ export default class LineAreaBarChart extends Component {
     if (dimensions.length < 1 || metrics.length < 1) {
       throw new ChartSettingsError(
         t`Which fields do you want to use for the X and Y axes?`,
-        t`Data`,
+        { section: t`Data` },
         t`Choose fields`,
       );
     }

@@ -63,6 +63,10 @@ You can see more suggested x-rays over on the right-hand side of the screen. Bro
 
 If you come across an x-ray that's particularly interesting, you can save it as a dashboard by clicking the green Save button. Metabase will create a new dashboard and put it and all of its charts in a new collection, and will save this new collection wherever you choose.
 
+### Disabling x-rays
+
+If for some reason x-rays aren't a good fit for your team or your data, administrators can turn them off completely in the general settings area of the Admin Panel.
+
 ### Where did the old x-rays go?
 
 We're reworking the way we do things like time series growth analysis, which was present in past versions of x-rays. In the meantime, we've removed those previous x-rays, and will bring those features back in a more elegant and streamlined way in a future version of Metabase.

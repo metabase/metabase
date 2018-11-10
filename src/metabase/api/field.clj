@@ -1,5 +1,9 @@
 (ns metabase.api.field
   (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase
+             [query-processor :as qp]
+             [related :as related]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
@@ -7,9 +11,6 @@
              [field :as field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
-            [metabase.query-processor :as qp]
-            [metabase.related :as related]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan

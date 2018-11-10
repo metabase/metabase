@@ -6,7 +6,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [rows]]
+             [query-processor-test :refer [rows rows+column-names]]
              [sync :as sync]
              [util :as u]]
             [metabase.driver
@@ -17,7 +17,6 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.interface :as qpi]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test
              [data :as data]
@@ -138,7 +137,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-mbql-query objects.stuff))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -158,15 +157,15 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-mbql-query people
           {:fields [$name $bird_id->birds.name]}))
-      :data (dissoc :cols :native_form :results_metadata :insights)))
+      rows+column-names))
 
 
 ;;; Check support for `inet` columns
 (i/def-database-definition ^:private ip-addresses
   [["addresses"
-     [{:field-name "ip", :base-type {:native "inet"}}]
-     [[(hsql/raw "'192.168.1.1'::inet")]
-      [(hsql/raw "'10.4.4.15'::inet")]]]])
+    [{:field-name "ip", :base-type {:native "inet"}}]
+    [[(hsql/raw "'192.168.1.1'::inet")]
+     [(hsql/raw "'10.4.4.15'::inet")]]]])
 
 ;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
 ;; wouldn't work)
@@ -299,11 +298,14 @@
 
 ;; Make sure we're able to fingerprint TIME fields (#5911)
 (expect-with-engine :postgres
-                    #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1}
+                    #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1
+                                                                                                      :nil% 0.0}
                                                                                              :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
-                      #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1}
+                      #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1
+                                                                                                      :nil% 0.0}
                                                                                              :type {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z", :latest "1970-01-01T09:00:00.000Z"}}}}
-    #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1}
+    #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1
+:nil% 0.0}
                                                                            :type   {:type/Text {:percent-json    0.0
                                                                                                 :percent-url     0.0
                                                                                                 :percent-email   0.0
@@ -395,8 +397,7 @@
 ;; check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`
 (expect-with-engine :postgres
   {:name :cast, :args ["toucan" (keyword "bird type")]}
-  (sqlqp/->honeysql pg-driver (qpi/map->Value {:field {:database-type "bird type", :base-type :type/PostgresEnum}
-                                               :value "toucan"})))
+  (sqlqp/->honeysql pg-driver [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))
 
 ;; End-to-end check: make sure everything works as expected when we run an actual query
 (expect-with-engine :postgres

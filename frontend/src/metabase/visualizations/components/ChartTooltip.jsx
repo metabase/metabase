@@ -8,51 +8,32 @@ import { formatValue } from "metabase/lib/formatting";
 
 export default class ChartTooltip extends Component {
   static propTypes = {
-    series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
+    settings: PropTypes.object,
   };
 
   _getRows() {
-    const { series, hovered } = this.props;
+    const { hovered } = this.props;
     if (!hovered) {
       return [];
     }
-    // Array of key, value, col: { data: [{ key, value, col }], element, event }
     if (Array.isArray(hovered.data)) {
+      // Array of key, value, col: { data: [{ key, value, col }], element, event }
       return hovered.data;
     } else if (hovered.value !== undefined || hovered.dimensions) {
       // ClickObject: { value, column, dimensions: [{ value, column }], element, event }
       const dimensions = [];
-      if (hovered.value !== undefined) {
-        dimensions.push({ value: hovered.value, column: hovered.column });
-      }
       if (hovered.dimensions) {
         dimensions.push(...hovered.dimensions);
+      }
+      if (hovered.value !== undefined) {
+        dimensions.push({ value: hovered.value, column: hovered.column });
       }
       return dimensions.map(({ value, column }) => ({
         key: getFriendlyName(column),
         value: value,
         col: column,
       }));
-    } else if (hovered.data) {
-      // DEPRECATED: { key, value }
-      console.warn(
-        "hovered should be a ClickObject or hovered.data should be an array of { key, value, col }",
-        hovered.data,
-      );
-      let s = series[hovered.index] || series[0];
-      return [
-        {
-          key: getFriendlyName(s.data.cols[0]),
-          value: hovered.data.key,
-          col: s.data.cols[0],
-        },
-        {
-          key: getFriendlyName(s.data.cols[1]),
-          value: hovered.data.value,
-          col: s.data.cols[1],
-        },
-      ];
     }
     return [];
   }
@@ -92,8 +73,8 @@ export default class ChartTooltip extends Component {
 
 const TooltipRow = ({ name, value, column, settings }) => (
   <tr>
-    <td className="text-light text-right">{name}:</td>
-    <td className="pl1 text-bold text-left">
+    {name ? <td className="text-light text-right pr1">{name}:</td> : <td />}
+    <td className="text-bold text-left">
       {React.isValidElement(value)
         ? value
         : formatValue(value, {

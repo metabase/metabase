@@ -10,7 +10,9 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db])
+            [metabase.test.util.log :as tu.log]
+            [toucan.db :as db]
+            [clojure.string :as str])
   (:import metabase.driver.presto.PrestoDriver))
 
 ;;; HELPERS
@@ -70,21 +72,25 @@
   "\"weird . \"\"schema\".\"weird.table\"\" name\""
   (#'presto/quote+combine-names "weird . \"schema" "weird.table\" name"))
 
-(expect
-  ["name" "count" "count_2" "sum", "sum_2", "sum_3"]
-  (#'presto/rename-duplicates ["name" "count" "count" "sum" "sum" "sum"]))
-
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto
-  {:tables #{{:name "categories" :schema "default"}
-             {:name "venues"     :schema "default"}
-             {:name "checkins"   :schema "default"}
-             {:name "users"      :schema "default"}}}
-  (driver/describe-database (PrestoDriver.) (data/db)))
+  {:tables #{{:name "test_data_categories" :schema "default"}
+             {:name "test_data_venues"     :schema "default"}
+             {:name "test_data_checkins"   :schema "default"}
+             {:name "test_data_users"      :schema "default"}}}
+  (-> (driver/describe-database (PrestoDriver.) (data/db))
+      ;; we load all Presto tables into the same "catalog" (i.e. DB) using the db-prefixed-table-name stuf so we don't
+      ;; have to update the docker image every time we add a new dataset. So make sure we ignore the ones that are in
+      ;; different datasets in the results here
+      (update :tables (comp set (partial filter (comp #{"test_data_categories"
+                                                        "test_data_venues"
+                                                        "test_data_checkins"
+                                                        "test_data_users"}
+                                                      :name))))))
 
 ;; DESCRIBE-TABLE
 (datasets/expect-with-engine :presto
-  {:name   "venues"
+  {:name   "test_data_venues"
    :schema "default"
    :fields #{{:name          "name",
               :database-type "varchar(255)"
@@ -137,16 +143,17 @@
   #"com.jcraft.jsch.JSchException:"
   (try
     (let [engine  :presto
-          details {:ssl            false,
-                   :password       "changeme",
-                   :tunnel-host    "localhost",
-                   :tunnel-pass    "BOGUS-BOGUS",
+          details {:ssl            false
+                   :password       "changeme"
+                   :tunnel-host    "localhost"
+                   :tunnel-pass    "BOGUS-BOGUS"
                    :catalog        "BOGUS"
-                   :host           "localhost",
-                   :tunnel-enabled true,
-                   :tunnel-port    22,
+                   :host           "localhost"
+                   :tunnel-enabled true
+                   :tunnel-port    22
                    :tunnel-user    "bogus"}]
-      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+      (tu.log/suppress-output
+        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
     (catch Exception e
       (.getMessage e))))
 

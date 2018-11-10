@@ -12,7 +12,9 @@
             [toucan
              [models :as models]
              [util :as toucan-util]])
-  (:import java.sql.Blob))
+  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
+           java.sql.Blob
+           java.util.zip.GZIPInputStream))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -23,8 +25,8 @@
 
 ;;; types
 
-(defn- json-in
-  "Default in function for Fields given a Toucan type `:json`. Serializes object as JSON."
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
   (if (string? obj)
     obj
@@ -36,12 +38,15 @@
       (json/parse-string s keywordize-keys?)
       obj)))
 
-(defn- json-out-with-keywordization
-  "Default out function for Fields given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
+(defn json-out-with-keywordization
+  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
   [obj]
   (json-out obj true))
 
-(defn- json-out-without-keywordization [obj]
+(defn json-out-without-keywordization
+  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
+  as strings."
+  [obj]
   (json-out obj false))
 
 (models/add-type! :json
@@ -106,20 +111,19 @@
   :in  encryption/maybe-encrypt
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
-(defn compress
-  "Compress OBJ, returning a byte array."
-  [obj]
-  (nippy/freeze obj {:compressor nippy/snappy-compressor}))
-
 (defn decompress
   "Decompress COMPRESSED-BYTES."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
-    (nippy/thaw compressed-bytes {:compressor nippy/snappy-compressor})))
+    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                bif     (BufferedInputStream. bis)
+                gz-in   (GZIPInputStream. bif)
+                data-in (DataInputStream. gz-in)]
+      (nippy/thaw-from-in! data-in))))
 
 (models/add-type! :compressed
-  :in  compress
+  :in  identity
   :out decompress)
 
 (defn- validate-cron-string [s]

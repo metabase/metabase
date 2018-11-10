@@ -9,6 +9,7 @@
              [http-client :as http :refer :all]
              [middleware :as middleware]
              [util :as u]]
+            [metabase.api.card :as card-api]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -274,6 +275,7 @@
             :can_write              true
             :dashboard_count        0
             :read_permissions       nil
+            :result_metadata        true
             :creator                (match-$ (fetch-user :rasta)
                                       {:common_name  "Rasta Toucan"
                                        :is_superuser false
@@ -285,20 +287,19 @@
                                        :email        "rasta@metabase.com"
                                        :id           $})})
     (tu/with-non-admin-groups-no-root-collection-perms
-      (tt/with-temp* [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
-                      Collection [collection]]
+      (tt/with-temp* [Collection [collection]]
         (tu/with-model-cleanup [Card]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (-> ((user->client :rasta) :post 200 "card"
-               (assoc (card-with-name-and-query card-name (mbql-count-query (u/get-id db) (u/get-id table)))
+               (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
                  :collection_id (u/get-id collection)))
               (dissoc :created_at :updated_at :id)
               (update :table_id integer?)
               (update :database_id integer?)
               (update :collection_id integer?)
               (update :dataset_query map?)
-              (update :collection map?)))))))
+              (update :collection map?)
+              (update :result_metadata (partial every? map?))))))))
 
 ;; Make sure when saving a Card the query metadata is saved (if correct)
 (expect
@@ -324,14 +325,53 @@
           ;; now check the metadata that was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
 
+(defn- fingerprint-integers->doubles
+  "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
+  new card"
+  [metadata]
+  (update metadata :fingerprint (fn [fingerprint] (-> fingerprint
+                                                      (update-in [:type :type/Number :min] double)
+                                                      (update-in [:type :type/Number :max] double)))))
+
+;; When integer values are passed to the FE, they will be returned as floating point values. Our hashing should ensure
+;; that integer and floating point values hash the same so we don't needlessly rerun the query
+(expect
+  [{:base_type    "type/Integer"
+    :display_name "Count Chocula"
+    :name         "count_chocula"
+    :special_type "type/Number"
+    :fingerprint  {:global {:distinct-count 285},
+                   :type {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (let [metadata  [{:base_type    :type/Integer
+                      :display_name "Count Chocula"
+                      :name         "count_chocula"
+                      :special_type :type/Number
+                      :fingerprint  {:global {:distinct-count 285},
+                                     :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
+          card-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (tu/throw-if-called card-api/result-metadata-for-query
+          (tu/with-model-cleanup [Card]
+            ;; create a card with the metadata
+            ((user->client :rasta) :post 200 "card"
+             (assoc (card-with-name-and-query card-name)
+               :collection_id      (u/get-id collection)
+               :result_metadata    (map fingerprint-integers->doubles metadata)
+               :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
+            ;; now check the metadata that was saved in the DB
+            (db/select-one-field :result_metadata Card :name card-name)))))))
+
 ;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
 (expect
   [{:base_type    "type/Integer"
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
@@ -349,6 +389,45 @@
              :metadata_checksum  "ABCDEF")) ; bad checksum
           ;; now check the correct metadata was fetched and was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
+
+;; Check that the generated query to fetch the query result metadata includes user information in the generated query
+(expect
+  {:metadata-results     [{:base_type    "type/Integer"
+                           :display_name "count"
+                           :name         "count"
+                           :special_type "type/Quantity"
+                           :fingerprint  {:global {:distinct-count 1
+                                                   :nil%           0.0},
+                                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+   :has-user-id-remark? true}
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (let [metadata  [{:base_type    :type/Integer
+                      :display_name "Count Chocula"
+                      :name         "count_chocula"
+                      :special_type :type/Quantity}]
+          card-name (tu/random-name)]
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (tu/with-model-cleanup [Card]
+          ;; Rebind the `cancellable-run-query` function so that we can capture the generated SQL and inspect it
+          (let [orig-fn    (var-get #'metabase.driver.generic-sql.query-processor/cancellable-run-query)
+                sql-result (atom [])]
+            (with-redefs [metabase.driver.generic-sql.query-processor/cancellable-run-query (fn [db sql params opts]
+                                                                                              (swap! sql-result conj sql)
+                                                                                              (orig-fn db sql params opts))]
+              ;; create a card with the metadata
+              ((user->client :rasta) :post 200 "card"
+               (assoc (card-with-name-and-query card-name)
+                 :collection_id      (u/get-id collection)
+                 :result_metadata    metadata
+                 :metadata_checksum  "ABCDEF"))) ; bad checksum
+            ;; now check the correct metadata was fetched and was saved in the DB
+            {:metadata-results    (db/select-one-field :result_metadata Card :name card-name)
+             ;; Was the user id found in the generated SQL?
+             :has-user-id-remark? (-> (str "userID: " (user->id :rasta))
+                                      re-pattern
+                                      (re-find (first @sql-result))
+                                      boolean)}))))))
 
 ;; Make sure we can create a Card with a Collection position
 (expect
@@ -381,11 +460,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can fetch a card
-(tt/expect-with-temp [Database   [db]
-                      Table      [table {:db_id (u/get-id db)}]
+(tt/expect-with-temp [Database   [db          (select-keys (data/db) [:engine :details])]
+                      Table      [table       (-> (Table (data/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (u/get-id db)))]
                       Collection [collection]
-                      Card       [card  {:collection_id (u/get-id collection)
-                                         :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+                      Card       [card        {:collection_id (u/get-id collection)
+                                               :dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
   (merge card-defaults
          (match-$ card
            {:dashboard_count        0
@@ -538,8 +619,9 @@
     :display_name "count"
     :name         "count"
     :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0}}}}]
+    :fingerprint  {:global {:distinct-count 1
+                            :nil%           0.0},
+                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"

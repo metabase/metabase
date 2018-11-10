@@ -10,6 +10,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -200,35 +201,49 @@
 (def ^:private existing-datasets
   (atom #{}))
 
-(defn- create-db! [{:keys [database-name table-definitions]}]
-  {:pre [(seq database-name) (sequential? table-definitions)]}
-    ;; fetch existing datasets if we haven't done so yet
-  (when-not (seq @existing-datasets)
-    (reset! existing-datasets (set (existing-dataset-names)))
-    (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
-  ;; now check and see if we need to create the requested one
-  (let [database-name (normalize-name database-name)]
-    (when-not (contains? @existing-datasets database-name)
-      (try
-        (u/auto-retry 10
-          ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
-          ;; again from a blank slate
-          (u/ignore-exceptions
-            (destroy-dataset! database-name))
-          (create-dataset! database-name)
-          ;; do this in parallel because otherwise it can literally take an hour to load something like
-          ;; fifty_one_different_tables
-          (u/pdoseq [tabledef table-definitions]
-            (load-tabledef! database-name tabledef))
-          (swap! existing-datasets conj database-name)
-          (println (u/format-color 'green "[OK]")))
-        ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time
-        ;; around
-        (catch Throwable e
-          (u/ignore-exceptions
-            (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
-            (destroy-dataset! database-name))
-          (throw e))))))
+(defn- create-db!
+  ([db-def]
+   (create-db! db-def nil))
+  ([{:keys [database-name table-definitions]} _]
+   {:pre [(seq database-name) (sequential? table-definitions)]}
+   ;; fetch existing datasets if we haven't done so yet
+   (when-not (seq @existing-datasets)
+     (reset! existing-datasets (set (existing-dataset-names)))
+     (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
+   ;; now check and see if we need to create the requested one
+   (let [database-name (normalize-name database-name)]
+     (when-not (contains? @existing-datasets database-name)
+       (try
+         (u/auto-retry 10
+           ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
+           ;; again from a blank slate
+           (u/ignore-exceptions
+             (destroy-dataset! database-name))
+           (create-dataset! database-name)
+           ;; do this in parallel because otherwise it can literally take an hour to load something like
+           ;; fifty_one_different_tables
+           (u/pdoseq [tabledef table-definitions]
+             (load-tabledef! database-name tabledef))
+           (swap! existing-datasets conj database-name)
+           (println (u/format-color 'green "[OK]")))
+         ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time
+         ;; around
+         (catch Throwable e
+           (u/ignore-exceptions
+             (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
+             (destroy-dataset! database-name))
+           (throw e)))))))
+
+(defn aggregate-column-info
+  ([driver aggregation-type]
+   (i/default-aggregate-column-info driver aggregation-type))
+  ([driver aggregation-type field]
+   (merge
+    (i/default-aggregate-column-info driver aggregation-type field)
+    ;; BigQuery averages, standard deviations come back as Floats. This might apply to some other ag types as well;
+    ;; add them as we come across them.
+    (when (#{:avg :stddev} aggregation-type)
+      {:base_type :type/Float}))))
 
 
 ;;; --------------------------------------------- IDriverTestExtensions ----------------------------------------------
@@ -238,4 +253,5 @@
   (merge i/IDriverTestExtensionsDefaultsMixin
          {:engine                       (constantly :bigquery)
           :database->connection-details (u/drop-first-arg database->connection-details)
-          :create-db!                   (u/drop-first-arg create-db!)}))
+          :create-db!                   (u/drop-first-arg create-db!)
+          :aggregate-column-info        aggregate-column-info}))

@@ -64,7 +64,7 @@
    :job-class          UpdateFieldValues})
 
 
-;; These getter functions are not strictly neccesary but are provided primarily so we can get some extra validation by
+;; These getter functions are not strictly necessary but are provided primarily so we can get some extra validation by
 ;; using them
 
 (s/defn ^:private job-key :- JobKey

@@ -6,9 +6,9 @@ import { Harmonizer } from "color-harmony";
 
 import { deterministicAssign } from "./deterministic";
 
-type ColorName = string;
-type ColorString = string;
-type ColorFamily = { [name: ColorName]: ColorString };
+export type ColorName = string;
+export type ColorString = string;
+export type ColorFamily = { [name: ColorName]: ColorString };
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
@@ -20,8 +20,9 @@ const colors = {
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
   accent5: "#F2A86F",
-  accent6: "#A6E7F3",
+  accent6: "#98D9D9",
   accent7: "#7172AD",
+  "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   black: "#2E353B",
   success: "#84BB4C",
@@ -120,16 +121,24 @@ type ColorScale = (input: number) => ColorString;
 export const getColorScale = (
   extent: [number, number],
   colors: string[],
+  quantile: boolean = false,
 ): ColorScale => {
-  const [start, end] = extent;
-  return d3.scale
-    .linear()
-    .domain(
-      colors.length === 3
-        ? [start, start + (end - start) / 2, end]
-        : [start, end],
-    )
-    .range(colors);
+  if (quantile) {
+    return d3.scale
+      .quantile()
+      .domain(extent)
+      .range(colors);
+  } else {
+    const [start, end] = extent;
+    return d3.scale
+      .linear()
+      .domain(
+        colors.length === 3
+          ? [start, start + (end - start) / 2, end]
+          : [start, end],
+      )
+      .range(colors);
+  }
 };
 
 // HACK: d3 may return rgb values with decimals but certain rendering engines
@@ -150,6 +159,11 @@ export const alpha = (color: ColorString, alpha: number): ColorString =>
 export const darken = (color: ColorString, factor: number): ColorString =>
   Color(color)
     .darken(factor)
+    .string();
+
+export const lighten = (color: ColorString, factor: number): ColorString =>
+  Color(color)
+    .lighten(factor)
     .string();
 
 const PREFERRED_COLORS = {
