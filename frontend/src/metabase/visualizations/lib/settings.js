@@ -129,7 +129,7 @@ function getComputedSetting(
   const settings = { ...storedSettings, ...computedSettings };
 
   try {
-    if (settingDef.getValue) {
+    if (settingDef.getValue && object[0] !== undefined && object[0]['data'] !== undefined) {
       return (computedSettings[settingId] = settingDef.getValue(
         object,
         settings,
@@ -137,13 +137,13 @@ function getComputedSetting(
       ));
     }
 
-    if (storedSettings[settingId] !== undefined) {
+    if (storedSettings[settingId] !== undefined && object[0] !== undefined && object[0]['data'] !== undefined) {
       if (!settingDef.isValid || settingDef.isValid(object, settings, extra)) {
         return (computedSettings[settingId] = storedSettings[settingId]);
       }
     }
 
-    if (settingDef.getDefault) {
+    if (settingDef.getDefault && object[0] !== undefined && object[0]['data'] !== undefined) {
       const defaultValue = settingDef.getDefault(object, settings, extra);
 
       return (computedSettings[settingId] = defaultValue);
