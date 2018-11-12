@@ -78,6 +78,8 @@
 
 (derive :type/PostgresEnum :type/Text)
 
+(derive :type/Password :type/Text)
+
 ;;; DateTime Types
 
 (derive :type/DateTime :type/*)
