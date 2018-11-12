@@ -7,7 +7,7 @@ import cucumber.api.CucumberOptions;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
-@CucumberOptions(features = { "src/test/resources/features/001_installation/003_disc_setupDiscovery.feature" })
+@CucumberOptions(features = { "src/test/resources/features/001_installation/003_disc_setupDiscovery.feature" },format = "json:target/cucumber.json")
 public class DISC_setup_discovery_IT extends BaseTest{
 
     @Factory(enabled = false, dataProviderClass = BrowsersDataProvider.class, dataProvider = "availableUniqueBrowsers")

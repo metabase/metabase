@@ -7,7 +7,7 @@ import cucumber.api.CucumberOptions;
 import org.testng.annotations.Factory;
 import org.testng.annotations.Test;
 
-@CucumberOptions(features = { "src/test/resources/features/002_connections/001_disc_connectionPG.feature" })
+@CucumberOptions(features = { "src/test/resources/features/002_connections/001_disc_connectionPG.feature" },format = "json:target/cucumber.json")
 public class DISC_connectionPG_IT extends BaseTest{
 
     @Factory(enabled = false, dataProviderClass = BrowsersDataProvider.class, dataProvider = "availableUniqueBrowsers")

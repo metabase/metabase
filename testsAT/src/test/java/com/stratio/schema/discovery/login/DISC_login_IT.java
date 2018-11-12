@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
         "src/test/resources/features/003_login/002_disc_createGroups.feature",
         "src/test/resources/features/003_login/003_disc_updateEnvDiscovery.feature",
         "src/test/resources/features/003_login/004_disc_loginWithHeaders.feature"
-})
+},format = "json:target/cucumber.json")
 public class DISC_login_IT extends BaseTest{
 
     @Factory(enabled = false, dataProviderClass = BrowsersDataProvider.class, dataProvider = "availableUniqueBrowsers")

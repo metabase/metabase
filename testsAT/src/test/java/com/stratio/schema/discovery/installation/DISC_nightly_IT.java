@@ -26,7 +26,7 @@ import org.testng.annotations.Factory;
         "src/test/resources/features/099_uninstall/001_disc_uninstallDiscovery.feature",
         "src/test/resources/features/099_uninstall/002_disc_deletePolicies.feature",
         "src/test/resources/features/099_uninstall/003_disc_uninstallPostgres.feature"
-})
+},format = "json:target/cucumber.json")
 public class DISC_nightly_IT extends BaseTest {
 
     @Factory(enabled = false, dataProviderClass = BrowsersDataProvider.class, dataProvider = "availableUniqueBrowsers")
