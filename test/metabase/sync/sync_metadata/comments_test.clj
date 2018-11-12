@@ -61,7 +61,7 @@
     {:name (data/format-name "comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db comment-after-sync]
     ;; modify the source DB to add the comment and resync
-    (i/create-db! ds/*driver* (assoc-in comment-after-sync [:table-definitions 0 :field-definitions 0 :field-comment] "added comment") true)
+    (i/create-db! ds/*driver* (assoc-in comment-after-sync [:table-definitions 0 :field-definitions 0 :field-comment] "added comment"), {:skip-drop-db? true})
     (sync/sync-table! (Table (data/id "comment_after_sync")))
     (db->fields db)))
 
@@ -98,7 +98,7 @@
 (ds/expect-with-engines #{:h2 :postgres}
   #{{:name (data/format-name "table_with_comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db (basic-table "table_with_comment_after_sync" nil)]
-     ;; modify the source DB to add the comment and resync
-     (i/create-db! ds/*driver* (basic-table "table_with_comment_after_sync" "added comment") true)
-     (metabase.sync.sync-metadata.tables/sync-tables! db)
-     (db->tables db)))
+    ;; modify the source DB to add the comment and resync
+    (i/create-db! ds/*driver* (basic-table "table_with_comment_after_sync" "added comment") {:skip-drop-db? true})
+    (metabase.sync.sync-metadata.tables/sync-tables! db)
+    (db->tables db)))

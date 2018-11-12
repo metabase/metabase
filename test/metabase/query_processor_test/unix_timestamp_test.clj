@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
   (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor-test.date-bucketing-test :as dbt]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -35,7 +36,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (contains? #{:oracle :redshift} *engine*)
+    (dbt/tz-shifted-engine-bug? *engine*)
     [["2015-06-01T00:00:00.000-07:00" 6]
      ["2015-06-02T00:00:00.000-07:00" 10]
      ["2015-06-03T00:00:00.000-07:00" 4]

@@ -21,6 +21,7 @@
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.interface :as qpi]
+            [metabase.util.i18n :as ui18n]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -247,8 +248,8 @@
   [collection-name parent-collection-id]
   (let [c (db/count 'Collection
             :name     [:like (format "%s%%" collection-name)]
-            :location  (collection/children-location  (db/select-one ['Collection :location :id]
-                                                        :id parent-collection-id)))]
+            :location (collection/children-location (db/select-one ['Collection :location :id]
+                                                      :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -256,7 +257,8 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashcards  (:ordered_cards dashboard)
+  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+        dashcards  (:ordered_cards dashboard)
         collection (magic.populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
                     (rand-nth magic.populate/colors)

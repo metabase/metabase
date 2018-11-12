@@ -569,7 +569,7 @@
   [id schema]
   (api/read-check Database id)
   (api/check-403 (can-read-schema? id schema))
-  (->> (db/select Table :db_id id, :schema schema, {:order-by [[:name :asc]]})
+  (->> (db/select Table :db_id id, :schema schema, :active true, {:order-by [[:name :asc]]})
        (filter mi/can-read?)
        seq
        api/check-404))

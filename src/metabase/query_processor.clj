@@ -37,6 +37,7 @@
              [parameters :as parameters]
              [permissions :as perms]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+             [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joined-tables :as resolve-joined-tables]
@@ -105,10 +106,10 @@
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
       perms/check-query-permissions
+      cumulative-ags/handle-cumulative-aggregations
       resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit
-      cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
       desugar/desugar
@@ -134,6 +135,7 @@
       ;; TODO - I think we should do this much earlier
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
+      resolve-database/resolve-database
       fetch-source-query/fetch-source-query
       store/initialize-store
       query-throttle/maybe-add-query-throttle
@@ -167,7 +169,7 @@
 
         ;; ...which ends up getting caught by the `catch-exceptions` middleware. Add a final post-processing function
         ;; around that which will return whatever we delivered into the `:results-promise`.
-        recieve-native-query
+        receive-native-query
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
@@ -180,9 +182,8 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (log/error (tru "Error preprocessing query") "\n" (u/pprint-to-str 'red results))
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
-    (recieve-native-query (qp-pipeline deliver-native-query))))
+    (receive-native-query (qp-pipeline deliver-native-query))))
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
@@ -225,28 +226,33 @@
 
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [query-execution]
+  [{query :json_query, :as query-execution}]
   (u/prog1 query-execution
-    (query/update-average-execution-time! (:hash query-execution) (:running_time query-execution))
+    (query/save-query-and-update-average-execution-time! query (:hash query-execution) (:running_time query-execution))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
-  [query-execution error-message]
+  [query-execution, ^Throwable e]
   ;; record our query execution and format response
   (-> query-execution
       (dissoc :start_time_millis)
-      (merge {:error        error-message
+      (merge {:error        (.getMessage e)
               :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))})
       save-query-execution!
       (dissoc :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
       ;; this is just for the response for client
       (assoc :status    :failed
-             :error     error-message
+             :error     (.getMessage e)
              :row_count 0
              :data      {:rows    []
                          :cols    []
-                         :columns []})))
+                         :columns []})
+      ;; include stacktrace and preprocessed/native stages of the query if available in the response which should make
+      ;; debugging queries a bit easier
+      (merge (some-> (ex-data e)
+                     (select-keys [:stacktrace :preprocessed :native])
+                     (m/dissoc-in [:preprocessed :info])))))
 
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
@@ -272,10 +278,12 @@
   "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
   [query-result]
   (when-not (contains? query-result :status)
-    (throw (Exception. "invalid response from database driver. no :status provided")))
+    (throw (ex-info (str (tru "Invalid response from database driver. No :status provided."))
+             query-result)))
   (when (= :failed (:status query-result))
     (log/warn (u/pprint-to-str 'red query-result))
-    (throw (Exception. (str (get query-result :error "general error"))))))
+    (throw (ex-info (str (get query-result :error (tru "General error")))
+             query-result))))
 
 (def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
   "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?  By default
@@ -285,10 +293,14 @@
 
 (defn- query-execution-info
   "Return the info for the `QueryExecution` entry for this QUERY."
-  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info, :as query}]
+  {:arglists '([query])}
+  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info
+    database-id                                                                       :database
+    :as                                                                               query}]
   {:pre [(instance? (Class/forName "[B") query-hash)
          (string? query-type)]}
-  {:executor_id       executed-by
+  {:database_id       database-id
+   :executor_id       executed-by
    :card_id           card-id
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
@@ -317,7 +329,12 @@
             (log/warn (u/format-color 'red "Query failure: %s\n%s"
                                       (.getMessage e)
                                       (u/pprint-to-str (u/filtered-stacktrace e))))
-            (save-and-return-failed-query! query-execution (.getMessage e))))))))
+            (save-and-return-failed-query! query-execution e)))))))
+
+(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
+  (assoc query :info (assoc options
+                       :query-hash (qputil/query-hash query)
+                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
@@ -334,9 +351,7 @@
   OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (run-and-save-query! (assoc query :info (assoc options
-                                            :query-hash (qputil/query-hash query)
-                                            :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))
+  (run-and-save-query! (assoc-query-info query options)))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -356,3 +371,8 @@
   {:style/indent 1}
   [query, options :- mbql.s/Info]
   (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))
+
+(s/defn process-query-without-save!
+  "Invokes `process-query` with info needed for the included remark."
+  [user query]
+  (process-query (assoc-query-info query {:executed-by user})))

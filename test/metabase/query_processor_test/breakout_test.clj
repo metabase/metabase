@@ -17,6 +17,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -33,7 +34,8 @@
           :breakout    [$user_id]
           :order-by    [[:asc $user_id]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
@@ -46,7 +48,8 @@
          {:breakout [$user_id]
           :limit    10})
        booleanize-native-form
-       (format-rows-by [int])))
+       (format-rows-by [int])
+       tu/round-fingerprint-cols))
 
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
@@ -65,7 +68,8 @@
           :breakout    [$user_id $venue_id]
           :limit       10})
        booleanize-native-form
-       (format-rows-by [int int int])))
+       (format-rows-by [int int int])
+       tu/round-fingerprint-cols))
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order-by`
@@ -84,7 +88,8 @@
           :order-by    [[:desc $user_id]]
           :limit       10})
        booleanize-native-form
-       (format-rows-by [int int int])))
+       (format-rows-by [int int int])
+       tu/round-fingerprint-cols))
 
 (qp-expect-with-all-engines
   {:rows        [[2 8 "Artisan"]
@@ -114,7 +119,8 @@
             :breakout    [$category_id]
             :limit       5})
          booleanize-native-form
-         (format-rows-by [int int str]))))
+         (format-rows-by [int int str])
+         tu/round-fingerprint-cols)))
 
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
@@ -237,9 +243,10 @@
    :class  Exception
    :error  "Unable to bin Field without a min/max value"}
   (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-    (-> (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :breakout    [[:binning-strategy $latitude :default]]})
+    (-> (tu.log/suppress-output
+          (data/run-mbql-query venues
+            {:aggregation [[:count]]
+             :breakout    [[:binning-strategy $latitude :default]]}))
         (select-keys [:status :class :error]))))
 
 (defn- field->result-metadata [field]
@@ -267,9 +274,22 @@
 ;; Binning is not supported when there is no fingerprint to determine boundaries
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :binning :nested-queries)
   Exception
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :query
-                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
-    (-> (nested-venues-query card)
-        qp/process-query
-        rows)))
+  (tu.log/suppress-output
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-query {:source-table (data/id :venues)}}}}]
+      (-> (nested-venues-query card)
+          qp/process-query
+          rows))))
+
+;; if we include a Field in both breakout and fields, does the query still work? (Normalization should be taking care
+;; of this) (#8760)
+(expect-with-non-timeseries-dbs
+  :completed
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-table (data/id :venues)
+                    :breakout     [[:field-id (data/id :venues :price)]]
+                    :fields       [["field_id" (data/id :venues :price)]]}})
+      :status))

@@ -51,9 +51,9 @@
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    [{:name "venue_id",    :display_name "Venue ID",    :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID",    :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID", :base_type :type/Integer}]}
+   :cols    [{:name "venue_id",    :display_name "Venue ID",    :source :native, :base_type :type/Integer}
+             {:name "user_id",     :display_name  "User ID",    :source :native, :base_type :type/Integer}
+             {:name "checkins_id", :display_name "Checkins ID", :source :native, :base_type :type/Integer}]}
 
   (select-keys (:data (qp/process-query
                         {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -76,23 +76,6 @@
                                   :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
-
-;; can we generate unique names?
-(expect
-  ["count" "sum" "count_2" "count_3"]
-  (let [unique-name (#'bigquery/unique-name-fn)]
-    [(unique-name "count")
-     (unique-name "sum")
-     (unique-name "count")
-     (unique-name "count")]))
-
-;; what if we try to trick it by using a name it would have generated?
-(expect
-  ["count" "count_2" "count_2_2"]
-  (let [unique-name (#'bigquery/unique-name-fn)]
-    [(unique-name "count")
-     (unique-name "count")
-     (unique-name "count_2")]))
 
 ;; ok, make sure we actually wrap all of our ag clauses in `:named` clauses with unique names
 (defn- aggregation-names [query]
@@ -133,6 +116,13 @@
      [:named [:sum [:field-id (data/id :venues :id)]] "sum_2"]
      [:min [:field-id (data/id :venues :id)]]])))
 
+;; if query has no aggregations then pre-alias-aggregations should do nothing
+(expect
+  {}
+  (binding [qpi/*driver* (driver/engine->driver :bigquery)]
+    (#'bigquery/pre-alias-aggregations {})))
+
+
 (expect-with-engine :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
   (qptest/rows+column-names
@@ -161,13 +151,13 @@
 ;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
 ;; databases do. (#4218)
 (expect-with-engine :bigquery
-  (str "SELECT `test_data.categories__via__category_id`.`name` AS `categories___name`,"
+  (str "SELECT `categories__via__category_id`.`name` AS `name`,"
        " count(*) AS `count` "
        "FROM `test_data.venues` "
-       "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
-       " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
-       "GROUP BY `categories___name` "
-       "ORDER BY `categories___name` ASC")
+       "LEFT JOIN `test_data.categories` `categories__via__category_id`"
+       " ON `test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+       "GROUP BY `name` "
+       "ORDER BY `name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
   (with-redefs [driver/driver-supports?         (constantly true)
@@ -226,3 +216,38 @@
                                   :details (assoc (:details (Database (data/id)))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
+
+;; if I run a BigQuery query, does it get a remark added to it?
+(defn- query->native [query]
+  (with-local-vars [native-query nil]
+    (with-redefs [bigquery/process-native* (fn [_ sql]
+                                             (var-set native-query sql)
+                                             (throw (Exception. "Done.")))]
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    {:source-table (data/id :venues)
+                                    :limit        1}
+                         :info     {:executed-by 1000
+                                    :query-type  "MBQL"
+                                    :query-hash  (byte-array [1 2 3 4])}})
+      @native-query)))
+
+(expect-with-engine :bigquery
+  (str
+   "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
+   "SELECT `test_data.venues`.`id` AS `id`,"
+   " `test_data.venues`.`name` AS `name`,"
+   " `test_data.venues`.`category_id` AS `category_id`,"
+   " `test_data.venues`.`latitude` AS `latitude`,"
+   " `test_data.venues`.`longitude` AS `longitude`,"
+   " `test_data.venues`.`price` AS `price` "
+   "FROM `test_data.venues` "
+   "LIMIT 1")
+  (query->native
+   {:database (data/id)
+    :type     :query
+    :query    {:source-table (data/id :venues)
+               :limit        1}
+    :info     {:executed-by 1000
+               :query-type  "MBQL"
+               :query-hash  (byte-array [1 2 3 4])}}))

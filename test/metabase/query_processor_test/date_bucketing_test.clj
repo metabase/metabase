@@ -35,13 +35,14 @@
     (long x)
     x))
 
-(defn- oracle-or-redshift?
-  "We currently have a bug in how report-timezone is used in Oracle. The timeone is applied correctly, but the date
-  operations that we use aren't using that timezone. It's written up as
-  https://github.com/metabase/metabase/issues/5789. This function is used to differentiate Oracle from the other
-  report-timezone databases until that bug can get fixed. Redshift also has this issue."
+(defn tz-shifted-engine-bug?
+  "Returns true if `engine` is affected by the bug originally observed in
+  Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
+  applied correctly, but the date operations that we use aren't using that timezone. This function is used to
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
+  also have this issue."
   [engine]
-  (contains? #{:oracle :redshift} engine))
+  (contains? #{:snowflake :oracle :redshift} engine))
 
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
@@ -128,7 +129,7 @@
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
@@ -148,7 +149,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
@@ -172,7 +173,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The JVM timezone should have no impact on a database that uses a report timezone
@@ -197,7 +198,7 @@
     (contains? #{:sqlite :crate} *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     (supports-report-timezone? *engine*)
@@ -261,7 +262,7 @@
     (results-by-hour (source-date-formatter utc-tz)
                      result-date-formatter-without-tz)
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-hour (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     (supports-report-timezone? *engine*)
@@ -283,7 +284,7 @@
 ;; first three results of the pacific results to the last three of the
 ;; UTC results (i.e. pacific is 7 hours back of UTC at that time)
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle-or-redshift? *engine*))
+  (if (and (not (tz-shifted-engine-bug? *engine*))
            (supports-report-timezone? *engine*))
     [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
     [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
@@ -387,7 +388,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -420,7 +421,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time eastern-tz)
                     (result-date-formatter eastern-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -453,7 +454,7 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
@@ -478,7 +479,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle-or-redshift? *engine*))
+  (if (and (not (tz-shifted-engine-bug? *engine*))
            (supports-report-timezone? *engine*))
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
@@ -495,7 +496,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle-or-redshift? *engine*))
+  (if (and (not (tz-shifted-engine-bug? *engine*))
            (supports-report-timezone? *engine*))
     [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
     [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
@@ -512,7 +513,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (oracle-or-redshift? *engine*))
+  (if (and (not (tz-shifted-engine-bug? *engine*))
            (supports-report-timezone? *engine*))
     [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
     [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
@@ -582,7 +583,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
@@ -614,7 +615,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time eastern-tz)
                      (result-date-formatter eastern-tz)
                      [46 47 40 60 7])
@@ -643,7 +644,7 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (oracle-or-redshift? *engine*)
+    (tz-shifted-engine-bug? *engine*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
@@ -669,6 +670,8 @@
 (expect-with-non-timeseries-dbs
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
+    (= :snowflake *engine*)
+    [[22 46] [23 47] [24 40] [25 60] [26 7]]
 
     (contains? #{:sqlserver :sqlite :crate :oracle :sparksql} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
@@ -807,29 +810,29 @@
                          (cons :relative-datetime relative-datetime-args)]}))
       first-row first int))
 
-;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran
-;;        and loading data into BigQuery is mind-bogglingly slow. Don't worry, I promise these work though!
+;; HACK - Don't run these tests against BigQuery/etc. because the databases need to be loaded every time the tests are ran
+;;        and loading data into BigQuery/etc. is mind-bogglingly slow. Don't worry, I promise these work though!
 
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
-(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   1
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
         (data/run-mbql-query checkins
@@ -837,7 +840,7 @@
            :filter      [:time-interval $timestamp :current :day]}))
       first-row first int))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   7
   (-> (data/with-temp-db [_ (checkins:1-per-day)]
         (data/run-mbql-query checkins
@@ -859,32 +862,32 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
 ;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows
 ;; (#3910)
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval -2))
 
-(expect-with-non-timeseries-dbs-except #{:bigquery}
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))

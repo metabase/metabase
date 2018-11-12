@@ -13,11 +13,11 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [generic-sql :as generic-sql]]
-            [metabase.util.date :as du]
-            [toucan.db :as db]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util
+             [date :as du]
+             [schema :as su]]
+            [schema.core :as s]))
 
 ;;; ----------------------------------------------- basic parser tests -----------------------------------------------
 
@@ -319,6 +319,26 @@
   (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (data/id :checkins :date)]}
                                 nil)))
 
+;; dimension -- required but unspecified
+(expect Exception
+        (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
+                                       :dimension ["field-id" (data/id :checkins :date)]}
+                                      nil)))
+
+;; dimension -- required and default specified
+(expect
+    {:field {:name      "DATE"
+                        :parent_id nil
+                        :table_id  (data/id :checkins)
+                        :base_type :type/Date}
+        :param {:type   :dimension
+                :target [:dimension [:template-tag "checkin_date"]]
+                :value  "2015-04-01~2015-05-01"}}
+   (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :required true, :default "2015-04-01~2015-05-01",
+                                  :dimension [:field-id (data/id :checkins :date)]}
+                                 nil)))
+
+
 ;; multiple values for the same tag should return a vector with multiple params instead of a single param
 (expect
   {:field {:name      "DATE"
@@ -534,19 +554,12 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(defn- quote-name [identifier]
-  (generic-sql/quote-name datasets/*driver* identifier))
-
-(defn- checkins-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
-  ;; Presto we will just hackily return the correct identifier here
-  (case datasets/*engine*
-    :bigquery "`test_data.checkins`"
-    :presto   "\"default\".\"checkins\""
-    (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
-      (str (when (seq schema)
-             (str (quote-name schema) \.))
-           (quote-name table-name)))))
+(s/defn ^:private checkins-identifier :- su/NonBlankString
+  "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
+  to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  []
+  (let [sql (:query (qp/query->native (data/mbql-query checkins)))]
+    (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
@@ -584,8 +597,8 @@
                                                      :dimension    [:field-id (data/id :checkins :date)]}}}
         :parameters []))))
 
-;; test that relative dates work correctly. It should be enough to try just one type of relative date here,
-;; since handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
+;; test that relative dates work correctly. It should be enough to try just one type of relative date here, since
+;; handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
 (datasets/expect-with-engines sql-parameters-engines
   [0]
   (first-row
@@ -619,6 +632,13 @@
      (= :presto datasets/*engine*)
      "2018-04-18"
 
+     ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with the SQL
+     ;; date parameter. The below value is not correct, but is what the driver returns right now. This bug is written
+     ;; up as https://github.com/metabase/metabase/issues/8804 and when fixed this should be removed as it should
+     ;; return the same value as the other drivers that support a report timezone
+     (= :snowflake datasets/*engine*)
+     "2018-04-16T17:00:00.000-07:00"
+
      (qpt/supports-report-timezone? datasets/*engine*)
      "2018-04-18T00:00:00.000-07:00"
 
@@ -627,18 +647,26 @@
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (first-row
       (process-native
-        :native     {:query         (cond
-                                      (= :bigquery datasets/*engine*)
+        :native     {:query         (case datasets/*engine*
+                                      :bigquery
                                       "SELECT {{date}} as date"
-                                      (= :oracle datasets/*engine*)
+
+                                      :oracle
                                       "SELECT cast({{date}} as date) from dual"
-                                      :else
+
                                       "SELECT cast({{date}} as date)")
                      :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
         :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
 
 
 ;;; -------------------------------------------- SQL PARAMETERS 2.0 TESTS --------------------------------------------
+
+;; make sure we handle quotes inside names correctly!
+(expect
+  {:replacement-snippet     "\"test-data\".\"PUBLIC\".\"checkins\".\"date\"",
+   :prepared-statement-args nil}
+  (binding [qp.i/*driver* (driver/engine->driver :postgres)]
+    (#'sql/honeysql->replacement-snippet-info :test-data.PUBLIC.checkins.date)))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 

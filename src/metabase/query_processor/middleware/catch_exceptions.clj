@@ -12,6 +12,8 @@
           :class        (class e)
           :error        (or (.getMessage e) (str e))
           :stacktrace   (u/filtered-stacktrace e)
+          ;; TODO - removing this stuff is not really needed anymore since `:database` is just the ID and not the
+          ;; entire map including `:details`
           :query        (dissoc query :database :driver)}
          ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
          ;; useful for debugging purposes. Since generating them requires us to recursively run the query processor,

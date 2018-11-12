@@ -108,17 +108,6 @@
                         :native      {:query "SELECT pg_sleep(15), 2 AS two"}})))
 
 
-(defrecord ^:private TestRecord1 [x])
-(defrecord ^:private TestRecord2 [x])
-
-(def ^:private test-tree
-  {:a {:aa (TestRecord1. 1)
-       :ab (TestRecord2. 1)}
-   :b (TestRecord1. 1)
-   :c (TestRecord2. 1)
-   :d [1 2 3 4]})
-
-
 (def ^:private test-inner-map
   {:test {:value 10}})
 
@@ -147,21 +136,3 @@
   (expect
     not-found
     (qputil/get-in-query {} [:test] not-found)))
-
-(def ^:private updated-test-map
-  {:test {:value 11}})
-
-;; assoc-in-query works with a non-nested query
-(expect
-  {:query updated-test-map}
-  (qputil/assoc-in-query {:query test-inner-map} [:test :value] 11))
-
-;; assoc-in-query works with a nested query
-(expect
-  {:query {:source-query updated-test-map}}
-  (qputil/assoc-in-query {:query {:source-query test-inner-map}} [:test :value] 11))
-
-;; Not supported yet, but assoc-in-query should do the right thing with a double nested query
-(expect
-  {:query {:source-query {:source-query updated-test-map}}}
-  (qputil/assoc-in-query {:query {:source-query {:source-query test-inner-map}}} [:test :value] 11))

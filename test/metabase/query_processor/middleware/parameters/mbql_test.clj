@@ -6,7 +6,9 @@
              [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.date :as du]))
 
@@ -138,17 +140,20 @@
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines
   [29]
-  (first-row
-    (format-rows-by [int]
-      (qp/process-query {:database   (data/id)
-                         :type       :query
-                         :query      {:source-table (data/id :checkins)
-                                      :aggregation  [[:count]]}
-                         :parameters [{:hash   "abc123"
-                                       :name   "foo"
-                                       :type   "date"
-                                       :target [:dimension [:field-id (data/id :checkins :date)]]
-                                       :value  "2015-04-01~2015-05-01"}]}))))
+  (do
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    (when (= :snowflake datasets/*engine*) (tu/clear-connection-pool (data/id)))
+    (first-row
+      (format-rows-by [int]
+        (qp/process-query {:database   (data/id)
+                           :type       :query
+                           :query      {:source-table (data/id :checkins)
+                                        :aggregation  [[:count]]}
+                           :parameters [{:hash   "abc123"
+                                         :name   "foo"
+                                         :type   "date"
+                                         :target [:dimension [:field-id (data/id :checkins :date)]]
+                                         :value  "2015-04-01~2015-05-01"}]})))))
 
 ;; check that IDs work correctly (passed in as numbers)
 (datasets/expect-with-engines params-test-engines

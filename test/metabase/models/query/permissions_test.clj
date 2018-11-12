@@ -13,6 +13,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]
+            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
@@ -233,5 +234,6 @@
 ;; invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it
 (expect
   #{"/db/0/"}
-  (query-perms/perms-set (data/mbql-query venues
-                           {:filter [:WOW 100 200]})))
+  (tu.log/suppress-output
+    (query-perms/perms-set (data/mbql-query venues
+                             {:filter [:WOW 100 200]}))))

@@ -57,7 +57,8 @@
    :visibility_type  :normal
    :preview_display  true
    :display_name     "Name"
-   :fingerprint      {:global {:distinct-count 2499}
+   :fingerprint      {:global {:distinct-count 2499
+                               :nil%           0.0}
                       :type   {:type/Text {:percent-json   0.0
                                            :percent-url    0.0
                                            :percent-email  0.0

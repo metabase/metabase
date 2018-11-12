@@ -10,7 +10,7 @@ Options and settings for your variables will appear in the `Variables` side pane
 ![Variables](images/sql-parameters/01-variables.png)
 
 ### Defining Variables
-Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than `field filter` will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears.
+Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than `field filter` will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
 
 This example defines a variable called `cat`, allowing you to dynamically change the `WHERE` clause in this query:
 
@@ -63,6 +63,16 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 
 ##### Setting a default value
 If you input a default value for your field filter, this value will be selected in the filter whenever you come back to this question. If you clear out the filter, though, no value will be passed (i.e., not even the default value). The default value has no effect on the behavior of your SQL question when viewed in a dashboard.
+
+###### Default value in the query
+You can also define default value directly in your query, useful for complex default value.
+
+Current date example:
+```
+SELECT p.*
+FROM products p
+WHERE p.createdAt = [[ {{dateOfCreation}} #]]CURRENT_DATE()
+```
 
 ##### Connecting a SQL question to a dashboard filter
 In order for a saved SQL question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, and the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).

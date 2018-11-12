@@ -160,9 +160,10 @@
 
 (defn include-csv-attachment?
   "Returns true if this card and resultset should include a CSV attachment"
-  [{:keys [include_csv] :as card} {:keys [cols rows] :as result-data}]
+  [card {:keys [cols rows] :as result-data}]
   (or (:include_csv card)
-      (and (= :table (detect-pulse-card-type card result-data))
+      (and (not (:include_xls card))
+           (= :table (detect-pulse-card-type card result-data))
            (or
             ;; If some columns are not shown, include an attachment
             (some (complement show-in-table?) cols)

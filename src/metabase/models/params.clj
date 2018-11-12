@@ -5,6 +5,7 @@
              [db :as mdb]
              [util :as u]]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util.i18n :as ui18n :refer [trs]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -29,7 +30,7 @@
     field-form
 
     :else
-    (throw (IllegalArgumentException. (str "Don't know what to do with: " field-form)))))
+    (throw (IllegalArgumentException. (str (trs "Don't know what to do with:") " " field-form)))))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -42,7 +43,7 @@
     [:field-id field-id-or-form]
 
     :else
-    (throw (IllegalArgumentException. (str "Don't know how to wrap:" field-id-or-form)))))
+    (throw (IllegalArgumentException. (str (trs "Don't know how to wrap:") " " field-id-or-form)))))
 
 (defn- field-ids->param-field-values
   "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
@@ -143,7 +144,7 @@
 
 (defn- param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
-  Dashboard. These only contain the minimal amount of information neccesary needed to power public or embedded
+  Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids]
   (when (seq field-ids)

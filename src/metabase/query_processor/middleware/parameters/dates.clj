@@ -10,9 +10,9 @@
             [metabase.models.params :as params])
   (:import [org.joda.time DateTime DateTimeConstants]))
 
-(defn date-type?
+(s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
-  [param-type]
+  [param-type :- s/Keyword]
   (or (= param-type :date)
       (= "date" (namespace param-type))))
 

@@ -22,6 +22,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream))
@@ -66,13 +67,14 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns ["count"]
-                 :cols    [{:base_type    "type/Integer"
-                            :special_type "type/Number"
-                            :name         "count"
-                            :display_name "count"
-                            :source       "aggregation"}]
-                 :rows    [[100]]}
+   {:data       {:columns  ["count"]
+                 :cols     [{:base_type    "type/Integer"
+                             :special_type "type/Number"
+                             :name         "count"
+                             :display_name "count"
+                             :source       "aggregation"}]
+                 :rows     [[100]]
+                 :insights nil}
     :json_query {:parameters nil}
     :status     "completed"})
   ([results-format]
@@ -196,11 +198,12 @@
 ;; query info)
 (expect-for-response-formats [response-format]
   "An error occurred while running the query."
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
-                                                                   :type     :native
-                                                                   :native   {:query "SELECT * FROM XYZ"}}}]
-      (http/client :get 400 (card-query-url card response-format)))))
+  (tu.log/suppress-output
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
+                                                                     :type     :native
+                                                                     :native   {:query "SELECT * FROM XYZ"}}}]
+        (http/client :get 400 (card-query-url card response-format))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect-for-response-formats [response-format]
@@ -395,12 +398,13 @@
 ;; query info)
 (expect
   "An error occurred while running the query."
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                   :card {:dataset_query {:database (data/id)
-                                                          :type     :native,
-                                                          :native   {:query "SELECT * FROM XYZ"}}}}]
-      (http/client :get 400 (dashcard-url dashcard)))))
+  (tu.log/suppress-output
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                     :card {:dataset_query {:database (data/id)
+                                                            :type     :native,
+                                                            :native   {:query "SELECT * FROM XYZ"}}}}]
+        (http/client :get 400 (dashcard-url dashcard))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect

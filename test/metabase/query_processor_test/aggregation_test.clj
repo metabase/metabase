@@ -164,7 +164,7 @@
 ;; so we can use it with Mongo
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo)
   [(aggregate-col :count)
-   (aggregate-col :count)]
+   (assoc (aggregate-col :count) :name "count_2")]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
@@ -258,7 +258,8 @@
          {:aggregation [[:cum-sum $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
@@ -324,8 +325,8 @@
          {:aggregation [[:cum-count $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
-
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;; Does Field.settings show up for aggregate Fields?
 (expect

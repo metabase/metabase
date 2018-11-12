@@ -1,21 +1,28 @@
 (ns metabase.test.data.datasets
   "Interface + implementations for loading test datasets for different drivers, and getting information about the
-  dataset's tables, fields, etc."
+  dataset's tables, fields, etc.
+
+  TODO - we should seriously rename this namespace to something like `metabase.test.driver` or something like that.
+  Also need to stop using 'engine' to mean 'driver keyword'."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [environ.core :refer [env]]
             [expectations :refer [expect]]
-            (metabase [config :as config]
-                      [driver :as driver]
-                      [plugins :as plugins])
-            [metabase.test.data.interface :as i]))
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [plugins :as plugins]]
+            [metabase.test.data.interface :as i]
+            [metabase.util.date :as du]))
 
 ;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the
 ;; Oracle driver won't show up in the list of valid drivers below
-(plugins/load-plugins!)
+(du/profile "(plugins/load-plugins!) (in metabase.test.data.datasets)"
+  (plugins/load-plugins!))
 
-(driver/find-and-load-drivers!)
+(du/profile "(driver/find-and-load-drivers!) (in metabase.test.data.datasets)"
+  (driver/find-and-load-drivers!))
 
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
 
@@ -75,6 +82,7 @@
   [engine]
   (try (i/engine (driver/engine->driver engine))
        (catch IllegalArgumentException _
+         (println "Reloading test extensions: (require " (engine->test-extensions-ns-symbol engine) ":reload)")
          (require (engine->test-extensions-ns-symbol engine) :reload)))
   (driver/engine->driver engine))
 
@@ -157,8 +165,8 @@
   `(expect-with-engines all-valid-engines ~expected ~actual))
 
 
-;;; Load metabase.test.data.* namespaces for all available drivers
-(doseq [engine all-valid-engines]
-  (let [driver-test-namespace (engine->test-extensions-ns-symbol engine)]
-    (when (find-ns driver-test-namespace)
-      (require driver-test-namespace))))
+(du/profile "Load metabase.test.data.* namespaces for all available drivers"
+  (doseq [engine all-valid-engines]
+    (let [driver-test-namespace (engine->test-extensions-ns-symbol engine)]
+      (when (find-ns driver-test-namespace)
+        (require driver-test-namespace)))))

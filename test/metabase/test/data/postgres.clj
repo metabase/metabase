@@ -60,7 +60,6 @@
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
-          :default-schema                     (constantly "public")
           :engine                             (constantly :postgres)
           ;; TODO: this is suspect, but it works
           :has-questionable-timezone-support? (constantly true)}))

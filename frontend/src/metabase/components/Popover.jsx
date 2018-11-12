@@ -53,6 +53,8 @@ export default class Popover extends Component {
     // by default we align the popover to the center of the target. This
     // causes the edges to be aligned
     alignHorizontalEdge: PropTypes.bool,
+    // don't wrap the popover in an OnClickOutsideWrapper
+    noOnClickOutsideWrapper: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -67,6 +69,7 @@ export default class Popover extends Component {
     targetOffsetY: 5,
     sizeToFit: false,
     autoWidth: false,
+    noOnClickOutsideWrapper: false,
   };
 
   _getPopoverElement() {
@@ -119,40 +122,47 @@ export default class Popover extends Component {
     const childProps = {
       maxHeight: this._getMaxHeight(),
     };
-    return (
-      <OnClickOutsideWrapper
-        handleDismissal={this.handleDismissal}
-        dismissOnEscape={this.props.dismissOnEscape}
-        dismissOnClickOutside={this.props.dismissOnClickOutside}
+    const content = (
+      <div
+        id={this.props.id}
+        className={cx(
+          "PopoverBody",
+          {
+            "PopoverBody--withBackground": this.props.hasBackground,
+            "PopoverBody--withArrow":
+              this.props.hasArrow && this.props.hasBackground,
+            "PopoverBody--autoWidth": this.props.autoWidth,
+          },
+          // TODO kdoh 10/16/2017 we should eventually remove this
+          this.props.className,
+        )}
+        style={this.props.style}
       >
-        <div
-          id={this.props.id}
-          className={cx(
-            "PopoverBody",
-            {
-              "PopoverBody--withBackground": this.props.hasBackground,
-              "PopoverBody--withArrow":
-                this.props.hasArrow && this.props.hasBackground,
-              "PopoverBody--autoWidth": this.props.autoWidth,
-            },
-            // TODO kdoh 10/16/2017 we should eventually remove this
-            this.props.className,
-          )}
-          style={this.props.style}
-        >
-          {typeof this.props.children === "function"
-            ? this.props.children(childProps)
-            : React.Children.count(this.props.children) === 1 &&
-              // NOTE: workaround for https://github.com/facebook/react/issues/12136
-              !Array.isArray(this.props.children)
-              ? React.cloneElement(
-                  React.Children.only(this.props.children),
-                  childProps,
-                )
-              : this.props.children}
-        </div>
-      </OnClickOutsideWrapper>
+        {typeof this.props.children === "function"
+          ? this.props.children(childProps)
+          : React.Children.count(this.props.children) === 1 &&
+            // NOTE: workaround for https://github.com/facebook/react/issues/12136
+            !Array.isArray(this.props.children)
+            ? React.cloneElement(
+                React.Children.only(this.props.children),
+                childProps,
+              )
+            : this.props.children}
+      </div>
     );
+    if (this.props.noOnClickOutsideWrapper) {
+      return content;
+    } else {
+      return (
+        <OnClickOutsideWrapper
+          handleDismissal={this.handleDismissal}
+          dismissOnEscape={this.props.dismissOnEscape}
+          dismissOnClickOutside={this.props.dismissOnClickOutside}
+        >
+          {content}
+        </OnClickOutsideWrapper>
+      );
+    }
   }
 
   _setTetherOptions(tetherOptions, o) {

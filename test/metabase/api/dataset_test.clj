@@ -21,6 +21,7 @@
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-engine]]
              [users :refer :all]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -70,7 +71,8 @@
                                 (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
-    :average_execution_time nil}
+    :average_execution_time nil
+    :database_id            (id)}
    ;; QueryExecution record in the DB
    {:hash         true
     :row_count    1
@@ -83,6 +85,7 @@
     :dashboard_id nil
     :error        nil
     :id           true
+    :database_id  (id)
     :started_at   true
     :running_time true}]
   (let [result ((user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
@@ -93,7 +96,7 @@
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
-  [;; API call response
+  [ ;; API call response
    {:data         {:rows    []
                    :columns []
                    :cols    []}
@@ -105,6 +108,7 @@
                    :type        "native"
                    :native      {:query "foobar"}
                    :constraints qp/default-query-constraints}
+    :database_id  (id)
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
@@ -114,6 +118,7 @@
     :row_count    0
     :context      :ad-hoc
     :error        true
+    :database_id  (id)
     :started_at   true
     :running_time true
     :executor_id  (user->id :rasta)
@@ -126,10 +131,11 @@
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
+        result              (tu.log/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 
