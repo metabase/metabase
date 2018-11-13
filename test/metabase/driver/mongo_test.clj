@@ -179,13 +179,13 @@
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type nil,             :base_type :type/DateTime, :name "last_login"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-    {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
+    {:special_type :type/Password,  :base_type :type/Text,     :name "password"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
     {:special_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
     {:special_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-    {:special_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+    {:special_type :type/Price,     :base_type :type/Integer,  :name "price"}]]
   (vec (for [table-name table-names]
          (vec (for [field (db/select [Field :name :base_type :special_type]
                             :active   true
