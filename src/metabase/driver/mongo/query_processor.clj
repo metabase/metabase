@@ -157,8 +157,9 @@
 ;;    aggregations[0] = 20
 ;;
 ;; makes no sense. It doesn't have an initial projection either so no need to implement `->initial-rvalue`
+(declare aggregation->lvalue)
 (defmethod ->lvalue :aggregation [[_ index]]
-  (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
+  (aggregation->lvalue (mbql.u/aggregation-at-index *query* index)))
 ;; TODO - does this need to implement `->lvalue` and `->initial-rvalue` ?
 
 
@@ -347,6 +348,11 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(defn- aggregation->lvalue [[aggregation-type field]]
+  (str (annotate/aggregation-name [aggregation-type field])
+       (if field
+         (str "(" (->lvalue field) ")"))))
+
 (defn- aggregation->rvalue [[aggregation-type field]]
   {:pre [(keyword? aggregation-type)]}
   (if-not field
@@ -368,12 +374,12 @@
   `[projectied-field-name source]`."
   [breakout-fields aggregations]
   (concat
-   (for [field breakout-fields]
-     [(->lvalue field) (format "$_id.%s" (->lvalue field))])
-   (for [ag aggregations]
-     [(annotate/aggregation-name ag) (if (mbql.u/is-clause? :distinct ag)
-                                       {$size "$count"} ; HACK
-                                       true)])))
+    (for [field breakout-fields]
+      [(->lvalue field) (format "$_id.%s" (->lvalue field))])
+    (for [ag aggregations]
+      [(aggregation->lvalue ag) (if (mbql.u/is-clause? :distinct ag)
+                                  {$size "$count"}          ; HACK
+                                  true)])))
 
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
@@ -394,7 +400,7 @@
              {"_id" (when (seq breakout-fields)
                       "$___group")}
              (into {} (for [ag aggregations]
-                        [(annotate/aggregation-name ag) (aggregation->rvalue ag)])))}
+                        [(aggregation->lvalue ag) (aggregation->rvalue ag)])))}
     ;; Sort by _id (___group)
     {$sort {"_id" 1}}
     ;; now project back to the fields we expect
