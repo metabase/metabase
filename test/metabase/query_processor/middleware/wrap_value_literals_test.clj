@@ -38,7 +38,7 @@
                                                     :special_type  :type/PK
                                                     :database_type "BIGINT"}]]
                     [:< [:field-id $price] [:value 5 {:base_type     :type/Integer
-                                                      :special_type  :type/Category
+                                                      :special_type  :type/Price
                                                       :database_type "INTEGER"}]]]})
   (data/$ids venues
     (wrap-value-literals [$id $price]

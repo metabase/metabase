@@ -194,7 +194,7 @@
                                    {:global {:distinct-count 28
                                              :nil%           0.0},
                                     :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}})}
-     :price       {:special_type :type/Category
+     :price       {:special_type :type/Price
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"

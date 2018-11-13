@@ -81,6 +81,10 @@
   [_]
   (constant-fingerprinter nil))
 
+(defmethod fingerprinter [:type/Text :type/Password]
+  [_]
+  (constant-fingerprinter nil))
+
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])

@@ -12,7 +12,7 @@
 ;; check we fetch Fields in the right order
 (expect
   [ ;; sorted first because it has lowest positon
-   {:position -1, :name "PRICE",       :special_type :type/Category}
+   {:position -1, :name "PRICE",       :special_type :type/Price}
    ;; PK
    {:position 0,  :name "ID",          :special_type :type/PK}
    ;; Name

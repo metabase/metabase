@@ -263,14 +263,14 @@
                              :default_dimension_option nil
                              :has_field_values         "list")
                            (assoc (field-details (Field :table_id (data/id :users), :name "PASSWORD"))
-                             :special_type     "type/Category"
+                             :special_type     "type/Password"
                              :table_id         (data/id :users)
                              :name             "PASSWORD"
                              :display_name     "Password"
                              :database_type    "VARCHAR"
                              :base_type        "type/Text"
                              :visibility_type  "sensitive"
-                             :has_field_values "list")]
+                             :has_field_values "none")]
             :rows         nil
             :updated_at   $
             :id           (data/id :users)
@@ -480,7 +480,7 @@
                                 {:name         "PRICE"
                                  :display_name "Price"
                                  :base_type    "type/Integer"
-                                 :special_type nil
+                                 :special_type "type/Price"
                                  :fingerprint  (:price mutil/venue-fingerprints)})
                               (with-coordinate-dimension-options
                                 {:name         "LATITUDE"

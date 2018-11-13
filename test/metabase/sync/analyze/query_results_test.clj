@@ -48,7 +48,7 @@
 (def ^:private venue-name->special-types
   {:id          :type/PK,
    :name        :type/Name,
-   :price       :type/Category,
+   :price       :type/Price,
    :category_id :type/FK,
    :latitude    :type/Latitude,
    :longitude   :type/Longitude})
@@ -86,7 +86,7 @@
 ;; as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name
 ;; only
 (expect
-  (assoc venue-name->special-types :category_id nil, :price nil)
+  (assoc venue-name->special-types :category_id nil, :price :type/Price)
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "select * from venues"}}}]

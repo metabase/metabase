@@ -44,7 +44,7 @@
 (expect
   #{{:name "LATITUDE",    :special_type :type/Latitude,  :last_analyzed true}
     {:name "ID",          :special_type :type/PK,        :last_analyzed false}
-    {:name "PRICE",       :special_type :type/Category,  :last_analyzed true}
+    {:name "PRICE",       :special_type :type/Price,     :last_analyzed true}
     {:name "LONGITUDE",   :special_type :type/Longitude, :last_analyzed true}
     {:name "CATEGORY_ID", :special_type :type/Category,  :last_analyzed true}
     {:name "NAME",        :special_type :type/Name,      :last_analyzed true}}

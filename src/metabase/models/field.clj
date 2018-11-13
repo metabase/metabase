@@ -201,11 +201,12 @@
 (defn- is-searchable?
   "Is this `field` a Field that you should be presented with a search widget for (to search its values)? If so, we can
   give it a `has_field_values` value of `search`."
-  [{base-type :base_type}]
+  [{base-type :base_type special-type :special_type}]
   ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
   ;; filter that powers the search queries (see `metabase.api.field/search-values`) doesn't work on anything else
-  (or (isa? base-type :type/Text)
-      (isa? base-type :type/TextLike)))
+  (and (or (isa? base-type :type/Text)
+           (isa? base-type :type/TextLike))
+       (not (isa? special-type :type/Password))))
 
 (defn- infer-has-field-values
   "Determine the value of `has_field_values` we should return for a `Field` As of 0.29.1 this doesn't require any DB

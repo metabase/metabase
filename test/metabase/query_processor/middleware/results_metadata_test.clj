@@ -39,7 +39,7 @@
    {:name         "NAME",      :display_name "Name", :base_type "type/Text",
     :special_type "type/Name", :fingerprint  (:name mutil/venue-fingerprints)}
    {:name         "PRICE", :display_name "Price", :base_type "type/Integer",
-    :special_type nil,     :fingerprint  (:price mutil/venue-fingerprints)}
+    :special_type "type/Price",     :fingerprint  (:price mutil/venue-fingerprints)}
    {:name         "CATEGORY_ID", :display_name "Category ID", :base_type "type/Integer",
     :special_type nil,           :fingerprint  (:category_id mutil/venue-fingerprints)}
    {:name         "LATITUDE",      :display_name "Latitude", :base_type "type/Float",

@@ -428,7 +428,7 @@
     :display_name "Price"
     :id           (data/id :venues :price)
     :name         "PRICE"
-    :special_type :type/Category
+    :special_type :type/Price
     :table_id     (data/id :venues)}]
   (-> (tt/with-temp Card [card (venues-mbql-card-def)]
         (qp/process-query (query-with-source-card card)))

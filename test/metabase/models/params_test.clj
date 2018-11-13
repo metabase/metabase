@@ -39,7 +39,7 @@
 (expect
   {:name         "PRICE"
    :table_id     (data/id :venues)
-   :special_type :type/Category
+   :special_type :type/Price
    :name_field   nil}
   (-> (db/select-one [Field :name :table_id :special_type], :id (data/id :venues :price))
       (hydrate :name_field)))
