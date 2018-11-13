@@ -1597,7 +1597,7 @@ Object {
       "position": 0,
       "preview_display": true,
       "settings": null,
-      "special_type": null,
+      "special_type": "type/Birthdate",
       "table_id": 2,
       "target": null,
       "visibility_type": "normal",
