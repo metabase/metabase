@@ -568,12 +568,12 @@
         (tt/with-temp Dashboard [{dashboard-id :id}  {:name           "Test Dashboard"
                                                       :description    "An old description"}]
           (tu/with-model-cleanup [Dashboard]
-            (dashboard-response ((user->client :crowberto) :post 200 (format "dashboard/%d/copy" dashboard-id) 
+            (dashboard-response ((user->client :crowberto) :post 200 (format "dashboard/%d/copy" dashboard-id)
               {:name             "Test Dashboard - Duplicate"
-              :description      "A new description"})))))
+               :description      "A new description"})))))
 
 ;; Ensure dashboard cards are copied
-(expect 
+(expect
   2
   (tt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
                   Card          [{card-id :id}]
@@ -581,9 +581,8 @@
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
     (tu/with-model-cleanup [Dashboard]
-      (count (db/select-ids DashboardCard, :dashboard_id 
-        (u/get-id 
-          ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))))
+      (count (db/select-ids DashboardCard, :dashboard_id
+        (u/get-id ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))))
 
 ;; Ensure the correct collection is set when copying
 (expect
@@ -594,7 +593,7 @@
         (doseq [coll [collection new-collection]]
           (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
         ;; Check to make sure the ID of the collection is correct
-        (= (db/select-one-field :collection_id Dashboard :id 
+        (= (db/select-one-field :collection_id Dashboard :id
               (u/get-id ((user->client :rasta) :post 200 (format "dashboard/%d/copy" (u/get-id dash)) {:collection_id (u/get-id new-collection)})))
           (u/get-id new-collection))))))
 
