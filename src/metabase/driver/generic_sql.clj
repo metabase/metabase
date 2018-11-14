@@ -115,12 +115,6 @@
      `:seconds` or `:milliseconds`."))
 
 
-;; This does something important for the Crate driver, apparently (what?)
-(extend-protocol jdbc/IResultSetReadColumn
-  (class (object-array []))
-  (result-set-read-column [x _ _] (PersistentVector/adopt x)))
-
-
 (def ^:private database-id->connection-pool
   "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))

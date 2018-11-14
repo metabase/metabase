@@ -24,7 +24,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]

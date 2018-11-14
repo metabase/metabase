@@ -70,7 +70,6 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.9.2"                                    ; Transform Clojure data structures to SQL
                   :exclusions [org.clojure/clojurescript]]
-                 [io.crate/crate-jdbc "2.3.0"]                        ; Crate JDBC driver
                  [io.forward/yaml "1.0.6"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
@@ -107,8 +106,7 @@
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
-                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
+  :repositories [["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?

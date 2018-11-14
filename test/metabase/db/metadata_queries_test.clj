@@ -13,9 +13,9 @@
             [metabase.test.data.datasets :as datasets]
             [toucan.util.test :as tt]))
 
-;; Redshift & Crate tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
+;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (def ^:private ^:const metadata-queries-test-engines
-  (disj qp-test/non-timeseries-engines :redshift :crate))
+  (disj qp-test/non-timeseries-engines :redshift))
 
 ;; ### FIELD-DISTINCT-COUNT
 (datasets/expect-with-engines metadata-queries-test-engines

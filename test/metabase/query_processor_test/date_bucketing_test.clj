@@ -78,11 +78,11 @@
   (tformat/with-zone (tformat/formatters :date-time) tz))
 
 (def ^:private result-date-formatter-without-tz
-  "sqlite and crate return date strings that do not include their timezone, this formatter is useful for those DBs"
+  "sqlite returns date strings that do not include their timezone, this formatter is useful for those DBs"
   (tformat/formatters :mysql))
 
 (def ^:private date-formatter-without-time
-  "sqlite and crate return dates that do not include their time, this formatter is useful for those DBs"
+  "sqlite returns dates that do not include their time, this formatter is useful for those DBs"
   (tformat/formatters :date))
 
 (defn- adjust-date
@@ -125,7 +125,7 @@
 (expect-with-non-timeseries-dbs
   (cond
     ;; Timezone is omitted by these databases
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
@@ -146,7 +146,7 @@
 (expect-with-non-timeseries-dbs
   (cond
     ;; These databases are always in UTC so aren't impacted by changes in report-timezone
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (tz-shifted-engine-bug? *engine*)
@@ -170,7 +170,7 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (tz-shifted-engine-bug? *engine*)
@@ -195,7 +195,7 @@
 ;; This dataset doesn't have multiple events in a minute, the results are the same as the default grouping
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (tz-shifted-engine-bug? *engine*)
@@ -258,7 +258,7 @@
 ;; timezone that database is in
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-hour (source-date-formatter utc-tz)
                      result-date-formatter-without-tz)
 
@@ -371,7 +371,7 @@
         counts))
 
 (expect-with-non-timeseries-dbs
-  (if (contains? #{:sqlite :crate} *engine*)
+  (if (= :sqlite *engine*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
@@ -383,7 +383,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
@@ -416,7 +416,7 @@
 ;; Similar to the pacific test above, just validating eastern timezone shifts
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
@@ -449,7 +449,7 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
@@ -542,7 +542,7 @@
         counts))
 
 (expect-with-non-timeseries-dbs
-  (if (contains? #{:sqlite :crate} *engine*)
+  (if (= :sqlite *engine*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
@@ -578,7 +578,7 @@
 ;; earlier
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
@@ -610,7 +610,7 @@
 ;; account for the 4-5 hour difference
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
@@ -639,7 +639,7 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite *engine*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
@@ -673,7 +673,7 @@
     (= :snowflake *engine*)
     [[22 46] [23 47] [24 40] [25 60] [26 7]]
 
-    (contains? #{:sqlserver :sqlite :crate :oracle :sparksql} *engine*)
+    (contains? #{:sqlserver :sqlite :oracle :sparksql} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (and (supports-report-timezone? *engine*)
@@ -694,7 +694,7 @@
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (expect-with-non-timeseries-dbs
   [[(cond
-      (contains? #{:sqlite :crate} *engine*)
+      (= :sqlite *engine*)
       "2015-06-01"
 
       (supports-report-timezone? *engine*)
@@ -707,7 +707,7 @@
 
 (expect-with-non-timeseries-dbs
   [[(cond
-      (contains? #{:sqlite :crate} *engine*)
+      (= :sqlite *engine*)
       "2015-06-01"
 
       (supports-report-timezone? *engine*)
@@ -735,7 +735,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  [[(cond (contains? #{:sqlite :crate} *engine*)
+  [[(cond (= :sqlite *engine*)
           "2015-04-01"
 
           (supports-report-timezone? *engine*)
@@ -747,7 +747,7 @@
   (sad-toucan-incidents-with-bucketing :quarter pacific-tz))
 
 (expect-with-non-timeseries-dbs
-  [[(cond (contains? #{:sqlite :crate} *engine*)
+  [[(cond (= :sqlite *engine*)
           "2015-04-01"
 
           (supports-report-timezone? *engine*)

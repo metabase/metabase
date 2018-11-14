@@ -561,9 +561,9 @@
   (let [sql (:query (qp/query->native (data/mbql-query checkins)))]
     (second (re-find #"FROM\s([^\s()]+)" sql))))
 
-;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
+;; as with the MBQL parameters tests Redshift fails for unknown reasons; disable its tests for now
 (def ^:private ^:const sql-parameters-engines
-  (disj (qpt/non-timeseries-engines-with-feature :native-parameters) :redshift :crate))
+  (disj (qpt/non-timeseries-engines-with-feature :native-parameters) :redshift))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (du/with-effective-timezone (Database (data/id))

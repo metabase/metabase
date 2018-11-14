@@ -134,8 +134,8 @@
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; for some reason param substitution tests fail on Redshift & (occasionally) Crate so just don't run those for now
-(def ^:private params-test-engines (disj non-timeseries-engines :redshift :crate))
+;; for some reason param substitution tests fail on Redshift Crate so just don't run those for now
+(def ^:private params-test-engines (disj non-timeseries-engines :redshift))
 
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines
