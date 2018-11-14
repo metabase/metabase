@@ -4,7 +4,6 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.automagic-dashboards.filters :refer [field-reference?]]
-            [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -65,7 +64,6 @@
 
 (defmulti
   ^{:doc      ""
-    :private  true
     :arglists '([dir entity])}
   dump (fn [_ entity]
          (type entity)))
@@ -78,7 +76,7 @@
     (io/make-parents fname)
     (spit fname (yaml/generate-string entity :dumper-options {:flow-style :block}))))
 
-(defn- dump-all
+(defn dump-all
   [path entities]
   (doseq [e entities]
     (dump path e)))
@@ -163,12 +161,3 @@
     (->> card
          humanize-field-references
          (spit-yaml (format "%s/cards/%s_%s" path (:id card) (:name card))))))
-
-(defn -main
-  [& [path & _]]
-  (mdb/setup-db-if-needed!)
-  (dump-all path (Database))
-  (dump-all path (User))
-  (dump-all path (Collection)))
-
-(-main "dump")

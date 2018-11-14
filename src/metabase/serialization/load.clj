@@ -3,7 +3,6 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk]
-            [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -102,7 +101,6 @@
 
 (defmulti
   ^{:doc      ""
-    :private  true
     :arglists '([context dir model])}
   load (fn [_ _ model]
          model))
@@ -260,12 +258,3 @@
                 (load path Collection)))
           context
           (list-dirs (str path "/collections"))))
-
-(defn -main
-  [& [path & _]]
-  (mdb/setup-db-if-needed!)
-  (-> {}
-      (load path User)
-      (load path Collection)
-      (load path Database)
-      (load path Dashboard)))

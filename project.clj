@@ -11,9 +11,7 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "profile" ["with-profile" "+profile" "run" "profile"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]
-            "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
-            "dump" ["with-profile" "+dump" "run"]
-            "load" ["with-profile" "+load" "run"]}
+            "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.3.442"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -181,6 +179,4 @@
                                   "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; get the H2 shell with 'lein h2'
              :h2-shell {:main org.h2.tools.Shell}
-             :generate-automagic-dashboards-pot {:main metabase.automagic-dashboards.rules}
-             :load {:main metabase.serialization.load}
-             :dump {:main metabase.serialization.dump}})
+             :generate-automagic-dashboards-pot {:main metabase.automagic-dashboards.rules}})

@@ -114,6 +114,17 @@
   (println "Starting normally with swapped i18n strings...")
   ((resolve 'metabase.core/start-normally)))
 
+(defn ^:command load
+  [path]
+  (require 'metabase.cmd.serialization)
+  ((resolve 'metabase.cmd.serialization/load) path))
+
+(defn ^:command dump
+  [path]
+  (require 'metabase.cmd.serialization)
+  ((resolve 'metabase.cmd.serialization/dump) path))
+
+
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
