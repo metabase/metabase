@@ -121,6 +121,17 @@
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.8", "-source" "1.8"]
   :uberjar-name "metabase.jar"
+  :uberjar-exclusions [
+                       #_#"\.clj(c)?$"
+                       #"project\.clj$"
+                       #"\.java$"
+                       #"\.md$"
+                       #"README\.\w{2,3}$"
+                       #"\.js\.map$"
+                       #"\.css\.map$"
+                       #"pom\.xml$"
+                       #"pom\.properties$"
+                       #"package\.html$"]
   :ring {:handler metabase.core/app
          :init metabase.core/init!
          :destroy metabase.core/destroy
@@ -173,7 +184,10 @@
                                        "-Dmb.api.key=test-api-key"
                                        "-Duser.language=en"]}
              ;; build the uberjar with `lein uberjar`
-             :uberjar {:aot :all}
+             :uberjar {:aot :all
+                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]"]
+                       ;; it seems like this only works for Metabase and not for dependencies
+                       :omit-source true}
              ;; generate sample dataset with `lein generate-sample-dataset`
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]]                   ; Fake data generator -- port of Perl/Ruby library
                                        :source-paths ["sample_dataset"]
