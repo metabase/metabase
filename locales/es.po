@@ -10448,7 +10448,7 @@ msgstr "De dónde provienen tus usuarios"
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
-msgid "How they compare acrosss location"
+msgid "How they compare across location"
 msgstr "Como se comparan por ubicación"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
