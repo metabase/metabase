@@ -102,7 +102,7 @@ Once there, enter a database username and password. We suggest you hold onto thi
 Regarding individual settings, we recommend:
 
 * `Snapshot` should be left as `None`.
-* `DB engine` should be set to `postgres`. Metabase also supports MySQL/Maria DB as backing databases, but this guide currently only covers running Metabase on Postgres.
+* `DB engine` should be set to `postgres`. Metabase also supports MySQL/Maria DB as backing databases, but this guide currently only covers running Metabase on Postgres (i.e just changing the DB engine to mysql will cause a crash when Metabase starts because he postgres driver will be used to connect to a mysql instance...)
 * `DB engine version` can simply be left on the default, which should be the latest version.
 * For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.  Metabase is pretty efficient so there is no need to make this a big instance.
 * You can safely leave `Allocated storage` to the default size.
@@ -127,7 +127,7 @@ If you prefer not to use a VPC that is fine, however one thing to note is that s
 
 If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets.
 
-Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets. Note that the Load Balancer cannot be in more than one subnet per availability zone, and the database requires subnets in at least two availability zones.
+Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets. Beware that the load balancer is predefined to the classic mode which does not require multiple subnets. The database requires subnets must be in at least two availability zones.
 
 ![Elastic Beanstalk VPC Settings](images/EBVPCSettings.png)
 
@@ -214,6 +214,8 @@ After you click save your Environment will begin updating with your new change. 
 
 This is only relevant if you plan to use HTTPS (recommended) for your Metabase instance on AWS.  There is no requirement to do this, but we are sticklers for security and believe you should always be careful with your data.
 
+Also, if you already have a wildcard certificate for your domain, you do not need to upload a new certificate and you can safely use the existing one.
+
 Sadly there is no option to do this via the AWS Console, so this step must be performed using the [AWS CLI client](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html)
 
     aws iam upload-server-certificate \
@@ -223,15 +225,15 @@ Sadly there is no option to do this via the AWS Console, so this step must be pe
 
 This will create a new certificate inside your AWS environment which can be reused for a variety of things.  Remember the name you chose for your certificate because we'll use that later in the setup process when we enable SSL.
 
-### Setup DNS CNAME (using AWS)
+### Setup DNS (using AWS)
 * Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header
 * Click on **Hosted Zones** then click on the domain name you want to use for Metabase
 * Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page)
 	* Enter in a **Name**: for your application.  this should be the exact url you plan to access Metabase with.  (e.g. metabase.mycompany.com)
-	* Under the dropdown for **Type**: select *CNAME - Canonical name*
-	* In the box labeled **Alias**: input the full path to your Elastic Beanstalk environment (e.g. mycompany-metabase.elasticbeanstalk.com)
+	* Under the dropdown for **Type**: select *A - IPv4 Address* (sometimes you can also choose CNAME - Canonical name but this may cause more trouble)
+	* In the box labeled **Alias**: choose your elastic bean environment in the drop-down or directly input the full path to your Elastic Beanstalk environment (e.g. mycompany-metabase.elasticbeanstalk.com)
 	* Leave all other settings in their default values and click the **Create** button at the bottom of the page
-	* NOTE: after the record is created you must wait for your change to propagate on the internet.  this can take 5-10 minutes, sometimes longer.
+	* NOTE: after the record is created you must wait for your change to propagate on the internet which can take 5-10 minutes, sometimes longer (but usually not more than 30 minutes).
 
 ### Modify Metabase to enforce HTTPS
 
@@ -242,20 +244,13 @@ Before trying to enable Https support you must upload a server certificate to yo
 * Click on `Configuration` on the left hand sidebar
 * Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
 * Set the value for `Secure listener port` to *443*
+* Set the value for `Instance listener port` to *80* and the `Instance protocol` to *HTTP* (which means that the load balancer handles the HTTPS traffic but talks to the EC2 instances in plain HTTP)
 * Then, a little bit lower on the dropdown for `SSL certificate ID`, choose the name of the certificate that you uploaded to your account.
   * NOTE: the certificate MUST match the domain you plan to use for your Metabase install
 * Scroll to the bottom of the page and click `Save` in the lower right
   * NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
-  * IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the \*.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)
-
-Once your application is working properly over HTTPS we recommend setting an additional property to force non-https clients to use the HTTPS endpoint
-
-1. Click on `Configuration` on the left hand sidebar
-* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
-* Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`
-* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
-
-
+  * IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the \*.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must [Setup DNS](#setup-dns)
+  * IMPORTANT: once your beanstalk environment works in HTTPS, we recommend to deactivate the Load balancer listener on port 80 so that all traffic is routed to HTTPS
 
 # Setting the JVM Timezone
 
