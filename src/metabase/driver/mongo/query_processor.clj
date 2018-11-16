@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [find sort])
   (:require [cheshire.core :as json]
             [clojure
              [set :as set]
@@ -604,13 +603,16 @@
          :collection  source-table-name
          :mbql?       true}))))
 
-(defn- check-columns [columns results]
+(defn check-columns
+  "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
+  wrong here and the query we generated is off."
+  [columns results]
   (when (seq results)
-    (let [expected-cols columns
-          actual-cols   (keys (first results))]
-      (when (not= (set expected-cols) (set actual-cols))
-        (throw (Exception. (str (tru "Error: mismatched columns in results! Expected: {0} Got: {1}"
-                                     (vec expected-cols) (vec actual-cols)))))))))
+    (let [expected-cols   (set columns)
+          actual-cols     (set (keys (first results)))
+          not-in-expected (set/difference actual-cols expected-cols)]
+      (when (seq not-in-expected)
+        (throw (Exception. (str (tru "Unexpected columns in results: {0}" (sort not-in-expected)))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."
@@ -632,6 +634,9 @@
         results    (cond-> results
                      mbql? (-> unescape-names unstringify-dates))
         rename-map (create-unescaping-rename-map projections)
+        ;; some of the columns may or may not come back in every row, because of course with mongo some key can be
+        ;; missing. That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for
+        ;; those columns.
         columns    (if-not mbql?
                      (keys (first results))
                      (map (fn [proj]
@@ -639,6 +644,8 @@
                               (get rename-map proj)
                               proj))
                           projections))]
+    ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken. Check to make
+    ;; sure that didn't happen.
     (when mbql?
       (check-columns columns results))
     {:columns (map name columns)

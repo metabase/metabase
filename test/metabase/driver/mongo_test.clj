@@ -5,7 +5,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [rows]]]
+             [query-processor-test :as qp.t :refer [rows]]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.driver.mongo :as mongo]
             [metabase.driver.mongo.query-processor :as mongo-qp]
@@ -16,7 +16,8 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as i]]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.driver.mongo.MongoDriver
            org.bson.types.ObjectId
            org.joda.time.DateTime))
@@ -276,3 +277,22 @@
        :ordered_cards
        (mapcat (comp :breakout :query :dataset_query :card))
        (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))
+
+;; if we query a something an there are no values for the Field, the query should still return successfully! (#8929
+;; and #8894)
+(datasets/expect-with-engine :mongo
+  ;; if the column does not come back in the results for a given document we should fill in the missing values with nils
+  {:columns ["_id" "name" "parent_id"]
+   :rows    [[1 "African"  nil]
+             [2 "American" nil]
+             [3 "Artisan"  nil]]}
+  ;; add a temporary Field that doesn't actually exist to test data categories
+  (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
+    ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
+    ;; Field will be included
+    (->
+     (data/run-mbql-query categories
+       {:order-by [[:asc [:field-id $id]]]
+        :limit    3})
+     qp.t/data
+     (select-keys [:columns :rows]))))
