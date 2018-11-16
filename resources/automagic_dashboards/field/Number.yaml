@@ -45,7 +45,7 @@ groups:
       comparison_title: How they compare across time
   - Geographical:
       title: How the [[this]] is distributed geographically
-      comparison_title: How they compare acrosss location
+      comparison_title: How they compare across location
 cards:
   - Count:
       title: Count

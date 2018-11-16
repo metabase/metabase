@@ -10470,7 +10470,7 @@ msgstr "Où avez-vous acquis vos utilisateurs?"
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
-msgid "How they compare acrosss location"
+msgid "How they compare across location"
 msgstr "Comment ils se comparent à travers l'emplacement"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
