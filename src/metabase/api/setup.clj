@@ -59,7 +59,7 @@
     (public-settings/anon-tracking-enabled (or (nil? allow_tracking)
                                                allow_tracking))
     ;; setup database (if needed)
-    (when (driver/is-engine? engine)
+    (when (some-> engine driver/available?)
       (let [db (db/insert! Database
                  (merge
                   {:name         name

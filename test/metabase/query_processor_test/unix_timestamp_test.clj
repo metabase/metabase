@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
-  (:require [metabase.query-processor-test :refer :all]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]]
             [metabase.query-processor-test.date-bucketing-test :as dbt]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
+             [util :as tu]]))
 
 ;; There were 10 "sad toucan incidents" on 2015-06-02 in UTC
 (expect-with-non-timeseries-dbs
@@ -24,7 +25,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -36,7 +37,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (dbt/tz-shifted-engine-bug? *engine*)
+    (dbt/tz-shifted-engine-bug? driver/*driver*)
     [["2015-06-01T00:00:00.000-07:00" 6]
      ["2015-06-02T00:00:00.000-07:00" 10]
      ["2015-06-03T00:00:00.000-07:00" 4]
@@ -48,7 +49,7 @@
      ["2015-06-09T00:00:00.000-07:00" 7]
      ["2015-06-10T00:00:00.000-07:00" 9]]
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     [["2015-06-01T00:00:00.000-07:00" 8]
      ["2015-06-02T00:00:00.000-07:00" 9]
      ["2015-06-03T00:00:00.000-07:00" 9]

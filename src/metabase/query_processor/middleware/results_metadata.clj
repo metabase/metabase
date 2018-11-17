@@ -6,15 +6,15 @@
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase.driver :as driver]
-            [metabase.query-processor.interface :as qp.i]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
             [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 ;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
 ;; Card metadata as part of the query context so we can compare for changes
@@ -91,8 +91,8 @@
           (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
             ;; At the very least we can skip the Extra DB call to update this Card's metadata results
             ;; if its DB doesn't support nested queries in the first place
-            (when (and qp.i/*driver*
-                       (driver/driver-supports? qp.i/*driver* :nested-queries)
+            (when (and driver/*driver*
+                       (driver/supports? driver/*driver* :nested-queries)
                        card-id
                        (not nested?))
               (record-metadata! card-id metadata))

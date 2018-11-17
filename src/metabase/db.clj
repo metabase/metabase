@@ -388,8 +388,8 @@
    {:pre [(keyword? engine) (map? details)]}
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver)
-             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
+             (require 'metabase.driver.util)
+             ((resolve 'metabase.driver.util/can-connect-with-details?) engine details))
      (format "Unable to connect to Metabase %s DB." (name engine)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 

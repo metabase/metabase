@@ -64,7 +64,7 @@
     :placeholder  "/home/YOUR-USERNAME/.ssh/id_rsa"}])
 
 (defn with-tunnel-config
-  "Add preferences for ssh tunnels to a drivers :details-fields"
+  "Add preferences for ssh tunnels to a drivers :connection-properties"
   [driver-options]
   (concat driver-options ssh-tunnel-preferences))
 

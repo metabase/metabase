@@ -1,8 +1,12 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
             [expectations :refer [expect]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
-            [metabase.driver.presto :as presto]
+            [metabase.driver
+             [presto :as presto]
+             [util :as driver.u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
@@ -11,23 +15,21 @@
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util.log :as tu.log]
-            [toucan.db :as db]
-            [clojure.string :as str])
-  (:import metabase.driver.presto.PrestoDriver))
+            [toucan.db :as db]))
 
 ;;; HELPERS
 
 (expect
   "http://localhost:8080/"
-  (#'presto/details->uri {:host "localhost", :port 8080, :ssl false} "/"))
+  (#'presto/details->uri {:host "localhost", :port 8080, :catalog "Sears", :ssl false} "/"))
 
 (expect
   "https://localhost:8443/"
-  (#'presto/details->uri {:host "localhost", :port 8443, :ssl true} "/"))
+  (#'presto/details->uri {:host "localhost", :port 8443, :catalog "Sears", :ssl true} "/"))
 
 (expect
   "http://localhost:8080/v1/statement"
-  (#'presto/details->uri {:host "localhost", :port 8080, :ssl false} "/v1/statement"))
+  (#'presto/details->uri {:host "localhost", :port 8080, :catalog "Sears", :ssl false} "/v1/statement"))
 
 (expect
   {:headers {"X-Presto-Source" "metabase"
@@ -73,15 +75,12 @@
   (#'presto/quote+combine-names "weird . \"schema" "weird.table\" name"))
 
 ;; DESCRIBE-DATABASE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   {:tables #{{:name "test_data_categories" :schema "default"}
              {:name "test_data_venues"     :schema "default"}
              {:name "test_data_checkins"   :schema "default"}
              {:name "test_data_users"      :schema "default"}}}
-  (-> (driver/describe-database (PrestoDriver.) (data/db))
-      ;; we load all Presto tables into the same "catalog" (i.e. DB) using the db-prefixed-table-name stuf so we don't
-      ;; have to update the docker image every time we add a new dataset. So make sure we ignore the ones that are in
-      ;; different datasets in the results here
+  (-> (driver/describe-database :presto (data/db))
       (update :tables (comp set (partial filter (comp #{"test_data_categories"
                                                         "test_data_venues"
                                                         "test_data_checkins"
@@ -89,7 +88,7 @@
                                                       :name))))))
 
 ;; DESCRIBE-TABLE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   {:name   "test_data_venues"
    :schema "default"
    :fields #{{:name          "name",
@@ -110,16 +109,16 @@
              {:name          "id"
               :database-type "integer"
               :base-type     :type/Integer}}}
-  (driver/describe-table (PrestoDriver.) (data/db) (db/select-one 'Table :id (data/id :venues))))
+  (driver/describe-table :presto (data/db) (db/select-one 'Table :id (data/id :venues))))
 
 ;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   [["Red Medicine"]
    ["Stout Burgers & Beers"]
    ["The Apple Pan"]
    ["Wurstküche"]
    ["Brite Spot Family Restaurant"]]
-  (take 5 (driver/table-rows-sample (Table (data/id :venues))
+  (take 5 (metadata-queries/table-rows-sample (Table (data/id :venues))
             [(Field (data/id :venues :name))])))
 
 
@@ -133,37 +132,38 @@
              :order-by [[:default.categories.id :asc]]}]
    :where  [:> :__rownum__ 5]
    :limit  5}
-  (#'presto/apply-page {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
-                        :from     [:default.categories]
-                        :order-by [[:default.categories.id :asc]]}
-                       {:page {:page  2
-                               :items 5}}))
+  (sql.qp/apply-top-level-clause :presto :page
+    {:select   [[:default.categories.name "name"] [:default.categories.id "id"]]
+     :from     [:default.categories]
+     :order-by [[:default.categories.id :asc]]}
+    {:page {:page  2
+            :items 5}}))
 
 (expect
   #"com.jcraft.jsch.JSchException:"
   (try
-    (let [engine  :presto
-          details {:ssl            false
+    (let [details {:ssl            false
                    :password       "changeme"
                    :tunnel-host    "localhost"
                    :tunnel-pass    "BOGUS-BOGUS"
                    :catalog        "BOGUS"
                    :host           "localhost"
+                   :port           9999
                    :tunnel-enabled true
                    :tunnel-port    22
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
+        (driver.u/can-connect-with-details? :presto details :rethrow-exceptions)))
     (catch Exception e
       (.getMessage e))))
 
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   "UTC"
   (tu/db-timezone-id))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   [false ;; Ensure the query promise hasn't fired yet
    false ;; Ensure the cancellation promise hasn't fired yet
    true  ;; Was query called?

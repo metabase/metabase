@@ -165,7 +165,7 @@
        :order-by     [[:asc [:field-id 1]]]}))))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expression-aggregations)
   [[2 118]
    [3  39]
    [4  24]]

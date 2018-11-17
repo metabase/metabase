@@ -23,28 +23,23 @@
 
 (defonce ^:private calls-to-describe-database (atom 0))
 
-(defrecord ^:private ConcurrentSyncTestDriver []
-  clojure.lang.Named
-  (getName [_] "ConcurrentSyncTestDriver"))
+(driver/register! ::concurrent-sync-test)
 
-(extend ConcurrentSyncTestDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:describe-database (fn [_ _]
-                               (swap! calls-to-describe-database inc)
-                               (Thread/sleep 1000)
-                               {:tables #{}})
-          :describe-table    (constantly nil)
-          :details-fields    (constantly [])}))
+(defmethod driver/available? ::concurrent-sync-test [_] false)
 
-(driver/register-driver! :concurrent-sync-test (ConcurrentSyncTestDriver.))
+(defmethod driver/describe-database ::concurrent-sync-test [& _]
+  (swap! calls-to-describe-database inc)
+  (Thread/sleep 1000)
+  {:tables #{}})
+
+(defmethod driver/describe-table ::concurrent-sync-test [& _] nil)
 
 ;; only one sync should be going on at a time
 (expect
  ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
  ;; syncing the _metabase_metadata table
  2
- (tt/with-temp* [Database [db {:engine :concurrent-sync-test}]]
+ (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
    (reset! calls-to-describe-database 0)
    ;; start a sync processes in the background. It should take 1000 ms to finish
    (let [f1 (future (sync/sync-database! db))

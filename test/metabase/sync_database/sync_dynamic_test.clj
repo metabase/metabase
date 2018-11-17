@@ -36,7 +36,7 @@
 ;; basic test to make sure syncing nested fields works. This is sort of a higher-level test.
 (expect
   (remove-nonsense toucanery/toucanery-tables-and-fields)
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     (sync/sync-database! db)
     (remove-nonsense (get-tables db))))
 
@@ -52,7 +52,7 @@
 ;; make sure nested fields get resynced correctly if their parent field didn't change
 (expect
   #{"weight" "age"}
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     ;; do the initial sync
     (sync-metadata/sync-db-metadata! db)
     ;; delete our entry for the `transactions.toucan.details.age` field
@@ -69,7 +69,7 @@
 
 ;; Now do the exact same test where we make the Field inactive. Should get reactivated
 (expect
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     ;; do the initial sync
     (sync-metadata/sync-db-metadata! db)
     ;; delete our entry for the `transactions.toucan.details.age` field
@@ -85,7 +85,7 @@
 
 ;; nested fields should also get reactivated if the parent field gets reactivated
 (expect
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     ;; do the initial sync
     (sync-metadata/sync-db-metadata! db)
     ;; delete our entry for the `transactions.toucan.details.age` field
@@ -103,7 +103,7 @@
 ;; make sure nested fields can get marked inactive
 (expect
   false
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     ;; do the initial sync
     (sync-metadata/sync-db-metadata! db)
     ;; Add an entry for a `transactions.toucan.details.gender` field
@@ -127,7 +127,7 @@
 ;; make sure when a nested field gets marked inactive, so does it's children
 (expect
   false
-  (tt/with-temp* [Database [db {:engine :toucanery}]]
+  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
     ;; do the initial sync
     (sync-metadata/sync-db-metadata! db)
     ;; Add an entry for a `transactions.toucan.details.gender` field

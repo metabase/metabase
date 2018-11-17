@@ -6,6 +6,7 @@
              [util :as u]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :as qpi]
+            [metabase.sync.interface :as si]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -88,3 +89,24 @@
   (or (:db_id x)
       (:database_id x)
       (db/select-one-field :db_id 'Table :id (:table_id x))))
+
+
+(def max-sample-rows
+  "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
+  inferring special types and what-not; we don't want to scan millions of values at any rate."
+  10000)
+
+(s/defn table-rows-sample :- (s/maybe si/TableSample)
+  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+  {:style/indent 1}
+  [table :- si/TableInstance, fields :- [si/FieldInstance]]
+  (let [results ((resolve 'metabase.query-processor/process-query)
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
+    (get-in results [:data :rows])))

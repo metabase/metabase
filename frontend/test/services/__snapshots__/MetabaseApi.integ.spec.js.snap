@@ -10,7 +10,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -18,6 +17,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -1120,7 +1120,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -1128,6 +1127,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -2331,7 +2331,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -2339,6 +2338,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -3179,7 +3179,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -3187,6 +3186,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
