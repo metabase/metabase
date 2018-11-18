@@ -133,7 +133,7 @@ msgstr "Jeśli jesteś pewny, proszę wpisać"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:53
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:70
 msgid "DELETE"
-msgstr "Usuń"
+msgstr "Delete"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:71
 msgid "in this box:"
@@ -183,7 +183,7 @@ msgstr "Przerwij"
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:123
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:461
 msgid "Delete"
-msgstr "Uusń"
+msgstr "Delete"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:128
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:76
