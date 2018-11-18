@@ -3,49 +3,51 @@
             [honeysql
              [core :as hsql]
              [format :as hformat]]
-            [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.hive-like.register-driver :as register-driver]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
   (:import java.util.Date))
 
-(def column->base-type
-  "Map of Spark SQL (Hive) column types -> Field base types.
-   Add more mappings here as you come across them."
-  {;; Numeric types
-   :tinyint                     :type/Integer
-   :smallint                    :type/Integer
-   :int                         :type/Integer
-   :integer                     :type/Integer
-   :bigint                      :type/BigInteger
-   :float                       :type/Float
-   :double                      :type/Float
-   (keyword "double precision") :type/Float
-   :decimal                     :type/Decimal
-   ;; Date/Time types
-   :timestamp                   :type/DateTime
-   :date                        :type/Date
-   :interval                    :type/*
-   :string                      :type/Text
-   :varchar                     :type/Text
-   :char                        :type/Text
-   :boolean                     :type/Boolean
-   :binary                      :type/*})
+(driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
-(def now
-  "A SQL function call returning the current time"
-  (hsql/raw "NOW()"))
+(defmethod driver/available? :hive-like [driver]
+  (and (register-driver/available?)
+       (not (driver/abstract? driver))))
 
-(defn unix-timestamp->timestamp
-  "Converts datetime string to a valid timestamp"
-  [expr seconds-or-milliseconds]
-  (hx/->timestamp
-   (hsql/call :from_unixtime (case seconds-or-milliseconds
-                               :seconds      expr
-                               :milliseconds (hx// expr 1000)))))
+(defmethod sql-jdbc.sync/database-type->base-type :hive-like [_ database-type]
+  ({ ;; Numeric types
+    :tinyint                     :type/Integer
+    :smallint                    :type/Integer
+    :int                         :type/Integer
+    :integer                     :type/Integer
+    :bigint                      :type/BigInteger
+    :float                       :type/Float
+    :double                      :type/Float
+    (keyword "double precision") :type/Float
+    :decimal                     :type/Decimal
+    ;; Date/Time types
+    :timestamp                   :type/DateTime
+    :date                        :type/Date
+    :interval                    :type/*
+    :string                      :type/Text
+    :varchar                     :type/Text
+    :char                        :type/Text
+    :boolean                     :type/Boolean
+    :binary                      :type/*} database-type))
+
+(defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
+
+(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds] [_ _ expr]
+  (hx/->timestamp (hsql/call :from_unixtime expr)))
 
 (defn- date-format [format-str expr]
   (hsql/call :date_format expr (hx/literal format-str)))
@@ -59,47 +61,41 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defn date
-  "Converts `expr` into a date, truncated to `unit`, using Hive SQL dialect functions"
-  [unit expr]
-  (case unit
-    :default         expr
-    :minute          (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr))
-    :minute-of-hour  (hsql/call :minute (hx/->timestamp expr))
-    :hour            (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr))
-    :hour-of-day     (hsql/call :hour (hx/->timestamp expr))
-    :day             (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr))
-    :day-of-week     (hx/->integer (date-format "u"
-                                                (hx/+ (hx/->timestamp expr)
-                                                      (hsql/raw "interval '1' day"))))
-    :day-of-month    (hsql/call :dayofmonth (hx/->timestamp expr))
-    :day-of-year     (hx/->integer (date-format "D" (hx/->timestamp expr)))
-    :week            (hsql/call :date_sub
-                       (hx/+ (hx/->timestamp expr)
-                             (hsql/raw "interval '1' day"))
-                       (date-format "u"
-                                    (hx/+ (hx/->timestamp expr)
-                                          (hsql/raw "interval '1' day"))))
-    :week-of-year    (hsql/call :weekofyear (hx/->timestamp expr))
-    :month           (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM))
-    :month-of-year   (hsql/call :month (hx/->timestamp expr))
-    :quarter         (hsql/call :add_months
-                       (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year))
-                       (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
-                                   1)
-                             3))
-    :quarter-of-year (hsql/call :quarter (hx/->timestamp expr))
-    :year            (hsql/call :year (hx/->timestamp expr))))
+(defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] (hsql/call :minute (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :hour-of-day]     [_ _ expr] (hsql/call :hour (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
+(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
+(defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :year (hx/->timestamp expr)))
 
-(defn date-interval
-  "Returns a SQL expression to calculate a time interval using the Hive SQL dialect"
-  [unit amount]
+(defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr]
+  (hx/->integer (date-format "u"
+                             (hx/+ (hx/->timestamp expr)
+                                   (hsql/raw "interval '1' day")))))
+
+(defmethod sql.qp/date [:hive-like :week] [_ _ expr]
+  (hsql/call :date_sub
+    (hx/+ (hx/->timestamp expr)
+          (hsql/raw "interval '1' day"))
+    (date-format "u"
+                 (hx/+ (hx/->timestamp expr)
+                       (hsql/raw "interval '1' day")))))
+
+(defmethod sql.qp/date [:hive-like :quarter] [_ _ expr]
+  (hsql/call :add_months
+    (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year))
+    (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
+                1)
+          3)))
+
+(defmethod driver/date-interval :hive-like [_ unit amount]
   (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
-
-(defn string-length-fn
-  "A SQL function call that returns the string length of `field-key`"
-  [field-key]
-  (hsql/call :length field-key))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
@@ -114,9 +110,7 @@
                  [table-name])))
         field-name))
 
-(defn field->identifier
-  "Returns an identifier for the given field"
-  [field]
+(defmethod sql.qp/field->identifier :hive-like [_ field]
   (apply hsql/qualify (qualified-name-components field)))
 
 (defn- run-query

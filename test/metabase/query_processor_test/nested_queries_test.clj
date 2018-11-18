@@ -2,12 +2,11 @@
   "Tests for handling queries with nested expressions."
   (:require [clojure.string :as str]
             [expectations :refer [expect]]
-            [honeysql.core :as hsql]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer :all]
              [util :as u]]
-            [metabase.driver.generic-sql :as generic-sql]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -15,15 +14,13 @@
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [segment :refer [Segment]]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [generic-sql :as sql.test]
              [datasets :as datasets]
              [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
@@ -41,7 +38,7 @@
 
 
 ;; make sure we can do a basic query with MBQL source-query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   {:rows [[1 "Red Medicine"                  4 10.0646 -165.374 3]
           [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
           [3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -64,17 +61,17 @@
                     :limit        5}}))))
 
 ;; make sure we can do a basic query with a SQL source-query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
           [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
           [4 -118.465 29 2 "Wurstküche"                   33.9997]
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
    ;; Oracle doesn't have Integer types, they always come back as DECIMAL
-   :cols [{:name "id",          :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
+   :cols [{:name "id",          :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
           {:name "longitude",   :base_type :type/Float}
-          {:name "category_id", :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
-          {:name "price",       :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
+          {:name "category_id", :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
+          {:name "price",       :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
           {:name "name",        :base_type :type/Text}
           {:name "latitude",    :base_type :type/Float}]}
   (format-rows-by [int (partial u/round-to-decimals 4) int int str (partial u/round-to-decimals 4)]
@@ -104,7 +101,7 @@
           {:name "count", :base_type :type/Integer}]})
 
 ;; make sure we can do a query with breakout and aggregation using an MBQL source query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   breakout-results
   (rows+cols
     (format-rows-by [int int]
@@ -116,7 +113,7 @@
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
 ;; Test including a breakout of a nested query column that follows an FK
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows [[1 174] [2 474] [3 78] [4 39]]
    :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
           {:name "count", :base_type :type/Integer}]}
@@ -132,7 +129,7 @@
                     :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
 
 ;; Test two breakout columns from the nested query, both following an FK
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows [[2 33.7701 7]
           [2 33.8894 8]
           [2 33.9997 7]
@@ -155,7 +152,7 @@
                                    [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)]]}}))))
 
 ;; Test two breakout columns from the nested query, one following an FK the other from the source table
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows [[1 1 6]
           [1 2 14]
           [1 3 13]
@@ -179,7 +176,7 @@
                     :limit        5}}))))
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
    breakout-results
   (rows+cols
     (format-rows-by [int int]
@@ -490,7 +487,7 @@
   (db/select-one-field :name Field :id (data/id table-kw field-kw)))
 
 ;; make sure using a time interval filter works
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   :completed
   (tt/with-temp Card [card (mbql-card-def
                              :source-table (data/id :checkins))]
@@ -500,7 +497,7 @@
         :status)))
 
 ;; make sure that wrapping a field literal in a datetime-field clause works correctly in filters & breakouts
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   :completed
   (tt/with-temp Card [card (mbql-card-def
                              :source-table (data/id :checkins))]
@@ -649,7 +646,7 @@
 
 ;; make sure that if we refer to a Field that is actually inside the source query, the QP is smart enough to figure
 ;; out what you were referring to and behave appropriately
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries)
   [[10]]
   (format-rows-by [int]
     (rows

@@ -1,6 +1,6 @@
-(ns metabase.driver.generic-sql.native-test
+(ns metabase.driver.sql-jdbc.native-test
   "Tests for running native queries against SQL databases."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]

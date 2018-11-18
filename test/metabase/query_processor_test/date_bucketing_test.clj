@@ -26,7 +26,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :as datasets :refer [*driver* *engine*]]
+             [datasets :as datasets]
              [interface :as i]])
   (:import org.joda.time.DateTime))
 
@@ -78,11 +78,11 @@
   (tformat/with-zone (tformat/formatters :date-time) tz))
 
 (def ^:private result-date-formatter-without-tz
-  "sqlite and crate return date strings that do not include their timezone, this formatter is useful for those DBs"
+  "sqlite returns date strings that do not include their timezone, this formatter is useful for those DBs"
   (tformat/formatters :mysql))
 
 (def ^:private date-formatter-without-time
-  "sqlite and crate return dates that do not include their time, this formatter is useful for those DBs"
+  "sqlite returns dates that do not include their time, this formatter is useful for those DBs"
   (tformat/formatters :date))
 
 (defn- adjust-date
@@ -125,15 +125,15 @@
 (expect-with-non-timeseries-dbs
   (cond
     ;; Timezone is omitted by these databases
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting Our
@@ -146,14 +146,14 @@
 (expect-with-non-timeseries-dbs
   (cond
     ;; These databases are always in UTC so aren't impacted by changes in report-timezone
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
     ;; The change in report timezone has no affect on this group
@@ -170,14 +170,14 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The JVM timezone should have no impact on a database that uses a report timezone
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
     :else
@@ -195,13 +195,13 @@
 ;; This dataset doesn't have multiple events in a minute, the results are the same as the default grouping
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     :else
@@ -258,14 +258,14 @@
 ;; timezone that database is in
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-hour (source-date-formatter utc-tz)
                      result-date-formatter-without-tz)
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-hour (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-hour (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     :else
@@ -284,8 +284,8 @@
 ;; first three results of the pacific results to the last three of the
 ;; UTC results (i.e. pacific is 7 hours back of UTC at that time)
 (expect-with-non-timeseries-dbs
-  (if (and (not (tz-shifted-engine-bug? *engine*))
-           (supports-report-timezone? *engine*))
+  (if (and (not (tz-shifted-engine-bug? driver/*driver*))
+           (supports-report-timezone? driver/*driver*))
     [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
     [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day pacific-tz))
@@ -345,7 +345,7 @@
 ;; tests, it's useful for debugging to answer why row counts change
 ;; when the timezone shifts by removing timezones and the related
 ;; database settings
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [2 -1 5 -5 2 0 -2 1 -1 1]
   (map #(new-events-after-tz-shift (str "2015-06-" %) pacific-tz)
        ["01" "02" "03" "04" "05" "06" "07" "08" "09" "10"]))
@@ -371,7 +371,7 @@
         counts))
 
 (expect-with-non-timeseries-dbs
-  (if (contains? #{:sqlite :crate} *engine*)
+  (if (= :sqlite driver/*driver*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
@@ -383,17 +383,17 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [8 9 9 4 11 8 6 10 6 10])
@@ -408,7 +408,7 @@
 ;; This test provides a validation of how many events are gained or
 ;; lost when the timezone is shifted to eastern, similar to the test
 ;; above with pacific
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [1 -1 3 -3 3 -2 -1 0 1 1]
   (map #(new-events-after-tz-shift (str "2015-06-" %) eastern-tz)
        ["01" "02" "03" "04" "05" "06" "07" "08" "09" "10"]))
@@ -416,17 +416,17 @@
 ;; Similar to the pacific test above, just validating eastern timezone shifts
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time eastern-tz)
                     (result-date-formatter eastern-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time eastern-tz)
                     (result-date-formatter eastern-tz)
                     [7 9 7 6 12 6 7 9 8 10])
@@ -449,17 +449,17 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-day date-formatter-without-time
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [8 9 9 4 11 8 6 10 6 10])
@@ -479,8 +479,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (tz-shifted-engine-bug? *engine*))
-           (supports-report-timezone? *engine*))
+  (if (and (not (tz-shifted-engine-bug? driver/*driver*))
+           (supports-report-timezone? driver/*driver*))
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
   (sad-toucan-incidents-with-bucketing :day-of-week pacific-tz))
@@ -496,8 +496,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (tz-shifted-engine-bug? *engine*))
-           (supports-report-timezone? *engine*))
+  (if (and (not (tz-shifted-engine-bug? driver/*driver*))
+           (supports-report-timezone? driver/*driver*))
     [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
     [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
   (sad-toucan-incidents-with-bucketing :day-of-month pacific-tz))
@@ -513,8 +513,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  (if (and (not (tz-shifted-engine-bug? *engine*))
-           (supports-report-timezone? *engine*))
+  (if (and (not (tz-shifted-engine-bug? driver/*driver*))
+           (supports-report-timezone? driver/*driver*))
     [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
     [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
   (sad-toucan-incidents-with-bucketing :day-of-year pacific-tz))
@@ -542,7 +542,7 @@
         counts))
 
 (expect-with-non-timeseries-dbs
-  (if (contains? #{:sqlite :crate} *engine*)
+  (if (= :sqlite driver/*driver*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
@@ -568,7 +568,7 @@
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
 ;; above and pacific test below, but this is still useful for debugging as it doesn't involve changing timezones or
 ;; database settings
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [3 0 -1 -2 0]
   (map #(new-weekly-events-after-tz-shift % pacific-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
@@ -578,17 +578,17 @@
 ;; earlier
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [49 47 39 58 7])
@@ -601,7 +601,7 @@
   (sad-toucan-incidents-with-bucketing :week pacific-tz))
 
 ;; Similar to above this test finds the difference in event counts for each week if we were in the eastern timezone
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [1 1 -1 -1 0]
   (map #(new-weekly-events-after-tz-shift % eastern-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
@@ -610,17 +610,17 @@
 ;; account for the 4-5 hour difference
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time eastern-tz)
                      (result-date-formatter eastern-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time eastern-tz)
                      (result-date-formatter eastern-tz)
                      [47 48 39 59 7])
@@ -639,17 +639,17 @@
 ;; timezone
 (expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     (results-by-week date-formatter-without-time
                      date-formatter-without-time
                      [46 47 40 60 7])
 
-    (tz-shifted-engine-bug? *engine*)
+    (tz-shifted-engine-bug? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [49 47 39 58 7])
@@ -670,14 +670,14 @@
 (expect-with-non-timeseries-dbs
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
-    (= :snowflake *engine*)
+    (= :snowflake driver/*driver*)
     [[22 46] [23 47] [24 40] [25 60] [26 7]]
 
-    (contains? #{:sqlserver :sqlite :crate :oracle :sparksql} *engine*)
+    (#{:sqlserver :sqlite :oracle :sparksql} driver/*driver*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (and (supports-report-timezone? *engine*)
-         (not (= :redshift *engine*)))
+    (and (supports-report-timezone? driver/*driver*)
+         (not (= :redshift driver/*driver*)))
     [[23 49] [24 47] [25 39] [26 58] [27 7]]
 
     :else
@@ -694,10 +694,10 @@
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (expect-with-non-timeseries-dbs
   [[(cond
-      (contains? #{:sqlite :crate} *engine*)
+      (= :sqlite driver/*driver*)
       "2015-06-01"
 
-      (supports-report-timezone? *engine*)
+      (supports-report-timezone? driver/*driver*)
       "2015-06-01T00:00:00.000-07:00"
 
       :else
@@ -707,10 +707,10 @@
 
 (expect-with-non-timeseries-dbs
   [[(cond
-      (contains? #{:sqlite :crate} *engine*)
+      (= :sqlite driver/*driver*)
       "2015-06-01"
 
-      (supports-report-timezone? *engine*)
+      (supports-report-timezone? driver/*driver*)
       "2015-06-01T00:00:00.000-04:00"
 
       :else
@@ -735,10 +735,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (expect-with-non-timeseries-dbs
-  [[(cond (contains? #{:sqlite :crate} *engine*)
+  [[(cond (= :sqlite driver/*driver*)
           "2015-04-01"
 
-          (supports-report-timezone? *engine*)
+          (supports-report-timezone? driver/*driver*)
           "2015-04-01T00:00:00.000-07:00"
 
           :else
@@ -747,10 +747,10 @@
   (sad-toucan-incidents-with-bucketing :quarter pacific-tz))
 
 (expect-with-non-timeseries-dbs
-  [[(cond (contains? #{:sqlite :crate} *engine*)
+  [[(cond (= :sqlite driver/*driver*)
           "2015-04-01"
 
-          (supports-report-timezone? *engine*)
+          (supports-report-timezone? driver/*driver*)
           "2015-04-01T00:00:00.000-04:00"
 
           :else
@@ -794,7 +794,7 @@
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
             ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
             ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-            [(u/prog1 (driver/date-interval *driver* :second (* i interval-seconds))
+            [(u/prog1 (driver/date-interval driver/*driver* :second (* i interval-seconds))
                (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))

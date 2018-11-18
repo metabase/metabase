@@ -1,6 +1,7 @@
 (ns metabase.sync.sync-metadata.sync-timezone
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
             [metabase.sync.interface :as i]
             [schema.core :as s]
@@ -16,7 +17,7 @@
   [database :- i/DatabaseInstance]
   (try
     (let [tz-id (some-> database
-                        driver/->driver
+                        driver.u/database->driver
                         (driver/current-db-time database)
                         extract-time-zone)]
       (when-not (= tz-id (:timezone database))

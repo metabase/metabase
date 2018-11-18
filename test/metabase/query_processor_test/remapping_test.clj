@@ -15,7 +15,7 @@
              [datasets :as datasets]]
             [toucan.db :as db]))
 
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["20th Century Cafe" 12 "Café Sweets"]
                  ["25°" 11 "Café"]
                  ["33 Taps" 7 "Beer Garden"]
@@ -57,7 +57,7 @@
                    (fn [rows]
                      (map #(mapv % col-indexes) rows))))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   {:rows        [["20th Century Cafe"               2 "Café"]
                  ["25°"                             2 "Burger"]
                  ["33 Taps"                         2 "Bar"]
@@ -85,7 +85,7 @@
          data)))
 
 ;; Check that we can have remappings when we include a `:fields` clause that restricts the query fields returned
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   {:rows        [["20th Century Cafe"               2 "Café"]
                  ["25°"                             2 "Burger"]
                  ["33 Taps"                         2 "Bar"]
@@ -114,7 +114,7 @@
          :data)))
 
 ;; Test that we can remap inside an MBQL nested query
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
   (data/with-data
     (fn []
@@ -130,7 +130,7 @@
 
 ;; Test a remapping with conflicting names, in the case below there are two name fields, one from Venues and the other
 ;; from Categories
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
   (data/with-data
     (data/create-venue-category-fk-remapping "Foo")
@@ -149,7 +149,7 @@
 ;;
 ;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
 ;; this is https://github.com/metabase/metabase/issues/8510
-(datasets/expect-with-engines (disj (non-timeseries-engines-with-feature :foreign-keys) :redshift :oracle :vertica)
+(datasets/expect-with-drivers (disj (non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
   (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
     (data/with-data

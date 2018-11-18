@@ -4,21 +4,16 @@
             [metabase.driver.druid :as druid]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [interface :as i]]
-            [metabase.util :as u])
-  (:import metabase.driver.druid.DruidDriver))
+             [interface :as tx]]
+            [metabase.util :as u]))
 
-(defn- database->connection-details [& _]
-  {:host (i/db-test-env-var-or-throw :druid :host)
-   :port (Integer/parseInt (i/db-test-env-var-or-throw :druid :port))})
+(tx/add-test-extensions! :druid)
 
-(u/strict-extend DruidDriver
-  i/IDriverTestExtensions
-  (merge i/IDriverTestExtensionsDefaultsMixin
-         {:engine                       (constantly :druid)
-          :database->connection-details database->connection-details
-          :create-db!                   (constantly nil)}))
+(defmethod tx/dbdef->connection-details :druid [& _]
+  {:host (tx/db-test-env-var-or-throw :druid :host)
+   :port (Integer/parseInt (tx/db-test-env-var-or-throw :druid :port))})
 
+(defmethod tx/create-db! :druid [& _] nil)
 
 
 ;;; Setting Up a Server w/ Druid Test Data
@@ -35,7 +30,7 @@
 ;;; Generating Data File
 
 (defn- flattened-test-data []
-  (let [dbdef    (i/flatten-dbdef defs/test-data "checkins")
+  (let [dbdef    (tx/flatten-dbdef defs/test-data "checkins")
         tabledef (first (:table-definitions dbdef))]
     (->> (:rows tabledef)
          (map (partial zipmap (map :field-name (:field-definitions tabledef))))

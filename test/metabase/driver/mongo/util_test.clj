@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.util-test
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
             [metabase.driver.mongo.util :as mongo-util]
+            [metabase.driver.util :as driver.u]
             [metabase.test.util.log :as tu.log])
   (:import com.mongodb.ReadPreference))
 
@@ -43,6 +43,6 @@
                    :tunnel-port    22
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
+        (driver.u/can-connect-with-details? engine details :rethrow-exceptions)))
        (catch Exception e
          (.getMessage e))))

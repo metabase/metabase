@@ -1,14 +1,12 @@
 (ns metabase.driver.sqlserver-test
   (:require [clojure.string :as str]
             [expectations :refer [expect]]
-            [metabase.driver
-             [generic-sql :as sql]
-             [sqlserver :as sqlserver]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test
              [data :as data]
              [util :as tu :refer [obj->json->obj]]]
             [metabase.test.data
-             [datasets :refer [expect-with-engine]]
+             [datasets :refer [expect-with-driver]]
              [interface :refer [def-database-definition]]]))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
@@ -23,7 +21,7 @@
      [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
      [[a-gene]]]])
 
-(expect-with-engine :sqlserver
+(expect-with-driver :sqlserver
   [[1 a-gene]]
   (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
         (data/run-mbql-query genetic-data))
@@ -42,8 +40,8 @@
    :password        "toucans"
    :encrypt         false
    :loginTimeout    10}
-  (-> (sql/connection-details->spec
-       (sqlserver/->SQLServerDriver)
+  (-> (sql-jdbc.conn/connection-details->spec
+       :sqlserver
        {:user               "cam"
         :password           "toucans"
         :db                 "birddb"
@@ -53,6 +51,6 @@
       ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
       (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
 
-(expect-with-engine :sqlserver
+(expect-with-driver :sqlserver
   "UTC"
   (tu/db-timezone-id))

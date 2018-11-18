@@ -6,47 +6,55 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]]))
 
-(def ^:private ^:const column->base-type
-  "Map of Vertica column types -> Field base types. Add more mappings here as you come across them."
-  {:Boolean        :type/Boolean
-   :Integer        :type/Integer
-   :Bigint         :type/BigInteger
-   :Varbinary      :type/*
-   :Binary         :type/*
-   :Char           :type/Text
-   :Varchar        :type/Text
-   :Money          :type/Decimal
-   :Numeric        :type/Decimal
-   :Double         :type/Decimal
-   :Float          :type/Float
-   :Date           :type/Date
-   :Time           :type/Time
-   :TimeTz         :type/Time
-   :Timestamp      :type/DateTime
-   :TimestampTz    :type/DateTime
-   :AUTO_INCREMENT :type/Integer
-   (keyword "Long Varchar")   :type/Text
-   (keyword "Long Varbinary") :type/*})
+(driver/register! :vertica, :parent :sql-jdbc)
 
-(defn- connection-details->spec [{:keys [host port db dbname]
-                                  :or   {host "localhost", port 5433, db ""}
-                                  :as   details}]
+(defmethod driver/available? :vertica [_]
+  (u/ignore-exceptions (Class/forName "com.vertica.jdbc.Driver")))
+
+(defmethod sql-jdbc.sync/database-type->base-type :vertica [_ database-type]
+  ({:Boolean                   :type/Boolean
+     :Integer                   :type/Integer
+     :Bigint                    :type/BigInteger
+     :Varbinary                 :type/*
+     :Binary                    :type/*
+     :Char                      :type/Text
+     :Varchar                   :type/Text
+     :Money                     :type/Decimal
+     :Numeric                   :type/Decimal
+     :Double                    :type/Decimal
+     :Float                     :type/Float
+     :Date                      :type/Date
+     :Time                      :type/Time
+     :TimeTz                    :type/Time
+     :Timestamp                 :type/DateTime
+     :TimestampTz               :type/DateTime
+     :AUTO_INCREMENT            :type/Integer
+     (keyword "Long Varchar")   :type/Text
+     (keyword "Long Varbinary") :type/*} database-type))
+
+(defmethod sql-jdbc.conn/connection-details->spec :vertica [_ {:keys [host port db dbname]
+                                                               :or   {host "localhost", port 5433, db ""}
+                                                               :as   details}]
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}
              (dissoc details :host :port :dbname :db :ssl))
-      (sql/handle-additional-options details)))
+      (sql-jdbc.common/handle-additional-options details)))
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (case seconds-or-milliseconds
-    :seconds      (hsql/call :to_timestamp expr)
-    :milliseconds (recur (hx// expr 1000) :seconds)))
+(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds] [_ _ expr]
+  (hsql/call :to_timestamp expr))
 
 (defn- cast-timestamp
   "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
@@ -64,84 +72,60 @@
 
 (def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
 
-(defn- date [unit expr]
-  (case unit
-    :default         expr
-    :minute          (date-trunc :minute expr)
-    :minute-of-hour  (extract-integer :minute expr)
-    :hour            (date-trunc :hour expr)
-    :hour-of-day     (extract-integer :hour expr)
-    :day             (hx/->date expr)
-    :day-of-week     (hx/inc (extract-integer :dow expr))
-    :day-of-month    (extract-integer :day expr)
-    :day-of-year     (extract-integer :doy expr)
-    :week            (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
-                                                   one-day))
-                           one-day)
-    ;:week-of-year    (extract-integer :week (hx/+ expr one-day))
-    :week-of-year    (hx/week expr)
-    :month           (date-trunc :month expr)
-    :month-of-year   (extract-integer :month expr)
-    :quarter         (date-trunc :quarter expr)
-    :quarter-of-year (extract-integer :quarter expr)
-    :year            (extract-integer :year expr)))
+(defmethod sql.qp/date [:vertica :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:vertica :minute]          [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:vertica :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:vertica :hour]            [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:vertica :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:vertica :day]             [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:vertica :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
+(defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr] (hx/week expr))
+(defmethod sql.qp/date [:vertica :month]           [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (extract-integer :year expr))
 
-(defn- date-interval [unit amount]
+(defmethod sql.qp/date [:vertica :week] [_ _ expr]
+  (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
+                                one-day))
+        one-day))
+
+(defmethod driver/date-interval :vertica [_ unit amount]
   (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica DATABASE.
    These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
   [database]
-  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
+  (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
          (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
 
-(defn- describe-database
-  "Custom implementation of `describe-database` for Vertica."
-  [driver database]
-  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
+(defmethod driver/describe-database :vertica [driver database]
+  (-> ((get-method driver/describe-database :sql-jdbc) driver database)
+      (update :tables set/union (materialized-views database))))
 
-(defn- string-length-fn [field-key]
-  (hsql/call :char_length (hx/cast :Varchar field-key)))
+(defmethod driver.common/current-db-time-date-formatters :vertica [_]
+  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
 
+(defmethod driver.common/current-db-time-native-query :vertica [_]
+  "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
 
-(defrecord VerticaDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "Vertica"))
+(defmethod driver/current-db-time :vertica [& args]
+  (apply driver.common/current-db-time args))
 
-(def ^:private vertica-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
-(def ^:private vertica-db-time-query "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
+(defmethod driver/connection-properties :vertica [_]
+  (ssh/with-tunnel-config
+    [driver.common/default-host-details
+     (assoc driver.common/default-port-details :default 5433)
+     driver.common/default-dbname-details
+     driver.common/default-user-details
+     driver.common/default-password-details
+     (assoc driver.common/default-additional-options-details
+       :placeholder "ConnectionLoadBalance=1")]))
 
-(u/strict-extend VerticaDriver
-  driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval     (u/drop-first-arg date-interval)
-          :describe-database describe-database
-          :details-fields    (constantly (ssh/with-tunnel-config
-                                           [driver/default-host-details
-                                            (assoc driver/default-port-details :default 5433)
-                                            driver/default-dbname-details
-                                            driver/default-user-details
-                                            driver/default-password-details
-                                            (assoc driver/default-additional-options-details
-                                              :placeholder "ConnectionLoadBalance=1")]))
-          :current-db-time   (driver/make-current-db-time-fn vertica-db-time-query vertica-date-formatters)})
-  sql/ISQLDriver
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
-          :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
-          :set-timezone-sql          (constantly "SET TIME ZONE TO %s;")
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
-
-(defn -init-driver
-  "Register the Vertica driver when found on the classpath"
-  []
-  ;; only register the Vertica driver if the JDBC driver is available
-  (when (u/ignore-exceptions
-         (Class/forName "com.vertica.jdbc.Driver"))
-    (driver/register-driver! :vertica (VerticaDriver.))))
+(defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")

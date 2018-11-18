@@ -3,10 +3,10 @@
   (:require [expectations :refer :all]
             [metabase.models.table :refer [Table]]
             [metabase.test.data :as data]
-            [metabase.test.data.interface :as i]
+            [metabase.test.data.interface :as tx]
             [toucan.db :as db]))
 
-(i/def-database-definition ^:const ^:private db-with-some-cruft
+(tx/def-database-definition ^:private db-with-some-cruft
   [["acquired_toucans"
      [{:field-name "species",              :base-type :type/Text}
       {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]

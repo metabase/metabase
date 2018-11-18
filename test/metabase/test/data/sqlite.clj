@@ -1,30 +1,34 @@
 (ns metabase.test.data.sqlite
   (:require [honeysql.core :as hsql]
             [metabase.test.data
-             [generic-sql :as generic]
-             [interface :as i]]
-            [metabase.util :as u]
+             [interface :as tx]
+             [sql :as sql.tx]
+             [sql-jdbc :as sql-jdbc.tx]]
+            [metabase.test.data.sql-jdbc
+             [execute :as execute]
+             [load-data :as load-data]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]])
-  (:import metabase.driver.sqlite.SQLiteDriver))
+             [honeysql-extensions :as hx]]))
 
-(defn- database->connection-details [context dbdef]
-  {:db (str (i/escaped-name dbdef) ".sqlite")})
+(sql-jdbc.tx/add-test-extensions! :sqlite)
 
-(def ^:private ^:const field-base-type->sql-type
-  {:type/BigInteger "BIGINT"
-   :type/Boolean    "BOOLEAN"
-   :type/Date       "DATE"
-   :type/DateTime   "DATETIME"
-   :type/Decimal    "DECIMAL"
-   :type/Float      "DOUBLE"
-   :type/Integer    "INTEGER"
-   :type/Text       "TEXT"
-   :type/Time       "TIME"})
+(defmethod tx/dbdef->connection-details :sqlite [_ context dbdef]
+  {:db (str (tx/escaped-name dbdef) ".sqlite")})
+
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/BigInteger] [_ _] "BIGINT")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Boolean]    [_ _] "BOOLEAN")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Date]       [_ _] "DATE")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/DateTime]   [_ _] "DATETIME")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Decimal]    [_ _] "DECIMAL")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Float]      [_ _] "DOUBLE")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Integer]    [_ _] "INTEGER")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Text]       [_ _] "TEXT")
+(defmethod sql.tx/field-base-type->sql-type [:sqlite :type/Time]       [_ _] "TIME")
 
 (defn- load-data-stringify-dates
-  "Our SQLite JDBC driver doesn't seem to like Dates/Timestamps so just convert them to strings before INSERTing them into the Database."
+  "Our SQLite JDBC driver doesn't seem to like Dates/Timestamps so just convert them to strings before INSERTing them
+  into the Database."
   [insert!]
   (fn [rows]
     (insert! (for [row rows]
@@ -38,17 +42,15 @@
 
                                :else v)]))))))
 
-(u/strict-extend SQLiteDriver
-  generic/IGenericSQLTestExtensions
-  (merge generic/DefaultsMixin
-         {:add-fk-sql                (constantly nil) ; TODO - fix me
-          :create-db-sql             (constantly nil)
-          :drop-db-if-exists-sql     (constantly nil)
-          :execute-sql!              generic/sequentially-execute-sql!
-          :load-data!                (generic/make-load-data-fn load-data-stringify-dates generic/load-data-chunked)
-          :pk-sql-type               (constantly "INTEGER")
-          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)})
-  i/IDriverTestExtensions
-  (merge generic/IDriverTestExtensionsMixin
-         {:database->connection-details (u/drop-first-arg database->connection-details)
-          :engine                       (constantly :sqlite)}))
+(defmethod sql.tx/pk-sql-type :sqlite [_] "INTEGER")
+
+(defmethod execute/execute-sql! :sqlite [& args]
+  (apply execute/sequentially-execute-sql! args))
+
+(let [load-data! (load-data/make-load-data-fn load-data-stringify-dates load-data/load-data-chunked)]
+  (defmethod load-data/load-data! :sqlite [& args]
+    (apply load-data! args)))
+
+(defmethod sql.tx/drop-db-if-exists-sql :sqlite [& _] nil)
+(defmethod sql.tx/create-db-sql         :sqlite [& _] nil)
+(defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; TODO - fix me

@@ -2,7 +2,7 @@
   "Middleware for substituting parameters in queries."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.parameters
              [mbql :as mbql-params]
@@ -32,7 +32,7 @@
       outer-query
       ;; otherwise replace the native query with the param-substituted version.
       ;; 'Unprepare' the args because making sure args get passed in the right order is too tricky for nested queries
-      ;; TODO - This might not work for all drivers. We should make 'unprepare' a Generic SQL method
+      ;; TODO - This might not work for all drivers. We should make 'unprepare' a SQL driver method
       ;; so different drivers can invoke unprepare/unprepare with the correct args
       (-> outer-query
           (assoc-in [:query :source-query :native] (unprepare/unprepare (cons new-query new-params)))))))

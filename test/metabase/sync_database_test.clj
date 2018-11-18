@@ -49,39 +49,28 @@
                         :database-type "VARCHAR"
                         :base-type     :type/Text}}}})
 
+(driver/register! ::sync-test)
 
-;; TODO - I'm 90% sure we could just reüse the "MovieDB" instead of having this subset of it used here
-(defrecord ^:private SyncTestDriver []
-  clojure.lang.Named
-  (getName [_] "SyncTestDriver"))
+(defmethod driver/available? ::sync-test [_] false)
 
-
-(defn- describe-database [& _]
+(defmethod driver/describe-database ::sync-test [& _]
   {:tables (set (for [table (vals sync-test-tables)]
                   (dissoc table :fields)))})
 
-(defn- describe-table [_ _ table]
+(defmethod driver/describe-table ::sync-test [_ _ table]
   (get sync-test-tables (:name table)))
 
-(defn- describe-table-fks [_ _ table]
+(defmethod driver/describe-table-fks ::sync-test [_ _ table]
   (set (when (= "movie" (:name table))
          #{{:fk-column-name   "studio"
             :dest-table       {:name   "studio"
                                :schema nil}
             :dest-column-name "studio"}})))
 
-(extend SyncTestDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:describe-database        describe-database
-          :describe-table           describe-table
-          :describe-table-fks       describe-table-fks
-          :features                 (constantly #{:foreign-keys})
-          :details-fields           (constantly [])
-          :process-query-in-context mock-util/process-query-in-context}))
+(defmethod driver/supports? [::sync-test :foreign-keys] [_ _] true)
 
-
-(driver/register-driver! :sync-test (SyncTestDriver.))
+(defmethod driver/process-query-in-context ::sync-test [& args]
+  (apply mock-util/process-query-in-context args))
 
 
 (defn- table-details [table]
@@ -197,7 +186,7 @@
            :display_name "Studio"
            :fields       [field:studio-name
                           field:studio-studio]})]
-  (tt/with-temp Database [db {:engine :sync-test}]
+  (tt/with-temp Database [db {:engine ::sync-test}]
     (sync/sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
     ;; database, such as adding tables that already exist or duplicating fields
@@ -216,7 +205,7 @@
                          ;; FKs only get synced when you sync the whole DB
                          (assoc field:movie-studio :fk_target_field_id false, :special_type nil)
                          field:movie-title]})
-  (tt/with-temp* [Database [db    {:engine :sync-test}]
+  (tt/with-temp* [Database [db    {:engine ::sync-test}]
                   Table    [table {:name   "movie"
                                    :schema "default"
                                    :db_id  (u/get-id db)}]]

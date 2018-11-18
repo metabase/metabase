@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.resolve-joined-tables
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
-  (:require [metabase.db :as mdb]
+  (:require [metabase
+             [db :as mdb]
+             [driver :as driver]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -11,9 +13,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            [metabase.query-processor.interface :as qp.i]))
+            [toucan.db :as db]))
 
 (defn- both-args-are-field-id-clauses? [[_ x y]]
   (and
@@ -107,7 +107,7 @@
 ;;; -------------------------------------------- PUTTING it all together ---------------------------------------------
 
 (defn- resolve-joined-tables* [query]
-  (if (and qp.i/*driver* (not (driver/driver-supports? qp.i/*driver* :foreign-keys)))
+  (if (and driver/*driver* (not (driver/supports? driver/*driver* :foreign-keys)))
     query
     (let [source-table-id (mbql.u/query->source-table-id query)
           fk-clauses      (mbql.u/match (:query query) [:fk-> [:field-id _] [:field-id _]])]
