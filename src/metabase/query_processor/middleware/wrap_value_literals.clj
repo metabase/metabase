@@ -11,11 +11,11 @@
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
-(defmulti ^:private ^{:doc (str "Get information about database, base, and special types for an object. This is passed "
-                                "to along to various `->honeysql` method implementations so drivers have the "
-                                "information they need to handle raw values like Strings, which may need to be parsed "
-                                "as a certain type.")}
-  type-info
+(defmulti ^:private type-info
+  "Get information about database, base, and special types for an object. This is passed to along to various
+  `->honeysql` method implementations so drivers have the information they need to handle raw values like Strings,
+  which may need to be parsed as a certain type."
+  {:arglists '([field-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod type-info :default [_] nil)
@@ -41,8 +41,9 @@
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
-(defmulti ^:private add-type-info (fn [x info & [{:keys [parse-datetime-strings?]}]]
-                                    (class x)))
+(defmulti ^:private add-type-info
+  {:arglists '([x info & {:keys [parse-datetime-strings?]}])}
+  (fn [x & _] (class x)))
 
 (defmethod add-type-info nil [_ info & _]
   [:value nil info])
@@ -64,8 +65,8 @@
     (du/str->time datetime-str (when-let [report-timezone (driver/report-timezone)]
                                  (TimeZone/getTimeZone ^String report-timezone)))))
 
-(defmethod add-type-info String [this info & [{:keys [parse-datetime-strings?]
-                                               :or   {parse-datetime-strings? true}}]]
+(defmethod add-type-info String [this info & {:keys [parse-datetime-strings?]
+                                              :or   {parse-datetime-strings? true}}]
   (if-let [unit (when (and (du/date-string? this)
                            parse-datetime-strings?)
                   (:unit info))]
@@ -95,7 +96,7 @@
        (add-type-info max-val (type-info field))]
 
       [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
-      (apply vector clause field (add-type-info s (type-info field) {:parse-datetime-strings? false}) more))))
+      (apply vector clause field (add-type-info s (type-info field), :parse-datetime-strings? false) more))))
 
 (defn- wrap-value-literals*
   [{query-type :type, :as query}]

@@ -111,7 +111,6 @@
                                    _                        (->rvalue &match)))))})
 
 
-
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defmulti ^:private parse-filter mbql.u/dispatch-by-clause-name-or-class)
@@ -165,8 +164,8 @@
     ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
     ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
     ;;
-    ;; (Recall that `auto-bucket-datetime-breakouts` guarantees all datetime Fields will be wrapped by
-    ;; `:datetime-field` clauses in a fully-preprocessed query.)
+    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will be wrapped by `:datetime-field`
+    ;; clauses in a fully-preprocessed query.)
     (let [filter (parse-filter (mbql.u/replace filter-clause
                                  [:segment (_ :guard mbql.u/ga-id?)] nil
                                  [_ [:datetime-field & _] & _] nil))]

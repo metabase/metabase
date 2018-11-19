@@ -17,7 +17,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
-             [auto-bucket-datetime-breakouts :as bucket-datetime]
+             [auto-bucket-datetimes :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
@@ -118,7 +118,7 @@
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-      bucket-datetime/auto-bucket-datetime-breakouts
+      bucket-datetime/auto-bucket-datetimes
       resolve-source-table/resolve-source-table
       row-count-and-status/add-row-count-and-status
       ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING

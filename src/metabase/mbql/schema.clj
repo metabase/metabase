@@ -148,8 +148,9 @@
 
 ;; `datetime-field` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort. There
 ;; is no requirement that all `:type/DateTime` derived Fields be wrapped in `datetime-field`, but for legacy reasons
-;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` clause, but
-;; nowhere else. See `auto-bucket-datetime-breakouts` for more details. `:field-id` clauses elsewhere will not be
+;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` and `:filter`
+;; clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when values for comparison are
+;; `yyyy-MM-dd` date strings. See `auto-bucket-datetimes` for more details. `:field-id` clauses elsewhere will not be
 ;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
 ;; `:field-id` clauses when their Field derives from `:type/DateTime`.
 ;;
