@@ -342,3 +342,12 @@
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
+
+
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                                               !!
+;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!
+;; !!    (using preConditions where appropriate). Only add things here if absolutely necessary. If you do add       !!
+;; !!    do add new ones here, please add them above this warning message, so people will see it in the future.     !!
+;; !!                                                                                                               !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
