@@ -209,7 +209,8 @@
 ;; wouldn't it
 (defclause aggregation, aggregation-clause-index s/Int)
 
-(def ^:private FieldOrAggregationReference
+(def FieldOrAggregationReference
+  "Schema for anything that refers to a Field, or a reference to an aggregation at index (for use in order-by)."
   (s/if (partial is-clause? :aggregation)
     aggregation
     Field))
@@ -548,7 +549,10 @@
   (->
    {(s/optional-key :source-query) SourceQuery
     (s/optional-key :source-table) SourceTable
+    ;; TODO - should aggregations be `distinct-non-empty` as well? Not sure in what situation could returning the same
+    ;; aggregation twice ever make sense
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
+    ;; TODO - I think this should also be unique
     (s/optional-key :breakout)     (su/non-empty [Field])
     ; TODO - expressions keys should be strings; fix this when we get a chance
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}

@@ -28,6 +28,15 @@
    (s/optional-key :special_type) (s/maybe su/FieldType)
    ;; where this column came from in the original query.
    :source                        (s/enum :aggregation :fields :breakout :native)
+   ;; a clause that can be used to refer to this column for purposes like sorting by it (e.g. when somebody clicks a
+   ;; header in a table view on the front end). For normal Fields, this is the clause that ultimately caused the Field
+   ;; to be included in the query; for aggregations a reference by index is returned.
+   ;;
+   ;; For native queries, returns a `:field-literal` clause.
+   ;;
+   ;; This is not neccessarily unique; duplicate entries in the breakout/aggregation/field clauses are currently
+   ;; allowed (although this may change in the future)
+   :field_ref                     mbql.s/FieldOrAggregationReference
    ;; various other stuff from the original Field can and should be included such as `:settings`
    s/Any                          s/Any})
 
@@ -43,13 +52,14 @@
   [{:keys [columns rows]}]
   (vec (for [i    (range (count columns))
              :let [col (nth columns i)]]
-         {:name         (name col)
+         {:name         (u/keyword->qualified-name col)
           :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
                             (u/keyword->qualified-name col))
           :base_type    (or (driver.common/values->base-type (for [row rows]
                                                                (nth row i)))
                             :type/*)
-          :source       :native})))
+          :source       :native
+          :field_ref [:field-literal (u/keyword->qualified-name col)]})))
 
 (defn- add-native-column-info
   [{:keys [columns], :as results}]
@@ -222,14 +232,16 @@
 
 (defn- cols-for-fields [{{fields-clause :fields} :query, :as query}]
   (for [field fields-clause]
-    (assoc (col-info-for-field-clause field) :source :fields)))
+    (assoc (col-info-for-field-clause field) :source :fields, :field_ref field)))
 
 (defn- cols-for-ags-and-breakouts [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
   (concat
    (for [breakout breakouts]
-     (assoc (col-info-for-field-clause breakout) :source :breakout))
-   (for [aggregation aggregations]
-     (assoc (col-info-for-aggregation-clause aggregation) :source :aggregation))))
+     (assoc (col-info-for-field-clause breakout) :source :breakout, :field_ref breakout))
+   (map-indexed
+    (fn [i aggregation]
+      (assoc (col-info-for-aggregation-clause aggregation) :source :aggregation, :field_ref [:aggregation i]))
+     aggregations)))
 
 (declare mbql-cols)
 
