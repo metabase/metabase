@@ -8,13 +8,13 @@
 (def ^:dynamic ^:private *add-preprocessed-queries?* true)
 
 (defn- fail [{query-type :type, :as query}, ^Throwable e, & [additional-info]]
-  (merge {:status       :failed
-          :class        (class e)
-          :error        (or (.getMessage e) (str e))
-          :stacktrace   (u/filtered-stacktrace e)
+  (merge {:status     :failed
+          :class      (class e)
+          :error      (or (.getMessage e) (str e))
+          :stacktrace (u/filtered-stacktrace e)
           ;; TODO - removing this stuff is not really needed anymore since `:database` is just the ID and not the
           ;; entire map including `:details`
-          :query        (dissoc query :database :driver)}
+          :query      (dissoc query :database :driver)}
          ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
          ;; useful for debugging purposes. Since generating them requires us to recursively run the query processor,
          ;; make sure we can skip adding them if we end up back here so we don't recurse forever

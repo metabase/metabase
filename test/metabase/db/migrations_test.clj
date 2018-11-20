@@ -14,6 +14,7 @@
              [permissions-group :as perm-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
+            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.password :as upass]
             [toucan.db :as db]
@@ -56,7 +57,8 @@
                                       :dataset_query {:database (u/get-id database)
                                                       :type     :native
                                                       :native   {:query 1000}}}]]
-    (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards)
+    (tu.log/suppress-output
+      (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards))
     (-> (db/select-one-field :dataset_query Card :id (u/get-id card))
         (update :database integer?))))
 
