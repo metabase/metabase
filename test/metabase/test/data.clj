@@ -94,7 +94,9 @@
 
 (defn- $->id
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
-  to `id`, optionally wrapping them in `:field-id` or `:fk->` clauses."
+  to `id`.
+
+  Optionally wraps IDs in `:field-id` or `:fk->` clauses as appropriate; this defaults to true."
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? true}}]
   (walk/postwalk
    (fn [form]
@@ -144,8 +146,8 @@
    :query    query})
 
 (defmacro mbql-query
-  "Build a query, expands symbols like `$field` into calls to `id`. See the dox for `$->id` for more information on how
-  `$`-prefixed expansion behaves.
+  "Build a query, expands symbols like `$field` into calls to `id` and wraps them in `:field-id`. See the dox for
+  `$->id` for more information on how `$`-prefixed expansion behaves.
 
     (mbql-query venues
       {:filter [:= $id 1]})

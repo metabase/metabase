@@ -2,7 +2,7 @@
   "Tests for MBQL aggregations."
   (:require [expectations :refer [expect]]
             [metabase
-             [query-processor-test :refer :all]
+             [query-processor-test :as qp.test :refer :all]
              [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.test
@@ -339,3 +339,11 @@
                     {:aggregation [[:sum [:field-id (u/get-id copy-of-venues-price)]]]})]
       (or (-> results :data :cols first)
           results))))
+
+;; Do we properly handle queries that have more than one of the same aggregation? (#5393)
+(expect
+  [[5050 203]]
+  (qp.test/format-rows-by [int int]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:aggregation [[:sum $id] [:sum $price]]}))))
