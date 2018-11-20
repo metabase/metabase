@@ -188,6 +188,45 @@
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
 
+(defn- get-dashboard
+  "Get `Dashboard` with ID."
+  [id]
+  (-> (Dashboard id)
+      api/check-404
+      (hydrate [:ordered_cards :card :series] :can_write)
+      api/read-check
+      api/check-not-archived
+      hide-unreadable-cards
+      add-query-average-durations))
+
+
+(api/defendpoint POST "/:from-dashboard-id/copy"
+  "Copy a `Dashboard`."
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as dashboard} :body}]
+  {name                (s/maybe su/NonBlankString)
+   description         (s/maybe s/Str)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
+  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+  (collection/check-write-perms-for-collection collection_id)
+  (let [existing-dashboard (get-dashboard from-dashboard-id)
+        dashboard-data {:name                (or name (:name existing-dashboard))
+                        :description         (or description (:description existing-dashboard))
+                        :parameters          (or (:parameters existing-dashboard) [])
+                        :creator_id          api/*current-user-id*
+                        :collection_id       collection_id
+                        :collection_position collection_position}
+        dashboard      (db/transaction
+                            ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                            ;; position, check that and fix up if needed
+                            (api/maybe-reconcile-collection-position! dashboard-data)
+                            ;; Ok, now save the Dashboard
+                            (u/prog1 (db/insert! Dashboard dashboard-data)
+                                    ;; Get cards from existing dashboard and associate to copied dashboard
+                                    (doseq [card (:ordered_cards existing-dashboard)]
+                                      (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+    (events/publish-event! :dashboard-create dashboard)))
+
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 

@@ -297,19 +297,6 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen) {
-      buttons.push(
-        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
-          <Link
-            to={location.pathname + "/move"}
-            data-metabase-event={"Dashboard;Move"}
-          >
-            <Icon className="text-brand-hover" name="move" size={18} />
-          </Link>
-        </Tooltip>,
-      );
-    }
-
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
@@ -322,6 +309,29 @@ export default class DashboardHeader extends Component {
           >
             <Icon name="pencil" size={16} />
           </a>
+        </Tooltip>,
+      );
+    }
+
+    if (!isFullscreen && !isEditing) {
+      buttons.push(
+        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+          <Link
+            to={location.pathname + "/move"}
+            data-metabase-event={"Dashboard;Move"}
+          >
+            <Icon className="text-brand-hover" name="move" size={18} />
+          </Link>
+        </Tooltip>,
+      );
+      buttons.push(
+        <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
+          <Link
+            to={location.pathname + "/copy"}
+            data-metabase-event={"Dashboard;Copy"}
+          >
+            <Icon className="text-brand-hover" name="clone" size={18} />
+          </Link>
         </Tooltip>,
       );
     }
