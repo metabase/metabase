@@ -20,6 +20,7 @@ const StandardForm = ({
   handleSubmit,
   resetForm,
 
+  submitTitle,
   formDef: form,
   className,
   resetButton = false,
@@ -64,7 +65,7 @@ const StandardForm = ({
           disabled={submitting || invalid}
           className="mr1"
         >
-          {values.id != null ? t`Update` : t`Create`}
+          {submitTitle || (values.id != null ? t`Update` : t`Create`)}
         </Button>
         {resetButton && (
           <Button

@@ -30,6 +30,7 @@ const EntityItem = ({
   onPin,
   onFavorite,
   onMove,
+  onCopy,
   onArchive,
   selected,
   onToggleSelected,
@@ -50,8 +51,14 @@ const EntityItem = ({
       action: onMove,
       event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
     },
+    onCopy && {
+      title: t`Duplicate this item`,
+      icon: "clone",
+      action: onCopy,
+      event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
+    },
     onArchive && {
-      title: t`Archive`,
+      title: t`Archive this item`,
       icon: "archive",
       action: onArchive,
       event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
