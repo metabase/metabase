@@ -172,8 +172,8 @@ export default class PieChart extends Component {
         jsx,
         majorWidth: 0,
         number_style: "percent",
-        minimumSignificantDigits: 3,
-        maximumSignificantDigits: 3,
+        minimumSignificantDigits: 2,
+        maximumSignificantDigits: 2,
       });
 
     const showPercentInTooltip =
