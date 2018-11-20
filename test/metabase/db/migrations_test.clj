@@ -47,6 +47,19 @@
     (->> (db/select-field->field :name :dataset_query Card :id [:in (map u/get-id [card-1 card-2])])
          (m/map-vals #(update % :database integer?)))))
 
+;; if for some reason we have a BigQuery native query that does not actually have any SQL, ignore it rather than
+;; barfing (#8924) (No idea how this was possible, but clearly it was)
+(expect
+  {:database true, :type :native, :native {:query 1000}}
+  (tt/with-temp* [Database [database {:engine "bigquery"}]
+                  Card     [card     {:database_id   (u/get-id database)
+                                      :dataset_query {:database (u/get-id database)
+                                                      :type     :native
+                                                      :native   {:query 1000}}}]]
+    (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards)
+    (-> (db/select-one-field :dataset_query Card :id (u/get-id card))
+        (update :database integer?))))
+
 ;; Test clearing of LDAP user local passwords
 (expect
   [false true]
