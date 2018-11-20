@@ -273,7 +273,15 @@
                                      {:name         "additional-options"
                                       :display-name "Additional JDBC connection string options"
                                       :placeholder  "e.g. COPLAST=OFF"}]))
-     :execute-query            execute-query})
+     :execute-query            execute-query
+     :features                 (constantly #{:basic-aggregations
+                                             :standard-deviation-aggregations
+                                             :foreign-keys
+                                             :expressions
+                                             :expression-aggregations
+                                             :native-parameters
+                                             :binning
+                                             :native-query-params})})
   sql/ISQLDriver 
   (merge (sql/ISQLDriverDefaultsMixin)
     {:column->base-type        (u/drop-first-arg column->base-type)
