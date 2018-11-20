@@ -27,7 +27,8 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets :refer [*driver* *engine*]]
-             [interface :as i]])
+             [interface :as i]]
+            [metabase.util.date :as du])
   (:import org.joda.time.DateTime))
 
 (defn- ->long-if-number [x]
@@ -891,3 +892,36 @@
 (expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   {:rows 2, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))
+
+
+;; Filtering by a unbucketed datetime Field should automatically bucket that Field by day if not already done (#8927)
+;;
+;; This should only apply when comparing Fields to `yyyy-MM-dd` date strings.
+;;
+;; e.g. `[:= <field> "2018-11-19"] should get rewritten as `[:= [:datetime-field <field> :day] "2018-11-19"]` if
+;; `<field>` is a `:type/DateTime` Field
+;;
+;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
+;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
+  [[1]]
+  (format-rows-by [int]
+    (rows
+      (data/with-temp-db [_ (checkins:1-per-day)]
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:= [:field-id $timestamp] (du/format-date "yyyy-MM-dd" (du/date-trunc :day))]})))))
+
+;; if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches
+(expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
+  ;; Mongo returns empty row for count = 0. We should fix that
+  (case *engine*
+    :mongo []
+    [[0]])
+  (format-rows-by [int]
+    (rows
+      (data/with-temp-db [_ (checkins:1-per-day)]
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:= [:field-id $timestamp] (str (du/format-date "yyyy-MM-dd" (du/date-trunc :day))
+                                                        "T14:16:00.000Z")]})))))

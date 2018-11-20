@@ -389,10 +389,29 @@
   (ga-id? id))
 
 (defn datetime-field?
-  "Does `field` have a base type or special type that derives from `:type/DateTime`?"
+  "Is `field` used to record something date or time related, i.e. does `field` have a base type or special type that
+  derives from `:type/DateTime`?
+
+  For historical reasons `:type/Time` derivies from `:type/DateTime`, meaning this function will still return true for
+  Fields that record only time. You can use `datetime-but-not-time-field?` instead if you want to exclude time
+  Fields."
   [field]
   (or (isa? (:base_type field)    :type/DateTime)
       (isa? (:special_type field) :type/DateTime)))
+
+(defn time-field?
+  "Is `field` used to record a time of day (e.g. hour/minute/second), but not the date itself? i.e. does `field` have a
+  base type or special type that derives from `:type/Time`?"
+  [field]
+  (or (isa? (:base_type field)    :type/Time)
+      (isa? (:special_type field) :type/Time)))
+
+(defn datetime-but-not-time-field?
+  "Is `field` used to record a specific moment in time, i.e. does `field` have a base type or special type that derives
+  from `:type/DateTime` but not `:type/Time`?"
+  [field]
+  (and (datetime-field? field)
+       (not (time-field? field))))
 
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
