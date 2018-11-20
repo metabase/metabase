@@ -37,10 +37,18 @@
   "A `<meta>` tag for `Embed.ly` support."
   (html [:meta {:name "generator", :content "Metabase"}]))
 
+(defn- custom-stylesheet-link
+  "Returns a `<link>` tag for the custom stylesheet, if any."
+  ^String []
+  (when-not (str/blank? (setting/get :custom-stylesheet))
+    (html [:link {:rel   "stylesheet"
+                  :type  "text/css"
+                  :href  (public-settings/custom-stylesheet)}])))
+
 (defn head
   "Returns the `<meta>`/`<link>` tags for an embeddable public page."
   ^String [^String url]
-  (str embedly-meta (oembed-link url)))
+  (str embedly-meta (oembed-link url) (custom-stylesheet-link)))
 
 (defn iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
