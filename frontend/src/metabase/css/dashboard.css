@@ -1,7 +1,4 @@
-.Dashboard {
-  background-color: var(--color-bg-light);
-  min-height: 100vh;
-}
+.Dashboard {min-height: auto !important; }
 
 .DashboardHeader {
   background-color: white;
