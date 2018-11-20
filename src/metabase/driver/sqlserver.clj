@@ -7,6 +7,7 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
@@ -155,6 +156,18 @@
                                                  (* items (dec page))
                                                  items))))
 
+;; From the dox:
+;;
+;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
+;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
+;; but not for `top-level` queries (since it's not needed there)
+(defn- apply-order-by [default-apply-order-by driver honeysql-form {:keys [limit], :as query}]
+  (let [add-limit? (and (not limit) (pos? sqlqp/*nested-query-level*))]
+    (cond-> (default-apply-order-by driver honeysql-form query)
+      add-limit? (apply-limit (assoc query :limit qp.i/absolute-max-results)))))
+
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sqlqp/->honeysql [SQLServerDriver Boolean]
   [_ bool]
@@ -205,17 +218,19 @@
                        (conj (sql/features this) :no-case-sensitivity-string-filter-options))})
 
   sql/ISQLDriver
-  (merge
-   (sql/ISQLDriverDefaultsMixin)
-   {:apply-limit               (u/drop-first-arg apply-limit)
-    :apply-page                (u/drop-first-arg apply-page)
-    :column->base-type         (u/drop-first-arg column->base-type)
-    :connection-details->spec  (u/drop-first-arg connection-details->spec)
-    :current-datetime-fn       (constantly :%getutcdate)
-    :date                      (u/drop-first-arg date)
-    :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
-    :string-length-fn          (u/drop-first-arg string-length-fn)
-    :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+  (let [{default-apply-order-by :apply-order-by, :as mixin} (sql/ISQLDriverDefaultsMixin)]
+    (merge
+     mixin
+     {:apply-limit               (u/drop-first-arg apply-limit)
+      :apply-page                (u/drop-first-arg apply-page)
+      :apply-order-by            (partial apply-order-by default-apply-order-by)
+      :column->base-type         (u/drop-first-arg column->base-type)
+      :connection-details->spec  (u/drop-first-arg connection-details->spec)
+      :current-datetime-fn       (constantly :%getutcdate)
+      :date                      (u/drop-first-arg date)
+      :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
+      :string-length-fn          (u/drop-first-arg string-length-fn)
+      :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})))
 
 (defn -init-driver
   "Register the SQLServer driver"

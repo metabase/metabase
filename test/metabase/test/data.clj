@@ -5,6 +5,7 @@
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -20,7 +21,6 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
-            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -118,10 +118,20 @@
 
   Use `$$table` to refer to the table itself.
 
-    $$table -> (id :venues)"
-  {:style/indent 1}
-  [table-name & body]
-  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
+    $$table -> (id :venues)
+
+  You can pass options by wrapping `table-name` in a vector:
+
+    ($ids [venues {:wrap-field-ids? true}]
+      $category_id->categories.name)
+    ;; -> [:fk-> [:field-id (id :venues :category_id(] [:field-id (id :categories :name)]]"
+  {:arglists '([table & body] [[table {:keys [wrap-field-ids?]}] & body]), :style/indent 1}
+  [table-and-options & body]
+  (let [[table-name options] (if (sequential? table-and-options)
+                               table-and-options
+                               [table-and-options])]
+    (m/mapply $->id (keyword table-name) `(do ~@body) (merge {:wrap-field-ids? false}
+                                                             options))))
 
 
 (defn wrap-inner-mbql-query
