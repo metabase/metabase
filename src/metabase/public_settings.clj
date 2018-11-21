@@ -3,6 +3,7 @@
             [metabase
              [config :as config]
              [types :as types]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
@@ -185,9 +186,7 @@
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
    :enable_xrays          (enable-xrays)
-   :engines               (do
-                            (require 'metabase.driver.util)
-                            ((resolve 'metabase.driver.util/available-drivers-info)))
+   :engines               (driver.u/available-drivers-info)
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
