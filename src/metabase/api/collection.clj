@@ -171,11 +171,9 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id]
-  (if collection-id
-    (api/write-check Collection collection-id)
-    ;; if the Collection is going to go in the Root Collection, for the time being we'll just check that you're a
-    ;; superuser. Once we merge in Root Collection permissions we'll need to change this !
-    (api/check-superuser)))
+  (api/write-check (if collection-id
+                     (Collection collection-id)
+                     collection/root-collection)))
 
 (api/defendpoint POST "/"
   "Create a new Collection."

@@ -179,7 +179,7 @@
   ;; other `->honeysql` impls (e.g. the `(class Field` one) will do the correct thing automatically without having to
   ;; worry about the context in which they are being called
   (qp.store/with-pushed-store
-    (when-let [{:keys [join-alias table-id]} (mbql.u/fk-clause->join-info *query* fk-clause)]
+    (when-let [{:keys [join-alias table-id]} (mbql.u/fk-clause->join-info *query* *nested-query-level* fk-clause)]
       (when table-id
         (qp.store/store-table! (assoc (qp.store/table table-id)
                                  :schema nil

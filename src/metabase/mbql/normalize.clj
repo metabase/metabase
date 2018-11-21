@@ -200,7 +200,7 @@
               (let [tag-def (-> (normalize-tokens tag-def :ignore-path)
                                 (update :type mbql.u/normalize-token))]
                 (cond-> tag-def
-                  (:widget-type tag-def) (update :widget-type #(when % (mbql.u/normalize-token %)))))])))
+                  (:widget-type tag-def) (update :widget-type mbql.u/normalize-token)))])))
 
 (defn- normalize-query-parameter [param]
   (-> param

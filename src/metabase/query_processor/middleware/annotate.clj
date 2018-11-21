@@ -89,10 +89,12 @@
      :display_name (humanization/name->human-readable-name field-name)}
 
     [:expression expression-name]
-    {:name         expression-name
-     :display_name expression-name
-     :base_type    :type/Float
-     :special_type :type/Number}
+    {:name            expression-name
+     :display_name    expression-name
+     :base_type       :type/Float
+     :special_type    :type/Number
+     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+     :expression_name expression-name}
 
     [:field-id id]
     (dissoc (qp.store/field id) :database_type)

@@ -106,17 +106,41 @@
 
 ;;; -------------------------------------------- PUTTING it all together ---------------------------------------------
 
-(defn- resolve-joined-tables* [query]
-  (if (and driver/*driver* (not (driver/supports? driver/*driver* :foreign-keys)))
+(defn- resolve-joined-tables-in-top-level-query
+  "Resolve JOINs at the top-level of the query."
+  [{mbql-query :query, :as query}]
+  ;; find fk-> clauses in the query AT THE TOP LEVEL
+  (let [fk-clauses      (mbql.u/match (dissoc mbql-query :source-query) [:fk-> [:field-id _] [:field-id _]])
+        source-table-id (mbql.u/query->source-table-id query)]
+    ;; if there are none, or `source-table` isn't resolved for some reason or another (which we need in order to fetch
+    ;; FK info), return query as-is
+    (if-not (and (seq fk-clauses) source-table-id)
+      query
+      ;; otherwise fetch PK info, add relevant Tables & Fields to QP store, and add the `:join-tables` key to the query
+      (let [pk-info (fk-clauses->pk-info source-table-id fk-clauses)]
+        (store-join-tables! fk-clauses)
+        (store-join-table-pk-fields! pk-info)
+        (add-join-info-to-query query fk-clauses pk-info)))))
+
+(defn- resolve-joined-tables-in-query-all-levels
+  "Resolve JOINs at all levels of the query, including the top level and nested queries at any level of nesting."
+  [{{source-query :source-query} :query, :as query}]
+  ;; first, resolve JOINs for the top-level
+  (let [query                          (resolve-joined-tables-in-top-level-query query)
+        ;; then recursively resolve JOINs for any nested queries by pulling the query up a level and then getting the
+        ;; result
+        {resolved-source-query :query} (when source-query
+                                         (resolve-joined-tables-in-query-all-levels (assoc query :query source-query)))]
+    ;; finally, merge the resolved source-query into the top-level query as appropriate
+    (cond-> query
+      resolved-source-query (assoc-in [:query :source-query] resolved-source-query))))
+
+(defn- resolve-joined-tables* [{query-type :type, :as query}]
+  (if (or (= query-type :native)
+          (and driver/*driver*
+               (not (driver/supports? driver/*driver* :foreign-keys))))
     query
-    (let [source-table-id (mbql.u/query->source-table-id query)
-          fk-clauses      (mbql.u/match (:query query) [:fk-> [:field-id _] [:field-id _]])]
-      (if-not (and (seq fk-clauses) source-table-id)
-        query
-        (let [pk-info (fk-clauses->pk-info source-table-id fk-clauses)]
-          (store-join-tables! fk-clauses)
-          (store-join-table-pk-fields! pk-info)
-          (add-join-info-to-query query fk-clauses pk-info))))))
+    (resolve-joined-tables-in-query-all-levels query)))
 
 (defn resolve-joined-tables
   "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
