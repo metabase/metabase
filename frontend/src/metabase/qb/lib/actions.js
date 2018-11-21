@@ -62,6 +62,10 @@ export const getFieldRefFromColumn = (
   column: Column,
   fieldId?: ?(FieldId | FieldLiteral) = column.id,
 ): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
+  if (column.expression_name) {
+    return ["expression", column.expression_name];
+  }
+
   if (fieldId == null) {
     throw new Error(
       "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
