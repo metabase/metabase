@@ -115,7 +115,7 @@
 
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-name [ag-clause]
-  (binding [i/*driver* (H2Driver.)]
+  (binding [qp.i/*driver* (H2Driver.)]
     (annotate/aggregation-name ag-clause)))
 
 (expect
