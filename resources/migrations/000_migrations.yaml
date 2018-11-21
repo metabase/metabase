@@ -4997,6 +4997,7 @@ databaseChangeLog:
       comment: 'Added 0.31.0'
       validCheckSum: 8:a875945f36824a0667c740888c00c37f
       validCheckSum: 8:83ded48e18fe8f70d6ec09add042124d
+      validCheckSum: 8:1e5bc2d66778316ea640a561862c23b4
       changes:
         - addColumn:
             tableName: query_execution
@@ -5004,8 +5005,6 @@ databaseChangeLog:
               name: database_id
               type: integer
               remarks: 'ID of the database this query was ran against.'
-        - sql:
-            sql: UPDATE query_execution SET database_id = (select database_id from report_card where id = query_execution.card_id);
 
 # Start recording the actual query dictionary that's been executed
 
