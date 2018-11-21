@@ -128,6 +128,7 @@
                     :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
                     :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
 
+
 ;; Test two breakout columns from the nested query, both following an FK
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows [[2 33.7701 7]
@@ -662,3 +663,22 @@
                                                   (data/id :venues :price)]}
                     :aggregation  [[:count]]
                     :filter       [:= [:field-id (data/id :venues :category_id)] 50]}}))))
+
+;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
+  [[31 "Bludso's BBQ"         5 33.8894 -118.207 2]
+   [32 "Boneyard Bistro"      5 34.1477 -118.428 3]
+   [33 "My Brother's Bar-B-Q" 5 34.167  -118.595 2]
+   [35 "Smoke City Market"    5 34.1661 -118.448 1]
+   [37 "bigmista's barbecue"  5 34.118  -118.26  2]
+   [38 "Zeke's Smokehouse"    5 34.2053 -118.226 2]
+   [39 "Baby Blues BBQ"       5 34.0003 -118.465 2]]
+  (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+    (rows
+      (qp/process-query
+        (data/$ids [venues {:wrap-field-ids? true}]
+          {:type     :query
+           :database (data/id)
+           :query    {:source-query {:source-table $$table
+                                     :filter       [:= $venues.category_id->categories.name "BBQ"]
+                                     :order-by     [[:asc $id]]}}})))))

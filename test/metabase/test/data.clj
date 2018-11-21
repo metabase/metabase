@@ -5,6 +5,7 @@
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [query-processor :as qp]
              [sync :as sync]
@@ -92,7 +93,9 @@
 
 (defn- $->id
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
-  to `id`, optionally wrapping them in `:field-id` or `:fk->` clauses."
+  to `id`.
+
+  Optionally wraps IDs in `:field-id` or `:fk->` clauses as appropriate; this defaults to true."
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? true}}]
   (walk/postwalk
    (fn [form]
@@ -116,10 +119,20 @@
 
   Use `$$table` to refer to the table itself.
 
-    $$table -> (id :venues)"
-  {:style/indent 1}
-  [table-name & body]
-  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
+    $$table -> (id :venues)
+
+  You can pass options by wrapping `table-name` in a vector:
+
+    ($ids [venues {:wrap-field-ids? true}]
+      $category_id->categories.name)
+    ;; -> [:fk-> [:field-id (id :venues :category_id(] [:field-id (id :categories :name)]]"
+  {:arglists '([table & body] [[table {:keys [wrap-field-ids?]}] & body]), :style/indent 1}
+  [table-and-options & body]
+  (let [[table-name options] (if (sequential? table-and-options)
+                               table-and-options
+                               [table-and-options])]
+    (m/mapply $->id (keyword table-name) `(do ~@body) (merge {:wrap-field-ids? false}
+                                                             options))))
 
 
 (defn wrap-inner-mbql-query
@@ -132,8 +145,8 @@
    :query    query})
 
 (defmacro mbql-query
-  "Build a query, expands symbols like `$field` into calls to `id`. See the dox for `$->id` for more information on how
-  `$`-prefixed expansion behaves.
+  "Build a query, expands symbols like `$field` into calls to `id` and wraps them in `:field-id`. See the dox for
+  `$->id` for more information on how `$`-prefixed expansion behaves.
 
     (mbql-query venues
       {:filter [:= $id 1]})

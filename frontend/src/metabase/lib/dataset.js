@@ -53,8 +53,8 @@ export function fieldRefForColumn(column: Column): ?ConcreteField {
     } else {
       return ["field-id", column.id];
     }
-  } else if (column["expression-name"] != null) {
-    return ["expression", column["expression-name"]];
+  } else if (column.expression_name != null) {
+    return ["expression", column.expression_name];
   } else {
     return null;
   }

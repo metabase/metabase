@@ -370,20 +370,21 @@
         (update :query #(merge-with concat % {:postAggregations [post-agg]})))))
 
 (defn- handle-aggregations [query-type {aggregations :aggregation} query-context]
-  (loop [[ag & more] aggregations, query query-context]
-    (cond
-      (and (mbql.u/is-clause? :named ag)
-           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
-      (handle-expression-aggregation query-type ag query)
+  (let [aggregations (mbql.u/pre-alias-and-uniquify-aggregations annotate/aggregation-name aggregations)]
+    (loop [[ag & more] aggregations, query query-context]
+      (cond
+        (and (mbql.u/is-clause? :named ag)
+             (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
+        (handle-expression-aggregation query-type ag query)
 
-      (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-      (handle-expression-aggregation query-type ag query)
+        (mbql.u/is-clause? #{:+ :- :/ :*} ag)
+        (handle-expression-aggregation query-type ag query)
 
-      (not ag)
-      query
+        (not ag)
+        query
 
-      :else
-      (recur more (handle-aggregation query-type ag query)))))
+        :else
+        (recur more (handle-aggregation query-type ag query))))))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------

@@ -84,7 +84,7 @@
   `qualified-name-components`and `quote-name`.
 
     (qualify+quote-name [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\""
-  {:arglists '([driver database-name? table-name? field-name?])}
+  {:arglists '([driver database-name table-name? field-name?])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

@@ -10,6 +10,7 @@
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
@@ -154,6 +155,21 @@
   (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
                                                  (* items (dec page))
                                                  items))))
+
+;; From the dox:
+;;
+;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
+;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
+;; but not for `top-level` queries (since it's not needed there)
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by] [driver _ honeysql-form {:keys [limit], :as query}]
+  (let [add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
+        honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
+                       driver :order-by honeysql-form query)]
+    (if-not add-limit?
+      honeysql-form
+      (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]

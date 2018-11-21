@@ -2,7 +2,7 @@
   (:require [expectations :refer [expect]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.binning :as binning]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
@@ -122,8 +122,7 @@
                               {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}
    :type     :query
    :database (data/id)}
-  (qp.store/with-store
-    (qp.store/store-field! field)
+  (qp.test-util/with-everything-store
     ((binning/update-binning-strategy identity)
      {:query    {:source-table (data/id :checkins)
                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}

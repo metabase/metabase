@@ -8,8 +8,6 @@
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]))
 
-;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
-
 ;;; FILTER -- "AND", ">", ">="
 (expect-with-non-timeseries-dbs
   [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]

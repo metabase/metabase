@@ -2,8 +2,10 @@
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor
+             [store :as qp.store]
+             [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
             [metabase.test.data :as data]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -236,3 +238,23 @@
       :type     :query
       :query    {:source-table (data/id :venues)
                  :aggregation  [[:count] [:sum] [:count] [:named [:count] "count_2"]]}})))
+
+;; make sure expressions come back with the right set of keys, including `:expression_name` (#8854)
+(expect
+  {:name            "discount_price"
+   :display_name    "discount_price"
+   :base_type       :type/Float
+   :special_type    :type/Number
+   :expression_name "discount_price"
+   :source          :fields}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         {:database (data/id)
+          :type     :query
+          :query    (data/$ids [venues {:wrap-field-ids? true}]
+                      {:source-table $$table
+                       :expressions  {"discount_price" [:* 0.9 [:field-id $price]]}
+                       :fields       [$name [:expression "discount_price"]]
+                       :limit        10})}))
+      :cols
+      second))
