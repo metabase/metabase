@@ -70,14 +70,16 @@
 ;; important because we're limited to a quota of 30 DBs on RDS.
 (defmethod tx/before-run :sqlserver [_]
   (let [connection-spec (sql-jdbc.conn/connection-details->spec :sqlserver
-                                                                (tx/dbdef->connection-details :sqlserver :server nil))
-        leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
-                                                                   FROM   master.dbo.sysdatabases
-                                                                   WHERE  name NOT IN ('tempdb', 'master', 'model', 'msdb', 'rdsadmin');"))]
+                          (tx/dbdef->connection-details :sqlserver :server nil))
+        leftover-dbs    (map :name (jdbc/query
+                                    connection-spec
+                                    (str "SELECT name "
+                                         "FROM master.dbo.sysdatabases "
+                                         "WHERE name NOT IN ('tempdb', 'master', 'model', 'msdb', 'rdsadmin');")))]
     (with-redefs [+suffix identity]
       (doseq [db leftover-dbs]
         (u/ignore-exceptions
-         (printf "Deleting leftover SQL Server DB '%s'...\n" db)
-         ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
-         (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
-         (println "[ok]"))))))
+          (printf "Deleting leftover SQL Server DB '%s'...\n" db)
+          ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
+          (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
+          (println "[ok]"))))))

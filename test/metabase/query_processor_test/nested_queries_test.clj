@@ -665,7 +665,7 @@
                     :filter       [:= [:field-id (data/id :venues :category_id)] 50]}}))))
 
 ;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [[31 "Bludso's BBQ"         5 33.8894 -118.207 2]
    [32 "Boneyard Bistro"      5 34.1477 -118.428 3]
    [33 "My Brother's Bar-B-Q" 5 34.167  -118.595 2]

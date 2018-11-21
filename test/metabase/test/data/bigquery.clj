@@ -210,23 +210,23 @@
     (when-not (contains? @existing-datasets database-name)
       (try
         (u/auto-retry 10
-                      ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
-                      ;; again from a blank slate
-                      (u/ignore-exceptions
-                       (destroy-dataset! database-name))
-                      (create-dataset! database-name)
-                      ;; do this in parallel because otherwise it can literally take an hour to load something like
-                      ;; fifty_one_different_tables
-                      (u/pdoseq [tabledef table-definitions]
-                                (load-tabledef! database-name tabledef))
-                      (swap! existing-datasets conj database-name)
-                      (println (u/format-color 'green "[OK]")))
+          ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
+          ;; again from a blank slate
+          (u/ignore-exceptions
+            (destroy-dataset! database-name))
+          (create-dataset! database-name)
+          ;; do this in parallel because otherwise it can literally take an hour to load something like
+          ;; fifty_one_different_tables
+          (u/pdoseq [tabledef table-definitions]
+            (load-tabledef! database-name tabledef))
+          (swap! existing-datasets conj database-name)
+          (println (u/format-color 'green "[OK]")))
         ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully work next time
         ;; around
         (catch Throwable e
           (u/ignore-exceptions
-           (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
-           (destroy-dataset! database-name))
+            (println (u/format-color 'red "Failed to load BigQuery dataset '%s'." database-name))
+            (destroy-dataset! database-name))
           (throw e))))))
 
 (defmethod tx/aggregate-column-info :bigquery

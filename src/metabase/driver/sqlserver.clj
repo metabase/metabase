@@ -165,7 +165,8 @@
 ;; but not for `top-level` queries (since it's not needed there)
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by] [driver _ honeysql-form {:keys [limit], :as query}]
   (let [add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
-        honeysql-form ((get-method sql.qp/apply-top-level-clause :sql-jdbc) driver :order-by honeysql-form query)]
+        honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
+                       driver :order-by honeysql-form query)]
     (if-not add-limit?
       honeysql-form
       (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
