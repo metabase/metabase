@@ -1,13 +1,13 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [clojure.string :as str]))
+            [toucan.db :as db]))
 
 (def ^:private can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
