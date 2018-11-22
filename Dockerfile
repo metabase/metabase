@@ -70,6 +70,7 @@ COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib
 RUN mkdir -p bin target/uberjar
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
+COPY --from=builder /app/source/bin/docker/run_metabase.sh /app/bin/
 
 # expose our default runtime port
 EXPOSE 3000
