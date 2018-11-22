@@ -64,7 +64,7 @@
                               (let [parent (Collection (Integer/parseInt parent))]
                                 (str (:name parent) "/collections"))))
                        (str/join "/")
-                       (format "/%s/")))]
+                       (format "%s/")))]
     (str prefix "/collections/" parents (:name collection))))
 
 (defmethod fully-qualified-name (type Dashboard)
@@ -149,7 +149,7 @@
 
 (defn- strip-crud
   [entity]
-  (dissoc entity :id :creator_id :created_at :updated_at :table_id :db_id :database_id
+  (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id
           :card_id :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id))
 
 (defn- spit-yaml
@@ -214,3 +214,16 @@
   (->> card
        (humanize-field-references path)
        (spit-yaml path)))
+
+(let [path "dump"
+      dump-all (fn [path entities]
+                 (doseq [e entities]
+                   (dump path e)))]
+  (dump-all path (Database))
+  (dump-all path (Table))
+  (dump-all path (Field))
+  (dump-all path (Metric))
+  (dump-all path (Segment))
+  (dump-all path (Collection))
+  (dump-all path (Card))
+  (dump-all path (Dashboard)))
