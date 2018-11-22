@@ -135,6 +135,20 @@
   "We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities."
   #(/ % (* 1000 60 60 24)))
 
+(defn- about-equidistant?
+  [xs]
+  (->> xs
+       (partition 2 1)
+       (map (fn [[a b]]
+              (if (and a b (not= a b))
+                (- b a)
+                Double/POSITIVE_INFINITY)))
+       (partition 2 1)
+       (map (fn [[d1 d2]]
+              (- 1 (/ (min d1 d2)
+                      (max d1 d2)))))
+       (every? (partial > 0.1))))
+
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
@@ -156,16 +170,20 @@
                          (let [y-position (:position number-col)
                                yfn        #(nth % y-position)]
                            (redux/juxt ((map yfn) (last-n 2))
+                                       ((map xfn) (last-n 3))
                                        (stats/simple-linear-regression xfn yfn)
                                        (best-fit xfn yfn)))
-                         (fn [[[previous current] [offset slope] best-fit]]
-                           {:last-value     current
-                            :previous-value previous
-                            :last-change    (change current previous)
-                            :slope          slope
-                            :offset         offset
-                            :best-fit       best-fit
-                            :col            (:name number-col)}))))))
+                         (fn [[[previous current] last-3-timestamps [offset slope] best-fit]]
+                           (let [equidistant? (about-equidistant? last-3-timestamps)]
+                             {:last-value     current
+                              :previous-value (when equidistant?
+                                                previous)
+                              :last-change    (when equidistant?
+                                                (change current previous))
+                              :slope          slope
+                              :offset         offset
+                              :best-fit       best-fit
+                              :col            (:name number-col)})))))))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
