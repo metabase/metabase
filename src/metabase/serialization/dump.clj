@@ -114,7 +114,7 @@
                              (entity-reference->fully-qualified-name prefix arg))))
     :field-literal entity-reference))
 
-(defn- humanize-field-references
+(defn- humanize-entity-references
   [prefix entity]
   (walk/postwalk
    (fn [form]
@@ -123,19 +123,24 @@
        (entity-reference->fully-qualified-name prefix form)
 
        (map? form)
-       (let [fully-qualified-name (partial fully-qualified-name prefix)]
+       (let [fully-qualified-name (fn [entity-id model]
+                                    (if (string? entity-id)
+                                      (fully-qualified-name prefix (model entity))))]
          (-> form
-             (u/update-when :database (comp fully-qualified-name Database))
-             (u/update-when :source-table (comp fully-qualified-name
-                                                (fn [source-table]
-                                                  (if (and (string? source-table)
-                                                           (str/starts-with? source-table "card__"))
-                                                    (-> source-table
-                                                        (str/split #"__")
-                                                        second
-                                                        Integer/parseInt
-                                                        Card)
-                                                    (Table source-table)))))))
+             (u/update-when :database (fn [db]
+                                        (if (= db -1337)
+                                          "database/virtual"
+                                          (fully-qualified-name db Database))))
+             (u/update-when :card_id comp fully-qualified-name Card)
+             (u/update-when :source-table (fn [source-table]
+                                            (if (and (string? source-table)
+                                                     (str/starts-with? source-table "card__"))
+                                              (-> source-table
+                                                  (str/split #"__")
+                                                  second
+                                                  Integer/parseInt
+                                                  (fully-qualified-name Card))
+                                              (fully-qualified-name source-table Table))))))
 
        :else
        form))
@@ -176,13 +181,13 @@
 (defmethod dump (type Segment)
   [path segment]
   (->> segment
-       (humanize-field-references path)
+       (humanize-entity-references path)
        (spit-yaml path :file)))
 
 (defmethod dump (type Metric)
   [path metric]
   (->> metric
-       (humanize-field-references path)
+       (humanize-entity-references path)
        (spit-yaml path :file)))
 
 (defn- dashboard-cards-for-dashboard
@@ -198,7 +203,7 @@
                                    (update :card_id (comp (partial fully-qualified-name path) Card))
                                    (dissoc :id :dashboardcard_id))))
                    strip-crud
-                   (humanize-field-references path))))))
+                   (humanize-entity-references path))))))
 
 (defmethod dump (type Dashboard)
   [path dashboard]
@@ -212,18 +217,5 @@
 (defmethod dump (type Card)
   [path card]
   (->> card
-       (humanize-field-references path)
-       (spit-yaml path)))
-
-(let [path "dump"
-      dump-all (fn [path entities]
-                 (doseq [e entities]
-                   (dump path e)))]
-  (dump-all path (Database))
-  (dump-all path (Table))
-  (dump-all path (Field))
-  (dump-all path (Metric))
-  (dump-all path (Segment))
-  (dump-all path (Collection))
-  (dump-all path (Card))
-  (dump-all path (Dashboard)))
+       (humanize-entity-references path)
+       (spit-yaml path :debug)))

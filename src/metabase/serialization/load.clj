@@ -51,7 +51,9 @@
 (defmethod path->context "databases"
   [context [_ & [db-name & path]]]
   (-> context
-      (assoc :database (db/select-one-id Database :name db-name))
+      (assoc :database (if (= db-name "__virtual")
+                         -1337
+                         (db/select-one-id Database :name db-name)))
       (path->context path)))
 
 (defmethod path->context "schemas"
@@ -92,7 +94,7 @@
                       :table_id (:table context)
                       :name     segment-name))
       (path->context path)))
-(Collection)
+
 (defmethod path->context "collections"
   [context [_ & [collection-name & path-rest :as full-path]]]
   (if (#{"dashboards" "cards"} collection-name)
@@ -166,10 +168,11 @@
 
 (defmethod load Database
   [path context _]
-  (doseq [path (list-dirs (str path "/databases"))]
-    (slurp-dir (partial db/insert! Database))
-    (doseq [path (list-dirs (str path "/schemas"))]
-      (load path {:prefix path} Table))))
+  (let [context {:prefix path}]
+    (doseq [path (list-dirs (str path "/databases"))]
+      (slurp-dir (partial db/insert! Database) path)
+      (doseq [path (list-dirs (str path "/schemas"))]
+        (load path context Table)))))
 
 (defmethod load Table
   [path context _]
@@ -292,11 +295,11 @@
                                       (fn [collection]
                                         (or (db/select-one Collection
                                               :location (:location collection)
-                                              :name     (:name collection)
+                                              :personal_owner_id @default-user
                                             (db/insert! Collection
-                                              (assoc collection :personal_owner_id @default-user)))))
+                                              (assoc collection :personal_owner_id @default-user))))))
                                      first
-                                     u/get-id)))]
+                                     u/get-id))]
       (load path Collection)
       (load path Card)
       (load path Dashboard))))
