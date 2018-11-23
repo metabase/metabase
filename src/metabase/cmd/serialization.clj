@@ -17,10 +17,8 @@
 (defn load
   [path]
   (mdb/setup-db-if-needed!)
-  (-> {}
-      (load/load path Collection)
-      (load/load path Database)))
-
+  (load/load path {} Database)
+  (load/load path {} Collection))
 
 (defn- dump-all
   [path entities]
