@@ -1,9 +1,15 @@
 (ns metabase.driver.clickhouse
-  (:require (clojure [set :as set])
-            [honeysql.core :as hsql]
+  (:require [clojure
+             [set :as set]
+             [string :as string]]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :as field]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -31,7 +37,7 @@
    :Tuple       :type/*
    :UInt8       :type/Integer
    :UInt16      :type/Integer
-   :UInt32      :type/BigInteger
+   :UInt32      :type/Integer
    :UInt64      :type/BigInteger
    :UUID        :type/UUID})
 
@@ -40,73 +46,101 @@
     (-> (dissoc details :host :port :dbname)
         (merge {:classname   "ru.yandex.clickhouse.ClickHouseDriver"
                 :subprotocol "clickhouse"
-                :subname     (str "//" host ":" port "/" dbname)})
+                :subname     (str "//" host ":" port "/" dbname)
+                :use_server_time_zone_for_dates  true})
         (sql/handle-additional-options))))
 
-(defn- minus [a b]
-  (hsql/call :minus a b))
-
-(defn- plus [a b]
-  (hsql/call :plus a b))
-
-(defn- divide [a b]
-  (hsql/call :divide a b))
+(defn- modulo [a b]
+  (hsql/call :modulo a b))
 
 (defn- to-relative-day-num [expr]
-  (hsql/call :toRelativeDayNum expr))
+  (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
 
 (defn- to-relative-week-num [expr]
-  (hsql/call :toRelativeWeekNum expr))
+  (hsql/call :toRelativeWeekNum (hsql/call :toDateTime expr)))
 
 (defn- to-relative-month-num [expr]
-  (hsql/call :toRelativeMonthNum expr))
+  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime expr)))
 
 (defn- to-start-of-year [expr]
-  (hsql/call :toStartOfYear expr))
+  (hsql/call :toStartOfYear (hsql/call :toDateTime expr)))
 
 (defn- to-day-of-year [expr]
-  "ClickHouse don't have built-in toDay. So lets do it that way:
-   minus(toRelativeDayNum(expr), toRelativeDayNum(toStartOfYear(expr)))"
-  (minus (to-relative-day-num expr)
-         (to-relative-day-num (to-start-of-year expr))))
+  (hx/+
+   (hx/- (to-relative-day-num expr)
+          (to-relative-day-num (to-start-of-year expr)))
+   1))
 
 (defn- to-week-of-year [expr]
-  "ClickHouse don't have built-in toWeek. So lets do it that way:
-   minus(toRelativeWeekNum(expr), toRelativeWeekNum(toStartOfYear(expr)))"
-  (minus (to-relative-week-num expr)
-         (to-relative-week-num (to-start-of-year expr))))
+  (hsql/call :toUInt8 (hsql/call :formatDateTime (hx/+ (hsql/call :toDate expr) 1) "%V")))
+
+(defn- to-month-of-year [expr]
+  (hx/+
+   (hx/- (to-relative-month-num expr)
+          (to-relative-month-num (to-start-of-year expr)))
+   1))
 
 (defn- to-quarter-of-year [expr]
-  "ClickHouse don't have built-in toQuarter. So lets do it that way:
-   ceil(divide(plus(minus(toRelativeMonthNum(now()),
-                          toRelativeMonthNum(toStartOfYear(now()))),
-                   1),
-              3))"
-  (hsql/call :ceil (divide
-                     (plus
-                       (minus (to-relative-month-num expr)
-                              (to-relative-month-num (to-start-of-year expr)))
-                       1)
-                     3)))
+  (hsql/call :ceil (hx//
+                    (hx/+
+                     (hx/- (to-relative-month-num expr)
+                           (to-relative-month-num (to-start-of-year expr)))
+                     1)
+                    3)))
 
-(defn- date [unit expr]
+(defn- to-start-of-week [expr]
+  ;; ClickHouse weeks start on Monday
+  (hx/- (hsql/call :toMonday (hx/+ (hsql/call :toDate expr) 1)) 1))
+
+(defn- to-start-of-minute [expr]
+  (hsql/call :toStartOfMinute (hsql/call :toDateTime expr)))
+
+(defn- to-start-of-hour [expr]
+  (hsql/call :toStartOfHour (hsql/call :toDateTime expr)))
+
+(defn- to-hour [expr]
+  (hsql/call :toHour (hsql/call :toDateTime expr)))
+
+(defn- to-minute [expr]
+  (hsql/call :toMinute (hsql/call :toDateTime expr)))
+
+(defn- to-year [expr]
+  (hsql/call :toYear (hsql/call :toDateTime expr)))
+
+(defn- to-day-of-week [expr]
+  ;; ClickHouse weeks start on Monday
+  (hx/+ (modulo (hsql/call :toDayOfWeek (hsql/call :toDateTime expr)) 7) 1))
+
+(defn- to-day-of-month [expr]
+  (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
+
+(defn- to-start-of-month [expr]
+  (hsql/call :toStartOfMonth (hsql/call :toDateTime expr)))
+
+(defn- to-start-of-quarter [expr]
+  (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
+
+(defn- to-day [expr]
+  (hsql/call :toDate expr))
+
+(defn- date [unit expr] 
   (case unit
     :default expr
-    :minute (hsql/call :toStartOfMinute expr)
-    :minute-of-hour (hsql/call :toMinute expr)
-    :hour (hsql/call :toStartOfHour expr)
-    :hour-of-day (hsql/call :toHour expr)
-    :day (hsql/call :toDate expr)
-    :day-of-week (hsql/call :toDayOfWeek expr)
-    :day-of-month (hsql/call :toDayOfMonth expr)
+    :minute (to-start-of-minute expr)
+    :minute-of-hour (to-minute expr)
+    :hour (to-start-of-hour expr)
+    :hour-of-day (to-hour expr)
+    :day (to-day expr)
+    :day-of-week (to-day-of-week expr)
+    :day-of-month (to-day-of-month expr)
     :day-of-year (to-day-of-year expr)
-    :week (hsql/call :toMonday expr)
+    :week (to-start-of-week expr)
     :week-of-year (to-week-of-year expr)
-    :month (hsql/call :toStartOfMonth expr)
-    :month-of-year (hsql/call :toMonth expr)
-    :quarter (hsql/call :toStartOfQuarter expr)
+    :month (to-start-of-month expr)
+    :month-of-year (to-month-of-year expr)
+    :quarter (to-start-of-quarter expr)
     :quarter-of-year (to-quarter-of-year expr)
-    :year (hsql/call :toYear expr)))
+    :year (to-year expr)))
 
 (defn- string-length-fn [field-key]
   (hsql/call :lengthUTF8 field-key))
@@ -114,7 +148,31 @@
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :toDateTime expr)
-    :milliseconds (recur (hx// expr 1000) :seconds)))
+    :milliseconds (hsql/call :toDateTime (hx// expr 1000))))
+
+(defn- apply-breakout [driver honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
+  (-> honeysql-form
+      ;; ClickHouse requires that we refer to Fields using the alias we gave them in the
+      ;; `SELECT` clause, rather than repeating their definitions.
+      ((partial apply h/group) (map (partial sqlqp/field-clause->alias driver) breakout-field-clauses))
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
+      ;; twice, or HoneySQL will barf
+      ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
+                                            :when        (not (contains? (set fields-field-clauses) field-clause))]
+                                        (sqlqp/as driver field-clause)))))
+
+(defn apply-order-by
+  "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
+  [driver honeysql-form {subclauses :order-by breakout-fields :breakout}]
+  (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
+    (loop [honeysql-form honeysql-form, [[direction field] & more] subclauses]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field)
+                                                             (sqlqp/->honeysql driver field)
+                                                             (sqlqp/field-clause->alias driver field))
+                                                           direction])]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
 ;; convert these booleans to numbers.
@@ -122,33 +180,37 @@
   [_ bool]
   (if bool 1 0))
 
+(defmethod sqlqp/->honeysql [ClickHouseDriver :stddev]
+  [driver [_ field]]
+  (hsql/call :stddevSamp (sqlqp/->honeysql driver field)))
+
 (u/strict-extend ClickHouseDriver
   driver/IDriver
   (merge
-    (sql/IDriverSQLDefaultsMixin)
-    {:details-fields (constantly [driver/default-host-details
-                                  (assoc driver/default-port-details :default 8123)
-                                  (assoc driver/default-dbname-details :required false)
-                                  (assoc driver/default-user-details :required false)
-                                  driver/default-password-details
-                                  driver/default-additional-options-details])
-     :features (constantly #{:basic-aggregations
-                             :standard-deviation-aggregations
-                             :expressions
-                             :expression-aggregations})})
+   (sql/IDriverSQLDefaultsMixin)
+   {:details-fields (constantly [driver/default-host-details
+                                 (assoc driver/default-port-details :default 8123)
+                                 (assoc driver/default-dbname-details :required false)
+                                 (assoc driver/default-user-details :required false)
+                                 driver/default-password-details
+                                 driver/default-additional-options-details])
+    :features (constantly #{:basic-aggregations
+                            :standard-deviation-aggregations
+                            :expressions
+                            :expression-aggregations})})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:active-tables             sql/post-filtered-active-tables
+         {:apply-breakout            apply-breakout
+          :apply-order-by            apply-order-by
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :excluded-schemas          (constantly #{"system"})
+          :excluded-schemas          (constantly #{"system", "default", "probi"})
           :quote-style               (constantly :mysql)
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :stddev-fn                 (constantly :stddevPop)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (defn -init-driver
-  "Register the Clickhouse driver"
+  "Register the ClickHouse driver"
   []
   (driver/register-driver! :clickhouse (ClickHouseDriver.)))
