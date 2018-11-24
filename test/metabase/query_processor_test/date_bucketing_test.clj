@@ -196,7 +196,7 @@
 ;; This dataset doesn't have multiple events in a minute, the results are the same as the default grouping
 (expect-with-non-timeseries-dbs
   (cond
-    (= :sqlite driver/*driver*)
+    (#{:sqlite :clickhouse} driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
 
     (tz-shifted-engine-bug? driver/*driver*)
@@ -259,7 +259,7 @@
 ;; timezone that database is in
 (expect-with-non-timeseries-dbs
   (cond
-    (= :sqlite driver/*driver*)
+    (#{:sqlite :clickhouse} driver/*driver*)
     (results-by-hour (source-date-formatter utc-tz)
                      result-date-formatter-without-tz)
 

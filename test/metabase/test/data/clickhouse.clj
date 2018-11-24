@@ -2,11 +2,13 @@
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
   (:require [clojure.java.jdbc :as jdbc]
             [environ.core :refer [env]]
-            metabase.driver.clickhouse
+            [honeysql.core :as hsql]
+            [metabase.driver.clickhouse]
             [metabase.test.data
-                         [generic-sql :as generic]
-                         [interface :as i]]
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u]
+            [metabase.util.date :as du]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.driver.generic-sql.query-processor :as sqlqp])
   (:import metabase.driver.clickhouse.ClickHouseDriver java.sql.SQLException))
@@ -15,10 +17,10 @@
   {:type/BigInteger "Int64"
    :type/Boolean    "UInt8"
    :type/Char       "String"
-   :type/Date       "Date"
+   :type/Date       "DateTime"
    :type/DateTime   "DateTime"
    :type/Float      "Float64"
-   :type/Integer    "Int32"
+   :type/Integer    "Nullable(Int32)" ;; currently only needed for PK
    :type/Text       "String"
    :type/Time       "DateTime"
    :type/UUID       "UUID"})
@@ -37,10 +39,18 @@
 
 (defn- test-engine [] "Memory")
 
-(defn- create-table-sql [this {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quot (partial quote-name this)]
-    (format "CREATE TABLE %s (%s) ENGINE = %s"
-            (generic/qualify+quote-name this database-name table-name)
+(defn- qualified-name-components
+  ([db-name]                       [db-name])
+  ([db-name table-name]            [db-name table-name])
+  ([db-name table-name field-name] [db-name table-name field-name]))
+
+(defn- create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+  (let [quot          (partial quote-name driver)
+        pk-field-name (quot (generic/pk-field-name driver))]
+    (format "CREATE TABLE %s (%s %s, %s) ENGINE = %s"
+            (generic/qualify+quote-name driver table-name)
+            pk-field-name
+            (generic/pk-sql-type driver)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quot field-name) (if (map? base-type)
@@ -50,48 +60,19 @@
                  (apply str))
             (test-engine))))
 
-(defn- qualified-name-components
-  ([_ db-name]                       [db-name])
-  ([_ db-name table-name]            [table-name])
-  ([_ db-name table-name field-name] [field-name]))
-
-(defn- do-insert!
-  "Insert ROW-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
-  [driver spec table-name row-or-rows]
-  (let [rows    (if (sequential? row-or-rows) row-or-rows [row-or-rows])
-        columns (keys (first rows))
-        values  (for [row rows]
-                  (for [value (map row columns)]
-                    (sqlqp/->honeysql driver value)))]
-    (try (jdbc/insert-multi! spec table-name columns values)
-          (catch SQLException e
-            (println (u/format-color 'red "INSERT FAILED"))
-            (jdbc/print-sql-exception-chain e)))))
-
-(defn- load-data-clickhouse!
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (jdbc/with-db-connection [conn (generic/database->spec driver :db dbdef)]
-    (.setAutoCommit (jdbc/get-connection conn) false)
-    (let [table-name (apply hx/qualify-and-escape-dots (generic/qualified-name-components driver database-name table-name))
-          insert!    (partial do-insert! driver conn table-name)
-          rows       (generic/load-data-get-rows driver dbdef tabledef)]
-      (insert! rows))))
-
 (u/strict-extend ClickHouseDriver
   generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:add-fk-sql                (constantly nil)
           :create-table-sql          create-table-sql
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          :load-data!                load-data-clickhouse!
+          :load-data!                generic/load-data-chunked-parallel!
           :execute-sql!              generic/sequentially-execute-sql!
+          :qualified-name-components (u/drop-first-arg qualified-name-components)
           :quote-name                quote-name
-          :pk-field-name             (constantly nil)
-          :pk-sql-type               (constantly "UInt64")
-          :qualified-name-components qualified-name-components})
+          :pk-sql-type               (constantly "UInt32")})
   i/IDriverTestExtensions
   (merge generic/IDriverTestExtensionsMixin
-
          {:database->connection-details       (u/drop-first-arg database->connection-details)
           :engine                             (constantly :clickhouse)
           :has-questionable-timezone-support? (constantly false)}))
