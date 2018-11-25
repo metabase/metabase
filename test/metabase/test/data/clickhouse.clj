@@ -1,78 +1,70 @@
 (ns metabase.test.data.clickhouse
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [environ.core :refer [env]]
-            [honeysql.core :as hsql]
-            [metabase.driver.clickhouse]
-            [metabase.test.data
-             [generic-sql :as generic]
-             [interface :as i]]
-            [metabase.util :as u]
-            [metabase.util.date :as du]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.driver.generic-sql.query-processor :as sqlqp])
-  (:import metabase.driver.clickhouse.ClickHouseDriver java.sql.SQLException))
+  (:require [metabase.test.data
+             [interface :as tx]
+             [sql :as sql.tx]
+             [sql-jdbc :as sql-jdbc.tx]]
+            [metabase.test.data.sql-jdbc
+             [execute :as execute]
+             [load-data :as load-data]
+             [spec :as spec]]))
 
-(def ^:private ^:const field-base-type->sql-type
-  {:type/BigInteger "Int64"
-   :type/Boolean    "UInt8"
-   :type/Char       "String"
-   :type/Date       "DateTime"
-   :type/DateTime   "DateTime"
-   :type/Float      "Float64"
-   :type/Integer    "Nullable(Int32)" ;; currently only needed for PK
-   :type/Text       "String"
-   :type/Time       "DateTime"
-   :type/UUID       "UUID"})
+(sql-jdbc.tx/add-test-extensions! :clickhouse)
 
-(defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host     "localhost"
-          :port     8123
-          :timezone :America/Los_Angeles}
-         (when (env :circleci)
-           {:user "ubuntu"})
-         (when (= context :db)
-           {:dbname database-name})))
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "UInt8")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]       [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "DateTime")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
+;; Nullable is kind of experimental, only required for one test
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
 
-(defn- quote-name [_ nm]
-  (str \` nm \`))
+(defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
+    (merge
+   {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
+    :port     (tx/db-test-env-var-or-throw :clickhouse :port 8123)
+    :timezone :America/Los_Angeles}
+   (when-let [user (tx/db-test-env-var :clickhouse :user)]
+     {:user user})
+   (when-let [password (tx/db-test-env-var :clickhouse :password)]
+     {:password password})
+   (when (= context :db)
+     {:db database-name})))
+
+(defmethod sql.tx/qualified-name-components :clickhouse
+  ([_ db-name]                       [db-name])
+  ([_ db-name table-name]            [db-name table-name])
+  ([_ db-name table-name field-name] [db-name table-name field-name]))
 
 (defn- test-engine [] "Memory")
 
-(defn- qualified-name-components
-  ([db-name]                       [db-name])
-  ([db-name table-name]            [db-name table-name])
-  ([db-name table-name field-name] [db-name table-name field-name]))
-
-(defn- create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quot          (partial quote-name driver)
-        pk-field-name (quot (generic/pk-field-name driver))]
+(defmethod sql.tx/create-table-sql :clickhouse
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+  (let [quot          (partial sql.tx/quote-name driver)
+        pk-field-name (quot (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s) ENGINE = %s"
-            (generic/qualify+quote-name driver table-name)
+            (sql.tx/qualify+quote-name driver database-name table-name)
             pk-field-name
-            (generic/pk-sql-type driver)
+            (sql.tx/pk-sql-type driver)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quot field-name) (if (map? base-type)
                                                             (:native base-type)
-                                                            (field-base-type->sql-type base-type)))))
+                                                            (sql.tx/field-base-type->sql-type driver base-type)))))
                  (interpose ", ")
                  (apply str))
             (test-engine))))
 
-(u/strict-extend ClickHouseDriver
-  generic/IGenericSQLTestExtensions
-  (merge generic/DefaultsMixin
-         {:add-fk-sql                (constantly nil)
-          :create-table-sql          create-table-sql
-          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          :load-data!                generic/load-data-chunked-parallel!
-          :execute-sql!              generic/sequentially-execute-sql!
-          :qualified-name-components (u/drop-first-arg qualified-name-components)
-          :quote-name                quote-name
-          :pk-sql-type               (constantly "UInt32")})
-  i/IDriverTestExtensions
-  (merge generic/IDriverTestExtensionsMixin
-         {:database->connection-details       (u/drop-first-arg database->connection-details)
-          :engine                             (constantly :clickhouse)
-          :has-questionable-timezone-support? (constantly false)}))
+(defmethod execute/execute-sql! :clickhouse [& args]
+  (apply execute/sequentially-execute-sql! args))
+
+(defmethod load-data/load-data! :clickhouse [& args]
+  (apply load-data/load-data-chunked-parallel! args))
+
+(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
+
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "UInt32")
