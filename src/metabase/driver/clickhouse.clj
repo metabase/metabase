@@ -6,49 +6,52 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
-(defrecord ClickHouseDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "ClickHouse"))
+(driver/register! :clickhouse, :parent :sql-jdbc)
 
-(def ^:private ^:const column->base-type
-  "Map of ClickHouse column types -> Field base types.
-   Add more mappings here as you come across them."
-  {:Array       :type/*
-   :Date        :type/Date
-   :DateTime    :type/DateTime
-   :Enum8       :type/*
-   :Enum16      :type/*
-   :FixedString :type/Text
-   :Float32     :type/Float
-   :Float64     :type/Float
-   :Int8        :type/Integer
-   :Int16       :type/Integer
-   :Int32       :type/Integer
-   :Int64       :type/BigInteger
-   :String      :type/Text
-   :Tuple       :type/*
-   :UInt8       :type/Integer
-   :UInt16      :type/Integer
-   :UInt32      :type/Integer
-   :UInt64      :type/BigInteger
-   :UUID        :type/UUID})
+(def ^:private default-base-types
+  {"Array"       :type/*
+   "Date"        :type/Date
+   "DateTime"    :type/DateTime
+   "Enum8"       :type/*
+   "Enum16"      :type/*
+   "FixedString" :type/Text
+   "Float32"     :type/Float
+   "Float64"     :type/Float
+   "Int8"        :type/Integer
+   "Int16"       :type/Integer
+   "Int32"       :type/Integer
+   "Int64"       :type/BigInteger
+   "String"      :type/Text
+   "Tuple"       :type/*
+   "UInt8"       :type/Integer
+   "UInt16"      :type/Integer
+   "UInt32"      :type/Integer
+   "UInt64"      :type/BigInteger
+   "UUID"        :type/UUID})
 
-(defn- connection-details->spec [details]
+(defmethod sql-jdbc.sync/database-type->base-type :clickhouse [_ database-type]
+  (default-base-types (string/replace (name database-type) #"Nullable\((\S+)\)" "$1")))
+
+(defmethod sql-jdbc.conn/connection-details->spec :clickhouse [_ details]
   (let [{:keys [host port dbname]} details]
     (-> (dissoc details :host :port :dbname)
         (merge {:classname   "ru.yandex.clickhouse.ClickHouseDriver"
                 :subprotocol "clickhouse"
-                :subname     (str "//" host ":" port "/" dbname)
-                :use_server_time_zone_for_dates  true})
-        (sql/handle-additional-options))))
+                :subname     (str "//" host ":" port "/" dbname)})
+        (sql-jdbc.common/handle-additional-options details))))
 
 (defn- modulo [a b]
   (hsql/call :modulo a b))
@@ -123,94 +126,76 @@
 (defn- to-day [expr]
   (hsql/call :toDate expr))
 
-(defn- date [unit expr] 
-  (case unit
-    :default expr
-    :minute (to-start-of-minute expr)
-    :minute-of-hour (to-minute expr)
-    :hour (to-start-of-hour expr)
-    :hour-of-day (to-hour expr)
-    :day (to-day expr)
-    :day-of-week (to-day-of-week expr)
-    :day-of-month (to-day-of-month expr)
-    :day-of-year (to-day-of-year expr)
-    :week (to-start-of-week expr)
-    :week-of-year (to-week-of-year expr)
-    :month (to-start-of-month expr)
-    :month-of-year (to-month-of-year expr)
-    :quarter (to-start-of-quarter expr)
-    :quarter-of-year (to-quarter-of-year expr)
-    :year (to-year expr)))
+(defmethod sql.qp/date [:clickhouse :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:clickhouse :minute]          [_ _ expr] (to-start-of-minute expr))
+(defmethod sql.qp/date [:clickhouse :minute-of-hour]  [_ _ expr] (to-minute expr))
+(defmethod sql.qp/date [:clickhouse :hour]            [_ _ expr] (to-start-of-hour expr))
+(defmethod sql.qp/date [:clickhouse :hour-of-day]     [_ _ expr] (to-hour expr))
+(defmethod sql.qp/date [:clickhouse :day-of-week]     [_ _ expr] (to-day-of-week expr))
+(defmethod sql.qp/date [:clickhouse :day-of-month]    [_ _ expr] (to-day-of-month expr))
+(defmethod sql.qp/date [:clickhouse :day-of-year]     [_ _ expr] (to-day-of-year expr))
+(defmethod sql.qp/date [:clickhouse :week-of-year]    [_ _ expr] (to-week-of-year expr))
+(defmethod sql.qp/date [:clickhouse :month]           [_ _ expr] (to-start-of-month expr))
+(defmethod sql.qp/date [:clickhouse :month-of-year]   [_ _ expr] (to-month-of-year expr))
+(defmethod sql.qp/date [:clickhouse :quarter-of-year] [_ _ expr] (to-quarter-of-year expr))
+(defmethod sql.qp/date [:clickhouse :year]            [_ _ expr] (to-year expr))
 
-(defn- string-length-fn [field-key]
-  (hsql/call :lengthUTF8 field-key))
+(defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (to-day expr))
+(defmethod sql.qp/date [:clickhouse :week]            [_ _ expr] (to-start-of-week expr))
+(defmethod sql.qp/date [:clickhouse :quarter]         [_ _ expr] (to-start-of-quarter expr))
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (case seconds-or-milliseconds
-    :seconds      (hsql/call :toDateTime expr)
-    :milliseconds (hsql/call :toDateTime (hx// expr 1000))))
+(defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
+  (hsql/call :toDateTime expr))
 
-(defn- apply-breakout [driver honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
+(defmethod sql.qp/apply-top-level-clause [:clickhouse :breakout]
+  [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
   (-> honeysql-form
       ;; ClickHouse requires that we refer to Fields using the alias we gave them in the
-      ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (map (partial sqlqp/field-clause->alias driver) breakout-field-clauses))
+      ;; `SELECT` clause, rather than repeating their definitions. See BigQuery driver
+      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakout-field-clauses))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
                                             :when        (not (contains? (set fields-field-clauses) field-clause))]
-                                        (sqlqp/as driver field-clause)))))
+                                        (sql.qp/as driver field-clause)))))
 
-(defn apply-order-by
-  "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [driver honeysql-form {subclauses :order-by breakout-fields :breakout}]
-  (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
-    (loop [honeysql-form honeysql-form, [[direction field] & more] subclauses]
-      (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field)
-                                                             (sqlqp/->honeysql driver field)
-                                                             (sqlqp/field-clause->alias driver field))
-                                                           direction])]
-        (if (seq more)
-          (recur honeysql-form more)
-          honeysql-form)))))
+(defmethod sql.qp/apply-top-level-clause [:clickhouse :order-by]
+  [driver _ honeysql-form {subclauses :order-by, :as query}]
+  (loop [honeysql-form honeysql-form, [[direction field-clause] & more] subclauses]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field-clause)
+                                                           (sql.qp/->honeysql driver field-clause)
+                                                           (sql.qp/field-clause->alias driver field-clause))
+                                                         direction])]
+      (if (seq more)
+        (recur honeysql-form more)
+        honeysql-form))))
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
 ;; convert these booleans to numbers.
-(defmethod sqlqp/->honeysql [ClickHouseDriver Boolean]
+(defmethod sql.qp/->honeysql [:clickhouse Boolean]
   [_ bool]
   (if bool 1 0))
 
-(defmethod sqlqp/->honeysql [ClickHouseDriver :stddev]
+(defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
-  (hsql/call :stddevSamp (sqlqp/->honeysql driver field)))
+  (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
-(u/strict-extend ClickHouseDriver
-  driver/IDriver
-  (merge
-   (sql/IDriverSQLDefaultsMixin)
-   {:details-fields (constantly [driver/default-host-details
-                                 (assoc driver/default-port-details :default 8123)
-                                 (assoc driver/default-dbname-details :required false)
-                                 (assoc driver/default-user-details :required false)
-                                 driver/default-password-details
-                                 driver/default-additional-options-details])
-    :features (constantly #{:basic-aggregations
-                            :standard-deviation-aggregations
-                            :expressions
-                            :expression-aggregations})})
-  sql/ISQLDriver
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-breakout            apply-breakout
-          :apply-order-by            apply-order-by
-          :column->base-type         (u/drop-first-arg column->base-type)
-          :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
-          :excluded-schemas          (constantly #{"system", "default", "probi"})
-          :quote-style               (constantly :mysql)
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
+  #{"system", "default", "probi"})
 
-(defn -init-driver
-  "Register the ClickHouse driver"
-  []
-  (driver/register-driver! :clickhouse (ClickHouseDriver.)))
+(defmethod driver/display-name :clickhouse [_] "ClickHouse")
+
+(defmethod sql.qp/quote-style :clickhouse [_] :mysql)
+
+(defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] false)
+(defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
+
+(defmethod driver/connection-properties :clickhouse [_]
+  (ssh/with-tunnel-config
+    [driver.common/default-host-details
+     (assoc driver.common/default-port-details :default 8123)
+     driver.common/default-dbname-details :required false
+     driver.common/default-user-details :required false
+     driver.common/default-password-details :required false
+     (assoc driver.common/default-additional-options-details
+       :placeholder  "use_server_time_zone_for_dates=true")]))
