@@ -41,9 +41,14 @@
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
 (def ^:private TokenStatus
-  {:valid                     s/Bool
-   :status                    su/NonBlankString
-   (s/optional-key :features) [su/NonBlankString]})
+  {:valid                          s/Bool
+   :status                         su/NonBlankString
+   (s/optional-key :error-details) (s/maybe su/NonBlankString)
+   (s/optional-key :features)      [su/NonBlankString]
+   (s/optional-key :trial)         s/Bool
+   (s/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
+   ;; don't explode in the future if we add more to the response! lol
+   s/Any                           s/Any})
 
 (s/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
@@ -60,7 +65,7 @@
           ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
           ;; 'Not Found' message
           (catch java.io.FileNotFoundException e
-            {:valid false, :status (tru "Unable to validate token: 404 not found.")})
+            {:valid false, :status (str (tru "Unable to validate token: 404 not found."))})
           ;; if there was any other error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
@@ -113,7 +118,7 @@
     (try
       (when (seq new-value)
         (when (s/check ValidToken new-value)
-          (throw (ex-info (tru "Token format is invalid. Token should be 64 hexadecimal characters.")
+          (throw (ex-info (str (tru "Token format is invalid. Token should be 64 hexadecimal characters."))
                    {:status-code 400})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))

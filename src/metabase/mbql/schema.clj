@@ -148,8 +148,9 @@
 
 ;; `datetime-field` is used to specify DATE BUCKETING for a Field that represents a moment in time of some sort. There
 ;; is no requirement that all `:type/DateTime` derived Fields be wrapped in `datetime-field`, but for legacy reasons
-;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` clause, but
-;; nowhere else. See `auto-bucket-datetime-breakouts` for more details. `:field-id` clauses elsewhere will not be
+;; `:field-id` clauses that refer to datetime Fields will be automatically "bucketed" in the `:breakout` and `:filter`
+;; clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when values for comparison are
+;; `yyyy-MM-dd` date strings. See `auto-bucket-datetimes` for more details. `:field-id` clauses elsewhere will not be
 ;; automatically bucketed, so drivers still need to make sure they do any special datetime handling for plain
 ;; `:field-id` clauses when their Field derives from `:type/DateTime`.
 ;;
@@ -219,7 +220,7 @@
 
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
-(declare ExpressionDef)
+(declare ArithmeticExpression)
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -227,7 +228,7 @@
    s/Num
 
    (partial is-clause? #{:+ :- :/ :*})
-   (s/recursive #'ExpressionDef)
+   (s/recursive #'ArithmeticExpression)
 
    :else
    Field))
@@ -237,17 +238,19 @@
 (defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 (defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 
-(def ExpressionDef
-  "Schema for a valid expression definition, as defined under the top-level MBQL `:expressions`."
+(def ^:private ArithmeticExpression
+  "Schema for the definition of an arithmetic expression."
   (one-of + - / *))
+
+(def FieldOrExpressionDef
+  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
+  `:+` clause or a Field clause such as `:field-id`."
+  (s/if (partial is-clause? #{:+ :- :* :/})
+    ArithmeticExpression
+    Field))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
-
-(def ^:private FieldOrExpressionDef
-  (s/if (partial is-clause? #{:+ :- :* :/})
-    ExpressionDef
-    Field))
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
@@ -492,7 +495,7 @@
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
-(declare MBQLQuery)
+(declare Query MBQLQuery)
 
 (def ^:private SourceQuery
   "Schema for a valid value for a `:source-query` clause."
@@ -518,10 +521,10 @@
 
 (def JoinQueryInfo
   "Schema for information about about a JOIN (or equivalent) that should be performed using a recursive MBQL or native
-  query. "
-  {:join-alias su/NonBlankString
-   ;; TODO - put a proper schema in here once I figure out what it is. I think it's (s/recursive #'Query)?
-   :query      s/Any})
+  query."
+  ;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
+  (assoc JoinTableInfo
+    :query (s/recursive #'Query)))
 
 (def JoinInfo
   "Schema for information about a JOIN (or equivalent) that needs to be performed, either `JoinTableInfo` or
@@ -549,7 +552,7 @@
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
     ; TODO - expressions keys should be strings; fix this when we get a chance
-    (s/optional-key :expressions)  {s/Keyword ExpressionDef}
+    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
     ;; TODO - should this be `distinct-non-empty`?
     (s/optional-key :fields)       (su/non-empty [Field])
     (s/optional-key :filter)       Filter

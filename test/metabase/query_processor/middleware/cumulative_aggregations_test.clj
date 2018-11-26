@@ -18,6 +18,7 @@
   [1 4 6]
   (#'cumulative-aggregations/add-rows #{1 2} [1 2 3] [1 2 3]))
 
+;; should throw an Exception if index is out of bounds
 (expect
   IndexOutOfBoundsException
   (#'cumulative-aggregations/add-rows #{4} [1 2 3] [1 2 3]))
@@ -49,6 +50,34 @@
   (#'cumulative-aggregations/sum-rows
    #{0 1}
    [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5] [6 6] [7 7] [8 8] [9 9]]))
+
+;; make sure cumulative aggregations still work correctly with lists...
+(expect
+  [[1 1 1] [2 3 2] [3 6 3]]
+  (#'cumulative-aggregations/sum-rows #{1} '((1 1 1) (2 2 2) (3 3 3))))
+
+;; ...and lazy sequences
+(expect
+  [[1 1 1] [2 3 2] [3 6 3]]
+  (#'cumulative-aggregations/sum-rows #{1} (lazy-cat '((1 1 1)) '((2 2 2)) '((3 3 3)))))
+
+;; the results should be L A Z Y
+(expect
+  {:fully-realized-after-taking-2? false
+   :fully-realized-after-taking-3? true}
+  (let [fully-realized? (atom false)
+        a-lazy-seq (lazy-cat
+                    '((1 1 1))
+                    '((2 2 2))
+                    (do
+                      (reset! fully-realized? true)
+                      '((3 3 3))))
+        realize-n  (fn [n]
+                     (dorun (take n (#'cumulative-aggregations/sum-rows #{1} a-lazy-seq)))
+                     @fully-realized?)]
+    {:fully-realized-after-taking-2? (realize-n 2)
+     :fully-realized-after-taking-3? (realize-n 3)}))
+
 
 ;; can it go forever without a stack overflow?
 (expect

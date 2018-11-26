@@ -9,7 +9,8 @@
              [google :as google]]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :as i]]
+             [interface :as tx]
+             [sql :as sql.tx]]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -19,30 +20,28 @@
            com.google.api.services.bigquery.Bigquery
            [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest
             TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
-           java.sql.Time
-           metabase.driver.bigquery.BigQueryDriver))
+           java.sql.Time))
+
+(sql.tx/add-test-extensions! :bigquery)
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 (def ^:private ^String normalize-name (comp (u/rpartial str/replace #"-" "_") name))
 
 (def ^:private ^:const details
-  (datasets/when-testing-engine :bigquery
+  (datasets/when-testing-driver :bigquery
     (reduce (fn [acc env-var]
-              (assoc acc env-var (i/db-test-env-var-or-throw :bigquery env-var)))
+              (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
             {} [:project-id :client-id :client-secret :access-token :refresh-token])))
 
 (def ^:private ^:const ^String project-id (:project-id details))
 
 (def ^:private ^Bigquery bigquery
-  (datasets/when-testing-engine :bigquery
+  (datasets/when-testing-driver :bigquery
     (#'bigquery/database->client {:details details})))
 
-(defn- database->connection-details
-  ([_ {:keys [database-name]}]
-   (database->connection-details database-name))
-  ([database-name]
-   (assoc details :dataset-id (normalize-name database-name))))
+(defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
+  (assoc details :dataset-id (normalize-name database-name)))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
@@ -200,9 +199,9 @@
 (def ^:private existing-datasets
   (atom #{}))
 
-(defn- create-db! [{:keys [database-name table-definitions]}]
+(defmethod tx/create-db! :bigquery [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-    ;; fetch existing datasets if we haven't done so yet
+  ;; fetch existing datasets if we haven't done so yet
   (when-not (seq @existing-datasets)
     (reset! existing-datasets (set (existing-dataset-names)))
     (println "These BigQuery datasets have already been loaded:\n" (u/pprint-to-str (sort @existing-datasets))))
@@ -230,12 +229,13 @@
             (destroy-dataset! database-name))
           (throw e))))))
 
-
-;;; --------------------------------------------- IDriverTestExtensions ----------------------------------------------
-
-(u/strict-extend BigQueryDriver
-  i/IDriverTestExtensions
-  (merge i/IDriverTestExtensionsDefaultsMixin
-         {:engine                       (constantly :bigquery)
-          :database->connection-details (u/drop-first-arg database->connection-details)
-          :create-db!                   (u/drop-first-arg create-db!)}))
+(defmethod tx/aggregate-column-info :bigquery
+  ([driver aggregation-type]
+   ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type))
+  ([driver aggregation-type field]
+   (merge
+    ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type field)
+    ;; BigQuery averages, standard deviations come back as Floats. This might apply to some other ag types as well;
+    ;; add them as we come across them.
+    (when (#{:avg :stddev} aggregation-type)
+      {:base_type :type/Float}))))

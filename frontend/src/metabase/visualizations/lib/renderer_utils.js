@@ -75,24 +75,20 @@ export function reduceGroup(group, key, warnUnaggregated) {
       if (acc == null && d[key] == null) {
         return null;
       } else {
-        if (acc != null) {
+        if (acc != null && d[key] != null) {
           warnUnaggregated();
-          return acc + (d[key] || 0);
-        } else {
-          return d[key] || 0;
         }
+        return (acc || 0) + (d[key] || 0);
       }
     },
     (acc, d) => {
       if (acc == null && d[key] == null) {
         return null;
       } else {
-        if (acc != null) {
+        if (acc != null && d[key] != null) {
           warnUnaggregated();
-          return acc - (d[key] || 0);
-        } else {
-          return -(d[key] || 0);
         }
+        return (acc || 0) - (d[key] || 0);
       }
     },
     () => null,

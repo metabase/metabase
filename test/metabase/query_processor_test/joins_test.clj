@@ -6,7 +6,7 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   [["Arlington"    16]
    ["Albany"       15]
    ["Portland"     14]
@@ -29,7 +29,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   [[60]]
   (->> (data/dataset tupac-sightings
          (data/run-mbql-query sightings
@@ -41,7 +41,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   [[772 "In the Park"]
    [894 "Working at a Pet Store"]
    [684 "At the Airport"]
@@ -64,7 +64,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12   6]
@@ -88,7 +88,7 @@
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-without-feature :foreign-keys)
   {:status :failed
    :error  "foreign-keys is not supported by this driver."}
   (select-keys (data/dataset tupac-sightings
@@ -115,7 +115,7 @@
 ;; WHERE USERS__via__RECIEVER_ID.NAME = 'Rasta Toucan'
 ;; GROUP BY USERS__via__SENDER_ID.NAME
 ;; ORDER BY USERS__via__SENDER_ID.NAME ASC
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   [["Bob the Sea Gull" 2]
    ["Brenda Blackbird" 2]
    ["Lucky Pigeon"     2]

@@ -17,7 +17,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
-             [auto-bucket-datetime-breakouts :as bucket-datetime]
+             [auto-bucket-datetimes :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
@@ -37,6 +37,7 @@
              [parameters :as parameters]
              [permissions :as perms]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+             [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joined-tables :as resolve-joined-tables]
@@ -105,10 +106,10 @@
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
       perms/check-query-permissions
+      cumulative-ags/handle-cumulative-aggregations
       resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit
-      cumulative-ags/handle-cumulative-aggregations
       results-metadata/record-and-return-metadata!
       format-rows/format-rows
       desugar/desugar
@@ -117,7 +118,7 @@
       add-dim/add-remapping
       implicit-clauses/add-implicit-clauses
       reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-      bucket-datetime/auto-bucket-datetime-breakouts
+      bucket-datetime/auto-bucket-datetimes
       resolve-source-table/resolve-source-table
       row-count-and-status/add-row-count-and-status
       ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
@@ -134,6 +135,7 @@
       ;; TODO - I think we should do this much earlier
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
+      resolve-database/resolve-database
       fetch-source-query/fetch-source-query
       store/initialize-store
       query-throttle/maybe-add-query-throttle
@@ -167,7 +169,7 @@
 
         ;; ...which ends up getting caught by the `catch-exceptions` middleware. Add a final post-processing function
         ;; around that which will return whatever we delivered into the `:results-promise`.
-        recieve-native-query
+        receive-native-query
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
@@ -181,7 +183,7 @@
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
-    (recieve-native-query (qp-pipeline deliver-native-query))))
+    (receive-native-query (qp-pipeline deliver-native-query))))
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
@@ -224,9 +226,9 @@
 
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [query-execution]
+  [{query :json_query, :as query-execution}]
   (u/prog1 query-execution
-    (query/update-average-execution-time! (:hash query-execution) (:running_time query-execution))
+    (query/save-query-and-update-average-execution-time! query (:hash query-execution) (:running_time query-execution))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-and-return-failed-query!
@@ -291,10 +293,14 @@
 
 (defn- query-execution-info
   "Return the info for the `QueryExecution` entry for this QUERY."
-  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info, :as query}]
+  {:arglists '([query])}
+  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info
+    database-id                                                                       :database
+    :as                                                                               query}]
   {:pre [(instance? (Class/forName "[B") query-hash)
          (string? query-type)]}
-  {:executor_id       executed-by
+  {:database_id       database-id
+   :executor_id       executed-by
    :card_id           card-id
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
@@ -325,6 +331,11 @@
                                       (u/pprint-to-str (u/filtered-stacktrace e))))
             (save-and-return-failed-query! query-execution e)))))))
 
+(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
+  (assoc query :info (assoc options
+                       :query-hash (qputil/query-hash query)
+                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))))
+
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
@@ -340,9 +351,7 @@
   OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (run-and-save-query! (assoc query :info (assoc options
-                                            :query-hash (qputil/query-hash query)
-                                            :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))
+  (run-and-save-query! (assoc-query-info query options)))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -362,3 +371,8 @@
   {:style/indent 1}
   [query, options :- mbql.s/Info]
   (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))
+
+(s/defn process-query-without-save!
+  "Invokes `process-query` with info needed for the included remark."
+  [user query]
+  (process-query (assoc-query-info query {:executed-by user})))

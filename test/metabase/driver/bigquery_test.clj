@@ -7,22 +7,21 @@
              [query-processor :as qp]
              [query-processor-test :as qptest]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.bigquery :as bigquery]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.check-features :as check-features]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [metabase.test.data.datasets :refer [expect-with-driver]]
             [toucan.util.test :as tt]))
 
 ;; Test native queries
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   [[100]
    [99]]
   (get-in (qp/process-query
@@ -35,13 +34,13 @@
           [:data :rows]))
 
 ;;; table-rows-sample
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   [[1 "Red Medicine"]
    [2 "Stout Burgers & Beers"]
    [3 "The Apple Pan"]
    [4 "Wurstküche"]
    [5 "Brite Spot Family Restaurant"]]
-  (->> (driver/table-rows-sample (Table (data/id :venues))
+  (->> (metadata-queries/table-rows-sample (Table (data/id :venues))
          [(Field (data/id :venues :id))
           (Field (data/id :venues :name))])
        (sort-by first)
@@ -49,7 +48,7 @@
 
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing
 ;; ordering shouldn't apply (Issue #2821)
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
    :cols    [{:name "venue_id",    :display_name "Venue ID",    :source :native, :base_type :type/Integer}
              {:name "user_id",     :display_name  "User ID",    :source :native, :base_type :type/Integer}
@@ -66,7 +65,7 @@
                [:cols :columns]))
 
 ;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   {:rows    [[113]]
    :columns ["User_ID_Plus_Venue_ID"]}
   (qptest/rows+column-names
@@ -83,8 +82,8 @@
     [:named _ ag-name] ag-name))
 
 (defn- pre-alias-aggregations [outer-query]
-  (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (aggregation-names (#'bigquery/pre-alias-aggregations outer-query))))
+  (binding [driver/*driver* :bigquery]
+    (aggregation-names (#'bigquery/pre-alias-aggregations :bigquery outer-query))))
 
 (defn- query-with-aggregations
   [aggregations]
@@ -119,11 +118,11 @@
 ;; if query has no aggregations then pre-alias-aggregations should do nothing
 (expect
   {}
-  (binding [qpi/*driver* (driver/engine->driver :bigquery)]
-    (#'bigquery/pre-alias-aggregations {})))
+  (driver/with-driver :bigquery
+    (#'bigquery/pre-alias-aggregations :bigquery {})))
 
 
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
@@ -132,7 +131,7 @@
                                   :aggregation [[:sum [:field-id (data/id :checkins :user_id)]]
                                                 [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
   (qptest/rows+column-names
     (qp/process-query {:database (data/id)
@@ -142,7 +141,7 @@
                                                  [:sum [:field-id (data/id :checkins :user_id)]]
                                                  [:sum [:field-id (data/id :checkins :user_id)]]]}})))
 
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   "UTC"
   (tu/db-timezone-id))
 
@@ -150,18 +149,17 @@
 ;; make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use the right
 ;; alias, e.g. something like `categories__via__category_id`, which is considerably different from what other SQL
 ;; databases do. (#4218)
-(expect-with-engine :bigquery
-  (str "SELECT `test_data.categories__via__category_id`.`name` AS `categories___name`,"
+(expect-with-driver :bigquery
+  (str "SELECT `categories__via__category_id`.`name` AS `name`,"
        " count(*) AS `count` "
        "FROM `test_data.venues` "
-       "LEFT JOIN `test_data.categories` `test_data.categories__via__category_id`"
-       " ON `test_data.venues`.`category_id` = `test_data.categories__via__category_id`.`id` "
-       "GROUP BY `categories___name` "
-       "ORDER BY `categories___name` ASC")
+       "LEFT JOIN `test_data.categories` `categories__via__category_id`"
+       " ON `test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+       "GROUP BY `name` "
+       "ORDER BY `name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
-  (with-redefs [driver/driver-supports?         (constantly true)
-                check-features/driver-supports? (constantly true)]
+  (with-redefs [driver/supports?                (constantly true)]
     (tu/with-temp-vals-in-db 'Field (data/id :venues :category_id) {:fk_target_field_id (data/id :categories :id)
                                                                     :special_type       "type/FK"}
       (let [results (qp/process-query
@@ -193,14 +191,14 @@
 
 ;; This query tests out the timezone handling of parsed dates. For this test a UTC date is returned, we should
 ;; read/return it as UTC
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   "2018-08-31T00:00:00.000Z"
   (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
 
 ;; This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery is already
 ;; in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that the correct date is
 ;; compared
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   "2018-08-31T00:00:00.000-05:00"
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
@@ -209,10 +207,45 @@
       (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
 
 ;; Similar to the above test, but covers a positive offset
-(expect-with-engine :bigquery
+(expect-with-driver :bigquery
   "2018-08-31T00:00:00.000+07:00"
   (tu/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
     (tt/with-temp* [Database [db {:engine :bigquery
                                   :details (assoc (:details (Database (data/id)))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
+
+;; if I run a BigQuery query, does it get a remark added to it?
+(defn- query->native [query]
+  (let [native-query (atom nil)]
+    (with-redefs [bigquery/process-native* (fn [_ sql]
+                                             (reset! native-query sql)
+                                             (throw (Exception. "Done.")))]
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    {:source-table (data/id :venues)
+                                    :limit        1}
+                         :info     {:executed-by 1000
+                                    :query-type  "MBQL"
+                                    :query-hash  (byte-array [1 2 3 4])}})
+      @native-query)))
+
+(expect-with-driver :bigquery
+  (str
+   "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
+   "SELECT `test_data.venues`.`id` AS `id`,"
+   " `test_data.venues`.`name` AS `name`,"
+   " `test_data.venues`.`category_id` AS `category_id`,"
+   " `test_data.venues`.`latitude` AS `latitude`,"
+   " `test_data.venues`.`longitude` AS `longitude`,"
+   " `test_data.venues`.`price` AS `price` "
+   "FROM `test_data.venues` "
+   "LIMIT 1")
+  (query->native
+   {:database (data/id)
+    :type     :query
+    :query    {:source-table (data/id :venues)
+               :limit        1}
+    :info     {:executed-by 1000
+               :query-type  "MBQL"
+               :query-hash  (byte-array [1 2 3 4])}}))

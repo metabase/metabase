@@ -13,6 +13,7 @@
              [driver :as driver]
              [events :as events]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]]
@@ -136,7 +137,7 @@
   {:style/indent 1}
   [database f]
   (fn []
-    (driver/sync-in-context (driver/->driver database) database
+    (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
 

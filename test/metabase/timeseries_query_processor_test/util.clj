@@ -4,7 +4,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]
-             [interface :as i]]
+             [interface :as tx]]
             [metabase.util :as u]))
 
 (def event-based-dbs
@@ -13,14 +13,14 @@
 (def flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition. (This is a function rather than a
   straight delay because clojure complains when they delay gets embedding in expanded macros)"
-  (delay (i/flatten-dbdef defs/test-data "checkins")))
+  (delay (tx/flatten-dbdef defs/test-data "checkins")))
 
 ;; force loading of the flattened db definitions for the DBs that need it
 (defn- load-event-based-db-data!
   {:expectations-options :before-run}
   []
-  (doseq [engine event-based-dbs]
-    (datasets/with-engine-when-testing engine
+  (doseq [driver event-based-dbs]
+    (datasets/with-driver-when-testing driver
       (data/do-with-temp-db @flattened-db-def (constantly nil)))))
 
 (defn do-with-flattened-dbdef
@@ -36,6 +36,6 @@
 (defmacro expect-with-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines event-based-dbs
+  `(datasets/expect-with-drivers event-based-dbs
      (with-flattened-dbdef ~expected)
      (with-flattened-dbdef ~actual)))

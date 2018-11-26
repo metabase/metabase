@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [find sort])
   (:require [cheshire.core :as json]
             [clojure
              [set :as set]
@@ -108,17 +107,20 @@
 ;; Escaped:
 ;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
 
-(defmulti ^:private ^{:doc (str "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. "
-                                "by adding `$` to a `Field`'s name")}
-  ->rvalue
+(defmulti ^:private ->rvalue
+  "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
+  name"
+  {:arglists '([x])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmulti ^:private ^{:doc "Return an escaped name that can be used as the name of a given Field."}
-  ^String ->lvalue
+(defmulti ^:private ->lvalue
+  "Return an escaped name that can be used as the name of a given Field."
+  {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmulti ^:private ^{:doc "Return the rvalue that should be used in the *initial* projection for this `Field`."}
-  ->initial-rvalue
+(defmulti ^:private ->initial-rvalue
+  "Return the rvalue that should be used in the *initial* projection for this `Field`."
+  {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 
@@ -352,6 +354,7 @@
     (case aggregation-type
       :count {$sum 1})
     (case aggregation-type
+      :named    (recur field)
       :avg      {$avg (->rvalue field)}
       :count    {$sum {$cond {:if   (->rvalue field)
                               :then 1
@@ -360,6 +363,11 @@
       :sum      {$sum (->rvalue field)}
       :min      {$min (->rvalue field)}
       :max      {$max (->rvalue field)})))
+
+(defn- unwrap-named-ag [[ag-type arg :as ag]]
+  (if (= ag-type :named)
+    arg
+    ag))
 
 (s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
                                                                   s/Any             "source")]
@@ -370,7 +378,7 @@
    (for [field breakout-fields]
      [(->lvalue field) (format "$_id.%s" (->lvalue field))])
    (for [ag aggregations]
-     [(annotate/aggregation-name ag) (if (mbql.u/is-clause? :distinct ag)
+     [(annotate/aggregation-name ag) (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
                                        {$size "$count"} ; HACK
                                        true)])))
 
@@ -385,8 +393,9 @@
       {$project (merge {"_id"      "$_id"
                         "___group" (into {} (for [field breakout-fields]
                                               {(->lvalue field) (->rvalue field)}))}
-                       (into {} (for [[_ ag-field] aggregations
-                                      :when        ag-field]
+                       (into {} (for [ag    aggregations
+                                      :let  [[_ ag-field] (unwrap-named-ag ag)]
+                                      :when ag-field]
                                   {(->lvalue ag-field) (->rvalue ag-field)})))})
     ;; Now project onto the __group and the aggregation rvalue
     {$group (merge
@@ -468,16 +477,18 @@
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (reduce (fn [pipeline-ctx f]
-            (f inner-query pipeline-ctx))
-          {:projections [], :query []}
-          [add-initial-projection
-           handle-filter
-           handle-breakout+aggregation
-           handle-order-by
-           handle-fields
-           handle-limit
-           handle-page]))
+  (let [inner-query (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations
+                                                              annotate/aggregation-name))]
+    (reduce (fn [pipeline-ctx f]
+              (f inner-query pipeline-ctx))
+            {:projections [], :query []}
+            [add-initial-projection
+             handle-filter
+             handle-breakout+aggregation
+             handle-order-by
+             handle-fields
+             handle-limit
+             handle-page])))
 
 (s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
   [original-keys :- Projections]
@@ -604,13 +615,16 @@
          :collection  source-table-name
          :mbql?       true}))))
 
-(defn- check-columns [columns results]
+(defn check-columns
+  "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
+  wrong here and the query we generated is off."
+  [columns results]
   (when (seq results)
-    (let [expected-cols columns
-          actual-cols   (keys (first results))]
-      (when (not= (set expected-cols) (set actual-cols))
-        (throw (Exception. (str (tru "Error: mismatched columns in results! Expected: {0} Got: {1}"
-                                     (vec expected-cols) (vec actual-cols)))))))))
+    (let [expected-cols   (set columns)
+          actual-cols     (set (keys (first results)))
+          not-in-expected (set/difference actual-cols expected-cols)]
+      (when (seq not-in-expected)
+        (throw (Exception. (str (tru "Unexpected columns in results: {0}" (sort not-in-expected)))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."
@@ -632,6 +646,9 @@
         results    (cond-> results
                      mbql? (-> unescape-names unstringify-dates))
         rename-map (create-unescaping-rename-map projections)
+        ;; some of the columns may or may not come back in every row, because of course with mongo some key can be
+        ;; missing. That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for
+        ;; those columns.
         columns    (if-not mbql?
                      (keys (first results))
                      (map (fn [proj]
@@ -639,6 +656,8 @@
                               (get rename-map proj)
                               proj))
                           projections))]
+    ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken. Check to make
+    ;; sure that didn't happen.
     (when mbql?
       (check-columns columns results))
     {:columns (map name columns)

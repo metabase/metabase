@@ -5,6 +5,7 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
+            [metabase.driver.googleanalytics :as ga]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.models
              [card :refer [Card]]
@@ -235,10 +236,10 @@
                               :source       :aggregation
                               :description  "This is metric"
                               :base_type    :type/Text}]}}
-  (with-redefs [metabase.driver.googleanalytics/memoized-column-metadata (fn [_ column-name]
-                                                                           {:display_name column-name
-                                                                            :description  (str "This is " column-name)
-                                                                            :base_type    :type/Text})]
+  (with-redefs [ga/memoized-column-metadata (fn [_ column-name]
+                                              {:display_name column-name
+                                               :description  (str "This is " column-name)
+                                               :base_type    :type/Text})]
     (do-with-some-fields
      (fn [objects]
        (let [results {:columns [:ga:eventLabel :ga:totalEvents]
@@ -273,7 +274,7 @@
                                                               [:METRIC "ga:1dayUsers"]]
                                                :breakout     [[:datetime-field [:field-id (u/get-id field)] :day]]}}
            :result_metadata        [{:base_type    :type/Date
-                                     :display_name :Date
+                                     :display_name "Date"
                                      :name         "ga:date"
                                      :description  "The date of the session formatted as YYYYMMDD."
                                      :unit         :day}
@@ -283,7 +284,7 @@
                                     {:base_type    :type/Integer
                                      :display_name "Ga:sessions"
                                      :name         "ga:sessions"}]
-           :metadata_checksum      "VRyGLaFPj6T9RTIgMFvyAA=="})
+           :metadata_checksum      "i3uR1PM5q6uZfIpm0qZbb6Brcfw8S3/wejWolU0Bl1n1Dz/yqvLGxf/XXV6/uOBB75WhFE9V98pIw5Qm18VY6+rlzUnuaTfPvPbiJbh3D9w="})
          ;; just make sure the API call actually worked by checking that the created Card is actually successfully
          ;; saved in the DB
          u/get-id

@@ -48,10 +48,10 @@
   [#"^/db/(\d+)/$"                                    ; permissions for the entire DB -- native and all schemas
    #"^/db/(\d+)/native/$"                             ; permissions to create new native queries for the DB
    #"^/db/(\d+)/schema/$"                             ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^\\/]*)/$"                   ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
+   #"^/db/(\d+)/schema/([^/]*)/$"                   ; permissions for a specific schema
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/$"       ; FULL permissions for a specific table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/read/$"  ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/query/$" ; Permissions to run any sort of query against a Table
    segmented-perm-regex                               ; Permissions to run a query against a Table using GTAP
    #"^/collection/(\d+)/$"                            ; readwrite permissions for a collection
    #"^/collection/(\d+)/read/$"                       ; read permissions for a collection
@@ -101,6 +101,7 @@
   [permissions]
   (assert-not-admin-group permissions)
   (assert-valid-object permissions))
+
 
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
@@ -559,6 +560,7 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+                               " "
                                (tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
@@ -568,8 +570,10 @@
   [current-revision old new]
   (when *current-user-id*
     (db/insert! PermissionsRevision
-      :id     (inc current-revision) ; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second
-      :before  old                   ; since we called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+      ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+      ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+      :id     (inc current-revision)
+      :before  old
       :after   new
       :user_id *current-user-id*)))
 

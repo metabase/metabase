@@ -1,27 +1,158 @@
 (ns metabase.driver.postgres
-  "Database driver for PostgreSQL databases. Builds on top of the 'Generic SQL' driver, which implements most
-  functionality for JDBC-based drivers."
+  "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
+  for JDBC-based drivers."
   (:require [clojure
              [set :as set :refer [rename-keys]]
              [string :as s]]
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.db.spec :as dbspec]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.Time
            java.util.UUID))
 
-(defrecord PostgresDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "PostgreSQL"))
+(driver/register! :postgres, :parent :sql-jdbc)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
+
+
+(defmethod driver/date-interval :postgres [_ unit amount]
+  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+
+(defmethod driver/humanize-connection-error-message :postgres [_ message]
+  (condp re-matches message
+    #"^FATAL: database \".*\" does not exist$"
+    (driver.common/connection-error-messages :database-name-incorrect)
+
+    #"^No suitable driver found for.*$"
+    (driver.common/connection-error-messages :invalid-hostname)
+
+    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
+    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+
+    #"^FATAL: role \".*\" does not exist$"
+    (driver.common/connection-error-messages :username-incorrect)
+
+    #"^FATAL: password authentication failed for user.*$"
+    (driver.common/connection-error-messages :password-incorrect)
+
+    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
+    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
+      (str (s/capitalize message) \.))
+
+    #".*" ; default
+    message))
+
+(defmethod driver.common/current-db-time-date-formatters :postgres [_]
+  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
+
+(defmethod driver.common/current-db-time-native-query :postgres [_]
+  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
+
+(defmethod driver/current-db-time :postgres [& args]
+  (apply driver.common/current-db-time args))
+
+
+(defmethod driver/connection-properties :postgres [_]
+  (ssh/with-tunnel-config
+    [driver.common/default-host-details
+     (assoc driver.common/default-port-details :default 5432)
+     driver.common/default-dbname-details
+     driver.common/default-user-details
+     driver.common/default-password-details
+     driver.common/default-ssl-details
+     (assoc driver.common/default-additional-options-details
+       :placeholder "prepareThreshold=0")]))
+
+
+(defn- enum-types [driver database]
+  (set
+   (map (comp keyword :typname)
+        (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+                    [(str "SELECT DISTINCT t.typname "
+                          "FROM pg_enum e "
+                          "LEFT JOIN pg_type t "
+                          "  ON t.oid = e.enumtypid")]))))
+
+(def ^:private ^:dynamic *enum-types* nil)
+
+;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
+;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
+;; and used later in `database-type->base-type`, which you will find below.
+(defmethod driver/describe-table :postgres [driver database table]
+  (binding [*enum-types* (enum-types driver database)]
+    (sql-jdbc.sync/describe-table driver database table)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           metabase.driver.sql impls                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds] [_ _ expr]
+  (hsql/call :to_timestamp expr))
+
+
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
+
+(def ^:private extract-integer (comp hx/->integer extract))
+
+(def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
+
+(defmethod sql.qp/date [:postgres :default]        [_ _ expr] expr)
+(defmethod sql.qp/date [:postgres :minute]         [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:postgres :minute-of-hour] [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:postgres :hour]           [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:postgres :hour-of-day]    [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]            [_ _ expr] (hx/->date expr))
+;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+(defmethod sql.qp/date [:postgres :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
+(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr] (extract-integer :doy expr))
+;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+(defmethod sql.qp/date [:postgres :week]            [_ _ expr] (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr)
+                                                                                             one-day))
+                                                                     one-day))
+(defmethod sql.qp/date [:postgres :week-of-year]    [_ _ expr] (extract-integer :week (hx/+ (hx/->timestamp expr)
+                                                                                            one-day)))
+(defmethod sql.qp/date [:postgres :month]           [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (extract-integer :year expr))
+
+
+(defmethod sql.qp/->honeysql [:postgres :value] [driver value]
+  (let [[_ value {base-type :base_type, database-type :database_type}] value]
+    (when (some? value)
+      (cond
+        (isa? base-type :type/UUID)         (UUID/fromString value)
+        (isa? base-type :type/IPAddress)    (hx/cast :inet value)
+        (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
+        :else                               (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres Time]
+  [_ time-value]
+  (hx/->time time-value))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         metabase.driver.sql-jdbc impls                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
@@ -85,22 +216,16 @@
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
 
-(defn- column->base-type
-  "Actual implementation of `column->base-type`. If `:enum-types` is passed along (usually done by our implementation
-  of `describe-table` below) we'll give the column a base type of `:type/PostgresEnum` *if* it's an enum type.
-  Otherwise we'll look in the static `default-base-types` map above."
-  [driver column]
-  (if (contains? (:enum-types driver) column)
+(defmethod sql-jdbc.sync/database-type->base-type :postgres [driver column]
+  (if (contains? *enum-types* column)
     :type/PostgresEnum
     (default-base-types column)))
 
-(defn- column->special-type
-  "Attempt to determine the special-type of a Field given its name and Postgres column type."
-  [_ column-type]
+(defmethod sql-jdbc.sync/column->special-type :postgres [_ database-type _]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
-  (case column-type
-    :json :type/SerializedJSON
-    :inet :type/IPAddress
+  (case database-type
+    "json" :type/SerializedJSON
+    "inet" :type/IPAddress
     nil))
 
 (def ^:private ^:const ssl-params
@@ -113,7 +238,7 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defn- connection-details->spec [{ssl? :ssl, :as details-map}]
+(defmethod sql-jdbc.conn/connection-details->spec :postgres [_ {ssl? :ssl, :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port)
@@ -125,144 +250,9 @@
                ssl-params
                disable-ssl-params))
       (rename-keys {:dbname :db})
-      dbspec/postgres
-      (sql/handle-additional-options details-map)))
+      db.spec/postgres
+      (sql-jdbc.common/handle-additional-options details-map)))
 
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (case seconds-or-milliseconds
-    :seconds      (hsql/call :to_timestamp expr)
-    :milliseconds (recur (hx// expr 1000) :seconds)))
-
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
-
-(def ^:private extract-integer (comp hx/->integer extract))
-
-(def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
-
-(defn- date [unit expr]
-  (case unit
-    :default         expr
-    :minute          (date-trunc :minute expr)
-    :minute-of-hour  (extract-integer :minute expr)
-    :hour            (date-trunc :hour expr)
-    :hour-of-day     (extract-integer :hour expr)
-    :day             (hx/->date expr)
-    ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-    :day-of-week     (hx/inc (extract-integer :dow expr))
-    :day-of-month    (extract-integer :day expr)
-    :day-of-year     (extract-integer :doy expr)
-    ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr) one-day))
-                           one-day)
-    :week-of-year    (extract-integer :week (hx/+ (hx/->timestamp expr) one-day))
-    :month           (date-trunc :month expr)
-    :month-of-year   (extract-integer :month expr)
-    :quarter         (date-trunc :quarter expr)
-    :quarter-of-year (extract-integer :quarter expr)
-    :year            (extract-integer :year expr)))
-
-(defn- date-interval [unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
-
-(defn- humanize-connection-error-message [message]
-  (condp re-matches message
-    #"^FATAL: database \".*\" does not exist$"
-    (driver/connection-error-messages :database-name-incorrect)
-
-    #"^No suitable driver found for.*$"
-    (driver/connection-error-messages :invalid-hostname)
-
-    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (driver/connection-error-messages :cannot-connect-check-host-and-port)
-
-    #"^FATAL: role \".*\" does not exist$"
-    (driver/connection-error-messages :username-incorrect)
-
-    #"^FATAL: password authentication failed for user.*$"
-    (driver/connection-error-messages :password-incorrect)
-
-    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
-    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (s/capitalize message) \.))
-
-    #".*" ; default
-    message))
-
-(defmethod sqlqp/->honeysql [PostgresDriver :value] [driver value]
-  (let [[_ value {base-type :base_type, database-type :database_type}] value]
-    (when (some? value)
-      (cond
-        (isa? base-type :type/UUID)         (UUID/fromString value)
-        (isa? base-type :type/IPAddress)    (hx/cast :inet value)
-        (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
-        :else                               (sqlqp/->honeysql driver value)))))
-
-(defmethod sqlqp/->honeysql [PostgresDriver Time]
-  [_ time-value]
-  (hx/->time time-value))
-
-(defn- string-length-fn [field-key]
-  (hsql/call :char_length (hx/cast :VARCHAR field-key)))
-
-(defn- enum-types
-  "Fetch a set of the enum types associated with `database`.
-
-     (enum-types some-db) ; -> #{:bird_type :bird_status}"
-  [database]
-  (set
-   (map (comp keyword :typname)
-        (jdbc/query (connection-details->spec (:details database))
-                    [(str "SELECT DISTINCT t.typname "
-                          "FROM pg_enum e "
-                          "LEFT JOIN pg_type t "
-                          "  ON t.oid = e.enumtypid")]))))
-
-(defn- describe-table
-  "Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-  name, but first fetches database enum types so we have access to them. These are simply assoc'ed with `driver`,
-  since that argument will end up getting passed to the function that can actually do something with the enum types,
-  namely `column->base-type`, which you will find above."
-  [driver database table]
-  (sql/describe-table (assoc driver :enum-types (enum-types database)) database table))
-
-
-(def ^:private pg-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-(def ^:private pg-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(def PostgresISQLDriverMixin
-  "Implementations of `ISQLDriver` methods for `PostgresDriver`. This is made a 'mixin' because these implementations
-  are also used by the Redshift driver."
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
-          :column->special-type      (u/drop-first-arg column->special-type)
-          :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
-          :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
-          :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
-
-(u/strict-extend PostgresDriver
-  driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:current-db-time                   (driver/make-current-db-time-fn pg-db-time-query pg-date-formatters)
-          :date-interval                     (u/drop-first-arg date-interval)
-          :describe-table                    describe-table
-          :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [driver/default-host-details
-                                                            (assoc driver/default-port-details :default 5432)
-                                                            driver/default-dbname-details
-                                                            driver/default-user-details
-                                                            driver/default-password-details
-                                                            driver/default-ssl-details
-                                                            (assoc driver/default-additional-options-details
-                                                              :placeholder "prepareThreshold=0")]))
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
-
-  sql/ISQLDriver PostgresISQLDriverMixin)
-
-(defn -init-driver
-  "Register the PostgreSQL driver"
-  []
-  (driver/register-driver! :postgres (PostgresDriver.)))
+(defmethod sql-jdbc.execute/set-timezone-sql :postgres [_]
+  "SET SESSION TIMEZONE TO %s;")

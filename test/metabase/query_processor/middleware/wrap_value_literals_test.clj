@@ -1,15 +1,12 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require [expectations :refer :all]
-            [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.util.date :as du]))
 
-(defn- wrap-value-literals {:style/indent 1} [field-ids-to-put-in-store inner-query]
-  (qp.store/with-store
-    (doseq [field-id field-ids-to-put-in-store]
-      (qp.store/store-field! (Field field-id)))
+(defn- wrap-value-literals {:style/indent 0} [inner-query]
+  (qp.test-util/with-everything-store
     (binding [du/*report-timezone* (java.util.TimeZone/getTimeZone "UTC")]
       (-> ((wrap-value-literals/wrap-value-literals identity)
            {:database (data/id)
@@ -26,7 +23,7 @@
                                 :special_type  :type/PK
                                 :database_type "BIGINT"}]]})
   (data/$ids venues
-    (wrap-value-literals [$id]
+    (wrap-value-literals
       {:source-table (data/id :venues)
        :filter       [:> [:field-id $id] 50]})))
 
@@ -41,7 +38,7 @@
                                                       :special_type  :type/Category
                                                       :database_type "INTEGER"}]]]})
   (data/$ids venues
-    (wrap-value-literals [$id $price]
+    (wrap-value-literals
       {:source-table (data/id :venues)
        :filter       [:and
                       [:> [:field-id $id] 50]
@@ -55,7 +52,7 @@
                     [:datetime-field [:field-id $date] :month]
                     [:absolute-datetime (du/->Timestamp "2018-10-01" "UTC") :month]]})
   (data/$ids checkins
-    (wrap-value-literals [$date]
+    (wrap-value-literals
       {:source-table (data/id :checkins)
        :filter       [:= [:datetime-field [:field-id $date] :month] "2018-10-01"]})))
 
@@ -68,7 +65,7 @@
                     [:field-id $date]
                     [:absolute-datetime (du/->Timestamp "2018-10-01" "UTC") :default]]})
   (data/$ids checkins
-    (wrap-value-literals [$date]
+    (wrap-value-literals
       {:source-table (data/id :checkins)
        :filter       [:= [:field-id $date] "2018-10-01"]})))
 
@@ -87,7 +84,7 @@
 
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
-      (wrap-value-literals [$timestamp]
+      (wrap-value-literals
         {:source-table (data/id :incidents)
          :filter       [:and
                         [:> [:datetime-field [:field-id $timestamp] :day] "2015-06-01"]
@@ -104,7 +101,7 @@
                                            :database_type "DATE"
                                            :unit          :month}]]})
   (data/$ids checkins
-    (wrap-value-literals [$date]
+    (wrap-value-literals
       {:source-table (data/id :checkins)
        :filter       [:starts-with [:datetime-field [:field-id $date] :month] "2018-10-01"]})))
 
@@ -116,6 +113,6 @@
                                    [:field-id $date]
                                    [:absolute-datetime #inst "2014-01-01T00:00:00.000000000-00:00" :default]]}})
   (data/$ids checkins
-    (wrap-value-literals [$date]
+    (wrap-value-literals
       {:source-query {:source-table (data/id :checkins)
                       :filter       [:> [:field-id $date] "2014-01-01"]}})))

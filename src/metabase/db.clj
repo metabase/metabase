@@ -17,9 +17,9 @@
   (:import com.mchange.v2.c3p0.ComboPooledDataSource
            java.io.StringWriter
            java.util.Properties
+           [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
-           liquibase.Liquibase
            liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor))
 
@@ -130,7 +130,9 @@
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
   filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
-  because it keeps the code simple and doesn't make a significant performance difference."
+  because it keeps the code simple and doesn't make a significant performance difference.
+
+  As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -140,14 +142,17 @@
 (defn- has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
-  It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
-  `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous and
-  a waste of time when we won't be using them."
+  It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
+  skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
+  using them.
+
+  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
+  `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
 (defn- migration-lock-exists?
-  "Is a migration lock in place for LIQUIBASE?"
+  "Is a migration lock in place for `liquibase`?"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
@@ -166,12 +171,7 @@
          (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn- migrate-up-if-needed!
-  "Run any unrun `liquibase` migrations, if needed.
-
-  This creates SQL for the migrations to be performed, then executes each DDL statement. Running `.update` directly
-  doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at the end
-  of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do
-  the trick."
+  "Run any unrun `liquibase` migrations, if needed."
   [conn, ^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
@@ -182,8 +182,8 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (doseq [line (migrations-lines liquibase)]
-          (jdbc/execute! conn [line])))
+        (let [^Contexts contexts nil]
+          (.update liquibase contexts)))
       (log/info
        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
@@ -191,7 +191,8 @@
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
   1.  This doesn't check to make sure the DB locks are cleared
-  2.  Any DDL statements that fail are ignored
+  2.  This generates a sequence of individual DDL statements with `migrations-lines` and runs them each in turn
+  3.  Any DDL statements that fail are ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295.
@@ -388,8 +389,8 @@
    {:pre [(keyword? engine) (map? details)]}
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver)
-             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
+             (require 'metabase.driver.util)
+             ((resolve 'metabase.driver.util/can-connect-with-details?) engine details))
      (format "Unable to connect to Metabase %s DB." (name engine)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 

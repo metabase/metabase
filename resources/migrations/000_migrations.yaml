@@ -4989,6 +4989,37 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: raw_column_id
 
+# Add database_id column to query_execution
+
+  - changeSet:
+      id: 92
+      author: camsaul
+      comment: 'Added 0.31.0'
+      validCheckSum: 8:a875945f36824a0667c740888c00c37f
+      validCheckSum: 8:83ded48e18fe8f70d6ec09add042124d
+      validCheckSum: 8:1e5bc2d66778316ea640a561862c23b4
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              name: database_id
+              type: integer
+              remarks: 'ID of the database this query was ran against.'
+
+# Start recording the actual query dictionary that's been executed
+
+  - changeSet:
+      id: 93
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: query
+            columns:
+              name: query
+              type: text
+              remarks: 'The actual "query dictionary" for this query.'
+
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
       id: 94
@@ -5060,6 +5091,16 @@ databaseChangeLog:
       id: 95
       author: senior
       comment: 'Added 0.31.0'
+      # Don't add the constraint if there are already duplicates in the database change log! Migrations will fail!
+      # See #8909
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
       changes:
         - addUniqueConstraint:
             columnNames: id, author, filename
@@ -5079,3 +5120,18 @@ databaseChangeLog:
               name: settings
               type: text
               remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+#
+# Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
+#
+  - changeSet:
+      id: 97
+      author: senior
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms: mysql, mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob

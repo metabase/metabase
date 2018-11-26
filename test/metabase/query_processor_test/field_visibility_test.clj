@@ -36,7 +36,7 @@
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
 ;;; Make sure :sensitive information fields are never returned by the QP
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     (->columns "id" "name" "last_login")
    :cols        [(users-col :id)
                  (users-col :name)

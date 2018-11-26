@@ -17,12 +17,12 @@
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
-                 [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
+                 [org.clojure/java.classpath "0.3.0"]                 ; examine the Java classpath from Clojure programs
                  [org.clojure/java.jdbc "0.7.6"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.combinatorics "0.1.4"]             ; combinatorics functions
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.4.1"]                  ; logging framework
-                 [org.clojure/tools.namespace "0.2.10"]
+                 [org.clojure/tools.namespace "0.2.11"]
                  [amalloy/ring-buffer "1.2.1"
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
@@ -38,7 +38,8 @@
                                commons-io
                                slingshot]]
                  [clj-time "0.13.0"]                                  ; library for dealing with date/time
-                 [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
+                 [clojurewerkz/quartzite "2.0.0"                      ; scheduling library
+                  :exclusions [c3p0]]
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.amazon.redshift/redshift-jdbc42-no-awssdk       ; Redshift JDBC driver without embedded Amazon SDK
                   "1.2.12.1017"]
@@ -69,7 +70,6 @@
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.9.2"                                    ; Transform Clojure data structures to SQL
                   :exclusions [org.clojure/clojurescript]]
-                 [io.crate/crate-jdbc "2.3.0"]                        ; Crate JDBC driver
                  [io.forward/yaml "1.0.9"                             ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
                   :exclusions [org.clojure/clojure
                                org.yaml/snakeyaml]]
@@ -82,11 +82,12 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.8.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "5.1.45"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+                 [mysql/mysql-connector-java "5.1.45"]                ; !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [jdistlib "0.5.1"                                    ; Distribution statistic tests
                   :exclusions [com.github.wendykierp/JTransforms]]
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
+                 [net.snowflake/snowflake-jdbc "3.6.13"]              ; Snowflake JDBC Client Library
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.6.2"                ; migration management (Java lib)
                   :exclusions [ch.qos.logback/logback-classic]]
@@ -98,14 +99,14 @@
                  [prismatic/schema "1.1.9"]                           ; Data schema declaration and validation library
                  [puppetlabs/i18n "0.8.0"]                            ; Internationalization library
                  [redux "0.1.4"]                                      ; Utility functions for building and composing transducers
-                 [ring/ring-core "1.6.0"]
-                 [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-core "1.6.3"]
+                 [ring/ring-jetty-adapter "1.6.3"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [org.eclipse.jetty/jetty-server "9.4.11.v20180605"]  ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.1.9"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]     ; Repo for Crate JDBC driver
-                 ["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
+  :repositories [["redshift" "https://s3.amazonaws.com/redshift-driver-downloads"]]
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.12.3"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
@@ -122,10 +123,7 @@
          :init metabase.core/init!
          :destroy metabase.core/destroy
          :reload-paths ["src"]}
-  :eastwood {:exclude-namespaces
-             [:test-paths
-              ;; SQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
-              metabase.driver.generic-sql]
+  :eastwood {:exclude-namespaces [:test-paths]
              :config-files ["./test_resources/eastwood-config.clj"]
              :add-linters [:unused-private-vars
                            :unused-namespaces
@@ -139,9 +137,10 @@
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
-  :profiles {:dev {:dependencies [[expectations "2.2.0-beta2"]        ; unit tests
+  :profiles {:dev {:dependencies [[clj-http-fake "1.0.3"]             ; Library to mock clj-http responses
+                                  [expectations "2.2.0-beta2"]        ; unit tests
                                   [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
-                   :plugins [[docstring-checker "1.0.2"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
+                   :plugins [[docstring-checker "1.0.3"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.3.1"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-bikeshed "0.4.1"]                  ; Linting

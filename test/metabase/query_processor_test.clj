@@ -3,63 +3,56 @@
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [datasets :as datasets]
+             [env :as tx.env]
+             [interface :as tx]]
             [metabase.util.date :as du]))
-
-;; make sure all the driver test extension namespaces are loaded <3 if this isn't done some things will get loaded at
-;; the wrong time which can end up causing test databases to be created more than once, which fails
-(doseq [engine (keys (driver/available-drivers))]
-  (let [test-ns (symbol (str "metabase.test.data." (name engine)))]
-    (try
-      (require test-ns)
-      (catch Throwable e
-        (log/warn (format "Error loading %s: %s" test-ns (.getMessage e)))))))
-
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private ^:const timeseries-engines #{:druid})
+(def ^:private timeseries-drivers #{:druid})
 
-(def ^:const non-timeseries-engines
+(def non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference datasets/all-valid-engines timeseries-engines))
+  (set/difference tx.env/test-drivers timeseries-drivers))
 
-(defn non-timeseries-engines-with-feature
+(defn non-timeseries-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [engine non-timeseries-engines
-               :when  (set/subset? features (driver/features (driver/engine->driver engine)))]
+    (set (for [engine non-timeseries-drivers
+               :when  (set/subset? features (driver.u/features engine))]
            engine))))
 
-(defn non-timeseries-engines-without-feature
+(defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference non-timeseries-engines (non-timeseries-engines-with-feature feature)))
+  (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
 
 (defmacro expect-with-non-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines non-timeseries-engines
+  `(datasets/expect-with-drivers non-timeseries-drivers
      ~expected
      ~actual))
 
 (defmacro expect-with-non-timeseries-dbs-except
   {:style/indent 1}
   [excluded-engines expected actual]
-  `(datasets/expect-with-engines (set/difference non-timeseries-engines (set ~excluded-engines))
+  `(datasets/expect-with-drivers (set/difference non-timeseries-drivers (set ~excluded-engines))
      ~expected
      ~actual))
 
-(defmacro qp-expect-with-all-engines
+(defmacro qp-expect-with-all-drivers
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -70,10 +63,10 @@
          ~@post-process-fns)))
 
 ;; TODO - this is only used in a single place, consider removing it
-(defmacro qp-expect-with-engines
+(defmacro qp-expect-with-drivers
   {:style/indent 1}
   [datasets data query-form]
-  `(datasets/expect-with-engines ~datasets
+  `(datasets/expect-with-drivers ~datasets
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
@@ -191,20 +184,20 @@
                                              :nil%           0.0}}
                                    {:global {:distinct-count 28
                                              :nil%           0.0},
-                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.058108414099443}}})}
+                                    :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}})}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
                    :display_name "Price"
                    :fingerprint  {:global {:distinct-count 4
                                            :nil%           0.0},
-                                  :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0 :sd 0.7713951678941896}}}}
+                                  :type {:type/Number {:min 1.0, :max 4.0, :avg 2.03, :q1 1.0, :q3 2.0 :sd 0.77}}}}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
                    :fingerprint  {:global {:distinct-count 84
                                            :nil%           0.0},
-                                  :type {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0 :sd 14.162810671348238}}}
+                                  :type {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0 :sd 14.16}}}
                    :display_name "Longitude"}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
@@ -212,7 +205,7 @@
                    :display_name "Latitude"
                    :fingerprint  {:global {:distinct-count 94
                                            :nil%           0.0},
-                                  :type {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.0, :q3 38.0 :sd 3.4346725397190827}}}}
+                                  :type {:type/Number {:min 10.06, :max 40.78, :avg 35.51, :q1 34.0, :q3 38.0 :sd 3.43}}}}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
@@ -249,7 +242,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 100
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0 :sd 28.508208884780377}}})}
+                                 :type {:type/Number {:min 1.0, :max 100.0, :avg 51.97, :q1 28.0, :q3 76.0 :sd 28.51}}})}
      :user_id  {:special_type (if (data/fks-supported?)
                                 :type/FK
                                 :type/Category)
@@ -261,7 +254,7 @@
                                           :nil%           0.0}}
                                 {:global {:distinct-count 15
                                           :nil%           0.0},
-                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0 :sd 3.9902231617894355}}})})))
+                                 :type {:type/Number {:min 1.0, :max 15.0, :avg 7.93 :q1 4.0, :q3 11.0 :sd 3.99}}})})))
 
 
 ;;; #### aggregate columns
@@ -272,26 +265,9 @@
 
     (aggregate-col :count)
     (aggregate-col :avg (venues-col :id))"
-  {:arglists '([ag-col-kw] [ag-col-kw field])}
-  ([ag-col-kw]
-   (assert (= ag-col-kw) :count)
-   {:base_type    :type/Integer
-    :special_type :type/Number
-    :name         "count"
-    :display_name "count"
-    :source       :aggregation})
-  ([ag-col-kw {:keys [base_type special_type]}]
-   {:pre [base_type special_type]}
-   (merge
-    {:base_type    base_type
-     :special_type special_type
-     :settings     nil
-     :name         (name ag-col-kw)
-     :display_name (name ag-col-kw)
-     :source       :aggregation}
-    ;; count always gets the same special type regardless
-    (when (= ag-col-kw :count)
-      (aggregate-col :count)))))
+  {:arglists '([ag-type] [ag-type field])}
+  [& args]
+  (apply tx/aggregate-column-info (tx/driver) args))
 
 (defn breakout-col [col]
   (assoc col :source :breakout))
@@ -367,12 +343,9 @@
   (first (rows results)))
 
 (defn supports-report-timezone?
-  "Returns truthy if `ENGINE` supports setting a timezone"
-  [engine]
-  (-> engine
-      driver/engine->driver
-      driver/features
-      (contains? :set-timezone)))
+  "Returns truthy if `driver` supports setting a timezone"
+  [driver]
+  (driver/supports? driver :set-timezone))
 
 (defmacro with-h2-db-timezone
   "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not

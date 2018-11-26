@@ -5,69 +5,66 @@
              [core :as hsql]
              [format :as hformat]
              [helpers :as h]]
-            [metabase.driver
-             [generic-sql :as sql]
-             [hive-like :as hive-like]]
-            [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.hive-like :as hive-like]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data
-             [generic-sql :as generic]
-             [interface :as i]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import metabase.driver.sparksql.SparkSQLDriver))
+             [interface :as tx]
+             [sql :as sql.tx]
+             [sql-jdbc :as sql-jdbc.tx]]
+            [metabase.test.data.sql-jdbc
+             [execute :as execute]
+             [load-data :as load-data]
+             [spec :as spec]]
+            [metabase.util.honeysql-extensions :as hx]))
 
-(def ^:private field-base-type->sql-type
-  {:type/BigInteger "BIGINT"
-   :type/Boolean    "BOOLEAN"
-   :type/Date       "DATE"
-   :type/DateTime   "TIMESTAMP"
-   :type/Decimal    "DECIMAL"
-   :type/Float      "DOUBLE"
-   :type/Integer    "INTEGER"
-   :type/Text       "STRING"})
+(sql-jdbc.tx/add-test-extensions! :sparksql)
 
-(defn- quote-name [nm]
-  (str \` nm \`))
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/BigInteger] [_ _] "BIGINT")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Boolean]    [_ _] "BOOLEAN")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Date]       [_ _] "DATE")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/DateTime]   [_ _] "TIMESTAMP")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Decimal]    [_ _] "DECIMAL")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Float]      [_ _] "DOUBLE")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Integer]    [_ _] "INTEGER")
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Text]       [_ _] "STRING")
 
-(defn- dashes->underscores [s]
+(defmethod tx/format-name :sparksql [_ s]
   (s/replace s #"-" "_"))
 
-(defn- qualified-name-components [& args]
-  (map dashes->underscores args))
+(defmethod sql.tx/qualified-name-components :sparksql [driver & args]
+  (map (partial tx/format-name driver) args))
 
-(defn- qualify+quote-name
-  ([db-name]
-   (dashes->underscores db-name))
-  ([_ table-name]
-   (dashes->underscores table-name))
-  ([_ _ field-name]
-   (dashes->underscores field-name)))
+(defmethod sql.tx/qualify+quote-name :sparksql
+  ([driver db-name]
+   (tx/format-name driver db-name))
+  ([driver _ table-name]
+   (tx/format-name driver table-name))
+  ([driver _ _ field-name]
+   (tx/format-name driver field-name)))
 
-(defn- database->connection-details [context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :sparksql [driver context {:keys [database-name]}]
   (merge {:host     "localhost"
           :port     10000
           :user     "admin"
           :password "admin"}
          (when (= context :db)
-           {:db (dashes->underscores database-name)})))
+           {:db (tx/format-name driver database-name)})))
 
-(defn- do-insert!
-  "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
-  [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial generic/prepare-identifier driver) name)
+(defmethod load-data/do-insert! :sparksql [driver spec table-name row-or-rows]
+  (let [prepare-key (comp keyword (partial sql.tx/prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
         columns     (keys (first rows))
         values      (for [row rows]
                       (for [value (map row columns)]
-                        (sqlqp/->honeysql driver value)))
+                        (sql.qp/->honeysql driver value)))
         hsql-form   (-> (h/insert-into (prepare-key table-name))
                         (h/values values))
         sql+args    (hive-like/unprepare
                      (hx/unescape-dots (binding [hformat/*subquery?* false]
                                          (hsql/format hsql-form
-                                                      :quoting             (sql/quote-style driver)
+                                                      :quoting             (sql.qp/quote-style driver)
                                                       :allow-dashed-names? false))))]
     (with-open [conn (jdbc/get-connection spec)]
       (try
@@ -76,51 +73,34 @@
         (catch java.sql.SQLException e
           (jdbc/print-sql-exception-chain e))))))
 
-(defn- load-data!
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (let [spec       (generic/database->spec driver :db dbdef)
-        table-name (apply hx/qualify-and-escape-dots (qualified-name-components database-name table-name))
-        insert!    (generic/load-data-add-ids (partial do-insert! driver spec table-name))
-        rows       (generic/load-data-get-rows driver dbdef tabledef)]
-    (insert! rows)))
+(defmethod load-data/load-data! :sparksql [& args]
+  (apply load-data/load-data-add-ids! args))
 
-(defn- create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quot          (partial generic/quote-name driver)
-        pk-field-name (quot (generic/pk-field-name driver))]
+(defmethod sql.tx/create-table-sql :sparksql
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
+  (let [quote-name    (partial sql.tx/quote-name driver)
+        pk-field-name (quote-name (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s, %s %s)"
-            (generic/qualify+quote-name driver database-name table-name)
+            (sql.tx/qualify+quote-name driver database-name table-name)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
-                        (format "%s %s" (quot field-name) (if (map? base-type)
-                                                            (:native base-type)
-                                                            (generic/field-base-type->sql-type driver base-type)))))
+                        (format "%s %s" (quote-name field-name) (if (map? base-type)
+                                                                  (:native base-type)
+                                                                  (sql.tx/field-base-type->sql-type driver base-type)))))
                  (interpose ", ")
                  (apply str))
-            pk-field-name (generic/pk-sql-type driver)
+            pk-field-name (sql.tx/pk-sql-type driver)
             pk-field-name)))
 
-(defn- drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
-  (format "DROP TABLE IF EXISTS %s" (generic/qualify+quote-name driver database-name table-name)))
+(defmethod sql.tx/drop-table-if-exists-sql :sparksql [driver {:keys [database-name]} {:keys [table-name]}]
+  (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify+quote-name driver database-name table-name)))
 
-(defn- drop-db-if-exists-sql [driver {:keys [database-name]}]
-  (format "DROP DATABASE IF EXISTS %s CASCADE" (generic/qualify+quote-name driver database-name)))
+(defmethod sql.tx/drop-db-if-exists-sql :sparksql [driver {:keys [database-name]}]
+  (format "DROP DATABASE IF EXISTS %s CASCADE" (sql.tx/qualify+quote-name driver database-name)))
 
-(u/strict-extend SparkSQLDriver
-  generic/IGenericSQLTestExtensions
-  (merge generic/DefaultsMixin
-         {:add-fk-sql                (constantly nil)
-          :execute-sql!              generic/sequentially-execute-sql!
-          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          :create-table-sql          create-table-sql
-          :drop-table-if-exists-sql  drop-table-if-exists-sql
-          :drop-db-if-exists-sql     drop-db-if-exists-sql
-          :load-data!                load-data!
-          :pk-sql-type               (constantly "INT")
-          :qualify+quote-name        (u/drop-first-arg qualify+quote-name)
-          :qualified-name-components (u/drop-first-arg qualified-name-components)
-          :quote-name                (u/drop-first-arg quote-name)})
-  i/IDriverTestExtensions
-  (merge generic/IDriverTestExtensionsMixin
-         {:database->connection-details (u/drop-first-arg database->connection-details)
-          :default-schema               (constantly "test_data")
-          :engine                       (constantly :sparksql)}))
+(defmethod sql.tx/add-fk-sql :sparksql [& _] nil)
+
+(defmethod execute/execute-sql! :sparksql [& args]
+  (apply execute/sequentially-execute-sql! args))
+
+(defmethod sql.tx/pk-sql-type :sparksql [_] "INT")

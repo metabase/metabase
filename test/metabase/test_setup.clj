@@ -8,7 +8,6 @@
             [metabase
              [core :as core]
              [db :as mdb]
-             [driver :as driver]
              [plugins :as plugins]
              [task :as task]
              [util :as u]]
@@ -61,10 +60,6 @@
 
 ;;; ------------------------------- Functions That Get Ran On Test Suite Start / Stop --------------------------------
 
-;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for
-;; some of the unit tests work work properly
-(driver/find-and-load-drivers!)
-
 (defn test-startup
   {:expectations-options :before-run}
   []
@@ -76,19 +71,14 @@
       (plugins/setup-plugins!)
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
+
+      (plugins/load-plugins!)
       ;; we don't want to actually start the task scheduler (we don't want sync or other stuff happening in the BG
       ;; while running tests), but we still need to make sure it sets itself up properly so tasks can get scheduled
       ;; without throwing Exceptions
       (#'task/set-jdbc-backend-properties!)
       (setting/set! :site-name "Metabase Test")
       (init-status/set-complete!)
-
-      ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we
-      ;; get wacky 'method in protocol not implemented' errors when running tests against an individual namespace
-      (doseq [engine (keys (driver/available-drivers))
-              :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
-        (u/ignore-exceptions
-          (require driver-test-ns :reload)))
 
       ;; If test setup fails exit right away
       (catch Throwable e

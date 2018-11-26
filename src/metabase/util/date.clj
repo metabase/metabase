@@ -55,7 +55,7 @@
   ;; No need to check this if we don't have a data-timezone
   (when (and data-timezone driver)
     (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
-      (if ((resolve 'metabase.driver/driver-supports?) driver :set-timezone)
+      (if ((resolve 'metabase.driver/supports?) driver :set-timezone)
         ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
@@ -77,8 +77,8 @@
 (defn call-with-effective-timezone
   "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
   [db f]
-  (let [driver    ((resolve 'metabase.driver/->driver) db)
-        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver/report-timezone-if-supported) driver))]
+  (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
+        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
                     (coerce-to-timezone report-tz-id))
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
