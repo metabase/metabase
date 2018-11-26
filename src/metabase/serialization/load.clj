@@ -18,8 +18,6 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.serialization.dump :as dump]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.db :as db]
             [yaml.core :as yaml])
   (:refer-clojure :exclude [load]))
@@ -43,11 +41,11 @@
 
 (defn- list-dirs
   [path]
-  (->> path
-       io/file
-       (.listFiles)
-       (filter #(.isDirectory %))
-       (map #(.getPath %))))
+  (let [path ^java.io.File (io/file path)]
+    (->> path
+         (.listFiles)
+         (filter #(.isDirectory ^java.io.File %))
+         (map #(.getPath ^java.io.File %)))))
 
 (defmulti
   ^{:doc      ""
@@ -178,7 +176,7 @@
 
 (defmulti
   ^{:doc      ""
-    :arglists '([dir model])}
+    :arglists '([path context model])}
   load (fn [_ _ model]
          model))
 
