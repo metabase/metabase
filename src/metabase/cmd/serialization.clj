@@ -15,6 +15,7 @@
   (:refer-clojure :exclude [load]))
 
 (defn load
+  "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path]
   (mdb/setup-db-if-needed!)
   (load/load path {} Database)
@@ -26,6 +27,7 @@
     (dump/dump path e)))
 
 (defn dump
+  "Serialized metabase instance into directory `path`."
   [path]
   (mdb/setup-db-if-needed!)
   (dump-all path (Database))
