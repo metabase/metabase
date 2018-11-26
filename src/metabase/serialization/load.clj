@@ -40,7 +40,7 @@
   [path]
   (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
         :when (.isDirectory file)]
-    (getPath file)))
+    (.getPath file)))
 
 (defmulti
   ^{:doc      ""
