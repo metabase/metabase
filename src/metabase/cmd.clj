@@ -122,11 +122,13 @@
   ((resolve 'metabase.core/start-normally)))
 
 (defn ^:command load
+  "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path]
   (require 'metabase.cmd.serialization)
   ((resolve 'metabase.cmd.serialization/load) path))
 
 (defn ^:command dump
+  "Serialized metabase instance into directory `path`."
   [path]
   (require 'metabase.cmd.serialization)
   ((resolve 'metabase.cmd.serialization/dump) path))
