@@ -24,13 +24,10 @@
 
 (defn- slurp-dir
   [f path]
-  (->> path
-       io/file
-       (.listFiles)
-       (filter #(-> % (.getName) (str/ends-with? ".yaml")))
-       (map (fn [file]
-              (f (yaml/from-file file true))))
-       doall))
+  (doall
+   (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
+         :when (-> file (.getName) (str/ends-with? ".yaml"))]
+     (f (yaml/from-file file true)))))
 
 (defn- slurp-one-id
   [f path]
@@ -41,11 +38,9 @@
 
 (defn- list-dirs
   [path]
-  (let [path ^java.io.File (io/file path)]
-    (->> path
-         (.listFiles)
-         (filter #(.isDirectory ^java.io.File %))
-         (map #(.getPath ^java.io.File %)))))
+  (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
+        :when (.isDirectory file)]
+    (getPath file)))
 
 (defmulti
   ^{:doc      ""
