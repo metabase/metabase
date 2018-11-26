@@ -38,9 +38,9 @@
 (defn- valid-period?
   ([from to] (valid-period? from to nil))
   ([from to period]
-   (#'i/valid-period? (some-> from (.getTime) (#'i/ms->day))
-                      (some-> to (.getTime) (#'i/ms->day))
-                      period)))
+   (boolean (#'i/valid-period? (some-> from (.getTime) (#'i/ms->day))
+                               (some-> to (.getTime) (#'i/ms->day))
+                               period))))
 
 (expect
   true
@@ -50,7 +50,7 @@
   (valid-period? #inst "2015-02" #inst "2015-03"))
 (expect
   false
-  (valid-period? #inst "2015-01" #inst "2015-04"))
+  (valid-period? #inst "2015-01" #inst "2015-03"))
 (expect
   false
   (valid-period? #inst "2015-01" nil))
