@@ -89,6 +89,10 @@
               (str prefix "/collections"))
           (:name card)))
 
+(defmethod fully-qualified-name nil
+  [prefix _]
+  nil)
+
 (def ^:private SegmentOrMetric
   [(s/one (s/constrained su/KeywordOrString
                          (comp #{:metric :segment} qp.util/normalize-token))
@@ -123,15 +127,16 @@
        (entity-reference->fully-qualified-name prefix form)
 
        (map? form)
-       (let [fully-qualified-name (fn [entity-id model]
-                                    (if (string? entity-id)
-                                      (fully-qualified-name prefix (model entity))))]
+       (let [id->fully-qualified-name (fn [entity-id model]
+                                        (if (string? entity-id)
+                                          entity-id
+                                          (fully-qualified-name prefix (model entity-id))))]
          (-> form
              (u/update-when :database (fn [db]
                                         (if (= db -1337)
                                           "database/virtual"
-                                          (fully-qualified-name db Database))))
-             (u/update-when :card_id comp fully-qualified-name Card)
+                                          (id->fully-qualified-name db Database))))
+             (u/update-when :card_id id->fully-qualified-name Card)
              (u/update-when :source-table (fn [source-table]
                                             (if (and (string? source-table)
                                                      (str/starts-with? source-table "card__"))
@@ -139,8 +144,8 @@
                                                   (str/split #"__")
                                                   second
                                                   Integer/parseInt
-                                                  (fully-qualified-name Card))
-                                              (fully-qualified-name source-table Table))))))
+                                                  (id->fully-qualified-name Card))
+                                              (id->fully-qualified-name source-table Table))))))
 
        :else
        form))
@@ -154,8 +159,9 @@
 
 (defn- strip-crud
   [entity]
-  (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id
-          :card_id :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id))
+  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id
+                  :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id)
+    (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defn- spit-yaml
   ([path entity] (spit-yaml path :dir entity))
@@ -164,7 +170,10 @@
                  (format "%s/%s.yaml" (fully-qualified-name path entity) (:name entity))
                  (str (fully-qualified-name path entity) ".yaml"))]
      (io/make-parents fname)
-     (spit fname (yaml/generate-string (strip-crud entity) :dumper-options {:flow-style :block})))))
+     (spit fname (yaml/generate-string (->> entity
+                                            strip-crud
+                                            (humanize-entity-references path))
+                                       :dumper-options {:flow-style :block})))))
 
 (defmethod dump (type Database)
   [path db]
@@ -180,15 +189,11 @@
 
 (defmethod dump (type Segment)
   [path segment]
-  (->> segment
-       (humanize-entity-references path)
-       (spit-yaml path :file)))
+  (spit-yaml path :file segment))
 
 (defmethod dump (type Metric)
   [path metric]
-  (->> metric
-       (humanize-entity-references path)
-       (spit-yaml path :file)))
+  (spit-yaml path :file metric))
 
 (defn- dashboard-cards-for-dashboard
   [path dashboard]
@@ -212,10 +217,9 @@
 
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml path collection))
+  (spit-yaml path (dissoc collection :location)))
 
 (defmethod dump (type Card)
   [path card]
-  (->> card
-       (humanize-entity-references path)
-       (spit-yaml path :debug)))
+  (->> (u/update-when card :table_id (comp (partial fully-qualified-name path) Table))
+       (spit-yaml path)))

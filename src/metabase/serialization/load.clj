@@ -31,7 +31,15 @@
        (.listFiles)
        (filter #(-> % (.getName) (str/ends-with? ".yaml")))
        (map (fn [file]
-              (f (yaml/from-file file true))))))
+              (f (yaml/from-file file true))))
+       doall))
+
+(defn- slurp-one-id
+  [f path]
+  (some->> path
+           (slurp-dir f)
+           first
+           u/get-id))
 
 (defn- list-dirs
   [path]
@@ -137,28 +145,36 @@
       (drop path)))
 
 (defn- fully-qualified-name->context
-  [prefix fully-qualified-name]
+  [context fully-qualified-name]
   (->> (str/split fully-qualified-name #"/")
-       (remove-prefix prefix)
+       (remove-prefix (:prefix context))
        (path->context {})))
 
 (defn- fully-qualified-name->entity-reference
-  [prefix [op & args]]
-  (into [op] (map (fn [arg]
-                    (if (sequential? arg)
-                      ((some-fn :field :metric :segment) (fully-qualified-name->context prefix arg))
-                      arg))
-                  args)))
+  [context [op & args :as form]]
+  (if (-> op qp.util/normalize-token (= :field-literal))
+    form
+    (into [op] (map (fn [arg]
+                      (if (string? arg)
+                        ((some-fn :field :metric :segment) (fully-qualified-name->context context arg))
+                        arg))
+                    args))))
 
 (defn- humanized-field-references->ids
-  [entity prefix]
+  [entity context]
   (walk/postwalk (fn [form]
                    (if (dump/entity-reference? form)
-                     (fully-qualified-name->entity-reference prefix form)
+                     (fully-qualified-name->entity-reference context form)
                      form))
                  entity))
 
-(def ^:private default-user (delay (db/select-one-id User :is_superuser true)))
+(def ^:private default-user (delay (or (db/select-one-id User :is_superuser true)
+                                       (u/get-id
+                                        (db/insert! User {:email        "admin@example.com"
+                                                          :password     "load"
+                                                          :first_name   "Admin"
+                                                          :last_name    ""
+                                                          :is_superuser true})))))
 
 (defmulti
   ^{:doc      ""
@@ -176,15 +192,13 @@
 
 (defmethod load Table
   [path context _]
-  (let [context (merge context (fully-qualified-name->context (:prefix context) path))]
+  (let [context (merge context (fully-qualified-name->context context path))]
     (doseq [path (list-dirs (str path "/tables"))]
       (let [context (assoc context
-                      :table (->> path
-                                  (slurp-dir (fn [table]
-                                               (db/insert! Table
-                                                 (assoc table :db_id (:database context)))))
-                                  first
-                                  u/get-id))]
+                      :table (slurp-one-id (fn [table]
+                                             (db/insert! Table
+                                               (assoc table :db_id (:database context))))
+                                           path))]
         (load path context Field)
         (load path context Metric)
         (load path context Segment)))))
@@ -204,7 +218,7 @@
                      (assoc :table_id (:table context))
                      (assoc :creator_id @default-user)
                      (assoc-in [:definition :source-table] (:table context))
-                     (humanized-field-references->ids (:prefix context)))))
+                     (humanized-field-references->ids context))))
              (str path "/metrics")))
 
 (defmethod load Segment
@@ -213,49 +227,47 @@
     :segments (slurp-dir (fn [segment]
                            (db/insert! Segment
                              (-> segment
-                                 (update :table_id (:table context))
-                                 (update :creator_id @default-user)
+                                 (assoc :table_id (:table context))
+                                 (assoc :creator_id @default-user)
                                  (assoc-in [:definition :source-table] (:table context))
-                                 (humanized-field-references->ids (:prefix context)))))
+                                 (humanized-field-references->ids context))))
                          (str path "/segments"))))
 
 (defn- fully-qualified-name->card-id
   [context fully-qualified-name]
-  (:card (fully-qualified-name->context (:prefix context) fully-qualified-name)))
+  (some->> fully-qualified-name (fully-qualified-name->context context) :card))
 
 (defn- update-parameter-mappings
   [parameter-mappings context]
-  (map #(update % :card_id (partial fully-qualified-name->card-id context))
-       parameter-mappings))
+  (map #(update % :card_id (partial fully-qualified-name->card-id context)) parameter-mappings))
 
 (defmethod load Dashboard
   [path context _]
-  (doseq [path (list-dirs (str path "/dashboards"))]
-    (slurp-dir
-     (fn [dashboard]
-       (let [dashboard-cards (:dashboard_cards dashboard)
-             dashboard       (db/insert! Dashboard
-                               (-> dashboard
-                                   (dissoc :dashboard_cards)
-                                   (update :collection_id (:collection context))
-                                   (update :creator_id @default-user)
-                                   (humanized-field-references->ids (:prefix context))))]
-         (doseq [dashboard-card dashboard-cards]
-           (let [series         (:series dashboard-card)
-                 dashboard-card (db/insert! DashboardCard
-                                  (-> dashboard-card
-                                      (dissoc :series)
-                                      (update :card_id (partial fully-qualified-name->card-id context))
-                                      (assoc :dashboard_id (:id dashboard))
-                                      (update :parameter_mappings update-parameter-mappings context)
-                                      (humanized-field-references->ids (:prefix context))))]
-             (doseq [dashboard-card-series series]
-               (db/insert! DashboardCardSeries
-                 (-> dashboard-card-series
-                     (assoc :dashboardcard_id (:id dashboard-card))
-                     (update :card_id (partial fully-qualified-name->card-id context)))))))
-         dashboard))
-     path)))
+  (slurp-dir
+   (fn [dashboard]
+     (let [dashboard-cards (:dashboard_cards dashboard)
+           dashboard       (db/insert! Dashboard
+                             (-> dashboard
+                                 (dissoc :dashboard_cards)
+                                 (assoc :collection_id (:collection context))
+                                 (assoc :creator_id @default-user)
+                                 (humanized-field-references->ids context)))]
+       (doseq [dashboard-card dashboard-cards]
+         (let [series         (:series dashboard-card)
+               dashboard-card (db/insert! DashboardCard
+                                (-> dashboard-card
+                                    (dissoc :series)
+                                    (update :card_id (partial fully-qualified-name->card-id context))
+                                    (assoc :dashboard_id (:id dashboard))
+                                    (update :parameter_mappings update-parameter-mappings context)
+                                    (humanized-field-references->ids context)))]
+           (doseq [dashboard-card-series series]
+             (db/insert! DashboardCardSeries
+               (-> dashboard-card-series
+                   (assoc :dashboardcard_id (:id dashboard-card))
+                   (update :card_id (partial fully-qualified-name->card-id context)))))))
+       dashboard))
+   (str path "/dashboards")))
 
 (defn- source-table
   [source-table context]
@@ -267,39 +279,55 @@
 (defmethod load Card
   [path context _]
   (doseq [path (list-dirs (str path "/cards"))]
-    (slurp-dir
-     (fn [card]
-       (let [table (->> card :table_id (fully-qualified-name->context context) :table Table)
-             db    (:db_id table)]
-         (db/insert! Card
-           (-> card
-               (assoc :table_id (u/get-id table))
-               (update :creator_id (:users context))
-               (update :collection_id (:collection context))
-               (update :database_id db)
-               (update-in [:dataset_query :database] db)
-               (cond->
-                 (-> card :dataset_query :type qp.util/normalize-token (= :query))
-                 (update-in [:dataset_query :query :source-table] source-table context))
-               (humanized-field-references->ids (:prefix context))))))
-     path)
-    (load path Card)))
+    (let [context (assoc context
+                    :card (slurp-one-id
+                           (fn [card]
+                             (let [table (->> card
+                                              :table_id
+                                              (fully-qualified-name->context context)
+                                              :table
+                                              Table)
+                                   db    (:db_id table)]
+                               (db/insert! Card
+                                 (-> card
+                                     (assoc :table_id (u/get-id table))
+                                     (assoc :creator_id @default-user)
+                                     (assoc :collection_id (:collection context))
+                                     (assoc :database_id db)
+                                     (assoc-in [:dataset_query :database] db)
+                                     (cond->
+                                         (-> card :dataset_query :type qp.util/normalize-token (= :query))
+                                       (update-in [:dataset_query :query :source-table] source-table context))
+                                     (humanized-field-references->ids context)))))
+                           path))]
+      (load path context Card))))
+
+(defn- derive-location
+  [context]
+  (if-let [parent-id (:collection context)]
+    (str (-> parent-id Collection :location) parent-id "/")
+    "/"))
 
 (defmethod load Collection
   [path context _]
-  (doseq [path (list-dirs (str path "/collections"))]
-    (let [context (assoc context
-                    :prefix     (:prefix context path)
-                    :collection (->> path
-                                     (slurp-dir
-                                      (fn [collection]
-                                        (or (db/select-one Collection
-                                              :location (:location collection)
-                                              :personal_owner_id @default-user
-                                            (db/insert! Collection
-                                              (assoc collection :personal_owner_id @default-user))))))
-                                     first
-                                     u/get-id))]
-      (load path Collection)
-      (load path Card)
-      (load path Dashboard))))
+  (let [context (assoc context
+                  :prefix     (:prefix context path)
+                  :collection (slurp-one-id
+                               (fn [collection]
+                                 (let [collection (assoc collection
+                                                    :location (derive-location context))]
+                                   (if (:personal_owner_id collection)
+                                     (or (db/select-one Collection
+                                           :personal_owner_id @default-user)
+                                         (db/insert! Collection
+                                           (assoc collection :personal_owner_id @default-user)))
+                                     (db/insert! Collection collection))))
+                               path))]
+    (doseq [path (list-dirs (str path "/collections"))
+            :when (not-any? (partial str/ends-with? path) ["dashboards" "cards"])]
+      (load path context Collection))
+    (let [path (if (= path (:prefix context))
+                 (str path "/collections")
+                 path)]
+      (load path context Card)
+      (load path context Dashboard))))
