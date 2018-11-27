@@ -61,7 +61,8 @@
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.microsoft.sqlserver/mssql-jdbc "6.4.0.jre8"]    ; SQLServer JDBC driver
-                 [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
+                 [com.novemberain/monger "3.1.0"                      ; MongoDB Driver
+                  :exclusions [org.mongodb/mongodb-driver]]
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
@@ -92,6 +93,7 @@
                  [org.clojars.pntblnk/clj-ldap "0.0.12"]              ; LDAP client
                  [org.liquibase/liquibase-core "3.6.2"                ; migration management (Java lib)
                   :exclusions [ch.qos.logback/logback-classic]]
+                 [org.mongodb/mongodb-driver "3.9.0"]                 ; MongoDB driver. Used interally by Monger. Using newer version than what ships with Monger -- see #6678
                  [org.postgresql/postgresql "42.2.2"]                 ; Postgres driver
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.tcrawley/dynapath "0.2.5"]                      ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
