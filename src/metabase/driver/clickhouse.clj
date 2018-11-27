@@ -25,6 +25,7 @@
   {"Array"       :type/*
    "Date"        :type/Date
    "DateTime"    :type/DateTime
+   "Decimal"     :type/Decimal
    "Enum8"       :type/*
    "Enum16"      :type/*
    "FixedString" :type/Text
