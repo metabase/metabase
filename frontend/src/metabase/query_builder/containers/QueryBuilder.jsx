@@ -22,6 +22,8 @@ import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
 
+import DataWorksheet from "../components/DataWorksheet";
+
 import title from "metabase/hoc/Title";
 
 import {
@@ -226,6 +228,16 @@ export default class QueryBuilder extends Component {
   }
 }
 
+const ModeSelect = ({ uiControls, setMode }) => (
+  <div className="z2 fixed bottom right p1">
+    <select value={uiControls.mode} onChange={e => setMode(e.target.value)}>
+      <option value="present">Present</option>
+      <option value="worksheet">Data Worksheet</option>
+      <option value="visualize">Visualize</option>
+    </select>
+  </div>
+);
+
 class LegacyQueryBuilder extends Component {
   render() {
     const { query, card, isDirty, databases, uiControls, mode } = this.props;
@@ -233,6 +245,15 @@ class LegacyQueryBuilder extends Component {
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
       return <div />;
+    }
+
+    if (uiControls.mode === "worksheet") {
+      return (
+        <div>
+          <DataWorksheet {...this.props} />
+          <ModeSelect {...this.props} />
+        </div>
+      );
     }
 
     const showDrawer =
@@ -317,6 +338,7 @@ class LegacyQueryBuilder extends Component {
         )}
 
         <ActionsWidget {...this.props} className="z2 absolute bottom right" />
+        <ModeSelect {...this.props} />
       </div>
     );
   }

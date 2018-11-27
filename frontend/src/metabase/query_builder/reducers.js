@@ -5,6 +5,7 @@ import { assoc, dissoc } from "icepick";
 import {
   RESET_QB,
   INITIALIZE_QB,
+  SET_MODE,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
@@ -49,7 +50,9 @@ export const uiControls = handleActions(
     [INITIALIZE_QB]: {
       next: (state, { payload }) => ({ ...state, ...payload.uiControls }),
     },
-
+    [SET_MODE]: {
+      next: (state, { payload }) => ({ ...state, mode: payload }),
+    },
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,

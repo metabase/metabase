@@ -186,6 +186,9 @@ export const redirectToNewQuestionFlow = createThunkAction(
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
+export const SET_MODE = "metabase/qb/SET_MODE";
+export const setMode = createAction(SET_MODE);
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
@@ -197,6 +200,7 @@ export const initializeQB = (location, params) => {
 
     let card, databasesList, originalCard;
     let uiControls: UiControls = {
+      mode: "present",
       isEditing: false,
       isShowingTemplateTagsEditor: false,
     };
@@ -362,6 +366,8 @@ export const initializeQB = (location, params) => {
             dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
           0,
         );
+      } else {
+        dispatch(setMode("worksheet"));
       }
 
       // clean up the url and make sure it reflects our card state
