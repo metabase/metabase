@@ -5,9 +5,9 @@ export const VALID_OPERATORS = new Set(["+", "-", "*", "/"]);
 export const VALID_AGGREGATIONS = new Map(
   Object.entries({
     count: t`Count`,
-    cum_count: t`CumulativeCount`,
+    "cum-count": t`CumulativeCount`,
     sum: t`Sum`,
-    cum_sum: t`CumulativeSum`,
+    "cum-sum": t`CumulativeSum`,
     distinct: t`Distinct`,
     stddev: t`StandardDeviation`,
     avg: t`Average`,
@@ -16,10 +16,10 @@ export const VALID_AGGREGATIONS = new Map(
   }),
 );
 
-export const NULLARY_AGGREGATIONS = ["count", "cum_count"];
+export const NULLARY_AGGREGATIONS = ["count", "cum-count"];
 export const UNARY_AGGREGATIONS = [
   "sum",
-  "cum_sum",
+  "cum-sum",
   "distinct",
   "stddev",
   "avg",
