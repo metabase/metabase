@@ -33,6 +33,14 @@
    {:source-table 1
     :filter       [:= [:field-id (u/get-id field)] "2018-11-19"]}))
 
+;; DateTime field literals should also get auto-bucketed (#9007)
+(expect
+  {:source-query {:source-table 1}
+   :filter       [:= [:datetime-field [:field-literal "timestamp" :type/DateTime] :day] "2018-11-19"]}
+  (auto-bucket-mbql
+   {:source-query {:source-table 1}
+    :filter       [:= [:field-literal "timestamp" :type/DateTime] "2018-11-19"]}))
+
 ;; On the other hand, we shouldn't auto-bucket Fields inside a filter clause if they are being compared against a
 ;; datetime string that includes more than just yyyy-MM-dd:
 (tt/expect-with-temp [Field [field {:base_type :type/DateTime, :special_type nil}]]
@@ -41,6 +49,13 @@
   (auto-bucket-mbql
    {:source-table 1
     :filter       [:= [:field-id (u/get-id field)] "2018-11-19T14:11:00"]}))
+
+(expect
+  {:source-query {:source-table 1}
+   :filter       [:= [:field-literal "timestamp" :type/DateTime] "2018-11-19T14:11:00"]}
+  (auto-bucket-mbql
+   {:source-query {:source-table 1}
+    :filter       [:= [:field-literal "timestamp" :type/DateTime] "2018-11-19T14:11:00"]}))
 
 ;; for breakouts or other filters with multiple args, all args must be yyyy-MM-dd
 (tt/expect-with-temp [Field [field {:base_type :type/DateTime, :special_type nil}]]
