@@ -24,6 +24,7 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import QuestionDataWorksheet from "../components/QuestionDataWorksheet";
 import QuestionPresent from "../components/QuestionPresent";
+import QuestionVisualize from "../components/QuestionVisualize";
 
 import title from "metabase/hoc/Title";
 
@@ -241,14 +242,17 @@ export default class QueryBuilder extends Component {
           <ModeSelect {...this.props} />
         </div>
       );
+    } else if (uiControls.mode === "visualize") {
+      return (
+        <div className={this.props.fitClassNames}>
+          <QuestionVisualize {...this.props} />
+          <ModeSelect {...this.props} />
+        </div>
+      );
     } else if (uiControls.mode === "legacy") {
       return <LegacyQueryBuilder {...this.props} />;
-    } else {
-      return <div>
-        Mode not yet implemented: {uiControls.mode}
-        <ModeSelect {...this.props} />
-      </div>
     }
+    return null;
   }
 }
 
