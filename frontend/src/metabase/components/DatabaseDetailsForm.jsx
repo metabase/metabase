@@ -250,6 +250,30 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
+    } else if (field.name === "add-comment") {
+      let on =
+        this.state.details["add-comment"] == undefined
+          ? false
+          : this.state.details["add-comment"];
+      return (
+        <FormField key={field.name} fieldName={field.name}>
+          <div className="flex align-center Form-offset">
+            <div className="Grid-cell--top">
+              <Toggle
+                value={on}
+                onChange={val => this.onChange("add-comment", val)}
+              />
+            </div>
+            <div className="px2">
+              <h3>{t`Add comment to queries`}</h3>
+              <div style={{ maxWidth: "40rem" }} className="pt1">
+                {t`This should append Metabase User ID and query hash to the query.
+                    Useful for debugging. Keep this off to save money.`}
+              </div>
+            </div>
+          </div>
+        </FormField>
+      );
     } else if (field.name === "let-user-control-scheduling") {
       let on =
         this.state.details["let-user-control-scheduling"] == undefined
