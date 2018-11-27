@@ -2,7 +2,7 @@ import React from "react";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-export default class DataWorksheet extends React.Component {
+export default class QuestionDataWorksheet extends React.Component {
   render() {
     const { databases, query } = this.props;
     const datasetQuery = query.datasetQuery();

@@ -22,7 +22,8 @@ import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
 
-import DataWorksheet from "../components/DataWorksheet";
+import QuestionDataWorksheet from "../components/QuestionDataWorksheet";
+import QuestionPresent from "../components/QuestionPresent";
 
 import title from "metabase/hoc/Title";
 
@@ -224,7 +225,30 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    return <LegacyQueryBuilder {...this.props} />;
+    const { uiControls } = this.props;
+
+    if (uiControls.mode === "worksheet") {
+      return (
+        <div>
+          <QuestionDataWorksheet {...this.props} />
+          <ModeSelect {...this.props} />
+        </div>
+      );
+    } else if (uiControls.mode === "present") {
+      return (
+        <div className={this.props.fitClassNames}>
+          <QuestionPresent {...this.props} />
+          <ModeSelect {...this.props} />
+        </div>
+      );
+    } else if (uiControls.mode === "legacy") {
+      return <LegacyQueryBuilder {...this.props} />;
+    } else {
+      return <div>
+        Mode not yet implemented: {uiControls.mode}
+        <ModeSelect {...this.props} />
+      </div>
+    }
   }
 }
 
@@ -234,6 +258,7 @@ const ModeSelect = ({ uiControls, setMode }) => (
       <option value="present">Present</option>
       <option value="worksheet">Data Worksheet</option>
       <option value="visualize">Visualize</option>
+      <option value="legacy">Legacy</option>
     </select>
   </div>
 );
@@ -245,15 +270,6 @@ class LegacyQueryBuilder extends Component {
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
       return <div />;
-    }
-
-    if (uiControls.mode === "worksheet") {
-      return (
-        <div>
-          <DataWorksheet {...this.props} />
-          <ModeSelect {...this.props} />
-        </div>
-      );
     }
 
     const showDrawer =
@@ -338,6 +354,7 @@ class LegacyQueryBuilder extends Component {
         )}
 
         <ActionsWidget {...this.props} className="z2 absolute bottom right" />
+
         <ModeSelect {...this.props} />
       </div>
     );
