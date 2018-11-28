@@ -196,7 +196,7 @@ export default class DashboardHeader extends Component {
       location,
     } = this.props;
     const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-    const canEdit = isEditable && !!dashboard;
+    const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
     const isEmbeddingEnabled = MetabaseSettings.get("embedding");
@@ -313,7 +313,7 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing) {
+    if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
           <Link
