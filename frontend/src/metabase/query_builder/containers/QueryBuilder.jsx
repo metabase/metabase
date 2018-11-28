@@ -226,12 +226,15 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    const { uiControls } = this.props;
+    const { query, uiControls } = this.props;
 
     if (uiControls.mode === "worksheet") {
       return (
         <div>
-          <QuestionDataWorksheet {...this.props} />
+          {query instanceof StructuredQuery ?
+<QuestionDataWorksheet {...this.props} />
+          : <div>sql mode not yet implemented</div>}
+
           <ModeSelect {...this.props} />
         </div>
       );
