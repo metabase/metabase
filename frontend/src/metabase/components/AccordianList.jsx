@@ -61,7 +61,9 @@ export default class AccordianList extends Component {
   };
 
   static defaultProps = {
-    style: {},
+    style: {
+      overflowY: "scroll", // need this so that the list will scroll if the popover is too short
+    },
     width: 300,
     searchable: section => section.items && section.items.length > 10,
     alwaysTogglable: false,
