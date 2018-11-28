@@ -3,12 +3,14 @@
   (:require [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
-             [query-processor-test :refer [first-row format-rows-by non-timeseries-engines rows]]]
+             [query-processor-test :as qp.test :refer [first-row format-rows-by non-timeseries-engines rows]]
+             [util :as u]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.driver :as driver]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.date :as du]))
 
@@ -262,7 +264,7 @@
                                        :type   "date/month"
                                        :target [:field-id (data/id :checkins :date)]
                                        :value  ["2014-06" "2015-06"]}]))]
-    (-> query qp/process-query :data :native_form)))
+    (-> query qp/process-query qp.test/data :native_form)))
 
 ;; make sure that "ID" type params get converted to numbers when appropriate
 (expect
@@ -272,3 +274,25 @@
                                       :slug   "venue_id"
                                       :value  "1"
                                       :name   "Venue ID"}))
+
+;; Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)
+(datasets/expect-with-engines (filter #(driver/driver-supports? (driver/engine->driver %) :foreign-keys)
+                                      params-test-engines)
+  [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+   [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+   [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+   [35 "Smoke City Market" 5 34.1661 -118.448 1]
+   [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+   [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+   [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+  (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+    (qp.test/rows
+      (qp/process-query
+        (data/$ids venues
+          {:database   (data/id)
+           :type       :query
+           :query      {:source-table $$table
+                        :order-by     [[:asc $id]]}
+           :parameters [{:type   :id
+                         :target [:dimension [:fk-> $category_id $categories.name]]
+                         :value  ["BBQ"]}]})))))
