@@ -16,9 +16,9 @@ const RoundButtonWithIcon = ({
     style={{ width: children ? undefined : size, height: size, ...style }}
     {...props}
   >
-    <span className="flex layout-centered full-height">
-      {icon && <Icon name={icon} className={cx({ ml1: children })} />}
-      {children && <span className="mx1">{children}</span>}
+    <span className={cx("flex layout-centered full-height", { px2: children })}>
+      {icon && <Icon name={icon} />}
+      {children && <span className="ml1">{children}</span>}
     </span>
   </span>
 );

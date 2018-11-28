@@ -47,7 +47,7 @@ export const WorksheetSectionButton = ({
 }) => (
   <RoundButtonWithIcon
     icon={icon}
-    className={cx(className, "bordered bg-white")}
+    className={cx(className, "bordered bg-white text-bold")}
     style={{ color, ...style }}
     {...props}
   >
