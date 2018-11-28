@@ -215,7 +215,8 @@
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
   "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
   otherwise it adds 2 seconds to startup time."
-  (partial deref (future (DatabaseFactory/getInstance))))
+  (when-not *compile-files*
+    (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."

@@ -62,7 +62,6 @@
         (channels-list :exclude_archived false)))
 
 (defn- files-channel* []
-  (println "(maybe-get-files-channel):" (maybe-get-files-channel)) ; NOCOMMIT
   (or (maybe-get-files-channel)
       (do (log/error (u/format-color 'red channel-missing-msg))
           (throw (ex-info channel-missing-msg {:status-code 400})))))
