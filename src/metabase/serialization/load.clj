@@ -10,9 +10,11 @@
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
+             [dependency :refer [Dependency]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
              [segment :refer [Segment]]
              [setting :refer [Setting] :as setting]
              [table :refer [Table]]
@@ -85,17 +87,17 @@
 (defmethod path->context "metrics"
   [context [_ & [metric-name & path]]]
   (-> context
-      (assoc :field (db/select-one-id Metric
-                      :table_id (:table context)
-                      :name     metric-name))
+      (assoc :metric (db/select-one-id Metric
+                       :table_id (:table context)
+                       :name     metric-name))
       (path->context path)))
 
 (defmethod path->context "segments"
   [context [_ & [segment-name & path]]]
   (-> context
-      (assoc :field (db/select-one-id Segment
-                      :table_id (:table context)
-                      :name     segment-name))
+      (assoc :segment (db/select-one-id Segment
+                        :table_id (:table context)
+                        :name     segment-name))
       (path->context path)))
 
 (defmethod path->context "collections"
@@ -335,6 +337,31 @@
       (load path context Dashboard))))
 
 (defn load-settings
+  "Load a dump of settings."
   [path]
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)]
     (setting/set-string! k v)))
+
+(def ^:private entity->model-name
+  (comp {(type Segment) "Segment"
+         (type Metric)  "Metric"
+         (type Card)    "Card"
+         (type Pulse)   "Pulse"}
+        type))
+
+(defn load-dependencies
+  "Load a dump of dependencies."
+  [path]
+  (let [fully-qualified-name->entity (comp (some-fn (comp Card :card)
+                                                    (comp Metric :metric)
+                                                    (comp Segment :segment)
+                                                    (comp Pulse :pulse))
+                                           (fn [x] (println x) x)
+                                           (partial fully-qualified-name->context {:prefix path}))]
+    (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
+      (let [model        (fully-qualified-name->entity model_id)
+            dependent-on (fully-qualified-name->entity dependent_on_id)]
+        (db/insert! Dependency {:model              (entity->model-name model)
+                                :model_id           (u/get-id model)
+                                :dependent_on_model (entity->model-name dependent-on)
+                                :dependent_on_id    (u/get-id dependent-on)})))))

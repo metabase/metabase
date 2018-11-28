@@ -11,9 +11,12 @@
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
+             [dependency :refer [Dependency]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
              [segment :refer [Segment]]
              [setting :refer [Setting]]
              [table :refer [Table]]]
@@ -190,9 +193,16 @@
 
 (defmethod dump (type Field)
   [path field]
-  (spit-entity path :file (merge field
-                                 (-> (db/select-one FieldValues :field_id (u/get-id field))
-                                     (u/select-non-nil-keys [:values :human_readable_values])))))
+  (let [dimension    (-> (db/select-one Dimension :field_id (u/get-id field))
+                         (select-keys [:type :human_readable_field_id])
+                         (update :human_readable_field_id (comp (partial fully-qualified-name path)
+                                                                Field)))
+        field-values (-> (db/select-one FieldValues :field_id (u/get-id field))
+                         (u/select-non-nil-keys [:values :human_readable_values]))]
+    (spit-entity path :file (-> field
+                                (merge field-values)
+                                (cond->
+                                  dimension (assoc :dimension dimension))))))
 
 (defmethod dump (type Segment)
   [path segment]
@@ -231,7 +241,22 @@
   (->> (u/update-when card :table_id (comp (partial fully-qualified-name path) Table))
        (spit-entity path)))
 
+(def ^:private model-name->model
+  {"Card"    Card
+   "Segment" Segment
+   "Metric"  Metric
+   "Pulse"   Pulse})
+
+(defn dump-dependencies
+  "Combine all dependencies into a vector and dump it into YAML at `path`."
+  [path]
+  (spit-yaml (str path "/dependencies.yaml")
+             (for [{:keys [model_id model dependent_on_id dependent_on_model]} (Dependency)]
+               {:model_id        (fully-qualified-name path ((model-name->model model) model_id))
+                :dependent_on_id (fully-qualified-name path ((model-name->model dependent_on_model) dependent_on_id))})))
+
 (defn dump-settings
+  "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/settings.yaml")
              (into {} (for [{:keys [key value]} (Setting)]

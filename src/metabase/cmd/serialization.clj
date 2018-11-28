@@ -20,7 +20,8 @@
   (mdb/setup-db-if-needed!)
   (load/load path {} Database)
   (load/load path {} Collection)
-  (load/load-settings path))
+  (load/load-settings path)
+  (load/load-dependencies path))
 
 (defn- dump-all
   [path entities]
@@ -39,4 +40,7 @@
   (dump-all path (Collection))
   (dump-all path (Card))
   (dump-all path (Dashboard))
-  (dump/dump-settings path))
+  (dump/dump-settings path)
+  (dump/dump-dependencies path))
+
+(dump "dump")
