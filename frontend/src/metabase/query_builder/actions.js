@@ -200,7 +200,8 @@ export const initializeQB = (location, params) => {
 
     let card, databasesList, originalCard;
     let uiControls: UiControls = {
-      mode: "present",
+      // mode: "present",
+      mode:"worksheet",
       isEditing: false,
       isShowingTemplateTagsEditor: false,
     };
