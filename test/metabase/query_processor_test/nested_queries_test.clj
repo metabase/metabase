@@ -685,3 +685,20 @@
            :query    {:source-query {:source-table $$table
                                      :filter       [:= $venues.category_id->categories.name "BBQ"]
                                      :order-by     [[:asc $id]]}}})))))
+
+;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  [[395]
+   [980]]
+  (format-rows-by [int]
+    (rows
+      (qp/process-query
+        (data/$ids checkins
+          {:type     :query
+           :database (data/id)
+           :query    {:source-query {:source-table $$table
+                                     :order-by     [[:asc [:field-id $id]]]}
+                      :fields       [[:field-id $id]]
+                      :filter       [:=
+                                     [:field-literal (db/select-one-field :name Field :id $date) "type/DateTime"]
+                                     "2014-03-30"]}})))))
