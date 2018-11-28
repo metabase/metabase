@@ -13,11 +13,11 @@ import Clause, { ClauseContainer } from "./Clause";
 
 import SECTIONS from "./style";
 
-const FiltersSection = ({ query, setDatasetQuery }) => {
+const FiltersSection = ({ query, setDatasetQuery, style, className }) => {
   const filters = query.filters();
   const color = SECTIONS.filter.color;
   return (
-    <WorksheetSection {...SECTIONS.filter}>
+    <WorksheetSection {...SECTIONS.filter} style={style} className={className}>
       <ClauseContainer color={color}>
         {filters.length > 0 ? (
           filters.map((filter, index) => (

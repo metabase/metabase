@@ -248,6 +248,7 @@ export default class FieldList extends Component {
       <AccordianList
         className={this.props.className}
         maxHeight={this.props.maxHeight}
+        width={this.props.width}
         sections={this.state.sections}
         onChange={this.onChange}
         itemIsSelected={this.itemIsSelected}

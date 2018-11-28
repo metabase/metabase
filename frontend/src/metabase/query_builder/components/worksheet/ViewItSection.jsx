@@ -4,9 +4,9 @@ import Button from "metabase/components/Button";
 
 import WorksheetSection from "./WorksheetSection";
 
-const ViewItSection = ({ setMode }) => {
+const ViewItSection = ({ setMode, style, className }) => {
   return (
-    <WorksheetSection>
+    <WorksheetSection style={style} className={className}>
       <div className="flex justify-end">
         <Button primary onClick={() => setMode("present")}>
           View it

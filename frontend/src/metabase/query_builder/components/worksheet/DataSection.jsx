@@ -8,13 +8,22 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import SECTIONS from "./style";
 
-const DataSection = ({ databases, query, setDatabaseFn, setSourceTableFn }) => {
+const DataSection = ({
+  databases,
+  query,
+  setDatabaseFn,
+  setSourceTableFn,
+  style,
+  className,
+}) => {
   const databaseId = query.databaseId();
   const tableId = query.tableId();
   const isInitiallyOpen = tableId == null || databaseId == null;
   return (
     <WorksheetSection
       {...SECTIONS.data}
+      style={style}
+      className={className}
       header={
         <DatabaseSchemaAndTableDataSelector
           className="rounded py1 px2 text-brand h3"

@@ -12,6 +12,9 @@ import ViewItSection from "./worksheet/ViewItSection";
 
 import SECTIONS from "./worksheet/style";
 
+const SIDEBAR_MARGIN = 25;
+const SIDEBAR_WIDTH = 320;
+
 export default class QuestionDataWorksheet extends React.Component {
   state = {
     previewLimit: 10,
@@ -52,7 +55,7 @@ export default class QuestionDataWorksheet extends React.Component {
   };
 
   render() {
-    const { isRunnable, query } = this.props;
+    const { isRunnable, query, setDatasetQuery } = this.props;
     const { showSection } = this.state;
     console.log(this.props);
 
@@ -63,13 +66,22 @@ export default class QuestionDataWorksheet extends React.Component {
       query.breakouts().length > 0 ||
       showSection === "summarize";
 
+    const showSidebar = showFilterSection || showSummarizeSection;
+    const sidebarWidth = SIDEBAR_WIDTH + SIDEBAR_MARGIN * 2;
+    const sectionStyle = showSidebar ? { paddingRight: sidebarWidth } : {};
+
     return (
-      <div>
-        <DataSection {...this.props} />
-        {showFilterSection && <FiltersSection {...this.props} />}
-        {showSummarizeSection && <SummarizeSection {...this.props} />}
+      <div className="relative">
+        <DataSection style={sectionStyle} {...this.props} />
+        {showFilterSection && (
+          <FiltersSection style={sectionStyle} {...this.props} />
+        )}
+        {showSummarizeSection && (
+          <SummarizeSection style={sectionStyle} {...this.props} />
+        )}
         {isRunnable && (
           <PreviewSection
+            style={sectionStyle}
             {...this.props}
             preview={this.preview}
             previewLimit={this.state.previewLimit}
@@ -92,8 +104,41 @@ export default class QuestionDataWorksheet extends React.Component {
             )}
           </PreviewSection>
         )}
-        {isRunnable && <ViewItSection {...this.props} />}
+        {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
+        {showSidebar && (
+          <WorksheetSidebar
+            query={query}
+            width={sidebarWidth}
+            onFieldClick={field => {
+              // TODO: remove this once drag-n-drop is done
+              query.addFilter(["=", field]).update(setDatasetQuery);
+            }}
+          />
+        )}
       </div>
     );
   }
 }
+
+import FieldList from "./FieldList";
+
+const WorksheetSidebar = ({ width, query, onFieldClick }) => (
+  <div className="absolute top bottom right" style={{ width }}>
+    <div
+      className="bordered rounded bg-white"
+      style={{
+        boxShadow: "0 2px 20px rgba(0,0,0,0.25)",
+        margin: SIDEBAR_MARGIN,
+      }}
+    >
+      <FieldList
+        className="text-brand"
+        tableMetadata={query.tableMetadata()}
+        fieldOptions={query.fieldOptions()}
+        customFieldOptions={query.expressions()}
+        width={width - 50}
+        onFieldChange={onFieldClick}
+      />
+    </div>
+  </div>
+);

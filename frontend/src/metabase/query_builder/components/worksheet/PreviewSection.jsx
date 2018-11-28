@@ -16,11 +16,15 @@ const PreviewSection = ({
   setPreviewLimit,
   isPreviewCurrent,
   children,
+  style,
+  className,
   ...props
 }) => {
   return (
     <WorksheetSection
       {...SECTIONS.preview}
+      style={style}
+      className={className}
       header={
         <div className="flex-full flex align-center justify-end">
           <PreviewLimitSelect

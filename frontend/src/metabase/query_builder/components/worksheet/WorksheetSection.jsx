@@ -4,8 +4,19 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import RoundButtonWithIcon from "metabase/components/RoundButtonWithIcon";
 
-const WorksheetSection = ({ icon, name, color, header, children }) => (
-  <div className="wrapper border-row-divider py4">
+const WorksheetSection = ({
+  icon,
+  name,
+  color,
+  header,
+  style,
+  className,
+  children,
+}) => (
+  <div
+    style={style}
+    className={cx(className, "wrapper border-row-divider py4")}
+  >
     {(icon || name || header) && (
       <div className={cx("flex align-center", { mb2: !!children })}>
         {icon && <Icon name={icon} style={{ color }} className="mr1" />}

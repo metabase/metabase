@@ -9,12 +9,16 @@ import WorksheetSection, {
 
 import SECTIONS from "./style";
 
-const SummarizeSection = ({ query }) => {
+const SummarizeSection = ({ query, style, className }) => {
   const aggregations = query.aggregations();
   const breakouts = query.breakouts();
   const color = SECTIONS.summarize.color;
   return (
-    <WorksheetSection {...SECTIONS.summarize}>
+    <WorksheetSection
+      {...SECTIONS.summarize}
+      style={style}
+      className={className}
+    >
       <div className="Grid Grid--full md-Grid--1of2">
         <div className="Grid-cell pr2">
           <WorksheetSectionSubHeading>{t`Metrics`}</WorksheetSectionSubHeading>
