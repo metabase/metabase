@@ -11,8 +11,10 @@
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
+             [setting :refer [Setting] :as setting]
              [table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qp.util]
@@ -199,8 +201,15 @@
 (defmethod load Field
   [path context _]
   (slurp-dir (fn [field]
-               (db/insert! Field
-                 (assoc field :table_id (:table context))))
+               (let [field-values (select-keys field [:values :human_readable_values])
+                     field        (db/insert! Field
+                                    (-> field
+                                        (dissoc :values :human_readable_values)
+                                        (assoc :table_id (:table context))))]
+                 (when (:values field-values)
+                   (db/insert! FieldValues
+                     (assoc field-values :field_id (u/get-id field))))
+                 field))
              (str path "/fields")))
 
 (defmethod load Metric
@@ -324,3 +333,8 @@
                  path)]
       (load path context Card)
       (load path context Dashboard))))
+
+(defn load-settings
+  [path]
+  (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)]
+    (setting/set-string! k v)))

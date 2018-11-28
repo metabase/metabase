@@ -12,8 +12,10 @@
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
+             [setting :refer [Setting]]
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
@@ -159,41 +161,46 @@
 
 (defn- strip-crud
   [entity]
-  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id
+  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defn- spit-yaml
-  ([path entity] (spit-yaml path :dir entity))
+  [fname obj]
+  (io/make-parents fname)
+  (spit fname (yaml/generate-string obj :dumper-options {:flow-style :block})))
+
+(defn- spit-entity
+  ([path entity] (spit-entity path :dir entity))
   ([path mode entity]
-   (let [fname (if (= mode :dir)
-                 (format "%s/%s.yaml" (fully-qualified-name path entity) (:name entity))
-                 (str (fully-qualified-name path entity) ".yaml"))]
-     (io/make-parents fname)
-     (spit fname (yaml/generate-string (->> entity
-                                            strip-crud
-                                            (humanize-entity-references path))
-                                       :dumper-options {:flow-style :block})))))
+   (spit-yaml (if (= mode :dir)
+                (format "%s/%s.yaml" (fully-qualified-name path entity) (:name entity))
+                (str (fully-qualified-name path entity) ".yaml"))
+              (->> entity
+                   strip-crud
+                   (humanize-entity-references path)))))
 
 (defmethod dump (type Database)
   [path db]
-  (spit-yaml path (dissoc db :features)))
+  (spit-entity path (dissoc db :features)))
 
 (defmethod dump (type Table)
   [path table]
-  (spit-yaml path table))
+  (spit-entity path table))
 
 (defmethod dump (type Field)
   [path field]
-  (spit-yaml path :file field))
+  (spit-entity path :file (merge field
+                                 (-> (db/select-one FieldValues :field_id (u/get-id field))
+                                     (u/select-non-nil-keys [:values :human_readable_values])))))
 
 (defmethod dump (type Segment)
   [path segment]
-  (spit-yaml path :file segment))
+  (spit-entity path :file segment))
 
 (defmethod dump (type Metric)
   [path metric]
-  (spit-yaml path :file metric))
+  (spit-entity path :file metric))
 
 (defn- dashboard-cards-for-dashboard
   [path dashboard]
@@ -212,14 +219,20 @@
 
 (defmethod dump (type Dashboard)
   [path dashboard]
-  (spit-yaml path :file (assoc dashboard
+  (spit-entity path :file (assoc dashboard
                           :dashboard_cards (dashboard-cards-for-dashboard path dashboard))))
 
 (defmethod dump (type Collection)
   [path collection]
-  (spit-yaml path (dissoc collection :location)))
+  (spit-entity path collection))
 
 (defmethod dump (type Card)
   [path card]
   (->> (u/update-when card :table_id (comp (partial fully-qualified-name path) Table))
-       (spit-yaml path)))
+       (spit-entity path)))
+
+(defn dump-settings
+  [path]
+  (spit-yaml (str path "/settings.yaml")
+             (into {} (for [{:keys [key value]} (Setting)]
+                        [key value]))))
