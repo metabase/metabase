@@ -17,6 +17,8 @@
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
              [segment :refer [Segment]]
              [setting :refer [Setting]]
              [table :refer [Table]]]
@@ -78,6 +80,13 @@
           (or (some->> dashboard :collection_id Collection (fully-qualified-name prefix))
               (str prefix "/collections"))
           (:name dashboard)))
+
+(defmethod fully-qualified-name (type Pulse)
+  [prefix pulse]
+  (format "%s/pulses/%s"
+          (or (some->> pulse :collection_id Collection (fully-qualified-name prefix))
+              (str prefix "/collections"))
+          (:name pulse)))
 
 (defmethod fully-qualified-name (type Card)
   [prefix card]
@@ -165,7 +174,8 @@
 (defn- strip-crud
   [entity]
   (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id :location
-                  :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id)
+                  :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
+                  :pulse_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defn- spit-yaml
@@ -241,11 +251,21 @@
   (->> (u/update-when card :table_id (comp (partial fully-qualified-name path) Table))
        (spit-entity path)))
 
+(defmethod dump (type Pulse)
+  [path pulse]
+  (spit-entity path :file
+               (assoc pulse
+                 :cards   (for [card (db/select PulseCard :pulse_id (u/get-id pulse))]
+                            (-> card
+                                (dissoc :id :pulse_id)
+                                (update :card_id (comp (partial fully-qualified-name path) Card))))
+                :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
+                            (strip-crud channel)))))
+
 (def ^:private model-name->model
   {"Card"    Card
    "Segment" Segment
-   "Metric"  Metric
-   "Pulse"   Pulse})
+   "Metric"  Metric})
 
 (defn dump-dependencies
   "Combine all dependencies into a vector and dump it into YAML at `path`."

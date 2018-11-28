@@ -7,6 +7,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.serialization
@@ -40,7 +41,6 @@
   (dump-all path (Collection))
   (dump-all path (Card))
   (dump-all path (Dashboard))
+  (dump-all path (Pulse))
   (dump/dump-settings path)
   (dump/dump-dependencies path))
-
-(dump "dump")

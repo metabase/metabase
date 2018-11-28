@@ -122,6 +122,14 @@
                           :name          dashboard-name))
       (path->context path)))
 
+(defmethod path->context "pulses"
+  [context [_ & [pulse-name & path]]]
+  (-> context
+      (assoc :dashboard (db/select-one-id Pulse
+                          :collection_id (:collection context)
+                          :name          pulse-name))
+      (path->context path)))
+
 (defmethod path->context "cards"
   [context [_ & [dashboard-name & path]]]
   (-> context
@@ -345,8 +353,7 @@
 (def ^:private entity->model-name
   (comp {(type Segment) "Segment"
          (type Metric)  "Metric"
-         (type Card)    "Card"
-         (type Pulse)   "Pulse"}
+         (type Card)    "Card"}
         type))
 
 (defn load-dependencies
