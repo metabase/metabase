@@ -2632,7 +2632,7 @@ msgstr "No se ha podido guardar."
 #: frontend/src/metabase/lib/query_time.js:148
 #: frontend/src/metabase/lib/query_time.js:150
 msgid "moment_locale"
-msgstr ""
+msgstr "es"
 
 #: frontend/src/metabase/components/Calendar.jsx:119
 msgid "Su"

@@ -11,7 +11,6 @@ import Icon from "metabase/components/Icon";
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
-    moment.locale(t `moment_locale`);
     this.state = {
       current: moment(props.initial || undefined),
     };
@@ -100,7 +99,7 @@ export default class Calendar extends Component {
         )}
         <span className="flex-full" />
         <h4 className="cursor-pointer rounded p1">
-          {current.format("MMMM YYYY")}
+          {current.locale(t `moment_locale`).format("MMMM YYYY")}
         </h4>
         <span className="flex-full" />
         {side !== "left" && (

@@ -2606,7 +2606,7 @@ msgstr "Kaydedilemedi."
 #: frontend/src/metabase/lib/query_time.js:148
 #: frontend/src/metabase/lib/query_time.js:150
 msgid "moment_locale"
-msgstr ""
+msgstr "tr"
 
 #: frontend/src/metabase/components/Calendar.jsx:119
 msgid "Su"

@@ -2638,7 +2638,7 @@ msgstr "La sauvegarde a échoué."
 #: frontend/src/metabase/lib/query_time.js:148
 #: frontend/src/metabase/lib/query_time.js:150
 msgid "moment_locale"
-msgstr ""
+msgstr "fr"
 
 #: frontend/src/metabase/components/Calendar.jsx:119
 msgid "Su"

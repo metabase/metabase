@@ -2613,7 +2613,7 @@ msgstr "Zapis się nie powiódł"
 #: frontend/src/metabase/lib/query_time.js:148
 #: frontend/src/metabase/lib/query_time.js:150
 msgid "moment_locale"
-msgstr ""
+msgstr "pl"
 
 #: frontend/src/metabase/components/Calendar.jsx:119
 msgid "Su"

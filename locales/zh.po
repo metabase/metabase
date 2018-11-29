@@ -24,15 +24,15 @@ msgstr "我们查看了你的数据，有一些自动化的探索，我们可以
 msgid ""
 "We're currently analyzing the tables and fields to help you explore your "
 "data."
-msgstr ""
+msgstr "我们正在分析数据表和字段来帮助你探索数据"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:35
 msgid "I'm good thanks"
-msgstr ""
+msgstr "不用，谢谢"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:42
 msgid "Explore this data"
-msgstr ""
+msgstr "探索数据"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:46
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:139
@@ -89,16 +89,16 @@ msgid ""
 "updates to this database’s schema. In most cases, you should be fine leaving "
 "this\n"
 "set to sync hourly."
-msgstr ""
+msgstr "这是一个轻量级的过程"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
 msgid "Scan"
-msgstr ""
+msgstr "扫描"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:152
 msgid "Scanning for Filter Values"
-msgstr ""
+msgstr "扫描过滤器值"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
 msgid ""
@@ -108,15 +108,15 @@ msgid ""
 "can be a somewhat resource-intensive process, particularly if you have a "
 "very large\n"
 "database."
-msgstr ""
+msgstr "Metabase能够扫描数据库每个字段存在的值来启用仪表盘和查询中的勾选框过滤器。这可能是一个资源使用密集的过程，尤其当你的数据库很大的时候。"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:159
 msgid "When should Metabase automatically scan and cache field values?"
-msgstr ""
+msgstr "Metabase应该在什么时候自动扫描并缓存字段值？"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:164
 msgid "Regularly, on a schedule"
-msgstr ""
+msgstr "经常性地，根据计划"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:195
 msgid "Only when adding a new filter widget"
@@ -128,11 +128,11 @@ msgid ""
 "will\n"
 "scan the field(s) mapped to that filter in order to show the list of "
 "selectable values."
-msgstr ""
+msgstr "当用户增加一个新的过滤器到仪表盘或SQL查询，Metabase会扫描过滤器映射的字段，以便显示可选值的列表。"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:210
 msgid "Never, I'll do this manually if I need to"
-msgstr ""
+msgstr "不，如果需要我会手动操作"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:222
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:27
@@ -147,7 +147,7 @@ msgstr "保存中......"
 #: frontend/src/metabase/components/form/FormMessage.jsx:4
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:144
 msgid "Server error encountered"
-msgstr ""
+msgstr "出现服务器错误"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:53
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:70
@@ -169,13 +169,13 @@ msgid ""
 "this data will be lost."
 msgstr ""
 "{0}没有样本数据集，查询创建器教程将不会工作。你可以总是重新存储样本数据集，但"
-"是任何你已经保存的问题将会丢失。"
+"是任何你已经保存的查询将会丢失。"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid ""
 "All saved questions, metrics, and segments that rely on this database will "
 "be lost."
-msgstr "所有依赖这个数据库保存的问题，指标，数据段将要丢失。"
+msgstr "所有依赖这个数据库保存的查询，指标，数据段将要丢失。"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:67
 msgid "This cannot be undone."
@@ -453,7 +453,7 @@ msgid ""
 "Saved questions and other things that depend on this {0} will continue to "
 "work, but this {1} will no longer be selectable from the query builder."
 msgstr ""
-"保存的问题和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此"
+"保存的查询和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此"
 "{1}。"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:39
@@ -772,7 +772,7 @@ msgstr "缓存字段值"
 msgid ""
 "Metabase can scan the values for this field to enable checkbox filters in "
 "dashboards and questions."
-msgstr "Metabase 通过扫描该字段，以启用仪表盘和问题的多选框筛选。"
+msgstr "Metabase 通过扫描该字段，以启用仪表盘和查询的多选框筛选。"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:453
 msgid "No description for this field yet"
@@ -935,7 +935,7 @@ msgstr "设置"
 msgid ""
 "Metabase can scan the values in this table to enable checkbox filters in "
 "dashboards and questions."
-msgstr "Metabase扫描此表中的值以启用仪表板和问题中的复选框过滤器。"
+msgstr "Metabase扫描此表中的值以启用仪表盘和查询中的复选框过滤器。"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:108
 msgid "Re-scan this table"
@@ -1844,7 +1844,7 @@ msgstr "输入你从Metabase商店购买的token"
 msgid ""
 "Premium embedding lets you disable \"Powered by Metabase\" on your embedded "
 "dashboards and questions."
-msgstr "高级嵌入允许您在嵌入式仪表板和问题上禁用“Powered by Metabase”。"
+msgstr "高级嵌入允许您在嵌入式仪表盘和查询上禁用“Powered by Metabase”。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
@@ -1900,11 +1900,11 @@ msgstr "它们将不会工作了，并且不能被重新存储，但是你能够
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:149
 msgid "Public Dashboard Listing"
-msgstr "公共看板列表"
+msgstr "公共仪表盘列表"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:152
 msgid "No dashboards have been publicly shared yet."
-msgstr "还没有公开分享的看板。"
+msgstr "还没有公开分享的仪表盘。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:160
 msgid "Public Card Listing"
@@ -1912,11 +1912,11 @@ msgstr "公共卡片列表"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:163
 msgid "No questions have been publicly shared yet."
-msgstr "还没有公开分享任何问题。"
+msgstr "还没有公开分享任何查询。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:172
 msgid "Embedded Dashboard Listing"
-msgstr "嵌入的仪表板列表"
+msgstr "嵌入的仪表盘列表"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:173
 msgid "No dashboards have been embedded yet."
@@ -1928,7 +1928,7 @@ msgstr "嵌入的卡片列表"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:184
 msgid "No questions have been embedded yet."
-msgstr "还没有提问被嵌入"
+msgstr "还没有查询被嵌入"
 
 #: frontend/src/metabase/admin/settings/components/widgets/SecretKeyWidget.jsx:35
 msgid "Regenerate embedding key?"
@@ -2192,7 +2192,7 @@ msgstr "嵌入的仪表板"
 
 #: frontend/src/metabase/admin/settings/selectors.js:403
 msgid "Embedded Questions"
-msgstr "嵌入的问题"
+msgstr "嵌入的查询"
 
 #: frontend/src/metabase/admin/settings/selectors.js:410
 msgid "Caching"
@@ -2547,7 +2547,7 @@ msgstr "这个集合空空如也，什么都没有"
 msgid ""
 "You can use collections to organize and group dashboards, questions and "
 "pulses for your team or yourself"
-msgstr "您可以使用集合来为您的团队或您自己组织和分组仪表板、问题和定时通知。"
+msgstr "您可以使用集合来为您的团队或您自己组织和分组仪表板、查询和定时通知。"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:28
 msgid "Create another collection"
@@ -2565,7 +2565,7 @@ msgstr "定时通知允许您通过电子邮件或Slack向团队发送最新数�
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:84
 msgid "Questions are a saved look at your data."
-msgstr "问题是对保存的数据查看。"
+msgstr "查询是保存的对数据的查看。"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:255
 msgid "Edit the permissions for this collection"
@@ -2726,7 +2726,7 @@ msgstr "您想如何使用这个数据库？"
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:116
 #: frontend/src/metabase/setup/components/UserStep.jsx:308
 msgid "Next"
-msgstr "之后"
+msgstr "后"
 
 #: frontend/src/metabase/components/DeleteModalWithConfirm.jsx:80
 msgid "Delete this {0}"
@@ -3161,7 +3161,7 @@ msgstr "的"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:24
 msgid "Something's gone wrong"
-msgstr "有些问题发生了"
+msgstr "出了点问题"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:25
 msgid ""
@@ -3204,11 +3204,11 @@ msgstr "从这里开始"
 
 #: frontend/src/metabase/containers/Overworld.jsx:190
 msgid "Save dashboards, questions, and collections in \"{0}\""
-msgstr "在“{0}”中保存仪表板，问题和集合"
+msgstr "在“{0}”中保存仪表盘，查询和集合"
 
 #: frontend/src/metabase/containers/Overworld.jsx:193
 msgid "Access dashboards, questions, and collections in \"{0}\""
-msgstr "访问“{0}”中的仪表板，问题和集合"
+msgstr "访问“{0}”中的仪表盘，查询和集合"
 
 #: frontend/src/metabase/containers/Overworld.jsx:208
 msgid "Browse all items"
@@ -3234,19 +3234,19 @@ msgstr "替换还是保存为新的？"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:173
 msgid "Replace original question, \"{0}\""
-msgstr "替换原始问题“{0}”"
+msgstr "替换原始查询“{0}”"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:178
 msgid "Save as new question"
-msgstr "保存为新问题"
+msgstr "保存为新查询"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:187
 msgid "First, save your question"
-msgstr "首先，保存您的问题"
+msgstr "首先，保存您的查询"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:188
 msgid "Save question"
-msgstr "保存问题"
+msgstr "保存查询"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:224
 msgid "What is the name of your card?"
@@ -3294,19 +3294,19 @@ msgstr "正在使用的图表"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:274
 msgid "That question isn't compatible"
-msgstr "那个问题不兼容"
+msgstr "那个查询不兼容"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:310
 msgid "Search for a question"
-msgstr "查找问题"
+msgstr "搜索查询"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:339
 msgid "We're not sure if this question is compatible"
-msgstr "我们不确定这个提问是否兼容"
+msgstr "我们不确定这个查询是否兼容"
 
 #: frontend/src/metabase/dashboard/components/ArchiveDashboardModal.jsx:43
 msgid "Archive Dashboard"
-msgstr "文档仪表盘"
+msgstr "存档仪表盘"
 
 #: frontend/src/metabase/dashboard/components/DashCardParameterMapper.jsx:20
 msgid ""
@@ -3320,7 +3320,7 @@ msgstr "这个仪表盘看起来是空的"
 
 #: frontend/src/metabase/dashboard/components/Dashboard.jsx:289
 msgid "Add a question to start making it useful!"
-msgstr "添加一个疑问来让它变得有用"
+msgstr "添加一个查询来让它变得有用"
 
 #: frontend/src/metabase/dashboard/components/DashboardActions.jsx:38
 msgid "Daytime mode"
@@ -3576,7 +3576,7 @@ msgstr "添加一个疑问到仪表盘"
 #: frontend/src/metabase/home/components/Activity.jsx:206
 #: frontend/src/metabase/home/components/Activity.jsx:221
 msgid "removed a question from the dashboard - "
-msgstr "从仪表盘中移除一个问题"
+msgstr "从仪表盘中移除一个查询"
 
 #: frontend/src/metabase/home/components/Activity.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:238
@@ -3659,7 +3659,7 @@ msgstr "嗯……无事发生"
 
 #: frontend/src/metabase/home/components/Activity.jsx:532
 msgid "Save a question and get this baby going!"
-msgstr "存储一个问题并让它运行"
+msgstr "存储一个查询并让它运行"
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:19
 msgid "Ask questions and explore"
@@ -4240,11 +4240,11 @@ msgstr "昨天"
 
 #: frontend/src/metabase/lib/query_time.js:132
 msgid "Past "
-msgstr "之前"
+msgstr "前"
 
 #: frontend/src/metabase/lib/query_time.js:134
 msgid "Next "
-msgstr "之后"
+msgstr "后"
 
 #: frontend/src/metabase/lib/query_time.js:136
 msgid "This "
@@ -5811,7 +5811,7 @@ msgstr "随便看看已经存储的疑问吧"
 msgid ""
 "You won't make any permanent changes to a saved question unless you click "
 "the edit icon in the top-right."
-msgstr "除非您单击右上角的编辑图标，否则您不会对保存的问题进行任何永久性更改。"
+msgstr "除非您单击右上角的编辑图标，否则您不会对保存的查询进行任何永久性更改。"
 
 #: frontend/src/metabase/query_builder/components/SearchBar.jsx:28
 msgid "Search for"
@@ -5831,7 +5831,7 @@ msgstr "时间分组"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:46
 msgid "Your question took too long"
-msgstr "你的疑问花了很长时间"
+msgstr "你的查询花了很长时间"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:47
 msgid ""
@@ -6084,11 +6084,11 @@ msgstr "项"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:221
 msgid "Previous"
-msgstr "前一个"
+msgstr "前"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:252
 msgid "Current"
-msgstr "当天"
+msgstr "当前"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:278
 #: frontend/src/metabase/visualizations/lib/settings/column.js:246
@@ -6154,7 +6154,7 @@ msgid ""
 msgstr ""
 "{0}在此SQL模板中创建一个名为“variable_name”的变量。变量可以在侧面板中给出类"
 "型，这会改变它们的行为。除“字段过滤器”之外的所有变量类型都将自动导致过滤器小"
-"部件放在此问题上;使用字段过滤器，这是可选的。填充此过滤器窗口小部件时，该值将"
+"部件放在此查询上;使用字段过滤器，这是可选的。填充此过滤器窗口小部件时，该值将"
 "替换SQL模板中的变量。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:121
@@ -6180,8 +6180,8 @@ msgid ""
 "filter when adding this question to a dashboard. Field Filters should be "
 "used inside of a \"WHERE\" clause."
 msgstr ""
-"添加“字段筛选器”变量时，您需要将其映射到特定字段。 然后，您可以选择在问题上显"
-"示过滤组件，但即使不这样做，现在可以在将此问题添加到仪表板时将“字段筛选器”变"
+"添加“字段筛选器”变量时，您需要将其映射到特定字段。 然后，您可以选择在查询上显"
+"示过滤组件，但即使不这样做，现在可以在将此查询添加到仪表板时将“字段筛选器”变"
 "量映射到仪表盘过滤器。 字段筛选器应在“WHERE”子句中使用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:130
@@ -6788,7 +6788,7 @@ msgstr "学习如何创建区间"
 
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:35
 msgid "Questions about this segment will appear here as they're added"
-msgstr "当它们被添加时，关于这个区间的问题将会出现在这里"
+msgstr "当它们被添加时，关于这个区间的查询将会出现在这里"
 
 #: frontend/src/metabase/reference/segments/SegmentRevisions.jsx:29
 msgid "There are no revisions for this segment"
@@ -8478,7 +8478,7 @@ msgstr "组织疑问"
 msgid ""
 "Have a lot of saved questions in {0}? Create collections to help manage them "
 "and add context."
-msgstr "在{0}中有很多已保存的问题？创建集合以帮助管理它们并添加上下文。"
+msgstr "在{0}中有很多已保存的查询？创建集合以帮助管理它们并添加上下文。"
 
 #: src/metabase/api/setup.clj
 msgid "Metabase"
@@ -8710,7 +8710,7 @@ msgstr "字段 {0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "\"{0}\" question"
-msgstr "问题 “{0}”"
+msgstr "查询 “{0}”"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Applying heuristic {0} to {1}."
@@ -9581,7 +9581,7 @@ msgstr ""
 msgid ""
 "Enable MetaBot, which lets you search for and view your saved questions "
 "directly via Slack."
-msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的问题。"
+msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的查询。"
 
 #: src/metabase/metabot.clj
 msgid "Last MetaBot checkin was {0} ago."
@@ -10128,7 +10128,7 @@ msgid ""
 "around, we take the query''s average execution time and multiply that by "
 "whatever you input here."
 msgstr ""
-"为了确定每一个saved Question的缓存结果应该持续多长时间，我们用查询的平均执行"
+"为了确定每一个已保存的查询的缓存结果应该持续多长时间，我们用查询的平均执行"
 "时间乘以您输入的数值。"
 
 #: src/metabase/public_settings.clj
