@@ -255,6 +255,7 @@ export default class FieldList extends Component {
         renderSectionIcon={this.renderSectionIcon}
         renderItemExtra={this.renderItemExtra}
         renderItemIcon={this.renderItemIcon}
+        renderItemWrapper={this.props.renderItemWrapper}
         getItemClasses={this.getItemClasses}
         alwaysExpanded={this.props.alwaysExpanded}
       />

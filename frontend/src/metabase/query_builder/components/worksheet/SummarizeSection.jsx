@@ -2,14 +2,17 @@ import React from "react";
 
 import { t, jt } from "c-3po";
 
-import Clause, { ClauseContainer } from "./Clause";
+import Clause from "./Clause";
+
+import ClauseDropTarget from "./dnd/ClauseDropTarget";
+
 import WorksheetSection, {
   WorksheetSectionSubHeading,
 } from "./WorksheetSection";
 
 import SECTIONS from "./style";
 
-const SummarizeSection = ({ query, style, className }) => {
+const SummarizeSection = ({ query, setDatasetQuery, style, className }) => {
   const aggregations = query.aggregations();
   const breakouts = query.breakouts();
   const color = SECTIONS.summarize.color;
@@ -22,32 +25,51 @@ const SummarizeSection = ({ query, style, className }) => {
       <div className="Grid Grid--full md-Grid--1of2">
         <div className="Grid-cell pr2">
           <WorksheetSectionSubHeading>{t`Metrics`}</WorksheetSectionSubHeading>
-          <ClauseContainer color={color}>
+          <ClauseDropTarget color={color}>
             {aggregations.length > 0 ? (
-              aggregations.map(aggregation => (
-                <Clause color={color}>{JSON.stringify(aggregation)}</Clause>
+              aggregations.map((aggregation, index) => (
+                <Clause
+                  color={color}
+                  onRemove={() =>
+                    query.removeAggregation(index).update(setDatasetQuery)
+                  }
+                >
+                  {JSON.stringify(aggregation)}
+                </Clause>
               ))
             ) : (
               <div className="text-centered">{jt`Drag a column here to ${(
                 <strong>{t`summarize`}</strong>
               )} it`}</div>
             )}
-          </ClauseContainer>
+          </ClauseDropTarget>
         </div>
         <div className="Grid-cell pl2">
           <WorksheetSectionSubHeading
           >{t`Dimensions`}</WorksheetSectionSubHeading>
-          <ClauseContainer color={color}>
+          <ClauseDropTarget
+            color={color}
+            onDrop={dimension =>
+              query.addBreakout(dimension.mbql()).update(setDatasetQuery)
+            }
+          >
             {breakouts.length > 0 ? (
-              breakouts.map(breakout => (
-                <Clause color={color}>{JSON.stringify(breakout)}</Clause>
+              breakouts.map((breakout, index) => (
+                <Clause
+                  color={color}
+                  onRemove={() =>
+                    query.removeBreakout(index).update(setDatasetQuery)
+                  }
+                >
+                  {JSON.stringify(breakout)}
+                </Clause>
               ))
             ) : (
               <div className="text-centered">{jt`Drag a column here to ${(
                 <strong>{t`group`}</strong>
               )} it`}</div>
             )}
-          </ClauseContainer>
+          </ClauseDropTarget>
         </div>
       </div>
     </WorksheetSection>

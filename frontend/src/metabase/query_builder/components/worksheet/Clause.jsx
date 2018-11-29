@@ -1,14 +1,23 @@
 import React from "react";
 import cx from "classnames";
 
+import Icon from "metabase/components/Icon";
+
 import { alpha } from "metabase/lib/colors";
 
-const Clause = ({ children, style = {}, color }) => (
+const Clause = ({ children, style = {}, color, onRemove }) => (
   <div
-    className="rounded text-white p2 mr1"
+    className="rounded text-white p2 mr1 flex align-center"
     style={{ backgroundColor: color, ...style }}
   >
     {children}
+    {onRemove && (
+      <Icon
+        name="close"
+        className="py1 pl1 cursor-pointer"
+        onClick={onRemove}
+      />
+    )}
   </div>
 );
 

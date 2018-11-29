@@ -356,18 +356,14 @@ export default class FilterPopover extends Component {
                 </div>
               )}
               {showOperatorSelector && (
-                <div
-                  className={cx("flex", {
-                    "flex-align-right pl2": showFieldPicker,
-                    p1: !showFieldPicker,
-                  })}
-                >
-                  <OperatorSelector
-                    operator={operatorName}
-                    operators={field.operators}
-                    onOperatorChange={this.setOperator}
-                  />
-                </div>
+                <OperatorSelector
+                  className={
+                    showFieldPicker ? "flex-align-right pl2" : "flex-full p1"
+                  }
+                  operator={operatorName}
+                  operators={field.operators}
+                  onOperatorChange={this.setOperator}
+                />
               )}
             </div>
           )}

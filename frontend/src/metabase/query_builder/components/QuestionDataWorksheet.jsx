@@ -10,6 +10,8 @@ import SummarizeSection from "./worksheet/SummarizeSection";
 import PreviewSection from "./worksheet/PreviewSection";
 import ViewItSection from "./worksheet/ViewItSection";
 
+import WorksheetSidebar from "./worksheet/WorksheetSidebar";
+
 import SECTIONS from "./worksheet/style";
 
 const SIDEBAR_MARGIN = 25;
@@ -108,6 +110,7 @@ export default class QuestionDataWorksheet extends React.Component {
         {showSidebar && (
           <WorksheetSidebar
             query={query}
+            margin={SIDEBAR_MARGIN}
             width={sidebarWidth}
             onFieldClick={field => {
               // TODO: remove this once drag-n-drop is done
@@ -119,26 +122,3 @@ export default class QuestionDataWorksheet extends React.Component {
     );
   }
 }
-
-import FieldList from "./FieldList";
-
-const WorksheetSidebar = ({ width, query, onFieldClick }) => (
-  <div className="absolute top bottom right" style={{ width }}>
-    <div
-      className="bordered rounded bg-white"
-      style={{
-        boxShadow: "0 2px 20px rgba(0,0,0,0.25)",
-        margin: SIDEBAR_MARGIN,
-      }}
-    >
-      <FieldList
-        className="text-brand"
-        tableMetadata={query.tableMetadata()}
-        fieldOptions={query.fieldOptions()}
-        customFieldOptions={query.expressions()}
-        width={width - 50}
-        onFieldChange={onFieldClick}
-      />
-    </div>
-  </div>
-);

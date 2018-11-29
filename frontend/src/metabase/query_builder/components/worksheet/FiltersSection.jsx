@@ -9,7 +9,9 @@ import FilterPopover from "../filters/FilterPopover";
 
 import WorksheetSection from "./WorksheetSection";
 
-import Clause, { ClauseContainer } from "./Clause";
+import Clause from "./Clause";
+
+import ClauseDropTarget from "./dnd/ClauseDropTarget";
 
 import SECTIONS from "./style";
 
@@ -18,12 +20,24 @@ const FiltersSection = ({ query, setDatasetQuery, style, className }) => {
   const color = SECTIONS.filter.color;
   return (
     <WorksheetSection {...SECTIONS.filter} style={style} className={className}>
-      <ClauseContainer color={color}>
+      <ClauseDropTarget
+        color={color}
+        onDrop={dimension => {
+          query
+            .addFilter(["=", dimension.mbql(), null])
+            .update(setDatasetQuery);
+        }}
+      >
         {filters.length > 0 ? (
           filters.map((filter, index) => (
             <PopoverWithTrigger
               triggerElement={
-                <Clause color={color}>
+                <Clause
+                  color={color}
+                  onRemove={() =>
+                    query.removeFilter(index).update(setDatasetQuery)
+                  }
+                >
                   <Filter filter={filter} metadata={query.metadata()} />
                 </Clause>
               }
@@ -64,7 +78,7 @@ const FiltersSection = ({ query, setDatasetQuery, style, className }) => {
             />
           </PopoverWithTrigger>
         )}
-      </ClauseContainer>
+      </ClauseDropTarget>
     </WorksheetSection>
   );
 };
