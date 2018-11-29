@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
-
+    moment.locale(t `moment_locale`);
     this.state = {
       current: moment(props.initial || undefined),
     };

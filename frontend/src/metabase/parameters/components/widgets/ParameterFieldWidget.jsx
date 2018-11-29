@@ -54,7 +54,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   static format(value, field) {
     value = normalizeValue(value);
     if (value.length > 1) {
-      return `${value.length} selections`;
+      return `${value.length}` + t`selections`;
     } else {
       return <RemappedValue value={value[0]} column={field} />;
     }
