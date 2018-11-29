@@ -3,8 +3,9 @@ import React from "react";
 import { t, jt } from "c-3po";
 
 import Clause from "./Clause";
-
 import ClauseDropTarget from "./dnd/ClauseDropTarget";
+
+import Breakout from "../Breakout";
 
 import WorksheetSection, {
   WorksheetSectionSubHeading,
@@ -61,7 +62,7 @@ const SummarizeSection = ({ query, setDatasetQuery, style, className }) => {
                     query.removeBreakout(index).update(setDatasetQuery)
                   }
                 >
-                  {JSON.stringify(breakout)}
+                  <Breakout breakout={breakout} query={query} />
                 </Clause>
               ))
             ) : (
