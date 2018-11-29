@@ -99,7 +99,7 @@ export default class Calendar extends Component {
         )}
         <span className="flex-full" />
         <h4 className="cursor-pointer rounded p1">
-          {current.locale(t `moment_locale`).format("MMMM YYYY")}
+          {current.locale(t`moment_locale`).format("MMMM YYYY")}
         </h4>
         <span className="flex-full" />
         {side !== "left" && (
