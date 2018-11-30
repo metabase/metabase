@@ -20,7 +20,7 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [segment :refer [Segment]]
-             [setting :refer [Setting]]
+             [setting :as setting]
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
@@ -203,10 +203,11 @@
 
 (defmethod dump (type Field)
   [path field]
-  (let [dimension    (-> (db/select-one Dimension :field_id (u/get-id field))
-                         (select-keys [:type :human_readable_field_id])
-                         (update :human_readable_field_id (comp (partial fully-qualified-name path)
-                                                                Field)))
+  (let [dimension    (some->> (db/select-one Dimension :field_id (u/get-id field))
+                              not-empty
+                              (select-keys [:type :human_readable_field_id])
+                              (update :human_readable_field_id
+                                      (comp (partial fully-qualified-name path) Field)))
         field-values (-> (db/select-one FieldValues :field_id (u/get-id field))
                          (u/select-non-nil-keys [:values :human_readable_values]))]
     (spit-entity path :file (-> field
@@ -255,12 +256,12 @@
   [path pulse]
   (spit-entity path :file
                (assoc pulse
-                 :cards   (for [card (db/select PulseCard :pulse_id (u/get-id pulse))]
-                            (-> card
-                                (dissoc :id :pulse_id)
-                                (update :card_id (comp (partial fully-qualified-name path) Card))))
-                :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
-                            (strip-crud channel)))))
+                 :cards    (for [card (db/select PulseCard :pulse_id (u/get-id pulse))]
+                             (-> card
+                                 (dissoc :id :pulse_id)
+                                 (update :card_id (comp (partial fully-qualified-name path) Card))))
+                 :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
+                             (strip-crud channel)))))
 
 (def ^:private model-name->model
   {"Card"    Card
@@ -279,5 +280,5 @@
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/settings.yaml")
-             (into {} (for [{:keys [key value]} (Setting)]
+             (into {} (for [{:keys [key value]} (setting/all)]
                         [key value]))))

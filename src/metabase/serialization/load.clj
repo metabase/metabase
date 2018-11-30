@@ -11,10 +11,13 @@
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database]]
              [dependency :refer [Dependency]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
              [segment :refer [Segment]]
              [setting :refer [Setting] :as setting]
              [table :refer [Table]]
@@ -208,27 +211,40 @@
         (load path context Metric)
         (load path context Segment)))))
 
+(defn- fully-qualified-name->card-id
+  [context fully-qualified-name]
+  (some->> fully-qualified-name (fully-qualified-name->context context) :card))
+
 (defmethod load Field
   [path context _]
-  (slurp-dir (fn [field]
-               (let [field-values (select-keys field [:values :human_readable_values])
-                     field        (db/insert! Field
-                                    (-> field
-                                        (dissoc :values :human_readable_values)
-                                        (assoc :table_id (:table context))))]
-                 (when (:values field-values)
-                   (db/insert! FieldValues
-                     (assoc field-values :field_id (u/get-id field))))
-                 field))
-             (str path "/fields")))
+  (slurp-dir
+   (fn [field]
+     (let [field-values (select-keys field [:values :human_readable_values])
+           dimension    (:dimension field)
+           field        (db/insert! Field
+                          (-> field
+                              (dissoc :values :human_readable_values :dimension)
+                              (assoc :table_id (:table context))))]
+       (when (:values field-values)
+         (db/insert! FieldValues
+           (assoc field-values :field_id (u/get-id field))))
+       (when (:type dimension)
+         (db/insert! Dimension
+           (-> dimension
+               (update :human_readable_field_id (partial fully-qualified-name->card-id context))
+               (assoc
+                   :field_id (u/get-id field)
+                   :name     (:display_name field)))))
+       field))
+   (str path "/fields")))
 
 (defmethod load Metric
   [path context _]
   (slurp-dir (fn [metric]
                (db/insert! Metric
                  (-> metric
-                     (assoc :table_id (:table context))
-                     (assoc :creator_id @default-user)
+                     (assoc :table_id (:table context)
+                            :creator_id @default-user)
                      (assoc-in [:definition :source-table] (:table context))
                      (humanized-field-references->ids context))))
              (str path "/metrics")))
@@ -239,15 +255,11 @@
     :segments (slurp-dir (fn [segment]
                            (db/insert! Segment
                              (-> segment
-                                 (assoc :table_id (:table context))
-                                 (assoc :creator_id @default-user)
+                                 (assoc :table_id (:table context)
+                                        :creator_id @default-user)
                                  (assoc-in [:definition :source-table] (:table context))
                                  (humanized-field-references->ids context))))
                          (str path "/segments"))))
-
-(defn- fully-qualified-name->card-id
-  [context fully-qualified-name]
-  (some->> fully-qualified-name (fully-qualified-name->context context) :card))
 
 (defn- update-parameter-mappings
   [parameter-mappings context]
@@ -261,8 +273,8 @@
            dashboard       (db/insert! Dashboard
                              (-> dashboard
                                  (dissoc :dashboard_cards)
-                                 (assoc :collection_id (:collection context))
-                                 (assoc :creator_id @default-user)
+                                 (assoc :collection_id (:collection context)
+                                        :creator_id @default-user)
                                  (humanized-field-references->ids context)))]
        (doseq [dashboard-card dashboard-cards]
          (let [series         (:series dashboard-card)
@@ -281,6 +293,17 @@
        dashboard))
    (str path "/dashboards")))
 
+(defmethod load Pulse
+  [path context _]
+  (slurp-dir
+   (fn [pulse]
+     (let [{:keys [cards channels]} pulse
+           pulse                    (db/insert! Pulse (dissoc pulse :channels :cards))]
+       (doseq [card cards])
+       (doseq [channel channels])
+       ))
+   (str path "/pulses")))
+(Pulse)
 (defn- source-table
   [source-table context]
   (let [{:keys [card table]} (fully-qualified-name->context context source-table)]
@@ -322,23 +345,25 @@
 
 (defmethod load Collection
   [path context _]
-  (let [context (assoc context
-                  :prefix     (:prefix context path)
-                  :collection (slurp-one-id
-                               (fn [collection]
-                                 (let [collection (assoc collection
-                                                    :location (derive-location context))]
-                                   (if (:personal_owner_id collection)
-                                     (or (db/select-one Collection
-                                           :personal_owner_id @default-user)
-                                         (db/insert! Collection
-                                           (assoc collection :personal_owner_id @default-user)))
-                                     (db/insert! Collection collection))))
-                               path))]
+  (let [prefix  (:prefix context path)
+        context (assoc context
+                  :prefix     prefix
+                  :collection (when (not= prefix path)
+                                (slurp-one-id
+                                 (fn [collection]
+                                   (let [collection (assoc collection
+                                                      :location (derive-location context))]
+                                     (if (:personal_owner_id collection)
+                                       (or (db/select-one Collection
+                                             :personal_owner_id @default-user)
+                                           (db/insert! Collection
+                                             (assoc collection :personal_owner_id @default-user)))
+                                       (db/insert! Collection collection))))
+                                 path)))]
     (doseq [path (list-dirs (str path "/collections"))
             :when (not-any? (partial str/ends-with? path) ["dashboards" "cards"])]
       (load path context Collection))
-    (let [path (if (= path (:prefix context))
+    (let [path (if (= path prefix)
                  (str path "/collections")
                  path)]
       (load path context Card)
@@ -363,7 +388,6 @@
                                                     (comp Metric :metric)
                                                     (comp Segment :segment)
                                                     (comp Pulse :pulse))
-                                           (fn [x] (println x) x)
                                            (partial fully-qualified-name->context {:prefix path}))]
     (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
       (let [model        (fully-qualified-name->entity model_id)
