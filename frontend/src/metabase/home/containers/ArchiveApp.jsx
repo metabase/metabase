@@ -108,6 +108,17 @@ const BulkActionControls = ({ selected, reload }) => (
         }
       }}
     >{t`Unarchive`}</Button>
+    <Button
+      ml={1}
+      medium
+      onClick={async () => {
+        try {
+          await Promise.all(selected.map(item => item.delete(false)));
+        } finally {
+          reload();
+        }
+      }}
+    >{t`Delete`}</Button>
   </span>
 );
 
