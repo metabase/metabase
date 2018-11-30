@@ -203,11 +203,11 @@
 
 (defmethod dump (type Field)
   [path field]
-  (let [dimension    (some->> (db/select-one Dimension :field_id (u/get-id field))
-                              not-empty
-                              (select-keys [:type :human_readable_field_id])
-                              (update :human_readable_field_id
-                                      (comp (partial fully-qualified-name path) Field)))
+  (let [dimension    (some-> (db/select-one Dimension :field_id (u/get-id field))
+                             not-empty
+                             (select-keys [:type :human_readable_field_id])
+                             (update :human_readable_field_id
+                                     (comp (partial fully-qualified-name path) Field)))
         field-values (-> (db/select-one FieldValues :field_id (u/get-id field))
                          (u/select-non-nil-keys [:values :human_readable_values]))]
     (spit-entity path :file (-> field
@@ -280,5 +280,5 @@
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/settings.yaml")
-             (into {} (for [{:keys [key value]} (setting/all)]
+             (into {} (for [{:keys [key value]} (setting/all setting/get-string)]
                         [key value]))))

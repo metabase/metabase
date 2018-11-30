@@ -105,7 +105,7 @@
 
 (defmethod path->context "collections"
   [context [_ & [collection-name & path-rest :as full-path]]]
-  (if (#{"dashboards" "cards"} collection-name)
+  (if (#{"dashboards" "cards" "pulses"} collection-name)
     ;; root collection
     (path->context context full-path)
     (let [parent-location (-> context :collection Collection :location)]
@@ -298,12 +298,21 @@
   (slurp-dir
    (fn [pulse]
      (let [{:keys [cards channels]} pulse
-           pulse                    (db/insert! Pulse (dissoc pulse :channels :cards))]
-       (doseq [card cards])
-       (doseq [channel channels])
-       ))
+           pulse                    (db/insert! Pulse
+                                      (-> pulse
+                                          (assoc :collection_id (:collection context)
+                                                 :creator_id    @default-user)
+                                          (dissoc :channels :cards)))]
+       (doseq [card cards]
+         (db/insert! PulseCard
+           (-> card
+               (assoc :pulse_id (u/get-id pulse))
+               (update :card_id (partial fully-qualified-name->card-id context)))))
+       (doseq [channel channels]
+         (db/insert! PulseChannel
+           (assoc channel :pulse_id (u/get-id pulse))))))
    (str path "/pulses")))
-(Pulse)
+
 (defn- source-table
   [source-table context]
   (let [{:keys [card table]} (fully-qualified-name->context context source-table)]
@@ -361,12 +370,13 @@
                                        (db/insert! Collection collection))))
                                  path)))]
     (doseq [path (list-dirs (str path "/collections"))
-            :when (not-any? (partial str/ends-with? path) ["dashboards" "cards"])]
+            :when (not-any? (partial str/ends-with? path) ["dashboards" "cards" "pulses"])]
       (load path context Collection))
     (let [path (if (= path prefix)
                  (str path "/collections")
                  path)]
       (load path context Card)
+      (load path context Pulse)
       (load path context Dashboard))))
 
 (defn load-settings
@@ -395,4 +405,5 @@
         (db/insert! Dependency {:model              (entity->model-name model)
                                 :model_id           (u/get-id model)
                                 :dependent_on_model (entity->model-name dependent-on)
-                                :dependent_on_id    (u/get-id dependent-on)})))))
+                                :dependent_on_id    (u/get-id dependent-on)
+                                :created_at         (java.util.Date.)})))))

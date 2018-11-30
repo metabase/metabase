@@ -607,14 +607,14 @@
   (events/publish-event! :settings-update settings))
 
 
-(defn- user-facing-info [setting]
+(defn- user-facing-info [getter setting]
   (let [k         (:name setting)
         v         (get k)
         env-value (env-var-value setting)]
     {:key            k
      :value          (when (and (not= v env-value)
                                 (not= v (:default setting)))
-                       v)
+                       (getter k))
      :is_env_setting (boolean env-value)
      :env_name       (env-var-name setting)
      :description    (str (:description setting))
@@ -624,7 +624,10 @@
 
 (defn all
   "Return a sequence of Settings maps in a format suitable for consumption by the frontend.
-   (For security purposes, this doesn't return the value of a setting if it was set via env var)."
-  []
-  (for [setting (sort-by :name (vals @registered-settings))]
-    (user-facing-info setting)))
+   (For security purposes, this doesn't return the value of a setting if it was set via env var).
+
+   Takes an optional argument `getter` which determins how the value will be transformed/formatted."
+  ([] (all get))
+  ([getter]
+   (for [setting (sort-by :name (vals @registered-settings))]
+     (user-facing-info getter setting))))
