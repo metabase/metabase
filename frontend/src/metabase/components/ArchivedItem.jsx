@@ -37,11 +37,11 @@ const ArchivedItem = ({
     </IconWrapper>
     {name}
     {isAdmin && (
-      <span className="ml-auto">
+      <span className="ml-auto mr2">
         <Tooltip tooltip={t`Unarchive this ${type}`}>
           <Icon
             onClick={onUnarchive}
-            className="cursor-pointer text-brand-hover hover-child mx1"
+            className="cursor-pointer text-brand-hover hover-child mx4"
             name="unarchive"
           />
         </Tooltip>
