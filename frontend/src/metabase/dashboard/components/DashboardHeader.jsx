@@ -313,17 +313,19 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing && canEdit) {
-      buttons.push(
-        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
-          <Link
-            to={location.pathname + "/move"}
-            data-metabase-event={"Dashboard;Move"}
-          >
-            <Icon className="text-brand-hover" name="move" size={18} />
-          </Link>
-        </Tooltip>,
-      );
+    if (!isFullscreen && !isEditing) {
+      if (canEdit) {
+        buttons.push(
+          <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+            <Link
+              to={location.pathname + "/move"}
+              data-metabase-event={"Dashboard;Move"}
+            >
+              <Icon className="text-brand-hover" name="move" size={18} />
+            </Link>
+          </Tooltip>,
+        );
+      }
       buttons.push(
         <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
           <Link
