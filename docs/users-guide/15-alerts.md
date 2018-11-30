@@ -69,5 +69,5 @@ There are a few ways alerts can be stopped:
 
 ---
 
-## That’s it!
-If you still have questions about using alerts, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
+## Next: customizing drill-through
+Want to customize what happens when you click on a chart or table cell? We'll show you [how to customize drill-through](16-customizing-drill-through.md) next.
