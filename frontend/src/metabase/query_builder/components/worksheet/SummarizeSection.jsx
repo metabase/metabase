@@ -4,6 +4,7 @@ import { t, jt } from "c-3po";
 
 import Clause from "./Clause";
 import ClauseDropTarget from "./dnd/ClauseDropTarget";
+import DropTargetEmptyState from "./DropTargetEmptyState";
 
 import Breakout from "../Breakout";
 
@@ -39,9 +40,11 @@ const SummarizeSection = ({ query, setDatasetQuery, style, className }) => {
                 </Clause>
               ))
             ) : (
-              <div className="text-centered">{jt`Drag a column here to ${(
-                <strong>{t`summarize`}</strong>
-              )} it`}</div>
+              <DropTargetEmptyState
+                message={jt`Drag a column here to ${(
+                  <strong>{t`summarize`}</strong>
+                )} it`}
+              />
             )}
           </ClauseDropTarget>
         </div>
@@ -66,9 +69,11 @@ const SummarizeSection = ({ query, setDatasetQuery, style, className }) => {
                 </Clause>
               ))
             ) : (
-              <div className="text-centered">{jt`Drag a column here to ${(
-                <strong>{t`group`}</strong>
-              )} it`}</div>
+              <DropTargetEmptyState
+                message={jt`Drag a column here to ${(
+                  <strong>{t`group`}</strong>
+                )} it`}
+              />
             )}
           </ClauseDropTarget>
         </div>

@@ -15,6 +15,7 @@ const DataSection = ({
   setSourceTableFn,
   style,
   className,
+  children,
 }) => {
   const databaseId = query.databaseId();
   const tableId = query.tableId();
@@ -35,9 +36,17 @@ const DataSection = ({
           setDatabaseFn={setDatabaseFn}
           setSourceTableFn={setSourceTableFn}
           isInitiallyOpen={isInitiallyOpen}
+          tetherOptions={{
+            attachment: "top left",
+            targetAttachment: "bottom left",
+            targetOffset: "15px 0",
+          }}
+          hasArrow={false}
         />
       }
-    />
+    >
+      {children}
+    </WorksheetSection>
   );
 };
 

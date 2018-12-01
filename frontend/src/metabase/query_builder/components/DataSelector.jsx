@@ -554,6 +554,8 @@ export default class DataSelector extends Component {
         triggerElement={this.getTriggerElement()}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
+        hasArrow={this.props.hasArrow}
+        tetherOptions={this.props.tetherOptions}
         sizeToFit
       >
         {this.renderActiveStep()}

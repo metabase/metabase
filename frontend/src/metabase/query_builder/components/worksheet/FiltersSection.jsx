@@ -10,8 +10,8 @@ import FilterPopover from "../filters/FilterPopover";
 import WorksheetSection from "./WorksheetSection";
 
 import Clause from "./Clause";
-
 import ClauseDropTarget from "./dnd/ClauseDropTarget";
+import DropTargetEmptyState from "./DropTargetEmptyState";
 
 import SECTIONS from "./style";
 
@@ -53,9 +53,11 @@ const FiltersSection = ({ query, setDatasetQuery, style, className }) => {
             </PopoverWithTrigger>
           ))
         ) : (
-          <div className="text-centered">{jt`Drag a column here to ${(
-            <strong>{t`filter`}</strong>
-          )} with it`}</div>
+          <DropTargetEmptyState
+            message={jt`Drag a column here to ${(
+              <strong>{t`filter`}</strong>
+            )} with it`}
+          />
         )}
         {query.canAddFilter() && (
           <PopoverWithTrigger

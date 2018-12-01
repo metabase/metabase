@@ -20,7 +20,8 @@ const SIDEBAR_WIDTH = 320;
 export default class QuestionDataWorksheet extends React.Component {
   state = {
     previewLimit: 10,
-    showSection: null,
+    showFilterSection: false,
+    showSummarizeSection: false,
   };
 
   preview = () => {
@@ -49,24 +50,23 @@ export default class QuestionDataWorksheet extends React.Component {
   };
 
   filter = () => {
-    this.setState({ showSection: "filter" });
+    this.setState({ showFilterSection: true });
   };
 
   summarize = () => {
-    this.setState({ showSection: "summarize" });
+    this.setState({ showSummarizeSection: true });
   };
 
   render() {
     const { isRunnable, query, setDatasetQuery } = this.props;
-    const { showSection } = this.state;
     console.log(this.props);
 
     const showFilterSection =
-      query.filters().length > 0 || showSection === "filter";
+      this.state.showFilterSection || query.filters().length > 0;
     const showSummarizeSection =
+      this.state.showSummarizeSection ||
       query.aggregations().length > 0 ||
-      query.breakouts().length > 0 ||
-      showSection === "summarize";
+      query.breakouts().length > 0;
 
     const showSidebar = showFilterSection || showSummarizeSection;
     const sidebarWidth = SIDEBAR_WIDTH + SIDEBAR_MARGIN * 2;
@@ -74,7 +74,24 @@ export default class QuestionDataWorksheet extends React.Component {
 
     return (
       <div className="relative">
-        <DataSection style={sectionStyle} {...this.props} />
+        <DataSection style={sectionStyle} {...this.props}>
+          {isRunnable &&
+            !showFilterSection && (
+              <WorksheetSectionButton
+                {...SECTIONS.filter}
+                className="mr1"
+                onClick={this.filter}
+              />
+            )}
+          {isRunnable &&
+            !showSummarizeSection && (
+              <WorksheetSectionButton
+                {...SECTIONS.summarize}
+                className="mr1"
+                onClick={this.summarize}
+              />
+            )}
+        </DataSection>
         {showFilterSection && (
           <FiltersSection style={sectionStyle} {...this.props} />
         )}
@@ -89,22 +106,7 @@ export default class QuestionDataWorksheet extends React.Component {
             previewLimit={this.state.previewLimit}
             setPreviewLimit={this.setPreviewLimit}
             isPreviewCurrent={this.isPreviewCurrent()}
-          >
-            {!showFilterSection && (
-              <WorksheetSectionButton
-                {...SECTIONS.filter}
-                className="mr1"
-                onClick={this.filter}
-              />
-            )}
-            {!showSummarizeSection && (
-              <WorksheetSectionButton
-                {...SECTIONS.summarize}
-                className="mr1"
-                onClick={this.summarize}
-              />
-            )}
-          </PreviewSection>
+          />
         )}
         {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
         {showSidebar && (
