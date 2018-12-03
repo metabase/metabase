@@ -23,7 +23,7 @@ Feature: Install Postgres for Discovery
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0002","role":"sync_slave","status":"RUNNING"'
     And in less than '600' seconds, checking each '20' seconds, I send a 'GET' request to '/service/${POSTGRES_FRAMEWORK_ID_DISC:-postgresdisc}/v1/service/status' so that the response contains '"pg-0003","role":"async_slave","status":"RUNNING"'
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
+  @runOnEnv(DISC_VERSION>0.29.0)
   Scenario: [Basic Installation Postgres Dependencies][01] Check PostgresTLS
     Given I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     Then in less than '600' seconds, checking each '20' seconds, the command output 'dcos task | grep ^${POSTGRES_FRAMEWORK_ID_TLS:-postgrestls} | grep R | wc -l' contains '1'
@@ -71,7 +71,7 @@ Feature: Install Postgres for Discovery
     When I run 'docker exec -t !{postgresDocker} psql -p !{pgPortCalico} -U postgres -c "CREATE ROLE \"${DISCOVERY_TENANT_NAME:-crossdata-1}\" with password '${DISCOVERY_DATASTORE_PASSWORD:-stratio}' SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS LOGIN"' in the ssh connection
     Then the command output contains 'CREATE ROLE'
 
-  @runOnEnv(DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
+  @runOnEnv(DISC_VERSION>0.30.0)
   Scenario: [Basic Installation Postgres Dependencies][02] Create database for Discovery on Postgrestls
     Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
     And I securely send requests to '${CLUSTER_ID:-nightly}.labs.stratio.com:443'
@@ -106,7 +106,7 @@ Feature: Install Postgres for Discovery
     Then the command output contains 'CREATE DATABASE'
     Then I close database connection
 
-  @runOnEnv(DISC_VERSION=0.29.0||DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
+  @runOnEnv(DISC_VERSION>0.29.0)
   Scenario: [Basic Installation Postgres Dependencies][04] Create data for Discovery on PostgresTLS
     Given I open a ssh connection to '!{pgIP}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I outbound copy 'src/test/resources/schemas/createPGContent.sql' through a ssh connection to '/tmp'

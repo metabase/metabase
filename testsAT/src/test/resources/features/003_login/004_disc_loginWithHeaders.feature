@@ -23,7 +23,7 @@ Feature: Login with headers
     And '0' elements exists with 'xpath://h2[contains(.,'notexists')]'
 
   Scenario: Set PROXY_HEADERS variable to existing user and non-existing group (user: demo (or USERNAME variable), group: notexists)
-    When We update system property 'PROXY_HEADERS' to value 'vnd.bbva.user-id:${USERNAME:-demo},vnd.bbva.group-id:test'
+    When We update system property 'PROXY_HEADERS' to value 'vnd.bbva.user-id:${USERNAME:-Demo},vnd.bbva.group-id:test'
 
   @web
   Scenario: Login through headers - User exists --> AUTOMATIC LOGIN

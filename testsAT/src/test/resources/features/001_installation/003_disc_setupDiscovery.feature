@@ -1,7 +1,7 @@
 Feature: Setup Discovery
 
   @web
-  @runOnEnv(DISC_VERSION=0.31.0-ccddeec)
+  @runOnEnv(DISC_VERSION=0.31.0)
   Scenario: Setup discovery
     Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
     When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'

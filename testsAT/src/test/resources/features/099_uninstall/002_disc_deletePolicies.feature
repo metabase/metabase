@@ -8,7 +8,7 @@ Feature: Delete Policy for user crossdata-1 in Gosec
     And I open a ssh connection to '${DCOS_CLI_HOST:-dcos-cli.demo.stratio.com}' with user '${CLI_USER:-root}' and password '${CLI_PASSWORD:-stratio}'
     And I securely send requests to '${DCOS_IP}:443'
 
-  @runOnEnv(DISC_VERSION=0.30.0||DISC_VERSION=0.31.0-ccddeec)
+  @runOnEnv(DISC_VERSION>0.30.0)
   @runOnEnv(DISCOVERY_POLICIES=true)
   Scenario: [Delete policy for user crossdata-1 in Gosec][01] Deletion policy user crossdata-1
     Given I set sso token using host '${CLUSTER_ID:-nightly}.labs.stratio.com' with user '${DCOS_USER:-admin}' and password '${DCOS_PASSWORD:-1234}' and tenant 'NONE'
