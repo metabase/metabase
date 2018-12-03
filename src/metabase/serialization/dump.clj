@@ -1,5 +1,5 @@
 (ns metabase.serialization.dump
-  ""
+  "Serialize a Matabase instance into a directory structure of YAMLs."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk]
@@ -29,10 +29,11 @@
             [toucan.db :as db]
             [yaml.core :as yaml]))
 
-;; We replace the IDs in MBQL with full paths to make diffs more meaningful
-
 (defmulti
-  ^{:doc      ""
+  ^{:doc      "Get the logical path starting at `prefix` for entity `entity`.
+
+               The idea is to replace all IDs with these human readable paths which are also
+               instance-independent, making deserialization eaiser."
     :private  true
     :arglists '([prefix entity])}
   fully-qualified-name (fn [_ entity]
@@ -67,9 +68,7 @@
                   ""
                   (->> (str/split (:location collection) #"/")
                        rest
-                       (map (fn [parent]
-                              (let [parent (Collection (Integer/parseInt parent))]
-                                (str (:name parent) "/collections"))))
+                       (map #(-> % Integer/parseInt Collection :name (str "/collections")))
                        (str/join "/")
                        (format "%s/")))]
     (str prefix "/collections/" parents (:name collection))))
@@ -166,7 +165,13 @@
    entity))
 
 (defmulti
-  ^{:doc      ""
+  ^{:doc      "Serialize entity `entity` to location `dir`.
+
+               Depending on the entity, it will be serialized either as a single YAML, or a
+               directory structure.
+
+               Removes unneeded fields that can either be reconstructed from context or are
+               meaningless (eg. :created_at)."
     :arglists '([dir entity])}
   dump (fn [_ entity]
          (type entity)))
@@ -241,7 +246,7 @@
 (defmethod dump (type Dashboard)
   [path dashboard]
   (spit-entity path :file (assoc dashboard
-                          :dashboard_cards (dashboard-cards-for-dashboard path dashboard))))
+                            :dashboard_cards (dashboard-cards-for-dashboard path dashboard))))
 
 (defmethod dump (type Collection)
   [path collection]

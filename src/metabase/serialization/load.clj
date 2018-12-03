@@ -1,5 +1,5 @@
 (ns metabase.serialization.load
-  ""
+  "Load entities serialized by `metabase.serialization.dump`."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.walk :as walk]
@@ -50,7 +50,7 @@
     (.getPath file)))
 
 (defmulti
-  ^{:doc      ""
+  ^{:doc      "Extract entities from a logical path."
     :private  true
     :arglists '([path context])}
   path->context (fn [_ [model & _]]
@@ -103,9 +103,11 @@
                         :name     segment-name))
       (path->context path)))
 
+(def ^:private reserved-collection-names #{"dashboards" "cards" "pulses"})
+
 (defmethod path->context "collections"
   [context [_ & [collection-name & path-rest :as full-path]]]
-  (if (#{"dashboards" "cards" "pulses"} collection-name)
+  (if (reserved-collection-names collection-name)
     ;; root collection
     (path->context context full-path)
     (let [parent-location (-> context :collection Collection :location)]
@@ -162,11 +164,12 @@
   [context [op & args :as form]]
   (if (-> op qp.util/normalize-token (= :field-literal))
     form
-    (into [op] (map (fn [arg]
-                      (if (string? arg)
-                        ((some-fn :field :metric :segment) (fully-qualified-name->context context arg))
-                        arg))
-                    args))))
+    (into [op]
+          (map (fn [arg]
+                 (if (string? arg)
+                   ((some-fn :field :metric :segment) (fully-qualified-name->context context arg))
+                   arg)))
+          args)))
 
 (defn- humanized-field-references->ids
   [entity context]
@@ -185,7 +188,10 @@
                                                           :is_superuser true})))))
 
 (defmulti
-  ^{:doc      ""
+  ^{:doc      "Load an entity of type `model` stored at `path` in the context `context`.
+
+               Passing in parent entities as context instead of decoding them from the path each
+               time, saves a lot of queriying."
     :arglists '([path context model])}
   load (fn [_ _ model]
          model))
@@ -228,13 +234,12 @@
        (when (:values field-values)
          (db/insert! FieldValues
            (assoc field-values :field_id (u/get-id field))))
-       (when (:type dimension)
+       (when dimension
          (db/insert! Dimension
            (-> dimension
                (update :human_readable_field_id (partial fully-qualified-name->card-id context))
-               (assoc
-                   :field_id (u/get-id field)
-                   :name     (:display_name field)))))
+               (assoc :field_id (u/get-id field)
+                      :name     (:display_name field)))))
        field))
    (str path "/fields")))
 
@@ -243,7 +248,7 @@
   (slurp-dir (fn [metric]
                (db/insert! Metric
                  (-> metric
-                     (assoc :table_id (:table context)
+                     (assoc :table_id   (:table context)
                             :creator_id @default-user)
                      (assoc-in [:definition :source-table] (:table context))
                      (humanized-field-references->ids context))))
@@ -251,15 +256,14 @@
 
 (defmethod load Segment
   [path context _]
-  (assoc context
-    :segments (slurp-dir (fn [segment]
-                           (db/insert! Segment
-                             (-> segment
-                                 (assoc :table_id (:table context)
-                                        :creator_id @default-user)
-                                 (assoc-in [:definition :source-table] (:table context))
-                                 (humanized-field-references->ids context))))
-                         (str path "/segments"))))
+  (slurp-dir (fn [segment]
+               (db/insert! Segment
+                 (-> segment
+                     (assoc :table_id   (:table context)
+                            :creator_id @default-user)
+                     (assoc-in [:definition :source-table] (:table context))
+                     (humanized-field-references->ids context))))
+             (str path "/segments")))
 
 (defn- update-parameter-mappings
   [parameter-mappings context]
@@ -317,7 +321,7 @@
   [source-table context]
   (let [{:keys [card table]} (fully-qualified-name->context context source-table)]
     (if card
-      (str "card__" (u/get-id card))
+      (str "card__" card)
       table)))
 
 (defmethod load Card
@@ -334,16 +338,21 @@
                                    db    (:db_id table)]
                                (db/insert! Card
                                  (-> card
-                                     (assoc :table_id (u/get-id table))
-                                     (assoc :creator_id @default-user)
-                                     (assoc :collection_id (:collection context))
-                                     (assoc :database_id db)
+                                     (assoc :table_id      (u/get-id table)
+                                            :creator_id    @default-user
+                                            :collection_id (:collection context)
+                                            :database_id   db)
                                      (assoc-in [:dataset_query :database] db)
                                      (cond->
-                                         (-> card :dataset_query :type qp.util/normalize-token (= :query))
+                                       (-> card
+                                           :dataset_query
+                                           :type
+                                           qp.util/normalize-token
+                                           (= :query))
                                        (update-in [:dataset_query :query :source-table] source-table context))
                                      (humanized-field-references->ids context)))))
                            path))]
+      ;; Nested cards
       (load path context Card))))
 
 (defn- derive-location
@@ -370,7 +379,7 @@
                                        (db/insert! Collection collection))))
                                  path)))]
     (doseq [path (list-dirs (str path "/collections"))
-            :when (not-any? (partial str/ends-with? path) ["dashboards" "cards" "pulses"])]
+            :when (not-any? (partial str/ends-with? path) reserved-collection-names)]
       (load path context Collection))
     (let [path (if (= path prefix)
                  (str path "/collections")
@@ -385,12 +394,6 @@
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)]
     (setting/set-string! k v)))
 
-(def ^:private entity->model-name
-  (comp {(type Segment) "Segment"
-         (type Metric)  "Metric"
-         (type Card)    "Card"}
-        type))
-
 (defn load-dependencies
   "Load a dump of dependencies."
   [path]
@@ -402,8 +405,8 @@
     (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
       (let [model        (fully-qualified-name->entity model_id)
             dependent-on (fully-qualified-name->entity dependent_on_id)]
-        (db/insert! Dependency {:model              (entity->model-name model)
+        (db/insert! Dependency {:model              (name model)
                                 :model_id           (u/get-id model)
-                                :dependent_on_model (entity->model-name dependent-on)
+                                :dependent_on_model (name dependent-on)
                                 :dependent_on_id    (u/get-id dependent-on)
                                 :created_at         (java.util.Date.)})))))
