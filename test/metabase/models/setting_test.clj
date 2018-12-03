@@ -136,7 +136,7 @@
   (do-with-temporary-setting-value setting db-value
     (fn []
       (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
-        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+        (dissoc (#'setting/user-facing-info setting/get (#'setting/resolve-setting setting))
                 :key :description)))))
 
 ;; #'setting/user-facing-info w/ no db value, no env var value, no default value
