@@ -47,7 +47,7 @@ msgstr "Sauvegarder"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "Metabase doit analyser votre base de données. Nous procéderons à une nouvelle analyse périodique pour maintenir les métadonnées à jour. Vous pouvez contrôler ci dessous le moment où ces analyses périodiques auront lieu."
+msgstr "Metabase doit analyser votre base de données. Nous procéderons à une nouvelle analyse périodique pour maintenir les métadonnées à jour. Vous pouvez contrôler ci-dessous le moment où ces analyses périodiques auront lieu."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:127
 msgid "Database syncing"
@@ -58,7 +58,7 @@ msgid "This is a lightweight process that checks for\n"
 "updates to this database’s schema. In most cases, you should be fine leaving this\n"
 "set to sync hourly."
 msgstr "Ceci est un processus léger qui vérifie les\n"
-"mises à jour du schéma de données. Dans la plupart des cas, vous pouvez l effectuer chaque heure."
+"mises à jour du schéma de données. Dans la plupart des cas, vous pouvez l'effectuer chaque heure."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
@@ -86,7 +86,7 @@ msgstr "Régulièrement, selon un planning"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:195
 msgid "Only when adding a new filter widget"
-msgstr "Uniquement lors de l ajout d'un nouveau filtre"
+msgstr "Uniquement lors de l'ajout d'un nouveau filtre"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:199
 msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
@@ -5383,7 +5383,7 @@ msgstr "Formule du champ"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:57
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
-msgstr "Imaginez cela comme étant une sorte de formule de tableur : vous pouvez utiliser des numbres, champs dans la table, opérations mathématiques comme +, et quelques fonctions. Vous pourriez donc écrire quelque chose comme Soustotal - Cout."
+msgstr "Imaginez cela comme étant une sorte de formule de tableur : vous pouvez utiliser des nombres, champs dans la table, opérations mathématiques comme +, et quelques fonctions. Vous pourriez donc écrire quelque chose comme Soustotal - Cout."
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:62
 #: frontend/src/metabase/reference/components/GuideDetail.jsx:126
@@ -5624,7 +5624,7 @@ msgstr "Choisir un type de champ"
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:41
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:57
 msgid "No field type"
-msgstr "Pas de type d echamp"
+msgstr "Pas de type de champ"
 
 #: frontend/src/metabase/reference/components/FieldToGroupBy.jsx:22
 msgid "by"
@@ -11181,103 +11181,103 @@ msgstr "Mois où [[this.short-name]] s'est inscrit"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource `{0}` as JSON"
-msgstr ""
+msgstr "Impossible d'analyser la ressource `{0}` en tant que JSON"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to find JSON via relative path `{0}`"
-msgstr ""
+msgstr "Impossible de trouver le code JSON via le chemin relatif `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection to host timed out for URL `{0}`"
-msgstr ""
+msgstr "La connexion à l'hôte a expiré pour l'URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to unknown host at URL `{0}`"
-msgstr ""
+msgstr "Impossible de se connecter à un hôte inconnu de l'URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to host at URL `{0}`"
-msgstr ""
+msgstr "Impossible de se connecter à l'hôte de l'URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host at for URL `{0}`"
-msgstr ""
+msgstr "Connexion refusée par l'hôte pour l'URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to retrieve resource at URL `{0}`"
-msgstr ""
+msgstr "Impossible de récupérer la ressource de l'URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource at URL `{0}` as JSON"
-msgstr ""
+msgstr "impossible d'analyser la ressource de l'URL `{0}` en JSON"
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fall back to local authentication: {0}"
-msgstr ""
+msgstr "Problème de connexion au serveur LDAP, de retour à l’authentification locale: {0}"
 
 #: src/metabase/driver/bigquery.clj
 msgid "BigQuery statements can''t be parameterized!"
-msgstr ""
+msgstr "Les instructions BigQuery ne peuvent pas être paramétrées!"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
-msgstr ""
+msgstr "AVERTISSEMENT: Druid n'autorise pas les requêtes limitSpec dans les séries chronologiques. La clause LIMIT sera ignorée."
 
 #: src/metabase/driver/snowflake.clj
 msgid "Invalid Snowflake connection details: missing DB name."
-msgstr ""
+msgstr "Détails de connexion Snowflake invalides: nom de base de données manquant."
 
 #: src/metabase/email/messages.clj
 msgid "We’d love your feedback."
-msgstr ""
+msgstr "Nous aimerions vos commentaires."
 
 #: src/metabase/email/messages.clj
 msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr ""
+msgstr "Il semblerait que Metabase ne vous convenait pas tout à fait."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr ""
+msgstr "Souhaitez-vous prendre un peur de temps pour répondre à un rapide sondage en 5 questions pour aider l’équipe de Metabase à comprendre pourquoi et à améliorer les choses à l’avenir?"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr ""
+msgstr "Nous espérons que vous avez apprécié Metabase."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-msgstr ""
+msgstr "Souhaitez vous prendre un peu de temps pour répondre à un rapide sondage de 6 questions pour nous dire comment ca se passe ?"
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
-msgstr ""
+msgstr "{0} a créé un compte Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr ""
+msgstr "{0} a accepté son invitation Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
-msgstr ""
+msgstr "Requête de réinitialisation de mot de passe [Metabase]"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
-msgstr ""
+msgstr "[Metabase] Notification"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr ""
+msgstr "[Métabase] Aidez à améliorer Metabase."
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
-msgstr ""
+msgstr "[Métabase] Dites-nous comment les choses se passent."
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
-msgstr ""
+msgstr "Erreur: la requête source de la requête n'a pas été résolue. Vous devez probablement «prétraiter» la requête en premier."
 
 #: src/metabase/models/params.clj
 msgid "Don't know what to do with:"
-msgstr ""
+msgstr "Je ne sais pas quoi faire avec:"
 
 #: src/metabase/models/params.clj
 msgid "Don't know how to wrap:"
@@ -11285,19 +11285,19 @@ msgstr ""
 
 #: src/metabase/public_settings.clj
 msgid "Failed setting `query-caching-max-kb` to {0}."
-msgstr ""
+msgstr "Échec de la définition de `query-caching-max-kb` sur {0}."
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {1} are not allowed."
-msgstr ""
+msgstr "Les valeurs supérieures à {1} ne sont pas autorisées."
 
 #: src/metabase/query_processor/middleware/resolve_database.clj
 msgid "Database {0} does not exist."
-msgstr ""
+msgstr "La base de données {0} n'existe pas."
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."
-msgstr ""
+msgstr "Erreur: la base de données n'est pas présente dans le stockage du processeur de requêtes."
 
 #: src/metabase/util/embed.clj
 msgid "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."
@@ -11313,12 +11313,13 @@ msgstr ""
 
 #: src/metabase/util/embed.clj
 msgid "The embedding secret key has not been set."
-msgstr ""
+msgstr "La clé secrète d'intégration n’a pas été définie."
 
 #: src/metabase/util/embed.clj
 msgid "Token is missing value for keypath"
-msgstr ""
+msgstr "Le jeton est man"
 
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
-msgstr ""
+msgstr "Exemple en profondeur"
+

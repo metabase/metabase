@@ -2038,7 +2038,6 @@ msgid "Sign in to Metabase"
 msgstr "Logg inn på Metabase"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:138
-#, fuzzy
 msgid "OR"
 msgstr "ELLER"
 
@@ -9854,7 +9853,7 @@ msgstr "Du kan ikke fjerne det siste medlemmet av \"Admin\"-gruppen!"
 #. go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
 #: src/metabase/models/setting.clj
 msgid "Error inserting a new Setting: {0}"
-msgstr ""
+msgstr "Feil ved tillegg av ny innstilling: {0}"
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
@@ -9862,7 +9861,7 @@ msgstr ""
 
 #: src/metabase/plugins.clj
 msgid "Loading plugin {0}... {1}"
-msgstr ""
+msgstr "Laster plugin {0}... {1}"
 
 #: src/metabase/public_settings.clj
 msgid "Object keyed by type, containing formatting settings"
@@ -9874,11 +9873,11 @@ msgstr ""
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Using this URL to check token: {0}"
-msgstr ""
+msgstr "Bruker følgende URL for å sjekke token: {0}"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Unable to validate token: 404 not found."
-msgstr ""
+msgstr "Validering av token feilet: 404 ikke funnet."
 
 #: src/metabase/public_settings/metastore.clj
 msgid "There was an error checking whether this token was valid:"
