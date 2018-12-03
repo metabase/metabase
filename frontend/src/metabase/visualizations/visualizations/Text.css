@@ -1,0 +1,165 @@
+:root {
+  --text-card-padding: 0.65em;
+}
+
+:local .Text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1em 0 1em 1.5em;
+}
+:local .Text.dashboard-is-editing {
+  padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
+}
+:local .Text .text-card-textarea {
+  padding: 0.5em 0.75em 0.5em 0.75em;
+  font-size: 1.143em;
+  line-height: 1.602em;
+  pointer-events: all;
+  resize: none;
+  outline: none;
+  border-radius: var(--default-border-radius);
+}
+:local .Text .text-card-textarea:focus {
+  border-color: var(--color-brand);
+  background-color: white;
+  box-shadow: 0 1px 7px var(--color-shadow);
+}
+:local .Text .text-card-markdown {
+  overflow: auto;
+  pointer-events: all;
+}
+
+:local .Text .text-card-markdown h1 {
+  font-weight: 900;
+  font-size: 1.831em;
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+:local .Text .text-card-markdown h2 {
+  font-size: 1.627em;
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+:local .Text .text-card-markdown h3 {
+  font-size: 1.447em;
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+:local .Text .text-card-markdown h4 {
+  font-size: 1.286em;
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+:local .Text .text-card-markdown h5 {
+  font-size: 1.143em;
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+:local .Text .text-card-markdown p {
+  font-size: 1.143em;
+  line-height: 1.602em;
+  padding: 0;
+  margin: 0 1.5em 0.5em 0;
+}
+
+:local .text-card-markdown ul {
+  font-size: 16px;
+  margin: 0.5em 0 0.5em 0;
+  padding: 0 1.5em 0 1em;
+  list-style-type: disc;
+}
+:local .text-card-markdown ol {
+  font-size: 16px;
+  margin: 0.5em 0 0.5em 0;
+  padding: 0 1.5em 0 1em;
+  list-style-type: decimal;
+}
+
+:local .text-card-markdown li {
+  list-style-position: inside;
+  padding: 0.25em 0 0 0;
+}
+:local .text-card-markdown ol li::before {
+  content: "";
+  width: 7px;
+  display: inline-block;
+}
+
+:local .text-card-markdown a {
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-brand);
+}
+:local .text-card-markdown a:hover {
+  text-decoration: underline;
+}
+
+:local .text-card-markdown a:hover {
+  text-decoration: underline;
+}
+
+:local .text-card-markdown th {
+  text-align: left;
+}
+:local .text-card-markdown table {
+  /* standard table reset */
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  margin: 1em 0 1em 0;
+  width: 100%;
+  font-family: Monaco, monospace;
+  font-size: 12.64px;
+  line-height: 0.76rem;
+  text-align: left;
+}
+:local .text-card-markdown tr {
+  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
+}
+:local .text-card-markdown tr:nth-child(even) {
+  background-color: color(var(--color-bg-black) alpha(-98%));
+}
+:local .text-card-markdown th,
+:local .text-card-markdown td {
+  padding: 0.75em;
+  border: 1px solid color(var(--color-border) alpha(-70%));
+}
+
+:local .text-card-markdown code {
+  font-family: Monaco, monospace;
+  font-size: 12.64px;
+  line-height: 20px;
+  padding: 0 0.25em;
+  background-color: var(--color-bg-light);
+  border-radius: var(--default-border-radius);
+}
+
+:local .text-card-markdown pre code {
+  padding: 1em;
+  display: block;
+  margin-right: 1.5em;
+}
+
+:local .text-card-markdown blockquote {
+  color: var(--color-text-medium);
+  border-left: 5px solid var(--color-border);
+  padding: 0 1.5em 0 17px;
+  margin: 0.5em 0 0.5em 1em;
+}
+:local .text-card-markdown blockquote p {
+  padding: 0;
+  margin: 0;
+}
+
+:local .text-card-markdown img {
+  width: 100%;
+  height: auto;
+}
+
+@media screen and (--breakpoint-max-lg) {
+  :local .Text {
+    padding: 0.5em 0 0.5em 1em;
+  }
+}

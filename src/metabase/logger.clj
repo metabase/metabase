@@ -1,12 +1,13 @@
 (ns metabase.logger
-  (:require [amalloy.ring-buffer :refer [ring-buffer]]
-            (clj-time [core :as t]
-                      [coerce :as coerce]
-                      [format :as time]))
   (:gen-class
    :extends org.apache.log4j.AppenderSkeleton
    :name metabase.logger.Appender)
-  (:import (org.apache.log4j.spi LoggingEvent)))
+  (:require [amalloy.ring-buffer :refer [ring-buffer]]
+            [clj-time
+             [coerce :as coerce]
+             [core :as t]
+             [format :as time]])
+  (:import org.apache.log4j.spi.LoggingEvent))
 
 (def ^:private ^:const max-log-entries 2500)
 

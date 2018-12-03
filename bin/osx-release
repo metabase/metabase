@@ -8,11 +8,9 @@ use File::Copy 'copy';
 use File::Copy::Recursive 'rcopy';   # CPAN
 use File::Path 'remove_tree';
 use File::stat 'stat';
-use JSON 'encode_json', 'from_json'; # CPAN
 use Readonly;                        # CPAN
 use String::Util 'trim';             # CPAN
 use Text::Caml;                      # CPAN
-use WWW::Curl::Simple;               # CPAN
 
 use Metabase::Util;
 
@@ -23,6 +21,7 @@ Readonly my $release_notes   => artifact('release-notes.html');
 Readonly my $dmg             => artifact('Metabase.dmg');
 
 Readonly my $xcode_project   => get_file_or_die('OSX/Metabase.xcodeproj');
+Readonly my $export_options  => get_file_or_die('OSX/exportOptions.plist');
 
 # Get the version saved in the CFBundle, e.g. '0.11.3.1'
 sub version {
@@ -84,9 +83,9 @@ sub build {
     # Ok, now create the Metabase.app artifact
     system('xcodebuild',
            '-exportArchive',
-           '-exportFormat', 'APP',
+           '-exportOptionsPlist', $export_options,
            '-archivePath', $xcarchive,
-           '-exportPath', $app) == 0 or die $!;
+           '-exportPath', OSX_ARTIFACTS_DIR) == 0 or die $!;
 
     # Ok, we can remove the .xcarchive file now
     remove_tree($xcarchive);
@@ -187,8 +186,10 @@ sub create_dmg_from_source_dir {
            '-fs', 'HFS+',
            '-fsargs', '-c c=64,a=16,e=16',
            '-format', 'UDRW',
-           '-size', '256MB',          # it looks like this can be whatever size we want; compression slims it down
+           '-size', '512MB',          # has to be big enough to hold everything uncompressed, but doesn't matter if there's extra space -- compression slims it down
            $dmg_filename) == 0 or die $!;
+
+    announce "$dmg_filename created.";
 }
 
 # Mount the disk image, return the device name
@@ -296,30 +297,6 @@ sub create_dmg {
 
 # ------------------------------------------------------------ UPLOADING ------------------------------------------------------------
 
-sub announce_on_slack {
-    Readonly my $slack_url => config('slackWebhookURL') or return;
-    Readonly my $version   => version();
-    Readonly my $awsURL    => 'https://s3.amazonaws.com/' . config('awsBucket') . '/' . upload_subdir() . '/Metabase.dmg';
-    my $text = "Metabase OS X $version 'Complexity-Embracing Toucan' Is Now Available!\n\n" .
-               "Get it here: $awsURL\n\n";
-
-    open(my $file, get_file_or_die($release_notes)) or die $!;
-    while (<$file>) {
-        m/^\s+<li>.*$/ && s|^\s+<li>(.*)</li>$|$1| && ($text .= '*  ' . $_);
-    }
-
-    my $json = encode_json {
-        channel    => '#general',
-        username   => 'OS X Bot',
-        icon_emoji => ':bird:',
-        text       => trim($text)
-    };
-
-    my $curl = WWW::Curl::Simple->new;
-    unless ((my $response = $curl->post($slack_url, $json))->code == 200) {
-        die 'Error posting to slack: ' . $response->code . ' ' . $response->content . "\n";
-    }
-}
 
 # Upload artifacts to AWS
 # Make sure to run `aws configure --profile metabase` first to set up your ~/.aws/config file correctly
@@ -349,8 +326,6 @@ sub upload {
            '--region', 'us-east-1',
            's3', 'cp', $upload_dir,
            "s3://$aws_bucket") == 0 or die "Upload failed: $!\n";
-
-    announce_on_slack;
 
     announce "Upload finished."
 }

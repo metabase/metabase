@@ -1,26 +1,20 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require clojure.data
-            [clojure.java.io :as io]
-            [clojure.set :as set]
+  (:require [clojure
+             [data :as data]
+             [set :as set]]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
-            (metabase [core :as core]
-                      [db :as mdb]
-                      [driver :as driver])
-            (metabase.models [setting :as setting]
-                             [table :refer [Table]])
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase
+             [core :as core]
+             [db :as mdb]
+             [plugins :as plugins]
+             [task :as task]
+             [util :as u]]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.models.setting :as setting]))
 
-;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
-
-;; ## GENERAL SETTINGS
-
-;; Don't run unit tests whenever JVM shuts down
-(expectations/disable-run-on-shutdown)
-
+;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
 
 ;; ## EXPECTATIONS FORMATTING OVERRIDES
 
@@ -30,9 +24,9 @@
 ;; lot of data, like Query Processor or API tests.
 (defn- format-failure [e a str-e str-a]
   {:type             :fail
-   :expected-message (when-let [in-e (first (clojure.data/diff e a))]
+   :expected-message (when-let [in-e (first (data/diff e a))]
                        (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'green in-e)))
-   :actual-message   (when-let [in-a (first (clojure.data/diff a e))]
+   :actual-message   (when-let [in-a (first (data/diff a e))]
                        (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
    :raw              [str-e str-a]
    :result           ["\nexpected:\n"
@@ -41,7 +35,7 @@
                       (u/pprint-to-str 'red a)]})
 
 (defmethod compare-expr :expectations/maps [e a str-e str-a]
-  (let [[in-e in-a] (clojure.data/diff e a)]
+  (let [[in-e in-a] (data/diff e a)]
     (if (and (nil? in-e) (nil? in-a))
       {:type :pass}
       (format-failure e a str-e str-a))))
@@ -63,30 +57,28 @@
                       (< (count e) (count a))             "actual is larger than expected"
                       (> (count e) (count a))             "expected is larger than actual"))))
 
-;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
 
-;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for some of the unit tests work work properly
-(driver/find-and-load-drivers!)
+;;; ------------------------------- Functions That Get Ran On Test Suite Start / Stop --------------------------------
 
 (defn test-startup
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
-  ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things on a BG thread
+  ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
+  ;; on a BG thread
   (let [start-jetty! (future (core/start-jetty!))]
-
     (try
+      (plugins/setup-plugins!)
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
-      (setting/set! :site-name "Metabase Test")
-      (core/initialization-complete!)
 
-      ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we get wacky 'method in protocol not implemented' errors
-      ;; when running tests against an individual namespace
-      (doseq [engine (keys (driver/available-drivers))
-              :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
-        (u/ignore-exceptions
-          (require driver-test-ns :reload)))
+      (plugins/load-plugins!)
+      ;; we don't want to actually start the task scheduler (we don't want sync or other stuff happening in the BG
+      ;; while running tests), but we still need to make sure it sets itself up properly so tasks can get scheduled
+      ;; without throwing Exceptions
+      (#'task/set-jdbc-backend-properties!)
+      (setting/set! :site-name "Metabase Test")
+      (init-status/set-complete!)
 
       ;; If test setup fails exit right away
       (catch Throwable e
@@ -101,3 +93,15 @@
   []
   (log/info "Shutting down Metabase unit test runner")
   (core/stop-jetty!))
+
+(defn call-with-test-scaffolding
+  "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test
+  namespace) at the repl with the appropriate environment setup for the test to pass."
+  [f]
+  (try
+    (test-startup)
+    (f)
+    (catch Exception e
+      (throw e))
+    (finally
+      (test-teardown))))

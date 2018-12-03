@@ -1,4 +1,0 @@
-/* remove padding since ModalContent has it's own */
-.ModalContent .Form-inputs {
-  /*padding: 0;*/
-}

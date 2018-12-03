@@ -1,15 +1,12 @@
 (ns metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
-  (:require [expectations :refer :all]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
+  (:require [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   [[8   "Kyle's Low-Carb Grill"]
    [67  "Kyle's Low-Carb Grill"]
    [80  "Kyle's Low-Carb Grill"]
@@ -20,15 +17,15 @@
    [426 "Kyle's Low-Carb Grill"]
    [470 "Kyle's Low-Carb Grill"]]
   (->> (data/dataset geographical-tips
-         (data/run-query tips
-           (ql/filter (ql/= $tips.venue.name "Kyle's Low-Carb Grill"))
-           (ql/order-by (ql/asc $id))
-           (ql/limit 10)))
+         (data/run-mbql-query tips
+           {:filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
+            :order-by [[:asc $id]]
+            :limit    10}))
        rows (mapv (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))))
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   [[446
     {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
     "Cam's Mexican Gastro Pub is a historical and underappreciated place to conduct a business meeting with friends."
@@ -58,29 +55,30 @@
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
     {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
   (rows (data/dataset geographical-tips
-          (data/run-query tips
-            (ql/filter (ql/and (ql/= $tips.source.service "twitter")
-                               (ql/= $tips.source.username "kyle")))
-            (ql/order-by (ql/asc $tips.venue.name))))))
+          (data/run-mbql-query tips
+            {:filter   [:and
+                        [:= $tips.source.service "twitter"]
+                        [:= $tips.source.username "kyle"]]
+             :order-by [[:asc $tips.venue.name]]}))))
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   [99]
   (first-row (data/dataset geographical-tips
-               (data/run-query tips
-                 (ql/aggregation (ql/distinct $tips.venue.name))))))
+               (data/run-mbql-query tips
+                 {:aggregation [[:distinct $tips.venue.name]]}))))
 
 ;; Now let's just get the regular count
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   [500]
   (first-row (data/dataset geographical-tips
-               (data/run-query tips
-                 (ql/aggregation (ql/count $tips.venue.name))))))
+               (data/run-mbql-query tips
+                 {:aggregation [[:count $tips.venue.name]]}))))
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   {:rows        [["facebook"   107]
                  ["flare"      105]
                  ["foursquare" 100]
@@ -89,15 +87,15 @@
    :columns     ["source.service" "count"]
    :native_form true}
   (->> (data/dataset geographical-tips
-         (data/run-query tips
-           (ql/aggregation (ql/count))
-           (ql/breakout $tips.source.service)))
+         (data/run-mbql-query tips
+           {:aggregation [[:count]]
+            :breakout    [$tips.source.service]}))
        booleanize-native-form
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   {:columns ["venue.name"]
    :rows    [["Lucky's Gluten-Free Café"]
              ["Joe's Homestyle Eatery"]
@@ -110,15 +108,15 @@
              ["Mission Homestyle Churros"]
              ["Sameer's Pizza Liquor Store"]]}
   (select-keys (:data (data/dataset geographical-tips
-                        (data/run-query tips
-                          (ql/fields $tips.venue.name)
-                          (ql/order-by (ql/asc $id))
-                          (ql/limit 10))))
+                        (data/run-mbql-query tips
+                          {:fields   [$tips.venue.name]
+                           :order-by [[:asc $id]]
+                           :limit    10})))
                [:columns :rows]))
 
 
 ;;; Nested Field w/ ordering by aggregation
-(datasets/expect-with-engines (engines-that-support :nested-fields)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-fields)
   [["jane"           4]
    ["kyle"           5]
    ["tupac"          5]
@@ -134,8 +132,8 @@
    ["rasta_toucan"  13]
    [nil            400]]
   (->> (data/dataset geographical-tips
-         (data/run-query tips
-           (ql/aggregation (ql/count))
-           (ql/breakout $tips.source.mayor)
-           (ql/order-by (ql/asc (ql/aggregate-field 0)))))
+         (data/run-mbql-query tips
+           {:aggregation [[:count]]
+            :breakout    [$tips.source.mayor]
+            :order-by    [[:asc [:aggregation 0]]]}))
        rows (format-rows-by [identity int])))

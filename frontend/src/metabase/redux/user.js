@@ -1,26 +1,46 @@
 /* @flow */
 
-import { createAction, handleActions } from "redux-actions";
+import {
+  createAction,
+  handleActions,
+  createThunkAction,
+} from "metabase/lib/redux";
 
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
+import { LOGOUT } from "metabase/auth/auth";
 
-export const setUser = createAction("SET_USER");
+import { UserApi } from "metabase/services";
 
-export const refreshCurrentUser = createAction("REFRESH_CURRENT_USER", async function getCurrentUser() {
-    try {
-        let response = await fetch("/api/user/current", { credentials: 'same-origin' });
-        if (response.status === 200) {
-            return await response.json();
-        }
-    } catch (e) {
-        console.warn("couldn't get user", e)
-    }
+export const REFRESH_CURRENT_USER = "metabase/user/REFRESH_CURRENT_USER";
+export const refreshCurrentUser = createAction(REFRESH_CURRENT_USER, () => {
+  try {
+    return UserApi.current();
+  } catch (e) {
     return null;
-})
+  }
+});
 
-export const currentUser = handleActions({
-    ["SET_USER"]: { next: (state, { payload }) => payload },
-    ["REFRESH_CURRENT_USER"]: { next: (state, { payload }) => payload },
-    ["AUTH_LOGOUT"]: { next: (state, { payload }) => null },
-    [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, is_qbnewb: false }) },
-}, null);
+export const LOAD_CURRENT_USER = "metabase/user/LOAD_CURRENT_USER";
+export const loadCurrentUser = createThunkAction(
+  LOAD_CURRENT_USER,
+  () => async (dispatch, getState) => {
+    if (!getState().currentUser) {
+      await dispatch(refreshCurrentUser());
+    }
+  },
+);
+
+export const CLEAR_CURRENT_USER = "metabase/user/CLEAR_CURRENT_USER";
+export const clearCurrentUser = createAction(CLEAR_CURRENT_USER);
+
+export const currentUser = handleActions(
+  {
+    [LOGOUT]: { next: (state, { payload }) => null },
+    [CLEAR_CURRENT_USER]: { next: (state, payload) => null },
+    [REFRESH_CURRENT_USER]: { next: (state, { payload }) => payload },
+    [CLOSE_QB_NEWB_MODAL]: {
+      next: (state, { payload }) => ({ ...state, is_qbnewb: false }),
+    },
+  },
+  null,
+);

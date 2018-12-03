@@ -1,1 +1,1 @@
-web: ./bin/start
+web: HEROKU=true ./bin/start

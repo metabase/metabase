@@ -5,7 +5,8 @@
     "business intelligence",
     "analytics",
     "dashboard",
-    "charting"
+    "charting",
+    "metabase"
   ],
   "website": "http://www.metabase.com/",
   "repository": "https://github.com/metabase/metabase",

@@ -1,45 +1,33 @@
+import { createSelector } from "reselect";
+import _ from "underscore";
 
-import { createSelector } from 'reselect';
+export const getEditingPulse = state => state.pulse.editingPulse;
 
-const pulsesSelector = state => state.pulse.pulses;
-const pulseIdListSelector = state => state.pulse.pulseList;
+export const getPulseFormInput = state => state.pulse.formInput;
 
-const pulseListSelector = createSelector(
-    [pulseIdListSelector, pulsesSelector],
-    (pulseIdList, pulses) => pulseIdList && pulseIdList.map(id => pulses[id])
+export const hasLoadedChannelInfoSelector = createSelector(
+  [getPulseFormInput],
+  formInput => !!formInput.channels,
+);
+export const hasConfiguredAnyChannelSelector = createSelector(
+  [getPulseFormInput],
+  formInput =>
+    (formInput.channels &&
+      _.some(Object.values(formInput.channels), c => c.configured)) ||
+    false,
+);
+export const hasConfiguredEmailChannelSelector = createSelector(
+  [getPulseFormInput],
+  formInput =>
+    (formInput.channels &&
+      _.some(
+        Object.values(formInput.channels),
+        c => c.type === "email" && c.configured,
+      )) ||
+    false,
 );
 
-const editingPulseSelector = state => state.pulse.editingPulse;
+export const getPulseCardPreviews = state => state.pulse.cardPreviews;
 
-const cardsSelector        = state => state.pulse.cards
-const cardIdListSelector   = state => state.pulse.cardList
-
-const usersSelector        = state => state.pulse.users
-
-const formInputSelector    = state => state.pulse.formInput
-
-const cardPreviewsSelector = state => state.pulse.cardPreviews
-
-const cardListSelector = createSelector(
-    [cardIdListSelector, cardsSelector],
-    (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
-);
-
-const userListSelector = createSelector(
-    [usersSelector],
-    (users) => Object.values(users)
-);
-
-const getPulseId = (state, props) => props.params.pulseId ? parseInt(props.params.pulseId) : null;
-
-// LIST
-export const listPulseSelectors = createSelector(
-    [getPulseId, pulseListSelector, formInputSelector],
-    (pulseId, pulses, formInput) => ({ pulseId, pulses, formInput })
-);
-
-// EDIT
-export const editPulseSelectors = createSelector(
-    [getPulseId, editingPulseSelector, cardsSelector, cardListSelector, cardPreviewsSelector, userListSelector, formInputSelector],
-    (pulseId, pulse, cards, cardList, cardPreviews, userList, formInput) => ({ pulseId, pulse, cards, cardList, cardPreviews, userList, formInput})
-);
+export const getPulseId = (state, props) =>
+  props.params.pulseId ? parseInt(props.params.pulseId) : null;

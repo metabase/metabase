@@ -1,0 +1,75 @@
+#!/bin/sh
+
+set -eu
+
+# gettext installed via homebrew is "keg-only", add it to the PATH
+if [ -d "/usr/local/opt/gettext/bin" ]; then
+  export PATH="/usr/local/opt/gettext/bin:$PATH"
+fi
+
+# check xgettext is installed
+if ! command -v xgettext > /dev/null; then
+  echo 'Please install the "xgettext" command (e.x. `brew install gettext`)'
+  exit 1
+fi
+
+POT_NAME="locales/metabase.pot"
+POT_BACKEND_NAME="locales/metabase-backend.pot"
+# NOTE: hardcoded in .babelrc
+POT_FRONTEND_NAME="locales/metabase-frontend.pot"
+# NOTE: hardcoded in src/metabase/automagic_dashboards/rules.clj
+POT_AUTODASH_NAME="locales/metabase-automatic-dashboards.pot"
+
+mkdir -p "locales"
+
+#######################
+# update frontend pot #
+#######################
+
+# NOTE: about twice as fast to call babel directly rather than a full webpack build
+BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null frontend/src
+# BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
+
+# NOTE: replace c-3po's "${ 0 }" style references with xgettext "{0}" style references for consistency
+sed -i".bak" -E 's/\$\{ *([0-9]+) *\}/{\1}/g' "$POT_FRONTEND_NAME"
+rm "$POT_FRONTEND_NAME.bak"
+
+######################
+# update backend pot #
+######################
+
+# xgettext before 0.19 does not understand --add-location=file. Even CentOS
+# 7 ships with an older gettext. We will therefore generate full location
+# info on those systems, and only file names where xgettext supports it
+LOC_OPT=$(xgettext --add-location=file -f - </dev/null >/dev/null 2>&1 && echo --add-location=file || echo --add-location)
+
+find src -name "*.clj" | xgettext                   \
+  --from-code=UTF-8                                 \
+  --language=lisp                                   \
+  --copyright-holder='Metabase <docs@metabase.com>' \
+  --package-name="metabase"                         \
+  --msgid-bugs-address="docs@metabase.com"          \
+  -k                                                \
+  -kmark:1 -ki18n/mark:1                            \
+  -ktrs:1 -ki18n/trs:1                              \
+  -ktru:1 -ki18n/tru:1                              \
+  -ktrun:1,2 -ki18n/trun:1,2                        \
+  -ktrsn:1,2 -ki18n/trsn:1,2                        \
+  $LOC_OPT                                          \
+  --add-comments --sort-by-file                     \
+  -o $POT_BACKEND_NAME -f -
+
+sed -i".bak" 's/charset=CHARSET/charset=UTF-8/' "$POT_BACKEND_NAME"
+rm "$POT_BACKEND_NAME.bak"
+
+########################
+# update auto dash pot #
+########################
+
+lein generate-automagic-dashboards-pot
+
+##################
+# merge all pots #
+##################
+
+msgcat "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"

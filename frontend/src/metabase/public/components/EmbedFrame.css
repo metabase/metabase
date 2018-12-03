@@ -1,0 +1,40 @@
+.EmbedFrame {
+  background-color: white;
+}
+
+.EmbedFrame-header,
+.EmbedFrame-footer {
+  color: var(--color-text-dark);
+  background-color: white;
+}
+
+.Theme--night.EmbedFrame {
+  background-color: var(--color-bg-black);
+  border: 1px solid var(--color-accent2);
+}
+
+.Theme--night .EmbedFrame-header,
+.Theme--night .EmbedFrame-footer {
+  color: color(var(--color-text-white) alpha(-14%));
+  background-color: var(--color-bg-black);
+  border-color: var(--color-accent2);
+}
+
+.Theme--night.EmbedFrame .fullscreen-night-text {
+  color: color(var(--color-text-white) alpha(-14%));
+  transition: color 1s linear;
+}
+
+.Theme--night.EmbedFrame svg text {
+  fill: color(var(--color-text-white) alpha(-14%)) !important;
+}
+
+.Theme--night.EmbedFrame .DashCard .Card {
+  background-color: var(--color-bg-black);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.Theme--night.EmbedFrame .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.Theme--night.EmbedFrame .enable-dots .dc-tooltip circle.dot {
+  fill: currentColor;
+}

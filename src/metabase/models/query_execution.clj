@@ -1,9 +1,20 @@
 (ns metabase.models.query-execution
-  (:require [toucan.models :as models]
-            [metabase.util :as u]))
+  "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
+  time, context it was executed in, etc."
+  (:require [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.mbql.schema :as mbql.s]
+            [schema.core :as s]
+            [toucan.models :as models]))
 
+(models/defmodel QueryExecution :query_execution)
 
-(models/defmodel QueryExecution :query_queryexecution)
+(def ^:private ^{:arglists '([context])} validate-context
+  (s/validator mbql.s/Context))
+
+(defn- pre-insert [{context :context, :as query-execution}]
+  (u/prog1 query-execution
+    (validate-context context)))
 
 (defn- post-select [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
@@ -12,6 +23,7 @@
 (u/strict-extend (class QueryExecution)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly [:id :uuid :version :json_query :raw_query :status :started_at :finished_at :running_time :error :result_rows])
-          :types          (constantly {:json_query :json, :result_data :json, :status :keyword, :raw_query :clob, :error :clob, :additional_info :clob})
-          :post-select    post-select}))
+         {:types       (constantly {:json_query :json, :status :keyword, :context :keyword, :error :clob})
+          :pre-insert  pre-insert
+          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a QueryExecution!")))))
+          :post-select post-select}))

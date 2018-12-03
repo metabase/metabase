@@ -1,0 +1,146 @@
+:local(.container) {
+  composes: flex align-center from "style";
+  transition: opacity 500ms linear;
+  border: 2px solid var(--color-border);
+  margin-right: 0.85em;
+  margin-bottom: 0.5em;
+  padding: 0.25em 1em 0.25em 1em;
+}
+
+:local(.container) legend {
+  text-transform: none;
+  position: relative;
+  height: 2px;
+  line-height: 0;
+  margin-left: -0.45em;
+  padding: 0 0.5em;
+}
+
+:local(.container.deemphasized) {
+  opacity: 0.4;
+}
+:local(.container.deemphasized:hover) {
+  opacity: 1;
+}
+
+:local(.parameter) {
+  composes: flex align-center from "style";
+  font-weight: 600;
+  min-height: 30px;
+  min-width: 150px;
+  color: var(--color-text-medium);
+}
+
+:local(.nameInput) {
+  composes: flex align-center from "style";
+  min-height: 30px;
+  min-width: 150px;
+  color: var(--color-text-medium);
+  border: none;
+  font-size: 1em;
+  font-weight: 600;
+  border: none;
+}
+
+:local(.fullscreen) {
+  margin-right: 0;
+  margin-left: 0;
+}
+:local(.fullscreen .name) {
+  font-size: 14px;
+}
+:local(.fullscreen .parameter) {
+  min-width: 0;
+  min-height: 0;
+  background-color: transparent;
+  font-size: 14px;
+}
+
+:local(.parameter.selected) {
+  font-weight: bold;
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+:local(.parameter.noPopover) input {
+  /* NOTE: Fixed with to circumvent issues with flexbox with container having a min-width */
+  width: 115px;
+  font-size: 1em;
+  font-weight: 600;
+  border: none;
+  background: none;
+}
+
+:local(.parameter.noPopover.isEditing) input {
+  width: 138px;
+}
+
+:local(.parameter.noPopover.selected) input {
+  width: 127px;
+  font-weight: bold;
+  color: var(--color-brand);
+}
+
+:local(.parameter.noPopover) input:focus {
+  outline: none;
+  color: var(--color-text-dark);
+  width: 127px;
+}
+:local(.parameter.noPopover) input::-webkit-input-placeholder {
+  color: var(--color-text-medium);
+}
+:local(.parameter.noPopover) input:-moz-placeholder {
+  color: var(--color-text-medium);
+}
+:local(.parameter.noPopover) input::-moz-placeholder {
+  color: var(--color-text-medium);
+}
+:local(.parameter.noPopover) input:-ms-input-placeholder {
+  color: var(--color-text-medium);
+}
+
+:local(.input) {
+}
+
+:local(.nameInput:focus),
+:local(.input:focus) {
+  outline: none;
+}
+
+:local(.name) {
+  composes: mr1 from "style";
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--color-text-medium);
+}
+
+:local(.parameterButtons) {
+  display: flex;
+  justify-content: space-around;
+  font-size: smaller;
+}
+
+:local(.editButton),
+:local(.removeButton) {
+  composes: flex align-center cursor-pointer from "style";
+}
+
+:local(.editButton:hover) {
+  color: var(--color-brand);
+}
+
+:local(.removeButton:hover) {
+  color: var(--color-error);
+}
+
+:local(.editNameIconContainer) {
+  display: inline-block;
+  height: 0;
+  margin-left: 0.25em;
+  width: 10px;
+}
+
+:local(.editNameIconContainer) > svg {
+  position: absolute;
+  top: -6px;
+}

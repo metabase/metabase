@@ -1,19 +1,33 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [database :refer [Database]]
-                             [metric :refer [Metric], :as metric]
-                             [revision :refer [Revision]]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]]
+            [metabase.models
+             [database :refer [Database]]
+             [metric :as metric :refer [Metric]]
+             [revision :refer [Revision]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :as data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]))
 
 ;; ## Helper Fns
+
+(def ^:private ^:const metric-defaults
+  {:description             nil
+   :show_in_getting_started false
+   :caveats                 nil
+   :points_of_interest      nil
+   :how_is_this_calculated  nil
+   :created_at              true
+   :updated_at              true
+   :archived                false
+   :definition              nil})
 
 (defn- user-details [user]
   (tu/match-$ user
@@ -31,8 +45,8 @@
   (-> (into {} metric)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (some? created_at)
+             :updated_at (some? updated_at))))
 
 
 ;; ## /api/metric/* AUTHENTICATION Tests
@@ -72,19 +86,13 @@
                                                  :definition "foobar"}))
 
 (expect
-  {:name                    "A Metric"
-   :description             "I did it!"
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :how_is_this_calculated  nil
-   :creator_id              (user->id :crowberto)
-   :creator                 (user-details (fetch-user :crowberto))
-   :created_at              true
-   :updated_at              true
-   :is_active               true
-   :definition              {:database 21
-                             :query    {:filter ["abc"]}}}
+  (merge metric-defaults
+         {:name        "A Metric"
+          :description "I did it!"
+          :creator_id  (user->id :crowberto)
+          :creator     (user-details (fetch-user :crowberto))
+          :definition  {:database 21
+                        :query    {:filter ["abc"]}}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (metric-response ((user->client :crowberto) :post 200 "metric" {:name                    "A Metric"
@@ -107,39 +115,37 @@
                                               :revision_message "something different"}))
 
 ;; test validations
-(expect {:errors {:name "value must be a non-blank string."}}
+(expect
+  {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {}))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
+(expect
+  {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
+(expect
+  {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                   :revision_message ""}))
-
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                   :revision_message "123"}))
-
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                   :revision_message "123"
-                                                   :definition       "foobar"}))
+                                                  :revision_message ""}))
 
 (expect
-  {:name                    "Costa Rica"
-   :description             nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :how_is_this_calculated  nil
-   :creator_id              (user->id :rasta)
-   :creator                 (user-details (fetch-user :rasta))
-   :created_at              true
-   :updated_at              true
-   :is_active               true
-   :definition              {:database 2
-                             :query    {:filter ["not" "the toucans you're looking for"]}}}
+  {:errors {:definition "value must be a map."}}
+  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
+                                                  :revision_message "123"}))
+
+(expect
+  {:errors {:definition "value must be a map."}}
+  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
+                                                  :revision_message "123"
+                                                  :definition       "foobar"}))
+
+(expect
+  (merge metric-defaults
+         {:name       "Costa Rica"
+          :creator_id (user->id :rasta)
+          :creator    (user-details (fetch-user :rasta))
+          :definition {:database 2
+                       :query    {:filter ["not" "the toucans you're looking for"]}}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]} {:table_id table-id}]]
@@ -172,18 +178,12 @@
 
 (expect
   [{:success true}
-   {:name                    "Toucans in the rainforest"
-    :description             "Lookin' for a blueberry"
-    :show_in_getting_started false
-    :caveats                 nil
-    :points_of_interest      nil
-    :how_is_this_calculated  nil
-    :creator_id              (user->id :rasta)
-    :creator                 (user-details (fetch-user :rasta))
-    :created_at              true
-    :updated_at              true
-    :is_active               false
-    :definition              {}}]
+   (merge metric-defaults
+          {:name        "Toucans in the rainforest"
+           :description "Lookin' for a blueberry"
+           :creator_id  (user->id :rasta)
+           :creator     (user-details (fetch-user :rasta))
+           :archived    true})]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:table_id table-id}]]
@@ -199,18 +199,11 @@
 
 
 (expect
-  {:name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :how_is_this_calculated  nil
-   :creator_id              (user->id :crowberto)
-   :creator                 (user-details (fetch-user :crowberto))
-   :created_at              true
-   :updated_at              true
-   :is_active               true
-   :definition              {}}
+  (merge metric-defaults
+         {:name        "Toucans in the rainforest"
+          :description "Lookin' for a blueberry"
+          :creator_id  (user->id :crowberto)
+          :creator     (user-details (fetch-user :crowberto))})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
@@ -239,7 +232,7 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
+                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -252,17 +245,17 @@
                                             :points_of_interest      nil
                                             :how_is_this_calculated  nil
                                             :definition              {:database 123
-                                                                      :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                                                                      :query    {:filter [:= [:field-id 10] 20]}}}]
                   Revision [_              {:model       "Metric"
                                             :model_id    id
                                             :object      {:name "b"
-                                                          :definition {:filter ["AND" [">" 1 25]]}}
+                                                          :definition {:filter [:and [:> 1 25]]}}
                                             :is_creation true}]
                   Revision [_              {:model    "Metric"
                                             :model_id id
                                             :user_id  (user->id :crowberto)
                                             :object   {:name "c"
-                                                       :definition {:filter ["AND" [">" 1 25]]}}
+                                                       :definition {:filter [:and [:> 1 25]]}}
                                             :message  "updated"}]]
     (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
              (dissoc revision :timestamp :id)))))
@@ -313,7 +306,7 @@
      :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
                     :description {:after "One metric to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123
-                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
+                                          :query    {:filter ["=" ["field-id" 10] 20]}}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
@@ -334,7 +327,7 @@
                                                                          :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
-                                                                                                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                                                                                                   :query    {:filter [:= [:field-id 10] 20]}}}}]
                   Revision [{revision-id :id} {:model       "Metric"
                                                :model_id    id
                                                :object      {:creator_id              (user->id :crowberto)
@@ -346,7 +339,7 @@
                                                              :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
-                                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                       :query    {:filter [:= [:field-id 10] 20]}}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Metric"
                                                :model_id id
@@ -360,7 +353,7 @@
                                                           :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
-                                                                                    :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                    :query    {:filter [:= [:field-id 10] 20]}}}
                                                :message  "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
@@ -371,7 +364,14 @@
 
 (tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
                       Metric [metric-2 {:name "Metric B"}]
-                      Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
-  (tu/mappify (hydrate [metric-1
-                        metric-2] :creator))
+                      Metric [_        {:archived true}]] ; inactive metrics shouldn't show up
+  (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
+                        (assoc metric-2 :database_id (data/id))]
+                       :creator))
   ((user->client :rasta) :get 200 "metric/"))
+
+;; Test related/recommended entities
+(expect
+  #{:table :metrics :segments}
+  (tt/with-temp* [Metric [{metric-id :id}]]
+    (-> ((user->client :crowberto) :get 200 (format "metric/%s/related" metric-id)) keys set)))

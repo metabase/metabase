@@ -2,27 +2,28 @@
   --default-border-radius: 4px;
 }
 
-.rounded, :local(.rounded) {
+.rounded,
+:local(.rounded) {
   border-radius: var(--default-border-radius);
 }
 
 .rounded-top {
-  border-top-left-radius:  var(--default-border-radius);
+  border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
 }
 
 .rounded-bottom {
-  border-bottom-left-radius:  var(--default-border-radius);
+  border-bottom-left-radius: var(--default-border-radius);
   border-bottom-right-radius: var(--default-border-radius);
 }
 
 .rounded-left {
-  border-top-left-radius:    var(--default-border-radius);
+  border-top-left-radius: var(--default-border-radius);
   border-bottom-left-radius: var(--default-border-radius);
 }
 
 .rounded-right {
-  border-top-right-radius:    var(--default-border-radius);
+  border-top-right-radius: var(--default-border-radius);
   border-bottom-right-radius: var(--default-border-radius);
 }
 

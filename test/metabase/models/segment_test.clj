@@ -1,14 +1,13 @@
 (ns metabase.models.segment-test
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [segment :refer :all, :as segment]
-                             [table :refer [Table]])
+            [metabase.models
+             [database :refer [Database]]
+             [segment :as segment :refer :all]
+             [table :refer [Table]]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 (defn- user-details
   [username]
@@ -38,11 +37,11 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
-   :definition              {:clause ["a" "b"]}}
+   :archived                false
+   :definition              {:aggregation [[:count]]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]]
-    (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
+    (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:aggregation [[:count]]})))
 
 
 ;; exists?
@@ -65,14 +64,12 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
-   :definition              {:database 45
-                             :query    {:filter ["yay"]}}}
+   :archived                false
+   :definition              {:filter [:= [:field-id 1] 2]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}   {:db_id database-id}]
                   Segment  [{segment-id :id} {:table_id   table-id
-                                              :definition {:database 45
-                                                           :query    {:filter ["yay"]}}}]]
+                                              :definition {:filter [:= [:field-id 1] 2]}}]]
     (let [{:keys [creator] :as segment} (retrieve-segment segment-id)]
       (-> segment
           (dissoc :id :table_id :created_at :updated_at)
@@ -88,14 +85,14 @@
     :show_in_getting_started false
     :caveats                 nil
     :points_of_interest      nil
-    :is_active               true
-    :definition              {}}]
+    :archived                false
+    :definition              nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
                   Segment  [{segement-id-1 :id} {:table_id table-id-1, :name "Segment 1", :description nil}]
                   Segment  [{segment-id-2 :id}  {:table_id table-id-2}]
-                  Segment  [{segment-id3 :id}   {:table_id table-id-1, :is_active false}]]
+                  Segment  [{segment-id3 :id}   {:table_id table-id-1, :archived true}]]
     (doall (for [segment (u/prog1 (retrieve-segments table-id-1)
                                   (assert (= 1 (count <>))))]
              (-> (dissoc (into {} segment) :id :table_id :created_at :updated_at)
@@ -117,9 +114,8 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               true
-   :definition              {:database 2
-                             :query    {:filter ["not" "the toucans you're looking for"]}}}
+   :archived                false
+   :definition              {:filter [:!= [:field-id 10] "toucans"]}}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
@@ -131,8 +127,7 @@
                                   :points_of_interest      nil
                                   :creator_id              (user->id :crowberto)
                                   :table_id                456
-                                  :definition              {:database 2
-                                                            :query    {:filter ["not" "the toucans you're looking for"]}}
+                                  :definition              {:filter [:!= [:field-id 10] "toucans"]}
                                   :revision_message        "Just horsing around"})))
 
 ;; delete-segment!
@@ -144,8 +139,8 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :is_active               false
-   :definition              {}}
+   :archived                true
+   :definition              nil}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
@@ -155,9 +150,7 @@
 
 ;; ## Segment Revisions
 
-(tu/resolve-private-vars metabase.models.segment serialize-segment diff-segments)
-
-;; serialize-segment
+;; #'segment/serialize-segment
 (expect
   {:id                      true
    :table_id                true
@@ -167,21 +160,21 @@
    :show_in_getting_started false
    :caveats                 nil
    :points_of_interest      nil
-   :definition              {:filter ["AND",[">",4,"2014-10-19"]]}
-   :is_active               true}
+   :definition              {:filter [:> [:field-id 4] "2014-10-19"]}
+   :archived                false}
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id
-                                            :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]
-    (-> (serialize-segment Segment (:id segment) segment)
+                                            :definition {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}]]
+    (-> (#'segment/serialize-segment Segment (:id segment) segment)
         (update :id boolean)
         (update :table_id boolean))))
 
 
-;; diff-segments
+;; #'segment/diff-segments
 (expect
-  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
-                 :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}
+  {:definition  {:before {:filter [:> [:field-id 4] "2014-10-19"]}
+                 :after  {:filter [:between [:field-id 4] "2014-07-01" "2014-10-19"]}}
    :description {:before "Lookin' for a blueberry"
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
@@ -189,43 +182,43 @@
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id
-                                            :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]
-    (diff-segments Segment segment (assoc segment
-                                          :name        "Something else"
-                                          :description "BBB"
-                                          :definition  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}))))
+                                            :definition {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}]]
+    (#'segment/diff-segments Segment segment (assoc segment
+                                               :name        "Something else"
+                                               :description "BBB"
+                                               :definition  {:filter [:between [:field-id 4] "2014-07-01" "2014-10-19"]}))))
 
 ;; test case where definition doesn't change
 (expect
   {:name {:before "A"
           :after  "B"}}
-  (diff-segments Segment
-                 {:name        "A"
-                  :description "Unchanged"
-                  :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}
-                 {:name        "B"
-                  :description "Unchanged"
-                  :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+  (#'segment/diff-segments Segment
+                           {:name        "A"
+                            :description "Unchanged"
+                            :definition  {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}
+                           {:name        "B"
+                            :description "Unchanged"
+                            :definition  {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}))
 
 ;; first version  so comparing against nil
 (expect
   {:name        {:after  "A"}
    :description {:after "Unchanged"}
-   :definition  {:after {:filter ["AND" [">" 4 "2014-10-19"]]}}}
-  (diff-segments Segment
-                 nil
-                 {:name        "A"
-                  :description "Unchanged"
-                  :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+   :definition  {:after {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}}
+  (#'segment/diff-segments Segment
+                           nil
+                           {:name        "A"
+                            :description "Unchanged"
+                            :definition  {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}))
 
 ;; removals only
 (expect
-  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}
-                 :after  {:filter ["AND" [">" 4 "2014-10-19"]]}}}
-  (diff-segments Segment
-                 {:name        "A"
-                  :description "Unchanged"
-                  :definition  {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}}
-                 {:name        "A"
-                  :description "Unchanged"
-                  :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
+  {:definition  {:before {:filter [:and [:> [:field-id 4] "2014-10-19"] [:= 5 "yes"]]}
+                 :after  {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}}
+  (#'segment/diff-segments Segment
+                           {:name        "A"
+                            :description "Unchanged"
+                            :definition  {:filter [:and [:> [:field-id 4] "2014-10-19"] [:= 5 "yes"]]}}
+                           {:name        "A"
+                            :description "Unchanged"
+                            :definition  {:filter [:and [:> [:field-id 4] "2014-10-19"]]}}))

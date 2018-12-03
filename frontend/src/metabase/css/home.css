@@ -1,191 +1,35 @@
 .Nav {
-    z-index: 4;
-}
-
-.CheckBg {
-    background-image: url('/app/components/icons/assets/header_rect.svg');
-    background-repeat: repeat;
-}
-
-.CheckBg-offset {
-  background-position-y: -15px;
-}
-
-.NavItem {
-    border-radius: 8px;
-}
-
-.NavItem:hover, .NavItem.NavItem--selected {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-.NavNewQuestion {
-    box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69);
-}
-.NavNewQuestion:hover {
-    box-shadow: 0px 3px 2px 2px rgba(77, 136, 189, 0.75);
-    color: #3875AC;
-}
-
-.Greeting {
-    padding-top: 2rem;
-    padding-bottom: 3rem;
-}
-
-@media screen and (--breakpoint-min-xl) {
-    .Greeting {
-        padding-top: 6em;
-        padding-bottom: 6em;
-    }
-}
-
-.bullet {
-    position: relative;
-    margin-left: 1.2em;
-}
-.bullet:before {
-    content: "\2022";
-    color: #6FB0EB;
-    position: absolute;
-    top: 0;
-    margin-top: 16px;
-    left: -0.85em;
-}
-
-.NavDropdown {
-    position: relative;
-}
-.NavDropdown.open {
-    z-index: 100;
-}
-.NavDropdown .NavDropdown-content {
-    display: none;
-}
-.NavDropdown.open .NavDropdown-content {
-    display: inherit;
-}
-.NavDropdown .NavDropdown-button {
-    position: relative;
-    border-radius: 8px;
-}
-.NavDropdown .NavDropdown-content {
-    position: absolute;
-    border-radius: 4px;
-    top: 38px;
-    min-width: 200px;
-}
-
-.NavDropdown .NavDropdown-content.NavDropdown-content--dashboards {
-  top: 33px;
-}
-
-.NavDropdown .NavDropdown-button:before,
-.NavDropdown .NavDropdown-content:before {
-    content:"";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    box-shadow: 0 0 4px rgba(0, 0, 0, .12);
-    background-clip: padding-box;
-}
-
-.NavDropdown .NavDropdown-content:before {
-    z-index: -2;
-    border-radius: 4px;
-}
-.NavDropdown .NavDropdown-button:before {
-    z-index: -1;
-    opacity: 0;
-    border-radius: 8px;
-}
-.NavDropdown.open .NavDropdown-button:before {
-    opacity: 1;
-}
-.NavDropdown .NavDropdown-content-layer {
-    position: relative;
-    z-index: 1;
-    overflow: hidden;
-}
-.NavDropdown .NavDropdown-button-layer {
-    position: relative;
-    z-index: 2;
-}
-
-.NavDropdown.open .NavDropdown-button,
-.NavDropdown .NavDropdown-content-layer {
-    background-color: #6FB0EB;
-}
-
-.NavDropdown .NavDropdown-content-layer {
-    padding-top: 10px;
-    border-radius: 4px;
-}
-
-.NavDropdown .DashboardList {
-    min-width: 332px;
+  z-index: 4;
+  flex-shrink: 0;
 }
 
 .QuestionCircle {
-    display: inline-block;
-    font-size: 3.25rem;
-    width: 73px;
-    height: 73px;
-    border-radius: 99px;
-    border: 3px solid currentcolor;
-    text-align: center;
-}
-
-.IconCircle {
-    line-height: 0;
-    padding: var(--padding-1);
-    border-radius: 99px;
-    border: 1px solid currentcolor;
-}
-
-@keyframes pop {
-    0% { transform: scale(0.75) }
-   75% { transform: scale(1.0625) }
-  100% { transform: scale(1) }
-}
-
-.animate-pop {
-    animation-name: popin;
-    animation-duration: .15s;
-    animation-timing-function: ease-out;
-}
-
-.AdminLink {
-    opacity: 0.435;
-}
-
-.AdminLink:hover {
-    opacity: 1;
+  display: inline-block;
+  font-size: 3.25rem;
+  width: 73px;
+  height: 73px;
+  border-radius: 99px;
+  border: 3px solid currentcolor;
+  text-align: center;
 }
 
 .break-word {
-    word-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .tooltip {
-    position: absolute;
-    background-color: #fff;
-    border-radius: 2px;
-    box-shadow: 1px 1px 1px rgba(0, 0, 0, .12);
-    color: #ddd;
-}
-
-.TableDescription {
-    max-width: 42rem;
-    line-height: 1.4;
+  position: absolute;
+  background-color: var(--color-bg-white);
+  border-radius: 2px;
+  box-shadow: 1px 1px 1px var(--color-shadow);
+  color: var(--color-text-light);
 }
 
 .Layout-sidebar {
   min-height: 100vh;
   width: 346px;
-  background-color: #F9FBFC;
-  border-left: 2px solid var(--border-color);
+  background-color: var(--color-bg-light);
+  border-left: 2px solid var(--color-border);
 }
 .Layout-mainColumn {
   max-width: 700px;
@@ -194,8 +38,8 @@
 }
 
 .Sidebar-header {
-    font-size: 13px;
-    letter-spacing: 0.5px;
-    line-height: 1;
-    text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
 }

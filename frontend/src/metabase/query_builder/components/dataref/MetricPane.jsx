@@ -1,6 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
-
+import React, { Component } from "react";
+import { connect } from "react-redux";
+import PropTypes from "prop-types";
+import { t } from "c-3po";
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
@@ -9,78 +11,95 @@ import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 
 import _ from "underscore";
+import { fetchTableMetadata } from "metabase/redux/metadata";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
+const mapDispatchToProps = {
+  fetchTableMetadata,
+};
+
+const mapStateToProps = (state, props) => ({
+  metadata: getMetadata(state, props),
+});
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricPane extends Component {
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        this.state = {
-            table: undefined,
-            tableForeignKeys: undefined
-        };
+    _.bindAll(this, "setQueryMetric");
+  }
 
-        _.bindAll(this, "setQueryMetric");
+  static propTypes = {
+    metric: PropTypes.object.isRequired,
+    query: PropTypes.object,
+    fetchTableMetadata: PropTypes.func.isRequired,
+    runQuestionQuery: PropTypes.func.isRequired,
+    setDatasetQuery: PropTypes.func.isRequired,
+    setCardAndRun: PropTypes.func.isRequired,
+    metadata: PropTypes.object,
+  };
+
+  componentWillMount() {
+    this.props.fetchTableMetadata(this.props.metric.table_id);
+  }
+
+  newCard() {
+    const { metric, metadata } = this.props;
+    const table = metadata && metadata.tables[metric.table_id];
+
+    if (table) {
+      let card = createCard();
+      card.dataset_query = createQuery("query", table.db_id, table.id);
+      return card;
+    } else {
+      throw new Error(
+        t`Could not find the table metadata prior to creating a new question`,
+      );
     }
+  }
 
-    static propTypes = {
-        metric: PropTypes.object.isRequired,
-        query: PropTypes.object,
-        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
-        setCardAndRun: PropTypes.func.isRequired
-    };
+  setQueryMetric() {
+    let card = this.newCard();
+    card.dataset_query.query.aggregation = ["metric", this.props.metric.id];
+    this.props.setCardAndRun(card);
+  }
 
-    componentWillMount() {
-        this.props.loadTableAndForeignKeysFn(this.props.metric.table_id).then((result) => {
-            this.setState({
-                table: result.table,
-                tableForeignKeys: result.foreignKeys
-            });
-        }).catch((error) => {
-            this.setState({
-                error: "An error occurred loading the table"
-            });
-        });
-    }
+  render() {
+    let { metric, metadata } = this.props;
 
-    newCard() {
-        let card = createCard();
-        card.dataset_query = createQuery("query", this.state.table.db_id, this.state.table.id);
-        return card;
-    }
+    let metricName = metric.name;
 
-    setQueryMetric() {
-        let card = this.newCard();
-        card.dataset_query.query.aggregation = ["METRIC", this.props.metric.id];
-        this.props.setCardAndRun(card);
-    }
+    let useForCurrentQuestion = [];
+    let usefulQuestions = [];
 
-    render() {
-        let { metric } = this.props;
-        let { table, error } = this.state;
+    usefulQuestions.push(
+      <QueryButton
+        icon="number"
+        text={t`See ${metricName}`}
+        onClick={this.setQueryMetric}
+      />,
+    );
 
-        let metricName = metric.name;
-
-        let useForCurrentQuestion = [];
-        let usefulQuestions = [];
-
-        usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"See " + metricName} onClick={this.setQueryMetric} />);
-
-        return (
-            <DetailPane
-                name={metricName}
-                description={metric.description}
-                useForCurrentQuestion={useForCurrentQuestion}
-                usefulQuestions={usefulQuestions}
-                error={error}
-                extra={table &&
-                    <div>
-                        <p className="text-bold">Metric Definition</p>
-                        <QueryDefinition object={metric} tableMetadata={table} />
-                    </div>
-                }
-            />
-        );
-    }
+    return (
+      <DetailPane
+        name={metricName}
+        description={metric.description}
+        useForCurrentQuestion={useForCurrentQuestion}
+        usefulQuestions={usefulQuestions}
+        extra={
+          metadata && (
+            <div>
+              <p className="text-bold">{t`Metric Definition`}</p>
+              <QueryDefinition
+                object={metric}
+                tableMetadata={metadata.tables[metric.table_id]}
+              />
+            </div>
+          )
+        }
+      />
+    );
+  }
 }

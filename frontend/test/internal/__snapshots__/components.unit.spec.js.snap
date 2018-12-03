@@ -1,0 +1,1224 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Card should render "dark" correctly 1`] = `
+<div
+  className="Card-RQot fgzjUV"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
+exports[`Card should render "hoverable" correctly 1`] = `
+<div
+  className="Card-RQot gCQWtx"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
+exports[`Card should render "normal" correctly 1`] = `
+<div
+  className="Card-RQot krKrLM"
+>
+  <div
+    className="p4"
+  >
+    Look, a card!
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "Default - Off" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "white",
+        "border": "2px solid #C7CFD4",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  />
+</div>
+`;
+
+exports[`CheckBox should render "Green" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#9CC177",
+        "border": "2px solid #9CC177",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "On - Default blue" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#509EE3",
+        "border": "2px solid #509EE3",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "Purple" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#A989C5",
+        "border": "2px solid #A989C5",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "Red" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#EF8C8C",
+        "border": "2px solid #EF8C8C",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`CheckBox should render "Yellow" correctly 1`] = `
+<div
+  className="cursor-pointer"
+  onClick={[Function]}
+>
+  <div
+    className="flex align-center justify-center rounded"
+    style={
+      Object {
+        "backgroundColor": "#F9D45C",
+        "border": "2px solid #F9D45C",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  >
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="check"
+      size={12}
+      style={
+        Object {
+          "color": "white",
+        }
+      }
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`EntityMenu should render "Edit menu" correctly 1`] = `
+<div
+  className="flex flex-full"
+>
+  <div
+    className="flex align-center ml-auto"
+  >
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          height={16}
+          name="pencil"
+          viewBox="0 0 32 32"
+          width={16}
+        >
+          <path
+            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`EntityMenu should render "More menu" correctly 1`] = `
+<div
+  className="flex flex-full"
+>
+  <div
+    className="flex align-center ml-auto"
+  >
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-burger Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          height={16}
+          name="burger"
+          viewBox="0 0 32 32"
+          width={16}
+        >
+          <path
+            d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
+<div
+  className="flex flex-full"
+>
+  <div
+    className="flex align-center ml-auto"
+  >
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          height={16}
+          name="pencil"
+          viewBox="0 0 32 32"
+          width={16}
+        >
+          <path
+            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-share Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          fillRule="evenodd"
+          height={20}
+          name="share"
+          viewBox="0 0 32 41"
+          width={16}
+        >
+          <path
+            d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-burger Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          height={16}
+          name="burger"
+          viewBox="0 0 32 32"
+          width={16}
+        >
+          <path
+            d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`EntityMenu should render "Share menu" correctly 1`] = `
+<div
+  className="flex flex-full"
+>
+  <div
+    className="flex align-center ml-auto"
+  >
+    <div
+      className="relative"
+    >
+      <div
+        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        onClick={[Function]}
+      >
+        <svg
+          className="Icon Icon-share Icon-cxuQhR pXSiy"
+          fill="currentcolor"
+          fillRule="evenodd"
+          height={20}
+          name="share"
+          viewBox="0 0 32 41"
+          width={16}
+        >
+          <path
+            d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
+          />
+        </svg>
+      </div>
+      <span
+        className="hide"
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Position should render "Absolute" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH kLwrie"
+>
+  Some content
+  <div
+    className="Position-kiwZOl dhkeTA sc-bwzfXH gZPQmB"
+  >
+    Some content positioned absolutely to its parent
+  </div>
+</div>
+`;
+
+exports[`Position should render "Relative" correctly 1`] = `
+<div
+  className="Position-kiwZOl jyvUWC sc-bwzfXH ihgQcP"
+>
+  Some content relative to its parent
+</div>
+`;
+
+exports[`ProgressBar should render "Animated" correctly 1`] = `
+<div
+  className="xk xl xm xn"
+>
+  <div
+    className="xo xp xk xq xr xs xt xu xv x15 x16 xy xz x10 x17 x12 x13 x18"
+  />
+</div>
+`;
+
+exports[`ProgressBar should render "Default" correctly 1`] = `
+<div
+  className="xk xl xm xn"
+>
+  <div
+    className="xo xp xk xq xr xs xt xu xv xw xx xy xz x10 x11 x12 x13 x14"
+  />
+</div>
+`;
+
+exports[`Radio should render "default" correctly 1`] = `
+<ul
+  className="flex text-bold h3"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-1-0"
+      name="radio-1"
+      type="radio"
+      value={0}
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-1-1"
+      name="radio-1"
+      type="radio"
+      value={1}
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "show buttons" correctly 1`] = `
+<ul
+  className="flex"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-3-0"
+      name="radio-3"
+      type="radio"
+      value={0}
+    />
+    <label
+      htmlFor="radio-3-0"
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-3-1"
+      name="radio-3"
+      type="radio"
+      value={1}
+    />
+    <label
+      htmlFor="radio-3-1"
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "underlined" correctly 1`] = `
+<ul
+  className="flex text-bold h3"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": "3px solid transparent",
+        "borderColor": "#509EE3",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-2-0"
+      name="radio-2"
+      type="radio"
+      value={0}
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": "3px solid transparent",
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-2-1"
+      name="radio-2"
+      type="radio"
+      value={1}
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "vertical" correctly 1`] = `
+<ul
+  className="flex flex-column"
+>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-4-0"
+      name="radio-4"
+      type="radio"
+      value={0}
+    />
+    <label
+      htmlFor="radio-4-0"
+    />
+    <span
+      className="text-brand"
+    >
+      Gadget
+    </span>
+  </li>
+  <li
+    className="flex align-center cursor-pointer mr3 pt1"
+    onClick={[Function]}
+    style={
+      Object {
+        "borderBottom": undefined,
+        "borderColor": "transparent",
+      }
+    }
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-4-1"
+      name="radio-4"
+      type="radio"
+      value={1}
+    />
+    <label
+      htmlFor="radio-4-1"
+    />
+    <span
+      className=""
+    >
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Select should render "Default" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect flex align-center"
+    style={undefined}
+  >
+    <span
+      className="AdminSelect-content mr1"
+    />
+    <svg
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="chevrondown"
+      size={12}
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`Select should render "With search" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect flex align-center"
+    style={undefined}
+  >
+    <span
+      className="AdminSelect-content mr1"
+    />
+    <svg
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
+      name="chevrondown"
+      size={12}
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
+<div
+  className="relative"
+>
+  <span
+    className="absolute"
+    style={
+      Object {
+        "left": 4,
+        "top": -4,
+        "zIndex": -1,
+      }
+    }
+  >
+    <div
+      className="cursor-pointer"
+      onClick={[Function]}
+    >
+      <div
+        className="flex align-center justify-center rounded"
+        style={
+          Object {
+            "backgroundColor": "#A989C5",
+            "border": "2px solid #A989C5",
+            "height": 16,
+            "width": 16,
+          }
+        }
+      />
+    </div>
+  </span>
+  <div
+    className="cursor-pointer"
+    onClick={[Function]}
+  >
+    <div
+      className="flex align-center justify-center rounded"
+      style={
+        Object {
+          "backgroundColor": "#A989C5",
+          "border": "2px solid #A989C5",
+          "height": 16,
+          "width": 16,
+        }
+      }
+    >
+      <svg
+        className="Icon Icon-check Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        name="check"
+        size={12}
+        style={
+          Object {
+            "color": "white",
+          }
+        }
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
+      </svg>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`StackedCheckBox should render "Checked" correctly 1`] = `
+<div
+  className="relative"
+>
+  <span
+    className="absolute"
+    style={
+      Object {
+        "left": 4,
+        "top": -4,
+        "zIndex": -1,
+      }
+    }
+  >
+    <div
+      className="cursor-pointer"
+      onClick={[Function]}
+    >
+      <div
+        className="flex align-center justify-center rounded"
+        style={
+          Object {
+            "backgroundColor": "#509EE3",
+            "border": "2px solid #509EE3",
+            "height": 16,
+            "width": 16,
+          }
+        }
+      />
+    </div>
+  </span>
+  <div
+    className="cursor-pointer"
+    onClick={[Function]}
+  >
+    <div
+      className="flex align-center justify-center rounded"
+      style={
+        Object {
+          "backgroundColor": "#509EE3",
+          "border": "2px solid #509EE3",
+          "height": 16,
+          "width": 16,
+        }
+      }
+    >
+      <svg
+        className="Icon Icon-check Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        name="check"
+        size={12}
+        style={
+          Object {
+            "color": "white",
+          }
+        }
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
+      </svg>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
+<div
+  className="relative"
+>
+  <span
+    className="absolute"
+    style={
+      Object {
+        "left": 4,
+        "top": -4,
+        "zIndex": -1,
+      }
+    }
+  >
+    <div
+      className="cursor-pointer"
+      onClick={[Function]}
+    >
+      <div
+        className="flex align-center justify-center rounded"
+        style={
+          Object {
+            "backgroundColor": "white",
+            "border": "2px solid #C7CFD4",
+            "height": 16,
+            "width": 16,
+          }
+        }
+      />
+    </div>
+  </span>
+  <div
+    className="cursor-pointer"
+    onClick={[Function]}
+  >
+    <div
+      className="flex align-center justify-center rounded"
+      style={
+        Object {
+          "backgroundColor": "white",
+          "border": "2px solid #C7CFD4",
+          "height": 16,
+          "width": 16,
+        }
+      }
+    />
+  </div>
+</div>
+`;
+
+exports[`Styled(div) should render "" correctly 1`] = `
+<button
+  className="Button sc-bdVaJa bDWFJH "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Styled(div) should render "primary" correctly 1`] = `
+<button
+  className="Button sc-bdVaJa bDWFJH Button--primary"
+>
+  <div
+    className="flex layout-centered"
+  >
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Styled(div) should render "with an icon" correctly 1`] = `
+<button
+  className="Button sc-bdVaJa bDWFJH "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <svg
+      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={14}
+      name="star"
+      size={14}
+      viewBox="0 0 32 32"
+      width={14}
+    >
+      <path
+        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
+      />
+    </svg>
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Toggle should render "off" correctly 1`] = `
+<a
+  className="no-decoration"
+  onClick={null}
+  style={
+    Object {
+      "color": null,
+    }
+  }
+/>
+`;
+
+exports[`Toggle should render "on" correctly 1`] = `
+<a
+  className="no-decoration"
+  onClick={null}
+  style={
+    Object {
+      "color": null,
+    }
+  }
+/>
+`;
+
+exports[`TokenField should render "" correctly 1`] = `
+<div>
+  <ul
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
+    onMouseDownCapture={[Function]}
+    style={undefined}
+  >
+    <li
+      className="flex-full mr1 py1 pl1 mt1 bg-white"
+    >
+      <input
+        autoFocus={false}
+        className="full h4 text-bold text-default no-focus borderless"
+        onBlur={[Function]}
+        onChange={[Function]}
+        onFocus={[Function]}
+        onKeyDown={[Function]}
+        onPaste={[Function]}
+        placeholder={undefined}
+        size={10}
+        value=""
+      />
+    </li>
+  </ul>
+  <ul
+    className="pl1 py1 scroll-y scroll-show border-bottom"
+    onMouseEnter={[Function]}
+    onMouseLeave={[Function]}
+    style={
+      Object {
+        "maxHeight": 300,
+      }
+    }
+  >
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Doohickey
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Gadget
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Gizmo
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Widget
+        </span>
+      </div>
+    </li>
+  </ul>
+</div>
+`;
+
+exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
+<div>
+  <ul
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
+    onMouseDownCapture={[Function]}
+    style={undefined}
+  >
+    <li
+      className="flex-full mr1 py1 pl1 mt1 bg-white"
+    >
+      <input
+        autoFocus={false}
+        className="full h4 text-bold text-default no-focus borderless"
+        onBlur={[Function]}
+        onChange={[Function]}
+        onFocus={[Function]}
+        onKeyDown={[Function]}
+        onPaste={[Function]}
+        placeholder={undefined}
+        size={10}
+        value=""
+      />
+    </li>
+  </ul>
+  <ul
+    className="pl1 py1 scroll-y scroll-show border-bottom"
+    onMouseEnter={[Function]}
+    onMouseLeave={[Function]}
+    style={
+      Object {
+        "maxHeight": 300,
+      }
+    }
+  >
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Doohickey
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Gadget
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Gizmo
+        </span>
+      </div>
+    </li>
+    <li
+      className="mr1"
+    >
+      <div
+        className="py1 pl1 pr2 block rounded text-bold text-brand-hover inline-block full cursor-pointer bg-light-hover"
+        onClick={[Function]}
+        onMouseDown={[Function]}
+      >
+        <span>
+          Widget
+        </span>
+      </div>
+    </li>
+  </ul>
+</div>
+`;

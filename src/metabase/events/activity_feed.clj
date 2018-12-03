@@ -1,19 +1,24 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.events :as events]
-            (metabase.models [activity :refer [Activity], :as activity]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as mi]
-                             [session :refer [Session first-session-for-user]]
-                             [table :as table])))
+            [metabase
+             [events :as events]
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models
+             [activity :as activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [table :as table]]
+            [metabase.util.i18n :refer [tru]]
+            [toucan.db :as db]))
 
-
-(def ^:const activity-feed-topics
+(def ^:private activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
-  #{:card-create
+  #{:alert-create
+    :alert-delete
+    :card-create
     :card-update
     :card-delete
     :dashboard-create
@@ -36,13 +41,16 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
-
-(defn- process-card-activity! [topic object]
+(defn- process-card-activity! [topic {query :dataset_query, :as object}]
   (let [details-fn  #(select-keys % [:name :description])
-        database-id (get-in object [:dataset_query :database])
-        table-id    (get-in object [:dataset_query :query :source_table])]
+        query       (when (seq query)
+                      (try (qp/query->preprocessed query)
+                           (catch Throwable e
+                             (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/get-id)
+        table-id    (mbql.u/query->source-table-id query)]
     (activity/record-activity!
       :topic       topic
       :object      object
@@ -51,15 +59,18 @@
       :table-id    table-id)))
 
 (defn- process-dashboard-activity! [topic object]
-  (let [create-delete-details #(select-keys % [:description :name])
-        add-remove-card-details (fn [{:keys [dashcards] :as obj}]
-                                  ;; we expect that the object has just a dashboard :id at the top level
-                                  ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
-                                      (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                                          (-> (db/select-one [Card :name :description], :id card_id)
-                                                              (assoc :id id)
-                                                              (assoc :card_id card_id))))))]
+  (let [create-delete-details
+        #(select-keys % [:description :name])
+
+        add-remove-card-details
+        (fn [{:keys [dashcards] :as obj}]
+          ;; we expect that the object has just a dashboard :id at the top level
+          ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
+          (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
+              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
+                                  (-> (db/select-one [Card :name :description], :id card_id)
+                                      (assoc :id id)
+                                      (assoc :card_id card_id))))))]
     (activity/record-activity!
       :topic      topic
       :object     object
@@ -87,6 +98,16 @@
       :object      object
       :details-fn  details-fn)))
 
+(defn- process-alert-activity! [topic {:keys [card] :as alert}]
+  (let [details-fn #(select-keys (:card %) [:name])]
+    (activity/record-activity!
+      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
+      :model       "card"
+      :model-id    (:id card)
+      :topic       topic
+      :object      alert
+      :details-fn  details-fn)))
+
 (defn- process-segment-activity! [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
@@ -112,7 +133,8 @@
     (db/insert! Activity, :topic "install", :model "install")))
 
 (def ^:private model->processing-fn
-  {"card"      process-card-activity!
+  {"alert"     process-alert-activity!
+   "card"      process-card-activity!
    "dashboard" process-dashboard-activity!
    "install"   process-install-activity!
    "metric"    process-metric-activity!
@@ -133,8 +155,7 @@
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
 
 
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
-
+;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
 (defn events-init
   "Automatically called during startup; start the events listener for the activity feed."

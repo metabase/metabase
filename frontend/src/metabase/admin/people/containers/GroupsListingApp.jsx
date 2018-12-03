@@ -7,24 +7,22 @@ import { loadGroups } from "../people";
 import GroupsListing from "../components/GroupsListing.jsx";
 
 const mapStateToProps = function(state, props) {
-    return {
-        groups: getGroups(state, props)
-    };
-}
+  return {
+    groups: getGroups(state, props),
+  };
+};
 
 const mapDispatchToProps = {
-    loadGroups
+  loadGroups,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class GroupsListingApp extends Component {
-    async componentWillMount() {
-        await this.props.loadGroups();
-    }
+  async componentWillMount() {
+    await this.props.loadGroups();
+  }
 
-    render() {
-        return (
-            <GroupsListing {...this.props} />
-        );
-    }
+  render() {
+    return <GroupsListing {...this.props} />;
+  }
 }

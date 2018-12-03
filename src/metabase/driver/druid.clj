@@ -1,13 +1,18 @@
 (ns metabase.driver.druid
   "Druid driver."
-  (:require [clojure.tools.logging :as log]
+  (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [cheshire.core :as json]
-            [metabase.driver :as driver]
+            [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.druid.query-processor :as qp]
-            (metabase.models [field :as field]
-                             [table :as table])
-            [metabase.util :as u]))
+            [metabase.util
+             [i18n :refer [tru]]
+             [ssh :as ssh]]))
+
+(driver/register! :druid)
 
 ;;; ### Request helper fns
 
@@ -27,8 +32,8 @@
      (do-request http/get \"http://my-json-api.net\")"
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
-  (let [options                  (cond-> (merge {:content-type "application/json"} options)
-                                   (:body options) (update :body json/generate-string))
+  (let [options               (cond-> (merge {:content-type "application/json"} options)
+                                (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
       (throw (Exception. (format "Error [%d]: %s" status body))))
@@ -38,128 +43,119 @@
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))
+(def ^:private ^{:arglists '([url & {:as options}])} DELETE (partial do-request http/delete))
 
 
 ;;; ### Misc. Driver Fns
 
-(defn- can-connect? [details]
-  (= 200 (:status (http/get (details->url details "/status")))))
+(defmethod driver/can-connect? :druid [_ details]
+  {:pre [(map? details)]}
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (= 200 (:status (http/get (details->url details-with-tunnel "/status"))))))
 
 
 ;;; ### Query Processing
 
 (defn- do-query [details query]
-  {:pre [(map? query)]}
-  (try (vec (POST (details->url details "/druid/v2"), :body query))
-       (catch Throwable e
-         ;; try to extract the error
-         (let [message (or (u/ignore-exceptions
-                             (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
-                           (.getMessage e))]
+  {:pre [(map? details) (map? query)]}
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (try
+      (POST (details->url details-with-tunnel "/druid/v2"), :body query)
+      (catch Throwable e
+        ;; try to extract the error
+        (let [message (or (u/ignore-exceptions
+                            (when-let [body (json/parse-string (:body (:object (ex-data e))) keyword)]
+                              (str (:error body) "\n"
+                                   (:errorMessage body) "\n"
+                                   "Error class:" (:errorClass body))))
+                          (.getMessage e))]
+          (log/error (u/format-color 'red "Error running query:\n%s" message))
+          ;; Re-throw a new exception with `message` set to the extracted message
+          (throw (Exception. message e)))))))
 
-           (log/error (u/format-color 'red "Error running query:\n%s" message))
-           ;; Re-throw a new exception with `message` set to the extracted message
-           (throw (Exception. message e))))))
+(defn- do-query-with-cancellation [details query]
+  {:pre [(map? details) (map? query)]}
+  (let [query-id  (get-in query [:context :queryId])
+        query-fut (future (do-query details query))]
+    (try
+      ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
+      ;; not interrupt aware)
+      @query-fut
+      (catch InterruptedException interrupted-ex
+        ;; The future has been cancelled, if we ahve a query id, try to cancel the query
+        (if-not query-id
+          (log/warn interrupted-ex "Client closed connection, no queryId found, can't cancel query")
+          (ssh/with-ssh-tunnel [details-with-tunnel details]
+            (log/warnf "Client closed connection, cancelling Druid queryId '%s'" query-id)
+            (try
+              ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
+              ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
+              (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+              (catch Exception cancel-ex
+                (log/warnf cancel-ex "Failed to cancel Druid query with queryId" query-id))
+              (finally
+                ;; Propogate the exception, will cause any other catch/finally clauses to fire
+                (throw interrupted-ex)))))))))
 
 
 ;;; ### Sync
 
-(defn- describe-table-field [druid-field-type field-name]
+(defn- do-segment-metadata-query [details datasource]
+  {:pre [(map? details)]}
+  (do-query details {"queryType"     "segmentMetadata"
+                     "dataSource"    datasource
+                     "intervals"     ["1999-01-01/2114-01-01"]
+                     "analysisTypes" []
+                     "merge"         true}))
+
+(defn- druid-type->base-type [field-type]
+  (case field-type
+    "STRING"      :type/Text
+    "FLOAT"       :type/Float
+    "LONG"        :type/Integer
+    "hyperUnique" :type/DruidHyperUnique
+    :type/Float))
+
+(defn- describe-table-field [field-name {field-type :type, :as info}]
   ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
   ;; string-encoded booleans + dates are treated as strings (!)
-  {:name      field-name
-   :base-type (if (= :metric druid-field-type)
-                :type/Float
-                :type/Text)})
+  {:name          (name field-name)
+   :base-type     (druid-type->base-type field-type)
+   :database-type field-type})
 
-(defn- describe-table [database table]
-  (let [details                      (:details database)
-        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
-    {:schema nil
-     :name   (:name table)
-     :fields (set (concat
-                    ;; every Druid table is an event stream w/ a timestamp field
-                    [{:name       "timestamp"
-                      :base-type  :type/DateTime
-                      :pk?        true}]
-                    (map (partial describe-table-field :dimension) dimensions)
-                    (map (partial describe-table-field :metric) metrics)))}))
+(defmethod driver/describe-table :druid [_ database table]
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [{:keys [columns]} (first (do-segment-metadata-query details-with-tunnel (:name table)))]
+      {:schema nil
+       :name   (:name table)
+       :fields (set (concat
+                     ;; every Druid table is an event stream w/ a timestamp field
+                     [{:name          "timestamp"
+                       :database-type "timestamp"
+                       :base-type     :type/DateTime
+                       :pk?           true}]
+                     (for [[field-name field-info] (dissoc columns :__time)]
+                       (describe-table-field field-name field-info))))})))
 
-(defn- describe-database [database]
+(defmethod driver/describe-database :druid [_ database]
   {:pre [(map? (:details database))]}
-  (let [details           (:details database)
-        druid-datasources (GET (details->url details "/druid/v2/datasources"))]
-    {:tables (set (for [table-name druid-datasources]
-                    {:schema nil, :name table-name}))}))
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
+      {:tables (set (for [table-name druid-datasources]
+                      {:schema nil, :name table-name}))})))
 
+(defmethod driver/mbql->native :druid [_ query]
+  (qp/mbql->native query))
 
-;;; ### field-values-lazy-seq
+(defmethod driver/execute-query :druid [_ query]
+  (qp/execute-query do-query-with-cancellation query))
 
-(defn- field-values-lazy-seq-fetch-one-page [details table-name field-name & [paging-identifiers]]
-  {:pre [(map? details) (or (string? table-name) (keyword? table-name)) (or (string? field-name) (keyword? field-name)) (or (nil? paging-identifiers) (map? paging-identifiers))]}
-  (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType   :select
-                                                                          :dataSource  table-name
-                                                                          :intervals   ["1900-01-01/2100-01-01"]
-                                                                          :granularity :all
-                                                                          :dimensions  [field-name]
-                                                                          :metrics     []
-                                                                          :pagingSpec  (merge {:threshold driver/field-values-lazy-seq-chunk-size}
-                                                                                              (when paging-identifiers
-                                                                                                {:pagingIdentifiers paging-identifiers}))})]
-    ;; return pair of [paging-identifiers values]
-    [ ;; Paging identifiers return the largest offset of their results, e.g. 49 for page 1.
-     ;; We need to inc that number so the next page starts after that (e.g. 50)
-     (let [[[k offset]] (seq pagingIdentifiers)]
-       {k (inc offset)})
-     ;; Unnest the values
-     (for [event events]
-       (get-in event [:event (keyword field-name)]))]))
+(defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
+(defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)
 
-(defn- field-values-lazy-seq
-  ([field]
-   (field-values-lazy-seq (:details (table/database (field/table field)))
-                          (:name (field/table field))
-                          (:name field)
-                          0
-                          nil))
-
-  ([details table-name field-name total-items-fetched paging-identifiers]
-   {:pre [(map? details)
-          (or (string? table-name) (keyword? table-name))
-          (or (string? field-name) (keyword? field-name))
-          (integer? total-items-fetched)
-          (or (nil? paging-identifiers) (map? paging-identifiers))]}
-   (lazy-seq (let [[paging-identifiers values] (field-values-lazy-seq-fetch-one-page details table-name field-name paging-identifiers)
-                   total-items-fetched         (+ total-items-fetched driver/field-values-lazy-seq-chunk-size)]
-               (concat values
-                       (when (and (seq values)
-                                  (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                  (= (count values) driver/field-values-lazy-seq-chunk-size))
-                         (field-values-lazy-seq details table-name field-name total-items-fetched paging-identifiers)))))))
-
-
-;;; ### DruidrDriver Class Definition
-
-(defrecord DruidDriver []
-  clojure.lang.Named
-  (getName [_] "Druid"))
-
-(u/strict-extend DruidDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:can-connect?          (u/drop-first-arg can-connect?)
-          :describe-database     (u/drop-first-arg describe-database)
-          :describe-table        (u/drop-first-arg describe-table)
-          :details-fields        (constantly [{:name         "host"
-                                               :display-name "Host"
-                                               :default      "http://localhost"}
-                                              {:name         "port"
-                                               :display-name "Broker node port"
-                                               :type         :integer
-                                               :default      8082}])
-          :execute-query         (fn [_ query] (qp/execute-query do-query query))
-          :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :mbql->native          (u/drop-first-arg qp/mbql->native)}))
-
-(driver/register-driver! :druid (DruidDriver.))
+(defmethod driver/connection-properties :druid [_]
+  (ssh/with-tunnel-config
+    [(assoc driver.common/default-host-details :default "http://localhost")
+     (assoc driver.common/default-port-details
+       :display-name (tru "Broker node port")
+       :default      8082)]))

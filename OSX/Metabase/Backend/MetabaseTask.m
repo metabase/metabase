@@ -11,7 +11,10 @@
 @interface MetabaseTask ()
 
 @property (nonatomic) NSUInteger port;
+@property (nonatomic, strong) NSMutableArray *lastMessages; ///< 10 most recently logged messages.
+
 @end
+
 
 @implementation MetabaseTask
 
@@ -34,6 +37,12 @@
 	regex = [NSRegularExpression regularExpressionWithPattern:@"\\[\\d+m" options:0 error:nil];
 	message = [regex stringByReplacingMatchesInString:message options:0 range:NSMakeRange(0, message.length) withTemplate:@""];
 	
+
+    // add the message to the recently logged messages. If we now have more than 5 remove the oldest
+    [self.lastMessages addObject:message];
+    if (self.lastMessages.count > 10) [self.lastMessages removeObjectAtIndex:0];
+    
+    // log the message the normal way as well
 	NSLog(@"%@", message);
 }
 
@@ -74,9 +83,15 @@
 				
 		__weak MetabaseTask *weakSelf = self;
 		self.task.terminationHandler = ^(NSTask *task){
-			NSLog(@"\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Task terminated with exit code %d !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", task.terminationStatus);
+			NSLog(@"\n\n!!!!! Task terminated with exit code %d !!!!!\n\n", task.terminationStatus);
+            
 			dispatch_async(dispatch_get_main_queue(), ^{
-				if ([[NSAlert alertWithMessageText:@"Fatal Error" defaultButton:@"Restart" alternateButton:@"Quit" otherButton:nil informativeTextWithFormat:@"The Metabase server terminated unexpectedly."] runModal] == NSAlertDefaultReturn) {
+				if ([[NSAlert alertWithMessageText:@"Fatal Error"
+                                     defaultButton:@"Restart"
+                                   alternateButton:@"Quit"
+                                       otherButton:nil
+                         informativeTextWithFormat:@"The Metabase server terminated unexpectedly.\n\nMessages:\n%@", [weakSelf.lastMessages componentsJoinedByString:@""]] // components should already have newline at end
+                     runModal] == NSAlertDefaultReturn) {
 					[weakSelf launch];
 				} else {
 					exit(task.terminationStatus);
@@ -94,6 +109,10 @@
 	_port = 0;
 }
 
+- (void)disableTerminationAlert {
+    self.task.terminationHandler = nil;
+}
+
 
 #pragma mark - Getters / Setters
 
@@ -104,6 +123,12 @@
 		NSLog(@"Using port %lu", _port);
 	}
 	return _port;
+}
+                        
+
+- (NSMutableArray *)lastMessages {
+    if (!_lastMessages) _lastMessages = [NSMutableArray array];
+    return _lastMessages;
 }
 
 @end

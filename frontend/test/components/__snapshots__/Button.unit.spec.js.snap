@@ -1,0 +1,42 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Button should render correctly 1`] = `
+<button
+  className="Button sc-bdVaJa bDWFJH "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;
+
+exports[`Button should render correctly with an icon 1`] = `
+<button
+  className="Button sc-bdVaJa bDWFJH "
+>
+  <div
+    className="flex layout-centered"
+  >
+    <svg
+      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={14}
+      name="star"
+      size={14}
+      viewBox="0 0 32 32"
+      width={14}
+    >
+      <path
+        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
+      />
+    </svg>
+    <div>
+      Clickity click
+    </div>
+  </div>
+</button>
+`;

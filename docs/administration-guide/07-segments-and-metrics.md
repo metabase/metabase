@@ -27,7 +27,7 @@ A custom metric is an easy way to refer to a computed number that you reference 
 So, you create a custom metric in a very similar way to how you create segments: start by clicking on the **Add a Metric** link from a table’s detail view in the Admin Panel.
 ![Add metric](images/AddMetric.png)
 
-Here your presented with a slightly different version of the query builder, which only lets you select filters and aggregations. Filters are optional: a metric only requires an aggregation on a field. Note that you can use segments in the definition of metrics — pretty cool, right? Go ahead and select your filters, if any, and choose your aggregation. Give your metric a name and a description, and click **Save changes** when you’re done. Just like with segments, you can use the **Preview** button to see how your metric looks in the query builder before you save it.
+Here you're presented with a slightly different version of the query builder, which only lets you select filters and aggregations. Filters are optional: a metric only requires an aggregation on a field. Note that you can use segments in the definition of metrics — pretty cool, right? Go ahead and select your filters, if any, and choose your aggregation. Give your metric a name and a description, and click **Save changes** when you’re done. Just like with segments, you can use the **Preview** button to see how your metric looks in the query builder before you save it.
 ![abc](images/CreateMetric.png)
 
 Your new metric will now be available from the View dropdown in the query builder, under **Common Metrics**.
@@ -46,5 +46,5 @@ Lastly, you can also view the revision history for each segment and metric from 
 
 ---
 
-## Next: configuring Metabase
-There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings.md).
+## Next: managing user accounts
+Let's learn how to [create and manage accounts for your users](04-managing-users.md).

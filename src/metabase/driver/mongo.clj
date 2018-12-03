@@ -1,50 +1,63 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            (monger [collection :as mc]
-                    [command :as cmd]
-                    [conversion :as conv]
-                    [db :as mdb]
-                    [query :as mq])
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.mongo
+             [query-processor :as qp]
+             [util :refer [with-mongo-connection]]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util
+             [i18n :refer [tru]]
+             [ssh :as ssh]]
+            [monger
+             [collection :as mc]
+             [command :as cmd]
+             [conversion :as conv]
+             [db :as mdb]]
+            [schema.core :as s])
   (:import com.mongodb.DB))
+
+(driver/register! :mongo)
+
+(defmethod driver/display-name :mongo [_] "MongoDB")
 
 ;;; ## MongoDriver
 
-(defn- can-connect? [details]
+(defmethod driver/can-connect? :mongo [_ details]
   (with-mongo-connection [^DB conn, details]
-    (= (-> (cmd/db-stats conn)
-           (conv/from-db-object :keywordize)
-           :ok)
+    (= (float (-> (cmd/db-stats conn)
+                  (conv/from-db-object :keywordize)
+                  :ok))
        1.0)))
 
-(defn- humanize-connection-error-message [message]
+(defmethod driver/humanize-connection-error-message :mongo [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
-    (driver/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^host and port should be specified in host:port format$"
-    (driver/connection-error-messages :invalid-hostname)
+    (driver.common/connection-error-messages :invalid-hostname)
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
-    (driver/connection-error-messages :password-required)
+    (driver.common/connection-error-messages :password-required)
+
+    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
+
+    #".*JSchException: java.net.ConnectException: Connection refused.*"
+    (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default
     message))
 
-(defn- process-query-in-context [qp]
+(defmethod driver/process-query-in-context :mongo [_ qp]
   (fn [{database-id :database, :as query}]
-    (with-mongo-connection [^DB conn, (db/select-one [Database :details], :id database-id)]
+    (with-mongo-connection [_ (qp.store/database)]
       (qp query))))
 
 
@@ -52,7 +65,7 @@
 
 (declare update-field-attrs)
 
-(defn- sync-in-context [database do-sync-fn]
+(defmethod driver/sync-in-context :mongo [_ database do-sync-fn]
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
@@ -60,14 +73,17 @@
   (cond
     ;; 1. url?
     (and (string? field-value)
-         (u/is-url? field-value)) :type/URL
+         (u/url? field-value))
+    :type/URL
+
     ;; 2. json?
     (and (string? field-value)
          (or (.startsWith "{" field-value)
-             (.startsWith "[" field-value))) (when-let [j (u/try-apply json/parse-string field-value)]
-                                               (when (or (map? j)
-                                                         (sequential? j))
-                                                 :type/SerializedJSON))))
+             (.startsWith "[" field-value)))
+    (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
+      (when (or (map? j)
+                (sequential? j))
+        :type/SerializedJSON))))
 
 (defn- find-nested-fields [field-value nested-fields]
   (loop [[k & more-keys] (keys field-value)
@@ -76,135 +92,102 @@
       fields
       (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
 
-(defn- safe-inc [n]
-  (inc (or n 0)))
-
 (defn- update-field-attrs [field-value field-def]
   (-> field-def
-      (update :count safe-inc)
+      (update :count u/safe-inc)
       (update :len #(if (string? field-value)
                       (+ (or % 0) (count field-value))
                       %))
       (update :types (fn [types]
-                       (update types (type field-value) safe-inc)))
+                       (update types (type field-value) u/safe-inc)))
       (update :special-types (fn [special-types]
                                (if-let [st (val->special-type field-value)]
-                                 (update special-types st safe-inc)
+                                 (update special-types st u/safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-(defn- describe-table-field [field-kw field-info]
-  ;; TODO: indicate preview-display status based on :len
-  (cond-> {:name      (name field-kw)
-           :base-type (->> (vec (:types field-info))
-                           (sort-by second)
-                           last
-                           first
-                           driver/class->base-type)}
-    (= :_id field-kw)           (assoc :pk? true)
-    (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
-                                                          (filter #(not (nil? (first %))))
-                                                          (sort-by second)
-                                                          last
-                                                          first))
-    (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
-                                                             (describe-table-field field (field (:nested-fields field-info))))))))
+(s/defn ^:private ^Class most-common-object-type :- (s/maybe Class)
+  "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
+  occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
+  for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
+  number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
+  [field-types :- [(s/pair (s/maybe Class) "Class", s/Int "Int")]]
+  (->> field-types
+       (sort-by second)
+       last
+       first))
 
-(defn- describe-database [database]
+(defn- describe-table-field [field-kw field-info]
+  (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
+    (cond-> {:name          (name field-kw)
+             :database-type (some-> most-common-object-type .getName)
+             :base-type     (driver.common/class->base-type most-common-object-type)}
+      (= :_id field-kw)           (assoc :pk? true)
+      (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
+                                                            (filter #(some? (first %)))
+                                                            (sort-by second)
+                                                            last
+                                                            first))
+      (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
+                                                               (describe-table-field field (field (:nested-fields field-info)))))))))
+
+(defmethod driver/describe-database :mongo [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
-(defn- describe-table [database table]
+(defn- table-sample-column-info
+  "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
+   sample. The results will look something like:
+
+      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil},
+       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil}}"
+  [^com.mongodb.DB conn, table]
+  (try
+    (->> (mc/find-maps conn (:name table))
+         (take metadata-queries/max-sample-rows)
+         (reduce
+          (fn [field-defs row]
+            (loop [[k & more-keys] (keys row), fields field-defs]
+              (if-not k
+                fields
+                (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+          {}))
+    (catch Throwable t
+      (log/error (format "Error introspecting collection: %s" (:name table)) t))))
+
+(defmethod driver/describe-table :mongo [_ database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
-    (let [parsed-rows (try
-                        (->> (mc/find-maps conn (:name table))
-                             (take driver/max-sync-lazy-seq-results)
-                             (reduce
-                               (fn [field-defs row]
-                                 (loop [[k & more-keys] (keys row)
-                                        fields field-defs]
-                                   (if-not k
-                                     fields
-                                     (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-                               {}))
-                        (catch Throwable t
-                          (log/error (format "Error introspecting collection: %s" (:name table)) t)))]
+    (let [column-info (table-sample-column-info conn table)]
       {:schema nil
        :name   (:name table)
-       :fields (set (for [field (keys parsed-rows)]
-                      (describe-table-field field (field parsed-rows))))})))
+       :fields (set (for [[field info] column-info]
+                      (describe-table-field field info)))})))
 
-(defn- analyze-table [table new-field-ids]
-  ;; We only care about 1) table counts and 2) field values
-  {:row_count (analyze/table-row-count table)
-   :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
+(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
+(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
 
-(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
-  (lazy-seq
-   (assert *mongo-connection*
-     "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-   (let [table           (field/table field)
-         name-components (rest (field/qualified-name-components field))]
-     (assert (seq name-components))
-     (for [row (mq/with-collection *mongo-connection* (:name table)
-                 (mq/fields [(s/join \. name-components)]))]
-       (get-in row (map keyword name-components))))))
+(defmethod driver/connection-properties :mongo [_]
+  (ssh/with-tunnel-config
+    [driver.common/default-host-details
+     (assoc driver.common/default-port-details :default 27017)
+     (assoc driver.common/default-dbname-details
+       :placeholder  (tru "carrierPigeonDeliveries"))
+     (assoc driver.common/default-user-details :required false)
+     (assoc driver.common/default-password-details :name "pass")
+     {:name         "authdb"
+      :display-name (tru "Authentication Database")
+      :placeholder  (tru "Optional database to use when authenticating")}
+     driver.common/default-ssl-details
+     (assoc driver.common/default-additional-options-details
+       :display-name (tru "Additional Mongo connection string options")
+       :placeholder  "readPreference=nearest&replicaSet=test")]))
 
+(defmethod driver/mbql->native :mongo [_ query]
+  (qp/mbql->native query))
 
-(defrecord MongoDriver []
-  clojure.lang.Named
-  (getName [_] "MongoDB"))
-
-(u/strict-extend MongoDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     (u/drop-first-arg analyze-table)
-          :can-connect?                      (u/drop-first-arg can-connect?)
-          :describe-database                 (u/drop-first-arg describe-database)
-          :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      27017}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "carrierPigeonDeliveries"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"}
-                                                          {:name         "pass"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "******"}
-                                                          {:name         "authdb"
-                                                           :display-name "Authentication Database"
-                                                           :placeholder  "Optional database to use when authenticating"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}])
-          :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :mbql->native                      (u/drop-first-arg qp/mbql->native)
-          :process-query-in-context          (u/drop-first-arg process-query-in-context)
-          :sync-in-context                   (u/drop-first-arg sync-in-context)}))
-
-
-(driver/register-driver! :mongo (MongoDriver.))
+(defmethod driver/execute-query :mongo [_ query]
+  (qp/execute-query query))

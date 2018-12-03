@@ -49,8 +49,93 @@ server_name () {
 # enable https redirect
 server_https () {
     cd /etc/nginx/sites-available/
-    if [[ "$NGINX_FORCE_SSL" ]] && ! grep -q https elasticbeanstalk-nginx-docker-proxy.conf ; then
-        sed -i 's|location \/ {|location \/ {\n\n        if ($http_x_forwarded_proto != "https") {\n                rewrite ^ https:\/\/$host$request_uri? permanent;\n        }\n|' elasticbeanstalk-nginx-docker-proxy.conf
+    if [[ "x$NGINX_FORCE_SSL" == "x1" ]] # && ! grep -q https elasticbeanstalk-nginx-docker-proxy.conf ;
+    then
+        cat << 'EOF' > elasticbeanstalk-nginx-docker-proxy.conf
+map $http_upgrade $connection_upgrade {
+    default        "upgrade";
+    ""            "";
+}
+
+server {
+    listen 80;
+
+    gzip on;
+        gzip_comp_level 4;
+        gzip_types text/html text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
+
+    if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})T(\d{2})") {
+        set $year $1;
+        set $month $2;
+        set $day $3;
+        set $hour $4;
+    }
+
+    access_log    /var/log/nginx/access.log;
+
+    location /api/health {
+        proxy_pass            http://docker;
+        proxy_http_version    1.1;
+
+        proxy_set_header    Connection            $connection_upgrade;
+        proxy_set_header    Upgrade                $http_upgrade;
+        proxy_set_header    Host                $host;
+        proxy_set_header    X-Real-IP            $remote_addr;
+        proxy_set_header    X-Forwarded-For        $proxy_add_x_forwarded_for;
+    }
+
+
+    location / {
+        if ($http_x_forwarded_proto != "https") {
+                rewrite ^ https://$host$request_uri? permanent;
+        }
+
+        proxy_pass            http://docker;
+        proxy_http_version    1.1;
+
+        proxy_set_header    Connection            $connection_upgrade;
+        proxy_set_header    Upgrade                $http_upgrade;
+        proxy_set_header    Host                $host;
+        proxy_set_header    X-Real-IP            $remote_addr;
+        proxy_set_header    X-Forwarded-For        $proxy_add_x_forwarded_for;
+    }
+}
+EOF
+    else
+        cat << 'EOF' > elasticbeanstalk-nginx-docker-proxy.conf
+map $http_upgrade $connection_upgrade {
+    default        "upgrade";
+    ""            "";
+}
+
+server {
+    listen 80;
+
+    gzip on;
+        gzip_comp_level 4;
+        gzip_types text/html text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
+
+    if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})T(\d{2})") {
+        set $year $1;
+        set $month $2;
+        set $day $3;
+        set $hour $4;
+    }
+
+    access_log    /var/log/nginx/access.log;
+
+    location / {
+        proxy_pass            http://docker;
+        proxy_http_version    1.1;
+
+        proxy_set_header    Connection            $connection_upgrade;
+        proxy_set_header    Upgrade                $http_upgrade;
+        proxy_set_header    Host                $host;
+        proxy_set_header    X-Real-IP            $remote_addr;
+        proxy_set_header    X-Forwarded-For        $proxy_add_x_forwarded_for;
+    }
+}
+EOF
     fi
 }
 
@@ -82,7 +167,7 @@ cp_default_server () {
 log_x_real_ip () {
     cp .ebextensions/metabase_config/nginx/log_x_real_ip.conf /etc/nginx/conf.d/log_x_real_ip.conf
     cd  /etc/nginx/sites-available
-    if ! grep -q access_log *-proxy.conf ; then 
+    if ! grep -q access_log *-proxy.conf ; then
         sed -i 's|location \/ {|location \/ {\n\n        access_log \/var\/log\/nginx\/access.log log_x_real_ip;\n|' *-proxy.conf
     fi
 }

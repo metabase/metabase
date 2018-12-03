@@ -1,90 +1,105 @@
 /* @flow weak */
 
-import 'babel-polyfill';
-import 'number-to-locale-string';
+import "babel-polyfill";
 
-import React from 'react'
-import ReactDOM from 'react-dom'
-import { Provider } from 'react-redux'
+// Use of classList.add and .remove in Background and FitViewPort Hocs requires
+// this polyfill so that those work in older browsers
+import "classlist-polyfill";
 
-import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
+import "number-to-locale-string";
+
+// If enabled this monkeypatches `t` and `jt` to return blacked out
+// strings/elements to assist in finding untranslated strings.
+import "metabase/lib/i18n-debug";
+
+// set the locale before loading anything else
+import "metabase/lib/i18n";
+
+// NOTE: why do we need to load this here?
+import "metabase/lib/colors";
+
+import React from "react";
+import ReactDOM from "react-dom";
+import { Provider } from "react-redux";
+import { ThemeProvider } from "styled-components";
+
+import MetabaseAnalytics, {
+  registerAnalyticsClickListener,
+} from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
 
-import { getStore } from './store'
+import { getStore } from "./store";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { setErrorPage } from "metabase/redux/app";
 
-import { Router, browserHistory } from "react-router";
-import { push, syncHistoryWithStore } from 'react-router-redux'
+// router
+import { Router, useRouterHistory } from "react-router";
+import { createHistory } from "history";
+import { syncHistoryWithStore } from "react-router-redux";
 
-// we shouldn't redirect these URLs because we want to handle them differently
-const WHITELIST_FORBIDDEN_URLS = [
-    // on dashboards, we show permission errors for individual cards we don't have access to
-    /api\/card\/\d+\/query$/,
-    // metadata endpoints should not cause redirects
-    // we should gracefully handle cases where we don't have access to metadata
-    /api\/database\/\d+\/metadata$/,
-    /api\/database\/\d+\/fields/,
-    /api\/table\/\d+\/query_metadata$/,
-    /api\/table\/\d+\/fks$/
-];
+// drag and drop
+import HTML5Backend from "react-dnd-html5-backend";
+import { DragDropContextProvider } from "react-dnd";
+
+// remove trailing slash
+const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
+
+api.basename = BASENAME;
+
+const browserHistory = useRouterHistory(createHistory)({
+  basename: BASENAME,
+});
+
+const theme = {
+  space: [4, 8, 16, 32, 64, 128],
+};
 
 function _init(reducers, getRoutes, callback) {
-    const store = getStore(reducers, browserHistory);
-    const routes = getRoutes(store);
-    const history = syncHistoryWithStore(browserHistory, store);
+  const store = getStore(reducers, browserHistory);
+  const routes = getRoutes(store);
+  const history = syncHistoryWithStore(browserHistory, store);
 
-    ReactDOM.render(
-        <Provider store={store}>
-          <Router history={history}>
-            {routes}
-          </Router>
-        </Provider>
-    , document.getElementById('root'));
+  ReactDOM.render(
+    <Provider store={store}>
+      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+        <ThemeProvider theme={theme}>
+          <Router history={history}>{routes}</Router>
+        </ThemeProvider>
+      </DragDropContextProvider>
+    </Provider>,
+    document.getElementById("root"),
+  );
 
-    // listen for location changes and use that as a trigger for page view tracking
-    history.listen(location => {
-        MetabaseAnalytics.trackPageView(location.pathname);
-    });
+  // listen for location changes and use that as a trigger for page view tracking
+  history.listen(location => {
+    MetabaseAnalytics.trackPageView(location.pathname);
+  });
 
-    registerAnalyticsClickListener();
+  registerAnalyticsClickListener();
 
-    store.dispatch(refreshSiteSettings());
+  store.dispatch(refreshSiteSettings());
 
-    // enable / disable GA based on opt-out of anonymous tracking
-    MetabaseSettings.on("anon_tracking_enabled", () => {
-        window['ga-disable-' + MetabaseSettings.get('ga_code')] = MetabaseSettings.isTrackingEnabled() ? null : true;
-    });
+  // enable / disable GA based on opt-out of anonymous tracking
+  MetabaseSettings.on("anon_tracking_enabled", () => {
+    window[
+      "ga-disable-" + MetabaseSettings.get("ga_code")
+    ] = MetabaseSettings.isTrackingEnabled() ? null : true;
+  });
 
-    // received a 401 response
-    api.on("401", () => {
-        store.dispatch(push("/auth/login"));
-    });
+  window.Metabase = window.Metabase || {};
+  window.Metabase.store = store;
 
-    // received a 403 response
-    api.on("403", (url) => {
-        if (url) {
-            for (const regex of WHITELIST_FORBIDDEN_URLS) {
-                if (regex.test(url)) {
-                    return;
-                }
-            }
-        }
-        store.dispatch(setErrorPage({ status: 403 }));
-    });
-
-    if (callback) {
-        callback(store);
-    }
+  if (callback) {
+    callback(store);
+  }
 }
 
 export function init(...args) {
-    if (document.readyState != 'loading') {
-        _init(...args);
-    } else {
-        document.addEventListener('DOMContentLoaded', () => _init(...args));
-    }
+  if (document.readyState != "loading") {
+    _init(...args);
+  } else {
+    document.addEventListener("DOMContentLoaded", () => _init(...args));
+  }
 }

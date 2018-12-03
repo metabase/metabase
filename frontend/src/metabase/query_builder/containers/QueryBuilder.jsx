@@ -1,13 +1,16 @@
-import React, { Component, PropTypes } from "react";
+/* @flow weak */
+
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
+import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isPK, isFK } from "metabase/lib/types";
 
-import NotFound from "metabase/components/NotFound.jsx";
+import fitViewport from "metabase/hoc/FitViewPort";
+
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
 import QueryHeader from "../components/QueryHeader.jsx";
@@ -17,28 +20,40 @@ import QueryVisualization from "../components/QueryVisualization.jsx";
 import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
+import ActionsWidget from "../components/ActionsWidget.jsx";
+
+import title from "metabase/hoc/Title";
 
 import {
-    card,
-    originalCard,
-    databases,
-    queryResult,
-    parameterValues,
-    isDirty,
-    isNew,
-    isObjectDetail,
-    tables,
-    tableMetadata,
-    tableForeignKeys,
-    tableForeignKeyReferences,
-    uiControls,
-    getParametersWithValues,
-    getDatabaseFields,
-    getSampleDatasetId,
-    getNativeDatabases,
-    getIsRunnable,
+  getCard,
+  getOriginalCard,
+  getLastRunCard,
+  getFirstQueryResult,
+  getQueryResults,
+  getParameterValues,
+  getIsDirty,
+  getIsNew,
+  getIsObjectDetail,
+  getTables,
+  getTableMetadata,
+  getTableForeignKeys,
+  getTableForeignKeyReferences,
+  getUiControls,
+  getParameters,
+  getDatabaseFields,
+  getSampleDatasetId,
+  getNativeDatabases,
+  getIsRunnable,
+  getIsResultDirty,
+  getMode,
+  getQuery,
+  getQuestion,
+  getOriginalQuestion,
+  getSettings,
+  getRawSeries,
 } from "../selectors";
 
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -46,200 +61,263 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 
-function cellIsClickable(queryResult, rowIndex, columnIndex) {
-    if (!queryResult) return false;
-
-    // lookup the coldef and cell value of the cell we are curious about
-    var coldef = queryResult.data.cols[columnIndex];
-
-    if (!coldef || !coldef.special_type) return false;
-
-    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
-}
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function autocompleteResults(card, prefix) {
-    let databaseId = card && card.dataset_query && card.dataset_query.database;
-    let apiCall = MetabaseApi.db_autocomplete_suggestions({
-       dbId: databaseId,
-       prefix: prefix
-    });
-    return apiCall;
+  let databaseId = card && card.dataset_query && card.dataset_query.database;
+  let apiCall = MetabaseApi.db_autocomplete_suggestions({
+    dbId: databaseId,
+    prefix: prefix,
+  });
+  return apiCall;
 }
 
 const mapStateToProps = (state, props) => {
-    return {
-        isAdmin:                   getUserIsAdmin(state, props),
-        fromUrl:                   props.location.query.from,
+  return {
+    isAdmin: getUserIsAdmin(state, props),
+    fromUrl: props.location.query.from,
 
-        card:                      card(state),
-        originalCard:              originalCard(state),
-        query:                     state.qb.card && state.qb.card.dataset_query,  // TODO: EOL, redundant
-        parameterValues:           parameterValues(state),
-        databases:                 databases(state),
-        nativeDatabases:           getNativeDatabases(state),
-        tables:                    tables(state),
-        tableMetadata:             tableMetadata(state),
-        tableForeignKeys:          tableForeignKeys(state),
-        tableForeignKeyReferences: tableForeignKeyReferences(state),
-        result:                    queryResult(state),
-        isDirty:                   isDirty(state),
-        isNew:                     isNew(state),
-        isObjectDetail:            isObjectDetail(state),
-        uiControls:                uiControls(state),
-        parameters:                getParametersWithValues(state),
-        databaseFields:            getDatabaseFields(state),
-        sampleDatasetId:           getSampleDatasetId(state),
+    question: getQuestion(state),
+    query: getQuery(state),
 
-        isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
-        isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
-        isEditing:                 state.qb.uiControls.isEditing,
-        isRunning:                 state.qb.uiControls.isRunning,
-        isRunnable:                getIsRunnable(state),
+    mode: getMode(state),
 
-        loadTableAndForeignKeysFn: loadTableAndForeignKeys,
-        autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
-        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
-    }
-}
+    card: getCard(state),
+    originalCard: getOriginalCard(state),
+    originalQuestion: getOriginalQuestion(state),
+    lastRunCard: getLastRunCard(state),
 
-const getURL = (location) =>
-    location.pathname + location.search + location.hash;
+    parameterValues: getParameterValues(state),
 
+    databases: getDatabasesList(state),
+    nativeDatabases: getNativeDatabases(state),
+    tables: getTables(state),
+    tableMetadata: getTableMetadata(state),
+    metadata: getMetadata(state),
+
+    tableForeignKeys: getTableForeignKeys(state),
+    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+
+    result: getFirstQueryResult(state),
+    results: getQueryResults(state),
+    rawSeries: getRawSeries(state),
+
+    isDirty: getIsDirty(state),
+    isNew: getIsNew(state),
+    isObjectDetail: getIsObjectDetail(state),
+
+    uiControls: getUiControls(state),
+    parameters: getParameters(state),
+    databaseFields: getDatabaseFields(state),
+    sampleDatasetId: getSampleDatasetId(state),
+
+    isShowingDataReference: state.qb.uiControls.isShowingDataReference,
+    isShowingTutorial: state.qb.uiControls.isShowingTutorial,
+    isEditing: state.qb.uiControls.isEditing,
+    isRunning: state.qb.uiControls.isRunning,
+    isRunnable: getIsRunnable(state),
+    isResultDirty: getIsResultDirty(state),
+
+    loadTableAndForeignKeysFn: loadTableAndForeignKeys,
+    autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
+    instanceSettings: getSettings(state),
+  };
+};
+
+const getURL = location => location.pathname + location.search + location.hash;
 
 const mapDispatchToProps = {
-    ...actions,
-    onChangeLocation: push
+  ...actions,
+  onChangeLocation: push,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ card }) => (card && card.name) || t`Question`)
+@fitViewport
 export default class QueryBuilder extends Component {
+  forceUpdateDebounced: () => void;
 
-    constructor(props, context) {
-        super(props, context);
+  constructor(props, context) {
+    super(props, context);
 
-        // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
-        this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
+    // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
+    this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
+  }
+
+  componentWillMount() {
+    this.props.initializeQB(this.props.location, this.props.params);
+  }
+
+  componentDidMount() {
+    window.addEventListener("resize", this.handleResize);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (
+      nextProps.uiControls.isShowingDataReference !==
+        this.props.uiControls.isShowingDataReference ||
+      nextProps.uiControls.isShowingTemplateTagsEditor !==
+        this.props.uiControls.isShowingTemplateTagsEditor
+    ) {
+      // when the data reference is toggled we need to trigger a rerender after a short delay in order to
+      // ensure that some components are updated after the animation completes (e.g. card visualization)
+      window.setTimeout(this.forceUpdateDebounced, 300);
     }
 
-    componentWillMount() {
-        this.props.initializeQB(this.props.location, this.props.params);
+    if (
+      nextProps.location.action === "POP" &&
+      getURL(nextProps.location) !== getURL(this.props.location)
+    ) {
+      // the browser forward/back button was pressed
+      this.props.popState(nextProps.location);
+      // NOTE: Tom Robinson 4/16/2018: disabled for now. this is to enable links
+      // from qb to other qb questions but it's also triggering when changing
+      // the display type
+      // } else if (
+      //   nextProps.location.action === "PUSH" &&
+      //   getURL(nextProps.location) !== getURL(this.props.location) &&
+      //   nextProps.question &&
+      //   getURL(nextProps.location) !== nextProps.question.getUrl()
+      // ) {
+      //   // a link to a different qb url was clicked
+      //   this.props.initializeQB(nextProps.location, nextProps.params);
+    } else if (
+      this.props.location.hash !== "#?tutorial" &&
+      nextProps.location.hash === "#?tutorial"
+    ) {
+      // tutorial link was clicked
+      this.props.initializeQB(nextProps.location, nextProps.params);
+    } else if (
+      getURL(nextProps.location) === "/question" &&
+      getURL(this.props.location) !== "/question"
+    ) {
+      // "New Question" link was clicked
+      this.props.initializeQB(nextProps.location, nextProps.params);
+    }
+  }
+
+  componentDidUpdate() {
+    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    if (viz) {
+      viz.style.opacity = 1.0;
+    }
+  }
+
+  componentWillUnmount() {
+    // cancel the query if one is running
+    this.props.cancelQuery();
+
+    window.removeEventListener("resize", this.handleResize);
+  }
+
+  // When the window is resized we need to re-render, mainly so that our visualization pane updates
+  // Debounce the function to improve resizing performance.
+  handleResize = e => {
+    this.forceUpdateDebounced();
+    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    if (viz) {
+      viz.style.opacity = 0.2;
+    }
+  };
+
+  render() {
+    return <LegacyQueryBuilder {...this.props} />;
+  }
+}
+
+class LegacyQueryBuilder extends Component {
+  render() {
+    const { query, card, isDirty, databases, uiControls, mode } = this.props;
+
+    // if we don't have a card at all or no databases then we are initializing, so keep it simple
+    if (!card || !databases) {
+      return <div />;
     }
 
-    componentDidMount() {
-        window.addEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
-    }
+    const showDrawer =
+      uiControls.isShowingDataReference ||
+      uiControls.isShowingTemplateTagsEditor;
+    const ModeFooter = mode && mode.ModeFooter;
 
-    componentWillReceiveProps(nextProps) {
-        if (nextProps.uiControls.isShowingDataReference !== this.props.uiControls.isShowingDataReference ||
-            nextProps.uiControls.isShowingTemplateTagsEditor !== this.props.uiControls.isShowingTemplateTagsEditor) {
-            // when the data reference is toggled we need to trigger a rerender after a short delay in order to
-            // ensure that some components are updated after the animation completes (e.g. card visualization)
-            window.setTimeout(this.forceUpdateDebounced, 300);
-        }
+    return (
+      <div className={this.props.fitClassNames}>
+        <div
+          className={cx("QueryBuilder flex flex-column bg-white spread", {
+            "QueryBuilder--showSideDrawer": showDrawer,
+          })}
+        >
+          <div id="react_qb_header">
+            <QueryHeader {...this.props} />
+          </div>
 
-        if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
-            this.props.popState(nextProps.location);
-        } else if (this.props.location.query.tutorial === undefined && nextProps.location.query.tutorial !== undefined) {
-            this.props.initializeQB(nextProps.location, nextProps.params);
-        } else if (getURL(nextProps.location) === "/q" && getURL(this.props.location) !== "/q") {
-            this.props.initializeQB(nextProps.location, nextProps.params);
-        }
-    }
+          <div id="react_qb_editor" className="z2 hide sm-show">
+            {query instanceof NativeQuery ? (
+              <NativeQueryEditor
+                {...this.props}
+                isOpen={!card.dataset_query.native.query || isDirty}
+                datasetQuery={card && card.dataset_query}
+              />
+            ) : query instanceof StructuredQuery ? (
+              <div className="wrapper">
+                <GuiQueryEditor
+                  {...this.props}
+                  datasetQuery={card && card.dataset_query}
+                />
+              </div>
+            ) : null}
+          </div>
 
-    componentDidUpdate() {
-        let viz = ReactDOM.findDOMNode(this.refs.viz);
-        if (viz) {
-            viz.style.opacity = 1.0;
-        }
-    }
+          <div
+            ref="viz"
+            id="react_qb_viz"
+            className="flex z1"
+            style={{ transition: "opacity 0.25s ease-in-out" }}
+          >
+            <QueryVisualization
+              {...this.props}
+              className="full wrapper mb2 z1"
+            />
+          </div>
 
-    componentWillUnmount() {
-        // cancel the query if one is running
-        this.props.cancelQuery();
+          {ModeFooter && (
+            <ModeFooter {...this.props} className="flex-no-shrink" />
+          )}
+        </div>
 
-        window.removeEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
-    }
+        <div
+          className={cx("SideDrawer hide sm-show", {
+            "SideDrawer--show": showDrawer,
+          })}
+        >
+          {uiControls.isShowingDataReference && (
+            <DataReference
+              {...this.props}
+              onClose={() => this.props.toggleDataReference()}
+            />
+          )}
 
-    // When the window is resized we need to re-render, mainly so that our visualization pane updates
-    // Debounce the function to improve resizing performance.
-    handleResize = (e) => {
-        this.forceUpdateDebounced();
-        let viz = ReactDOM.findDOMNode(this.refs.viz);
-        if (viz) {
-            viz.style.opacity = 0.2;
-        }
-    }
+          {uiControls.isShowingTemplateTagsEditor &&
+            query instanceof NativeQuery && (
+              <TagEditorSidebar
+                {...this.props}
+                onClose={() => this.props.toggleTemplateTagsEditor()}
+              />
+            )}
+        </div>
 
-    handleKeyDown = (e) => {
-        const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
-            this.props.runQueryFn();
-        }
-    }
+        {uiControls.isShowingTutorial && (
+          <QueryBuilderTutorial onClose={() => this.props.closeQbTutorial()} />
+        )}
 
-    render() {
-        const { card, isDirty, databases, uiControls } = this.props;
+        {uiControls.isShowingNewbModal && (
+          <SavedQuestionIntroModal
+            onClose={() => this.props.closeQbNewbModal()}
+          />
+        )}
 
-        // if we can't load the card that was intended then we end up with a 404
-        // TODO: we should do something more unique for is500
-        if (uiControls.is404 || uiControls.is500) {
-            return (
-                <div className="flex flex-column flex-full layout-centered">
-                    <NotFound />
-                </div>
-            );
-        }
-
-        // if we don't have a card at all or no databases then we are initializing, so keep it simple
-        if (!card || !databases) {
-            return (
-                <div></div>
-            );
-        }
-
-        const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
-        return (
-            <div className="flex-full relative">
-                <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
-                    <div id="react_qb_header">
-                        <QueryHeader {...this.props}/>
-                    </div>
-
-                    <div id="react_qb_editor" className="z2">
-                        { card && card.dataset_query && card.dataset_query.type === "native" ?
-                            <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
-                        :
-                            <div className="wrapper">
-                                <GuiQueryEditor {...this.props}/>
-                            </div>
-                        }
-                    </div>
-
-                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} />
-                    </div>
-                </div>
-
-                <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
-                    { uiControls.isShowingDataReference &&
-                        <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
-                    }
-
-                    { uiControls.isShowingTemplateTagsEditor &&
-                        <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
-                    }
-                </div>
-
-                { uiControls.isShowingTutorial &&
-                    <QueryBuilderTutorial onClose={() => this.props.closeQbTutorial()} />
-                }
-
-                { uiControls.isShowingNewbModal &&
-                    <SavedQuestionIntroModal onClose={() => this.props.closeQbNewbModal()} />
-                }
-            </div>
-        );
-    }
+        <ActionsWidget {...this.props} className="z2 absolute bottom right" />
+      </div>
+    );
+  }
 }

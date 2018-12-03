@@ -1,0 +1,72 @@
+:local .Funnel {
+  color: var(--color-text-medium);
+  height: 100%;
+}
+
+:local .FunnelStep {
+  width: 100%;
+  min-width: 20px;
+  border-right: 1px solid var(--color-border);
+}
+
+:local .FunnelStep.Initial {
+  min-width: auto;
+}
+
+/* Display information for the initial blox */
+:local .Start {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  text-align: right;
+  flex-grow: 1;
+
+  padding-right: 0.5em;
+  font-size: 24px;
+}
+
+:local .Start .Title {
+  font-weight: bold;
+  color: black;
+}
+
+:local .Start .Subtitle {
+  font-size: 0.6875em;
+}
+
+/* Head information */
+:local .Head {
+  text-align: right;
+  padding: 0.5em;
+  min-width: 0;
+}
+
+/* Plot graph element */
+:local .Graph {
+  flex-grow: 1;
+}
+
+/* Information at the end of the step */
+:local .Infos {
+  text-align: right;
+  padding: 0.5em 0.5em 0 0.5em;
+  font-size: 16px;
+}
+
+:local .Infos .Title {
+}
+
+:local .Infos .Subtitle {
+  font-size: 0.6875em;
+  margin-top: 1em;
+}
+
+/* Small version */
+:local .Small .Head,
+:local .Small .Infos {
+  display: none;
+}
+
+:local .Small .FunnelStep {
+  border-color: white;
+}

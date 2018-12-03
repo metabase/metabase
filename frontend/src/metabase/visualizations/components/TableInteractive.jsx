@@ -1,412 +1,705 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import Value from "metabase/components/Value.jsx";
-import QuickFilterPopover from "metabase/query_builder/components/QuickFilterPopover.jsx";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-import { capitalize } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { formatValue } from "metabase/lib/formatting";
+import { isID, isFK } from "metabase/lib/schema_metadata";
+import {
+  getTableCellClickedObject,
+  isColumnRightAligned,
+} from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import MiniBar from "./MiniBar";
+
+// $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 
-const HEADER_HEIGHT = 50;
-const ROW_HEIGHT = 35;
+const HEADER_HEIGHT = 36;
+const ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
+// if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
+const HEADER_DRAG_THRESHOLD = 5;
 
-import type { Column } from "metabase/meta/types/Dataset";
-import type { VisualizationProps } from "metabase/visualizations";
+// HACK: used to get react-draggable to reset after a drag
+let DRAG_COUNTER = 0;
+
+import type {
+  VisualizationProps,
+  ClickObject,
+} from "metabase/meta/types/Visualization";
+
+function pickRowsToMeasure(rows, columnIndex, count = 10) {
+  const rowIndexes = [];
+  // measure up to 10 non-nil cells
+  for (
+    let rowIndex = 0;
+    rowIndex < rows.length && rowIndexes.length < count;
+    rowIndex++
+  ) {
+    if (rows[rowIndex][columnIndex] != null) {
+      rowIndexes.push(rowIndex);
+    }
+  }
+  return rowIndexes;
+}
 
 type Props = VisualizationProps & {
-    width: number,
-    height: number,
-    sort: any,
-    isPivoted: boolean,
-    cellClickedFn: (number, number) => void,
-    cellIsClickableFn: (number, number) => boolean,
-    setSortFn: (/* TODO */) => void,
-}
+  width: number,
+  height: number,
+  sort: any,
+  isPivoted: boolean,
+  onActionDismissal: () => void,
+};
 type State = {
-    popover: ?{ rowIndex: number, columnIndex: number },
-    columnWidths: number[],
-    contentWidths: ?number[]
-}
+  columnWidths: number[],
+  contentWidths: ?(number[]),
+
+  dragColIndex?: ?number,
+  dragColStyle?: ?{ [key: string]: any },
+  dragColNewLefts?: ?(number[]),
+  dragColNewIndex?: ?number,
+  columnPositions?: ?({
+    left: number,
+    right: number,
+    center: number,
+    width: number,
+  }[]),
+};
 
 type CellRendererProps = {
-    key: string,
-    style: { [key:string]: any },
-    columnIndex: number,
-    rowIndex: number
-}
+  key: string,
+  style: { [key: string]: any },
+  columnIndex: number,
+  rowIndex: number,
+};
 
-type GridComponent = Component<void, void, void> & { recomputeGridSize: () => void }
+type GridComponent = Component<void, void, void> & {
+  recomputeGridSize: () => void,
+};
 
-@ExplicitSize
-export default class TableInteractive extends Component<*, Props, State> {
-    state: State;
-    props: Props;
+@ExplicitSize()
+export default class TableInteractive extends Component {
+  state: State;
+  props: Props;
 
-    columnHasResized: { [key:number]: boolean };
-    columnNeedsResize: { [key:number]: boolean };
-    _div: HTMLElement;
+  columnHasResized: { [key: number]: boolean };
+  columnNeedsResize: { [key: number]: boolean };
+  _div: HTMLElement;
 
-    header: GridComponent;
-    grid: GridComponent;
+  header: GridComponent;
+  grid: GridComponent;
+  headerRefs: HTMLElement[];
 
-    constructor(props: Props) {
-        super(props);
+  constructor(props: Props) {
+    super(props);
 
-        this.state = {
-            popover: null,
-            columnWidths: [],
-            contentWidths: null
-        };
-        this.columnHasResized = {};
-    }
-
-    static propTypes = {
-        data: PropTypes.object.isRequired,
-        isPivoted: PropTypes.bool.isRequired,
-        sort: PropTypes.array,
-        setSortFn: PropTypes.func,
-        cellIsClickableFn: PropTypes.func.isRequired,
-        cellClickedFn: PropTypes.func.isRequired
+    this.state = {
+      columnWidths: [],
+      contentWidths: null,
     };
+    this.columnHasResized = {};
+    this.headerRefs = [];
+  }
 
-    static defaultProps = {
-        isPivoted: false,
-        cellIsClickableFn: () => false,
-        cellClickedFn: () => {}
-    };
+  static propTypes = {
+    data: PropTypes.object.isRequired,
+    isPivoted: PropTypes.bool.isRequired,
+    sort: PropTypes.array,
+  };
 
-    componentWillMount() {
-        // for measuring cells:
-        this._div = document.createElement("div");
-        this._div.className = "TableInteractive";
-        this._div.style.display = "inline-block"
-        this._div.style.position = "absolute"
-        this._div.style.visibility = "hidden"
-        this._div.style.zIndex = "-1"
-        document.body.appendChild(this._div);
+  static defaultProps = {
+    isPivoted: false,
+  };
 
-        this._measure();
+  componentWillMount() {
+    // for measuring cells:
+    this._div = document.createElement("div");
+    this._div.className = "TableInteractive";
+    this._div.style.display = "inline-block";
+    this._div.style.position = "absolute";
+    this._div.style.visibility = "hidden";
+    this._div.style.zIndex = "-1";
+    document.body.appendChild(this._div);
+
+    this._measure();
+  }
+
+  componentWillUnmount() {
+    if (this._div && this._div.parentNode) {
+      this._div.parentNode.removeChild(this._div);
+    }
+  }
+
+  componentWillReceiveProps(newProps: Props) {
+    if (
+      this.props.data &&
+      newProps.data &&
+      !_.isEqual(this.props.data.cols, newProps.data.cols)
+    ) {
+      this.resetColumnWidths();
     }
 
-    componentWillUnmount() {
-        if (this._div && this._div.parentNode) {
-            this._div.parentNode.removeChild(this._div);
-        }
+    // remeasure columns if the column settings change, e.x. turning on/off mini bar charts
+    const oldColSettings = this._getColumnSettings(this.props);
+    const newColSettings = this._getColumnSettings(newProps);
+    if (!_.isEqual(oldColSettings, newColSettings)) {
+      this.remeasureColumnWidths();
     }
+  }
 
-    componentWillReceiveProps(newProps: Props) {
-        if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
-            this.resetColumnWidths();
-        }
+  _getColumnSettings(props: Props) {
+    return props.data && props.data.cols.map(col => props.settings.column(col));
+  }
+
+  shouldComponentUpdate(nextProps: Props, nextState: State) {
+    const PROP_KEYS: string[] = ["width", "height", "settings", "data"];
+    // compare specific props and state to determine if we should re-render
+    return (
+      !_.isEqual(
+        _.pick(this.props, ...PROP_KEYS),
+        _.pick(nextProps, ...PROP_KEYS),
+      ) || !_.isEqual(this.state, nextState)
+    );
+  }
+
+  componentDidUpdate() {
+    if (!this.state.contentWidths) {
+      this._measure();
     }
+  }
 
-    shouldComponentUpdate(nextProps: Props, nextState: State) {
-        const PROP_KEYS: string[] = ["width", "height", "settings", "data"];
-        // compare specific props and state to determine if we should re-render
-        return (
-            !_.isEqual(_.pick(this.props, ...PROP_KEYS), _.pick(nextProps, ...PROP_KEYS)) ||
-            !_.isEqual(this.state, nextState)
+  remeasureColumnWidths() {
+    this.setState({
+      columnWidths: [],
+      contentWidths: null,
+    });
+    this.columnHasResized = {};
+  }
+
+  resetColumnWidths() {
+    this.remeasureColumnWidths();
+    this.props.onUpdateVisualizationSettings({
+      "table.column_widths": undefined,
+    });
+  }
+
+  _measure() {
+    const { data: { cols, rows } } = this.props;
+
+    ReactDOM.render(
+      <div style={{ display: "flex" }}>
+        {cols.map((column, columnIndex) => (
+          <div className="fake-column" key={"column-" + columnIndex}>
+            {this.tableHeaderRenderer({
+              columnIndex,
+              rowIndex: 0,
+              key: "header",
+              style: {},
+            })}
+            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+              this.cellRenderer({
+                rowIndex,
+                columnIndex,
+                key: "row-" + rowIndex,
+                style: {},
+              }),
+            )}
+          </div>
+        ))}
+      </div>,
+      this._div,
+      () => {
+        const contentWidths = [].map.call(
+          this._div.getElementsByClassName("fake-column"),
+          columnElement => columnElement.offsetWidth,
         );
-    }
 
-    componentDidUpdate() {
-        if (!this.state.contentWidths) {
-            this._measure();
-        }
-    }
-
-    resetColumnWidths() {
-        this.setState({
-            columnWidths: [],
-            contentWidths: null
-        });
-        this.columnHasResized = {};
-        this.props.onUpdateVisualizationSettings({ "table.column_widths": [] });
-    }
-
-    _measure() {
-        const { data: { cols } } = this.props;
-
-        let contentWidths = cols.map((col, index) =>
-            this._measureColumn(index)
-        );
-
-        let columnWidths: number[] = cols.map((col, index) => {
-            if (this.columnNeedsResize) {
-                if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
-                    this.columnHasResized[index] = true;
-                    return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-                } else if (this.state.columnWidths[index]) {
-                    return this.state.columnWidths[index];
-                }
+        const columnWidths: number[] = cols.map((col, index) => {
+          if (this.columnNeedsResize) {
+            if (
+              this.columnNeedsResize[index] &&
+              !this.columnHasResized[index]
+            ) {
+              this.columnHasResized[index] = true;
+              return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+            } else if (this.state.columnWidths[index]) {
+              return this.state.columnWidths[index];
             } else {
-                return contentWidths[index] + 1;
+              return 0;
             }
+          } else {
+            return contentWidths[index] + 1;
+          }
         });
+
+        ReactDOM.unmountComponentAtNode(this._div);
 
         delete this.columnNeedsResize;
 
         this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+      },
+    );
+  }
+
+  recomputeGridSize = () => {
+    if (this.header && this.grid) {
+      this.header.recomputeGridSize();
+      this.grid.recomputeGridSize();
     }
+  };
 
-    _measureColumn(columnIndex: number) {
-        const { data: { rows } } = this.props;
-        let width = MIN_COLUMN_WIDTH;
+  recomputeColumnSizes = _.debounce(() => {
+    this.setState({ contentWidths: null });
+  }, 100);
 
-        // measure column header
-        width = Math.max(width, this._measureCell(this.tableHeaderRenderer({ columnIndex, rowIndex: 0, key: "", style: {} })));
+  onCellResize(columnIndex: number) {
+    this.columnNeedsResize = this.columnNeedsResize || {};
+    this.columnNeedsResize[columnIndex] = true;
+    this.recomputeColumnSizes();
+  }
 
-        // measure up to 10 non-nil cells
-        let remaining = 10;
-        for (let rowIndex = 0; rowIndex < rows.length && remaining > 0; rowIndex++) {
-            if (rows[rowIndex][columnIndex] != null) {
-                const cellWidth = this._measureCell(this.cellRenderer({ rowIndex, columnIndex, key: "", style: {} }));
-                width = Math.max(width, cellWidth);
-                remaining--;
-            }
+  onColumnResize(columnIndex: number, width: number) {
+    const { settings } = this.props;
+    let columnWidthsSetting = settings["table.column_widths"]
+      ? settings["table.column_widths"].slice()
+      : [];
+    columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+    this.props.onUpdateVisualizationSettings({
+      "table.column_widths": columnWidthsSetting,
+    });
+    setTimeout(() => this.recomputeGridSize(), 1);
+  }
+
+  onColumnReorder(columnIndex: number, newColumnIndex: number) {
+    const { settings, onUpdateVisualizationSettings } = this.props;
+    const columns = settings["table.columns"].slice(); // copy since splice mutates
+    columns.splice(newColumnIndex, 0, columns.splice(columnIndex, 1)[0]);
+    onUpdateVisualizationSettings({
+      "table.columns": columns,
+    });
+  }
+
+  visualizationIsClickable(clicked: ?ClickObject) {
+    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    const { dragColIndex } = this.state;
+    return (
+      // don't bother calling if we're dragging
+      dragColIndex == null &&
+      onVisualizationClick &&
+      visualizationIsClickable &&
+      visualizationIsClickable(clicked)
+    );
+  }
+
+  onVisualizationClick(clicked: ?ClickObject, element: HTMLElement) {
+    const { onVisualizationClick } = this.props;
+    if (this.visualizationIsClickable(clicked)) {
+      onVisualizationClick({ ...clicked, element });
+    }
+  }
+
+  cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
+    const { data, isPivoted, settings } = this.props;
+    const { dragColIndex } = this.state;
+    const { rows, cols } = data;
+    const getCellBackgroundColor = settings["table._cell_background_getter"];
+
+    const column = cols[columnIndex];
+    const row = rows[rowIndex];
+    const value = row[columnIndex];
+
+    const clicked = getTableCellClickedObject(
+      data,
+      rowIndex,
+      columnIndex,
+      isPivoted,
+    );
+    const isClickable = this.visualizationIsClickable(clicked);
+    const backgroundColor =
+      getCellBackgroundColor &&
+      getCellBackgroundColor(value, rowIndex, column.name);
+
+    const columnSettings = settings.column(column);
+
+    return (
+      <div
+        key={key}
+        style={{
+          ...style,
+          // use computed left if dragging
+          left: this.getColumnLeft(style, columnIndex),
+          // add a transition while dragging column
+          transition: dragColIndex != null ? "left 200ms" : null,
+          backgroundColor,
+        }}
+        className={cx("TableInteractive-cellWrapper text-dark", {
+          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+          "TableInteractive-cellWrapper--lastColumn":
+            columnIndex === cols.length - 1,
+          "TableInteractive-emptyCell": value == null,
+          "cursor-pointer": isClickable,
+          "justify-end": isColumnRightAligned(column),
+          "Table-ID": isID(column),
+          "Table-FK": isFK(column),
+          link: isClickable && isID(column),
+        })}
+        onMouseUp={
+          isClickable
+            ? e => {
+                this.onVisualizationClick(clicked, e.currentTarget);
+              }
+            : undefined
         }
+      >
+        <div className="cellData">
+          {columnSettings["show_mini_bar"] ? (
+            <MiniBar
+              value={value}
+              options={columnSettings}
+              extent={getColumnExtent(data.cols, data.rows, columnIndex)}
+              cellHeight={ROW_HEIGHT}
+            />
+          ) : (
+            <Ellipsified>
+              {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
+              formatValue(value, {
+                ...columnSettings,
+                type: "cell",
+                jsx: true,
+                rich: true,
+              })}
+            </Ellipsified>
+          )}
+        </div>
+      </div>
+    );
+  };
 
-        return width;
-    }
-
-    _measureCell(cell: React.Element<any>) {
-        ReactDOM.unstable_renderSubtreeIntoContainer(this, cell, this._div);
-
-        // 2px for border?
-        const width = this._div.clientWidth + 2;
-
-        ReactDOM.unmountComponentAtNode(this._div);
-
-        return width;
-    }
-
-    recomputeGridSize = () => {
-        if (this.header && this.grid) {
-            this.header.recomputeGridSize();
-            this.grid.recomputeGridSize();
+  getDragColNewIndex(data: { x: number }) {
+    const { columnPositions, dragColNewIndex, dragColStyle } = this.state;
+    if (dragColStyle) {
+      if (data.x < 0) {
+        const left = dragColStyle.left + data.x;
+        const index = _.findIndex(columnPositions, p => left < p.center);
+        if (index >= 0) {
+          return index;
         }
-    }
-
-    recomputeColumnSizes = _.debounce(() => {
-        this.setState({ contentWidths: null })
-    }, 100)
-
-    onCellResize(columnIndex: number) {
-        this.columnNeedsResize = this.columnNeedsResize || {}
-        this.columnNeedsResize[columnIndex] = true;
-        this.recomputeColumnSizes();
-    }
-
-    onColumnResize(columnIndex: number, width: number) {
-        const { settings } = this.props;
-        let columnWidthsSetting = settings["table.column_widths"] ? settings["table.column_widths"].slice() : [];
-        columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
-        this.props.onUpdateVisualizationSettings({ "table.column_widths": columnWidthsSetting });
-        setTimeout(() => this.recomputeGridSize(), 1);
-    }
-
-    isSortable() {
-        return (this.props.setSortFn !== undefined);
-    }
-
-    setSort(column: Column) {
-        // lets completely delegate this to someone else up the stack :)
-        this.props.setSortFn(column);
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
-    }
-
-    cellClicked(rowIndex: number, columnIndex: number) {
-        this.props.cellClickedFn(rowIndex, columnIndex);
-    }
-
-    popoverFilterClicked(rowIndex: number, columnIndex: number, operator: string) {
-        this.props.cellClickedFn(rowIndex, columnIndex, operator);
-        this.setState({ popover: null });
-    }
-
-    showPopover(rowIndex: number, columnIndex: number) {
-        this.setState({
-            popover: {
-                rowIndex: rowIndex,
-                columnIndex: columnIndex
-            }
-        });
-    }
-
-    onClosePopover = () => {
-        this.setState({ popover: null });
-    }
-
-    cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { data: { cols, rows }} = this.props;
-        const column = cols[columnIndex];
-        const cellData = rows[rowIndex][columnIndex];
-        if (this.props.cellIsClickableFn(rowIndex, columnIndex)) {
-            return (
-                <div
-                    key={key} style={style}
-                    className={cx("TableInteractive-cellWrapper cellData", {
-                        "TableInteractive-cellWrapper--firstColumn": columnIndex === 0
-                    })}
-                    onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
-                >
-                    <Value className="link" value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
-                </div>
-            );
-        } else {
-            const { popover } = this.state;
-            const isFilterable = column.source !== "aggregation";
-            return (
-                <div
-                    key={key} style={style}
-                    className={cx("TableInteractive-cellWrapper cellData", {
-                        "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-                        "cursor-pointer": isFilterable
-                    })}
-                    onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
-                >
-                    <Ellipsified tooltip={<div className="p1"><Value value={cellData} column={column} /></div>}>
-                        <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
-                    </Ellipsified>
-                    { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
-                        <QuickFilterPopover
-                            column={cols[popover.columnIndex]}
-                            onFilter={this.popoverFilterClicked.bind(this, rowIndex, columnIndex)}
-                            onClose={this.onClosePopover}
-                        />
-                    }
-                </div>
-            );
+      } else if (data.x > 0) {
+        const right = dragColStyle.left + dragColStyle.width + data.x;
+        const index = _.findLastIndex(columnPositions, p => right > p.center);
+        if (index >= 0) {
+          return index;
         }
+      }
+    }
+    return dragColNewIndex;
+  }
+
+  getColumnPositions() {
+    let left = 0;
+    return this.props.data.cols.map((col, index) => {
+      const width = this.getColumnWidth({ index });
+      const pos = {
+        left,
+        right: left + width,
+        center: left + width / 2,
+        width,
+      };
+      left += width;
+      return pos;
+    });
+  }
+
+  getNewColumnLefts(dragColNewIndex: number) {
+    const { dragColIndex, columnPositions } = this.state;
+    const { cols } = this.props.data;
+    const indexes = cols.map((col, index) => index);
+    indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
+    let left = 0;
+    const lefts = indexes.map(index => {
+      const thisLeft = left;
+      // $FlowFixMe: we know columnPositions[index] isn't null because onDrag is called after onStart
+      left += columnPositions[index].width;
+      return { index, left: thisLeft };
+    });
+    lefts.sort((a, b) => a.index - b.index);
+    return lefts.map(p => p.left);
+  }
+
+  getColumnLeft(style: any, index: number) {
+    const { dragColNewIndex, dragColNewLefts } = this.state;
+    if (dragColNewIndex != null && dragColNewLefts) {
+      return dragColNewLefts[index];
+    }
+    return style.left;
+  }
+
+  tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
+    const { sort, isPivoted, getColumnTitle } = this.props;
+    const { cols } = this.props.data;
+    const column = cols[columnIndex];
+
+    const columnTitle = getColumnTitle(columnIndex);
+
+    let clicked;
+    if (isPivoted) {
+      // if it's a pivot table, the first column is
+      if (columnIndex >= 0) {
+        clicked = column._dimension;
+      }
+    } else {
+      clicked = { column };
     }
 
-    tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-        const { sort, data: { cols }} = this.props;
-        const isSortable = this.isSortable();
-        const column = cols[columnIndex];
+    const isDraggable = !this.props.isPivoted;
+    const isDragging = this.state.dragColIndex === columnIndex;
+    const isClickable = this.visualizationIsClickable(clicked);
+    const isSortable = isClickable && column.source;
+    const isRightAligned = isColumnRightAligned(column);
 
-        let columnTitle = getFriendlyName(column);
-        if (column.unit && column.unit !== "default") {
-            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
-        }
-        if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
-            columnTitle = "Unset";
-        }
-
-        return (
+    // TODO MBQL: use query lib to get the sort field
+    const isSorted =
+      sort &&
+      sort[0] &&
+      sort[0][1] &&
+      Query.getFieldTargetId(sort[0][1]) === column.id;
+    const isAscending = sort && sort[0] && sort[0][0] === "asc";
+    return (
+      <Draggable
+        /* needs to be index+name+counter so Draggable resets after each drag */
+        key={columnIndex + column.name + DRAG_COUNTER}
+        axis="x"
+        disabled={!isDraggable}
+        onStart={(e, d) => {
+          this.setState({
+            columnPositions: this.getColumnPositions(),
+            dragColIndex: columnIndex,
+            dragColStyle: style,
+            dragColNewIndex: columnIndex,
+          });
+        }}
+        onDrag={(e, data) => {
+          const newIndex = this.getDragColNewIndex(data);
+          if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
+            this.setState({
+              dragColNewIndex: newIndex,
+              dragColNewLefts: this.getNewColumnLefts(newIndex),
+            });
+          }
+        }}
+        onStop={(e, d) => {
+          const { dragColIndex, dragColNewIndex } = this.state;
+          DRAG_COUNTER++;
+          if (
+            dragColIndex != null &&
+            dragColNewIndex != null &&
+            dragColIndex !== dragColNewIndex
+          ) {
+            this.onColumnReorder(dragColIndex, dragColNewIndex);
+          } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
+            // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
+            setTimeout(() => {
+              this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
+            });
+          }
+          this.setState({
+            columnPositions: null,
+            dragColIndex: null,
+            dragColStyle: null,
+            dragColNewIndex: null,
+            dragColNewLefts: null,
+          });
+        }}
+      >
+        <div
+          ref={e => (this.headerRefs[columnIndex] = e)}
+          style={{
+            ...style,
+            overflow: "visible" /* ensure resize handle is visible */,
+            // use computed left if dragging, except for the dragged header
+            left: isDragging
+              ? style.left
+              : this.getColumnLeft(style, columnIndex),
+          }}
+          className={cx(
+            "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
+            {
+              "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+              "TableInteractive-cellWrapper--lastColumn":
+                columnIndex === cols.length - 1,
+              "TableInteractive-cellWrapper--active": isDragging,
+              "TableInteractive-headerCellData--sorted": isSorted,
+              "cursor-pointer": isClickable,
+              "justify-end": isRightAligned,
+            },
+          )}
+          onClick={
+            // only use the onClick if not draggable since it's also handled in Draggable's onStop
+            isClickable && !isDraggable
+              ? e => {
+                  this.onVisualizationClick(clicked, e.currentTarget);
+                }
+              : undefined
+          }
+        >
+          <div className="cellData">
+            <Ellipsified tooltip={columnTitle}>
+              {isSortable &&
+                isRightAligned && (
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+              {columnTitle}
+              {isSortable &&
+                !isRightAligned && (
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+            </Ellipsified>
+          </div>
+          <Draggable
+            axis="x"
+            bounds={{ left: RESIZE_HANDLE_WIDTH }}
+            position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+            onStart={e => {
+              e.stopPropagation();
+              this.setState({ dragColIndex: columnIndex });
+            }}
+            onStop={(e, { x }) => {
+              // prevent onVisualizationClick from being fired
+              e.stopPropagation();
+              this.onColumnResize(columnIndex, x);
+              this.setState({ dragColIndex: null });
+            }}
+          >
             <div
-                key={key}
-                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
-                className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
-                    "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-                    "TableInteractive-headerCellData--sorted": (sort && sort[0] && sort[0][0] === column.id),
-                })}
-            >
-                <div
-                    className={cx("cellData", { "cursor-pointer": isSortable })}
-                    onClick={isSortable && this.setSort.bind(this, column)}
-                >
-                    <Ellipsified tooltip={columnTitle}>
-                        <span>
-                            {columnTitle}
-                            {isSortable &&
-                                <Icon
-                                    className="Icon ml1"
-                                    name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
-                                    size={8}
-                                />
-                            }
-                        </span>
-                    </Ellipsified>
-                </div>
-                <Draggable
-                    axis="x"
-                    bounds={{ left: RESIZE_HANDLE_WIDTH }}
-                    position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
-                    onStop={(e, { x }) => {
-                        this.onColumnResize(columnIndex, x)}
-                    }
-                >
-                    <div
-                        className="bg-brand-hover bg-brand-active"
-                        style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
-                    />
-                </Draggable>
-            </div>
-        )
+              className="bg-brand-hover bg-brand-active"
+              style={{
+                zIndex: 99,
+                position: "absolute",
+                width: RESIZE_HANDLE_WIDTH,
+                top: 0,
+                bottom: 0,
+                left: -RESIZE_HANDLE_WIDTH - 1,
+                cursor: "ew-resize",
+              }}
+            />
+          </Draggable>
+        </div>
+      </Draggable>
+    );
+  };
+
+  getColumnWidth = ({ index }: { index: number }) => {
+    const { settings } = this.props;
+    const { columnWidths } = this.state;
+    const columnWidthsSetting = settings["table.column_widths"] || [];
+    return (
+      columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH
+    );
+  };
+
+  render() {
+    const { width, height, data: { cols, rows }, className } = this.props;
+
+    if (!width || !height) {
+      return <div className={className} />;
     }
 
-    getColumnWidth = ({ index }: { index: number }) => {
-        const { settings } = this.props;
-        const { columnWidths } = this.state;
-        const columnWidthsSetting = settings["table.column_widths"] || [];
-        return columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH;
-    }
-
-    render() {
-        const { width, height, data: { cols, rows }, className } = this.props;
-
-        if (!width || !height) {
-            return <div className={className} />;
-        }
-
-        return (
-            <ScrollSync>
-            {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
-                <div className={cx(className, 'TableInteractive relative', { 'TableInteractive--pivot': this.props.isPivoted, 'TableInteractive--ready': this.state.contentWidths })}>
-                    <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} />
-                    <Grid
-                        ref={(ref) => this.header = ref}
-                        style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute", overflow: "hidden" }}
-                        className="TableInteractive-header scroll-hide-all"
-                        width={width || 0}
-                        height={HEADER_HEIGHT}
-                        rowCount={1}
-                        rowHeight={HEADER_HEIGHT}
-                        // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
-                        columnCount={cols.length + 1}
-                        columnWidth={(props) => props.index < cols.length ? this.getColumnWidth(props) : 50}
-                        cellRenderer={(props) => props.columnIndex < cols.length ? this.tableHeaderRenderer(props) : null}
-                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-                        scrollLeft={scrollLeft}
-                        tabIndex={null}
-                    />
-                    <Grid
-                        ref={(ref) => this.grid = ref}
-                        style={{ top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, position: "absolute" }}
-                        className=""
-                        width={width}
-                        height={height - HEADER_HEIGHT}
-                        columnCount={cols.length}
-                        columnWidth={this.getColumnWidth}
-                        rowCount={rows.length}
-                        rowHeight={ROW_HEIGHT}
-                        cellRenderer={this.cellRenderer}
-                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
-                        scrollLeft={scrollLeft}
-                        tabIndex={null}
-                        overscanRowCount={20}
-                    />
-                </div>
-            }
-            </ScrollSync>
-        );
-    }
+    return (
+      <ScrollSync>
+        {({ onScroll, scrollLeft, scrollTop }) => (
+          <div
+            className={cx(className, "TableInteractive relative", {
+              "TableInteractive--pivot": this.props.isPivoted,
+              "TableInteractive--ready": this.state.contentWidths,
+              // no hover if we're dragging a column
+              "TableInteractive--noHover": this.state.dragColIndex != null,
+            })}
+          >
+            <canvas
+              className="spread"
+              style={{ pointerEvents: "none", zIndex: 999 }}
+              width={width}
+              height={height}
+            />
+            <Grid
+              ref={ref => (this.header = ref)}
+              style={{
+                top: 0,
+                left: 0,
+                right: 0,
+                height: HEADER_HEIGHT,
+                position: "absolute",
+                overflow: "hidden",
+              }}
+              className="TableInteractive-header scroll-hide-all"
+              width={width || 0}
+              height={HEADER_HEIGHT}
+              rowCount={1}
+              rowHeight={HEADER_HEIGHT}
+              // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
+              columnCount={cols.length + 1}
+              columnWidth={props =>
+                props.index < cols.length ? this.getColumnWidth(props) : 50
+              }
+              cellRenderer={props =>
+                props.columnIndex < cols.length
+                  ? this.tableHeaderRenderer(props)
+                  : null
+              }
+              onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+              scrollLeft={scrollLeft}
+              tabIndex={null}
+            />
+            <Grid
+              ref={ref => (this.grid = ref)}
+              style={{
+                top: HEADER_HEIGHT,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                position: "absolute",
+              }}
+              className=""
+              width={width}
+              height={height - HEADER_HEIGHT}
+              columnCount={cols.length}
+              columnWidth={this.getColumnWidth}
+              rowCount={rows.length}
+              rowHeight={ROW_HEIGHT}
+              cellRenderer={this.cellRenderer}
+              onScroll={({ scrollLeft }) => {
+                this.props.onActionDismissal();
+                return onScroll({ scrollLeft });
+              }}
+              scrollLeft={scrollLeft}
+              tabIndex={null}
+              overscanRowCount={20}
+            />
+          </div>
+        )}
+      </ScrollSync>
+    );
+  }
 }

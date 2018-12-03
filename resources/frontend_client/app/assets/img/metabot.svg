@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="50" height="35" viewBox="0 0 50 35" xmlns="http://www.w3.org/2000/svg">
+    <title>metabot</title>
+    <g fill="none" fill-rule="evenodd">
+        <rect fill="#509EE3" width="50" height="35" rx="4"/>
+        <rect fill="#D0E5F7" x="3" y="3" width="44" height="25" rx="2"/>
+        <ellipse fill="#509EE3" cx="14.83" cy="11.5" rx="1.83" ry="2.5"/>
+        <ellipse fill="#509EE3" cx="34.83" cy="11.5" rx="1.83" ry="2.5"/>
+        <path d="M19.416 16.561c.716 2.638 2.633 3.956 5.751 3.956 3.119 0 4.908-1.318 5.368-3.956" stroke="#509EE3" stroke-width="2"/>
+        <rect fill="#F9D45C" x="44" y="30" width="2" height="2" rx="1"/>
+        <rect fill="#A8C987" x="40" y="30" width="2" height="2" rx="1"/>
+    </g>
+</svg>

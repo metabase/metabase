@@ -1,32 +1,31 @@
 :root {
-    --edit-header-color: #6CAFED;
+  --edit-header-color: var(--color-brand);
 }
 
-
 :local(.editHeader) {
-    composes: text-white flex align-center from "style";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 43px;
-    background-color: var(--edit-header-color);
+  composes: text-white flex align-center from "style";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 43px;
+  background-color: var(--edit-header-color);
 }
 
 :local(.editHeaderButtons) {
-    composes: flex-align-right from "style";
+  composes: flex-align-right from "style";
 }
 
 :local(.editHeaderButton) {
-    border: none;
-    color: var(--edit-header-color);
+  border: none;
+  color: var(--edit-header-color);
 }
 
 :local(.saveButton) {
-    composes: editHeaderButton;
+  composes: editHeaderButton;
 }
 
 :local(.cancelButton) {
-    composes: editHeaderButton;
-    opacity: 0.5;
+  composes: editHeaderButton;
+  opacity: 0.5;
 }

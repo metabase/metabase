@@ -1,8 +1,10 @@
 (ns metabase.models.permissions-group-membership
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.models.permissions-group :as group]
-            [metabase.util :as u]))
+  (:require [metabase.models.permissions-group :as group]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
@@ -10,8 +12,8 @@
   "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
   [group-id]
   (when (= group-id (:id (group/metabot)))
-    (throw (ex-info "You cannot add or remove users to/from the 'MetaBot' group."
-                    {:status-code 400}))))
+    (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
+             {:status-code 400}))))
 
 (def ^:dynamic ^Boolean *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group?
@@ -23,14 +25,14 @@
   [group-id]
   (when (= group-id (:id (group/all-users)))
     (when-not *allow-changing-all-users-group-members*
-      (throw (ex-info "You cannot add or remove users to/from the 'All Users' group."
+      (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                {:status-code 400})))))
 
 (defn- check-not-last-admin []
   (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
-    (throw (ex-info "You cannot remove the last member of the 'Admin' group!"
+    (throw (ui18n/ex-info (tru "You cannot remove the last member of the ''Admin'' group!")
              {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]

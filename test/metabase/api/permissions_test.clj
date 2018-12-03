@@ -1,11 +1,13 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.models.permissions-group :refer [PermissionsGroup], :as group]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as group :refer [PermissionsGroup]]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.util :as u]))
-
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 ;; GET /permissions/group
 ;; Should *not* include inactive users in the counts.
@@ -37,3 +39,17 @@
     (test-users/delete-temp-users!)
     (set (for [member (:members ((test-users/user->client :crowberto) :get 200 (str "permissions/group/" (u/get-id (group/all-users)))))]
            (update member :membership_id (complement nil?))))))
+
+
+;; make sure we can update the perms graph from the API
+(expect
+ {(data/id :categories) :none
+  (data/id :checkins)   :none
+  (data/id :users)      :none
+  (data/id :venues)     :all}
+ (tt/with-temp PermissionsGroup [group]
+   ((test-users/user->client :crowberto) :put 200 "permissions/graph"
+    (assoc-in (perms/graph)
+              [:groups (u/get-id group) (data/id) :schemas]
+              {"PUBLIC" {(data/id :venues) :all}}))
+   (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))

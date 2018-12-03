@@ -33,7 +33,7 @@
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
 
-(defn process-revision-event
+(defn process-revision-event!
   "Handle processing for a single event notification received on the revisions-channel"
   [revision-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
@@ -80,4 +80,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for revision events."
   []
-  (events/start-event-listener! revisions-topics revisions-channel process-revision-event))
+  (events/start-event-listener! revisions-topics revisions-channel process-revision-event!))

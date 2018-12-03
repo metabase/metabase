@@ -1,210 +1,291 @@
-import React, { Component, PropTypes } from "react";
+/* @flow weak */
+
+import React, { Component } from "react";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
-import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
-import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
 
-import _ from "underscore";
+import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
+import type { ConcreteField } from "metabase/meta/types/Query";
+import type Table from "metabase-lib/lib/metadata/Table";
+
+// import type { Section } from "metabase/components/AccordianList";
+export type AccordianListItem = {};
+
+export type AccordianListSection = {
+  name: ?string,
+  items: AccordianListItem[],
+};
+
+type Props = {
+  className?: string,
+  maxHeight?: number,
+
+  field: ?ConcreteField,
+  onFieldChange: (field: ConcreteField) => void,
+
+  // HACK: for segments
+  onFilterChange?: (filter: any) => void,
+
+  tableMetadata: Table,
+
+  alwaysExpanded?: boolean,
+  enableSubDimensions?: boolean,
+  useOriginalDimension?: boolean,
+
+  hideSectionHeader?: boolean,
+};
+
+type State = {
+  sections: AccordianListSection[],
+};
 
 export default class FieldList extends Component {
-    constructor(props, context) {
-        super(props, context);
+  props: Props;
+  state: State = {
+    sections: [],
+  };
 
-        _.bindAll(this, "onChange", "itemIsSelected", "renderItemExtra", "renderItemIcon", "renderSectionIcon", "getItemClasses");
+  componentWillMount() {
+    this.componentWillReceiveProps(this.props);
+  }
+
+  componentWillReceiveProps(newProps) {
+    let {
+      tableMetadata,
+      fieldOptions,
+      segmentOptions,
+      hideSectionHeader,
+    } = newProps;
+    let tableName = tableMetadata.display_name;
+
+    let specialOptions = [];
+    if (segmentOptions) {
+      specialOptions = segmentOptions.map(segment => ({
+        name: segment.name,
+        value: ["segment", segment.id],
+        segment: segment,
+      }));
     }
 
-    static propTypes = {
-        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
-        segmentOptions: PropTypes.array,
-        tableName: PropTypes.string,
-        onFieldChange: PropTypes.func.isRequired,
-        onFilterChange: PropTypes.func,
-        enableTimeGrouping: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired
+    const getSectionItems = sectionOptions =>
+      sectionOptions.dimensions.map(dimension => ({
+        name: dimension.displayName(),
+        dimension: dimension,
+      }));
+
+    let mainSection = {
+      name: hideSectionHeader ? null : singularize(tableName),
+      items: specialOptions.concat(getSectionItems(fieldOptions)),
     };
 
-    componentWillMount() {
-        this.componentWillReceiveProps(this.props);
+    let fkSections = fieldOptions.fks.map(fkOptions => ({
+      name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
+      items: getSectionItems(fkOptions),
+    }));
+
+    let sections = [];
+    if (mainSection.items.length > 0) {
+      sections.push(mainSection);
     }
+    sections.push(...fkSections);
 
-    componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions } = newProps;
-        let tableName = tableMetadata.display_name;
+    this.setState({ sections });
+  }
 
-        let specialOptions = [];
-        if (segmentOptions) {
-            specialOptions = segmentOptions.map(segment => ({
-                name: segment.name,
-                value: ["SEGMENT", segment.id],
-                segment: segment
-            }));
-        }
+  itemIsSelected = item => {
+    return (
+      item.dimension && item.dimension.isSameBaseDimension(this.props.field)
+    );
+  };
 
-        if (customFieldOptions) {
-            specialOptions = specialOptions.concat(Object.keys(customFieldOptions).map(name => ({
-                name: name,
-                value: ["expression", name],
-                customField: customFieldOptions[name]
-            })));
-        }
+  renderItemExtra = item => {
+    const {
+      field,
+      enableSubDimensions,
+      tableMetadata: { metadata },
+    } = this.props;
 
-        let mainSection = {
-            name: singularize(tableName),
-            items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                name: Query.getFieldPathName(field.id, tableMetadata),
-                value: ["field-id", field.id],
-                field: field
-            })))
-        };
-
-        let fkSections = fieldOptions.fks.map(fk => ({
-            name: stripId(fk.field.display_name),
-            items: fk.fields.map(field => {
-                const value = ["fk->", fk.field.id, field.id];
-                const target = Query.getFieldTarget(value, tableMetadata);
-                return {
-                    name: Query.getFieldPathName(target.field.id, target.table),
-                    value: value,
-                    field: field
-                };
-            })
-        }));
-
-        let sections = [mainSection].concat(fkSections);
-        let fieldTarget = parseFieldTarget(field);
-
-        this.setState({ sections, fieldTarget });
-    }
-
-    itemIsSelected(item) {
-        let { fieldTarget } = this.state;
-        if (typeof fieldTarget === "number") {
-            fieldTarget = ["field-id", fieldTarget];
-        }
-        return _.isEqual(fieldTarget, item.value);
-    }
-
-    renderItemExtra(item) {
-        let { field, enableTimeGrouping } = this.props;
-
-        return (
-            <div className="Field-extra flex align-center">
-                { item.segment &&
-                    this.renderSegmentTooltip(item.segment)
-                }
-                { item.customField &&
-                    <span className="h5 text-grey-2 px1">Custom</span>
-                }
-                { item.field && enableTimeGrouping && isDate(item.field) &&
-                    <PopoverWithTrigger
-                        id="TimeGroupingPopover"
-                        className={this.props.className}
-                        hasArrow={false}
-                        triggerElement={this.renderTimeGroupingTrigger(field)}
-                        tetherOptions={{
-                            attachment: 'top left',
-                            targetAttachment: 'top right',
-                            targetOffset: '0 0',
-                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
-                        }}
-                    >
-                        <TimeGroupingPopover
-                            field={field}
-                            value={item.value}
-                            onFieldChange={this.props.onFieldChange}
-                            groupingOptions={item.field.grouping_options}
-                        />
-                    </PopoverWithTrigger>
-                }
-            </div>
-        );
-    }
-
-    renderItemIcon(item) {
-        let name;
-        if (item.segment) {
-            name = "staroutline";
-        } else if (item.field) {
-            name = getIconForField(item.field);
-        } else if (item.customField) {
-            // TODO: need to make this better
-            name = 'int';
-        }
-        return <Icon name={name || 'unknown'} size={18} />;
-    }
-
-    renderTimeGroupingTrigger(field) {
-        return (
-            <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
-                <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
-                <Icon name="chevronright" size={16} />
-            </div>
-        );
-    }
-
-    renderSegmentTooltip(segment) {
-        let { tableMetadata } = this.props;
-        return (
-            <div className="p1">
-                <Tooltip tooltip={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
-                    <span className="QuestionTooltipTarget" />
-                </Tooltip>
-            </div>
-        );
-    }
-
-    getItemClasses(item, itemIndex) {
-        if (item.segment) {
-            return "List-item--segment";
-        } else {
-            return null;
-        }
-    }
-
-    renderSectionIcon(section, sectionIndex) {
-        if (sectionIndex > 0) {
-            return <Icon name="connections" size={18} />
-        } else {
-            return <Icon name="table2" size={18} />;
-        }
-    }
-
-    onChange(item) {
-        if (item.segment) {
-            this.props.onFilterChange(item.value);
-        } else if (this.itemIsSelected(item)) {
-            // ensure if we select the same item we don't reset datetime_field's unit
-            this.props.onFieldChange(this.props.field);
-        }  else if (this.props.enableTimeGrouping && isDate(item.field)) {
-            this.props.onFieldChange(["datetime_field", item.value, "as", "day"]);
-        } else {
-            this.props.onFieldChange(item.value);
-        }
-    }
-
-    render() {
-        return (
-            <AccordianList
-                className={this.props.className}
-                sections={this.state.sections}
-                onChange={this.onChange}
-                itemIsSelected={this.itemIsSelected}
-                renderSectionIcon={this.renderSectionIcon}
-                renderItemExtra={this.renderItemExtra}
-                renderItemIcon={this.renderItemIcon}
-                getItemClasses={this.getItemClasses}
+    return (
+      <div className="Field-extra flex align-center">
+        {item.segment && this.renderSegmentTooltip(item.segment)}
+        {item.dimension &&
+          item.dimension.tag && (
+            <span className="h5 text-light px1">{item.dimension.tag}</span>
+          )}
+        {enableSubDimensions &&
+        item.dimension &&
+        item.dimension.dimensions().length > 0 ? (
+          <PopoverWithTrigger
+            className={this.props.className}
+            hasArrow={false}
+            triggerElement={this.renderSubDimensionTrigger(item.dimension)}
+            tetherOptions={{
+              attachment: "top left",
+              targetAttachment: "top right",
+              targetOffset: "0 0",
+              constraints: [
+                {
+                  to: "window",
+                  attachment: "together",
+                  pin: ["left", "right"],
+                },
+              ],
+            }}
+          >
+            <DimensionPicker
+              dimension={Dimension.parseMBQL(field, metadata)}
+              dimensions={item.dimension.dimensions()}
+              onChangeDimension={dimension =>
+                this.props.onFieldChange(dimension.mbql())
+              }
             />
-        )
+          </PopoverWithTrigger>
+        ) : null}
+      </div>
+    );
+  };
+
+  renderItemIcon = item => {
+    let name;
+    if (item.segment) {
+      name = "staroutline";
+    } else if (item.dimension) {
+      name = item.dimension.icon();
     }
+    return <Icon name={name || "unknown"} size={18} />;
+  };
+
+  renderSubDimensionTrigger(dimension) {
+    const { field, tableMetadata: { metadata } } = this.props;
+    const subDimension = dimension.isSameBaseDimension(field)
+      ? Dimension.parseMBQL(field, metadata)
+      : dimension.defaultDimension();
+    const name = subDimension ? subDimension.subTriggerDisplayName() : null;
+    return (
+      <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
+        {name && <h4 className="mr1">{name}</h4>}
+        <Icon name="chevronright" size={16} />
+      </div>
+    );
+  }
+
+  renderSegmentTooltip(segment) {
+    let { tableMetadata } = this.props;
+    return (
+      <div className="p1">
+        <Tooltip
+          tooltip={
+            <QueryDefinitionTooltip
+              object={segment}
+              tableMetadata={tableMetadata}
+            />
+          }
+        >
+          <span className="QuestionTooltipTarget" />
+        </Tooltip>
+      </div>
+    );
+  }
+
+  getItemClasses = (item, itemIndex) => {
+    if (item.segment) {
+      return "List-item--segment";
+    } else {
+      return null;
+    }
+  };
+
+  renderSectionIcon = (section, sectionIndex) => {
+    if (sectionIndex > 0) {
+      return <Icon name="connections" size={18} />;
+    } else {
+      return <Icon name="table2" size={18} />;
+    }
+  };
+
+  onChange = item => {
+    const {
+      field,
+      enableSubDimensions,
+      useOriginalDimension,
+      onFilterChange,
+      onFieldChange,
+    } = this.props;
+    if (item.segment && onFilterChange) {
+      onFilterChange(item.value);
+    } else if (field != null && this.itemIsSelected(item)) {
+      // ensure if we select the same item we don't reset datetime-field's unit
+      onFieldChange(field);
+    } else {
+      const dimension = useOriginalDimension
+        ? item.dimension
+        : item.dimension.defaultDimension() || item.dimension;
+      const shouldExcludeBinning =
+        !enableSubDimensions &&
+        !useOriginalDimension &&
+        dimension instanceof BinnedDimension;
+
+      if (shouldExcludeBinning) {
+        // If we don't let user choose the sub-dimension, we don't want to treat the field
+        // as a binned field (which would use the default binning)
+        // Let's unwrap the base field of the binned field instead
+        onFieldChange(dimension.baseDimension().mbql());
+      } else {
+        onFieldChange(dimension.mbql());
+      }
+    }
+  };
+
+  render() {
+    return (
+      <AccordianList
+        className={this.props.className}
+        maxHeight={this.props.maxHeight}
+        sections={this.state.sections}
+        onChange={this.onChange}
+        itemIsSelected={this.itemIsSelected}
+        renderSectionIcon={this.renderSectionIcon}
+        renderItemExtra={this.renderItemExtra}
+        renderItemIcon={this.renderItemIcon}
+        getItemClasses={this.getItemClasses}
+        alwaysExpanded={this.props.alwaysExpanded}
+      />
+    );
+  }
 }
+
+import cx from "classnames";
+
+export const DimensionPicker = ({
+  className,
+  dimension,
+  dimensions,
+  onChangeDimension,
+}) => {
+  return (
+    <ul className="px2 py1">
+      {dimensions.map((d, index) => (
+        <li
+          key={index}
+          className={cx("List-item", {
+            "List-item--selected": d.isEqual(dimension),
+          })}
+        >
+          <a
+            className="List-item-title full px2 py1 cursor-pointer"
+            onClick={() => onChangeDimension(d)}
+          >
+            {d.subDisplayName()}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+};

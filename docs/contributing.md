@@ -6,7 +6,7 @@ In this guide, we'll discuss how Metabase is built. This should give you a good 
 
 ## What we're trying to build
 
-Metabase is all about letting non-technical users get access to the their organization's data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel. 
+Metabase is all about letting non-technical users get access to the their organization's data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel.
 
 It's important to keep in mind these goals of the Metabase project. Many times
 proposals will be marked "Out of Scope" or otherwise deprioritized. This doesn't mean the proposal isn't useful, or that we wouldn't be interested in seeing it done as a side project or as an experimental branch. However, it does mean that we won't point the core team or contributors to it in the near term. Issues that are slightly out of scope will be kept open in case there is community support (and ideally contributions).
@@ -15,7 +15,7 @@ To get a sense for the end goals, make sure to read the [Zen of Metabase](../zen
 
 ## Our product process:
 
-The core team runs a pretty well defined product process. It is actively being tweaked, but the below is a pretty faithful description of it at the time of writing. You should have a clear idea of how we work before jumping in with a PR. 
+The core team runs a pretty well defined product process. It is actively being tweaked, but the below is a pretty faithful description of it at the time of writing. You should have a clear idea of how we work before jumping in with a PR.
 
 ### A) Identify product needs from the community
 
@@ -29,22 +29,25 @@ We typically will collect a group of issues or suggestions into a new topline fe
 
 Once a feature has been defined, typically it will be taken on by a product designer. Here, they will produce low fi mocks, get feedback from our users and community, and iterate.
 
-Once the main UX flows have been dialed in, there will be a hi-fidelity visual design. 
+Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
 Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/Design%2FNeeded). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted).
 
 ### D) Build the feature
 
 Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
-Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
+
+If you're building something that users will see in Metabase, please refer to the [Style Guide](https://localhost:3000/_internal) while running the development environment to learn how and when to use various Metabase UI elements.
+
+Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
 
 ### E) Verification and merging
 
 All PRs that involve more than an insignificant change should be reviewed. See our [Code Review Process](code-reviews.md).
- 
-If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around. 
 
-If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a very high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here. 
+If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around.
+
+If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a very high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here.
 
 ## Ways to help:
 
@@ -72,14 +75,14 @@ By our definition, "Bugs" are situations where the program doesn't do what it wa
 
 There are a lot of docs. We often have difficulties keeping them up to date. If you are reading them and you notice inconsistencies, errors or outdated information, please help up keep them current!
 
-### Working on features 
+### Working on features
 
-Some features, eg Database drivers, don't have any user facing pixels. These are a great place to start off contributing as they don't require as much communication, discussions about tradeoffs and process in general. 
+Some features, eg Database drivers, don't have any user facing pixels. These are a great place to start off contributing as they don't require as much communication, discussions about tradeoffs and process in general.
 
-In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help. 
+In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help.
 
 Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 
-If you come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase. 
+If you come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase.

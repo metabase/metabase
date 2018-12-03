@@ -1,14 +1,14 @@
 (ns metabase.api.revision-test
   (:require [expectations :refer :all]
-            [metabase.api.revision :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card serialize-instance]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [revision :refer [Revision push-revision! revert! revisions]])
+            [metabase.models
+             [card :refer [Card serialize-instance]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [revision :refer [push-revision! Revision revisions]]]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]))
+            [metabase.test.data.users :refer :all]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (def ^:private rasta-revision-info
   (delay {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))

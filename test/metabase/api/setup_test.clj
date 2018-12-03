@@ -1,17 +1,11 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.http-client :as http]
-            (metabase.models [session :refer [Session]]
-                             [setting :as setting]
-                             [user :refer [User]])
-            (metabase [public-settings :as public-settings]
-                      [setup :as setup])
-            (metabase.test [data :refer :all]
-                           [util :refer [match-$], :as tu])
-            [metabase.util :as u]))
-
+            [metabase
+             [http-client :as http]
+             [public-settings :as public-settings]
+             [setup :as setup]]
+            [metabase.test.util :as tu]))
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token

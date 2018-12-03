@@ -1,15 +1,13 @@
 (ns metabase.models.dashboard-card-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer :all]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer :all]
+             [dashboard-card-series :refer [DashboardCardSeries]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
-
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn remove-ids-and-timestamps [m]
   (let [f (fn [v]

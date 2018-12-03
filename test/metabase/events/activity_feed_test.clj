@@ -1,23 +1,19 @@
 (ns metabase.events.activity-feed-test
-  (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
+  (:require [expectations :refer [expect]]
             [metabase.events.activity-feed :refer :all]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [segment :refer [Segment]]
-                             [session :refer [Session]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [segment :refer [Segment]]]
+            [metabase.test.data :as data :refer :all]
             [metabase.test.data.users :refer [user->id]]
-            [metabase.test.util :as tu]
-            [metabase.test-setup :refer :all]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn- do-with-temp-activities [f]
   (db/delete! Activity)                  ; Not 100% sure this is neccessary anymore
@@ -31,83 +27,105 @@
 
 
 ;; `:card-create` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-create
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-create, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-create"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-create, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-create"
+        :model_id (:id card)))))
+
+;; when I save a Card that uses a NESTED query, is the activity recorded? :D
+(expect
+  {:topic       :card-create
+   :user_id     (user->id :rasta)
+   :model       "card"
+   :database_id (data/id)
+   :table_id    (data/id :venues)
+   :details     {:name "My Cool NESTED Card", :description nil}}
+  (tt/with-temp* [Card [card-1 {:name          "My Cool Card"
+                                :dataset_query {:database (data/id)
+                                                :type     :query
+                                                :query    {:source-table (data/id :venues)}}}]
+                  Card [card-2 {:name          "My Cool NESTED Card"
+                                :dataset_query {:database metabase.models.database/virtual-id
+                                                :type     :query
+                                                :query    {:source-table (str "card__" (u/get-id card-1))}}}]]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-create, :item card-2})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-create"
+        :model_id (:id card-2)))))
 
 
 ;; `:card-update` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-update
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-update, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-update"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-update, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-update"
+        :model_id (:id card)))))
 
 
 ;; `:card-delete` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-delete
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-delete, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-delete"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-delete, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-delete"
+        :model_id (:id card)))))
 
 
 ;; `:dashboard-create` event
-(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(expect
   {:topic       :dashboard-create
    :user_id     (user->id :rasta)
    :model       "dashboard"
-   :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Dashboard", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :dashboard-create, :item dashboard})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "dashboard-create"
-      :model_id (:id dashboard))))
+  (tt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :dashboard-create, :item dashboard})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "dashboard-create"
+        :model_id (:id dashboard)))))
 
 
 ;; `:dashboard-delete` event
-(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(expect
   {:topic       :dashboard-delete
    :user_id     (user->id :rasta)
    :model       "dashboard"
-   :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Dashboard", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :dashboard-delete, :item dashboard})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "dashboard-delete"
-      :model_id (:id dashboard))))
+  (tt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :dashboard-delete, :item dashboard})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "dashboard-delete"
+        :model_id (:id dashboard)))))
 
 
 ;; `:dashboard-add-cards` event

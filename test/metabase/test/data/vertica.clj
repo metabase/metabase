@@ -1,71 +1,68 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             vertica)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
-            [metabase.util :as u])
-  (:import metabase.driver.vertica.VerticaDriver))
+  (:require [clojure.java.jdbc :as jdbc]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test.data
+             [interface :as tx]
+             [sql :as sql.tx]
+             [sql-jdbc :as sql-jdbc.tx]]
+            [metabase.test.data.sql-jdbc
+             [execute :as execute]
+             [load-data :as load-data]]))
 
-(def ^:private ^:const field-base-type->sql-type
-  {:type/BigInteger "BIGINT"
-   :type/Boolean    "BOOLEAN"
-   :type/Char       "VARCHAR(254)"
-   :type/Date       "DATE"
-   :type/DateTime   "TIMESTAMP"
-   :type/Decimal    "NUMERIC"
-   :type/Float      "FLOAT"
-   :type/Integer    "INTEGER"
-   :type/Text       "VARCHAR(254)"
-   :type/Time       "TIME"})
+(sql-jdbc.tx/add-test-extensions! :vertica)
 
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/BigInteger] [_ _] "BIGINT")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Boolean]    [_ _] "BOOLEAN")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Char]       [_ _] "VARCHAR(254)")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Date]       [_ _] "DATE")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/DateTime]   [_ _] "TIMESTAMP")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Decimal]    [_ _] "NUMERIC")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Float]      [_ _] "FLOAT")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Integer]    [_ _] "INTEGER")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Text]       [_ _] "VARCHAR(254)")
+(defmethod sql.tx/field-base-type->sql-type [:vertica :type/Time]       [_ _] "TIME")
 
 (defn- db-name []
-  (or (env :mb-vertica-db)
-      "docker"))
+  (tx/db-test-env-var-or-throw :vertica :db "docker"))
 
 (def ^:private db-connection-details
-  (delay {:host     (or (env :mb-vertica-host) "localhost")
+  (delay {:host     (tx/db-test-env-var-or-throw :vertica :host "localhost")
+          :port     (Integer/parseInt (tx/db-test-env-var-or-throw :vertica :port "5433"))
+          :user     (tx/db-test-env-var :vertica :user "dbadmin")
+          :password (tx/db-test-env-var :vertica :password)
           :db       (db-name)
-          :port     5433
-          :timezone :America/Los_Angeles ; why?
-          :user     (or (env :mb-vertica-user) "dbadmin")
-          :password (env :mb-vertica-password)}))
+          :timezone :America/Los_Angeles}))
 
-(defn- qualified-name-components
-  ([_]                             [(db-name)])
-  ([db-name table-name]            ["public" (i/db-qualified-table-name db-name table-name)])
-  ([db-name table-name field-name] ["public" (i/db-qualified-table-name db-name table-name) field-name]))
+(defmethod tx/dbdef->connection-details :vertica [& _] @db-connection-details)
 
+(defmethod sql.tx/qualified-name-components :vertica
+  ([_ _]                             [(db-name)])
+  ([_ db-name table-name]            ["public" (tx/db-qualified-table-name db-name table-name)])
+  ([_ db-name table-name field-name] ["public" (tx/db-qualified-table-name db-name table-name) field-name]))
 
-(u/strict-extend VerticaDriver
-  generic/IGenericSQLDatasetLoader
-  (merge generic/DefaultsMixin
-         {:create-db-sql             (constantly nil)
-          :drop-db-if-exists-sql     (constantly nil)
-          :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
-          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          :load-data!                generic/load-data-one-at-a-time-parallel!
-          :pk-sql-type               (constantly "INTEGER")
-          :qualified-name-components (u/drop-first-arg qualified-name-components)
-          :execute-sql!              generic/sequentially-execute-sql!})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
-         {:database->connection-details       (fn [& _] @db-connection-details)
-          :default-schema                     (constantly "public")
-          :engine                             (constantly :vertica)
-          :has-questionable-timezone-support? (constantly true)}))
+(defmethod sql.tx/create-db-sql         :vertica [& _] nil)
+(defmethod sql.tx/drop-db-if-exists-sql :vertica [& _] nil)
+
+(defmethod sql.tx/drop-table-if-exists-sql :vertica [& args]
+  (apply sql.tx/drop-table-if-exists-cascade-sql args))
+
+(defmethod load-data/load-data! :vertica [& args]
+  (apply load-data/load-data-one-at-a-time-parallel! args))
+
+(defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
+
+(defmethod execute/execute-sql! :vertica [& args]
+  (apply execute/sequentially-execute-sql! args))
+
+(defmethod tx/has-questionable-timezone-support? :vertica [_] true)
 
 
+(defn- dbspec []
+  (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
 
-(defn- dbspec [& _]
-  (sql/connection-details->spec (VerticaDriver.) @db-connection-details))
-
-(defn- set-max-client-sessions!
-  {:expectations-options :before-run}
-  []
+(defmethod tx/before-run :vertica [_]
   ;; Close all existing sessions connected to our test DB
-  (generic/query-when-testing! :vertica dbspec "SELECT CLOSE_ALL_SESSIONS();")
+  (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
   ;; Increase the connection limit; the default is 5 or so which causes tests to fail when too many connections are made
-  (generic/execute-when-testing! :vertica dbspec (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))
+  (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))

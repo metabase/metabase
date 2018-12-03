@@ -1,38 +1,40 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
-   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
-   need to be repeatable, e.g.:
+  These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
+  H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
+  thus, all of these migrations need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as str]
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase [config :as config]
-                      [driver :as driver]
-                      types)
-            [metabase.events.activity-feed :refer [activity-feed-topics]]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection], :as collection]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [label :refer [Label]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table] :as table]
-                             [setting :as setting]
-                             [user :refer [User]])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [collection :as collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [database :refer [Database virtual-id]]
+             [field :refer [Field]]
+             [humanization :as humanization]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [pulse :refer [Pulse]]
+             [setting :as setting :refer [Setting]]
+             [user :refer [User]]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
+            [toucan
+             [db :as db]
+             [models :as models]])
+  (:import java.util.UUID))
 
 ;;; # Migration Helpers
 
@@ -50,12 +52,13 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (u/new-sql-timestamp)))))
+        :timestamp (du/new-sql-timestamp)))))
 
 (def ^:private data-migrations (atom []))
 
 (defmacro ^:private defmigration
-  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that `data-migrations` atom."
+  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that
+  `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
@@ -70,144 +73,9 @@
   (log/info "Finished running data migrations."))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                       MIGRATIONS                                                       |
-;;; +------------------------------------------------------------------------------------------------------------------------+
-
-;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
-;;
-;; This reads through all saved cards, extracts the JSON from the `:dataset_query`, and tries to populate
-;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
-(defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
-  ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/count Card
-                 :database_id [:not= nil]))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
-      (when type
-        ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/update! Card id, :dataset_query dataset-query)))))
-
-
-;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
-;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
-;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-mongodb-databases-ssl-false
-  (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
-    (db/update! Database id, :details (assoc details :ssl false))))
-
-
-;; Set default values for :schema in existing tables now that we've added the column
-;; That way sync won't get confused next time around
-(defmigration ^{:author "camsaul", :added "0.13.0"} set-default-schemas
-  (doseq [[engine default-schema] [["postgres" "public"]
-                                   ["h2"       "PUBLIC"]]]
-    (when-let [db-ids (db/select-ids Database :engine engine)]
-      (db/update-where! Table {:schema nil
-                               :db_id  [:in db-ids]}
-        :schema default-schema))))
-
-
-;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
-(defmigration ^{:author "agilliland", :added "0.13.0"} set-admin-email
-  (when-not (setting/get :admin-email)
-    (when-let [email (db/select-one-field :email 'User
-                       :is_superuser true
-                       :is_active    true)]
-      (setting/set! :admin-email email))))
-
-
-;; Remove old `database-sync` activity feed entries
-(defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
-  (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/simple-delete! Activity :topic "database-sync")))
-
-
-;; Migrate dashboards to the new grid
-;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
-(defmigration ^{:author "agilliland",:added "0.16.0"} update-dashboards-to-new-grid
-  (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
-    (db/update! DashboardCard id
-      :row   (when row (* row 4))
-      :col   (when col (* col 3))
-      :sizeX (when sizeX (* sizeX 3))
-      :sizeY (when sizeY (* sizeY 4)))))
-
-
-;; migrate data to new visibility_type column on field
-(defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/count Field :visibility_type "unset"))
-    ;; start by marking all inactive fields as :retired
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          false}
-      :visibility_type "retired")
-    ;; if field is active but preview_display = false then it becomes :details-only
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true
-                             :preview_display false}
-      :visibility_type "details-only")
-    ;; everything else should end up as a :normal field
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true}
-      :visibility_type "normal")))
-
-
-;; populate RawTable and RawColumn information
-;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
-;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
-(defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
-  (when (zero? (db/count RawTable))
-    (binding [db/*disable-db-logging* true]
-      (db/transaction
-       (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
-         (when-let [tables (not-empty (db/select Table, :db_id database-id, :active true))]
-           (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
-           (let [processed-tables (atom #{})]
-             (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
-               ;; this check gaurds against any table that appears in the schema multiple times
-               (if (contains? @processed-tables {:schema table-schema, :name table-name})
-                 ;; this is a dupe of this table, retire it and it's fields
-                 (table/retire-tables! #{table-id})
-                 ;; this is the first time we are encountering this table, so migrate it
-                 (do
-                   ;; add this table to the set of tables we've processed
-                   (swap! processed-tables conj {:schema table-schema, :name table-name})
-                   ;; create the RawTable
-                   (let [{raw-table-id :id} (db/insert! RawTable
-                                              :database_id database-id
-                                              :schema      table-schema
-                                              :name        table-name
-                                              :details     {}
-                                              :active      true)]
-                     ;; update the Table and link it with the RawTable
-                     (db/update! Table table-id
-                       :raw_table_id raw-table-id)
-                     ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
-                     (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
-                       (let [processed-fields (atom #{})]
-                         (doseq [{field-id :id, column-name :name, :as field} (db/select Field, :table_id table-id, :visibility_type [:not= "retired"])]
-                           ;; guard against duplicate fields with the same name
-                           (if (contains? @processed-fields column-name)
-                             ;; this is a dupe, disable it
-                             (db/update! Field field-id
-                               :visibility_type "retired")
-                             ;; normal unmigrated field, so lets use it
-                             (let [{raw-column-id :id} (db/insert! RawColumn
-                                                         :raw_table_id raw-table-id
-                                                         :name         column-name
-                                                         :is_pk        (= :id (:special_type field))
-                                                         :details      {:base-type (:base_type field)}
-                                                         :active       true)]
-                               ;; update the Field and link it with the RawColumn
-                               (db/update! Field field-id
-                                 :raw_column_id raw-column-id
-                                 :last_analyzed (u/new-sql-timestamp))
-                               ;; add this column to the set we've processed already
-                               (swap! processed-fields conj column-name)))))))))))))))))
-
-
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                     PERMISSIONS v1                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 PERMISSIONS v1                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
@@ -234,7 +102,8 @@
         :group_id (:id (perm-group/admin))
         :object   "/"))))
 
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual DB
+;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
+;; DB
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
   (let [db-ids (db/select-ids Database)]
     (doseq [{group-id :id} [(perm-group/all-users)
@@ -246,9 +115,9 @@
           :group_id group-id)))))
 
 
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                    NEW TYPE SYSTEM                                                     |
-;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                NEW TYPE SYSTEM                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const old-special-type->new-type
     {"avatar"                 "type/AvatarURL"
@@ -295,9 +164,9 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-;; migrate all of the old base + special types to the new ones.
-;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
-;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
+;; migrate all of the old base + special types to the new ones.  This also takes care of any types that are already
+;; correct other than the fact that they're missing :type/ in the front.  This was a bug that existed for a bit in
+;; 0.20.0-SNAPSHOT but has since been corrected
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
@@ -314,16 +183,180 @@
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
       :base_type new-type)))
 
-;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
+;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't
+;; blow up
 (defmigration ^{:author "camsaul", :added "0.20.0"} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
 
-;; make sure there are no trailing slashes on the `-site-url` setting. This could be the case in some situtations if the setting was set
-;; by some other method besides the `site-url` helper function before the magic setter was in place
-(defmigration ^{:atuhor "camsaul", :added "0.23.0"} remove-trailing-slashes-from-site-url-setting
-  ;; just fetching the setting and setting it again via the magic setter will remove the trailing slash
-  (when-let [site-url (public-settings/-site-url)]
-    (public-settings/-site-url site-url)))
+;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
+;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
+;; `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
+(defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
+  (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
+    (public-settings/site-url site-url)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Migrating QueryExecutions                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; drop the legacy QueryExecution table now that we don't need it anymore
+(defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
+  ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
+  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
+
+;; There's a window on in the 0.23.0 and 0.23.1 releases that the
+;; site-url could be persisted without a protocol specified. Other
+;; areas of the application expect that site-url will always include
+;; http/https. This migration ensures that if we have a site-url
+;; stored it has the current defaulting logic applied to it
+(defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
+  (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
+        defaulted-site-url (public-settings/site-url stored-site-url)]
+    (when (and stored-site-url
+               (not= stored-site-url defaulted-site-url))
+      (setting/set! "site-url" stored-site-url))))
+
+;; There was a bug (#5998) preventing database_id from being persisted with
+;; native query type cards. This migration populates all of the Cards
+;; missing those database ids
+(defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
+  (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
+                                  (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
+          :when (not= db-id virtual-id)]
+    (if (and (seq cards)
+             (db/exists? Database :id db-id))
+      (db/update-where! Card {:id [:in (map :id cards)]}
+                        :database_id db-id)
+      (doseq [{id :id card-name :name} cards]
+        (log/warnf "Cleaning up orphaned Question '%s', associated to a now deleted database" card-name)
+        (db/delete! Card :id id)))))
+
+;; Prior to version 0.28.0 humanization was configured using the boolean setting `enable-advanced-humanization`.
+;; `true` meant "use advanced humanization", while `false` meant "use simple humanization". In 0.28.0, this Setting
+;; was replaced by the `humanization-strategy` Setting, which (at the time of this writing) allows for a choice
+;; between three options: advanced, simple, or none. Migrate any values of the old Setting, if set, to the new one.
+(defmigration ^{:author "camsaul", :added "0.28.0"} migrate-humanization-setting
+  (when-let [enable-advanced-humanization-str (db/select-one-field :value Setting, :key "enable-advanced-humanization")]
+    (when (seq enable-advanced-humanization-str)
+      ;; if an entry exists for the old Setting, it will be a boolean string, either "true" or "false". Try inserting
+      ;; a record for the new setting with the appropriate new value. This might fail if for some reason
+      ;; humanization-strategy has been set already, or enable-advanced-humanization has somehow been set to an
+      ;; invalid value. In that case, fail silently.
+      (u/ignore-exceptions
+        (humanization/humanization-strategy (if (Boolean/parseBoolean enable-advanced-humanization-str)
+                                              "advanced"
+                                              "simple"))))
+    ;; either way, delete the old value from the DB since we'll never be using it again.
+    ;; use `simple-delete!` because `Setting` doesn't have an `:id` column :(
+    (db/simple-delete! Setting {:key "enable-advanced-humanization"})))
+
+;; Starting in version 0.29.0 we switched the way we decide which Fields should get FieldValues. Prior to 29, Fields
+;; would be marked as special type Category if they should have FieldValues. In 29+, the Category special type no
+;; longer has any meaning as far as the backend is concerned. Instead, we use the new `has_field_values` column to
+;; keep track of these things. Fields whose value for `has_field_values` is `list` is the equiavalent of the old
+;; meaning of the Category special type.
+;;
+;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
+;; their behavior doesn't suddenly change.
+(defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
+  (db/update-where! Field {:has_field_values nil
+                           :special_type     (mdb/isa :type/Category)
+                           :active           true}
+    :has_field_values "list"))
+
+;; In v0.30.0 we switiched to making standard SQL the default for BigQuery; up until that point we had been using
+;; BigQuery legacy SQL. For a while, we've supported standard SQL if you specified the case-insensitive `#standardSQL`
+;; directive at the beginning of your query, and similarly allowed you to specify legacy SQL with the `#legacySQL`
+;; directive (although this was already the default). Since we're now defaulting to standard SQL, we'll need to go in
+;; and add a `#legacySQL` directive to all existing BigQuery SQL queries that don't have a directive, so they'll
+;; continue to run as legacy SQL.
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-legacy-sql-directive-to-bigquery-sql-cards
+  ;; For each BigQuery database...
+  (doseq [database-id (db/select-ids Database :engine "bigquery")]
+    ;; For each Card belonging to that BigQuery database...
+    (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
+      (try
+        ;; If the Card isn't native, ignore it
+        (when (= (keyword (:type query)) :native)
+          ;; there apparently are cases where we have a `:native` query with no `:query`. See #8924
+          (when-let [sql (get-in query [:native :query])]
+            ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+            (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+              ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+              ;; #legacySQL directive...
+              (let [updated-sql (str "#legacySQL\n" sql)]
+                ;; and save the updated dataset_query map
+                (db/update! Card (u/get-id card-id)
+                  :dataset_query (assoc-in query [:native :query] updated-sql))))))
+        ;; if for some reason something above fails (as in #8924) let's log the error and proceed. It's not mission
+        ;; critical that we migrate existing queries anyway, and for ones that are impossible to migrate (e.g. ones
+        ;; that are invalid in the first place) it's best to fail gracefully and proceed rather than nuke someone's MB
+        ;; instance
+        (catch Throwable e
+          (log/error e (trs "Error adding legacy SQL directive to BigQuery saved Question")))))))
+
+
+;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
+;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
+;; disable passwords for Google authenticated users
+(defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
+  (db/transaction
+    (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
+      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+
+
+;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
+;; will no longer be any notion of saved questions existing outside of a collection (i.e. in the weird "Everything
+;; Else" area where they can currently be saved).
+;;
+;; Consequently we'll need to move existing dashboards, pulses, and questions-not-in-a-collection to a new location
+;; when users upgrade their instance to 0.30 from a previous version.
+;;
+;; The user feedback we've received points to a UX that would do the following:
+;;
+;; 1. Set permissions to the Root Collection to readwrite perms access for *all* Groups.
+;;
+;; 2. Create three new collections within the root collection: "Migrated dashboards," "Migrated pulses," and "Migrated
+;;    questions."
+;;
+;; 3. The permissions settings for these new collections should be set to No Access for all user groups except
+;;    Administrators.
+;;
+;; 4. Existing Dashboards, Pulses, and Questions from the "Everything Else" area should now be present within these
+;;    new collections.
+;;
+(defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+    ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
+    ;; perms, and we don't want to put extra entries in there that confuse things
+    (doseq [group-id non-admin-group-ids]
+      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
+    ;; 2. Create the new collections.
+    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
+                                         Pulse     (str (trs "Migrated Pulses"))
+                                         Card      (str (trs "Migrated Questions"))}
+            :when                       (db/exists? model :collection_id nil)
+            :let                        [new-collection (db/insert! Collection
+                                                          :name  new-collection-name
+                                                          :color "#509ee3")]] ; MB brand color
+      ;; 3. make sure the non-admin groups don't have any perms for this Collection.
+      (doseq [group-id non-admin-group-ids]
+        (perms/revoke-collection-permissions! group-id new-collection))
+      ;; 4. move everything not in this Collection to a new Collection
+      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+                     (name model) new-collection-name (u/get-id new-collection)))
+      (db/update-where! model {:collection_id nil}
+        :collection_id (u/get-id new-collection)))))
+
+
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                                               !!
+;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!
+;; !!    (using preConditions where appropriate). Only add things here if absolutely necessary. If you do add       !!
+;; !!    do add new ones here, please add them above this warning message, so people will see it in the future.     !!
+;; !!                                                                                                               !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

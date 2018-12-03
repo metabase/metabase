@@ -1,5 +1,8 @@
 ## In-depth Guides
 
+#### [Troubleshooting Guide](troubleshooting-guide/index.md)
+Have a problem and need help? Start with our troubleshooting guide.
+
 #### [Users Guide](users-guide/start.md)
 This is the go-to guide on asking questions and sharing answers using Metabase. You'll learn in depth about how questions are expressed, how to chart answers, as well as how to share questions and create dashboards.
 

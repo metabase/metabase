@@ -1,76 +1,78 @@
-.scroll-y, :local(.scroll-y) { overflow-y: auto; }
-.scroll-x { overflow-x: auto; }
+.scroll-y,
+:local(.scroll-y) {
+  overflow-y: auto;
+}
+.scroll-x {
+  overflow-x: auto;
+}
 
 .scroll-show::-webkit-scrollbar {
-    width: 15px;
-    height: 18px;
+  width: 15px;
+  min-height: 10px;
 }
 
 .scroll-show--hover::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 .scroll-show--hover:hover::-webkit-scrollbar {
-    display: inherit;
-}
-
-.scroll-show--horizontal::-webkit-scrollbar {
-    height: 6px;
+  display: inherit;
 }
 
 .scroll-show::-webkit-scrollbar-thumb {
-    height: 6px;
-    border: 4px solid transparent;
-    border-radius: 7px;
-    background-clip: padding-box;
-    background-color: #c2c2c2;
+  border: 4px solid transparent;
+  border-radius: 7px;
+  background-clip: padding-box;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-show::-webkit-scrollbar-button {
-    width: 0;
-    height: 0;
-    display: none;
+  width: 0;
+  height: 0;
+  display: none;
 }
 .scroll-show::-webkit-scrollbar-corner {
-    background-color: transparent;
+  background-color: transparent;
 }
 
 .scroll-show:hover::-webkit-scrollbar-thumb {
-    background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 .scroll-show::-webkit-scrollbar-thumb:horizontal:hover,
 .scroll-show::-webkit-scrollbar-thumb:vertical:hover {
-    background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 .scroll-show::-webkit-scrollbar-thumb:horizontal:active,
 .scroll-show::-webkit-scrollbar-thumb:vertical:active {
-    background-color: #7d7d7d;
+  background-color: var(--color-bg-dark);
 }
 
 /* scroll light */
 .scroll-show.scroll--light::-webkit-scrollbar-thumb {
-    border-radius: 0;
-    background-color: #CFE4F5;
+  border-radius: 0;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:hover,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:hover,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:active,
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active {
-    background-color: #C7D9E4;
+  background-color: var(--color-bg-medium);
 }
 
 .scroll-hide {
-    -ms-overflow-style: none;  /* IE 10+ */
-    overflow: -moz-scrollbars-none;  /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow: -moz-scrollbars-none; /* Firefox */
 }
 .scroll-hide::-webkit-scrollbar {
-    display: none; /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }
 
-.scroll-hide-all, .scroll-hide-all * {
-    -ms-overflow-style: none;  /* IE 10+ */
-    overflow: -moz-scrollbars-none;  /* Firefox */
+.scroll-hide-all,
+.scroll-hide-all * {
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow: -moz-scrollbars-none; /* Firefox */
 }
+.scroll-hide-all::-webkit-scrollbar,
 .scroll-hide-all *::-webkit-scrollbar {
-    display: none; /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }

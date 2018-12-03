@@ -1,39 +1,78 @@
-FROM java:openjdk-7-jre-alpine
+###################
+# STAGE 1: builder
+###################
 
-ENV JAVA_HOME=/usr/lib/jvm/default-jvm
-ENV PATH /usr/local/bin:$PATH
-ENV LEIN_ROOT 1
+FROM openjdk:8-jdk-alpine as builder
+
+WORKDIR /app/source
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
-# install core build tools
-RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
-    npm install -g yarn && \
-    ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/"
+# bash:    various shell scripts
+# wget:    installing lein
+# git:     ./bin/version
+# yarn:  frontend building
+# make:    backend building
+# gettext: translations
 
-# fix broken cacerts
-RUN rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
+RUN apk add --update bash yarn git wget make gettext
 
-# install lein
+# lein:    backend dependencies and building
 ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
 RUN chmod 744 /usr/local/bin/lein
+RUN lein upgrade
 
-# add the application source to the image
-ADD . /app/source
+# install dependencies before adding the rest of the source to maximize caching
+
+# backend dependencies
+ADD project.clj .
+RUN lein deps
+
+# frontend dependencies
+ADD yarn.lock package.json ./
+RUN yarn
+
+# add the rest of the source
+ADD . .
 
 # build the app
-WORKDIR /app/source
 RUN bin/build
 
-# remove unnecessary packages & tidy up
-RUN apk del nodejs git wget python make g++
-RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /root/.yarn /root/.yarn-cache /tmp/* /var/cache/apk/* /app/source/node_modules
+# install updated cacerts to /etc/ssl/certs/java/cacerts
+RUN apk add --update java-cacerts
+
+# import AWS RDS cert into /etc/ssl/certs/java/cacerts
+ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
+RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
+  -file rds-combined-ca-bundle.pem \
+  -keystore /etc/ssl/certs/java/cacerts \
+  -keypass changeit -storepass changeit
+
+# ###################
+# # STAGE 2: runner
+# ###################
+
+FROM openjdk:8-jre-alpine as runner
+
+WORKDIR /app
+
+ENV FC_LANG en-US
+ENV LC_CTYPE en_US.UTF-8
+
+# dependencies
+RUN apk add --update bash ttf-dejavu fontconfig
+
+# add fixed cacerts
+COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
+
+# add Metabase script and uberjar
+RUN mkdir -p bin target/uberjar
+COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
+COPY --from=builder /app/source/bin/start /app/bin/
 
 # expose our default runtime port
 EXPOSE 3000
 
-# build and then run it
-WORKDIR /app/source
-ENTRYPOINT ["./bin/start"]
+# run it
+ENTRYPOINT ["/app/bin/start"]

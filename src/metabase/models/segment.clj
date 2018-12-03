@@ -1,13 +1,17 @@
 (ns metabase.models.segment
+  "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
+  replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [interface :as i]
-                             [revision :as revision])
-            [metabase.util :as u]))
-
+            [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [interface :as i]
+             [revision :as revision]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 (models/defmodel Segment :segment)
 
@@ -19,7 +23,7 @@
 (u/strict-extend (class Segment)
   models/IModel
   (merge models/IModelDefaults
-         {:types          (constantly {:definition :json, :description :clob})
+         {:types          (constantly {:definition :metric-segment-definition, :description :clob})
           :properties     (constantly {:timestamped? true})
           :hydration-keys (constantly [:segment])})
   i/IObjectPermissions
@@ -74,7 +78,6 @@
                   :creator_id  creator-id
                   :name        segment-name
                   :description description
-                  :is_active   true
                   :definition  definition)]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
@@ -83,7 +86,7 @@
   "Does an *active* `Segment` with ID exist?"
   ^Boolean [id]
   {:pre [(integer? id)]}
-  (db/exists? Segment, :id id, :is_active true))
+  (db/exists? Segment, :id id, :archived false))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value. Hydrates the Segment's `:creator`."
@@ -101,14 +104,15 @@
    {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
          (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
-         (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
+         (db/select Segment, :table_id table-id, :archived (= :deleted state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-segment!
   "Update an existing `Segment`.
    Returns the updated `Segment` or throws an Exception."
-  {:style/indent 0}
-  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]
+    :as   body}
+   user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -116,15 +120,9 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    (merge
-     {:name        name
-      :description description
-      :caveats     caveats
-      :definition  definition}
-     (when (seq points_of_interest)
-       {:points_of_interest points_of_interest})
-     (when (not (nil? show_in_getting_started))
-       {:show_in_getting_started show_in_getting_started})))
+    (u/select-keys-when body
+      :present #{:name :description :caveats :definition}
+      :non-nil #{:points_of_interest :show_in_getting_started}))
   (u/prog1 (retrieve-segment id)
     (events/publish-event! :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
@@ -140,7 +138,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Segment not active
-  (db/update! Segment id, :is_active false)
+  (db/update! Segment id, :archived true)
   ;; retrieve the updated segment (now retired)
   (u/prog1 (retrieve-segment id)
     (events/publish-event! :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

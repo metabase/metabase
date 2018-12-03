@@ -1,8 +1,7 @@
 (ns metabase.events-test
   (:require [clojure.core.async :as async]
-            [expectations :refer :all]
-            [metabase.events :as events]
-            [metabase.test.util :as tu]))
+            [expectations :refer [expect]]
+            [metabase.events :as events]))
 
 (def ^:private testing-topic :event-test-topic)
 
@@ -11,9 +10,7 @@
 
 ;; ## Basic Pub/Sub TESTS
 
-(tu/resolve-private-vars metabase.events subscribe-to-topic!)
-
-(subscribe-to-topic! testing-topic testing-sub-channel)
+(#'events/subscribe-to-topic! testing-topic testing-sub-channel)
 
 ;; we should get back our originally posted object no matter what happens
 (expect

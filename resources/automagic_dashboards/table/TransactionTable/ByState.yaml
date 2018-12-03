@@ -1,0 +1,170 @@
+title: "[[this]] per state"
+transient_title: Here's a closer look at your [[this]] per state
+description: Which US states are bringing you the most business.
+applies_to: TransactionTable
+metrics:
+- TotalIncome:
+    metric: [sum, [dimension, Income]]
+- AvgIncome: [avg, [dimension, Income]]
+- AvgQuantity:
+    metric: [avg, [dimension, Quantity]]
+- TotalOrders: [count]
+- TotalUsers: [distinct, [dimension, User]]
+dimensions:
+- Timestamp:
+    field_type: CreationTimestamp
+    score: 100
+- Timestamp:
+    field_type: CreationDate
+    score: 100
+- Timestamp:
+    field_type: DateTime
+    score: 90
+- Timestamp:
+    field_type: Date
+    score: 90
+- State:
+    field_type: UserTable.State
+- Income: Income
+- Quantity:
+    field_type: Quantity
+- User:
+    field_type: User
+    score: 100
+- User:
+    field_type: FK
+    links_to: UserTable
+    score: 100
+- Cohort:
+    field_type: UserTable.JoinTimestamp
+    score: 100
+- Cohort:
+    field_type: UserTable.CreationTimestamp
+    score: 90
+- Cohort:
+    field_type: UserTable.DateTime
+    score: 80
+- Product:
+    field_type: Product
+    score: 90
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Name
+    max_cardinality: 10
+- Product:
+    field_type: ProductTable.Title
+    max_cardinality: 10
+- ProductCategory:
+    field_type: ProductTable.Category
+    named: category
+    max_cardinality: 10
+    score: 90
+- Source:
+    field_type: GenericTable.Source
+    max_cardinality: 10
+    score: 90
+- Country: GenericTable.Country
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+  - NewUsers:
+      filter: ["time-interval", [dimension, Cohort], -30, day]
+groups:
+- Top10:
+    title: States that are performing best
+- Transactions:
+    title: Transactions per state
+- Users:
+    title: Where you've acquired your users
+dashboard_filters:
+  - Timestamp
+  - Source
+  - Country
+  - State
+  - Product
+  - ProductCategory
+cards:
+- TopStatesBySales:
+    title: Top 10 states by sales
+    visualization: row
+    dimensions: State
+    metrics: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    limit: 10
+    score: 100
+    height: 8
+    group: Top10
+- TopStatesBySalesLast30Days:
+    title: Top 10 states by sales in the last 30 days
+    visualization: row
+    dimensions: State
+    metrics: TotalOrders
+    order_by:
+      - TotalOrders: descending
+    filters: Last30Days
+    limit: 10
+    score: 100
+    height: 8
+    group: Top10
+- OrdersByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: Sales per state
+    dimensions: State
+    metrics: TotalOrders
+    score: 90
+    group: Transactions
+- QuantityByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: Average quantity per state
+    dimensions: State
+    metrics: AvgQuantity
+    score: 90
+    group: Transactions
+- IncomeByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: Income per state
+    dimensions: State
+    metrics: TotalIncome
+    score: 90
+    group: Transactions
+- AverageIncomeByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: Average income per state
+    dimensions: State
+    metrics: AvgIncome
+    score: 90
+    group: Transactions
+- UsersByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: Users per state
+    dimensions: State
+    metrics: TotalUsers
+    score: 90
+    group: Users
+- NewUsersByState:
+    visualization:
+      map:
+        map.type: region
+        map.region: us_states
+    title: New users per state in the last 30 days
+    dimensions: State
+    metrics: TotalUsers
+    filters: NewUsers
+    score: 90
+    group: Users

@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import { logout } from "../auth";
@@ -6,17 +6,16 @@ import { logout } from "../auth";
 const mapStateToProps = null;
 
 const mapDispatchToProps = {
-    logout
+  logout,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class LogoutApp extends Component {
+  componentWillMount() {
+    this.props.logout();
+  }
 
-    componentWillMount() {
-        this.props.logout();
-    }
-
-    render() {
-        return null;
-    }
+  render() {
+    return null;
+  }
 }

@@ -1,17 +1,20 @@
 (ns metabase.models.activity
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as i]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [segment :refer [Segment]])
-            [metabase.util :as u]))
+  (:require [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [interface :as i]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [segment :refer [Segment]]]
+            [metabase.util.date :as du]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
-
-;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
+;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (def ^:private model->entity
   {"card"      Card
@@ -27,12 +30,12 @@
     true))
 
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Activity :activity)
 
 (defn- pre-insert [activity]
-  (let [defaults {:timestamp (u/new-sql-timestamp)
+  (let [defaults {:timestamp (du/new-sql-timestamp)
                   :details   {}}]
     (merge defaults activity)))
 
@@ -47,14 +50,15 @@
           :can-write? (partial can-? i/can-write?)}))
 
 
-;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
+;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
 
 ;; ## Persistence Functions
 
 ;; TODO - this is probably the exact wrong way to have written this functionality.
 ;; This could have been a multimethod or protocol, and various entity classes could implement it;
-;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to user error.
+;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to
+;; user error.
 
 (defn record-activity!
   "Inserts a new `Activity` entry.
