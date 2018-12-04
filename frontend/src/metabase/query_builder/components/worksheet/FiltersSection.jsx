@@ -26,7 +26,14 @@ class FiltersSection extends React.Component {
   };
 
   render() {
-    const { query, setDatasetQuery, style, className } = this.props;
+    const {
+      query,
+      setDatasetQuery,
+      style,
+      className,
+      onClear,
+      children,
+    } = this.props;
     const { newFilterDimension } = this.state;
     const filters = query.filters();
     return (
@@ -34,6 +41,10 @@ class FiltersSection extends React.Component {
         {...SECTIONS.filter}
         style={style}
         className={className}
+        onClear={() => {
+          query.clearFilters().update(setDatasetQuery);
+          onClear();
+        }}
       >
         <ClauseDropTarget
           color={COLOR}
@@ -79,6 +90,7 @@ class FiltersSection extends React.Component {
             </AddClauseWidget>
           )}
         </ClauseDropTarget>
+        {children}
       </WorksheetSection>
     );
   }

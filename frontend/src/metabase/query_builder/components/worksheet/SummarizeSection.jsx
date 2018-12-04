@@ -29,7 +29,7 @@ class SummarizeSection extends React.Component {
     newAggregationDimension: null,
   };
   render() {
-    const { query, setDatasetQuery, style, className } = this.props;
+    const { query, setDatasetQuery, style, className, onClear } = this.props;
     const { newAggregationDimension } = this.state;
     const aggregations = query.aggregations();
     const breakouts = query.breakouts();
@@ -38,6 +38,13 @@ class SummarizeSection extends React.Component {
         {...SECTIONS.summarize}
         style={style}
         className={className}
+        onClear={() => {
+          query
+            .clearAggregations()
+            .clearBreakouts()
+            .update(setDatasetQuery);
+          onClear();
+        }}
       >
         <div className="Grid Grid--full md-Grid--1of2">
           <div className="Grid-cell pr2">

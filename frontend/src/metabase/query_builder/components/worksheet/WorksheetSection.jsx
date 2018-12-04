@@ -12,10 +12,11 @@ const WorksheetSection = ({
   style,
   className,
   children,
+  onClear,
 }) => (
   <div
     style={style}
-    className={cx(className, "wrapper border-row-divider py4")}
+    className={cx(className, "wrapper border-row-divider py3")}
   >
     {(icon || name || header) && (
       <div className={cx("flex align-center", { mb2: !!children })}>
@@ -26,6 +27,15 @@ const WorksheetSection = ({
           </span>
         )}
         {header}
+        {onClear && (
+          <Icon
+            name="close"
+            onClick={onClear}
+            size={12}
+            className="cursor-pointer circular text-white flex-align-right"
+            style={{ backgroundColor: color, padding: 3 }}
+          />
+        )}
       </div>
     )}
     {children}

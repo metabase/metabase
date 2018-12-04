@@ -8,6 +8,8 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import SECTIONS from "./style";
 
+const COLOR = SECTIONS.data.color;
+
 const DataSection = ({
   databases,
   query,

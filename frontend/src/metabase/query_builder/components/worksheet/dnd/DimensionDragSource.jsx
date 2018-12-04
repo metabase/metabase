@@ -19,9 +19,20 @@ function collect(connect, monitor) {
 
 class DimensionWrapper extends React.Component {
   render() {
-    const { isDragging, connectDragSource, children } = this.props;
+    const {
+      isDragging,
+      connectDragSource,
+      children,
+      style = {},
+      className,
+    } = this.props;
     return connectDragSource(
-      <div style={{ opacity: isDragging ? 0.5 : 1 }}>{children}</div>,
+      <div
+        style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
+        className={className}
+      >
+        {children}
+      </div>,
     );
   }
 }

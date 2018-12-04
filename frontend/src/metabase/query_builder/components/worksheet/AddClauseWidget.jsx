@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 const AddClauseWidget = ({ color, children }) => (
   <PopoverWithTrigger
     triggerElement={
-      <Icon name="add" size={24} className="p1" style={{ color }} />
+      <Icon name="add" size={20} className="p1" style={{ color }} />
     }
     triggerClasses="flex-align-right flex align-center"
   >

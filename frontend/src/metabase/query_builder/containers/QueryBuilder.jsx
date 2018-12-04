@@ -22,7 +22,7 @@ import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
 
-import QuestionDataWorksheet from "../components/QuestionDataWorksheet";
+import QuestionDataWorksheet from "../components/worksheet/Worksheet";
 import QuestionPresent from "../components/QuestionPresent";
 import QuestionVisualize from "../components/QuestionVisualize";
 
@@ -231,9 +231,11 @@ export default class QueryBuilder extends Component {
     if (uiControls.mode === "worksheet") {
       return (
         <div>
-          {query instanceof StructuredQuery ?
-<QuestionDataWorksheet {...this.props} />
-          : <div>sql mode not yet implemented</div>}
+          {query instanceof StructuredQuery ? (
+            <QuestionDataWorksheet {...this.props} />
+          ) : (
+            <div>sql mode not yet implemented</div>
+          )}
 
           <ModeSelect {...this.props} />
         </div>
