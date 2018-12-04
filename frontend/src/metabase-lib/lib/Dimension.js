@@ -144,6 +144,21 @@ export default class Dimension {
     return null;
   }
 
+  /**
+   * Returns MBQL for the default breakout
+   *
+   * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
+   * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
+   */
+  defaultBreakout() {
+    const defaultSubDimension = this.defaultDimension();
+    if (defaultSubDimension) {
+      return defaultSubDimension.mbql();
+    } else {
+      return this.mbql();
+    }
+  }
+
   // Internal method gets a Dimension from a DimensionOption
   _dimensionForOption(option: DimensionOption) {
     // fill in the parent field ref
@@ -219,7 +234,7 @@ export default class Dimension {
   }
 
   /**
-   * Valid operators on this dimension
+   * Valid filter operators on this dimension
    */
   operators() {
     return this.field().operators || [];
@@ -230,6 +245,13 @@ export default class Dimension {
    */
   operator(op) {
     return this.field().operator(op);
+  }
+
+  /**
+   * Valid filter operators on this dimension
+   */
+  aggregations() {
+    return this.field().aggregations() || [];
   }
 
   /**

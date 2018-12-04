@@ -10,26 +10,30 @@ import type { TableMetadata, FieldOptions } from "metabase/meta/types/Metadata";
 type Props = {
   maxHeight?: number,
   breakout?: Breakout,
-  tableMetadata: TableMetadata,
-  fieldOptions: FieldOptions,
+  query?: Query,
+  tableMetadata?: TableMetadata,
+  breakoutOptions?: FieldOptions,
   onCommitBreakout: (breakout: Breakout) => void,
   onClose?: () => void,
+  alwaysExpanded?: boolean,
 };
 
 const BreakoutPopover = ({
   breakout,
-  tableMetadata,
-  fieldOptions,
+  query,
+  tableMetadata = query.tableMetadata(),
+  breakoutOptions = query.breakoutOptions(),
   onCommitBreakout,
   onClose,
   maxHeight,
+  alwaysExpanded,
 }: Props) => (
   <FieldList
     className="text-green"
     maxHeight={maxHeight}
     tableMetadata={tableMetadata}
     field={breakout}
-    fieldOptions={fieldOptions}
+    fieldOptions={breakoutOptions}
     onFieldChange={field => {
       onCommitBreakout(field);
       if (onClose) {
@@ -37,7 +41,7 @@ const BreakoutPopover = ({
       }
     }}
     enableSubDimensions
-    alwaysExpanded
+    alwaysExpanded={alwaysExpanded}
   />
 );
 

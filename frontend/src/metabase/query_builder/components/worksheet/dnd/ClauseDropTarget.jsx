@@ -45,8 +45,9 @@ const ClauseDropTarget = DropTarget(
       }
     },
     canDrop(props, monitor) {
-      if (props.canDrop) {
-        return props.canDrop(monitor.getItem());
+      const item = monitor.getItem();
+      if (props.canDrop && item) {
+        return props.canDrop(item.dimension);
       }
       return true;
     },

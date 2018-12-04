@@ -23,7 +23,7 @@ const Clause = ({ children, style = {}, color, onRemove }) => (
 
 export const ClauseContainer = ({ className, style = {}, children, color }) => (
   <div
-    className={cx(className, "rounded text-medium p2 flex")}
+    className={cx(className, "rounded text-medium p1 flex")}
     style={{ backgroundColor: alpha(color, 0.25), ...style }}
   >
     {children}

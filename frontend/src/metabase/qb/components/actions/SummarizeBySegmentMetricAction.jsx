@@ -3,7 +3,7 @@
 import React from "react";
 import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
+import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
 import type {
   ClickAction,
@@ -26,8 +26,6 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  const tableMetadata: TableMetadata = query.table();
-
   return [
     {
       name: "summarize",
@@ -37,8 +35,6 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <AggregationPopover
           query={query}
-          tableMetadata={tableMetadata}
-          customFields={query.expressions()}
           availableAggregations={getAggregationOptionsForSummarize(query)}
           onCommitAggregation={aggregation => {
             onChangeCardAndRun({
