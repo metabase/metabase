@@ -6,9 +6,13 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.druid.query-processor :as qp]
-            [metabase.util.ssh :as ssh]
-            [puppetlabs.i18n.core :refer [tru]]))
+            [metabase.util
+             [i18n :refer [tru]]
+             [ssh :as ssh]]))
+
+(driver/register! :druid)
 
 ;;; ### Request helper fns
 
@@ -44,7 +48,8 @@
 
 ;;; ### Misc. Driver Fns
 
-(defn- can-connect? [details]
+(defmethod driver/can-connect? :druid [_ details]
+  {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (= 200 (:status (http/get (details->url details-with-tunnel "/status"))))))
 
@@ -52,7 +57,7 @@
 ;;; ### Query Processing
 
 (defn- do-query [details query]
-  {:pre [(map? query)]}
+  {:pre [(map? details) (map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (try
       (POST (details->url details-with-tunnel "/druid/v2"), :body query)
@@ -69,6 +74,7 @@
           (throw (Exception. message e)))))))
 
 (defn- do-query-with-cancellation [details query]
+  {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
         query-fut (future (do-query details query))]
     (try
@@ -95,6 +101,7 @@
 ;;; ### Sync
 
 (defn- do-segment-metadata-query [details datasource]
+  {:pre [(map? details)]}
   (do-query details {"queryType"     "segmentMetadata"
                      "dataSource"    datasource
                      "intervals"     ["1999-01-01/2114-01-01"]
@@ -116,7 +123,7 @@
    :base-type     (druid-type->base-type field-type)
    :database-type field-type})
 
-(defn- describe-table [database table]
+(defmethod driver/describe-table :druid [_ database table]
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [{:keys [columns]} (first (do-segment-metadata-query details-with-tunnel (:name table)))]
       {:schema nil
@@ -130,37 +137,25 @@
                      (for [[field-name field-info] (dissoc columns :__time)]
                        (describe-table-field field-name field-info))))})))
 
-(defn- describe-database [database]
+(defmethod driver/describe-database :druid [_ database]
   {:pre [(map? (:details database))]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
       {:tables (set (for [table-name druid-datasources]
                       {:schema nil, :name table-name}))})))
 
+(defmethod driver/mbql->native :druid [_ query]
+  (qp/mbql->native query))
 
-;;; ### DruidrDriver Class Definition
+(defmethod driver/execute-query :druid [_ query]
+  (qp/execute-query do-query-with-cancellation query))
 
-(defrecord DruidDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "Druid"))
+(defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
+(defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)
 
-(u/strict-extend DruidDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:can-connect?      (u/drop-first-arg can-connect?)
-          :describe-database (u/drop-first-arg describe-database)
-          :describe-table    (u/drop-first-arg describe-table)
-          :details-fields    (constantly (ssh/with-tunnel-config
-                                           [(assoc driver/default-host-details :default "http://localhost")
-                                            (assoc driver/default-port-details
-                                              :display-name (tru "Broker node port")
-                                              :default      8082)]))
-          :execute-query     (fn [_ query] (qp/execute-query do-query-with-cancellation query))
-          :features          (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-          :mbql->native      (u/drop-first-arg qp/mbql->native)}))
-
-(defn -init-driver
-  "Register the druid driver."
-  []
-  (driver/register-driver! :druid (DruidDriver.)))
+(defmethod driver/connection-properties :druid [_]
+  (ssh/with-tunnel-config
+    [(assoc driver.common/default-host-details :default "http://localhost")
+     (assoc driver.common/default-port-details
+       :display-name (tru "Broker node port")
+       :default      8082)]))

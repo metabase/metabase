@@ -1,6 +1,9 @@
 (ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
-  (:require [buddy.sign.jwt :as jwt]
+  (:require [buddy.sign
+             [jwt :as jwt]
+             [util :as buddy-util]]
+            [clj-time.core :as time]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
@@ -19,6 +22,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream))
@@ -63,11 +67,14 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns ["count"]
-                 :cols    [{:description nil, :table_id nil, :special_type "type/Number", :name "count",
-                            :source "aggregation", :extra_info {}, :id nil, :target nil, :display_name "count",
-                            :base_type "type/Integer", :remapped_from nil, :remapped_to nil}]
-                 :rows    [[100]]}
+   {:data       {:columns  ["count"]
+                 :cols     [{:base_type    "type/Integer"
+                             :special_type "type/Number"
+                             :name         "count"
+                             :display_name "count"
+                             :source       "aggregation"}]
+                 :rows     [[100]]
+                 :insights nil}
     :json_query {:parameters nil}
     :status     "completed"})
   ([results-format]
@@ -100,6 +107,7 @@
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil, :param_fields nil})
 
+(def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
@@ -112,6 +120,13 @@
     (with-temp-card [card {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (card-url card))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true}]
+      (http/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
@@ -143,7 +158,7 @@
     (with-temp-card [card {:enable_embedding true
                            :dataset_query    {:database (data/id)
                                               :type     :native
-                                              :native   {:template_tags {:a {:type "date", :name "a", :display_name "a"}
+                                              :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
                                                                          :b {:type "date", :name "b", :display_name "b"}
                                                                          :c {:type "date", :name "c", :display_name "c"}
                                                                          :d {:type "date", :name "d", :display_name "d"}}}}
@@ -183,11 +198,12 @@
 ;; query info)
 (expect-for-response-formats [response-format]
   "An error occurred while running the query."
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
-                                                                   :type     :native
-                                                                   :native   {:query "SELECT * FROM XYZ"}}}]
-      (http/client :get 400 (card-query-url card response-format)))))
+  (tu.log/suppress-output
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
+                                                                     :type     :native
+                                                                     :native   {:query "SELECT * FROM XYZ"}}}]
+        (http/client :get 400 (card-query-url card response-format))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect-for-response-formats [response-format]
@@ -284,11 +300,11 @@
   {:dataset_query    {:database (data/id)
                       :type     :native
                       :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
-                                 :template_tags {:date {:name         "date"
-                                                        :display_name "Date"
+                                 :template-tags {:date {:name         "date"
+                                                        :display-name "Date"
                                                         :type         "dimension"
                                                         :dimension    [:field-id (data/id :checkins :date)]
-                                                        :widget_type  "date/quarter-year"}}}}
+                                                        :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
 
@@ -320,6 +336,13 @@
     (tt/with-temp Dashboard [dash {:enable_embedding true}]
       (dissoc-id-and-name
         (http/client :get 200 (dashboard-url dash))))))
+
+;; We should fail when attempting to use an expired token
+(expect
+  #"Token is expired"
+  (with-embedding-enabled-and-new-secret-key
+    (tt/with-temp Dashboard [dash {:enable_embedding true}]
+      (http/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
@@ -375,12 +398,13 @@
 ;; query info)
 (expect
   "An error occurred while running the query."
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                   :card {:dataset_query {:database (data/id)
-                                                          :type     :native,
-                                                          :native   {:query "SELECT * FROM XYZ"}}}}]
-      (http/client :get 400 (dashcard-url dashcard)))))
+  (tu.log/suppress-output
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                     :card {:dataset_query {:database (data/id)
+                                                            :type     :native,
+                                                            :native   {:query "SELECT * FROM XYZ"}}}}]
+        (http/client :get 400 (dashcard-url dashcard))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect

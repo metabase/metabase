@@ -1,8 +1,7 @@
 import moment from "moment";
 import inflection from "inflection";
 
-import { mbqlEq } from "metabase/lib/query/util";
-import { formatTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 export const DATETIME_UNITS = [
@@ -26,7 +25,7 @@ export const DATETIME_UNITS = [
 
 export function computeFilterTimeRange(filter) {
   let expandedFilter;
-  if (mbqlEq(filter[0], "time-interval")) {
+  if (filter[0] === "time-interval") {
     expandedFilter = expandTimeIntervalFilter(filter);
   } else {
     expandedFilter = filter;
@@ -46,7 +45,7 @@ export function computeFilterTimeRange(filter) {
   } else if (operator === "<" && values[0]) {
     start = min();
     end = absolute(values[0]).startOf(bucketing);
-  } else if (operator === "BETWEEN" && values[0] && values[1]) {
+  } else if (operator === "between" && values[0] && values[1]) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
   }
@@ -57,7 +56,7 @@ export function computeFilterTimeRange(filter) {
 export function expandTimeIntervalFilter(filter) {
   let [operator, field, n, unit] = filter;
 
-  if (!mbqlEq(operator, "time-interval")) {
+  if (operator !== "time-interval") {
     throw new Error("translateTimeInterval expects operator 'time-interval'");
   }
 
@@ -73,14 +72,14 @@ export function expandTimeIntervalFilter(filter) {
 
   if (n < -1) {
     return [
-      "BETWEEN",
+      "between",
       field,
       ["relative-datetime", n - 1, unit],
       ["relative-datetime", -1, unit],
     ];
   } else if (n > 1) {
     return [
-      "BETWEEN",
+      "between",
       field,
       ["relative-datetime", 1, unit],
       ["relative-datetime", n, unit],
@@ -96,7 +95,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
   let [operator, field, ...values] = filter;
   let bucketing = parseFieldBucketing(field);
 
-  if (mbqlEq(operator, "time-interval")) {
+  if (operator === "time-interval") {
     let [n, unit] = values;
     return generateTimeIntervalDescription(n, unit);
   } else {
@@ -144,13 +143,13 @@ export function generateTimeValueDescription(value, bucketing) {
   if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
-      return formatTimeWithUnit(value, bucketing);
+      return formatDateTimeWithUnit(value, bucketing);
     } else if (m.hours() || m.minutes()) {
       return m.format("MMMM D, YYYY hh:mm a");
     } else {
       return m.format("MMMM D, YYYY");
     }
-  } else if (Array.isArray(value) && mbqlEq(value[0], "relative-datetime")) {
+  } else if (Array.isArray(value) && value[0] === "relative-datetime") {
     let n = value[1];
     let unit = value[2];
 
@@ -189,7 +188,7 @@ export function formatBucketing(bucketing = "") {
 export function absolute(date) {
   if (typeof date === "string") {
     return moment(date);
-  } else if (Array.isArray(date) && mbqlEq(date[0], "relative-datetime")) {
+  } else if (Array.isArray(date) && date[0] === "relative-datetime") {
     return moment().add(date[1], date[2]);
   } else {
     console.warn("Unknown datetime format", date);
@@ -198,7 +197,7 @@ export function absolute(date) {
 
 export function parseFieldBucketing(field, defaultUnit = null) {
   if (Array.isArray(field)) {
-    if (mbqlEq(field[0], "datetime-field")) {
+    if (field[0] === "datetime-field") {
       if (field.length === 4) {
         // Deprecated legacy format [datetime-field field "as" unit], see DatetimeFieldDimension for more info
         return field[3];
@@ -207,10 +206,10 @@ export function parseFieldBucketing(field, defaultUnit = null) {
         return field[2];
       }
     }
-    if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
+    if (field[0] === "fk->" || field[0] === "field-id") {
       return defaultUnit;
     }
-    if (mbqlEq(field[0], "field-literal")) {
+    if (field[0] === "field-literal") {
       return defaultUnit;
     } else {
       console.warn("Unknown field format", field);
@@ -221,7 +220,7 @@ export function parseFieldBucketing(field, defaultUnit = null) {
 
 // returns field with "datetime-field" removed
 export function parseFieldTarget(field) {
-  if (mbqlEq(field[0], "datetime-field")) {
+  if (field[0] === "datetime-field") {
     return field[1];
   } else {
     return field;
@@ -234,16 +233,16 @@ export function parseFieldTargetId(field) {
   }
 
   if (Array.isArray(field)) {
-    if (mbqlEq(field[0], "field-id")) {
+    if (field[0] === "field-id") {
       return field[1];
     }
-    if (mbqlEq(field[0], "fk->")) {
+    if (field[0] === "fk->") {
       return field[1];
     }
-    if (mbqlEq(field[0], "datetime-field")) {
+    if (field[0] === "datetime-field") {
       return parseFieldTargetId(field[1]);
     }
-    if (mbqlEq(field[0], "field-literal")) {
+    if (field[0] === "field-literal") {
       return field;
     }
   }

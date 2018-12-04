@@ -2,11 +2,6 @@
 
 import _ from "underscore";
 
-export const mbql = (a: string): string =>
-  typeof a === "string" ? a.toLowerCase().replace(/_/g, "-") : a;
-
-export const mbqlEq = (a: string, b: string): boolean => mbql(a) === mbql(b);
-
 // determines whether 2 field IDs are equal. This is needed rather than
 // doing a simple comparison because field IDs are not guaranteed to be numeric:
 // the might be FieldLiterals, e.g. [field-literal <name> <unit>], instead.

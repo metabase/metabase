@@ -33,11 +33,11 @@
   {:database (data/id)
    :type     "native"
    :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
-              :template_tags {:category {:name         "category"
-                                         :display_name "Category"
+              :template-tags {:category {:name         "category"
+                                         :display-name "Category"
                                          :type         "dimension"
                                          :dimension    ["field-id" (u/get-id field-or-id)]
-                                         :widget_type  "category"
+                                         :widget-type  "category"
                                          :default      "Widget"}}}})
 
 (defn- do-with-updated-fields-for-card {:style/indent 1} [options & [f]]
@@ -145,12 +145,12 @@
 (defn- basic-mbql-query []
   {:database (data/id)
    :type     :query
-   :query    {:source_table (data/id :venues)
-              :aggregation  [["count"]]}})
+   :query    {:source-table (data/id :venues)
+              :aggregation  [[:count]]}})
 
 (defn- parameter-mappings-for-card-and-field [card-or-id field-or-id]
   [{:card_id (u/get-id card-or-id)
-    :target  ["dimension" ["field-id" (u/get-id field-or-id)]]}])
+    :target  [:dimension [:field-id (u/get-id field-or-id)]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
   (dashboard/add-dashcard! dashboard-or-id card-or-id

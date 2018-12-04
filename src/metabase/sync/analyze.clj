@@ -10,11 +10,11 @@
              [util :as sync-util]]
             [metabase.sync.analyze
              [classify :as classify]
-             [fingerprint :as fingerprint]
-             #_[table-row-count :as table-row-count]]
+             [fingerprint :as fingerprint]]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [schema.core :as s]
             [toucan.db :as db]))
 

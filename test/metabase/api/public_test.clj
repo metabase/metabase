@@ -31,7 +31,7 @@
 (defn count-of-venues-card []
   {:dataset_query {:database (data/id)
                    :type     :query
-                   :query    {:source_table (data/id :venues)
+                   :query    {:source-table (data/id :venues)
                               :aggregation  [:count]}}})
 
 (defn- shared-obj []
@@ -118,11 +118,11 @@
                                                             "LEFT JOIN categories ON venues.category_id = categories.id "
                                                             "WHERE {{category}}")
                                         :collection    "CATEGORIES"
-                                        :template_tags {:category {:name         "category"
-                                                                   :display_name "Category"
+                                        :template-tags {:category {:name         "category"
+                                                                   :display-name "Category"
                                                                    :type         "dimension"
                                                                    :dimension    ["field-id" (data/id :categories :name)]
-                                                                   :widget_type  "category"
+                                                                   :widget-type  "category"
                                                                    :required     true}}}}}]
     (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
@@ -198,11 +198,11 @@
     :dataset_query {:database (data/id)
                     :type     :native
                     :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
-                               :template_tags {:date {:name         "date"
-                                                      :display_name "Date"
+                               :template-tags {:date {:name         "date"
+                                                      :display-name "Date"
                                                       :type         "dimension"
                                                       :dimension    [:field-id (data/id :checkins :date)]
-                                                      :widget_type  "date/quarter-year"}}}}))
+                                                      :widget-type  "date/quarter-year"}}}}))
 
 (expect
   "count\n107\n"
@@ -224,6 +224,24 @@
                      :parameters (json/encode [{:type   :date/quarter-year
                                                 :target [:dimension [:template-tag :date]]
                                                 :value  "Q1-2014"}]))))))
+
+;; make sure we include all the relevant fields like `:insights`
+(defn- card-with-trendline []
+  (assoc (shared-obj)
+    :dataset_query {:database (data/id)
+                    :type     :query
+                    :query   {:source-table (data/id :checkins)
+                              :breakout     [[:datetime-field [:field-id (data/id :checkins :date)]  :month]]
+                              :aggregation  [[:count]]}}))
+
+(expect
+  #{:cols :rows :insights :columns}
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
+      (-> (http/client :get 200 (str "public/card/" uuid "/query"))
+          :data
+          keys
+          set))))
 
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
@@ -373,8 +391,8 @@
     (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                               :type     :native
                                               :native   {:query         "SELECT {{num}} AS num"
-                                                         :template_tags {:num {:name         "num"
-                                                                               :display_name "Num"
+                                                         :template-tags {:num {:name         "num"
+                                                                               :display-name "Num"
                                                                                :type         "number"
                                                                                :required     true
                                                                                :default      "1"}}}}}]
@@ -462,9 +480,9 @@
    (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                              :type     :native
                                              :native   {:query         "SELECT {{msg}} AS message"
-                                                        :template_tags {:msg {:id           "181da7c5"
+                                                        :template-tags {:msg {:id           "181da7c5"
                                                                               :name         "msg"
-                                                                              :display_name "Message"
+                                                                              :display-name "Message"
                                                                               :type         "text"
                                                                               :required     true
                                                                               :default      "Wow"}}}}}]
@@ -518,8 +536,8 @@
     (db/update! Card (u/get-id card)
       :dataset_query {:database (data/id)
                       :type     :native
-                      :native   {:template_tags {:price {:name         "price"
-                                                         :display_name "Price"
+                      :native   {:template-tags {:price {:name         "price"
+                                                         :display-name "Price"
                                                          :type         "dimension"
                                                          :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
@@ -567,8 +585,8 @@
    {:database (data/id)
     :type     :native
     :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-               :template_tags {:x {:name         :x
-                                   :display_name "X"
+               :template-tags {:x {:name         :x
+                                   :display-name "X"
                                    :type         :dimension
                                    :dimension    [:field-id (data/id :venues :name)]}}}}})
 

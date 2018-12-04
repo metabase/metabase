@@ -1,16 +1,18 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [medley.core :as m]
+            [metabase
+             [related :as related]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards
-             [core :refer [->root ->field automagic-analysis ->related-entity cell-title source-name capitalize-first encode-base64-json metric-name]]
+             [core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title
+                           encode-base64-json metric-name source-name]]
              [filters :as filters]
              [populate :as populate]]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.middleware.expand-macros :refer [merge-filter-clauses segment-parse-filter]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.related :as related]
-            [metabase.util :as u]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
@@ -39,18 +41,29 @@
 (def ^:private ^{:arglists '([card])} display-type
   (comp qp.util/normalize-token :display))
 
+(defn- add-filter-clauses
+  "Add `new-filter-clauses` to a query. There is actually an `mbql.u/add-filter-clause` function we should be using
+  instead, but that validates its input and output, and the queries that come in here aren't always valid (for
+  example, missing `:database`). If we can, it would be nice to use that instead of reinventing the wheel here."
+  [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
+  (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
+        new-filter-clause (when (seq clauses)
+                            (normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
+    (cond-> query
+      (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
+
 (defn- inject-filter
   "Inject filter clause into card."
   [{:keys [query-filter cell-query] :as root} card]
   (-> card
-      (update-in [:dataset_query :query :filter] merge-filter-clauses query-filter cell-query)
+      (update :dataset_query #(add-filter-clauses % [query-filter cell-query]))
       (update :series (partial map (partial inject-filter root)))))
 
 (defn- multiseries?
   [card]
   (or (-> card :series not-empty)
-      (-> card (qp.util/get-in-normalized [:dataset_query :query :aggregation]) count (> 1))
-      (-> card (qp.util/get-in-normalized [:dataset_query :query :breakout]) count (> 1))))
+      (-> card (get-in [:dataset_query :query :aggregation]) count (> 1))
+      (-> card (get-in [:dataset_query :query :breakout]) count (> 1))))
 
 (defn- overlay-comparison?
   [card]
@@ -64,7 +77,7 @@
           card-left                (->> card (inject-filter left) clone-card)
           card-right               (->> card (inject-filter right) clone-card)
           [color-left color-right] (->> [left right]
-                                        (map #(qp.util/get-in-normalized % [:dataset_query :query :filter]) )
+                                        (map #(get-in % [:dataset_query :query :filter]))
                                         populate/map-to-colors)]
       (if (overlay-comparison? card)
         (let [card   (-> card-left
@@ -149,17 +162,17 @@
   [card]
   (get-in card [:visualization_settings :graph.series_labels]
           (map (comp capitalize-first metric-name)
-               (qp.util/get-in-normalized card [:dataset_query :query :aggregation]))))
+               (get-in card [:dataset_query :query :aggregation]))))
 
 (defn- unroll-multiseries
   [card]
   (if (and (multiseries? card)
-           (-> card :display qp.util/normalize-token (= :line)))
+           (-> card :display (= :line)))
     (for [[aggregation label] (map vector
-                                   (qp.util/get-in-normalized card [:dataset_query :query :aggregation])
+                                   (get-in card [:dataset_query :query :aggregation])
                                    (series-labels card))]
       (-> card
-          (qp.util/assoc-in-normalized [:dataset_query :query :aggregation] [aggregation])
+          (assoc-in [:dataset_query :query :aggregation] [aggregation])
           (assoc :name label)
           (m/dissoc-in [:visualization_settings :graph.series_labels])))
     [card]))
@@ -167,7 +180,6 @@
 (defn- segment-constituents
   [segment]
   (->> (filters/inject-refinement (:query-filter segment) (:cell-query segment))
-       segment-parse-filter
        filters/collect-field-references
        (map filters/field-reference->id)
        distinct
@@ -193,7 +205,7 @@
                                                (encode-base64-json
                                                 {:database (:database left)
                                                  :type     :query
-                                                 :query    {:source_table (->> left
+                                                 :query    {:source-table (->> left
                                                                                :source
                                                                                u/get-id
                                                                                (str "card__" ))}})))

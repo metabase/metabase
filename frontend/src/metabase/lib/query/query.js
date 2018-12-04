@@ -85,15 +85,15 @@ export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
 
 // ORDER_BY
 
-export const getOrderBys = (query: SQ) => O.getOrderBys(query.order_by);
-export const addOrderBy = (query: SQ, order_by: OrderBy) =>
-  setOrderByClause(query, O.addOrderBy(query.order_by, order_by));
-export const updateOrderBy = (query: SQ, index: number, order_by: OrderBy) =>
-  setOrderByClause(query, O.updateOrderBy(query.order_by, index, order_by));
+export const getOrderBys = (query: SQ) => O.getOrderBys(query["order-by"]);
+export const addOrderBy = (query: SQ, orderBy: OrderBy) =>
+  setOrderByClause(query, O.addOrderBy(query["order-by"], orderBy));
+export const updateOrderBy = (query: SQ, index: number, orderBy: OrderBy) =>
+  setOrderByClause(query, O.updateOrderBy(query["order-by"], index, orderBy));
 export const removeOrderBy = (query: SQ, index: number) =>
-  setOrderByClause(query, O.removeOrderBy(query.order_by, index));
+  setOrderByClause(query, O.removeOrderBy(query["order-by"], index));
 export const clearOrderBy = (query: SQ) =>
-  setOrderByClause(query, O.clearOrderBy(query.order_by));
+  setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
 export const clearFields = (query: SQ) => setFieldsClause(query, null);
@@ -158,7 +158,7 @@ function setAggregationClause(
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
   let breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    let sortId = Query.getFieldTargetId(sort[0]);
+    let sortId = Query.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }
@@ -171,7 +171,7 @@ function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
   return setClause("filter", query, filterClause);
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
-  return setClause("order_by", query, orderByClause);
+  return setClause("order-by", query, orderByClause);
 }
 function setFieldsClause(query: SQ, fieldsClause: ?FieldsClause): SQ {
   return setClause("fields", query, fieldsClause);
@@ -193,7 +193,7 @@ type FilterClauseName =
   | "filter"
   | "aggregation"
   | "breakout"
-  | "order_by"
+  | "order-by"
   | "limit"
   | "expressions"
   | "fields";

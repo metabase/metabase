@@ -1,7 +1,6 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
-            [clojure.walk :as walk]
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase
@@ -14,6 +13,9 @@
              [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [field :as field-api]]
+            [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
             [metabase.models
              [card :as card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -24,8 +26,8 @@
              [params :as params]]
             [metabase.util
              [embed :as embed]
+             [i18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -42,7 +44,7 @@
   [card]
   (card/map->CardInstance
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
-                               [:dataset_query :type [:native :template_tags]]])))
+                               [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value CONDITIONS, removing all columns that should not be visible to the general
@@ -70,7 +72,7 @@
             (binding [api/*current-user-permissions-set*     (atom #{"/"})
                       qp/*allow-queries-with-no-executor-id* true]
               (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options))
-            (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
+            (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status]))
     ;; if the query failed instead of returning anything about the query just return a generic error message
     (when (= (:status <>) :failed)
       (throw (ex-info "An error occurred while running the query." {:status-code 400})))))
@@ -192,7 +194,8 @@
           slug->dashboard-param   (u/key-by :slug dashboard-params)
           dashcard-param-mappings (dashboard->dashcard-param-mappings dashboard-id)]
       (for [{slug :slug, target :target, :as query-param} query-params
-            :let [dashboard-param
+            :let [target (normalize/normalize-tokens target :ignore-path)
+                  dashboard-param
                   (or
                    ;; try to match by slug...
                    (slug->dashboard-param slug)
@@ -261,18 +264,10 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-;; TODO - this is a stupid, inefficient way of doing things. Figure out a better way to do it. :(
 (defn- query->referenced-field-ids
   "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
   [query]
-  (let [field-ids (atom [])]
-    (walk/postwalk
-     (fn [x]
-       (if (instance? metabase.query_processor.interface.Field x)
-         (swap! field-ids conj (:field-id x))
-         x))
-     (qp/expand query))
-    @field-ids))
+  (mbql.u/match (:query query) [:field-id id] id))
 
 (defn- card->referenced-field-ids
   "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template

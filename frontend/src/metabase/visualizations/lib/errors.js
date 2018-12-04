@@ -3,6 +3,8 @@
 import { t, ngettext, msgid } from "c-3po";
 // NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
 
+type ChartSettingsInitial = { section?: ?string, widget?: ?any };
+
 export class MinColumnsError extends Error {
   constructor(minColumns: number, actualColumns: number) {
     super(
@@ -35,12 +37,23 @@ export class LatitudeLongitudeError extends Error {
   }
 }
 
+export class NoBreakoutError extends Error {
+  constructor(message: string) {
+    super(message || t`This visualization requires you to group by a field.`);
+  }
+}
+
 export class ChartSettingsError extends Error {
-  section: ?string;
+  initial: ?ChartSettingsInitial;
   buttonText: ?string;
-  constructor(message: string, section?: string, buttonText?: string) {
+
+  constructor(
+    message: string,
+    initial?: ChartSettingsInitial,
+    buttonText?: string,
+  ) {
     super(message || t`Please configure this chart in the chart settings`);
-    this.section = section;
+    this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;
   }
 }

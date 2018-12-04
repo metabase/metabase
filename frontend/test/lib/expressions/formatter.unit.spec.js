@@ -78,7 +78,7 @@ describe("lib/expressions/parser", () => {
     });
 
     it("expression with metric", () => {
-      expect(format(["+", 1, ["METRIC", 1]], mockMetadata)).toEqual(
+      expect(format(["+", 1, ["metric", 1]], mockMetadata)).toEqual(
         '1 + "foo bar"',
       );
     });

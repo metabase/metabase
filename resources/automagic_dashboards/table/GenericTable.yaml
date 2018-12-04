@@ -93,7 +93,7 @@ groups:
     comparison_title: How they compare across time
 - Geographical:
     title: Where your [[this.short-name]] are
-    comparison_title: How they compare acrosss location
+    comparison_title: How they compare across location
 - General:
     title: How these [[this.short-name]] are distributed
     comparison_title: How they compare by distribution

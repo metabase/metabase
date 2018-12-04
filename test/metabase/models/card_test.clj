@@ -30,25 +30,31 @@
 
 (expect
   {:Segment #{2 3}
-   :Metric  nil}
+   :Metric  #{}}
   (card-dependencies
-   {:dataset_query {:type :query
-                    :query {:aggregation ["rows"]
-                            :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}))
+   {:dataset_query {:type  :query
+                    :query {:filter [:and
+                                     [:> [:field-id 4] "2014-10-19"]
+                                     [:= [:field-id 5] "yes"]
+                                     [:segment 2]
+                                     [:segment 3]]}}}))
 
 (expect
   {:Segment #{1}
-   :Metric #{7}}
+   :Metric  #{7}}
   (card-dependencies
-   {:dataset_query {:type :query
-                    :query {:aggregation ["METRIC" 7]
-                            :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}}))
+   {:dataset_query {:type  :query
+                    :query {:aggregation [:metric 7]
+                            :filter      [:and
+                                          [:> [:field-id 4] "2014-10-19"]
+                                          [:= [:field-id 5] "yes"]
+                                          [:or [:segment 1] [:!= [:field-id 5] "5"]]]}}}))
 
 (expect
-  {:Segment nil
-   :Metric  nil}
+  {:Segment #{}
+   :Metric  #{}}
   (card-dependencies
-   {:dataset_query {:type :query
+   {:dataset_query {:type  :query
                     :query {:aggregation nil
                             :filter      nil}}}))
 
@@ -92,7 +98,6 @@
        (db/update! Card id {:name          "another name"
                             :dataset_query (dummy-dataset-query (data/id))})
        (into {} (db/select-one [Card :name :database_id] :id id)))]))
-
 
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
@@ -139,4 +144,14 @@
                   Card [card-b (card-with-source-table (str "card__" (u/get-id card-a)))]
                   Card [card-c (card-with-source-table (str "card__" (u/get-id card-b)))]]
     (db/update! Card (u/get-id card-a)
-      (card-with-source-table (str "card__" (u/get-id card-c))))))
+                (card-with-source-table (str "card__" (u/get-id card-c))))))
+
+(expect
+  #{1}
+  (#'card/extract-ids :segment {:query {:fields [[:segment 1]
+                                                 [:metric 2]]}}))
+
+(expect
+  #{2}
+  (#'card/extract-ids :metric {:query {:fields [[:segment 1]
+                                                [:metric 2]]}}))

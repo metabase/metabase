@@ -4,13 +4,13 @@
             [expectations :refer :all]
             [medley.core :as m]
             [metabase
-             [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
              [query-processor-test :as qpt]
              [sync :as sync]
              [util :as u]]
             [metabase.api.table :as table-api]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
@@ -18,7 +18,6 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$]]]
@@ -56,7 +55,7 @@
      :description                 nil
      :caveats                     nil
      :points_of_interest          nil
-     :features                    (mapv name (driver/features (driver/engine->driver :h2)))
+     :features                    (mapv name (driver.u/features :h2))
      :cache_field_values_schedule "0 50 0 * * ? *"
      :metadata_sync_schedule      "0 50 * * * ? *"
      :options                     nil
@@ -90,7 +89,8 @@
    :dimensions               []
    :dimension_options        []
    :has_field_values         nil
-   :default_dimension_option nil})
+   :default_dimension_option nil
+   :settings                 nil})
 
 (defn- field-details [field]
   (merge
@@ -165,6 +165,7 @@
 (defn- default-dimension-options []
   (->> #'table-api/dimension-options-for-response
        var-get
+       (m/map-vals #(update % :name str))
        walk/keywordize-keys))
 
 (defn- query-metadata-defaults []
@@ -491,7 +492,12 @@
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 ;; Test date dimensions being included with a nested query
 (tt/expect-with-temp [Card [card {:name          "Users"
@@ -514,7 +520,8 @@
                           :special_type             "type/Name"
                           :default_dimension_option nil
                           :dimension_options        []
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                                                           :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
@@ -525,14 +532,20 @@
                           :special_type             nil
                           :default_dimension_option (var-get #'table-api/date-default-index)
                           :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                          :fingerprint              {:global {:distinct-count 15},
+                          :fingerprint              {:global {:distinct-count 15
+                                                              :nil%           0.0},
                                                      :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z",
                                                                               :latest   "2014-12-05T15:15:00.000Z"}}}}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
-    (tu/round-all-decimals 2 ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card))))))
+    (->> card
+         u/get-id
+         (format "table/card__%d/query_metadata")
+         ((user->client :crowberto) :get 200)
+         (tu/round-fingerprint-cols [:fields])
+         (tu/round-all-decimals 2))))
 
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
@@ -676,7 +689,7 @@
       (dimension-options-for-field response "timestamp"))))
 
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
-(datasets/expect-with-engines #{:druid}
+(datasets/expect-with-drivers #{:druid}
   (var-get #'table-api/datetime-dimension-indexes)
   (tqpt/with-flattened-dbdef
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
@@ -689,7 +702,7 @@
 
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   []
-  (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+  (data/dataset test-data-with-time
     (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
       (dimension-options-for-field response "last_login_time"))))
 
@@ -699,7 +712,7 @@
   (-> ((user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))
 
 ;; Nested queries with a fingerprint should have dimension options for binning
-(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
   (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
   (tt/with-temp Card [card {:database_id   (data/id)
                             :dataset_query {:database (data/id)
@@ -712,7 +725,7 @@
            ["latitude" "longitude"]))))
 
 ;; Nested queries missing a fingerprint should not show binning-options
-(datasets/expect-with-engines (qpt/non-timeseries-engines-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
   [nil nil]
   (tt/with-temp Card [card {:database_id   (data/id)
                             :dataset_query {:database (data/id)

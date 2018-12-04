@@ -4,36 +4,30 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
-            [metabase.util :as u]
+            [clojure.string :as str]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(defn mbql-query?
-  "Is the given query an MBQL query?"
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved to `metabase.mbql.util`
+
+(defn ^:deprecated mbql-query? ;; not really needed anymore since we don't need to normalize tokens
+  "Is the given query an MBQL query?
+   DEPRECATED: just look at `:type` directly since it is guaranteed to be normalized?"
   [query]
   (= :query (keyword (:type query))))
-
-(defn datetime-field?
-  "Is FIELD a `DateTime` field?"
-  [{:keys [base-type special-type]}]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
   [{{aggregations :aggregation, :keys [limit page]} :query}]
   (and (not limit)
        (not page)
-       (or (empty? aggregations)
-           (= (:aggregation-type (first aggregations)) :rows))))
+       (nil? aggregations)))
 
 (defn query->remark
   "Generate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being
   executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
-  for more information."  ^String [{{:keys [executed-by query-hash query-type], :as info} :info}]
+  for more information."
+  ^String [{{:keys [executed-by query-hash query-type], :as info} :info}]
   (str "Metabase" (when info
                     (assert (instance? (Class/forName "[B") query-hash))
                     (format ":: userID: %s queryType: %s queryHash: %s"
@@ -42,16 +36,8 @@
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
-;; The following functions make it easier to deal with MBQL queries, which are case-insensitive, string/keyword
-;; insensitive, and underscore/hyphen insensitive.  These should be preferred instead of assuming the frontend will
-;; always pass in clauses the same way, since different variation are all legal under MBQL '98.
-
-;; TODO - In the future it might make sense to simply walk the entire query and normalize the whole thing when it
-;; comes in. I've tried implementing middleware to do that but it ended up breaking a few things that wrongly assume
-;; different clauses will always use a certain case (e.g. SQL `:template_tags`). Fixing all of that is out-of-scope
-;; for the nested queries PR but should possibly be revisited in the future.
-
-(s/defn normalize-token :- s/Keyword
+;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
+(s/defn ^:deprecated normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- su/KeywordOrString]
@@ -60,100 +46,19 @@
       (str/replace #"_" "-")
       keyword))
 
-(defn get-normalized
-  "Get the value for normalized key K in map M, regardless of how the key was specified in M,
-   whether string or keyword, lisp-case, snake_case, or SCREAMING_SNAKE_CASE.
-
-     (get-normalized {\"NUM_TOUCANS\" 2} :num-toucans) ; -> 2"
-  ([m k]
-   {:pre [(or (u/maybe? map? m)
-              (println "Not a map:" m))]}
-   (when (seq m)
-     (let [k (normalize-token k)]
-       (loop [[[map-k v] & more] (seq m)]
-         (cond
-           (= k (normalize-token map-k)) v
-           (seq more)                    (recur more))))))
-  ([m k not-found]
-   (let [v (get-normalized m k)]
-     (if (some? v)
-       v
-       not-found))))
-
-(defn get-in-normalized
-  "Like `get-normalized`, but accepts a sequence of keys KS, like `get-in`.
-
-    (get-in-normalized {\"NUM_BIRDS\" {\"TOUCANS\" 2}} [:num-birds :toucans]) ; -> 2"
-  ([m ks]
-   {:pre [(u/maybe? sequential? ks)]}
-   (loop [m m, [k & more] ks]
-     (if-not k
-       m
-       (recur (get-normalized m k) more))))
-  ([m ks not-found]
-   (let [v (get-in-normalized m ks)]
-     (if (some? v)
-       v
-       not-found))))
-
-(defn dissoc-normalized
-  "Remove all matching keys from map M regardless of case, string/keyword, or hypens/underscores.
-
-     (dissoc-normalized {\"NUM_TOUCANS\" 3} :num-toucans) ; -> {}"
-  [m k]
-  {:pre [(or (u/maybe? map? m)
-             (println "Not a map:" m))]}
-  (let [k (normalize-token k)]
-    (loop [m m, [map-k & more, :as ks] (keys m)]
-      (cond
-        (not (seq ks)) m
-        (= k (normalize-token map-k)) (recur (dissoc m map-k) more)
-        :else                         (recur m                more)))))
-
-(defn assoc-in-normalized
-  "Assoc the value for normalized sequence of keys KS in map M, regardless of how the keys were
-   specified in M, whether string or keyword, lisp-case, snake_case, or SCREAMING_SNAKE_CASE."
-  [m ks v]
-  {:pre [(u/maybe? sequential? ks)]}
-  (let [ks-map (loop [[k & k-rest :as ks-all] ks
-                      [[k-map v] & m-rest]    (seq m)
-                      ks-map                  []]
-                 (cond
-                   (empty? ks-all)
-                   ks-map
-
-                   (nil? k-map)
-                   (recur k-rest (seq m) (conj ks-map k))
-
-                   (= (normalize-token k) (normalize-token k-map))
-                   (recur k-rest (when (map? v) v) (conj ks-map k-map))
-
-                   :else
-                   (recur ks-all m-rest ks-map)))]
-    (assoc-in m ks-map v)))
-
+;; TODO - rename this to `get-in-mbql-query-recursive` or something like that?
 (defn get-in-query
-  "Similar to `get-in-normalized` but will look in either `:query` or recursively in `[:query :source-query]`. Using
-  this function will avoid having to check if there's a nested query vs. top-level query."
+  "Similar to `get-in` but will look in either `:query` or recursively in `[:query :source-query]`. Using this function
+  will avoid having to check if there's a nested query vs. top-level query. Results in deeper levels of nesting are
+  preferred; i.e. if a key is present in both a `:source-query` and the top-level query, the value from the source
+  query will be returned."
   ([m ks]
    (get-in-query m ks nil))
   ([m ks not-found]
-   (if-let [source-query (get-in-normalized m [:query :source-query])]
+   (if-let [source-query (get-in m [:query :source-query])]
      (recur (assoc m :query source-query) ks not-found)
-     (get-in-normalized m (cons :query ks) not-found))))
+     (get-in m (cons :query ks) not-found))))
 
-(defn assoc-in-query
-  "Similar to `assoc-in-normalized` but will look in either `:query` or recursively in `[:query :source-query]`. Using
-  this function will avoid having to check if there's a nested query vs. top-level query."
-  [m ks v]
-  (if-let [source-query (get-in-normalized m [:query :source-query])]
-    ;; We have a soure-query, we need to recursively `assoc-in` with the source query as the query
-    (assoc-in-normalized m
-                         [:query :source-query]
-                         (-> (assoc m :query source-query)
-                             (assoc-in-query ks v)
-                             :query))
-    (assoc-in-normalized m (cons :query ks) v)))
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
@@ -180,34 +85,7 @@
 (defn query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`."
   ^Integer [outer-query]
-  (let [source-table (get-in-normalized outer-query [:query :source-table])]
+  (let [source-table (get-in outer-query [:query :source-table])]
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
-
-;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
-
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
-(defn postwalk-collect
-  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
-  results.
-
-  Note: This would be much better as a zipper. It could have the same API, would be faster and would avoid side
-  affects."
-  [pred collect-fn form]
-  (let [results (atom [])]
-    (postwalk-pred pred
-                   (fn [node]
-                     (when-let [result (collect-fn node)]
-                       (swap! results conj result))
-                     node)
-                   form)
-    @results))

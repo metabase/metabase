@@ -20,7 +20,6 @@
              [collection :as collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
-             [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]
              [query :as query]
              [table :refer [Table]]
@@ -33,8 +32,9 @@
              [cache :as cache]
              [results-metadata :as results-metadata]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -186,7 +186,7 @@
    This is obviously a bit wasteful so hopefully we can avoid having to do this."
   [query]
   (binding [qpi/*disable-qp-logging* true]
-    (let [{:keys [status], :as results} (qp/process-query query)]
+    (let [{:keys [status], :as results} (qp/process-query-without-save! api/*current-user-id* query)]
       (if (= status :failed)
         (log/error (trs "Error running query to determine Card result metadata:")
                    (u/pprint-to-str 'red results))
@@ -207,6 +207,12 @@
       metadata
       (result-metadata-for-query query))))
 
+(defn check-data-permissions-for-query
+  "Check that we have *data* permissions to run the QUERY in question."
+  [query]
+  {:pre [(map? query)]}
+  (api/check-403 (query-perms/can-run-query? query)))
+
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
@@ -220,8 +226,7 @@
    result_metadata        (s/maybe qr/ResultsMetadata)
    metadata_checksum      (s/maybe su/NonBlankString)}
   ;; check that we have permissions to run the query that we're trying to save
-  (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                   (query-perms/perms-set dataset_query)))
+  (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   ;; everything is g2g, now save the card
@@ -247,13 +252,6 @@
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
-
-(defn check-data-permissions-for-query
-  "Check that we have *data* permissions to run the QUERY in question."
-  [query]
-  {:pre [(map? query)]}
-  (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                   (query-perms/perms-set query))))
 
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
@@ -563,7 +561,7 @@
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
-    (assoc query :cache_ttl ttl)))
+    (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."

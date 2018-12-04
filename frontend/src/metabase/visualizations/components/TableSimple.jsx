@@ -3,20 +3,26 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+
 import styles from "./Table.css";
-import { t } from "c-3po";
+
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import MiniBar from "./MiniBar";
 
-import { formatColumn, formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
+import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
+
+import { isID, isFK } from "metabase/lib/schema_metadata";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -33,7 +39,7 @@ type State = {
   sortDescending: boolean,
 };
 
-@ExplicitSize
+@ExplicitSize()
 export default class TableSimple extends Component {
   props: Props;
   state: State;
@@ -91,6 +97,7 @@ export default class TableSimple extends Component {
       visualizationIsClickable,
       isPivoted,
       settings,
+      getColumnTitle,
     } = this.props;
     const { rows, cols } = data;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
@@ -129,7 +136,7 @@ export default class TableSimple extends Component {
                     <th
                       key={colIndex}
                       className={cx(
-                        "TableInteractive-headerCellData cellData text-brand-hover",
+                        "TableInteractive-headerCellData cellData text-brand-hover text-medium",
                         {
                           "TableInteractive-headerCellData--sorted":
                             sortColumn === colIndex,
@@ -149,7 +156,7 @@ export default class TableSimple extends Component {
                             marginRight: 3,
                           }}
                         />
-                        <Ellipsified>{formatColumn(col)}</Ellipsified>
+                        <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
                       </div>
                     </th>
                   ))}
@@ -158,7 +165,8 @@ export default class TableSimple extends Component {
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
                   <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {rows[rowIndex].map((cell, columnIndex) => {
+                    {rows[rowIndex].map((value, columnIndex) => {
+                      const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
                         rowIndex,
@@ -168,6 +176,7 @@ export default class TableSimple extends Component {
                       const isClickable =
                         onVisualizationClick &&
                         visualizationIsClickable(clicked);
+                      const columnSettings = settings.column(column);
                       return (
                         <td
                           key={columnIndex}
@@ -176,19 +185,23 @@ export default class TableSimple extends Component {
                             backgroundColor:
                               getCellBackgroundColor &&
                               getCellBackgroundColor(
-                                cell,
+                                value,
                                 rowIndex,
-                                cols[columnIndex].name,
+                                column.name,
                               ),
                           }}
-                          className={cx("px1 border-bottom", {
-                            "text-right": isColumnRightAligned(
-                              cols[columnIndex],
-                            ),
-                          })}
+                          className={cx(
+                            "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
+                            {
+                              "text-right": isColumnRightAligned(column),
+                              "Table-ID": isID(column),
+                              "Table-FK": isFK(column),
+                              link: isClickable && isID(column),
+                            },
+                          )}
                         >
                           <span
-                            className={cx({
+                            className={cx("cellData inline-block", {
                               "cursor-pointer text-brand-hover": isClickable,
                             })}
                             onClick={
@@ -202,13 +215,26 @@ export default class TableSimple extends Component {
                                 : undefined
                             }
                           >
-                            {cell == null
-                              ? "-"
-                              : formatValue(cell, {
-                                  column: cols[columnIndex],
-                                  jsx: true,
-                                  rich: true,
-                                })}
+                            {value == null ? (
+                              "-"
+                            ) : columnSettings["show_mini_bar"] ? (
+                              <MiniBar
+                                value={value}
+                                options={columnSettings}
+                                extent={getColumnExtent(
+                                  cols,
+                                  rows,
+                                  columnIndex,
+                                )}
+                              />
+                            ) : (
+                              formatValue(value, {
+                                ...columnSettings,
+                                type: "cell",
+                                jsx: true,
+                                rich: true,
+                              })
+                            )}
                           </span>
                         </td>
                       );

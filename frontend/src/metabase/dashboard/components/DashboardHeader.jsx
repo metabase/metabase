@@ -210,7 +210,7 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && canEdit) {
       buttons.push(
         <ModalWithTrigger
-          key="add"
+          key="add-a-question"
           ref="addQuestionModal"
           triggerElement={
             <Tooltip tooltip={t`Add a question`}>
@@ -244,7 +244,7 @@ export default class DashboardHeader extends Component {
     if (isEditing) {
       // Parameters
       buttons.push(
-        <span>
+        <span key="add-a-filter">
           <Tooltip tooltip={t`Add a filter`}>
             <a
               key="parameters"
@@ -272,7 +272,7 @@ export default class DashboardHeader extends Component {
 
       // Add text card button
       buttons.push(
-        <Tooltip tooltip={t`Add a text box`}>
+        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
           <a
             data-metabase-event="Dashboard;Add Text Box"
             key="add-text"
@@ -286,7 +286,7 @@ export default class DashboardHeader extends Component {
       );
 
       buttons.push(
-        <Tooltip tooltip={t`Revision history`}>
+        <Tooltip key="revision-history" tooltip={t`Revision history`}>
           <Link
             to={location.pathname + "/history"}
             data-metabase-event={"Dashboard;Revisions"}
@@ -297,20 +297,9 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    buttons.push(
-      <Tooltip tooltip={t`Move dashboard`}>
-        <Link
-          to={location.pathname + "/move"}
-          data-metabase-event={"Dashboard;Move"}
-        >
-          <Icon className="text-brand-hover" name="move" size={18} />
-        </Link>
-      </Tooltip>,
-    );
-
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip tooltip={t`Edit dashboard`}>
+        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <a
             data-metabase-event="Dashboard;Edit"
             key="edit"
@@ -324,12 +313,37 @@ export default class DashboardHeader extends Component {
       );
     }
 
+    if (!isFullscreen && !isEditing) {
+      buttons.push(
+        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+          <Link
+            to={location.pathname + "/move"}
+            data-metabase-event={"Dashboard;Move"}
+          >
+            <Icon className="text-brand-hover" name="move" size={18} />
+          </Link>
+        </Tooltip>,
+      );
+      buttons.push(
+        <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
+          <Link
+            to={location.pathname + "/copy"}
+            data-metabase-event={"Dashboard;Copy"}
+          >
+            <Icon className="text-brand-hover" name="clone" size={18} />
+          </Link>
+        </Tooltip>,
+      );
+    }
+
     if (
       !isFullscreen &&
       ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
         (isEmbeddingEnabled && isAdmin))
     ) {
-      buttons.push(<DashboardEmbedWidget dashboard={dashboard} />);
+      buttons.push(
+        <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
+      );
     }
 
     buttons.push(...getDashboardActions(this.props));
@@ -347,6 +361,7 @@ export default class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
+        showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
         editingTitle={t`You are editing a dashboard`}

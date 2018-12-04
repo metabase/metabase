@@ -31,10 +31,10 @@ For more information check out [metabase.com](http://www.metabase.com)
 - Google BigQuery
 - SQLite
 - H2
-- CrateDB
 - Oracle
 - Vertica
 - Presto
+- Snowflake
 
 Don't see your favorite database? File an issue to let us know.
 
@@ -87,7 +87,7 @@ Some questions come up over and over again. Check here first:
 
 # Security Disclosure
 
-Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
+Security is very important to us. If you discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
 
 
 # Contributing
@@ -96,7 +96,10 @@ To get started with a development installation of the Metabase, follow the instr
 
 Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
-Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase). 
+Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase).
+
+# Internationalization
+We want Metabase to be avaliable in as many languages as possible. See what translations are avaliable and help contribute to internationalization using our project [over at POEditor](https://poeditor.com/join/project/ynjQmwSsGh)
 
 # Extending and Deep Integrations
 
@@ -119,4 +122,4 @@ Unless otherwise noted, all Metabase source files are made available under the t
 
 See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
 
-Unless otherwise noted, all files © 2017 Metabase, Inc.
+Unless otherwise noted, all files © 2018 Metabase, Inc.

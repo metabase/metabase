@@ -41,7 +41,7 @@ describe("metabase/meta/Card", () => {
         dataset_query: {
           type: "native",
           native: {
-            template_tags: {
+            "template-tags": {
               baz: { name: "baz", type: "text" },
             },
           },
@@ -83,7 +83,7 @@ describe("metabase/meta/Card", () => {
         dataset_query: {
           type: "query",
           query: {
-            source_table: 1,
+            "source-table": 1,
           },
         },
       };
@@ -131,7 +131,7 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["AND", ["=", ["field-id", 1], "bar"]],
+            ["and", ["=", ["field-id", 1], "bar"]],
           ),
         });
       });
@@ -155,7 +155,7 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             cardWithOnlyOriginalCardId,
             ["dataset_query", "query", "filter"],
-            ["AND", ["=", ["field-id", 1], "bar"]],
+            ["and", ["=", ["field-id", 1], "bar"]],
           ),
         });
       });
@@ -173,7 +173,7 @@ describe("metabase/meta/Card", () => {
           card: assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["AND", ["=", ["field-id", 2], 123]],
+            ["and", ["=", ["field-id", 2], 123]],
           ),
         });
       });
@@ -193,7 +193,7 @@ describe("metabase/meta/Card", () => {
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
             [
-              "AND",
+              "and",
               ["=", ["datetime-field", ["field-id", 3], "month"], "2017-05-01"],
             ],
           ),
@@ -214,7 +214,7 @@ describe("metabase/meta/Card", () => {
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
             [
-              "AND",
+              "and",
               ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"],
             ],
           ),

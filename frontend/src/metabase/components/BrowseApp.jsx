@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { connect } from "react-redux";
 
 import EntityItem from "metabase/components/EntityItem";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
@@ -9,6 +10,7 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -29,8 +31,8 @@ function getDefaultQuestionForTable(table) {
           database: table.db_id,
           type: "query",
           query: {
-            source_table: table.id,
-            aggregation: [["METRIC", "ga:users"], ["METRIC", "ga:pageviews"]],
+            "source-table": table.id,
+            aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
             breakout: [
               ["datetime-field", ["field-id", dateField.id], "as", "week"],
             ],
@@ -136,6 +138,9 @@ export class SchemaBrowser extends React.Component {
   }
 }
 
+@connect(state => ({
+  xraysEnabled: getXraysEnabled(state),
+}))
 export class TableBrowser extends React.Component {
   render() {
     const { dbId, schemaName } = this.props.params;
@@ -185,19 +190,21 @@ export class TableBrowser extends React.Component {
                             </Link>
                             <Box ml="auto" mr={1} className="hover-child">
                               <Flex align="center">
-                                <Tooltip tooltip={t`X-ray this table`}>
-                                  <Link
-                                    to={`auto/dashboard/table/${table.id}`}
-                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
-                                  >
-                                    <Icon
-                                      name="bolt"
-                                      mx={1}
-                                      color={normal.yellow}
-                                      size={20}
-                                    />
-                                  </Link>
-                                </Tooltip>
+                                {this.props.xraysEnabled && (
+                                  <Tooltip tooltip={t`X-ray this table`}>
+                                    <Link
+                                      to={`auto/dashboard/table/${table.id}`}
+                                      data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                                    >
+                                      <Icon
+                                        name="bolt"
+                                        mx={1}
+                                        color={normal.yellow}
+                                        size={20}
+                                      />
+                                    </Link>
+                                  </Tooltip>
+                                )}
                                 <Tooltip tooltip={t`Learn about this table`}>
                                   <Link
                                     to={`reference/databases/${dbId}/tables/${

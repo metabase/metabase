@@ -137,7 +137,7 @@ jobs:
       - run:
           name: Run backend unit tests (MySQL)
           environment:
-            ENGINES: h2,mysql
+            DRIVERS: h2,mysql
             MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
             MB_DB_TYPE: mysql
             MB_DB_HOST: localhost
@@ -166,7 +166,7 @@ jobs:
       - run:
           name: Run backend unit tests (Postgres)
           environment:
-            ENGINES: h2,postgres
+            DRIVERS: h2,postgres
             MB_DB_TYPE: postgres
             MB_DB_PORT: 5432
             MB_DB_HOST: localhost
@@ -203,7 +203,7 @@ jobs:
       - run:
           name: Run backend unit tests (SparkSQL)
           environment:
-            ENGINES: h2,sparksql
+            DRIVERS: h2,sparksql
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
             lein with-profile +ci test
@@ -221,6 +221,8 @@ jobs:
           <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (MongoDB 3.2)
+          environment:
+            DRIVERS: h2,mongo
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
             lein with-profile +ci test
@@ -247,10 +249,30 @@ jobs:
           no_output_timeout: 5m
       - run:
           name: Run backend unit tests (Vertica)
+          environment:
+            DRIVERS: h2,vertica
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
             lein with-profile +ci test
           no_output_timeout: 5m
+
+  be-tests-snowflake:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Snowflake)
+          environment:
+            DRIVERS: h2,snowflake
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
+            lein with-profile +ci test
+          no_output_timeout: 10m
 
   be-tests-sqlserver:
     <<: *defaults
@@ -261,6 +283,8 @@ jobs:
           <<: *restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQL Server)
+          environment:
+            DRIVERS: h2,sqlserver
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
             lein with-profile +ci test
@@ -276,7 +300,7 @@ jobs:
       - run:
           name: Run backend unit tests (BigQuery)
           environment:
-            ENGINES: h2,bigquery
+            DRIVERS: h2,bigquery
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
             lein with-profile +ci test
@@ -292,7 +316,7 @@ jobs:
       - run:
           name: Run backend unit tests (SQLite)
           environment:
-            ENGINES: h2,sqlite
+            DRIVERS: h2,sqlite
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
             lein with-profile +ci test
@@ -307,7 +331,7 @@ jobs:
       - run:
           name: Run backend unit tests (Druid)
           environment:
-            ENGINES: h2,druid
+            DRIVERS: h2,druid
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
             lein with-profile +ci test
@@ -323,11 +347,11 @@ jobs:
       - run:
           name: Run backend unit tests (Redshift)
           environment:
-            ENGINES: h2,redshift
+            DRIVERS: h2,redshift
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
             lein with-profile +ci test
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
 
   be-tests-presto:
@@ -335,15 +359,23 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
+          name: Wait for Presto to be ready
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            while ! nc -z localhost 8080; do sleep 0.1; done
+          no_output_timeout: 5m
+      - run:
           name: Run backend unit tests (Presto)
           environment:
-            ENGINES: h2,presto
+            DRIVERS: h2,presto
             MB_PRESTO_TEST_HOST: localhost
             MB_PRESTO_TEST_PORT: 8080
           command: >
@@ -370,7 +402,7 @@ jobs:
       - run:
           name: Run backend unit tests (Oracle)
           environment:
-            ENGINES: h2,oracle
+            DRIVERS: h2,oracle
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
             lein with-profile +ci test
@@ -389,15 +421,58 @@ jobs:
       - restore_cache:
           <<: *restore-fe-deps-cache
       - run:
-          name: Run yarn
-          command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
+          name: Run yarn if yarn.lock checksum has changed
+          command: >
+            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
+              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
+            fi
           no_output_timeout: 5m
+      - run:
+          name: Save yarn checksum
+          command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
           key: fe-deps-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
+            - /home/circleci/yarn.lock.checksum
+
+  fe-linter-eslint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run ESLint linter
+          command: yarn lint-eslint
+          no_output_timeout: 5m
+
+  fe-linter-prettier:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run Prettier formatting linter
+          command: yarn lint-prettier
+          no_output_timeout: 5m
+
+  fe-linter-flow:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run Flow type checker
+          command: yarn flow
+          no_output_timeout: 5m
 
   fe-tests-karma:
     <<: *defaults
@@ -436,7 +511,9 @@ jobs:
       - run:
           name: Build uberjar if needed
           command: >
-            if [ ! -f './target/uberjar/metabase.jar' ]; then ./bin/build version uberjar; fi
+            if [ ! -f './target/uberjar/metabase.jar' ];
+              then ./bin/build version uberjar;
+            fi
           no_output_timeout: 5m
       - save_cache:
           key: uberjar-{{ checksum "./backend-checksums.txt" }}
@@ -460,6 +537,18 @@ jobs:
           name: Run frontend integrated tests
           command: yarn run test-integrated-no-build
           no_output_timeout: 5m
+
+
+########################################################################################################################
+#                                                   DEPLOYMENT, ETC.                                                   #
+########################################################################################################################
+
+  deploy-master:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
 ########################################################################################################################
@@ -525,9 +614,21 @@ workflows:
       - be-tests-vertica:
           requires:
             - be-tests
+      - be-tests-snowflake:
+          requires:
+            - be-tests
       - fe-deps:
           requires:
             - checkout
+      - fe-linter-eslint:
+          requires:
+            - fe-deps
+      - fe-linter-prettier:
+          requires:
+            - fe-deps
+      - fe-linter-flow:
+          requires:
+            - fe-deps
       - fe-tests-karma:
           requires:
             - fe-deps
@@ -541,3 +642,32 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+      - deploy-master:
+          requires:
+            - be-linter-eastwood
+            - be-linter-docstring-checker
+            - be-linter-bikeshed
+            - be-linter-reflection-warnings
+            - be-tests
+            - be-tests-mysql
+            - be-tests-postgres
+            - be-tests-sparksql
+            - be-tests-mongo
+            - be-tests-sqlserver
+            - be-tests-bigquery
+            - be-tests-sqlite
+            - be-tests-presto
+            - be-tests-oracle
+            - be-tests-druid
+            - be-tests-redshift
+            - be-tests-vertica
+            - be-tests-snowflake
+            - fe-linter-eslint
+            - fe-linter-prettier
+            - fe-linter-flow
+            - fe-tests-karma
+            - fe-tests-unit
+            - fe-tests-integrated
+          filters:
+            branches:
+              only: master

@@ -6,8 +6,9 @@
              [interface :as mi]
              [permissions :as perms]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -21,7 +22,7 @@
 (s/defn ^:private check-ad-hoc-query-perms
   [outer-query]
   (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set*
-              (query-perms/perms-set outer-query :throw-exceptions))
+              (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true))
     (throw (Exception. (str (tru "You do not have permissions to run this query."))))))
 
 (s/defn ^:private check-query-permissions*

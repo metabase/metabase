@@ -1,9 +1,10 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util :as u]))
 
 ;; Define a setting which captures our Slack api token
@@ -19,7 +20,7 @@
 
 
 (defn- handle-response [{:keys [status body]}]
-  (let [body (json/parse-string body keyword)]
+  (let [body (-> body io/reader (json/parse-stream keyword))]
     (if (and (= 200 status) (:ok body))
       body
       (let [error (if (= (:error body) "invalid_auth")
@@ -31,15 +32,16 @@
 (defn- do-slack-request [request-fn params-key endpoint & {:keys [token], :as params, :or {token (slack-token)}}]
   (when token
     (handle-response (request-fn (str slack-api-base-url "/" (name endpoint)) {params-key      (assoc params :token token)
-                                                                              :conn-timeout   1000
-                                                                              :socket-timeout 1000}))))
+                                                                               :as             :stream
+                                                                               :conn-timeout   1000
+                                                                               :socket-timeout 1000}))))
 
 (def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} GET  "Make a GET request to the Slack API."  (partial do-slack-request http/get  :query-params))
 (def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} POST "Make a POST request to the Slack API." (partial do-slack-request http/post :form-params))
 
 (def ^{:arglists '([& {:as args}])} channels-list
   "Calls Slack api `channels.list` function and returns the list of available channels."
-  (comp :channels (partial GET :channels.list, :exclude_archived 1)))
+  (comp :channels (partial GET :channels.list, :exclude_archived true, :exclude_members true)))
 
 (def ^{:arglists '([& {:as args}])} users-list
   "Calls Slack api `users.list` function and returns the list of available users."
@@ -55,7 +57,7 @@
   []
   (some (fn [channel] (when (= (:name channel) files-channel-name)
                         channel))
-        (channels-list :exclude_archived 0)))
+        (channels-list :exclude_archived false)))
 
 (defn files-channel
   "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't,

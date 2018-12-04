@@ -35,7 +35,7 @@ class ColorPicker extends Component {
 
   render() {
     const { onChange, padding, size, triggerSize, value } = this.props;
-    const colors = this.props.colors || [...Object.values(normal)];
+    const colors = this.props.colors || Object.values(normal).slice(0, 9);
     return (
       <div className="inline-block">
         <PopoverWithTrigger

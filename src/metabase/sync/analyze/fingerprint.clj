@@ -4,14 +4,15 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.field :refer [Field]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -56,7 +57,7 @@
                               (update count-info :updated-fingerprints inc))))
                         (empty-stats-map (count fingerprints))
                         (map vector fields fingerprints))))
-             (driver/table-rows-sample table fields)))
+             (metadata-queries/table-rows-sample table fields)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |

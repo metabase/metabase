@@ -33,7 +33,7 @@
   {:name          card-name
    :dataset_query {:database (data/id)
                    :type     :query
-                   :query    (merge {:source_table (data/id :checkins)
+                   :query    (merge {:source-table (data/id :checkins)
                                      :aggregation  [["count"]]}
                                     query-map)}})
 
@@ -643,7 +643,7 @@
   {:name          card-name
    :dataset_query {:database (data/id)
                    :type     :query
-                   :query    {:source_table (data/id :venues)
+                   :query    {:source-table (data/id :venues)
                               :aggregation  [[aggregation-op (data/id :venues :price)]]}}})
 
 ;; Above goal alert with a progress bar
@@ -763,6 +763,53 @@
     (email-test-setup
      (send-pulse! (retrieve-notification pulse-id))
      (et/summarize-multipart-email test-card-regex))))
+
+;; With a "rows" type of pulse (table visualization) we should include the CSV by default
+(expect
+  (-> (rasta-pulse-email)
+      ;; There's no PNG with a table visualization, remove it from the expected results
+      (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+      (add-rasta-attachment csv-attachment))
+
+  (tt/with-temp* [Card                 [{card-id :id}    {:name          card-name
+                                                          :dataset_query {:database (data/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (data/id :checkins)}}}]
+                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                  PulseCard             [_             {:pulse_id    pulse-id
+                                                        :card_id     card-id
+                                                        :position    0}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse pulse-id))
+     (et/summarize-multipart-email #"Pulse Name"))))
+
+;; If the pulse is already configured to send an XLS, no need to include a CSV
+(expect
+  (-> (rasta-pulse-email)
+      ;; There's no PNG with a table visualization, remove it from the expected results
+      (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
+      (add-rasta-attachment xls-attachment))
+
+  (tt/with-temp* [Card                 [{card-id :id}    {:name          card-name
+                                                          :dataset_query {:database (data/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (data/id :checkins)}}}]
+                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                        :skip_if_empty false}]
+                  PulseCard             [_             {:pulse_id    pulse-id
+                                                        :card_id     card-id
+                                                        :position    0
+                                                        :include_xls true}]
+                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                  PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                        :pulse_channel_id pc-id}]]
+    (email-test-setup
+     (send-pulse! (retrieve-pulse pulse-id))
+     (et/summarize-multipart-email #"Pulse Name"))))
 
 ;; Basic test of card with CSV and XLS attachments, but no data. Should not include an attachment
 (expect

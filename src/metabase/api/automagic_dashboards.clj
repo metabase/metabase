@@ -17,8 +17,9 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
@@ -65,7 +66,7 @@
   [query]
   (api/check-403 (perms/set-has-full-permissions-for-set?
                    @api/*current-user-permissions-set*
-                   (query-perms/perms-set (:dataset_query query) :throw-exceptions)))
+                   (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
   query)
 
 (defn- ensure-int

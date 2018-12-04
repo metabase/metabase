@@ -1,10 +1,16 @@
 /* @flow */
 
+import { createThunkAction } from "metabase/lib/redux";
+import { setRequestState } from "metabase/redux/requests";
+import { normalize } from "normalizr";
+
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { normal } from "metabase/lib/colors";
 import { assocIn } from "icepick";
 import { t } from "c-3po";
+
+import { addUndo } from "metabase/redux/undo";
 
 import { POST, DELETE } from "metabase/lib/api";
 import {
@@ -14,6 +20,7 @@ import {
 
 const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
+const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
 const Dashboards = createEntity({
   name: "dashboards",
@@ -23,6 +30,7 @@ const Dashboards = createEntity({
     favorite: POST("/api/dashboard/:id/favorite"),
     unfavorite: DELETE("/api/dashboard/:id/favorite"),
     save: POST("/api/dashboard/save"),
+    copy: POST("/api/dashboard/:id/copy"),
   },
 
   objectActions: {
@@ -59,6 +67,9 @@ const Dashboards = createEntity({
         return { type: UNFAVORITE_ACTION, payload: id };
       }
     },
+
+    copy: ({ id }, overrides, opts) =>
+      Dashboards.actions.copy({ id }, overrides, opts),
   },
 
   actions: {
@@ -70,6 +81,39 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
+
+    // TODO move into more common area as copy is implemented for more entities
+    copy: createThunkAction(
+      COPY_ACTION,
+      (entityObject, overrides, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
+        const statePath = [
+          "entities",
+          entityObject.name,
+          entityObject.id,
+          "copy",
+        ];
+        try {
+          dispatch(setRequestState({ statePath, state: "LOADING" }));
+          const result = normalize(
+            await Dashboards.api.copy({ id: entityObject.id, ...overrides }),
+            Dashboards.schema,
+          );
+          dispatch(setRequestState({ statePath, state: "LOADED" }));
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
+          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+          return result;
+        } catch (error) {
+          console.error(`${COPY_ACTION} failed:`, error);
+          dispatch(setRequestState({ statePath, error }));
+          throw error;
+        }
+      },
+    ),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -77,6 +121,8 @@ const Dashboards = createEntity({
       return assocIn(state, [payload, "favorite"], true);
     } else if (type === UNFAVORITE_ACTION && !error) {
       return assocIn(state, [payload, "favorite"], false);
+    } else if (type === COPY_ACTION && !error && state[""]) {
+      return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
   },

@@ -2,7 +2,9 @@
 
 import React, { Component } from "react";
 import { t } from "c-3po";
-import ChoroplethMap from "../components/ChoroplethMap.jsx";
+import ChoroplethMap, {
+  getColorplethColorScale,
+} from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -14,18 +16,23 @@ import {
   isState,
   isCountry,
 } from "metabase/lib/schema_metadata";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
   fieldSetting,
-} from "metabase/visualizations/lib/settings";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
+
+import { desaturated } from "metabase/lib/colors";
+
+import ColorRangePicker from "metabase/components/ColorRangePicker";
 
 export default class Map extends Component {
   static uiName = t`Map`;
@@ -36,11 +43,12 @@ export default class Map extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return true;
   }
 
   static settings = {
+    ...columnSettings({ hidden: true }),
     "map.type": {
       title: t`Map type`,
       widget: "select",
@@ -114,34 +122,29 @@ export default class Map extends Component {
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
-    "map.latitude_column": {
+    ...fieldSetting("map.latitude_column", {
       title: t`Latitude field`,
-      ...fieldSetting(
-        "map.latitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLatitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.longitude_column": {
+    }),
+    ...fieldSetting("map.longitude_column", {
       title: t`Longitude field`,
-      ...fieldSetting(
-        "map.longitude_column",
-        isNumeric,
-        ([{ data: { cols } }]) => (_.find(cols, isLongitude) || {}).name,
-      ),
+      fieldFilter: isNumeric,
+      getDefault: ([{ data: { cols } }]) =>
+        (_.find(cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
-    },
-    "map.metric_column": {
+    }),
+    ...metricSetting("map.metric_column", {
       title: t`Metric field`,
-      ...metricSetting("map.metric_column"),
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
         (vizSettings["map.pin_type"] !== "heat" &&
           vizSettings["map.pin_type"] !== "grid"),
-    },
+    }),
     "map.region": {
       title: t`Region map`,
       widget: "select",
@@ -161,15 +164,26 @@ export default class Map extends Component {
       }),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
-    "map.metric": {
+    ...metricSetting("map.metric", {
       title: t`Metric field`,
-      ...metricSetting("map.metric"),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
-    },
-    "map.dimension": {
+    }),
+    ...dimensionSetting("map.dimension", {
       title: t`Region field`,
       widget: "select",
-      ...dimensionSetting("map.dimension"),
+      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+    }),
+    "map.colors": {
+      title: t`Color`,
+      widget: ColorRangePicker,
+      props: {
+        ranges: Object.values(desaturated).map(color =>
+          getColorplethColorScale(color),
+        ),
+        quantile: true,
+        columns: 1,
+      },
+      default: getColorplethColorScale(Object.values(desaturated)[0]),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     "map.zoom": {},
@@ -209,17 +223,19 @@ export default class Map extends Component {
       ) {
         throw new ChartSettingsError(
           t`Please select longitude and latitude columns in the chart settings.`,
-          "Data",
+          { section: t`Data` },
         );
       }
     } else if (settings["map.type"] === "region") {
       if (!settings["map.region"]) {
-        throw new ChartSettingsError(t`Please select a region map.`, "Data");
+        throw new ChartSettingsError(t`Please select a region map.`, {
+          section: t`Data`,
+        });
       }
       if (!settings["map.dimension"] || !settings["map.metric"]) {
         throw new ChartSettingsError(
           t`Please select region and metric columns in the chart settings.`,
-          "Data",
+          { section: t`Data` },
         );
       }
     }

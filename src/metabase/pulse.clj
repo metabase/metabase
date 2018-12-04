@@ -2,10 +2,10 @@
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
             [metabase
-             [driver :as driver]
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.models
@@ -13,9 +13,9 @@
              [pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
             [metabase.util
+             [i18n :refer [trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.TimeZone
@@ -48,7 +48,7 @@
   "Returns the timezone for the given `CARD`. Either the report
   timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
+  (let [^String timezone-str (or (some-> card database-id driver.u/database->driver driver.u/report-timezone-if-supported)
                                  (System/getProperty "user.timezone"))]
     (TimeZone/getTimeZone timezone-str)))
 
@@ -131,7 +131,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
+    (let [^String error-text (str (tru "Unrecognized alert with condition ''{0}''" alert_condition))]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
@@ -188,7 +188,7 @@
 
 (defmethod create-notification :default
   [_ _ {:keys [channel_type] :as channel}]
-  (let [^String ex-msg (tru "Unrecognized channel type {0}" (pr-str channel_type))]
+  (let [^String ex-msg (str (tru "Unrecognized channel type {0}" (pr-str channel_type)))]
     (throw (UnsupportedOperationException. ex-msg))))
 
 (defmulti ^:private send-notification!

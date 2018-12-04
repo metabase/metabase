@@ -58,6 +58,10 @@ How you upgrade Metabase depends on how you are running it. See below for inform
 #### Docker Image
 If you are running Metabase via docker, then you simply need to kill the Docker process and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
+To pull the latest Metabase:
+
+    $ docker pull metabase/metabase:latest
+
 #### Jar file
 If you are running the JVM Jar file directly, then you simply kill the process, replace the .jar file with the newer version and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
@@ -116,8 +120,10 @@ You can change the application database to use Postgres using a few simple envir
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
-This will tell Metabase to look for its application database using the supplied Postgres connection information.
+This will tell Metabase to look for its application database using the supplied Postgres connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
 
+    export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
 
 #### [MySQL](http://www.mysql.com/)
 If you prefer to use MySQL we've got you covered.  You can change the application database to use MySQL using these environment variables. For example:
@@ -130,7 +136,10 @@ If you prefer to use MySQL we've got you covered.  You can change the applicatio
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
-This will tell Metabase to look for its application database using the supplied MySQL connection information.
+This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
+
+    export MB_DB_CONNECTION_URI="mysql://localhost:3306/metabase?user=<username>&password=<password>"
+    java -jar metabase.jar
 
 
 # Migrating from using the H2 database to MySQL or Postgres

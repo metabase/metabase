@@ -7,6 +7,7 @@ import { createSelector } from "reselect";
 import { createMemoizedSelector } from "metabase/lib/redux";
 
 import entityType from "./EntityType";
+import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export type Props = {
@@ -41,9 +42,16 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 );
 
 @entityType()
+@paginationState()
 @connect((state, props) => {
-  const { entityDef } = props;
-  const entityQuery = getMemoizedEntityQuery(state, props);
+  let { entityDef, entityQuery, page, pageSize } = props;
+  if (typeof entityQuery === "function") {
+    entityQuery = entityQuery(state, props);
+  }
+  if (typeof pageSize === "number" && typeof page === "number") {
+    entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
+  }
+  entityQuery = getMemoizedEntityQuery(state, { entityQuery });
   return {
     entityQuery,
     list: entityDef.selectors.getList(state, { entityQuery }),
@@ -74,22 +82,33 @@ export default class EntityListLoader extends React.Component {
     );
   }
 
+  async fetchList(
+    // $FlowFixMe: fetchList provided by @connect
+    { fetchList, entityQuery, pageSize, onChangeHasMorePages },
+    options?: any,
+  ) {
+    const result = await fetchList(entityQuery, options);
+    if (typeof pageSize === "number" && onChangeHasMorePages) {
+      onChangeHasMorePages(
+        !result.payload.result || result.payload.result.length === pageSize,
+      );
+    }
+    return result;
+  }
+
   componentWillMount() {
-    // $FlowFixMe: provided by @connect
-    this.props.fetchList(this.props.entityQuery, { reload: this.props.reload });
+    this.fetchList(this.props, { reload: this.props.reload });
   }
 
   componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
-      // $FlowFixMe: provided by @connect
-      nextProps.fetchList(nextProps.entityQuery, { reload: nextProps.reload });
+      this.fetchList(nextProps, { reload: nextProps.reload });
     } else if (this.props.loaded && !nextProps.loaded && !nextProps.loading) {
       // transitioned from loaded to not loaded, and isn't yet loading again
       // this typically means the list request state was cleared by a
       // create/update/delete action
-      // $FlowFixMe: provided by @connect
-      nextProps.fetchList(nextProps.entityQuery);
+      this.fetchList(nextProps);
     }
   }
 
@@ -127,8 +146,7 @@ export default class EntityListLoader extends React.Component {
   }
 
   reload = () => {
-    // $FlowFixMe: provided by @connect
-    return this.props.fetchList(this.props.entityQuery, { reload: true });
+    this.fetchList(this.props, { reload: true });
   };
 }
 

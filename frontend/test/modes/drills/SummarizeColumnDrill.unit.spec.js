@@ -21,7 +21,7 @@ describe("SummarizeColumnDrill", () => {
     expect(actions.length).toEqual(5);
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
     });
     expect(newCard.display).toEqual("scalar");

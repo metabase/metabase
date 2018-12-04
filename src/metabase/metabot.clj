@@ -24,8 +24,8 @@
              [setting :as setting :refer [defsetting]]]
             [metabase.util
              [date :as du]
+             [i18n :refer [trs tru]]
              [urls :as urls]]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [throttle.core :as throttle]
             [toucan.db :as db]))
 
@@ -173,21 +173,21 @@
                              dispatch-token) varr}))]
     (fn dispatch*
       ([]
-       (keys-description (tru "Here''s what I can {0}:" verb) fn-map))
+       (keys-description (str (tru "Here''s what I can {0}:" verb)) fn-map))
       ([what & args]
        (if-let [f (fn-map (keyword what))]
          (apply f args)
-         (tru "I don''t know how to {0} `{1}`.\n{2}"
-                 verb
-                 (if (instance? clojure.lang.Named what)
-                   (name what)
-                   what)
-                 (dispatch*)))))))
+         (str (tru "I don''t know how to {0} `{1}`.\n{2}"
+                   verb
+                   (if (instance? clojure.lang.Named what)
+                     (name what)
+                     what)
+                   (dispatch*))))))))
 
 (defn- format-exception
   "Format a `Throwable` the way we'd like for posting it on slack."
   [^Throwable e]
-  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
+  (str (tru "Uh oh! :cry:\n> {0}" (.getMessage e))))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
   `(future (try ~@body
@@ -207,7 +207,7 @@
   [& _]
   (let [cards (with-metabot-permissions
                 (filterv mi/can-read? (db/select [Card :id :name :dataset_query :collection_id], {:order-by [[:id :desc]], :limit 20})))]
-    (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards))))
+    (str (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards)))))
 
 (defn- card-with-name [card-name]
   (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
@@ -229,7 +229,7 @@
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
   ([]
-   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."))
+   (str (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`.")))
   ([card-id-or-name]
    (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
      (do
@@ -241,7 +241,7 @@
                    (slack/post-chat-message! *channel-id*
                                              nil
                                              attachments)))
-       (tru "Ok, just a second..."))
+       (str (tru "Ok, just a second...")))
      (throw (Exception. (str (tru "Not Found"))))))
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my
   ;; wacky card")

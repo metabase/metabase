@@ -5,12 +5,12 @@ include it as part of Metabase. Luckily, downloading it yourself and making it a
 
 ### Downloading the Oracle JDBC Driver JAR
 
-You can download the JDBC driver from [Oracle's JDBC driver downloads page](http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html).
-Head to this page, accept the license agreement, and download `ojdbc7.jar`:
+You can download the JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html).
+Head to this page, accept the license agreement, and download `ojdbc8.jar`:
 
 ![Oracle JDBC Download](../images/oracle_jdbc_download.png)
 
-Before downloading this JAR you may need to sign up for a free account with Oracle.
+Before downloading this JAR you may need to sign up for a free account with Oracle. We recommend downloading version 12.2.0.1 or greater of the Oracle JDBC driver.
 
 
 ### Adding the Oracle JDBC Driver JAR to the Metabase Plugins Directory
@@ -25,14 +25,14 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 ```bash
 # example directory structure for running Metabase with Oracle support
 /app/metabase.jar
-/app/plugins/ojdbc7.jar
+/app/plugins/ojdbc8.jar
 ```
 
 If you're running Metabase from the Mac App, the plugins directory defaults to `~/Library/Application Support/Metabase/Plugins/`:
 
 ```bash
 # example directory structure for running Metabase Mac App with Oracle support
-/Users/camsaul/Library/Application Support/Metabase/Plugins/ojdbc7.jar
+/Users/camsaul/Library/Application Support/Metabase/Plugins/ojdbc8.jar
 ```
 
 Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.

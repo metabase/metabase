@@ -1,10 +1,9 @@
-import React from "react";
-import ReactDOM from "react-dom";
-
 import LeafletMap from "./LeafletMap.jsx";
 import L from "leaflet";
 
-import { formatValue } from "metabase/lib/formatting";
+import { isPK } from "metabase/lib/schema_metadata";
+
+import _ from "underscore";
 
 const MARKER_ICON = L.icon({
   iconUrl: "app/assets/img/pin.png",
@@ -53,33 +52,39 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     }
   }
 
-  _createMarker = index => {
+  _createMarker = rowIndex => {
     const marker = L.marker([0, 0], { icon: MARKER_ICON });
-    marker.on("click", () => {
-      const { series: [{ data }] } = this.props;
-      const { popup } = this;
-      const el = document.createElement("div");
-      ReactDOM.render(
-        <ObjectDetailTooltip row={data.rows[index]} cols={data.cols} />,
-        el,
-      );
-      marker.unbindPopup();
-      marker.bindPopup(el, popup);
-      marker.openPopup();
-    });
+    const { onHoverChange, onVisualizationClick } = this.props;
+    if (onHoverChange) {
+      marker.on("mousemove", e => {
+        const { series: [{ data: { cols, rows } }] } = this.props;
+        const hover = {
+          dimensions: cols.map((col, colIndex) => ({
+            value: rows[rowIndex][colIndex],
+            column: col,
+          })),
+          element: marker._icon,
+        };
+        onHoverChange(hover);
+      });
+      marker.on("mouseout", () => {
+        onHoverChange(null);
+      });
+    }
+    if (onVisualizationClick) {
+      marker.on("click", () => {
+        const { series: [{ data: { cols, rows } }] } = this.props;
+        const pkIndex = _.findIndex(cols, isPK);
+        if (pkIndex >= 0) {
+          // if there's a PK just use that for now
+          onVisualizationClick({
+            value: rows[rowIndex][pkIndex],
+            column: cols[pkIndex],
+            element: marker._icon,
+          });
+        }
+      });
+    }
     return marker;
   };
 }
-
-const ObjectDetailTooltip = ({ row, cols }) => (
-  <table>
-    <tbody>
-      {cols.map((col, index) => (
-        <tr>
-          <td className="pr1">{col.display_name}:</td>
-          <td>{formatValue(row[index], { column: col, jsx: true })}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);

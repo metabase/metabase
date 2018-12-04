@@ -1,17 +1,22 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.tools.logging :as log]
+            [metabase.mbql.normalize :as normalize]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
              [date :as du]
-             [encryption :as encryption]]
+             [encryption :as encryption]
+             [i18n :refer [tru]]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan
              [models :as models]
              [util :as toucan-util]])
-  (:import java.sql.Blob))
+  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
+           java.sql.Blob
+           java.util.zip.GZIPInputStream))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -22,7 +27,9 @@
 
 ;;; types
 
-(defn- json-in [obj]
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
   (if (string? obj)
     obj
     (json/generate-string obj)))
@@ -33,10 +40,15 @@
       (json/parse-string s keywordize-keys?)
       obj)))
 
-(defn- json-out-with-keywordization [obj]
+(defn json-out-with-keywordization
+  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
+  [obj]
   (json-out obj true))
 
-(defn- json-out-without-keywordization [obj]
+(defn json-out-without-keywordization
+  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
+  as strings."
+  [obj]
   (json-out obj false))
 
 (models/add-type! :json
@@ -47,11 +59,54 @@
   :in  json-in
   :out json-out-without-keywordization)
 
+;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
+(defn- maybe-normalize [query]
+  (when query
+    (normalize/normalize query)))
+
+(defn- catch-normalization-exceptions
+  "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
+  invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
+  letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
+  [f]
+  (fn [query]
+    (try
+      (doall (f query))
+      (catch Throwable e
+        (log/error e (tru "Unable to normalize:") "\n"
+                   (u/pprint-to-str 'red query))
+        nil))))
+
+(models/add-type! :metabase-query
+  :in  (comp json-in maybe-normalize)
+  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
+
+;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
+(defn- normalize-metric-segment-definition [definition]
+  (when definition
+    (normalize/normalize-fragment [:query] definition)))
+
+;; For inner queries like those in Metric definitions
+(models/add-type! :metric-segment-definition
+  :in  (comp json-in normalize-metric-segment-definition)
+  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
+
+;; For DashCard parameter lists
+(defn- normalize-parameter-mapping-targets [parameter-mappings]
+  (for [{:keys [target], :as mapping} parameter-mappings]
+    (cond-> mapping
+      target (update :target normalize/normalize-tokens :ignore-path))))
+
+(models/add-type! :parameter-mappings
+  :in  (comp json-in normalize-parameter-mapping-targets)
+  :out (comp (catch-normalization-exceptions normalize-parameter-mapping-targets) json-out-with-keywordization))
+
+
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
 (models/add-type! :json-set
   :in  json-in
-  :out #(when % (set (json-out-with-keywordization %))))
+  :out #(some-> % json-out-with-keywordization set))
 
 (models/add-type! :clob
   :in  identity
@@ -72,20 +127,19 @@
   :in  encryption/maybe-encrypt
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
-(defn compress
-  "Compress OBJ, returning a byte array."
-  [obj]
-  (nippy/freeze obj {:compressor nippy/snappy-compressor}))
-
 (defn decompress
   "Decompress COMPRESSED-BYTES."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
-    (nippy/thaw compressed-bytes {:compressor nippy/snappy-compressor})))
+    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                bif     (BufferedInputStream. bis)
+                gz-in   (GZIPInputStream. bif)
+                data-in (DataInputStream. gz-in)]
+      (nippy/thaw-from-in! data-in))))
 
 (models/add-type! :compressed
-  :in  compress
+  :in  identity
   :out decompress)
 
 (defn- validate-cron-string [s]

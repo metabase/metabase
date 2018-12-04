@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { mbqlEq } from "../query/util";
 
 import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
@@ -58,7 +57,7 @@ export function isField(expr) {
   return (
     Array.isArray(expr) &&
     expr.length === 2 &&
-    mbqlEq(expr[0], "field-id") &&
+    expr[0] === "field-id" &&
     typeof expr[1] === "number"
   );
 }
@@ -68,7 +67,7 @@ export function isMetric(expr) {
   return (
     Array.isArray(expr) &&
     expr.length === 2 &&
-    expr[0] === "METRIC" &&
+    expr[0] === "metric" &&
     typeof expr[1] === "number"
   );
 }
@@ -93,7 +92,7 @@ export function isExpressionReference(expr) {
   return (
     Array.isArray(expr) &&
     expr.length === 2 &&
-    mbqlEq(expr[0], "expression") &&
+    expr[0] === "expression" &&
     typeof expr[1] === "string"
   );
 }

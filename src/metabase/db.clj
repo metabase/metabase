@@ -11,15 +11,16 @@
              [config :as config]
              [util :as u]]
             [metabase.db.spec :as dbspec]
-            [puppetlabs.i18n.core :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.ComboPooledDataSource
            java.io.StringWriter
            java.util.Properties
+           [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
-           liquibase.Liquibase
+           liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -45,12 +46,15 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
+(def ^:private jdbc-connection-regex
+  #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
+
 (defn- parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
   return a broken-out map."
   [uri]
-  (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
+  (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
     (merge {:type     (case (keyword protocol)
                         :postgres   :postgres
                         :postgresql :postgres
@@ -125,8 +129,10 @@
 
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
-  filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
-  because it keeps the code simple and doesn't make a significant performance difference."
+  filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
+  because it keeps the code simple and doesn't make a significant performance difference.
+
+  As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -136,14 +142,17 @@
 (defn- has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
-  It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
-  `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous and
-  a waste of time when we won't be using them."
+  It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
+  skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
+  using them.
+
+  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
+  `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
 (defn- migration-lock-exists?
-  "Is a migration lock in place for LIQUIBASE?"
+  "Is a migration lock in place for `liquibase`?"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
@@ -155,19 +164,14 @@
     (when (migration-lock-exists? liquibase)
       (Thread/sleep 2000)
       (throw
-       (Exception.
+       (LockException.
         (str
          (trs "Database has migration lock; cannot run migrations.")
          " "
          (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn- migrate-up-if-needed!
-  "Run any unrun `liquibase` migrations, if needed.
-
-  This creates SQL for the migrations to be performed, then executes each DDL statement. Running `.update` directly
-  doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at the end
-  of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do
-  the trick."
+  "Run any unrun `liquibase` migrations, if needed."
   [conn, ^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
@@ -178,8 +182,8 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (doseq [line (migrations-lines liquibase)]
-          (jdbc/execute! conn [line])))
+        (let [^Contexts contexts nil]
+          (.update liquibase contexts)))
       (log/info
        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
@@ -187,7 +191,8 @@
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
   1.  This doesn't check to make sure the DB locks are cleared
-  2.  Any DDL statements that fail are ignored
+  2.  This generates a sequence of individual DDL statements with `migrations-lines` and runs them each in turn
+  3.  Any DDL statements that fail are ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295.
@@ -240,6 +245,16 @@
     (when-not fresh-install?
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
 
+(defn- release-lock-if-needed!
+  "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
+  intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
+  [^Liquibase liquibase]
+  (when (migration-lock-exists? liquibase)
+    (try
+      (.forceReleaseLocks liquibase)
+      (catch Exception e
+        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
   migrate up`):
@@ -266,8 +281,8 @@
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
      (log/info (trs "Setting up Liquibase..."))
-     (try
-       (let [liquibase (conn->liquibase conn)]
+     (let [liquibase (conn->liquibase conn)]
+       (try
          (consolidate-liquibase-changesets conn)
          (log/info (trs "Liquibase is ready."))
          (case direction
@@ -275,16 +290,27 @@
            :force         (force-migrate-up-if-needed! conn liquibase)
            :down-one      (.rollback liquibase 1 "")
            :print         (println (migrations-sql liquibase))
-           :release-locks (.forceReleaseLocks liquibase)))
-       ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
-       (jdbc/db-unset-rollback-only! conn)
-       :done
-       ;; If for any reason any part of the migrations fail then rollback all changes
-       (catch Throwable e
-         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
-         ;; better safe than sorry
-         (.rollback (jdbc/get-connection conn))
-         (throw e))))))
+           :release-locks (.forceReleaseLocks liquibase))
+         ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
+         (jdbc/db-unset-rollback-only! conn)
+         :done
+         ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+         ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+         ;; clear the lock in that case, so handle that case separately
+         (catch LockException e
+           ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
+           ;; better safe than sorry
+           (.rollback (jdbc/get-connection conn))
+           (throw e))
+         ;; If for any reason any part of the migrations fail then rollback all changes
+         (catch Throwable e
+           ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
+           ;; better safe than sorry
+           (.rollback (jdbc/get-connection conn))
+           ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+           ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+           (release-lock-if-needed! liquibase)
+           (throw e)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -363,8 +389,8 @@
    {:pre [(keyword? engine) (map? details)]}
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver)
-             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
+             (require 'metabase.driver.util)
+             ((resolve 'metabase.driver.util/can-connect-with-details?) engine details))
      (format "Unable to connect to Metabase %s DB." (name engine)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 

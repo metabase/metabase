@@ -44,7 +44,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:parameter_mappings :json, :visualization_settings :json})
+          :types       (constantly {:parameter_mappings :parameter-mappings, :visualization_settings :json})
           :pre-insert  pre-insert
           :pre-delete  pre-delete
           :post-select (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})
@@ -55,8 +55,7 @@
           :can-write?         (partial i/current-user-has-full-permissions? :write)}))
 
 
-;;; ## ---------------------------------------- HYDRATION ----------------------------------------
-
+;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
 (defn dashboard
   "Return the `Dashboard` associated with the `DashboardCard`."
@@ -74,8 +73,7 @@
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
 
-;;; ## ---------------------------------------- CRUD FNS ----------------------------------------
-
+;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
 (defn retrieve-dashboard-card
   "Fetch a single `DashboardCard` by its ID value."

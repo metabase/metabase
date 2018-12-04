@@ -1,20 +1,37 @@
 /* @flow */
 
 import React, { Component } from "react";
-import styles from "./Scalar.css";
 import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+
+import Ellipsified from "metabase/components/Ellipsified";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { isNumber } from "metabase/lib/schema_metadata";
+
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import cx from "classnames";
-import d3 from "d3";
+import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { Column } from "metabase/meta/types/Dataset";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+
+import ScalarValue, {
+  ScalarWrapper,
+  ScalarTitle,
+} from "metabase/visualizations/components/ScalarValue";
+
+// convert legacy `scalar.*` visualization settings to format options
+function legacyScalarSettingsToFormatOptions(settings) {
+  return _.chain(settings)
+    .pairs()
+    .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
+    .map(([key, value]) => [key.replace(/^scalar\./, ""), value])
+    .object()
+    .value();
+}
 
 export default class Scalar extends Component {
   props: VisualizationProps;
@@ -24,13 +41,12 @@ export default class Scalar extends Component {
   static iconName = "number";
 
   static noHeader = true;
-  static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
 
   _scalar: ?HTMLElement;
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }
 
@@ -71,144 +87,98 @@ export default class Scalar extends Component {
   }
 
   static settings = {
+    ...fieldSetting("scalar.field", {
+      title: t`Field to show`,
+      getDefault: ([{ data: { cols } }]) => cols[0].name,
+      getHidden: ([{ data: { cols } }]) => cols.length < 2,
+    }),
+    ...columnSettings({
+      getColumns: ([{ data: { cols } }], settings) => [
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+      ],
+      readDependencies: ["scalar.field"],
+    }),
+    // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
-      title: t`Separator style`,
-      widget: "select",
-      props: {
-        options: [
-          { name: "100000.00", value: null },
-          { name: "100,000.00", value: "en" },
-          { name: "100 000,00", value: "fr" },
-          { name: "100.000,00", value: "de" },
-        ],
-      },
-      default: "en",
+      // title: t`Separator style`,
+      // widget: "select",
+      // props: {
+      //   options: [
+      //     { name: "100000.00", value: null },
+      //     { name: "100,000.00", value: "en" },
+      //     { name: "100 000,00", value: "fr" },
+      //     { name: "100.000,00", value: "de" },
+      //   ],
+      // },
+      // default: "en",
     },
     "scalar.decimals": {
-      title: t`Number of decimal places`,
-      widget: "number",
+      // title: t`Number of decimal places`,
+      // widget: "number",
     },
     "scalar.prefix": {
-      title: t`Add a prefix`,
-      widget: "input",
+      // title: t`Add a prefix`,
+      // widget: "input",
     },
     "scalar.suffix": {
-      title: t`Add a suffix`,
-      widget: "input",
+      // title: t`Add a suffix`,
+      // widget: "input",
     },
     "scalar.scale": {
-      title: t`Multiply by a number`,
-      widget: "number",
+      // title: t`Multiply by a number`,
+      // widget: "number",
     },
   };
 
+  _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
+    const columnIndex = _.findIndex(
+      cols,
+      col => col.name === settings["scalar.field"],
+    );
+    return columnIndex < 0 ? 0 : columnIndex;
+  }
+
   render() {
     let {
-      series: [{ card, data: { cols, rows } }],
-      className,
       actionButtons,
+      series: [{ card, data: { cols, rows } }],
+      isDashboard,
+      onChangeCardAndRun,
       gridSize,
       settings,
-      onChangeCardAndRun,
       visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
-    let description = settings["card.description"];
 
     let isSmall = gridSize && gridSize.width < 4;
-    const column = cols[0];
 
-    let scalarValue = rows[0] && rows[0][0];
-    if (scalarValue == null) {
-      scalarValue = "";
-    }
+    const columnIndex = this._getColumnIndex(cols, settings);
+    const value = rows[0] && rows[0][columnIndex];
+    const column = cols[columnIndex];
 
-    let compactScalarValue, fullScalarValue;
+    const formatOptions = {
+      ...legacyScalarSettingsToFormatOptions(settings),
+      ...settings.column(column),
+      jsx: true,
+    };
 
-    // TODO: some or all of these options should be part of formatValue
-    if (typeof scalarValue === "number" && isNumber(column)) {
-      // scale
-      const scale = parseFloat(settings["scalar.scale"]);
-      if (!isNaN(scale)) {
-        scalarValue *= scale;
-      }
-
-      const localeStringOptions = {};
-
-      // decimals
-      let decimals = parseFloat(settings["scalar.decimals"]);
-      if (!isNaN(decimals)) {
-        scalarValue = d3.round(scalarValue, decimals);
-        localeStringOptions.minimumFractionDigits = decimals;
-      }
-
-      let number = scalarValue;
-
-      // currency
-      if (settings["scalar.currency"] != null) {
-        localeStringOptions.style = "currency";
-        localeStringOptions.currency = settings["scalar.currency"];
-      }
-
-      try {
-        // format with separators and correct number of decimals
-        if (settings["scalar.locale"]) {
-          number = number.toLocaleString(
-            settings["scalar.locale"],
-            localeStringOptions,
-          );
-        } else {
-          // HACK: no locales that don't thousands separators?
-          number = number
-            .toLocaleString("en", localeStringOptions)
-            .replace(/,/g, "");
-        }
-      } catch (e) {
-        console.warn("error formatting scalar", e);
-      }
-      fullScalarValue = formatValue(number, { column: column });
-    } else {
-      fullScalarValue = formatValue(scalarValue, { column: column });
-    }
-
-    compactScalarValue = isSmall
-      ? formatValue(scalarValue, { column: column, compact: true })
+    const fullScalarValue = formatValue(value, formatOptions);
+    const compactScalarValue = isSmall
+      ? formatValue(value, { ...formatOptions, compact: true })
       : fullScalarValue;
 
-    if (settings["scalar.prefix"]) {
-      compactScalarValue = settings["scalar.prefix"] + compactScalarValue;
-      fullScalarValue = settings["scalar.prefix"] + fullScalarValue;
-    }
-    if (settings["scalar.suffix"]) {
-      compactScalarValue = compactScalarValue + settings["scalar.suffix"];
-      fullScalarValue = fullScalarValue + settings["scalar.suffix"];
-    }
-
-    const clicked = {
-      value: rows[0] && rows[0][0],
-      column: cols[0],
-    };
+    const clicked = { value, column };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
-      <div
-        className={cx(
-          className,
-          styles.Scalar,
-          styles[isSmall ? "small" : "large"],
-        )}
-      >
+      <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
         <Ellipsified
-          className={cx(
-            styles.Value,
-            "ScalarValue text-dark fullscreen-normal-text fullscreen-night-text",
-            {
-              "text-brand-hover cursor-pointer": isClickable,
-            },
-          )}
+          className={cx("fullscreen-normal-text fullscreen-night-text", {
+            "text-brand-hover cursor-pointer": isClickable,
+          })}
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== compactScalarValue}
           style={{ maxWidth: "100%" }}
@@ -222,37 +192,20 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            {compactScalarValue}
+            <ScalarValue value={compactScalarValue} />
           </span>
         </Ellipsified>
-        {this.props.isDashboard && (
-          <div className={styles.Title + " flex align-center relative"}>
-            <Ellipsified tooltip={card.name}>
-              <span
-                onClick={
-                  onChangeCardAndRun &&
-                  (() => onChangeCardAndRun({ nextCard: card }))
-                }
-                className={cx("fullscreen-normal-text fullscreen-night-text", {
-                  "cursor-pointer": !!onChangeCardAndRun,
-                })}
-              >
-                <span className="Scalar-title">{settings["card.title"]}</span>
-              </span>
-            </Ellipsified>
-            {description && (
-              <div
-                className="absolute top bottom hover-child flex align-center justify-center"
-                style={{ right: -20, top: 2 }}
-              >
-                <Tooltip tooltip={description} maxWidth={"22em"}>
-                  <Icon name="infooutlined" />
-                </Tooltip>
-              </div>
-            )}
-          </div>
+        {isDashboard && (
+          <ScalarTitle
+            title={settings["card.title"]}
+            description={settings["card.description"]}
+            onClick={
+              onChangeCardAndRun &&
+              (() => onChangeCardAndRun({ nextCard: card }))
+            }
+          />
         )}
-      </div>
+      </ScalarWrapper>
     );
   }
 }

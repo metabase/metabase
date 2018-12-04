@@ -55,7 +55,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
   type: "query",
   query: {
-    source_table: null,
+    "source-table": null,
   },
 };
 
@@ -95,7 +95,7 @@ export default class StructuredQuery extends AtomicQuery {
       ...STRUCTURED_QUERY_TEMPLATE,
       database: databaseId || null,
       query: {
-        source_table: tableId || null,
+        "source-table": tableId || null,
       },
     };
 
@@ -209,7 +209,7 @@ export default class StructuredQuery extends AtomicQuery {
         this._originalQuestion,
         chain(this.datasetQuery())
           .assoc("database", table.database.id)
-          .assocIn(["query", "source_table"], table.id)
+          .assocIn(["query", "source-table"], table.id)
           .value(),
       );
     } else {
@@ -221,7 +221,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the table ID, if a table is selected.
    */
   tableId(): ?TableId {
-    return this.query().source_table;
+    return this.query()["source-table"];
   }
 
   /**
@@ -282,7 +282,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns an array of aggregation options for the currently selected table, excluding the "rows" pseudo-aggregation
+   * @returns an array of aggregation options for the currently selected table
    */
   aggregationOptionsWithoutRows(): AggregationOption[] {
     return this.aggregationOptions().filter(option => option.short !== "rows");
@@ -499,7 +499,7 @@ export default class StructuredQuery extends AtomicQuery {
       .filter(f => isSegmentFilter(f))
       .map(segmentFilter => {
         // segment id is stored as the second part of the filter clause
-        // e.x. ["SEGMENT", 1]
+        // e.x. ["segment", 1]
         const segmentId = segmentFilter[1];
         return this.metadata().segment(segmentId);
       });
@@ -558,7 +558,7 @@ export default class StructuredQuery extends AtomicQuery {
       const usedFields = new Set(
         this.sorts()
           .filter(b => !_.isEqual(b, sort))
-          .map(b => Q_deprecated.getFieldTargetId(b[0])),
+          .map(b => Q_deprecated.getFieldTargetId(b[1])),
       );
 
       return this.fieldOptions(field => !usedFields.has(field.id));
@@ -593,10 +593,10 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  addSort(order_by: OrderBy) {
+  addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
-  updateSort(index: number, order_by: OrderBy) {
+  updateSort(index: number, orderBy: OrderBy) {
     return this._updateQuery(Q.updateOrderBy, arguments);
   }
   removeSort(index: number) {
@@ -605,8 +605,8 @@ export default class StructuredQuery extends AtomicQuery {
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);
   }
-  replaceSort(order_by: OrderBy) {
-    return this.clearSort().addSort(order_by);
+  replaceSort(orderBy: OrderBy) {
+    return this.clearSort().addSort(orderBy);
   }
 
   // LIMIT
@@ -738,8 +738,8 @@ export default class StructuredQuery extends AtomicQuery {
       return ["fk->", column.fk_field_id, column.id];
     } else if (column.id != null) {
       return ["field-id", column.id];
-    } else if (column["expression-name"] != null) {
-      return ["expression", column["expression-name"]];
+    } else if (column.expression_name != null) {
+      return ["expression", column.expression_name];
     } else if (column.source === "aggregation") {
       // FIXME: aggregations > 0?
       return ["aggregation", 0];

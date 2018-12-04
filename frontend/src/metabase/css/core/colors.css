@@ -7,9 +7,10 @@
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
   --color-accent4: #f9d45c;
-  --color-accent5: #f1b556;
-  --color-accent6: #a6e7f3;
+  --color-accent5: #f2a86f;
+  --color-accent6: #98d9d9;
   --color-accent7: #7172ad;
+  --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
   --color-black: #2e353b;
   --color-success: #84bb4c;
@@ -26,6 +27,10 @@
   --color-bg-white: #ffffff;
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-border: #d7dbde;
+
+  /* night mode colors */
+  --night-mode-color: color(var(--color-text-white) alpha(-14%));
+  --night-mode-card: #42484e;
 }
 
 /* NOTE: DEPRECATED, replaced with colors above

@@ -1,14 +1,16 @@
 (ns metabase.driver.googleanalytics.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format.
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
-            [medley.core :as m]
-            [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]
-            [metabase.util.date :as du])
-  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
-           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util
+             [date :as du]
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s])
+  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
@@ -25,22 +27,33 @@
    "US_CURRENCY" :type/Float})
 
 
-(defprotocol ^:private IRValue
-  (^:private ->rvalue [this]))
+(defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
 
-(extend-protocol IRValue
-  nil                   (->rvalue [_] nil)
-  Object                (->rvalue [this] this)
-  Field                 (->rvalue [this] (:field-name this))
-  DateTimeField         (->rvalue [this] (->rvalue (:field this)))
-  Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (du/format-date "yyyy-MM-dd" (du/date-trunc unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]
-                          (cond
-                            (and (= unit :day) (= amount 0))  "today"
-                            (and (= unit :day) (= amount -1)) "yesterday"
-                            (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-                            :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount))))))
+(defmethod ->rvalue nil [_] nil)
+
+(defmethod ->rvalue Object [this] this)
+
+(defmethod ->rvalue :field-id [[_ field-id]]
+  (:name (qp.store/field field-id)))
+
+(defmethod ->rvalue :field-literal [[_ field-name]]
+  field-name)
+
+(defmethod ->rvalue :datetime-field [[_ field]]
+  (->rvalue field))
+
+(defmethod ->rvalue :absolute-datetime [[_ timestamp unit]]
+  (du/format-date "yyyy-MM-dd" (du/date-trunc unit timestamp)))
+
+(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+  (cond
+    (and (= unit :day) (= amount 0))  "today"
+    (and (= unit :day) (= amount -1)) "yesterday"
+    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
+    :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
+
+(defmethod ->rvalue :value [[_ value _]]
+  value)
 
 
 (defn- char-escape-map
@@ -49,26 +62,30 @@
   (into {} (for [c chars-to-escape]
              {c (str "\\" c)})))
 
-(def ^:private ^{:arglists '([s])} escape-for-regex         (u/rpartial s/escape (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
-(def ^:private ^{:arglists '([s])} escape-for-filter-clause (u/rpartial s/escape (char-escape-map ",;\\")))
+(def ^:private ^{:arglists '([s])} escape-for-regex         #(str/escape % (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+(def ^:private ^{:arglists '([s])} escape-for-filter-clause #(str/escape % (char-escape-map ",;\\")))
 
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
 
 
-;;; ### source-table
+;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defn- handle-source-table [{{source-table-name :name} :source-table}]
-  {:pre [((some-fn keyword? string?) source-table-name)]}
-  {:ids (str "ga:" source-table-name)})
+(defn- handle-source-table [{source-table-id :source-table}]
+  (let [{source-table-name :name} (qp.store/table source-table-id)]
+    {:ids (str "ga:" source-table-name)}))
 
 
-;;; ### breakout
+;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregations [{aggregations :aggregation}]
-  (if (every? sequential? aggregations)
-    aggregations
-    [aggregations]))
+(defn- handle-aggregation
+  [{ags :aggregation}]
+  (when (seq ags)
+    {:metrics (str/join "," (mbql.u/match ags [:metric (metric-name :guard string?)] metric-name))}))
+
+
+;;; ---------------------------------------------------- breakout ----------------------------------------------------
+
 
 (defn- unit->ga-dimension
   [unit]
@@ -88,99 +105,169 @@
 (defn- handle-breakout [{breakout-clause :breakout}]
   {:dimensions (if-not breakout-clause
                  ""
-                 (s/join "," (for [breakout-field breakout-clause]
-                               (if (instance? DateTimeField breakout-field)
-                                 (unit->ga-dimension (:unit breakout-field))
-                                 (->rvalue breakout-field)))))})
+                 (str/join "," (for [breakout-field breakout-clause]
+                                 (mbql.u/match-one breakout-field
+                                   [:datetime-field _ unit] (unit->ga-dimension unit)
+                                   _                        (->rvalue &match)))))})
 
 
-;;; ### filter
+;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-;; TODO: implement negate?
-(defn- parse-filter-subclause:filters
-  (^String [filter-clause negate?]
-   ;; if optional arg `negate?` is truthy then prepend a `!` to negate the filter.
-   ;; See https://developers.google.com/analytics/devguides/reporting/core/v3/segments-feature-reference#not-operator
-   (str (when negate? "!") (parse-filter-subclause:filters filter-clause)))
+(defmulti ^:private parse-filter mbql.u/dispatch-by-clause-name-or-class)
 
-  (^String [{:keys [filter-type field value case-sensitive?], :as filter-clause}]
-   (when-not (instance? DateTimeField field)
-     (let [field (when field (->rvalue field))
-           value (when value (->rvalue value))]
-       (case filter-type
-         :contains    (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value))
-         :starts-with (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)") \^ (escape-for-regex value))
-         :ends-with   (ga-filter field "=~" (if case-sensitive? "(?-i)" "(?i)")    (escape-for-regex value) \$)
-         :=           (ga-filter field "==" value)
-         :!=          (ga-filter field "!=" value)
-         :>           (ga-filter field ">" value)
-         :<           (ga-filter field "<" value)
-         :>=          (ga-filter field ">=" value)
-         :<=          (ga-filter field "<=" value)
-         :between     (str (ga-filter field ">=" (->rvalue (:min-val filter-clause)))
-                           ";"
-                           (ga-filter field "<=" (->rvalue (:max-val filter-clause)))))))))
+(defmethod parse-filter nil [& _]
+  nil)
 
-(defn- parse-filter-clause:filters ^String [{:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and (s/join ";" (remove nil? (map parse-filter-clause:filters subclauses)))
-    :or  (s/join "," (remove nil? (map parse-filter-clause:filters subclauses)))
-    :not (parse-filter-subclause:filters subclause :negate)
-    nil  (parse-filter-subclause:filters clause)))
+(defmethod parse-filter :contains [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value))))
+
+(defmethod parse-filter :starts-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") \^ (escape-for-regex (->rvalue value))))
+
+(defmethod parse-filter :ends-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+  (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value)) \$))
+
+(defmethod parse-filter := [[_ field value]]
+  (ga-filter (->rvalue field) "==" (->rvalue value)))
+
+(defmethod parse-filter :!= [[_ field value]]
+  (ga-filter (->rvalue field) "!=" (->rvalue value)))
+
+(defmethod parse-filter :> [[_ field value]]
+  (ga-filter (->rvalue field) ">" (->rvalue value)))
+
+(defmethod parse-filter :< [[_ field value]]
+  (ga-filter (->rvalue field) "<" (->rvalue value)))
+
+(defmethod parse-filter :>= [[_ field value]]
+  (ga-filter (->rvalue field) ">=" (->rvalue value)))
+
+(defmethod parse-filter :<= [[_ field value]]
+  (ga-filter (->rvalue field) "<=" (->rvalue value)))
+
+(defmethod parse-filter :between [[_ field min-val max-val]]
+  (str (ga-filter (->rvalue field) ">=" (->rvalue min-val))
+       ";"
+       (ga-filter (->rvalue field) "<=" (->rvalue max-val))))
+
+(defmethod parse-filter :and [[_ & clauses]]
+  (str/join ";" (filter some? (map parse-filter clauses))))
+
+(defmethod parse-filter :or [[_ & clauses]]
+  (str/join "," (filter some? (map parse-filter clauses))))
+
+(defmethod parse-filter :not [[_ clause]]
+  (str "!" (parse-filter clause)))
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
-    (let [filter (parse-filter-clause:filters filter-clause)]
-      (when-not (s/blank? filter)
+    ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
+    ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
+    ;;
+    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will be wrapped by `:datetime-field`
+    ;; clauses in a fully-preprocessed query.)
+    (let [filter (parse-filter (mbql.u/replace filter-clause
+                                 [:segment (_ :guard mbql.u/ga-id?)] nil
+                                 [_ [:datetime-field & _] & _] nil))]
+
+      (when-not (str/blank? filter)
         {:filters filter}))))
 
-(defn- parse-filter-subclause:interval [{:keys [filter-type field value], :as filter} & [negate?]]
-  (when negate?
-    (throw (Exception. ":not is :not yet implemented")))
-  (when (instance? DateTimeField field)
-    (case filter-type
-      :between {:start-date (->rvalue (:min-val filter))
-                :end-date   (->rvalue (:max-val filter))}
-      :>       {:start-date (->rvalue (:value filter))
-                :end-date   latest-date}
-      :<       {:start-date earliest-date
-                :end-date   (->rvalue (:value filter))}
-      :=       {:start-date (->rvalue (:value filter))
-                :end-date   (condp instance? (:value filter)
-                              DateTimeValue         (->rvalue (:value filter))
-                              RelativeDateTimeValue (->rvalue (update (:value filter) :amount inc)))}))) ;; inc the end date so we'll get a proper date range once everything is bucketed
+;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
-(defn- parse-filter-clause:interval [{:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and (apply concat (remove nil? (map parse-filter-clause:interval subclauses)))
-    :or  (apply concat (remove nil? (map parse-filter-clause:interval subclauses)))
-    :not (remove nil? [(parse-filter-subclause:interval subclause :negate)])
-    nil  (remove nil? [(parse-filter-subclause:interval clause)])))
+(defmulti ^:private parse-filter:interval mbql.u/dispatch-by-clause-name-or-class)
+
+(defmethod parse-filter:interval :default [_] nil)
+
+(defmethod parse-filter:interval :between [[_ field min-val max-val]]
+  {:start-date (->rvalue min-val), :end-date (->rvalue max-val)})
+
+(defmethod parse-filter:interval :> [[_ field value]]
+  {:start-date (->rvalue value), :end-date latest-date})
+
+(defmethod parse-filter:interval :< [[_ field value]]
+  {:start-date earliest-date, :end-date (->rvalue value)})
+
+;; TODO - why we don't support `:>=` or `:<=` in GA?
+
+(defmethod parse-filter:interval := [[_ field value]]
+  {:start-date (->rvalue value)
+   :end-date   (->rvalue
+                (cond-> value
+                  ;; for relative datetimes, inc the end date so we'll get a proper date range once everything is
+                  ;; bucketed
+                  (mbql.u/is-clause? :relative-datetime value)
+                  (mbql.u/add-datetime-units 1)))})
+
+(defn- maybe-get-only-filter-or-throw [filters]
+  (when-let [filters (seq (filter some? filters))]
+    (when (> (count filters) 1)
+      (throw (Exception. (str (tru "Multiple date filters are not supported")))))
+    (first filters)))
+
+(defmethod parse-filter:interval :and [[_ & subclauses]]
+  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+
+(defmethod parse-filter:interval :or [[_ & subclauses]]
+  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+
+(defmethod parse-filter:interval :not [[& _]]
+  (throw (Exception. (str (tru ":not is not yet implemented")))))
+
+(defn- remove-non-datetime-filter-clauses
+  "Replace any filter clauses that operate on a non-datetime Field with `nil`."
+  [filter-clause]
+  (mbql.u/replace filter-clause
+    ;; we don't support any of the following as datetime filters
+    #{:!= :<= :>= :starts-with :ends-with :contains}
+    nil
+
+    [(_ :guard #{:< :> :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    nil))
 
 (defn- handle-filter:interval
-  "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the `handle-builtin-segment` logic)."
+  "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
+  `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
-  (let [date-filters (when filter-clause
-                       (parse-filter-clause:interval filter-clause))]
-    (case (count date-filters)
-      0 {:start-date earliest-date, :end-date latest-date}
-      1 (first date-filters)
-      (throw (Exception. "Multiple date filters are not supported")))))
+  (or (when filter-clause
+        (parse-filter:interval (remove-non-datetime-filter-clauses filter-clause)))
+      {:start-date earliest-date, :end-date latest-date}))
 
-;;; ### order-by
+
+;;; ------------------------------------------- filter (built-in segments) -------------------------------------------
+
+(s/defn ^:private built-in-segment :- (s/maybe su/NonBlankString)
+  [{filter-clause :filter}]
+  (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
+    (when (> (count segments) 1)
+      (throw (Exception. (str (tru "Only one Google Analytics segment allowed at a time.")))))
+    (first segments)))
+
+(defn- handle-filter:built-in-segment
+  "Handle a built-in GA segment (a `[:segment <ga id>]` filter clause), if present. This is added to the native query
+  under a separate `:segment` key."
+  [inner-query]
+  (when-let [built-in-segment (built-in-segment inner-query)]
+    {:segment built-in-segment}))
+
+
+;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
-    {:sort (s/join "," (for [{:keys [field direction]} order-by]
-                         (str (case direction
-                                :ascending  ""
-                                :descending "-")
-                              (cond
-                                (instance? DateTimeField field) (unit->ga-dimension (:unit field))
-                                (instance? AgFieldRef field)    (second (nth (aggregations query) (:index field))) ; aggregation is of format [ag-type metric-name]; get the metric-name
-                                :else                           (->rvalue field)))))}))
+    {:sort (str/join
+            ","
+            (for [[direction field] order-by]
+              (str (case direction
+                     :asc  ""
+                     :desc "-")
+                   (mbql.u/match-one field
+                     [:datetime-field _ unit] (unit->ga-dimension unit)
+                     [:aggregation index]     (mbql.u/aggregation-at-index query index)
+                     [& _]                    (->rvalue &match)))))}))
 
-;;; ### limit
+
+;;; ----------------------------------------------------- limit ------------------------------------------------------
 
 (defn- handle-limit [{limit-clause :limit}]
   {:max-results (int (if (nil? limit-clause)
@@ -189,21 +276,23 @@
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{:keys [query], :as raw}]
-  {:query (merge (handle-source-table    query)
-                 (handle-breakout        query)
-                 (handle-filter:interval query)
-                 (handle-filter:filters  query)
-                 (handle-order-by        query)
-                 (handle-limit           query)
-                 ;; segments and metrics are pulled out in transform-query
-                 (get raw :ga)
-                 ;; set to false to match behavior of other drivers
-                 {:include-empty-rows false})
+  [{inner-query :query, :as raw}]
+  {:query (into
+           ;; set to false to match behavior of other drivers
+           {:include-empty-rows false}
+           (for [f [handle-source-table
+                    handle-aggregation
+                    handle-breakout
+                    handle-filter:interval
+                    handle-filter:filters
+                    handle-filter:built-in-segment
+                    handle-order-by
+                    handle-limit]]
+             (f inner-query)))
    :mbql? true})
 
 (defn- parse-number [s]
-  (edn/read-string (s/replace s #"^0+(.+)$" "$1")))
+  (edn/read-string (str/replace s #"^0+(.+)$" "$1")))
 
 (def ^:private ga-dimension->date-format-fn
   {"ga:minute"         parse-number
@@ -221,11 +310,10 @@
 (defn- header->column [^GaData$ColumnHeaders header]
   (let [date-parser (ga-dimension->date-format-fn (.getName header))]
     (if date-parser
-      {:name      (keyword "ga:date")
-       :base-type :type/DateTime}
-      {:name               (keyword (.getName header))
-       :base-type          (ga-type->base-type (.getDataType header))
-       :field-display-name "COOL"})))
+      {:name      "ga:date"
+       :base_type :type/DateTime}
+      {:name      (.getName header)
+       :base_type (ga-type->base-type (.getDataType header))})))
 
 (defn- header->getter-fn [^GaData$ColumnHeaders header]
   (let [date-parser (ga-dimension->date-format-fn (.getName header))
@@ -238,87 +326,11 @@
 (defn execute-query
   "Execute a QUERY using the provided DO-QUERY function, and return the results in the usual format."
   [do-query query]
-  (let [mbql?            (:mbql? (:native query))
-        ^GaData response (do-query query)
+  (let [^GaData response (do-query query)
         columns          (map header->column (.getColumnHeaders response))
         getters          (map header->getter-fn (.getColumnHeaders response))]
-    {:columns  (map :name columns)
-     :cols     columns
+    {:cols     columns
+     :columns  (map :name columns)
      :rows     (for [row (.getRows response)]
                  (for [[data getter] (map vector row getters)]
-                   (getter data)))
-     :annotate mbql?}))
-
-
-;;; ----------------------------------------------- "transform-query" ------------------------------------------------
-
-;;; metrics
-
-(defn- built-in-metrics
-  [{query :query}]
-  (when-let [ags (seq (aggregations query))]
-    (s/join "," (for [[aggregation-type metric-name] ags
-                      :when (and aggregation-type
-                                 (= :metric (qputil/normalize-token aggregation-type))
-                                 (string? metric-name))]
-                  metric-name))))
-
-(defn- handle-built-in-metrics [query]
-  (-> query
-      (assoc-in [:ga :metrics] (built-in-metrics query))
-      (m/dissoc-in [:query :aggregation])))
-
-
-;;; segments
-
-(defn- filter-type ^clojure.lang.Keyword [filter-clause]
-  (when (and (sequential? filter-clause)
-             ((some-fn keyword? string?) (first filter-clause)))
-    (qputil/normalize-token (first filter-clause))))
-
-(defn- compound-filter? [filter-clause]
-  (contains? #{:and :or :not} (filter-type filter-clause)))
-
-(defn- built-in-segment? [filter-clause]
-  (and (= :segment (filter-type filter-clause))
-       (string? (second filter-clause))))
-
-(defn- built-in-segments [{{filter-clause :filter} :query}]
-  (if-not (compound-filter? filter-clause)
-    ;; if the top-level filter isn't compound check if it's built-in and return it if it is
-    (when (built-in-segment? filter-clause)
-      (second filter-clause))
-    ;; otherwise if it *is* compound return the first subclause that is built-in; if more than one is built-in throw
-    ;; exception
-    (when-let [[built-in-segment-name & more] (seq (for [subclause filter-clause
-                                                         :when     (built-in-segment? subclause)]
-                                                     (second subclause)))]
-      (when (seq more)
-        (throw (Exception. "Only one Google Analytics segment allowed at a time.")))
-      built-in-segment-name)))
-
-(defn- remove-built-in-segments [filter-clause]
-  (if-not (compound-filter? filter-clause)
-    ;; if top-level filter isn't compound just return it as long as it's not built-in
-    (when-not (built-in-segment? filter-clause)
-      filter-clause)
-    ;; otherwise for compound filters filter out the built-in filters
-    (when-let [filter-clause (seq (for [subclause filter-clause
-                                        :when     (not (built-in-segment? subclause))]
-                                    subclause))]
-      ;; don't keep the filter clause if it's something like an empty compound filter like [:and]
-      (when (> (count filter-clause) 1)
-        (vec filter-clause)))))
-
-(defn- handle-built-in-segments [query]
-  (-> query
-      (assoc-in [:ga :segment] (built-in-segments query))
-      (update-in [:query :filter] remove-built-in-segments)))
-
-
-;;; public
-
-(def ^{:arglists '([query])} transform-query
-  "Preprocess the incoming query to pull out built-in segments and metrics.
-   This removes customizations to the query dict and makes it compatible with MBQL."
-  (comp handle-built-in-metrics handle-built-in-segments))
+                   (getter data)))}))

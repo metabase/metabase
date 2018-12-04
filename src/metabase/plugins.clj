@@ -8,7 +8,7 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [puppetlabs.i18n.core :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Java 8                                                     |
@@ -43,7 +43,7 @@
             :when (and (.isFile file)
                        (.canRead file)
                        (re-find #"\.jar$" (.getPath file)))]
-      (log/info (u/format-color 'magenta (str (trs "Loading plugin {0}... " file) (u/emoji "🔌"))))
+      (log/info (u/format-color 'magenta (trs "Loading plugin {0}... {1}" file (u/emoji "🔌"))))
       (add-jar-to-classpath! file))))
 
 

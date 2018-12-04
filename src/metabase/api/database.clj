@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.util.i18n :refer [tru]]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -10,9 +11,11 @@
              [public-settings :as public-settings]
              [sample-data :as sample-data]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -21,7 +24,6 @@
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.sync
              [analyze :as analyze]
              [field-values :as sync-field-values]
@@ -37,8 +39,11 @@
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
-  (su/with-api-error-message (s/constrained su/NonBlankString driver/is-engine? "Valid database engine")
-    "value must be a valid database engine."))
+  (su/with-api-error-message (s/constrained
+                              su/NonBlankString
+                              #(u/ignore-exceptions (driver/the-driver %))
+                              "Valid database engine")
+    (tru "value must be a valid database engine.")))
 
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
@@ -69,9 +74,8 @@
 
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
-    (when-let [driver (driver/database-id->driver database-id)]
-      (and (driver/driver-supports? driver :nested-queries)
-           (mi/can-read? card)))))
+    (when-let [driver (driver.u/database->driver database-id)]
+      (driver/supports? driver :nested-queries))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -97,14 +101,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (when (seq aggregations)
-    (some (fn [[ag-type]]
-            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
-          ;; over list of aggregations
-          (if-not (sequential? (first aggregations))
-            [aggregations]
-            aggregations))))
+  (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -113,6 +110,7 @@
           :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
+    (filter mi/can-read? <>)
     (remove card-uses-unnestable-aggregation? <>)
     (remove card-has-ambiguous-columns? <>)
     (hydrate <> :collection)))
@@ -142,7 +140,7 @@
     dbs))
 
 (defn- dbs-list [include-tables? include-cards?]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
+  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
       include-tables? add-tables
       include-cards?  add-virtual-tables-for-saved-cards)))
@@ -315,7 +313,7 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          (driver.u/can-connect-with-details? engine details :rethrow-exceptions)
           nil
 
           (and host port (u/host-port-up? host port))
@@ -336,9 +334,9 @@
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
   "Does the given `engine` have an `:ssl` setting?"
-  [engine]
-  {:pre [(driver/is-engine? engine)]}
-  (let [driver-props (set (for [field (driver/details-fields (driver/engine->driver engine))]
+  [driver]
+  {:pre [(driver/available? driver)]}
+  (let [driver-props (set (for [field (driver/connection-properties driver)]
                             (:name field)))]
     (contains? driver-props "ssl")))
 
@@ -348,7 +346,7 @@
    the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
    will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (let [details (if (supports-ssl? engine)
+  (let [details (if (supports-ssl? (keyword engine))
                   (assoc details :ssl true)
                   details)]
     ;; this loop tries connecting over ssl and non-ssl to establish a connection
@@ -576,7 +574,7 @@
   [id schema]
   (api/read-check Database id)
   (api/check-403 (can-read-schema? id schema))
-  (->> (db/select Table :db_id id, :schema schema, {:order-by [[:name :asc]]})
+  (->> (db/select Table :db_id id, :schema schema, :active true, {:order-by [[:name :asc]]})
        (filter mi/can-read?)
        seq
        api/check-404))

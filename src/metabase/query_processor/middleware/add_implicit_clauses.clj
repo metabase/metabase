@@ -1,83 +1,120 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
-  (:require [clojure.tools.logging :as log]
+  (:require [honeysql.core :as hsql]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor
-             [interface :as i]
-             [sort :as sort]
-             [util :as qputil]]
-            [metabase.query-processor.middleware.resolve :as resolve]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
-(defn- fetch-fields-for-souce-table-id [source-table-id]
-  (map resolve/rename-mb-field-keys
-       (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position
-                       :description :fingerprint]
-             :table_id        source-table-id
-             :active          true
-             :visibility_type [:not-in ["sensitive" "retired"]]
-             :parent_id       nil
-             {:order-by [[:position :asc]
-                         [:id :desc]]})
-            (hydrate :values)
-            (hydrate :dimensions))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Add Implicit Fields                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- fields-for-source-table
-  "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
-  [inner-query]
-  ;; Sort the implicit FIELDS so the SQL (or other native query) that gets generated (mostly) approximates the 'magic' sorting
-  ;; we do on the results. This is done so when the outer query we generate is a `SELECT *` the order doesn't change
-  (let [{source-table-id :id, :as source-table} (qputil/get-normalized inner-query :source-table)]
-    (for [field (sort/sort-fields inner-query (fetch-fields-for-souce-table-id source-table-id))
-          :let  [field (-> field
-                           resolve/convert-db-field
-                           (resolve/resolve-table {[nil source-table-id] source-table}))]]
-      (if (qputil/datetime-field? field)
-        (i/map->DateTimeField {:field field, :unit :default})
-        field))))
+;; this is a fn because we don't want to call mdb/isa before type hierarchy is loaded!
+(defn- default-sort-rules []
+  [ ;; sort first by position,
+   [:position :asc]
+   ;; or if that's the same, sort PKs first, followed by names, followed by everything else
+   [(hsql/call :case
+      (mdb/isa :special_type :type/PK)   0
+      (mdb/isa :special_type :type/Name) 1
+      :else                              2)
+    :asc]
+   ;; finally, sort by name (case-insensitive)
+   [:%lower.name :asc]])
 
-(defn- should-add-implicit-fields? [{:keys [fields breakout source-table], aggregations :aggregation}]
-  (and source-table ; if query is using another query as its source then there will be no table to add nested fields for
+(defn- table->sorted-fields [table-or-id]
+  (db/select [Field :id :base_type :special_type]
+    :table_id        (u/get-id table-or-id)
+    :active          true
+    :visibility_type [:not-in ["sensitive" "retired"]]
+    :parent_id       nil
+    ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
+    {:order-by (default-sort-rules)}))
+
+(s/defn ^:private sorted-implicit-fields-for-table :- [mbql.s/Field]
+  "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
+  in `metabase.query-processor.sort`, for all the Fields in a given Table."
+  [table-id :- su/IntGreaterThanZero]
+  (for [field (table->sorted-fields table-id)]
+    (if (mbql.u/datetime-field? field)
+      ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
+      ;; default bucketing of `:day`
+      [:datetime-field [:field-id (u/get-id field)] :default]
+      [:field-id (u/get-id field)])))
+
+
+(s/defn ^:private should-add-implicit-fields?
+  [{:keys [fields breakout source-table], aggregations :aggregation} :- mbql.s/MBQLQuery]
+  ;; if query is using another query as its source then there will be no table to add nested fields for
+  (and source-table
        (not (or (seq aggregations)
                 (seq breakout)
                 (seq fields)))))
 
-(defn- add-implicit-fields [{:keys [source-table], :as inner-query}]
+(s/defn ^:private add-implicit-fields :- mbql.s/Query
+  "For MBQL queries with no aggregation, add a `:fields` containing all Fields in the source Table as well as any
+  expressions definied in the query."
+  [{{source-table-id :source-table, :as inner-query} :query, :as query} :- mbql.s/Query]
   (if-not (should-add-implicit-fields? inner-query)
-    inner-query
-    ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
-    (let [inner-query (assoc inner-query :fields-is-implicit true)
-          fields      (fields-for-source-table inner-query)
-          expressions (for [[expression-name] (:expressions inner-query)]
-                        (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))]
-      (when-not (seq fields)
-        (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
-      (assoc inner-query
-        :fields (concat fields expressions)))))
-
-
-
-(defn- add-implicit-breakout-order-by
-  "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
-  [{breakout-fields :breakout, order-by :order-by, :as inner-query}]
-  (let [order-by-fields                   (set (map (comp #(select-keys % [:field-id :fk-field-id]) :field) order-by))
-        implicit-breakout-order-by-fields (remove (comp order-by-fields #(select-keys % [:field-id :fk-field-id]))
-                                                  breakout-fields)]
-    (cond-> inner-query
-      (seq implicit-breakout-order-by-fields) (update :order-by concat (for [field implicit-breakout-order-by-fields]
-                                                                         {:field field, :direction :ascending})))))
-
-(defn- add-implicit-clauses-to-inner-query [inner-query]
-  (cond-> (add-implicit-fields (add-implicit-breakout-order-by inner-query))
-    ;; if query has a source query recursively add implicit clauses to that too as needed
-    (:source-query inner-query) (update :source-query add-implicit-clauses-to-inner-query)))
-
-(defn- maybe-add-implicit-clauses [query]
-  (if-not (qputil/mbql-query? query)
     query
-    (update query :query add-implicit-clauses-to-inner-query)))
+    ;; add a `fields-is-implict` key to the query, which is used to determine how Fields are sorted in the `sort`
+    ;; middleware.
+    (let [inner-query (assoc inner-query :fields-is-implicit true)
+          fields      (sorted-implicit-fields-for-table source-table-id)
+          ;; generate a new expression ref clause for each expression defined in the query.
+          expressions (for [[expression-name] (:expressions inner-query)]
+                        ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
+                        ;; keywords as keys. We can remove this call once we fix that.
+                        [:expression (u/keyword->qualified-name expression-name)])]
+      ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
+      (when-not (seq fields)
+        (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
+                                     (:name (qp.store/table source-table-id)))))))
+      ;; add the fields & expressions under the `:fields` clause
+      (assoc-in query [:query :fields] (vec (concat fields expressions))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Add Implicit Breakout Order Bys                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private add-implicit-breakout-order-by :- mbql.s/Query
+  "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
+  *explicitly* referenced in `order-by`."
+  [{{breakouts :breakout} :query, :as query} :- mbql.s/Query]
+  ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
+  ;; automatically ignore new ones that are reference Fields already in the order-by clause
+  (reduce mbql.u/add-order-by-clause query (for [breakout breakouts]
+                                             [:asc breakout])))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   Middleware                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private add-implicit-mbql-clauses :- mbql.s/Query
+  [{{:keys [source-query]} :query, :as query} :- mbql.s/Query]
+  (cond-> (-> query add-implicit-breakout-order-by add-implicit-fields)
+    ;; if query has an MBQL source query recursively add implicit clauses to that too as needed
+    (and source-query (not (:native source-query)))
+    (update-in [:query :source-query] (fn [source-query]
+                                        (:query (add-implicit-mbql-clauses
+                                                 (assoc query :query source-query)))))))
+
+(defn- maybe-add-implicit-clauses
+  [{query-type :type, :as query}]
+  (cond-> query
+    (= query-type :query) add-implicit-mbql-clauses))
 
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.

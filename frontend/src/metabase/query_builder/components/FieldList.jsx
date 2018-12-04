@@ -37,6 +37,7 @@ type Props = {
 
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
+  useOriginalDimension?: boolean,
 
   hideSectionHeader?: boolean,
 };
@@ -68,7 +69,7 @@ export default class FieldList extends Component {
     if (segmentOptions) {
       specialOptions = segmentOptions.map(segment => ({
         name: segment.name,
-        value: ["SEGMENT", segment.id],
+        value: ["segment", segment.id],
         segment: segment,
       }));
     }
@@ -213,6 +214,7 @@ export default class FieldList extends Component {
     const {
       field,
       enableSubDimensions,
+      useOriginalDimension,
       onFilterChange,
       onFieldChange,
     } = this.props;
@@ -222,9 +224,13 @@ export default class FieldList extends Component {
       // ensure if we select the same item we don't reset datetime-field's unit
       onFieldChange(field);
     } else {
-      const dimension = item.dimension.defaultDimension() || item.dimension;
+      const dimension = useOriginalDimension
+        ? item.dimension
+        : item.dimension.defaultDimension() || item.dimension;
       const shouldExcludeBinning =
-        !enableSubDimensions && dimension instanceof BinnedDimension;
+        !enableSubDimensions &&
+        !useOriginalDimension &&
+        dimension instanceof BinnedDimension;
 
       if (shouldExcludeBinning) {
         // If we don't let user choose the sub-dimension, we don't want to treat the field

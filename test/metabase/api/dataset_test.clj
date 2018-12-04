@@ -14,14 +14,14 @@
              [card :refer [Card]]
              [database :as database]
              [query-execution :refer [QueryExecution]]]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [expect-with-engine]]
+             [datasets :refer [expect-with-driver]]
              [users :refer :all]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -37,7 +37,9 @@
      :common_name  $}))
 
 (defn format-response [m]
-  (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
+  (into {} (for [[k v] (-> m
+                           (m/dissoc-in [:data :results_metadata])
+                           (m/dissoc-in [:data :insights]))]
              (cond
                (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)
@@ -50,24 +52,27 @@
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
-  [;; API call response
-   {:data                   {:rows    [[1000]]
-                             :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                        :description nil, :target nil, :extra_info {}, :source "aggregation", :remapped_from nil, :remapped_to nil}]
+  [ ;; API call response
+   {:data                   {:rows        [[1000]]
+                             :columns     ["count"]
+                             :cols        [{:base_type    "type/Integer"
+                                            :special_type "type/Number"
+                                            :name         "count"
+                                            :display_name "count"
+                                            :source       "aggregation"}]
                              :native_form true}
     :row_count              1
     :status                 "completed"
     :context                "ad-hoc"
-    :json_query             (-> (wrap-inner-query
-                                  (query checkins
-                                    (ql/aggregation (ql/count))))
+    :json_query             (-> (data/mbql-query checkins
+                                  {:aggregation [[:count]]})
                                 (assoc :type "query")
-                                (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
+                                (assoc-in [:query :aggregation] [["count"]])
                                 (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
-    :average_execution_time nil}
+    :average_execution_time nil
+    :database_id            (id)}
    ;; QueryExecution record in the DB
    {:hash         true
     :row_count    1
@@ -80,18 +85,18 @@
     :dashboard_id nil
     :error        nil
     :id           true
+    :database_id  (id)
     :started_at   true
     :running_time true}]
-  (let [result ((user->client :rasta) :post 200 "dataset" (wrap-inner-query
-                                                            (query checkins
-                                                              (ql/aggregation (ql/count)))))]
+  (let [result ((user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
+                                                            {:aggregation [[:count]]}))]
     [(format-response result)
      (format-response (most-recent-query-execution))]))
 
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
-  [;; API call response
+  [ ;; API call response
    {:data         {:rows    []
                    :columns []
                    :cols    []}
@@ -103,6 +108,7 @@
                    :type        "native"
                    :native      {:query "foobar"}
                    :constraints qp/default-query-constraints}
+    :database_id  (id)
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
@@ -112,6 +118,7 @@
     :row_count    0
     :context      :ad-hoc
     :error        true
+    :database_id  (id)
     :started_at   true
     :running_time true
     :executor_id  (user->id :rasta)
@@ -124,10 +131,11 @@
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
+        result              (tu.log/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 
@@ -168,8 +176,7 @@
    ["4" "2014-03-11" "5" "4"]
    ["5" "2013-05-05" "3" "49"]]
   (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (wrap-inner-query
-                                        (query checkins))))]
+                (json/generate-string (data/mbql-query checkins)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; Check an empty date column
@@ -181,43 +188,40 @@
    ["5" "2013-05-05" "" "3" "49"]]
   (with-db (get-or-create-database! defs/test-data-with-null-date-checkins)
     (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
-                  (json/generate-string (wrap-inner-query
-                                          (query checkins))))]
+                  (json/generate-string (data/mbql-query checkins)))]
       (take 5 (parse-and-sort-csv result)))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
-(expect-with-engine :sqlite
+(expect-with-driver :sqlite
   [["1" "2014-04-07" "5" "12"]
    ["2" "2014-09-18" "1" "31"]
    ["3" "2014-09-15" "8" "56"]
    ["4" "2014-03-11" "5" "4"]
    ["5" "2013-05-05" "3" "49"]]
   (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (wrap-inner-query
-                                        (query checkins))))]
+                (json/generate-string (data/mbql-query checkins)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; DateTime fields are untouched when exported
 (expect
-  [["1" "Plato Yeshua" "2014-04-01T08:30:00.000Z"]
+  [["1" "Plato Yeshua"        "2014-04-01T08:30:00.000Z"]
    ["2" "Felipinho Asklepios" "2014-12-05T15:15:00.000Z"]
    ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z"]
-   ["4" "Simcha Yan" "2014-01-01T08:30:00.000Z"]
-   ["5" "Quentin Sören" "2014-10-03T17:30:00.000Z"]]
+   ["4" "Simcha Yan"          "2014-01-01T08:30:00.000Z"]
+   ["5" "Quentin Sören"       "2014-10-03T17:30:00.000Z"]]
   (let [result ((user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (wrap-inner-query
-                                        (query users))))]
+                (json/generate-string (data/mbql-query users)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; Check that we can export the results of a nested query
 (expect
   16
   (tt/with-temp Card [card {:dataset_query {:database (id)
-                                            :type :native
-                                            :native {:query "SELECT * FROM USERS;"}}}]
+                                            :type     :native
+                                            :native   {:query "SELECT * FROM USERS;"}}}]
     (let [result ((user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database database/virtual-id
-                           :type :query
-                           :query {:source_table (str "card__" (u/get-id card))}}))]
+                           :type     :query
+                           :query    {:source-table (str "card__" (u/get-id card))}}))]
       (count (csv/read-csv result)))))

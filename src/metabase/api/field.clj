@@ -1,5 +1,9 @@
 (ns metabase.api.field
   (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase
+             [query-processor :as qp]
+             [related :as related]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
@@ -7,9 +11,6 @@
              [field :as field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
-            [metabase.query-processor :as qp]
-            [metabase.related :as related]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -66,7 +67,7 @@
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type
-                   visibility_type has_field_values]
+                   visibility_type has_field_values settings]
             :as body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -75,7 +76,8 @@
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)
-   has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))}
+   has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
+   settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-special-type   (keyword (get body :special_type (:special_type field)))
         removed-fk?        (removed-fk-special-type? (:special_type field) new-special-type)
@@ -98,7 +100,7 @@
           (u/select-keys-when (assoc body :fk_target_field_id (when-not removed-fk? fk-target-field-id))
             :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type
                        :has_field_values}
-            :non-nil #{:display_name})))))
+            :non-nil #{:display_name :settings})))))
     ;; return updated field
     (hydrate (Field id) :dimensions)))
 
@@ -264,19 +266,18 @@
   "Generate the MBQL query used to power FieldValues search in `search-values` below. The actual query generated differs
   slightly based on whether the two Fields are the same Field."
   [field search-field value limit]
-  (api/with-current-user-info
-    {:database (db-id field)
-     :type     :query
-     :query    {:source-table (table-id field)
-                :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
-                ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                ;; identifiers/aliases
-                :breakout     (if (= (u/get-id field) (u/get-id search-field))
-                                [[:field-id (u/get-id field)]]
-                                [[:field-id (u/get-id field)]
-                                 [:field-id (u/get-id search-field)]])
-                :limit        limit}}))
+  {:database (db-id field)
+   :type     :query
+   :query    {:source-table (table-id field)
+              :filter       [:starts-with [:field-id (u/get-id search-field)] value {:case-sensitive false}]
+              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+              ;; identifiers/aliases
+              :breakout     (if (= (u/get-id field) (u/get-id search-field))
+                              [[:field-id (u/get-id field)]]
+                              [[:field-id (u/get-id field)]
+                               [:field-id (u/get-id search-field)]])
+              :limit        limit}})
 
 (s/defn search-values
   "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
@@ -304,7 +305,8 @@
         [result result]))))
 
 (api/defendpoint GET "/:id/search/:search-id"
-  "Search for values of a Field that match values of another Field when breaking out by the "
+  "Search for values of a Field with `search-id` that start with `value`. See docstring for
+  `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}

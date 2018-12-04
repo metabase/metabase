@@ -23,6 +23,7 @@ export const ORDERS_TOTAL_FIELD_ID = 6;
 export const MAIN_METRIC_ID = 1;
 
 export const PRODUCT_CATEGORY_FIELD_ID = 21;
+export const PRODUCT_CREATED_AT_FIELD_ID = 22;
 export const PRODUCT_PK_FIELD_ID = 24;
 export const PRODUCT_TILE_FIELD_ID = 27;
 
@@ -38,7 +39,7 @@ export const state = {
         table_id: 1,
         definition: {
           aggregation: [["sum", ["field-id", 6]]],
-          source_table: 1,
+          "source-table": 1,
         },
         creator: {
           email: "sameer@metabase.com",
@@ -70,7 +71,7 @@ export const state = {
         table_id: 1,
         definition: {
           filter: [">", ["field-id", 6], 30],
-          source_table: 1,
+          "source-table": 1,
         },
         creator: {
           email: "sameer@metabase.com",
@@ -500,6 +501,38 @@ export const state = {
         base_type: "type/Float",
         points_of_interest: null,
         values: [],
+        default_dimension_option: {
+          mbql: ["binning-strategy", null, "default"],
+          name: "Auto bin",
+          type: "type/Number",
+        },
+        dimension_options: [
+          {
+            mbql: ["binning-strategy", null, "default"],
+            name: "Auto bin",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 10],
+            name: "10 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 50],
+            name: "50 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 100],
+            name: "100 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: null,
+            name: "Don't bin",
+            type: "type/Number",
+          },
+        ],
       },
       "7": {
         description:
@@ -1298,7 +1331,7 @@ export const card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1310,7 +1343,7 @@ export const product_card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: PRODUCT_TABLE_ID,
+      "source-table": PRODUCT_TABLE_ID,
     },
   },
 };
@@ -1325,7 +1358,7 @@ export const orders_raw_card = {
     type: "query",
     database: DATABASE_ID,
     query: {
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1340,7 +1373,7 @@ export const orders_count_card = {
     database: DATABASE_ID,
     query: {
       aggregation: [["count"]],
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
     },
   },
 };
@@ -1397,7 +1430,7 @@ export const orders_count_by_id_card = {
     database: DATABASE_ID,
     query: {
       aggregation: [["count"]],
-      source_table: ORDERS_TABLE_ID,
+      "source-table": ORDERS_TABLE_ID,
       breakout: [["field-id", ORDERS_PK_FIELD_ID]],
     },
   },
@@ -1484,7 +1517,7 @@ export const orders_past_300_days_segment = {
   description: "Past 300 days created at",
   table_id: 1,
   definition: {
-    source_table: 1,
+    "source-table": 1,
     filter: ["time-interval", ["field-id", 1], -300, "day"],
   },
 };
@@ -1496,7 +1529,7 @@ export const vendor_count_metric = {
   table_id: 3,
   definition: {
     aggregation: [["distinct", ["field-id", 28]]],
-    source_table: 3,
+    "source-table": 3,
   },
 };
 

@@ -7,6 +7,8 @@ import type { DatetimeUnit, FieldLiteral } from "./Query";
 
 export type ColumnName = string;
 
+export type ColumnSettings = { [id: string]: any };
+
 export type BinningInfo = {
   bin_width: number,
 };
@@ -22,7 +24,8 @@ export type Column = {
   unit?: DatetimeUnit,
   binning_info?: BinningInfo,
   fk_field_id?: FieldId,
-  "expression-name"?: any,
+  expression_name?: any,
+  settings?: ColumnSettings,
 };
 
 export type Value = string | number | ISO8601Time | boolean | null | {};

@@ -17,7 +17,7 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
@@ -57,6 +57,7 @@ type Props = {
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
+  isSettings: boolean,
 
   actionButtons: Element<any>,
 
@@ -84,7 +85,7 @@ type Props = {
 
   // misc
   onUpdateWarnings: (string[]) => void,
-  onOpenChartSettings: () => void,
+  onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
 
   // number of grid cells wide and tall
   gridSize?: { width: number, height: number },
@@ -109,7 +110,8 @@ type State = {
   yAxisSplit: ?(number[][]),
 };
 
-@ExplicitSize
+// NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
+@ExplicitSize("CardVisualization")
 export default class Visualization extends Component {
   state: State;
   props: Props;
@@ -135,6 +137,7 @@ export default class Visualization extends Component {
     showTitle: false,
     isDashboard: false,
     isEditing: false,
+    isSettings: false,
     onUpdateVisualizationSettings: (...args) =>
       console.warn("onUpdateVisualizationSettings", args),
   };
@@ -344,7 +347,7 @@ export default class Visualization extends Component {
     let settings = this.props.settings || {};
 
     if (!loading && !error) {
-      settings = this.props.settings || getSettings(series);
+      settings = this.props.settings || getComputedSettingsForSeries(series);
       if (!CardVisualization) {
         error = t`Could not find visualization`;
       } else {
@@ -364,7 +367,7 @@ export default class Visualization extends Component {
                 <div className="mt2">
                   <button
                     className="Button Button--primary Button--medium"
-                    onClick={this.props.onOpenChartSettings}
+                    onClick={() => this.props.onOpenChartSettings(e.initial)}
                   >
                     {e.buttonText}
                   </button>
@@ -497,7 +500,8 @@ export default class Visualization extends Component {
           // $FlowFixMe
           <CardVisualization
             {...this.props}
-            className="flex-full"
+            // NOTE: CardVisualization class used to target ExplicitSize HOC
+            className="CardVisualization flex-full"
             series={series}
             settings={settings}
             // $FlowFixMe
@@ -519,7 +523,7 @@ export default class Visualization extends Component {
             }
           />
         )}
-        <ChartTooltip series={series} hovered={hovered} />
+        <ChartTooltip series={series} hovered={hovered} settings={settings} />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
             clicked={clicked}

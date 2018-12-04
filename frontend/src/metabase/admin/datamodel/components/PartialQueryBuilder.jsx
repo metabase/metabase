@@ -25,7 +25,7 @@ export default class PartialQueryBuilder extends Component {
       database: tableMetadata.db_id,
       query: {
         ...value,
-        source_table: tableMetadata.id,
+        "source-table": tableMetadata.id,
       },
     });
   }
@@ -49,7 +49,7 @@ export default class PartialQueryBuilder extends Component {
       database: tableMetadata.db_id,
       query: {
         ...value,
-        source_table: tableMetadata.id,
+        "source-table": tableMetadata.id,
       },
     };
 

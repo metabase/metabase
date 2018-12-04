@@ -13,8 +13,8 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
              [date :as du]
+             [i18n :refer [tru]]
              [schema :as su]]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -181,7 +181,7 @@
 
 (s/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
-  admins will recieve an email right away."
+  admins will receive an email right away."
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
@@ -189,7 +189,7 @@
 
 (s/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
-  will recieve an email right away."
+  will receive an email right away."
   [new-user :- NewUser]
   (insert-new-user! (-> new-user
                         ;; We should not store LDAP passwords

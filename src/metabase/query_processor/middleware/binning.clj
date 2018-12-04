@@ -1,68 +1,87 @@
 (ns metabase.query-processor.middleware.binning
+  "Middleware that handles `binning-strategy` Field clauses. This adds a `resolved-options` map to every
+  `binning-strategy` clause that contains the information query processors will need in order to perform binning."
   (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
-            [clojure.walk :as walk]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.query-processor.util :as qputil])
-  (:import [metabase.query_processor.interface BetweenFilter BinnedField ComparisonFilter]))
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]))
 
-(defn- update!
-  "Similar to `clojure.core/update` but works on transient maps"
-  [^clojure.lang.ITransientAssociative coll k f]
-  (assoc! coll k (f (get coll k))))
+;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
-(defn- filter->field-map
-  "A bit of a stateful hack using clojure.walk/prewalk to find any comparison or between filter. This should be replaced
-  by a zipper for a more functional/composable approach to this problem."
-  [mbql-filter]
-  (let [acc (transient {})]
-    (walk/prewalk
-     (fn [x]
-       (when (or (instance? BetweenFilter x)
-                 (and (instance? ComparisonFilter x)
-                      (contains? #{:< :> :<= :>=} (:filter-type x))))
-         (update! acc (get-in x [:field :field-id]) #(if (seq %)
-                                                       (conj % x)
-                                                       [x])))
-       x)
-     mbql-filter)
-    (persistent! acc)))
+(def ^:private FieldID->Filters {su/IntGreaterThanZero [mbql.s/Filter]})
 
-(defn calculate-bin-width
-  "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
-  [min-value max-value num-bins]
-  (u/round-to-decimals 5 (/ (- max-value min-value)
-                            num-bins)))
+(s/defn ^:private filter->field-map :- FieldID->Filters
+  "Find any comparison or `:between` filter and return a map of referenced Field ID -> all the clauses the reference
+  it."
+  [filter-clause :- (s/maybe mbql.s/Filter)]
+  (reduce
+   (partial merge-with concat)
+   {}
+   (for [subclause (mbql.u/match filter-clause #{:between :< :<= :> :>=})
+         field-id  (mbql.u/match subclause [:field-id field-id] field-id)]
+     {field-id [subclause]})))
 
-(defn calculate-num-bins
-  "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
-  [min-value max-value bin-width]
-  (long (Math/ceil (/ (- max-value min-value)
-                         bin-width))))
-
-(defn- extract-bounds
+(s/defn ^:private extract-bounds :- {:min-value s/Num, :max-value s/Num}
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
-  [{:keys [field-id fingerprint]} field-filter-map]
+  [field-id :- (s/maybe su/IntGreaterThanZero), fingerprint :- (s/maybe su/Map), field-id->filters :- FieldID->Filters]
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
-        user-maxes (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
-                         :when (contains? #{:< :<= :between} filter-type)]
-                     (if (= :between filter-type)
-                       (get-in query-filter [:max-val :value])
-                       (get-in query-filter [:value :value])))
-        user-mins (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
-                        :when (contains? #{:> :>= :between} filter-type)]
-                    (if (= :between filter-type)
-                      (get-in query-filter [:min-val :value])
-                      (get-in query-filter [:value :value])))]
-    [(or (when (seq user-mins)
-           (apply max user-mins))
-         global-min)
-     (or (when (seq user-maxes)
-           (apply min user-maxes))
-         global-max)]))
+        filter-clauses                     (get field-id->filters field-id)
+        ;; [:between <field> <min> <max>] or [:< <field> <x>]
+        user-maxes                         (mbql.u/match filter-clauses
+                                             [(_ :guard #{:< :<= :between}) & args] (last args))
+        user-mins                          (mbql.u/match filter-clauses
+                                             [(_ :guard #{:> :>= :between}) _ min-val & _] min-val)
+        min-value                          (or (when (seq user-mins)
+                                                 (apply max user-mins))
+                                               global-min)
+        max-value                          (or (when (seq user-maxes)
+                                                 (apply min user-maxes))
+                                               global-max)]
+    (when-not (and min-value max-value)
+      (throw (Exception. (str (tru "Unable to bin Field without a min/max value")))))
+    {:min-value min-value, :max-value max-value}))
+
+
+;;; ------------------------------------------ Calculating resolved options ------------------------------------------
+
+(s/defn ^:private calculate-bin-width :- s/Num
+  "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
+  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
+  (u/round-to-decimals 5 (/ (- max-value min-value)
+                            num-bins)))
+
+(s/defn ^:private calculate-num-bins :- su/IntGreaterThanZero
+  "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."
+  [min-value :- s/Num, max-value :- s/Num, bin-width :- (s/constrained s/Num (complement neg?) "number >= 0")]
+  (long (Math/ceil (/ (- max-value min-value)
+                      bin-width))))
+
+(s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
+                                               (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
+  "Determine the approprate strategy & options to use when `:default` strategy was specified."
+  [metadata :- {:special_type (s/maybe su/FieldType), s/Any s/Any}, min-value :- s/Num, max-value :- s/Num]
+  (if (isa? (:special_type metadata) :type/Coordinate)
+    (let [bin-width (public-settings/breakout-bin-width)]
+      [:bin-width
+       {:bin-width bin-width
+        :num-bins  (calculate-num-bins min-value max-value bin-width)}])
+    (let [num-bins (public-settings/breakout-bins-num)]
+      [:num-bins
+       {:num-bins  num-bins
+        :bin-width (calculate-bin-width min-value max-value num-bins)}])))
+
+
+;;; ------------------------------------- Humanized binning with nicer-breakout --------------------------------------
 
 (defn- ceil-to
   [precision x]
@@ -76,8 +95,8 @@
 
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
-(defn- nicer-bin-width
-  [min-value max-value num-bins]
+(s/defn ^:private nicer-bin-width
+  [min-value :- s/Num, max-value :- s/Num, num-bins :- su/IntGreaterThanZero]
   (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
         scale         (expt 10 (u/order-of-magnitude min-bin-width))]
     (->> pleasing-numbers
@@ -100,69 +119,79 @@
          (drop-while (partial apply not=))
          ffirst)))
 
-(def ^{:arglists '([binned-field])} nicer-breakout
+(s/defn ^:private nicer-breakout* :- mbql.s/ResolvedBinningStrategyOptions
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
-  (fixed-point
-   (fn
-     [{:keys [min-value max-value bin-width num-bins strategy] :as binned-field}]
-     (let [bin-width (if (= strategy :num-bins)
-                       (nicer-bin-width min-value max-value num-bins)
-                       bin-width)
-           [min-value max-value] (nicer-bounds min-value max-value bin-width)]
-       (-> binned-field
-           (assoc :min-value min-value
-                  :max-value max-value
-                  :num-bins  (if (= strategy :num-bins)
-                               num-bins
-                               (calculate-num-bins min-value max-value bin-width))
-                  :bin-width bin-width))))))
+  [strategy                                         :- mbql.s/BinningStrategyName
+   {:keys [min-value max-value bin-width num-bins]} :- mbql.s/ResolvedBinningStrategyOptions]
+  (let [bin-width             (if (= strategy :num-bins)
+                                (nicer-bin-width min-value max-value num-bins)
+                                bin-width)
+        [min-value max-value] (nicer-bounds min-value max-value bin-width)]
+    {:min-value min-value
+     :max-value max-value
+     :num-bins  (if (= strategy :num-bins)
+                  num-bins
+                  (calculate-num-bins min-value max-value bin-width))
+     :bin-width bin-width}))
 
-(defn- resolve-default-strategy [{:keys [strategy field]} min-value max-value]
-  (if (isa? (:special-type field) :type/Coordinate)
-    (let [bin-width (public-settings/breakout-bin-width)]
-      {:strategy  :bin-width
-       :bin-width bin-width
-       :num-bins  (calculate-num-bins min-value max-value bin-width)})
-    (let [num-bins (public-settings/breakout-bins-num)]
-      {:strategy  :num-bins
-       :num-bins  num-bins
-       :bin-width (calculate-bin-width min-value max-value num-bins)})))
+(s/defn ^:private nicer-breakout :- (s/maybe mbql.s/ResolvedBinningStrategyOptions)
+  [strategy :- mbql.s/BinningStrategyName, opts :- mbql.s/ResolvedBinningStrategyOptions]
+  (let [f (partial nicer-breakout* strategy)]
+    ((fixed-point f) opts)))
 
-(defn- update-binned-field
-  "Given a field, resolve the binning strategy (either provided or found if default is specified) and calculate the
-  number of bins and bin width for this file. `filter-field-map` contains related criteria that could narrow the
-  domain for the field."
-  [{:keys [field num-bins strategy bin-width] :as binned-field} filter-field-map]
-  (let [[min-value max-value] (extract-bounds field filter-field-map)]
-    (when-not (and min-value max-value)
-      (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
-                                 (get-in binned-field [:field :field-name])
-                                 (get-in binned-field [:field :field-id])))))
-    (let [resolved-binned-field (merge binned-field
-                                       {:min-value min-value :max-value max-value}
-                                       (case strategy
 
-                                         :num-bins
-                                         {:bin-width (calculate-bin-width min-value max-value num-bins)}
+;;; -------------------------------------------- Adding resolved options ---------------------------------------------
 
-                                         :bin-width
-                                         {:num-bins (calculate-num-bins min-value max-value bin-width)}
+(defn- resolve-options [strategy strategy-param metadata min-value max-value]
+  (case strategy
+    :num-bins
+    [:num-bins
+     {:num-bins  strategy-param
+      :bin-width (calculate-bin-width min-value max-value strategy-param)}]
 
-                                         :default
-                                         (resolve-default-strategy binned-field min-value max-value)))]
-      ;; Bail out and use unmodifed version if we can't converge on a
-      ;; nice version.
-      (or (nicer-breakout resolved-binned-field) resolved-binned-field))))
+    :bin-width
+    [:bin-width
+     {:bin-width strategy-param
+      :num-bins  (calculate-num-bins min-value max-value strategy-param)}]
+
+    :default
+    (resolve-default-strategy metadata min-value max-value)))
+
+(s/defn ^:private update-binned-field :- mbql.s/binning-strategy
+  "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
+  and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
+  could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
+  [query, field-id->filters :- FieldID->Filters, [_ field-clause strategy strategy-param] :- mbql.s/binning-strategy]
+  (let [field-id-or-name                (mbql.u/field-clause->id-or-literal field-clause)
+        metadata                        (if (integer? field-id-or-name)
+                                          (qp.store/field field-id-or-name)
+                                          (some (fn [metadata]
+                                                  (when (= (:name metadata) field-id-or-name)
+                                                    metadata))
+                                                (:source-metadata query)))
+        {:keys [min-value max-value]
+         :as   min-max}                 (extract-bounds (when (integer? field-id-or-name) field-id-or-name)
+                                                        (:fingerprint metadata)
+                                                        field-id->filters)
+        [new-strategy resolved-options] (resolve-options strategy strategy-param metadata min-value max-value)
+        resolved-options (merge min-max resolved-options)]
+    ;; Bail out and use unmodifed version if we can't converge on a nice version.
+    [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout new-strategy resolved-options)
+                                                                    resolved-options)]))
+
+
+(defn- update-binning-strategy* [{query-type :type, :as query}]
+  (if (= query-type :native)
+    query
+    (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
+      (mbql.u/replace-in query [:query]
+        :binning-strategy
+        (update-binned-field query field-id->filters &match)))))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (fn [query]
-    (let [filter-field-map (filter->field-map (get-in query [:query :filter]))]
-      (qp
-       (qputil/postwalk-pred #(instance? BinnedField %)
-                             #(update-binned-field % filter-field-map)
-                             query)))))
+  (comp qp update-binning-strategy*))

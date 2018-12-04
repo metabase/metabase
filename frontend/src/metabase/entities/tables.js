@@ -11,7 +11,14 @@ import { GET } from "metabase/lib/api";
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(...args)).tables;
+  (await GET("/api/database/:dbId/metadata")(...args)).tables.filter(
+    /*
+     * HACK: Right now the endpoint returns all tables regardless of
+     * whether they're hidden. make sure table lists only use non hidden tables
+     * Ideally this should live in the API?
+     */
+    t => t.visibility_type !== "hidden",
+  );
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
 // OBJECT ACTIONS
