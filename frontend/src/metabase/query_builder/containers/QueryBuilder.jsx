@@ -242,9 +242,16 @@ export default class QueryBuilder extends Component {
       );
     } else if (uiControls.mode === "present") {
       return (
-        <div className={this.props.fitClassNames}>
+        <div className={cx("flex-column", this.props.fitClassNames)}>
+          <div className="full relative py2 border-bottom bg-white flex">
+            <div
+              className="bordered rounded shadowed inline-block ml-auto mr-auto bg-white px2 py1 cursor-pointer text-brand-hover"
+              onClick={() => this.props.setMode("worksheet")}
+            >
+              View Worksheet
+            </div>
+          </div>
           <QuestionPresent {...this.props} />
-          <ModeSelect {...this.props} />
         </div>
       );
     } else if (uiControls.mode === "visualize") {
