@@ -103,27 +103,15 @@ export default class Worksheet extends React.Component {
             />
           )}
           {isRunnable &&
-            !showFilterSection && <FilterButton onClick={this.filter} />}
-          {isRunnable &&
-            !showSummarizeSection &&
-            !showFilterSection && <SummarizeButton onClick={this.summarize} />}
+            !showFilterSection &&
+            showSummarizeSection && <FilterButton onClick={this.filter} />}
         </DataSection>
         {showFilterSection && (
           <FiltersSection
             style={sectionStyle}
             onClear={() => this.setState({ showFilterSection: false })}
             {...this.props}
-          >
-            {showSummarizeSection && (
-              <FieldsBar
-                color={SECTIONS.filter.color}
-                dimensions={query.fieldOptions().dimensions}
-                isPickerOpen={isPickerOpen}
-                onOpenPicker={this.openPicker}
-                onClosePicker={this.closePicker}
-              />
-            )}
-          </FiltersSection>
+          />
         )}
         {showSummarizeSection && (
           <SummarizeSection
@@ -142,8 +130,12 @@ export default class Worksheet extends React.Component {
             isPreviewCurrent={this.isPreviewCurrent()}
           >
             {isRunnable &&
-              !showSummarizeSection &&
-              showFilterSection && <SummarizeButton onClick={this.summarize} />}
+              !showSummarizeSection && (
+                <SummarizeButton onClick={this.summarize} />
+              )}
+            {isRunnable &&
+              !showFilterSection &&
+              !showSummarizeSection && <FilterButton onClick={this.filter} />}
           </PreviewSection>
         )}
         {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
