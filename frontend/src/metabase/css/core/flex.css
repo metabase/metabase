@@ -74,6 +74,10 @@
   align-items: flex-end;
 }
 
+.align-stretch {
+  align-items: stretch;
+}
+
 .align-self-end,
 :local(.align-self-end) {
   align-self: flex-end;

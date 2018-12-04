@@ -96,7 +96,7 @@ export default class Worksheet extends React.Component {
           {(showFilterSection || showSummarizeSection) && (
             <FieldsBar
               color={SECTIONS.data.color}
-              dimensions={query.fieldOptions().dimensions}
+              fieldOptions={query.fieldOptions()}
               isPickerOpen={isPickerOpen}
               onOpenPicker={this.openPicker}
               onClosePicker={this.closePicker}
