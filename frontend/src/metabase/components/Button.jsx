@@ -10,6 +10,7 @@ const BUTTON_VARIANTS = [
   "small",
   "medium",
   "large",
+  "round",
   "primary",
   "danger",
   "warning",

@@ -5,6 +5,7 @@ import { assocIn } from "icepick";
 
 import { formatColumn } from "metabase/lib/formatting";
 
+import Button from "metabase/components/Button";
 import RoundButtonWithIcon from "metabase/components/RoundButtonWithIcon";
 
 import WorksheetSection from "./WorksheetSection";
@@ -66,7 +67,7 @@ const PreviewSection = ({
             onClick={preview}
             className="cursor-pointer spread flex layout-centered"
           >
-            <span className="text-medium h3">{t`Show preview`}</span>
+            <Button round>{t`Show preview`}</Button>
           </div>
         )}
       </div>
