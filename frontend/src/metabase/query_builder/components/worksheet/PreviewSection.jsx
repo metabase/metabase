@@ -1,6 +1,9 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "c-3po";
+import { assocIn } from "icepick";
+
+import { formatColumn } from "metabase/lib/formatting";
 
 import RoundButtonWithIcon from "metabase/components/RoundButtonWithIcon";
 
@@ -10,16 +13,31 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 
 import SECTIONS from "./style";
 
+function getFakePreviewSeries(query) {
+  const card = query.question().card();
+  const cols = query.columns();
+  const data = { rows: [], cols: cols, columns: cols.map(col => col.name) };
+  return [{ card, data }];
+}
+
 const PreviewSection = ({
+  query,
   preview,
   previewLimit,
   setPreviewLimit,
-  isPreviewCurrent,
   children,
   style,
   className,
   ...props
 }) => {
+  const isPreviewCurrent = props.rawSeries && props.isPreviewCurrent;
+  // force table
+  const rawSeries = assocIn(
+    isPreviewCurrent ? props.rawSeries : getFakePreviewSeries(query),
+    [0, "card", "display"],
+    "table",
+  );
+
   return (
     <WorksheetSection
       {...SECTIONS.preview}
@@ -39,16 +57,15 @@ const PreviewSection = ({
         style={{ height: 350, width: "100%" }}
         className="bordered rounded bg-white relative"
       >
-        {props.rawSeries && isPreviewCurrent ? (
-          <Visualization {...props} />
-        ) : !props.isRunning ? (
+        <Visualization {...props} className="spread" rawSeries={rawSeries} />
+        {!isPreviewCurrent && (
           <div
             onClick={preview}
             className="cursor-pointer spread flex layout-centered"
           >
             <span className="text-medium h3">{t`Show preview`}</span>
           </div>
-        ) : null}
+        )}
       </div>
       {children && <div className="mt2">{children}</div>}
     </WorksheetSection>

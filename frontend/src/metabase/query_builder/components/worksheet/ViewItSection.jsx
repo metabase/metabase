@@ -5,7 +5,13 @@ import Button from "metabase/components/Button";
 
 import WorksheetSection from "./WorksheetSection";
 
-const ViewItSection = ({ setMode, runQuestionQuery, style, className }) => {
+const ViewItSection = ({
+  setMode,
+  runQuestionQuery,
+  isResultDirty,
+  style,
+  className,
+}) => {
   return (
     <WorksheetSection style={style} className={className}>
       <div className="flex justify-end">
@@ -13,7 +19,9 @@ const ViewItSection = ({ setMode, runQuestionQuery, style, className }) => {
           primary
           onClick={async () => {
             setMode("present");
-            runQuestionQuery();
+            if (isResultDirty) {
+              runQuestionQuery();
+            }
           }}
         >
           {t`View it`}

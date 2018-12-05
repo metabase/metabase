@@ -75,7 +75,7 @@ export default class FieldsBar extends React.Component {
     const dimensions = fieldOptions.dimensions;
 
     const hasMore = dimensions.length - maxItems > 0;
-    const hasFks = false; //fieldOptions.count - dimensions.length > 0;
+    const hasFks = fieldOptions.count - dimensions.length > 0;
     const showPickerButton = hasMore || hasFks;
 
     this._dimensionRefs = [];

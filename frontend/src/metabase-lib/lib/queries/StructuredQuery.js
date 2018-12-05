@@ -49,6 +49,8 @@ import AggregationWrapper from "./Aggregation";
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 import Utils from "metabase/lib/utils";
 
+import { TYPE } from "metabase/lib/types";
+
 import { isSegmentFilter } from "metabase/lib/query/filter";
 
 export const STRUCTURED_QUERY_TEMPLATE = {
@@ -636,6 +638,12 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   // FIELDS
+
+  fields() {
+    // FIMXE: implement field functions in query lib
+    return this.query().fields || [];
+  }
+
   /**
    * Returns dimension options that can appear in the `fields` clause
    */
@@ -720,17 +728,54 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  aggregationDimensions() {
+  breakoutDimensions() {
     return this.breakouts().map(breakout =>
       Dimension.parseMBQL(breakout, this._metadata),
     );
   }
 
-  metricDimensions() {
+  aggregationDimensions() {
     return this.aggregations().map(
       (aggregation, index) =>
         new AggregationDimension(null, [index], this._metadata, aggregation[0]),
     );
+  }
+
+  fieldDimensions() {
+    return this.fields().map((fieldClause, index) =>
+      Dimension.parseMBQL(fieldClause, this._metadata),
+    );
+  }
+
+  columnDimensions() {
+    const aggregations = this.aggregationDimensions();
+    const breakouts = this.breakoutDimensions();
+    const fields = this.fieldDimensions();
+    const expressions = this.expressionDimensions();
+    const table = this.tableDimensions();
+    let dimensions;
+    if (aggregations.length || breakouts.length || fields.length) {
+      dimensions = [...breakouts, ...aggregations, ...fields];
+    } else {
+      const sorted = _.chain(table)
+        .filter(d => d.field().visibility_type !== "hidden")
+        .sortBy(d => d.field().name)
+        .sortBy(d => {
+          const type = d.field().special_type;
+          return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
+        })
+        .sortBy(d => d.field().position)
+        .value();
+      dimensions = [...sorted, ...expressions];
+    }
+    return dimensions;
+  }
+
+  columns() {
+    return this.columnDimensions().map(dimension => ({
+      name: dimension.field().name || dimension.displayName(),
+      display_name: dimension.displayName(),
+    }));
   }
 
   fieldReferenceForColumn(column) {
