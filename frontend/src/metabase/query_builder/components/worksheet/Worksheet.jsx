@@ -90,6 +90,14 @@ export default class Worksheet extends React.Component {
     this.setState({ isPickerOpen: false });
   };
 
+  reset = () => {
+    this.setState({
+      isPickerOpen: false,
+      showFilterSection: false,
+      showSummarizeSection: false,
+    });
+  };
+
   render() {
     const { isRunnable, query, setDatasetQuery } = this.props;
     const { isPickerOpen } = this.state;
@@ -110,7 +118,15 @@ export default class Worksheet extends React.Component {
 
     return (
       <div className="relative">
-        <DataSection style={sectionStyle} {...this.props}>
+        <DataSection
+          style={sectionStyle}
+          {...this.props}
+          setSourceTableFn={tableId => {
+            this.props.setSourceTableFn(tableId);
+            // make sure we reset state when switching tables
+            this.reset();
+          }}
+        >
           {(showFilterSection || showSummarizeSection) && (
             <FieldsBar
               color={SECTIONS.data.color}
