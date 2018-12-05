@@ -1,4 +1,6 @@
 import React from "react";
+import ReactDOM from "react-dom";
+
 import cx from "classnames";
 import { t } from "c-3po";
 import { assocIn } from "icepick";
@@ -14,6 +16,8 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 
 import SECTIONS from "./style";
 
+const MIN_PREVIEW_WIDTH = 300;
+
 function getFakePreviewSeries(query) {
   const card = query.question().card();
   const cols = query.columns();
@@ -21,60 +25,83 @@ function getFakePreviewSeries(query) {
   return [{ card, data }];
 }
 
-const PreviewSection = ({
-  query,
-  preview,
-  previewLimit,
-  setPreviewLimit,
-  children,
-  style,
-  className,
-  isPreviewCurrent,
-  isPreviewDisabled,
-  ...props
-}) => {
-  // force table
-  const rawSeries = assocIn(
-    isPreviewCurrent ? props.rawSeries : getFakePreviewSeries(query),
-    [0, "card", "display"],
-    "table",
-  );
+class PreviewSection extends React.Component {
+  state = {
+    tableWidth: null,
+  };
 
-  return (
-    <WorksheetSection
-      {...SECTIONS.preview}
-      style={style}
-      className={className}
-      header={
-        <div className="flex-full flex align-center justify-end">
-          <PreviewLimitSelect
-            previewLimit={previewLimit}
-            setPreviewLimit={setPreviewLimit}
-          />
-          <PreviewRefreshButton onClick={preview} className="ml1" />
-        </div>
-      }
-    >
-      <div
-        style={{ height: 350, width: "100%" }}
-        className={cx("bordered rounded bg-white relative", {
-          disabled: isPreviewDisabled,
-        })}
-      >
-        <Visualization {...props} className="spread" rawSeries={rawSeries} />
-        {!isPreviewCurrent && (
-          <div
-            onClick={preview}
-            className="cursor-pointer spread flex layout-centered"
-          >
-            <Button round>{t`Show preview`}</Button>
+  handleWidthChange = tableWidth => {
+    if (this.state.tableWidth !== tableWidth) {
+      this.setState({ tableWidth });
+    }
+  };
+
+  render() {
+    const {
+      query,
+      preview,
+      previewLimit,
+      setPreviewLimit,
+      children,
+      style,
+      className,
+      isPreviewCurrent,
+      isPreviewDisabled,
+      ...props
+    } = this.props;
+    const { tableWidth } = this.state;
+
+    // force table
+    const rawSeries = assocIn(
+      isPreviewCurrent ? props.rawSeries : getFakePreviewSeries(query),
+      [0, "card", "display"],
+      "table",
+    );
+
+    return (
+      <WorksheetSection
+        {...SECTIONS.preview}
+        style={style}
+        className={className}
+        header={
+          <div className="flex-full flex align-center justify-end">
+            <PreviewLimitSelect
+              previewLimit={previewLimit}
+              setPreviewLimit={setPreviewLimit}
+            />
+            <PreviewRefreshButton onClick={preview} className="ml1" />
           </div>
-        )}
-      </div>
-      {children && <div className="mt2">{children}</div>}
-    </WorksheetSection>
-  );
-};
+        }
+      >
+        <div
+          style={{
+            height: 350,
+            maxWidth: Math.max((tableWidth || 0) + 2, MIN_PREVIEW_WIDTH),
+          }}
+          className={cx("bordered rounded bg-white relative", {
+            disabled: isPreviewDisabled,
+          })}
+        >
+          <Visualization
+            {...props}
+            className="spread"
+            rawSeries={rawSeries}
+            onContentWidthChange={this.handleWidthChange}
+          />
+          {!isPreviewCurrent && (
+            <div
+              onClick={preview}
+              className="cursor-pointer spread flex layout-centered"
+            >
+              <Button round>{t`Show preview`}</Button>
+            </div>
+          )}
+        </div>
+        {children && <div className="mt2">{children}</div>}
+      </WorksheetSection>
+    );
+  }
+}
 
 const PreviewRefreshButton = ({ className, ...props }) => (
   <RoundButtonWithIcon
