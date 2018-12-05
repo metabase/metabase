@@ -28,9 +28,10 @@ const PreviewSection = ({
   children,
   style,
   className,
+  isPreviewCurrent,
+  isPreviewDisabled,
   ...props
 }) => {
-  const isPreviewCurrent = props.rawSeries && props.isPreviewCurrent;
   // force table
   const rawSeries = assocIn(
     isPreviewCurrent ? props.rawSeries : getFakePreviewSeries(query),
@@ -55,7 +56,9 @@ const PreviewSection = ({
     >
       <div
         style={{ height: 350, width: "100%" }}
-        className="bordered rounded bg-white relative"
+        className={cx("bordered rounded bg-white relative", {
+          disabled: isPreviewDisabled,
+        })}
       >
         <Visualization {...props} className="spread" rawSeries={rawSeries} />
         {!isPreviewCurrent && (

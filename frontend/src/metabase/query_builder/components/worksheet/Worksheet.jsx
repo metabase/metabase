@@ -50,7 +50,22 @@ export default class Worksheet extends React.Component {
   }
 
   isPreviewCurrent() {
-    return _.isEqual(this.props.lastRunCard, this.getPreviewCard());
+    return (
+      this.props.rawSeries &&
+      _.isEqual(this.props.lastRunCard, this.getPreviewCard())
+    );
+  }
+
+  isPreviewDisabled() {
+    const { query } = this.props;
+    const { showSummarizeSection } = this.state;
+
+    // disable preview if we're showing the new (empty) summarize section
+    return (
+      showSummarizeSection &&
+      query.aggregations().length === 0 &&
+      query.breakouts().length === 0
+    );
   }
 
   setPreviewLimit = previewLimit => {
@@ -128,6 +143,7 @@ export default class Worksheet extends React.Component {
             previewLimit={this.state.previewLimit}
             setPreviewLimit={this.setPreviewLimit}
             isPreviewCurrent={this.isPreviewCurrent()}
+            isPreviewDisabled={this.isPreviewDisabled()}
           >
             {isRunnable &&
               !showSummarizeSection && (
