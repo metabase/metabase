@@ -140,26 +140,43 @@ class SummarizeSection extends React.Component {
   }
 }
 
-const BreakoutWidget = ({ breakout, index, query, setDatasetQuery }) => (
-  <PopoverWithTrigger
-    triggerElement={
-      <Clause
-        color={COLOR}
-        onRemove={() => query.removeBreakout(index).update(setDatasetQuery)}
-      >
-        <BreakoutName breakout={breakout} query={query} />
-      </Clause>
-    }
-  >
-    <BreakoutPopover
-      breakout={breakout}
-      onCommitBreakout={breakout =>
-        query.updateBreakout(index, breakout).update(setDatasetQuery)
-      }
-      query={query}
-    />
-  </PopoverWithTrigger>
-);
+import { DimensionPicker } from "../FieldList";
+
+const BreakoutWidget = ({ breakout, index, query, setDatasetQuery }) => {
+  const dimension = query.breakoutDimensions()[index];
+  const subDimensions = dimension.dimensions();
+
+  const trigger = (
+    <Clause
+      color={COLOR}
+      onRemove={() => query.removeBreakout(index).update(setDatasetQuery)}
+    >
+      <BreakoutName breakout={breakout} query={query} />
+    </Clause>
+  );
+
+  if (subDimensions.length > 0) {
+    return (
+      <PopoverWithTrigger triggerElement={trigger}>
+        {({ onClose }) => (
+          <DimensionPicker
+            style={{ color: COLOR }}
+            dimension={dimension}
+            dimensions={subDimensions}
+            onChangeDimension={dimension => {
+              query
+                .updateBreakout(index, dimension.mbql())
+                .update(setDatasetQuery);
+              onClose();
+            }}
+          />
+        )}
+      </PopoverWithTrigger>
+    );
+  } else {
+    return trigger;
+  }
+};
 
 const AggregationWidget = ({ aggregation, index, query, setDatasetQuery }) => (
   <PopoverWithTrigger
