@@ -380,11 +380,10 @@ export const fetchDashboardCardData = createThunkAction(
     if (dashboard) {
       for (const dashcard of dashboard.ordered_cards) {
         // we skip over virtual cards, i.e. dashcards that do not have backing cards in the backend
-        if (_.isObject(dashcard.visualization_settings.virtual_card)) {
-          continue;
+        if (!_.isObject(dashcard.visualization_settings.virtual_card)) {
+          dispatch(fetchCardData(dashcard.card, dashcard, options));
         }
-        const cards = [dashcard.card].concat(dashcard.series || []);
-        for (const card of cards) {
+        for (const card of (dashcard.series || [])) {
           dispatch(fetchCardData(card, dashcard, options));
         }
       }

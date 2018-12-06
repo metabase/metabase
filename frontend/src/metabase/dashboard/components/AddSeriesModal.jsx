@@ -92,7 +92,7 @@ export default class AddSeriesModal extends Component {
     if (card.display === "text") {
       return { rows: [], cols: [], columns: [] };
     }
-    return getIn(this.props.dashcardData, [dashcard.id, card.id]).data;
+    return getIn(this.props.dashcardData, [dashcard.id, card.id, "data"]);
   }
 
   async onCardChange(card, e) {
