@@ -63,7 +63,7 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-chunked-parallel! args))
+  (apply load-data/load-data-add-ids! args))
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
