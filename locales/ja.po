@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-11-29 15:41+0800\n"
+"POT-Creation-Date: 2018-12-06 17:21+0800\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -2557,37 +2557,31 @@ msgstr "保存されました！"
 msgid "Saving failed."
 msgstr "保存が失敗しました"
 
-#: frontend/src/metabase/components/Calendar.jsx:14
-#: frontend/src/metabase/lib/query_time.js:148
-#: frontend/src/metabase/lib/query_time.js:150
-msgid "moment_locale"
-msgstr "ja"
-
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Su"
 msgstr "日"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Mo"
 msgstr "月"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Tu"
 msgstr "火"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "We"
 msgstr "水"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Th"
 msgstr "木"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Fr"
 msgstr "金"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Sa"
 msgstr "土"
 
@@ -3684,6 +3678,7 @@ msgid "received the latest data from"
 msgstr "から最新のデータを受信しました"
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
+#: frontend/src/metabase/lib/query_time.js:187
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr "不明"
@@ -4272,120 +4267,132 @@ msgstr "フィルターされた"
 msgid "Sorted by "
 msgstr "ソートされた"
 
-#: frontend/src/metabase/lib/query_time.js:10
-#: src/metabase/automagic_dashboards/core.clj
-msgid "minute"
-msgstr ""
+#. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+#. note the order of these options corresponds to the order they will be shown to the user in the UI
+#: frontend/src/metabase/lib/query_time.js:105 src/metabase/api/table.clj
+msgid "Minute"
+msgstr "分"
 
-#: frontend/src/metabase/lib/query_time.js:11
-#: src/metabase/automagic_dashboards/core.clj
-msgid "hour"
-msgstr ""
-
-#: frontend/src/metabase/lib/query_time.js:12
+#: frontend/src/metabase/lib/query_time.js:105
 #, fuzzy
-msgid "day"
-msgstr "本日"
+msgid "Minutes"
+msgstr "分"
 
-#: frontend/src/metabase/lib/query_time.js:13
-#: src/metabase/automagic_dashboards/core.clj
-msgid "week"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:106 src/metabase/api/table.clj
+msgid "Hour"
+msgstr "時間"
 
-#: frontend/src/metabase/lib/query_time.js:14
-#: src/metabase/automagic_dashboards/core.clj
-msgid "month"
-msgstr ""
-
-#: frontend/src/metabase/lib/query_time.js:15
-#: src/metabase/automagic_dashboards/core.clj
-msgid "quarter"
-msgstr ""
-
-#: frontend/src/metabase/lib/query_time.js:16
+#: frontend/src/metabase/lib/query_time.js:106
 #, fuzzy
-msgid "year"
-msgstr "今年"
+msgid "Hours"
+msgstr "時間"
 
-#: frontend/src/metabase/lib/query_time.js:18
-msgid "hour-of-day"
+#: frontend/src/metabase/lib/query_time.js:107 src/metabase/api/table.clj
+msgid "Day"
+msgstr "日"
+
+#: frontend/src/metabase/lib/query_time.js:107
+msgid "Days"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:19
-msgid "day-of-week"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:108
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
+#: src/metabase/api/table.clj
+msgid "Week"
+msgstr "週"
 
-#: frontend/src/metabase/lib/query_time.js:20
+#: frontend/src/metabase/lib/query_time.js:108
 #, fuzzy
-msgid "day-of-month"
-msgstr "1か月のうち1日"
+msgid "Weeks"
+msgstr "週"
 
-#: frontend/src/metabase/lib/query_time.js:22
-msgid "week-of-year"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:109
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
+#: src/metabase/api/table.clj
+msgid "Month"
+msgstr "月"
 
-#: frontend/src/metabase/lib/query_time.js:23
+#: frontend/src/metabase/lib/query_time.js:109
 #, fuzzy
-msgid "month-of-year"
-msgstr "1年のうち1か月"
+msgid "Months"
+msgstr "月"
 
-#: frontend/src/metabase/lib/query_time.js:24
-#, fuzzy
-msgid "quarter-of-year"
-msgstr "1年の4分の1"
+#: frontend/src/metabase/lib/query_time.js:110 src/metabase/api/table.clj
+msgid "Quarter"
+msgstr "4分の1"
 
 #: frontend/src/metabase/lib/query_time.js:110
-#: frontend/src/metabase/lib/query_time.js:121
+#, fuzzy
+msgid "Quarters"
+msgstr "4分の1"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
+#: src/metabase/api/table.clj
+msgid "Year"
+msgstr "年"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#, fuzzy
+msgid "Years"
+msgstr "年"
+
+#: frontend/src/metabase/lib/query_time.js:118
+#: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:9
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:144
 #: src/metabase/pulse/render.clj
 msgid "Today"
 msgstr "本日"
 
-#: frontend/src/metabase/lib/query_time.js:113
+#: frontend/src/metabase/lib/query_time.js:121
 msgid "Tomorrow"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:116
+#: frontend/src/metabase/lib/query_time.js:124
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:14
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:148
 #: src/metabase/pulse/render.clj
 msgid "Yesterday"
 msgstr "昨日"
 
-#: frontend/src/metabase/lib/query_time.js:132
-#, fuzzy
-msgid "Past "
-msgstr "過去7日"
+#: frontend/src/metabase/lib/query_time.js:135
+msgid "this"
+msgstr "これ"
 
-#: frontend/src/metabase/lib/query_time.js:134
+#: frontend/src/metabase/lib/query_time.js:142
 #, fuzzy
-msgid "Next "
-msgstr "次へ"
+msgid "Past {0} {1}"
+msgid_plural "Past {0} {1}"
+msgstr[0] "{0} {1}を自動探査(X-ray)する"
 
-#: frontend/src/metabase/lib/query_time.js:136
+#: frontend/src/metabase/lib/query_time.js:144
 #, fuzzy
-msgid "This "
+msgid "Next {0} {1}"
+msgid_plural "Next {0} {1}"
+msgstr[0] "{1}で{0}を作成しました"
+
+#: frontend/src/metabase/lib/query_time.js:146
+#, fuzzy
+msgid "This {0}"
 msgstr "今週"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:175
 #, fuzzy
 msgid "Now"
 msgstr "いいえ"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 msgid " ago"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 #, fuzzy
 msgid " from now"
 msgstr "今はしない"
-
-#: frontend/src/metabase/lib/query_time.js:178
-#, fuzzy
-msgid "[Unknown]"
-msgstr "不明"
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
@@ -4905,8 +4912,9 @@ msgstr "デフォルト値を選択する"
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:57
 #: frontend/src/metabase/query_builder/components/Filter.jsx:78
 #, fuzzy
-msgid "selections"
-msgstr "コレクション"
+msgid "{0} selection"
+msgid_plural "{0} selections"
+msgstr[0] "コレクション"
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:390
@@ -4920,24 +4928,6 @@ msgstr "過去7日"
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:19
 msgid "Past 30 days"
 msgstr "過去30日"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
-#: src/metabase/api/table.clj
-msgid "Week"
-msgstr "週"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
-#: src/metabase/api/table.clj
-msgid "Month"
-msgstr "月"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
-#: src/metabase/api/table.clj
-msgid "Year"
-msgstr "年"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -4976,6 +4966,7 @@ msgstr "今年"
 msgid "Enter a value..."
 msgstr "値を入力する..."
 
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:98
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:90
 msgid "Enter a default value..."
 msgstr "デフォルト値を入力する..."
@@ -8735,23 +8726,6 @@ msgid "Don''t bin"
 msgstr "ビニングしない"
 
 #: src/metabase/api/table.clj
-msgid "Day"
-msgstr "日"
-
-#. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: src/metabase/api/table.clj
-msgid "Minute"
-msgstr "分"
-
-#: src/metabase/api/table.clj
-msgid "Hour"
-msgstr "時間"
-
-#: src/metabase/api/table.clj
-msgid "Quarter"
-msgstr "4分の1"
-
-#: src/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "1時間のうち1分"
 
@@ -8987,6 +8961,14 @@ msgid "Q{0}"
 msgstr "Ｑ{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
+msgid "minute"
+msgstr ""
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "hour"
+msgstr ""
+
+#: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
 msgstr ""
 
@@ -8996,6 +8978,18 @@ msgstr ""
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
+msgstr ""
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "week"
+msgstr ""
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "month"
+msgstr ""
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "quarter"
 msgstr ""
 
 #: src/metabase/automagic_dashboards/core.clj
@@ -12170,17 +12164,54 @@ msgstr ""
 msgid "Months when [[this.short-name]] joined"
 msgstr ""
 
+#, fuzzy
+#~ msgid "Hour-of-day"
+#~ msgstr "1日のうち1時間"
+
+#, fuzzy
+#~ msgid "Day-of-month"
+#~ msgstr "1か月のうち1日"
+
+#, fuzzy
+#~ msgid "Week-of-year"
+#~ msgstr "1年のうち1週間"
+
+#, fuzzy
+#~ msgid "Month-of-year"
+#~ msgstr "1年のうち1か月"
+
+#, fuzzy
+#~ msgid "Quarter-of-year"
+#~ msgstr "1年の4分の1"
+
+#, fuzzy
+#~ msgid "Past "
+#~ msgstr "過去7日"
+
+#, fuzzy
+#~ msgid "Next "
+#~ msgstr "次へ"
+
+#~ msgid "moment_locale"
+#~ msgstr "ja"
+
+#, fuzzy
+#~ msgid "day"
+#~ msgstr "本日"
+
+#, fuzzy
+#~ msgid "year"
+#~ msgstr "今年"
+
+#, fuzzy
+#~ msgid "[Unknown]"
+#~ msgstr "不明"
+
 #~ msgid "Tip:"
 #~ msgstr "ヒント:"
 
-#~ msgid "X-ray {0} {1}"
-#~ msgstr "{0} {1}を自動探査(X-ray)する"
-
 #~ msgid "these"
 #~ msgstr "これら"
-
-#~ msgid "this"
-#~ msgstr "これ"
 
 #~ msgid "Compare {0} {1} to the rest"
 #~ msgstr "{0} {1}を結果と比較する"

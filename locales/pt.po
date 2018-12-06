@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-11-29 15:41+0800\n"
+"POT-Creation-Date: 2018-12-06 17:21+0800\n"
 "Language: pt-br\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -2612,37 +2612,31 @@ msgstr "Salvo!"
 msgid "Saving failed."
 msgstr "Não foi possível salvar"
 
-#: frontend/src/metabase/components/Calendar.jsx:14
-#: frontend/src/metabase/lib/query_time.js:148
-#: frontend/src/metabase/lib/query_time.js:150
-msgid "moment_locale"
-msgstr "pt"
-
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Su"
 msgstr "Dom"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Mo"
 msgstr "Seg"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Tu"
 msgstr "Ter"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "We"
 msgstr "Qua"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Th"
 msgstr "Qui"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Fr"
 msgstr "Sex"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Sa"
 msgstr "Sáb"
 
@@ -3737,6 +3731,7 @@ msgid "received the latest data from"
 msgstr "recebeu os dados mais recentes de"
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
+#: frontend/src/metabase/lib/query_time.js:187
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr "Desconhecido"
@@ -4330,121 +4325,134 @@ msgstr "Filtrado por "
 msgid "Sorted by "
 msgstr "Ordenado por "
 
-#: frontend/src/metabase/lib/query_time.js:10
-#: src/metabase/automagic_dashboards/core.clj
-msgid "minute"
-msgstr "minuto"
+#. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+#. note the order of these options corresponds to the order they will be shown to the user in the UI
+#: frontend/src/metabase/lib/query_time.js:105 src/metabase/api/table.clj
+msgid "Minute"
+msgstr "Minuto"
 
-#: frontend/src/metabase/lib/query_time.js:11
-#: src/metabase/automagic_dashboards/core.clj
-msgid "hour"
-msgstr "hora"
-
-#: frontend/src/metabase/lib/query_time.js:12
+#: frontend/src/metabase/lib/query_time.js:105
 #, fuzzy
-msgid "day"
-msgstr "Hoje"
+msgid "Minutes"
+msgstr "Minuto"
 
-#: frontend/src/metabase/lib/query_time.js:13
-#: src/metabase/automagic_dashboards/core.clj
-msgid "week"
-msgstr "semana"
+#: frontend/src/metabase/lib/query_time.js:106 src/metabase/api/table.clj
+msgid "Hour"
+msgstr "Hora"
 
-#: frontend/src/metabase/lib/query_time.js:14
-#: src/metabase/automagic_dashboards/core.clj
-msgid "month"
-msgstr "mês"
-
-#: frontend/src/metabase/lib/query_time.js:15
-#: src/metabase/automagic_dashboards/core.clj
-msgid "quarter"
-msgstr "trimestre"
-
-#: frontend/src/metabase/lib/query_time.js:16
+#: frontend/src/metabase/lib/query_time.js:106
 #, fuzzy
-msgid "year"
-msgstr "este ano"
+msgid "Hours"
+msgstr "Hora"
 
-#: frontend/src/metabase/lib/query_time.js:18
-msgid "hour-of-day"
+#: frontend/src/metabase/lib/query_time.js:107 src/metabase/api/table.clj
+msgid "Day"
+msgstr "Dia"
+
+#: frontend/src/metabase/lib/query_time.js:107
+msgid "Days"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:19
-#, fuzzy
-msgid "day-of-week"
-msgstr "dia da semana"
+#: frontend/src/metabase/lib/query_time.js:108
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
+#: src/metabase/api/table.clj
+msgid "Week"
+msgstr "Semana"
 
-#: frontend/src/metabase/lib/query_time.js:20
+#: frontend/src/metabase/lib/query_time.js:108
 #, fuzzy
-msgid "day-of-month"
-msgstr "dia do mês"
+msgid "Weeks"
+msgstr "Semana"
 
-#: frontend/src/metabase/lib/query_time.js:22
-msgid "week-of-year"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:109
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
+#: src/metabase/api/table.clj
+msgid "Month"
+msgstr "Mês"
 
-#: frontend/src/metabase/lib/query_time.js:23
+#: frontend/src/metabase/lib/query_time.js:109
 #, fuzzy
-msgid "month-of-year"
-msgstr "Mês do Ano"
+msgid "Months"
+msgstr "Mês"
 
-#: frontend/src/metabase/lib/query_time.js:24
-#, fuzzy
-msgid "quarter-of-year"
-msgstr "Trimestre do ano"
+#: frontend/src/metabase/lib/query_time.js:110 src/metabase/api/table.clj
+msgid "Quarter"
+msgstr "Trimestre"
 
 #: frontend/src/metabase/lib/query_time.js:110
-#: frontend/src/metabase/lib/query_time.js:121
+#, fuzzy
+msgid "Quarters"
+msgstr "Trimestre"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
+#: src/metabase/api/table.clj
+msgid "Year"
+msgstr "Ano"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#, fuzzy
+msgid "Years"
+msgstr "Ano"
+
+#: frontend/src/metabase/lib/query_time.js:118
+#: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:9
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:144
 #: src/metabase/pulse/render.clj
 msgid "Today"
 msgstr "Hoje"
 
-#: frontend/src/metabase/lib/query_time.js:113
+#: frontend/src/metabase/lib/query_time.js:121
 msgid "Tomorrow"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:116
+#: frontend/src/metabase/lib/query_time.js:124
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:14
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:148
 #: src/metabase/pulse/render.clj
 msgid "Yesterday"
 msgstr "Ontem"
 
-#: frontend/src/metabase/lib/query_time.js:132
-#, fuzzy
-msgid "Past "
-msgstr "Últimos 7 dias"
+#: frontend/src/metabase/lib/query_time.js:135
+msgid "this"
+msgstr "este"
 
-#: frontend/src/metabase/lib/query_time.js:134
+#: frontend/src/metabase/lib/query_time.js:142
 #, fuzzy
-msgid "Next "
-msgstr "Próximo"
+msgid "Past {0} {1}"
+msgid_plural "Past {0} {1}"
+msgstr[0] "Raio-X {0} {1}"
+msgstr[1] "Raio-X {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:136
+#: frontend/src/metabase/lib/query_time.js:144
 #, fuzzy
-msgid "This "
+msgid "Next {0} {1}"
+msgid_plural "Next {0} {1}"
+msgstr[0] "Criado {0} por {1}"
+msgstr[1] "Criado {0} por {1}"
+
+#: frontend/src/metabase/lib/query_time.js:146
+#, fuzzy
+msgid "This {0}"
 msgstr "Esta semana"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:175
 #, fuzzy
 msgid "Now"
 msgstr "Não"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 msgid " ago"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 #, fuzzy
 msgid " from now"
 msgstr "Agora não"
-
-#: frontend/src/metabase/lib/query_time.js:178
-#, fuzzy
-msgid "[Unknown]"
-msgstr "Desconhecido"
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
@@ -4971,8 +4979,10 @@ msgstr "Selecione um valor padrão..."
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:57
 #: frontend/src/metabase/query_builder/components/Filter.jsx:78
 #, fuzzy
-msgid "selections"
-msgstr "Coleções"
+msgid "{0} selection"
+msgid_plural "{0} selections"
+msgstr[0] "Coleções"
+msgstr[1] "Coleções"
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:390
@@ -4986,24 +4996,6 @@ msgstr "Últimos 7 dias"
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:19
 msgid "Past 30 days"
 msgstr "Últimos 30 dias"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
-#: src/metabase/api/table.clj
-msgid "Week"
-msgstr "Semana"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
-#: src/metabase/api/table.clj
-msgid "Month"
-msgstr "Mês"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
-#: src/metabase/api/table.clj
-msgid "Year"
-msgstr "Ano"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -5042,6 +5034,7 @@ msgstr "Este ano"
 msgid "Enter a value..."
 msgstr "Digite um valor..."
 
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:98
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:90
 msgid "Enter a default value..."
 msgstr "Digite um valor padrão..."
@@ -8863,23 +8856,6 @@ msgid "Don''t bin"
 msgstr "Não Agrupar"
 
 #: src/metabase/api/table.clj
-msgid "Day"
-msgstr "Dia"
-
-#. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: src/metabase/api/table.clj
-msgid "Minute"
-msgstr "Minuto"
-
-#: src/metabase/api/table.clj
-msgid "Hour"
-msgstr "Hora"
-
-#: src/metabase/api/table.clj
-msgid "Quarter"
-msgstr "Trimestre"
-
-#: src/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Minuto da Hora"
 
@@ -9115,6 +9091,14 @@ msgid "Q{0}"
 msgstr "Q{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
+msgid "minute"
+msgstr "minuto"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "hour"
+msgstr "hora"
+
+#: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
 msgstr "dia da semana"
 
@@ -9125,6 +9109,18 @@ msgstr "dia do mês"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
 msgstr "dia do ano"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "week"
+msgstr "semana"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "month"
+msgstr "mês"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "quarter"
+msgstr "trimestre"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} is {1}"
@@ -12381,17 +12377,58 @@ msgstr "Nós mastigamos os números para você [[this]]"
 msgid "Months when [[this.short-name]] joined"
 msgstr "Meses quando [[this.short-name]] ingressou"
 
+#, fuzzy
+#~ msgid "Hour-of-day"
+#~ msgstr "Hora do Dia"
+
+#, fuzzy
+#~ msgid "Day-of-week"
+#~ msgstr "dia da semana"
+
+#, fuzzy
+#~ msgid "Day-of-month"
+#~ msgstr "dia do mês"
+
+#, fuzzy
+#~ msgid "Week-of-year"
+#~ msgstr "Semana do Ano"
+
+#, fuzzy
+#~ msgid "Month-of-year"
+#~ msgstr "Mês do Ano"
+
+#, fuzzy
+#~ msgid "Quarter-of-year"
+#~ msgstr "Trimestre do ano"
+
+#, fuzzy
+#~ msgid "Past "
+#~ msgstr "Últimos 7 dias"
+
+#, fuzzy
+#~ msgid "Next "
+#~ msgstr "Próximo"
+
+#~ msgid "moment_locale"
+#~ msgstr "pt"
+
+#, fuzzy
+#~ msgid "day"
+#~ msgstr "Hoje"
+
+#, fuzzy
+#~ msgid "year"
+#~ msgstr "este ano"
+
+#, fuzzy
+#~ msgid "[Unknown]"
+#~ msgstr "Desconhecido"
+
 #~ msgid "Tip:"
 #~ msgstr "Conselho:"
 
-#~ msgid "X-ray {0} {1}"
-#~ msgstr "Raio-X {0} {1}"
-
 #~ msgid "these"
 #~ msgstr "estes"
-
-#~ msgid "this"
-#~ msgstr "este"
 
 #~ msgid "Compare {0} {1} to the rest"
 #~ msgstr "Comparar {0} {1} com o restante"

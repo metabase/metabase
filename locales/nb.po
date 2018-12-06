@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-11-29 15:41+0800\n"
+"POT-Creation-Date: 2018-12-06 17:21+0800\n"
 "Language: nb\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -2609,37 +2609,31 @@ msgstr "Lagret!"
 msgid "Saving failed."
 msgstr "Lagring feilet."
 
-#: frontend/src/metabase/components/Calendar.jsx:14
-#: frontend/src/metabase/lib/query_time.js:148
-#: frontend/src/metabase/lib/query_time.js:150
-msgid "moment_locale"
-msgstr "nb"
-
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Su"
 msgstr "Sø"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Mo"
 msgstr "Ma"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Tu"
 msgstr "Ti"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "We"
 msgstr "On"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Th"
 msgstr "To"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Fr"
 msgstr "Fr"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Sa"
 msgstr "Lø"
 
@@ -3737,6 +3731,7 @@ msgid "received the latest data from"
 msgstr "mottok de siste dataene fra"
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
+#: frontend/src/metabase/lib/query_time.js:187
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr "Ukjent"
@@ -4329,121 +4324,134 @@ msgstr "Filtrert på "
 msgid "Sorted by "
 msgstr "Sortert etter "
 
-#: frontend/src/metabase/lib/query_time.js:10
-#: src/metabase/automagic_dashboards/core.clj
-msgid "minute"
-msgstr "minutt"
+#. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+#. note the order of these options corresponds to the order they will be shown to the user in the UI
+#: frontend/src/metabase/lib/query_time.js:105 src/metabase/api/table.clj
+msgid "Minute"
+msgstr "Minutt"
 
-#: frontend/src/metabase/lib/query_time.js:11
-#: src/metabase/automagic_dashboards/core.clj
-msgid "hour"
-msgstr "time"
-
-#: frontend/src/metabase/lib/query_time.js:12
+#: frontend/src/metabase/lib/query_time.js:105
 #, fuzzy
-msgid "day"
-msgstr "I dag"
+msgid "Minutes"
+msgstr "Minutt"
 
-#: frontend/src/metabase/lib/query_time.js:13
-#: src/metabase/automagic_dashboards/core.clj
-msgid "week"
-msgstr "uke"
+#: frontend/src/metabase/lib/query_time.js:106 src/metabase/api/table.clj
+msgid "Hour"
+msgstr "Time"
 
-#: frontend/src/metabase/lib/query_time.js:14
-#: src/metabase/automagic_dashboards/core.clj
-msgid "month"
-msgstr "måned"
-
-#: frontend/src/metabase/lib/query_time.js:15
-#: src/metabase/automagic_dashboards/core.clj
-msgid "quarter"
-msgstr "kvartal"
-
-#: frontend/src/metabase/lib/query_time.js:16
+#: frontend/src/metabase/lib/query_time.js:106
 #, fuzzy
-msgid "year"
-msgstr "dette året"
+msgid "Hours"
+msgstr "Time"
 
-#: frontend/src/metabase/lib/query_time.js:18
-msgid "hour-of-day"
+#: frontend/src/metabase/lib/query_time.js:107 src/metabase/api/table.clj
+msgid "Day"
+msgstr "Dag"
+
+#: frontend/src/metabase/lib/query_time.js:107
+msgid "Days"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:19
-#, fuzzy
-msgid "day-of-week"
-msgstr "ukedag"
+#: frontend/src/metabase/lib/query_time.js:108
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
+#: src/metabase/api/table.clj
+msgid "Week"
+msgstr "Uke"
 
-#: frontend/src/metabase/lib/query_time.js:20
+#: frontend/src/metabase/lib/query_time.js:108
 #, fuzzy
-msgid "day-of-month"
-msgstr "dag i måned"
+msgid "Weeks"
+msgstr "Uke"
 
-#: frontend/src/metabase/lib/query_time.js:22
-msgid "week-of-year"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:109
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
+#: src/metabase/api/table.clj
+msgid "Month"
+msgstr "Måned"
 
-#: frontend/src/metabase/lib/query_time.js:23
+#: frontend/src/metabase/lib/query_time.js:109
 #, fuzzy
-msgid "month-of-year"
-msgstr "Måned i år"
+msgid "Months"
+msgstr "Måned"
 
-#: frontend/src/metabase/lib/query_time.js:24
-#, fuzzy
-msgid "quarter-of-year"
-msgstr "Kvartal i år"
+#: frontend/src/metabase/lib/query_time.js:110 src/metabase/api/table.clj
+msgid "Quarter"
+msgstr "Kvartal"
 
 #: frontend/src/metabase/lib/query_time.js:110
-#: frontend/src/metabase/lib/query_time.js:121
+#, fuzzy
+msgid "Quarters"
+msgstr "Kvartal"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
+#: src/metabase/api/table.clj
+msgid "Year"
+msgstr "År"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#, fuzzy
+msgid "Years"
+msgstr "År"
+
+#: frontend/src/metabase/lib/query_time.js:118
+#: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:9
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:144
 #: src/metabase/pulse/render.clj
 msgid "Today"
 msgstr "I dag"
 
-#: frontend/src/metabase/lib/query_time.js:113
+#: frontend/src/metabase/lib/query_time.js:121
 msgid "Tomorrow"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:116
+#: frontend/src/metabase/lib/query_time.js:124
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:14
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:148
 #: src/metabase/pulse/render.clj
 msgid "Yesterday"
 msgstr "I går"
 
-#: frontend/src/metabase/lib/query_time.js:132
-#, fuzzy
-msgid "Past "
-msgstr "Siste 7 dager"
+#: frontend/src/metabase/lib/query_time.js:135
+msgid "this"
+msgstr "denne"
 
-#: frontend/src/metabase/lib/query_time.js:134
+#: frontend/src/metabase/lib/query_time.js:142
 #, fuzzy
-msgid "Next "
-msgstr "Neste"
+msgid "Past {0} {1}"
+msgid_plural "Past {0} {1}"
+msgstr[0] "X-ray {0} {1}"
+msgstr[1] "X-ray {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:136
+#: frontend/src/metabase/lib/query_time.js:144
 #, fuzzy
-msgid "This "
+msgid "Next {0} {1}"
+msgid_plural "Next {0} {1}"
+msgstr[0] "Laget {0} av {1}"
+msgstr[1] "Laget {0} av {1}"
+
+#: frontend/src/metabase/lib/query_time.js:146
+#, fuzzy
+msgid "This {0}"
 msgstr "Denne Uken"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:175
 #, fuzzy
 msgid "Now"
 msgstr "Nei"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 msgid " ago"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 #, fuzzy
 msgid " from now"
 msgstr "Ikke nå"
-
-#: frontend/src/metabase/lib/query_time.js:178
-#, fuzzy
-msgid "[Unknown]"
-msgstr "Ukjent"
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
@@ -4967,8 +4975,10 @@ msgstr "Velg en standardverdi..."
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:57
 #: frontend/src/metabase/query_builder/components/Filter.jsx:78
 #, fuzzy
-msgid "selections"
-msgstr "Samlinger"
+msgid "{0} selection"
+msgid_plural "{0} selections"
+msgstr[0] "Samlinger"
+msgstr[1] "Samlinger"
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:390
@@ -4982,24 +4992,6 @@ msgstr "Siste 7 dager"
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:19
 msgid "Past 30 days"
 msgstr "Siste 30 dager"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
-#: src/metabase/api/table.clj
-msgid "Week"
-msgstr "Uke"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
-#: src/metabase/api/table.clj
-msgid "Month"
-msgstr "Måned"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
-#: src/metabase/api/table.clj
-msgid "Year"
-msgstr "År"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -5038,6 +5030,7 @@ msgstr "Dette Året"
 msgid "Enter a value..."
 msgstr "Skriv en verdi..."
 
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:98
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:90
 msgid "Enter a default value..."
 msgstr "Skriv en standardverdi..."
@@ -8844,23 +8837,6 @@ msgid "Don''t bin"
 msgstr "Ikke samle"
 
 #: src/metabase/api/table.clj
-msgid "Day"
-msgstr "Dag"
-
-#. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: src/metabase/api/table.clj
-msgid "Minute"
-msgstr "Minutt"
-
-#: src/metabase/api/table.clj
-msgid "Hour"
-msgstr "Time"
-
-#: src/metabase/api/table.clj
-msgid "Quarter"
-msgstr "Kvartal"
-
-#: src/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Minutt i time"
 
@@ -9098,6 +9074,14 @@ msgid "Q{0}"
 msgstr "K{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
+msgid "minute"
+msgstr "minutt"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "hour"
+msgstr "time"
+
+#: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
 msgstr "ukedag"
 
@@ -9108,6 +9092,18 @@ msgstr "dag i måned"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
 msgstr "dag i året"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "week"
+msgstr "uke"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "month"
+msgstr "måned"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "quarter"
+msgstr "kvartal"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} is {1}"
@@ -12321,17 +12317,58 @@ msgstr ""
 msgid "Months when [[this.short-name]] joined"
 msgstr ""
 
+#, fuzzy
+#~ msgid "Hour-of-day"
+#~ msgstr "Time på dagen"
+
+#, fuzzy
+#~ msgid "Day-of-week"
+#~ msgstr "ukedag"
+
+#, fuzzy
+#~ msgid "Day-of-month"
+#~ msgstr "dag i måned"
+
+#, fuzzy
+#~ msgid "Week-of-year"
+#~ msgstr "Uke i år"
+
+#, fuzzy
+#~ msgid "Month-of-year"
+#~ msgstr "Måned i år"
+
+#, fuzzy
+#~ msgid "Quarter-of-year"
+#~ msgstr "Kvartal i år"
+
+#, fuzzy
+#~ msgid "Past "
+#~ msgstr "Siste 7 dager"
+
+#, fuzzy
+#~ msgid "Next "
+#~ msgstr "Neste"
+
+#~ msgid "moment_locale"
+#~ msgstr "nb"
+
+#, fuzzy
+#~ msgid "day"
+#~ msgstr "I dag"
+
+#, fuzzy
+#~ msgid "year"
+#~ msgstr "dette året"
+
+#, fuzzy
+#~ msgid "[Unknown]"
+#~ msgstr "Ukjent"
+
 #~ msgid "Tip:"
 #~ msgstr "Tips:"
 
-#~ msgid "X-ray {0} {1}"
-#~ msgstr "X-ray {0} {1}"
-
 #~ msgid "these"
 #~ msgstr "disse"
-
-#~ msgid "this"
-#~ msgstr "denne"
 
 #~ msgid "Compare {0} {1} to the rest"
 #~ msgstr "Sammenlign {0} {1} med resten"

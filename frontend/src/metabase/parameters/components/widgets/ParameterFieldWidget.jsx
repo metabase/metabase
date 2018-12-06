@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "c-3po";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
@@ -54,7 +54,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   static format(value, field) {
     value = normalizeValue(value);
     if (value.length > 1) {
-      return `${value.length}` + t`selections`;
+      return ngettext(msgid`${value.length} selection`, `${value.length} selections`, value.length);
     } else {
       return <RemappedValue value={value[0]} column={field} />;
     }
@@ -85,7 +85,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
     const defaultPlaceholder = isFocused
       ? ""
-      : this.props.placeholder || t`Enter a value...`;
+      : this.props.placeholder || t `Enter a value...`;
 
     const focusChanged = isFocused => {
       if (parentFocusChanged) {
@@ -95,7 +95,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     };
 
     const placeholder = isEditing
-      ? "Enter a default value..."
+      ? t `Enter a default value...`
       : defaultPlaceholder;
 
     if (!isFocused) {

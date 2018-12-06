@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-11-29 15:41+0800\n"
+"POT-Creation-Date: 2018-12-06 17:21+0800\n"
 "Language: zh-CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -89,7 +89,8 @@ msgid ""
 "updates to this database’s schema. In most cases, you should be fine leaving "
 "this\n"
 "set to sync hourly."
-msgstr "这是一个轻量级的过程"
+msgstr ""
+"这是一个更新数据库模式的轻量级过程，大部分情况下，可以使用默认的每小时同步。"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
@@ -108,7 +109,9 @@ msgid ""
 "can be a somewhat resource-intensive process, particularly if you have a "
 "very large\n"
 "database."
-msgstr "Metabase能够扫描数据库每个字段存在的值来启用仪表盘和查询中的勾选框过滤器。这可能是一个资源使用密集的过程，尤其当你的数据库很大的时候。"
+msgstr ""
+"Metabase能够扫描数据库每个字段存在的值来启用仪表盘和查询中的勾选框过滤器。这"
+"可能是一个资源使用密集的过程，尤其当你的数据库很大的时候。"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:159
 msgid "When should Metabase automatically scan and cache field values?"
@@ -128,7 +131,9 @@ msgid ""
 "will\n"
 "scan the field(s) mapped to that filter in order to show the list of "
 "selectable values."
-msgstr "当用户增加一个新的过滤器到仪表盘或SQL查询，Metabase会扫描过滤器映射的字段，以便显示可选值的列表。"
+msgstr ""
+"当用户增加一个新的过滤器到仪表盘或SQL查询，Metabase会扫描过滤器映射的字段，以"
+"便显示可选值的列表。"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:210
 msgid "Never, I'll do this manually if I need to"
@@ -366,7 +371,7 @@ msgstr "恢复样本数据集"
 
 #: frontend/src/metabase/admin/databases/database.js:175
 msgid "Couldn't connect to the database. Please check the connection details."
-msgstr "无法连接到数据库。 请检查连接的详细信息。"
+msgstr "无法连接到数据库, 请检查连接的详细信息。"
 
 #: frontend/src/metabase/admin/databases/database.js:383
 msgid "Successfully created!"
@@ -1547,7 +1552,7 @@ msgstr "数据模型"
 #: frontend/src/metabase/admin/routes.jsx:83
 #: frontend/src/metabase/nav/containers/Navbar.jsx:225
 msgid "Troubleshooting"
-msgstr ""
+msgstr "排查错误"
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:11
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:118
@@ -1574,7 +1579,7 @@ msgstr "配置"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:13
 #: frontend/src/metabase/admin/settings/selectors.js:207
 msgid "LDAP"
-msgstr "联机分析处理"
+msgstr "LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:25
 msgid ""
@@ -2156,7 +2161,7 @@ msgstr "添加您自己的GeoJSON文件以启用不同的区域地图可视化"
 
 #: frontend/src/metabase/admin/settings/selectors.js:323
 msgid "Formatting Options"
-msgstr ""
+msgstr "格式化选项"
 
 #: frontend/src/metabase/admin/settings/selectors.js:331
 msgid "Public Sharing"
@@ -2172,7 +2177,7 @@ msgstr "已共享仪表盘"
 
 #: frontend/src/metabase/admin/settings/selectors.js:347
 msgid "Shared Questions"
-msgstr "已共享提问"
+msgstr "已共享查询"
 
 #: frontend/src/metabase/admin/settings/selectors.js:354
 msgid "Embedding in other Applications"
@@ -2220,13 +2225,13 @@ msgstr "任务详情"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:36
 msgid "Troubleshooting logs"
-msgstr ""
+msgstr "错误排查记录"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:38
 msgid ""
 "Trying to get to the bottom of something? This section shows logs of "
 "Metabase's background tasks, which can help shed light on what's going on."
-msgstr ""
+msgstr "想彻底了解一些事情吗？本区域显示Metabase的后天任务的日志，可以帮助你弄明白到底在发生什么。"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:63
 msgid "Task"
@@ -2234,19 +2239,19 @@ msgstr "任务"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:64
 msgid "DB ID"
-msgstr ""
+msgstr "数据库ID"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
 msgid "Started at"
-msgstr ""
+msgstr "开始于"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
 msgid "Ended at"
-msgstr ""
+msgstr "结束于"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
 msgid "Duration (ms)"
-msgstr ""
+msgstr "持续时间(ms)"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:27
@@ -2488,39 +2493,33 @@ msgstr "已保存！"
 msgid "Saving failed."
 msgstr "保存失败"
 
-#: frontend/src/metabase/components/Calendar.jsx:14
-#: frontend/src/metabase/lib/query_time.js:148
-#: frontend/src/metabase/lib/query_time.js:150
-msgid "moment_locale"
-msgstr "zh-cn"
-
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Su"
-msgstr "周日"
+msgstr "日"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Mo"
-msgstr "周一"
+msgstr "一"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Tu"
-msgstr "周二"
+msgstr "二"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "We"
-msgstr "周三"
+msgstr "三"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Th"
-msgstr "周四"
+msgstr "四"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Fr"
-msgstr "周五"
+msgstr "五"
 
-#: frontend/src/metabase/components/Calendar.jsx:119
+#: frontend/src/metabase/components/Calendar.jsx:118
 msgid "Sa"
-msgstr "周六"
+msgstr "六"
 
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:41
 msgid "Your admin's email address"
@@ -3166,7 +3165,7 @@ msgstr "出了点问题"
 #: frontend/src/metabase/containers/ErrorPages.jsx:25
 msgid ""
 "We've run into an error. You can try refreshing the page, or just go back."
-msgstr "我们运行中出现了一个错误，你可以尝试刷新这个页面，或者直接返回"
+msgstr "我们运行中出了错误，你可以尝试刷新这个页面，或者直接返回"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:44
 msgid "We're a little lost..."
@@ -3226,7 +3225,7 @@ msgstr "你的团队的最重要的仪表盘在这里"
 
 #: frontend/src/metabase/containers/Overworld.jsx:316
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
-msgstr "把面板固定在{0}里，使之对所有人可见"
+msgstr "把仪表盘固定在{0}里，使之对所有人可见"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:165
 msgid "Replace or save as new?"
@@ -3455,7 +3454,7 @@ msgstr "你的仪表盘已经保存"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:137
 msgid "Save this"
-msgstr "把这个保存"
+msgstr "保存"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:170
 msgid "Show more about this"
@@ -3584,6 +3583,7 @@ msgid "received the latest data from"
 msgstr "接收最新的数据来自"
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
+#: frontend/src/metabase/lib/query_time.js:187
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr "未知"
@@ -4082,7 +4082,7 @@ msgstr "你好"
 
 #: frontend/src/metabase/lib/greeting.js:7
 msgid "Greetings"
-msgstr "问候"
+msgstr "你好"
 
 #: frontend/src/metabase/lib/greeting.js:8
 msgid "Good to see you"
@@ -4140,7 +4140,7 @@ msgstr "总计"
 
 #: frontend/src/metabase/lib/query.js:639
 msgid "Cumulative sum of "
-msgstr "累积和"
+msgstr "累加和"
 
 #: frontend/src/metabase/lib/query.js:644
 msgid "Maximum of "
@@ -4152,119 +4152,134 @@ msgstr "最小"
 
 #: frontend/src/metabase/lib/query.js:663
 msgid "Grouped by "
-msgstr "以……聚合"
+msgstr "分组，按"
 
 #: frontend/src/metabase/lib/query.js:677
 msgid "Filtered by "
-msgstr "以……筛选"
+msgstr "筛选，按"
 
 #: frontend/src/metabase/lib/query.js:706
 msgid "Sorted by "
-msgstr "以……分类"
+msgstr "排序，按"
 
-#: frontend/src/metabase/lib/query_time.js:10
-#: src/metabase/automagic_dashboards/core.clj
-msgid "minute"
+#. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
+#. note the order of these options corresponds to the order they will be shown to the user in the UI
+#: frontend/src/metabase/lib/query_time.js:105 src/metabase/api/table.clj
+msgid "Minute"
 msgstr "分"
 
-#: frontend/src/metabase/lib/query_time.js:11
-#: src/metabase/automagic_dashboards/core.clj
-msgid "hour"
+#: frontend/src/metabase/lib/query_time.js:105
+msgid "Minutes"
+msgstr "分"
+
+#: frontend/src/metabase/lib/query_time.js:106 src/metabase/api/table.clj
+msgid "Hour"
 msgstr "时"
 
-#: frontend/src/metabase/lib/query_time.js:12
-msgid "day"
-msgstr "日"
+#: frontend/src/metabase/lib/query_time.js:106
+msgid "Hours"
+msgstr "时"
 
-#: frontend/src/metabase/lib/query_time.js:13
-#: src/metabase/automagic_dashboards/core.clj
-msgid "week"
+#: frontend/src/metabase/lib/query_time.js:107 src/metabase/api/table.clj
+msgid "Day"
+msgstr "天"
+
+#: frontend/src/metabase/lib/query_time.js:107
+msgid "Days"
+msgstr "天"
+
+#: frontend/src/metabase/lib/query_time.js:108
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
+#: src/metabase/api/table.clj
+msgid "Week"
 msgstr "周"
 
-#: frontend/src/metabase/lib/query_time.js:14
-#: src/metabase/automagic_dashboards/core.clj
-msgid "month"
+#: frontend/src/metabase/lib/query_time.js:108
+msgid "Weeks"
+msgstr "周"
+
+#: frontend/src/metabase/lib/query_time.js:109
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
+#: src/metabase/api/table.clj
+msgid "Month"
 msgstr "月"
 
-#: frontend/src/metabase/lib/query_time.js:15
-#: src/metabase/automagic_dashboards/core.clj
-msgid "quarter"
-msgstr "季"
+#: frontend/src/metabase/lib/query_time.js:109
+msgid "Months"
+msgstr "月"
 
-#: frontend/src/metabase/lib/query_time.js:16
-msgid "year"
-msgstr "年"
-
-#: frontend/src/metabase/lib/query_time.js:18
-msgid "hour-of-day"
-msgstr "时（日）"
-
-#: frontend/src/metabase/lib/query_time.js:19
-msgid "day-of-week"
-msgstr "日（周）"
-
-#: frontend/src/metabase/lib/query_time.js:20
-msgid "day-of-month"
-msgstr "日（月）"
-
-#: frontend/src/metabase/lib/query_time.js:22
-msgid "week-of-year"
-msgstr "周（年）"
-
-#: frontend/src/metabase/lib/query_time.js:23
-msgid "month-of-year"
-msgstr "月（年）"
-
-#: frontend/src/metabase/lib/query_time.js:24
-msgid "quarter-of-year"
-msgstr "季（年）"
+#: frontend/src/metabase/lib/query_time.js:110 src/metabase/api/table.clj
+msgid "Quarter"
+msgstr "季度"
 
 #: frontend/src/metabase/lib/query_time.js:110
-#: frontend/src/metabase/lib/query_time.js:121
+msgid "Quarters"
+msgstr "季度"
+
+#: frontend/src/metabase/lib/query_time.js:111
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
+#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
+#: src/metabase/api/table.clj
+msgid "Year"
+msgstr "年"
+
+#: frontend/src/metabase/lib/query_time.js:111
+msgid "Years"
+msgstr "年"
+
+#: frontend/src/metabase/lib/query_time.js:118
+#: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:9
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:144
 #: src/metabase/pulse/render.clj
 msgid "Today"
 msgstr "今天"
 
-#: frontend/src/metabase/lib/query_time.js:113
+#: frontend/src/metabase/lib/query_time.js:121
 msgid "Tomorrow"
 msgstr "明天"
 
-#: frontend/src/metabase/lib/query_time.js:116
+#: frontend/src/metabase/lib/query_time.js:124
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:14
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:148
 #: src/metabase/pulse/render.clj
 msgid "Yesterday"
 msgstr "昨天"
 
-#: frontend/src/metabase/lib/query_time.js:132
-msgid "Past "
-msgstr "前"
-
-#: frontend/src/metabase/lib/query_time.js:134
-msgid "Next "
-msgstr "后"
-
-#: frontend/src/metabase/lib/query_time.js:136
-msgid "This "
+#: frontend/src/metabase/lib/query_time.js:135
+msgid "this"
 msgstr "本"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:142
+msgid "Past {0} {1}"
+msgid_plural "Past {0} {1}"
+msgstr[0] "前{0}{1}"
+msgstr[1] "前{0}{1}"
+
+#: frontend/src/metabase/lib/query_time.js:144
+msgid "Next {0} {1}"
+msgid_plural "Next {0} {1}"
+msgstr[0] "后{0}{1}"
+msgstr[1] "后{0}{1}"
+
+
+#: frontend/src/metabase/lib/query_time.js:146
+msgid "This {0}"
+msgstr "本{0}"
+
+#: frontend/src/metabase/lib/query_time.js:175
 msgid "Now"
 msgstr "现在"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 msgid " ago"
 msgstr "以前"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:181
 msgid " from now"
 msgstr "距今"
-
-#: frontend/src/metabase/lib/query_time.js:178
-msgid "[Unknown]"
-msgstr "未知"
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
@@ -4776,8 +4791,10 @@ msgstr "选择一个默认值"
 #: frontend/src/metabase/parameters/components/widgets/CategoryWidget.jsx:61
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:57
 #: frontend/src/metabase/query_builder/components/Filter.jsx:78
-msgid "selections"
-msgstr "个选项"
+msgid "{0} selection"
+msgid_plural "{0} selections"
+msgstr[0] "已选{0}项"
+msgstr[1] "已选{0}项"
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:390
@@ -4791,24 +4808,6 @@ msgstr "过去7天"
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:19
 msgid "Past 30 days"
 msgstr "过去30天"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:24
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:29
-#: src/metabase/api/table.clj
-msgid "Week"
-msgstr "周"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
-#: src/metabase/api/table.clj
-msgid "Month"
-msgstr "月"
-
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
-#: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
-#: src/metabase/api/table.clj
-msgid "Year"
-msgstr "年"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -4847,6 +4846,7 @@ msgstr "今年"
 msgid "Enter a value..."
 msgstr "输入一个值……"
 
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:98
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:90
 msgid "Enter a default value..."
 msgstr "输入一个默认值……"
@@ -4902,11 +4902,11 @@ msgstr "样式"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:80
 msgid "Which parameters can users of this embed use?"
-msgstr "这个嵌套可以使用什么参数？"
+msgstr "这个嵌套的使用者可以使用什么参数？"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:83
 msgid "This {0} doesn't have any parameters to configure yet."
-msgstr "此{0}尚未配置任何参数。"
+msgstr "此{0}无任何可配置参数。"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:104
 msgid "Editable"
@@ -5130,7 +5130,7 @@ msgstr "推荐精简定时任务，方便整个团队理解和使用。"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:160
 msgid "Pick your data"
-msgstr "选择你的数据"
+msgstr "捡选你的数据"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:162
 msgid "Choose questions you'd like to send in this pulse"
@@ -5146,7 +5146,7 @@ msgstr "Slack消息"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:163
 msgid "Pick a user or channel..."
-msgstr ""
+msgstr "挑选一个用户或频道"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:223
 msgid "Sent"
@@ -5154,7 +5154,7 @@ msgstr "发送"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:224
 msgid "{0} will be sent at"
-msgstr "{0}将会在……被发送"
+msgstr "{0}将发送于"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:226
 msgid "Messages"
@@ -5241,12 +5241,12 @@ msgstr "之前{0}"
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:104
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:295
 msgid "Is Empty"
-msgstr "是空的"
+msgstr "为空"
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:106
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:301
 msgid "Not Empty"
-msgstr "不是空的"
+msgstr "不为空"
 
 #: frontend/src/metabase/qb/components/TimeseriesFilterWidget.jsx:109
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:213
@@ -5263,7 +5263,7 @@ msgstr "查看"
 
 #: frontend/src/metabase/qb/components/actions/CompareWithTable.jsx:29
 msgid "Compare this with all rows in the table"
-msgstr "把这个在表单中和所有原始数据比较"
+msgstr "与表格中所有行比较"
 
 #: frontend/src/metabase/qb/components/actions/CompoundQueryAction.jsx:14
 msgid "Analyze the results of this Query"
@@ -5283,7 +5283,7 @@ msgstr "总结这个划分"
 
 #: frontend/src/metabase/qb/components/actions/UnderlyingDataAction.jsx:14
 msgid "View this as a table"
-msgstr "以表单的形式查看"
+msgstr "以表格的形式查看"
 
 #: frontend/src/metabase/qb/components/actions/UnderlyingRecordsAction.jsx:22
 msgid "View the underlying {0} records"
@@ -5291,7 +5291,7 @@ msgstr "查看下层的{0}记录"
 
 #: frontend/src/metabase/qb/components/actions/XRayCard.jsx:20
 msgid "X-Ray this question"
-msgstr "透视这个疑问"
+msgstr "透视这个查询"
 
 #: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:33
 msgid "X-ray"
@@ -5438,7 +5438,7 @@ msgstr "设置提醒"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:329
 msgid "Edit your alert"
-msgstr "编辑提醒"
+msgstr "编辑你的提醒"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:329
 msgid "Edit alert"
@@ -6812,7 +6812,7 @@ msgstr "登录"
 
 #: frontend/src/metabase/routes.jsx:218
 msgid "Dashboard"
-msgstr "看板"
+msgstr "仪表盘"
 
 #: frontend/src/metabase/routes.jsx:229
 msgid "New Question"
@@ -7110,7 +7110,7 @@ msgstr "每个人都喜欢图表！点击可视化下拉菜单并且选择线段
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:216
 msgid "Well done!"
-msgstr "做得漂亮！"
+msgstr "干得漂亮！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:218
 msgid "That's all! If you still have questions, check out our"
@@ -7205,7 +7205,7 @@ msgstr "未知地图"
 
 #: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:90
 msgid "No formatting settings"
-msgstr ""
+msgstr "没有格式化设置"
 
 #: frontend/src/metabase/visualizations/components/LeafletGridHeatMap.jsx:26
 msgid "Grid map requires binned longitude/latitude."
@@ -7294,11 +7294,11 @@ msgstr "错误"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:81
 msgid "Label for this range (optional)"
-msgstr ""
+msgstr "该范围的标签（可选）"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:93
 msgid "Add a range"
-msgstr ""
+msgstr "添加一个范围"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:126
 msgid "Click and drag to change their order"
@@ -7310,19 +7310,19 @@ msgstr "从下方列表中添加区域"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:26
 msgid "is less than"
-msgstr ""
+msgstr "小于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:27
 msgid "is greater than"
-msgstr ""
+msgstr "大于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:28
 msgid "is less than or equal to"
-msgstr ""
+msgstr "小于等于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:29
 msgid "is greater than or equal to"
-msgstr "大于或等于"
+msgstr "大于等于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:30
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:37
@@ -7337,12 +7337,12 @@ msgstr "不等于"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:32
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:39
 msgid "is null"
-msgstr "等于空"
+msgstr "为空"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:33
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:40
 msgid "is not null"
-msgstr "不等于空"
+msgstr "不为空"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:41
 msgid "contains"
@@ -7392,7 +7392,7 @@ msgstr "在这个列中的数据将会根据它们的值被染色"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:292
 msgid "When a cell in these columns {0} it will be tinted this color."
-msgstr ""
+msgstr "当一个单元格在这些列{0}中，会被涂成这种颜色"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:313
 msgid "Which columns should be affected?"
@@ -7412,7 +7412,7 @@ msgstr "颜色范围"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:351
 msgid "When a cell in this column…"
-msgstr ""
+msgstr "当一个单元格在这个列中"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:376
 msgid "…turn its background this color:"
@@ -7535,7 +7535,7 @@ msgstr "我们无法为此数据执行地图映射，因为我们同时需要纬
 
 #: frontend/src/metabase/visualizations/lib/errors.js:42
 msgid "This visualization requires you to group by a field."
-msgstr ""
+msgstr "这个可视化图需要你根据一个字段分组"
 
 #: frontend/src/metabase/visualizations/lib/errors.js:55
 msgid "Please configure this chart in the chart settings"
@@ -7555,11 +7555,11 @@ msgstr "日期格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:196
 msgid "Date separators"
-msgstr ""
+msgstr "日期分隔符"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:215
 msgid "Abbreviate names of days and months"
-msgstr ""
+msgstr "日和月的简称"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:225
 msgid "Show the time"
@@ -7583,23 +7583,23 @@ msgstr "时间格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:299
 msgid "Unit of currency"
-msgstr ""
+msgstr "货币单位"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:319
 msgid "Currency label style"
-msgstr ""
+msgstr "货币标签风格"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:337
 msgid "Where to display the unit of currency"
-msgstr ""
+msgstr "在哪里显示货币单位"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:357
 msgid "Separator style"
-msgstr "分隔符"
+msgstr "分隔符风格"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:370
 msgid "Minimum number of decimal places"
-msgstr ""
+msgstr "最少小数位数"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:374
 msgid "Multiply by a number"
@@ -7653,7 +7653,7 @@ msgstr "堆叠 - 100%"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:271
 msgid "Stacked chart type"
-msgstr ""
+msgstr "堆叠的图表类型"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:275
 #: frontend/src/metabase/visualizations/visualizations/AreaChart.jsx:17
@@ -7675,7 +7675,7 @@ msgstr "目标值"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:314
 msgid "Goal label"
-msgstr ""
+msgstr "目标标签"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:316
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:51
@@ -7684,7 +7684,7 @@ msgstr "目标"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:322
 msgid "Show trend line"
-msgstr ""
+msgstr "显示趋势线"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:370
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:403
@@ -7785,7 +7785,7 @@ msgstr "Y轴标签"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:67
 msgid "Line style"
-msgstr ""
+msgstr "线风格"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:71
 #: frontend/src/metabase/visualizations/visualizations/LineChart.jsx:16
@@ -7803,12 +7803,12 @@ msgstr "步骤"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:84
 msgid "Show dots on lines"
-msgstr ""
+msgstr "在线上显示点"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:88
 #: frontend/src/metabase/visualizations/lib/settings/series.js:125
 msgid "Auto"
-msgstr ""
+msgstr "自动"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:103
 msgid "Replace missing values with"
@@ -7828,7 +7828,7 @@ msgstr "线性插值平滑"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:120
 msgid "Which axis?"
-msgstr ""
+msgstr "哪个轴？"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:126
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:90
@@ -7854,11 +7854,11 @@ msgstr "柱形图"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Line + Bar"
-msgstr ""
+msgstr "线状+条状"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:19
 msgid "line and bar chart"
-msgstr ""
+msgstr "线状和条状图表"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:58
 msgid "Which fields do you want to use?"
@@ -7884,15 +7884,15 @@ msgstr "柱形图"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:72
 msgid "Gauge visualization requires a number."
-msgstr ""
+msgstr "标尺可视化图需要一个数字"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:60
 msgid "Gauge"
-msgstr ""
+msgstr "标尺"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:104
 msgid "Gauge ranges"
-msgstr ""
+msgstr "标尺范围"
 
 #: frontend/src/metabase/visualizations/visualizations/LineChart.jsx:19
 msgid "line chart"
@@ -8050,7 +8050,7 @@ msgstr "原始图表"
 
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:91
 msgid "Field to show"
-msgstr ""
+msgstr "显示的字段"
 
 #: frontend/src/metabase/visualizations/visualizations/ScatterPlot.jsx:16
 msgid "Scatter"
@@ -8062,19 +8062,19 @@ msgstr "散点图"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:118
 msgid "last {0}"
-msgstr ""
+msgstr "最后的{0}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:176
 msgid "{0} was {1} {2}"
-msgstr ""
+msgstr "{0}曾是{1}{2}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
 msgid "Group by a time field to see how this has changed over time"
-msgstr ""
+msgstr "用一个时间字段分组来看看随时间的变化情况"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:39
 msgid "Switch positive / negative colors?"
-msgstr ""
+msgstr "切换正、负颜色"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:303
 msgid "Unset"
@@ -8086,27 +8086,27 @@ msgstr "透视表"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:90
 msgid "Pivot column"
-msgstr ""
+msgstr "枢轴列"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:107
 msgid "Cell column"
-msgstr ""
+msgstr "单元列"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:123
 msgid "Visible columns"
-msgstr ""
+msgstr "可见列"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:143
 msgid "Conditional Formatting"
-msgstr ""
+msgstr "条件格式化"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:165
 msgid "Column title"
-msgstr ""
+msgstr "列标题"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:172
 msgid "Show a mini bar chart"
-msgstr ""
+msgstr "显示一个系条状图"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:183
 msgid "Link"
@@ -8122,15 +8122,15 @@ msgstr "图片"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:195
 msgid "Automatic"
-msgstr ""
+msgstr "自动的"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "View as link or image"
-msgstr ""
+msgstr "以链接或图片显示"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:210
 msgid "Link text"
-msgstr ""
+msgstr "链接文字"
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:167
 msgid "Write here, and use Markdown if you''d like"
@@ -8280,7 +8280,7 @@ msgstr "已经归档"
 
 #: src/metabase/api/common/internal.clj
 msgid "Not a valid integer: ''{0}''"
-msgstr ""
+msgstr "不是一个有效整数：''{0}''"
 
 #: src/metabase/api/common/internal.clj
 msgid "Attempted to return a boolean as an API response. This is not allowed!"
@@ -8300,39 +8300,39 @@ msgstr "无效的导出格式：{0}"
 
 #: src/metabase/api/embed.clj
 msgid "Embedding is not enabled for this object."
-msgstr ""
+msgstr "该对象未启用嵌入功能"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource `{0}` as JSON"
-msgstr ""
+msgstr "无法按JSON解析资源{0}"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to find JSON via relative path `{0}`"
-msgstr ""
+msgstr "无法通过相对路径{0}找到JSON"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection to host timed out for URL `{0}`"
-msgstr ""
+msgstr "URL`{0}`,到主机的连接超时"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to unknown host at URL `{0}`"
-msgstr ""
+msgstr "URL`{0}`,无法连接到未知主机"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to host at URL `{0}`"
-msgstr ""
+msgstr "URL`{0}`,无法连接主机"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host at for URL `{0}`"
-msgstr ""
+msgstr "URL`{0}`，主机拒绝连接"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to retrieve resource at URL `{0}`"
-msgstr ""
+msgstr "URL`{0}`，无法获取资源"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource at URL `{0}` as JSON"
-msgstr ""
+msgstr "URL`{0}`，无法按JSON解析资源"
 
 #: src/metabase/api/geojson.clj
 msgid "Invalid JSON URL or resource: {0}"
@@ -8380,7 +8380,7 @@ msgstr "与存储的密码不匹配"
 msgid ""
 "Problem connecting to LDAP server, will fall back to local authentication: "
 "{0}"
-msgstr ""
+msgstr "连接LDAP服务器出错，回退到本地身份认证:{0}"
 
 #: src/metabase/api/session.clj
 msgid "Invalid reset token"
@@ -8472,7 +8472,7 @@ msgstr "如果你的数据包含技术性的或者相关的信息，你可以隐
 
 #: src/metabase/api/setup.clj
 msgid "Organize questions"
-msgstr "组织疑问"
+msgstr "组织查询"
 
 #: src/metabase/api/setup.clj
 msgid ""
@@ -8517,53 +8517,36 @@ msgid "Don''t bin"
 msgstr "无间隔"
 
 #: src/metabase/api/table.clj
-msgid "Day"
-msgstr "天"
-
-#. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: src/metabase/api/table.clj
-msgid "Minute"
-msgstr "分钟"
-
-#: src/metabase/api/table.clj
-msgid "Hour"
-msgstr "小时"
-
-#: src/metabase/api/table.clj
-msgid "Quarter"
-msgstr "1/4"
-
-#: src/metabase/api/table.clj
 msgid "Minute of Hour"
-msgstr "一小时中的分钟"
+msgstr "分（时）"
 
 #: src/metabase/api/table.clj
 msgid "Hour of Day"
-msgstr "一天中的小时"
+msgstr "时（日）"
 
 #: src/metabase/api/table.clj
 msgid "Day of Week"
-msgstr "一周中的天"
+msgstr "日（周）"
 
 #: src/metabase/api/table.clj
 msgid "Day of Month"
-msgstr "一个月中的天"
+msgstr "日（月）"
 
 #: src/metabase/api/table.clj
 msgid "Day of Year"
-msgstr "一年中的天"
+msgstr "日（年）"
 
 #: src/metabase/api/table.clj
 msgid "Week of Year"
-msgstr "一年中的周"
+msgstr "周（年）"
 
 #: src/metabase/api/table.clj
 msgid "Month of Year"
-msgstr "一年中的月"
+msgstr "月（年）"
 
 #: src/metabase/api/table.clj
 msgid "Quarter of Year"
-msgstr "一年中的季度"
+msgstr "季（年）"
 
 #: src/metabase/api/table.clj
 msgid "10 bins"
@@ -8595,11 +8578,11 @@ msgstr "按20度间隔"
 
 #: src/metabase/api/task.clj
 msgid "When including an offset, a limit must also be included."
-msgstr ""
+msgstr "当包含偏移是，必须同时包含极限"
 
 #: src/metabase/api/task.clj
 msgid "When including a limit, an offset must also be included."
-msgstr ""
+msgstr "当包含极限时，必须同时包含偏移"
 
 #. returns `true` if successful -- see JavaDoc
 #: src/metabase/api/tiles.clj src/metabase/pulse/render.clj
@@ -8620,7 +8603,7 @@ msgstr "不能恢复活动一个已经处于活动状态的用户"
 
 #: src/metabase/api/user.clj
 msgid "Invalid password"
-msgstr "不可用密码"
+msgstr "无效密码"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 #: src/metabase/automagic_dashboards/core.clj
@@ -8650,7 +8633,7 @@ msgstr "自动生成的 {0} 和 {1} 的对比看板"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "sum"
-msgstr "总和"
+msgstr "加和"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "average"
@@ -8666,7 +8649,7 @@ msgstr "最大值"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "distinct count"
-msgstr "不重复计数"
+msgstr "去重计数"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "standard deviation"
@@ -8714,15 +8697,15 @@ msgstr "查询 “{0}”"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Applying heuristic {0} to {1}."
-msgstr ""
+msgstr "使用启发{0}到{1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Dimensions bindings:n{0}"
-msgstr ""
+msgstr "维度绑定：n{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Using definitions:nMetrics:n{0}nFilters:n{1}"
-msgstr ""
+msgstr "使用定义：nMetrics:n{0}nFilters:n{1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Can''t create dashboard for {0}"
@@ -8730,27 +8713,27 @@ msgstr "不能为{0}创建仪表盘"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0}st"
-msgstr "{0}st"
+msgstr "第{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0}nd"
-msgstr "{0}nd"
+msgstr "第{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0}rd"
-msgstr "{0}rd"
+msgstr "第{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0}th"
-msgstr "{0}th"
+msgstr "第{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "at {0}"
-msgstr "at {0}"
+msgstr "在{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "on {0}"
-msgstr "on {0}"
+msgstr "在{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "in {0} week - {1}"
@@ -8769,16 +8752,36 @@ msgid "Q{0}"
 msgstr "Q{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
+msgid "minute"
+msgstr "分"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "hour"
+msgstr "时"
+
+#: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
-msgstr ""
+msgstr "日（周）"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of month"
-msgstr ""
+msgstr "日（月）"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
-msgstr ""
+msgstr "日（年）"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "week"
+msgstr "周"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "month"
+msgstr "月"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "quarter"
+msgstr "季"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} is {1}"
@@ -8846,7 +8849,7 @@ msgstr "有效的卡片维度引用"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "Error parsing {0}:n{1}"
-msgstr ""
+msgstr "解析出错：{0}:n{1}"
 
 #: src/metabase/cmd/reset_password.clj
 msgid "No user found with email address ''{0}''. "
@@ -8981,7 +8984,7 @@ msgstr "数据库迁移当前…"
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
-msgstr ""
+msgstr "添加老式的SQL指令到保存的BigQuery查询出错。"
 
 #. 2. Create the new collections.
 #: src/metabase/db/migrations.clj
@@ -9022,7 +9025,7 @@ msgstr "加载后驱动未注册 {0}"
 
 #: src/metabase/driver.clj
 msgid "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-msgstr ""
+msgstr "错误：视图把{0}属性`:abstract?`从{1}改为{2}"
 
 #: src/metabase/driver.clj
 msgid "Registered driver {0} {1}"
@@ -9038,7 +9041,7 @@ msgstr "无效的 BigQuery 标识符：''{0}''"
 
 #: src/metabase/driver/bigquery.clj
 msgid "BigQuery statements can''t be parameterized!"
-msgstr ""
+msgstr "BigQuery语句无法参数化"
 
 #: src/metabase/driver/bigquery.clj
 msgid "Project ID"
@@ -9175,29 +9178,29 @@ msgstr "代理节点端口"
 msgid ""
 "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring "
 "filter."
-msgstr ""
+msgstr "警告：只能过滤维度！''{0}''是一个指标，忽略过滤器。"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid ""
 "WARNING: A date can't belong to multiple discrete intervals, so ANDing them "
 "together doesn't make sense."
-msgstr ""
+msgstr "警告：一个日期不能从属于多个分离的区间，所以`与`操作没有意义"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Ignoring these intervals: {0}"
-msgstr ""
+msgstr "忽略这些区间：{0}"
 
 #. We should never get to this point since the all non-string negations should get automatically rewritten
 #. by the query expander.
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Don't know how to negate: {0}"
-msgstr ""
+msgstr "警告：不知道怎样取负：{0}"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid ""
 "Sorting with Druid is only allowed in queries that have one or more breakout "
 "columns. Ignoring :order-by clause."
-msgstr ""
+msgstr "Druid排序只能在有一或多个拆分列的查询中使用。忽略:order-by子句"
 
 #. TODO - this is not really true, is it
 #: src/metabase/driver/druid/query_processor.clj
@@ -9226,15 +9229,15 @@ msgstr "Google Analytics 帐户ID"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Multiple date filters are not supported"
-msgstr ""
+msgstr "不支持多个日期过滤器"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid ":not is not yet implemented"
-msgstr ""
+msgstr ":not尚未实现"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Only one Google Analytics segment allowed at a time."
-msgstr ""
+msgstr "一次只能用一个Google Analytics区段"
 
 #: src/metabase/driver/h2.clj
 msgid "Connection String"
@@ -9255,11 +9258,11 @@ msgid ""
 "Error: metabase.driver.FixedHiveDriver is registered, but JDBC does not seem "
 "to be using it."
 msgstr ""
-"错误： metabase.driver.FixedHiveDriver 已经注册，但是 JDBC 好像无法使用"
+"错误： metabase.driver.FixedHiveDriver 已经注册，但是 JDBC 好像没有使用它"
 
 #: src/metabase/driver/hive_like/register_driver.clj
 msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
-msgstr "成功用JDBC注册Metabse.驱动.修复的Hive驱动"
+msgstr "成功用JDBC注册metabase.driver.FixedHiveDriver"
 
 #: src/metabase/driver/mongo.clj
 msgid "carrierPigeonDeliveries"
@@ -9279,11 +9282,11 @@ msgstr "附加的Mongo连接字符串选项"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr ""
+msgstr "MONGO聚合流水线："
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Unexpected columns in results: {0}"
-msgstr ""
+msgstr "结果中有意外的列：{0}"
 
 #: src/metabase/driver/oracle.clj
 msgid "Oracle system ID (SID)"
@@ -9319,7 +9322,7 @@ msgstr "toucan_sightings"
 
 #: src/metabase/driver/snowflake.clj
 msgid "Invalid Snowflake connection details: missing DB name."
-msgstr ""
+msgstr "无效的Snowflake连接详情：缺少DB名字"
 
 #: src/metabase/driver/sparksql.clj
 msgid "default"
@@ -9327,7 +9330,7 @@ msgstr "默认"
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "HoneySQL Form:"
-msgstr ""
+msgstr "HoneySQL表单："
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "Invalid HoneySQL form:"
@@ -9425,58 +9428,58 @@ msgstr "测试SMTP连接错误"
 
 #: src/metabase/email/messages.clj
 msgid "We’d love your feedback."
-msgstr ""
+msgstr "我们非常欢迎你的反馈"
 
 #: src/metabase/email/messages.clj
 msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr ""
+msgstr "看起来Metabase不太适合你"
 
 #: src/metabase/email/messages.clj
 msgid ""
 "Would you mind taking a fast 5 question survey to help the Metabase team "
 "understand why and make things better in the future?"
-msgstr ""
+msgstr "你是否介意回答5个小问题来帮助Metabase团队理解原因并在今后做出改进"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr ""
+msgstr "我们希望你喜欢Metabase"
 
 #: src/metabase/email/messages.clj
 msgid ""
 "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-msgstr ""
+msgstr "你是否介意回答6个小问题，告诉我们它的情况如何"
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
-msgstr ""
+msgstr "{0}创建了一个Metabase账号"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr ""
+msgstr "{0}接受了他们的Metabase邀请"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
-msgstr ""
+msgstr "[Metabase]重置密码请求"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
-msgstr ""
+msgstr "[Metabase]通知"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr ""
+msgstr "[Metabase]帮助改进Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
-msgstr ""
+msgstr "[Metabase]告诉我们事情进展如何"
 
 #: src/metabase/email/messages.clj
 msgid "Unable to create temp file in `{0}` for email attachments "
-msgstr ""
+msgstr "无法在`{0}`里为邮件附件创建临时文件"
 
 #: src/metabase/events/activity_feed.clj
 msgid "Error preprocessing query:"
-msgstr ""
+msgstr "预处理查询错误："
 
 #: src/metabase/integrations/ldap.clj
 msgid "Enable LDAP authentication."
@@ -9553,29 +9556,29 @@ msgstr ""
 
 #: src/metabase/mbql/normalize.clj
 msgid "Illegal filter clause: {0}"
-msgstr ""
+msgstr "非法过滤器子句：{0}"
 
 #: src/metabase/mbql/normalize.clj
 msgid "Invalid clause:"
-msgstr ""
+msgstr "非法语句："
 
 #: src/metabase/mbql/util.clj
 msgid ""
 "Error: query''s source query has not been resolved. You probably need to "
 "`preprocess` the query first."
-msgstr ""
+msgstr "错误：查询的元查询尚未"
 
 #: src/metabase/mbql/util.clj
 msgid "Bad nested-query-level: query does not have a source query"
-msgstr ""
+msgstr "非法nested-query-level：查询没有源查询"
 
 #: src/metabase/mbql/util.clj
 msgid "No expression named ''{0}''"
-msgstr ""
+msgstr "没有叫‘’{0}‘’的表达式"
 
 #: src/metabase/mbql/util.clj
 msgid "No aggregation at index: {0}"
-msgstr ""
+msgstr "索引{0}处没有聚合"
 
 #: src/metabase/metabot.clj
 msgid ""
@@ -9780,15 +9783,15 @@ msgstr "您无法更新集合修订版！"
 
 #: src/metabase/models/field_values.clj
 msgid "Field values total length is {0} (max {1})."
-msgstr ""
+msgstr "字段值总长{0},最大{1}"
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues are allowed for this Field."
-msgstr ""
+msgstr "该字段允许FieldValues"
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues are NOT allowed for this Field."
-msgstr ""
+msgstr "该字段不允许FieldValues"
 
 #: src/metabase/models/field_values.clj
 msgid ""
@@ -9812,7 +9815,7 @@ msgstr "保存Field{0}的FieldValues"
 msgid ""
 "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-"
 "Demand FieldValues updating."
-msgstr ""
+msgstr "字段{0} ''{1}''应该有FieldValues而且所属数据库能按需更新FieldValues"
 
 #: src/metabase/models/humanization.clj
 msgid ""
@@ -9893,15 +9896,15 @@ msgstr "你不能编辑或删除“{0}”权限群组"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr ""
+msgstr "你不能增加或移除''MetaBot''组的用户"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
-msgstr ""
+msgstr "你不能增加或移除''All Users''组的用户"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
-msgstr ""
+msgstr "你不能移除''Admin''组最后一个用户"
 
 #: src/metabase/models/permissions_revision.clj
 msgid "You cannot update a PermissionsRevision!"
@@ -9947,7 +9950,7 @@ msgstr "将最新设置内容更新到数据库中..."
 #. go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
 #: src/metabase/models/setting.clj
 msgid "Error inserting a new Setting: {0}"
-msgstr ""
+msgstr "插入新设置出错：{0}"
 
 #: src/metabase/models/setting.clj
 msgid "Checking whether settings cache is out of date (requires DB call)..."
@@ -9986,7 +9989,7 @@ msgstr "如果在数据库中已经存在设置则更新存在的值"
 msgid ""
 "defsetting descriptions strings must be `:internal?` or internationalized, "
 "found: `{0}`"
-msgstr ""
+msgstr "defsetting描述文字必须是`:internal?`或国际化的，找到：`{0}`"
 
 #: src/metabase/models/user.clj
 msgid "value must be a map with each value either a string or number."
@@ -9998,7 +10001,7 @@ msgstr "在字典{0}中读取插件……"
 
 #: src/metabase/plugins.clj
 msgid "Loading plugin {0}... {1}"
-msgstr ""
+msgstr "加载插件{0}...{1}"
 
 #: src/metabase/plugins.clj
 msgid ""
@@ -10106,11 +10109,11 @@ msgstr "缓存最大值，"
 
 #: src/metabase/public_settings.clj
 msgid "Failed setting `query-caching-max-kb` to {0}."
-msgstr ""
+msgstr "无法设置`query-caching-max-kb`为{0}"
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {1} are not allowed."
-msgstr ""
+msgstr "不允许大于{1}的值"
 
 #: src/metabase/public_settings.clj
 msgid "The absolute maximum time to keep any cached query results, in seconds."
@@ -10128,8 +10131,8 @@ msgid ""
 "around, we take the query''s average execution time and multiply that by "
 "whatever you input here."
 msgstr ""
-"为了确定每一个已保存的查询的缓存结果应该持续多长时间，我们用查询的平均执行"
-"时间乘以您输入的数值。"
+"为了确定每一个已保存的查询的缓存结果应该持续多长时间，我们用查询的平均执行时"
+"间乘以您输入的数值。"
 
 #: src/metabase/public_settings.clj
 msgid ""
@@ -10162,7 +10165,7 @@ msgstr ""
 
 #: src/metabase/public_settings.clj
 msgid "Allow users to explore data using X-rays"
-msgstr ""
+msgstr "允许用户用X射线来探索数据"
 
 #. attempt to query the metastore API about the status of this token. If the request doesn't complete in a
 #. reasonable amount of time throw a timeout exception
@@ -10172,11 +10175,11 @@ msgstr "检查MetaStore确认 {0} 是否有效..."
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Using this URL to check token: {0}"
-msgstr ""
+msgstr "用这个URL来检查令牌：{0}"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Unable to validate token: 404 not found."
-msgstr ""
+msgstr "无法检验令牌：404未找到"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Error fetching token status:"
@@ -10184,7 +10187,7 @@ msgstr "获取令牌状态时出错:"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "There was an error checking whether this token was valid:"
-msgstr ""
+msgstr "有一个判断令牌是否合法的错误检查："
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Token validation timed out."
@@ -10558,23 +10561,23 @@ msgstr "用于签署发起`/api/embed`请求的JSON Web令牌的密钥"
 msgid ""
 "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-"
 "bit key (i.e., a 64-character string)."
-msgstr ""
+msgstr "非法的embedding-secret-key！密钥必须是16进制编码的256位整数（即：64个字符的字符串）"
 
 #: src/metabase/util/embed.clj
 msgid "JWT is missing `alg`."
-msgstr ""
+msgstr "JWT缺少`alg`"
 
 #: src/metabase/util/embed.clj
 msgid "JWT `alg` cannot be `none`."
-msgstr ""
+msgstr "JWT `alg`不能是`none`"
 
 #: src/metabase/util/embed.clj
 msgid "The embedding secret key has not been set."
-msgstr ""
+msgstr "嵌入密钥尚未设置"
 
 #: src/metabase/util/embed.clj
 msgid "Token is missing value for keypath"
-msgstr ""
+msgstr "令牌缺少keypath的值"
 
 #: src/metabase/util/encryption.clj
 msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
@@ -10590,7 +10593,7 @@ msgstr "已存储的证书加密方式已经为这个Metabase事例禁用"
 
 #: src/metabase/util/encryption.clj
 msgid "For more information, see"
-msgstr ""
+msgstr "更多信息，请见"
 
 #: src/metabase/util/encryption.clj
 msgid ""
@@ -10970,7 +10973,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Heres a quick look at your [[this]]"
-msgstr ""
+msgstr "这是 [[this]] 的概览"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per [[GenericCategoryLarge]], top 5"
@@ -11080,7 +11083,7 @@ msgstr ""
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "How these [[this.short-name]] are distributed"
-msgstr ""
+msgstr "[[this.short-name]] 是怎么分布的"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[this.short-name]] by [[GenericNumber]]"
@@ -11882,17 +11885,53 @@ msgstr ""
 msgid "Months when [[this.short-name]] joined"
 msgstr ""
 
+#, fuzzy
+#~ msgid "Hour-of-day"
+#~ msgstr "时（日）"
+
+#, fuzzy
+#~ msgid "Day-of-week"
+#~ msgstr "日（周）"
+
+#, fuzzy
+#~ msgid "Day-of-month"
+#~ msgstr "日（月）"
+
+#, fuzzy
+#~ msgid "Week-of-year"
+#~ msgstr "周（年）"
+
+#, fuzzy
+#~ msgid "Month-of-year"
+#~ msgstr "月（年）"
+
+#, fuzzy
+#~ msgid "Quarter-of-year"
+#~ msgstr "季（年）"
+
+#~ msgid "Past "
+#~ msgstr "前"
+
+#~ msgid "Next "
+#~ msgstr "后"
+
+#~ msgid "moment_locale"
+#~ msgstr "zh-cn"
+
+#~ msgid "day"
+#~ msgstr "日"
+
+#~ msgid "year"
+#~ msgstr "年"
+
+#~ msgid "[Unknown]"
+#~ msgstr "未知"
+
 #~ msgid "Tip:"
 #~ msgstr "提示："
 
-#~ msgid "X-ray {0} {1}"
-#~ msgstr "透视{0}{1}"
-
 #~ msgid "these"
 #~ msgstr "这些"
-
-#~ msgid "this"
-#~ msgstr "这个"
 
 #~ msgid "Compare {0} {1} to the rest"
 #~ msgstr "将{0}{1}和剩下的比较"
