@@ -101,7 +101,15 @@ export function generateTimeFilterValuesDescriptions(filter) {
         return values.map(value => generateTimeValueDescription(value, bucketing));
     }
 }
-
+const UNIT_NAMES = {
+    "minute": [t `Minute`, t `Minutes`],
+    "hour": [t `Hour`, t `Hours`],
+    "day": [t `Day`, t `Days`],
+    "week": [t `Week`, t `Weeks`],
+    "month": [t `Month`, t `Months`],
+    "quarter": [t `Quarter`, t `Quarters`],
+    "year": [t `Year`, t `Years`]
+}
 export function generateTimeIntervalDescription(n, unit) {
     if (unit === "day") {
         switch (n) {
@@ -121,15 +129,7 @@ export function generateTimeIntervalDescription(n, unit) {
         return t `Today`;
     } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
 
-    const UNIT_NAMES = {
-        "minute": [t `Minute`, t `Minutes`],
-        "hour": [t `Hour`, t `Hours`],
-        "day": [t `Day`, t `Days`],
-        "week": [t `Week`, t `Weeks`],
-        "month": [t `Month`, t `Months`],
-        "quarter": [t `Quarter`, t `Quarters`],
-        "year": [t `Year`, t `Years`]
-    }
+
     let [singular_unit, plural_unit] = UNIT_NAMES[unit];
     if (typeof n === "string") {
         if (n === "current") {
@@ -155,9 +155,9 @@ export function generateTimeValueDescription(value, bucketing) {
         if (bucketing) {
             return formatDateTimeWithUnit(value, bucketing);
         } else if (m.hours() || m.minutes()) {
-            return m.format("MMMM D, YYYY hh:mm a");
+            return m.format(t `MMMM D, YYYY hh:mm a`);
         } else {
-            return m.format("MMMM D, YYYY");
+            return m.format(t `MMMM D, YYYY`);
         }
     } else if (Array.isArray(value) && value[0] === "relative-datetime") {
         let n = value[1];
@@ -175,11 +175,11 @@ export function generateTimeValueDescription(value, bucketing) {
             if (n === 0) {
                 return t `Now`;
             } else {
+                let [singular_unit, plural_unit] = UNIT_NAMES[unit];
+                let abs_n = Math.abs(n);
+                let txt = (n < 0 ? t ` ago` : t ` from now`);
                 return (
-                    Math.abs(n) +
-                    " " +
-                    inflection.inflect(unit, Math.abs(n)) +
-                    (n < 0 ? t ` ago` : t ` from now`)
+                    ngettext(msgid `${abs_n} ${singular_unit}${txt}`, `${abs_n} ${plural_unit}${txt}`, abs_n);
                 );
             }
         }
