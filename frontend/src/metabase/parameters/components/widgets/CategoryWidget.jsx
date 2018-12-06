@@ -58,7 +58,8 @@ export default class CategoryWidget extends Component {
 
   static format(values, fieldValues) {
     if (Array.isArray(values) && values.length > 1) {
-      return ngettext(msgid`${values.length} selection`, `${values.length} selections`, values.length);
+      const n = values.length;
+      return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
       return getHumanReadableValue(values, fieldValues);
     }

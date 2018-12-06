@@ -21,6 +21,7 @@ export function setLocalization(translationsObject) {
     // add and set locale with C-3PO
     addLocale(locale, translationsObject);
     useLocale(locale);
+
     moment.locale(locale);
 }
 

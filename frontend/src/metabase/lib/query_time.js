@@ -129,23 +129,24 @@ export function generateTimeIntervalDescription(n, unit) {
         return t `Today`;
     } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
 
+    switch (n) {
+        case "current":
+        case 0:
+            return [t `This ${formatBucketing(unit)}`];
+        case "next":
+        case 1:
+            return [t `Next ${formatBucketing(unit)}`];
+        case "last":
+        case -1:
+            return [t `Last ${formatBucketing(unit)}`];
+    }
 
-    let [singular_unit, plural_unit] = UNIT_NAMES[unit];
-    if (typeof n === "string") {
-        if (n === "current") {
-            n = t `this`;
-        }
-        return [inflection.capitalize(n) + " " + singular_unit];
+    if (n < 0) {
+        return [t `Past ${-n} ${formatBucketing(unit, -n)}`];
+    } else if (n > 0) {
+        return [t `Next ${n} ${formatBucketing(unit, n)}`];
     } else {
-
-        if (n < 0) {
-            n = -n;
-            return [ngettext(msgid `Past ${n} ${singular_unit}`, `Past ${n} ${plural_unit}`, n)];
-        } else if (n > 0) {
-            return [ngettext(msgid `Next ${n} ${singular_unit}`, `Next ${n} ${plural_unit}`, n)];
-        } else {
-            return [t `This ${singular_unit}`];
-        }
+        return [t `This ${formatBucketing(unit)}`];
     }
 }
 
@@ -155,9 +156,9 @@ export function generateTimeValueDescription(value, bucketing) {
         if (bucketing) {
             return formatDateTimeWithUnit(value, bucketing);
         } else if (m.hours() || m.minutes()) {
-            return m.format(t `MMMM D, YYYY hh:mm a`);
+            return m.format("MMMM D, YYYY hh:mm a");
         } else {
-            return m.format(t `MMMM D, YYYY`);
+            return m.format("MMMM D, YYYY");
         }
     } else if (Array.isArray(value) && value[0] === "relative-datetime") {
         let n = value[1];
@@ -185,15 +186,59 @@ export function generateTimeValueDescription(value, bucketing) {
             }
         }
     } else {
-        console.warn("Unknown datetime format", value);
-        return "[" + t `Unknown` + "]";
+        // FIXME: what to do if the bucketing and unit don't match?
+        if (n === 0) {
+            return t `Now`;
+        } else {
+            return n < 0 ?
+                t `${-n} ${formatBucketing(unit, -n).toLowerCase()} ago` :
+                t `${n} ${formatBucketing(unit, n).toLowerCase()} from now`;
+        }
     }
+} else {
+    console.warn("Unknown datetime format", value);
+    return `[${t`Unknown`}]`;
+  }
 }
 
-export function formatBucketing(bucketing = "") {
-    let words = bucketing.split("-");
-    words[0] = inflection.capitalize(words[0]);
-    return words.join(" ");
+export function formatBucketing(bucketing = "", n = 1) {
+  switch (bucketing) {
+    case "default":
+      return ngettext(msgid`Default period`, `Default periods`, n);
+    case "minute":
+      return ngettext(msgid`Minute`, `Minutes`, n);
+    case "hour":
+      return ngettext(msgid`Hour`, `Hours`, n);
+    case "day":
+      return ngettext(msgid`Day`, `Days`, n);
+    case "week":
+      return ngettext(msgid`Week`, `Weeks`, n);
+    case "month":
+      return ngettext(msgid`Month`, `Months`, n);
+    case "quarter":
+      return ngettext(msgid`Quarter`, `Quarters`, n);
+    case "year":
+      return ngettext(msgid`Year`, `Years`, n);
+    case "minute-of-hour":
+      return ngettext(msgid`Minute of hour`, `Minutes of hour`, n);
+    case "hour-of-day":
+      return ngettext(msgid`Hour of day`, `Hours of day`, n);
+    case "day-of-week":
+      return ngettext(msgid`Day of week`, `Days of week`, n);
+    case "day-of-month":
+      return ngettext(msgid`Day of month`, `Days of month`, n);
+    case "day-of-year":
+      return ngettext(msgid`Day of year`, `Days of year`, n);
+    case "week-of-year":
+      return ngettext(msgid`Week of year`, `Weeks of year`, n);
+    case "month-of-year":
+      return ngettext(msgid`Month of year`, `Month of year`, n);
+    case "quarter-of-year":
+      return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
+  }
+  let words = bucketing.split("-");
+  words[0] = inflection.capitalize(words[0]);
+  return words.join(" ");
 }
 
 export function absolute(date) {

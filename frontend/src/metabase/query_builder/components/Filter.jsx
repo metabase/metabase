@@ -75,7 +75,8 @@ export const OperatorFilter = ({
   let formattedValues;
   // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
-    formattedValues = [ngettext(msgid`${values.length} selection`, `${values.length} selections`, values.length)];
+    const n = values.length;
+    formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];
   } else if (dimension.field().isDate() && !dimension.field().isTime()) {
     formattedValues = generateTimeFilterValuesDescriptions(filter);
   } else {

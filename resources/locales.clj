@@ -1,5 +1,5 @@
 {
-  :locales  #{"en" "zh" "fr" "tr" "es" "nb" "fa" "ja" "pl" "pt" }
+  :locales  #{"en" "fr" "es" "nb" "pt" }
   :packages ["metabase"]
   :bundle   "metabase.Messages"
 }
