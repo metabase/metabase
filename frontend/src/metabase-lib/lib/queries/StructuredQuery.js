@@ -629,6 +629,10 @@ export default class StructuredQuery extends AtomicQuery {
     return Q.getExpressions(this.query());
   }
 
+  addExpression(name, expression) {
+    return this._updateQuery(Q.addExpression, arguments);
+  }
+
   updateExpression(name, expression, oldName) {
     return this._updateQuery(Q.updateExpression, arguments);
   }

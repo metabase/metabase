@@ -21,6 +21,9 @@ const MIN_PREVIEW_WIDTH = 300;
 function getFakePreviewSeries(query) {
   const card = query.question().card();
   const cols = query.columns();
+  if (cols.length === 0) {
+    return null;
+  }
   const data = { rows: [], cols: cols, columns: cols.map(col => col.name) };
   return [{ card, data }];
 }
@@ -52,11 +55,10 @@ class PreviewSection extends React.Component {
     const { tableWidth } = this.state;
 
     // force table
-    const rawSeries = assocIn(
-      isPreviewCurrent ? props.rawSeries : getFakePreviewSeries(query),
-      [0, "card", "display"],
-      "table",
-    );
+    const fakeSeries = getFakePreviewSeries(query);
+    const previewSeries = isPreviewCurrent ? props.rawSeries : fakeSeries;
+    const rawSeries =
+      previewSeries && assocIn(previewSeries, [0, "card", "display"], "table");
 
     return (
       <WorksheetSection
@@ -82,12 +84,14 @@ class PreviewSection extends React.Component {
             disabled: isPreviewDisabled,
           })}
         >
-          <Visualization
-            {...props}
-            className="spread"
-            rawSeries={rawSeries}
-            onContentWidthChange={this.handleWidthChange}
-          />
+          {rawSeries && (
+            <Visualization
+              {...props}
+              className="spread"
+              rawSeries={rawSeries}
+              onContentWidthChange={this.handleWidthChange}
+            />
+          )}
           {!isPreviewCurrent && (
             <div
               onClick={preview}

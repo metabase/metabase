@@ -33,6 +33,8 @@ const BaseButton = ({
     variant => "Button--" + variant,
   );
 
+  const onlyIcon = !children;
+
   return (
     <button
       {..._.omit(props, ...BUTTON_VARIANTS)}
@@ -43,7 +45,7 @@ const BaseButton = ({
           <Icon
             name={icon}
             size={iconSize ? iconSize : 14}
-            className={cx({ mr1: !props.onlyIcon })}
+            className={cx({ mr1: !onlyIcon })}
           />
         )}
         <div>{children}</div>
@@ -51,7 +53,7 @@ const BaseButton = ({
           <Icon
             name={iconRight}
             size={iconSize ? iconSize : 14}
-            className={cx({ ml1: !props.onlyIcon })}
+            className={cx({ ml1: !onlyIcon })}
           />
         )}
       </div>
@@ -75,7 +77,6 @@ BaseButton.propTypes = {
   purple: PropTypes.bool,
 
   borderless: PropTypes.bool,
-  onlyIcon: PropTypes.bool,
 };
 
 const Button = sys(

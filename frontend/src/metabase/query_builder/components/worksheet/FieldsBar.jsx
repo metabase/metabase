@@ -9,11 +9,6 @@ import DimensionDragSource from "./dnd/DimensionDragSource";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-const items = [
-  { name: "ID", icon: "int" },
-  { name: "Created At", icon: "calendar" },
-];
-
 // we're not actually using `width` from ExplicitSize but it also forces a rerender when the size changes
 @ExplicitSize()
 export default class FieldsBar extends React.Component {
@@ -63,7 +58,8 @@ export default class FieldsBar extends React.Component {
       isPickerOpen,
       onOpenPicker,
       onClosePicker,
-      onAdd,
+      extraButtons,
+      alignButtonsRight,
       className,
     } = this.props;
     const { maxItems } = this.state;
@@ -102,6 +98,7 @@ export default class FieldsBar extends React.Component {
           className={cx("flex align-center flex-no-shrink", {
             // reverse the order if hiding picker button so that it still takes up space for measurement
             "flex-reverse": !showPickerButton,
+            "flex-align-right": alignButtonsRight,
           })}
           ref={r => (this._endRef = r)}
         >
@@ -116,14 +113,7 @@ export default class FieldsBar extends React.Component {
               onClick={isPickerOpen ? onClosePicker : onOpenPicker}
             />
           )}
-          {
-            <Icon
-              name="add"
-              className="mx1 px1 cursor-pointer text-brand"
-              size={20}
-              onClick={onAdd}
-            />
-          }
+          {extraButtons}
         </div>
 
         {/* render all items to measure their widths */}

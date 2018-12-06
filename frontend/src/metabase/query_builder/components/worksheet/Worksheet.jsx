@@ -12,7 +12,7 @@ import ViewItSection from "./ViewItSection";
 
 import WorksheetSidebar from "./WorksheetSidebar";
 
-import FieldsBar from "./FieldsBar";
+import FieldsBarWithExpressionEditor from "./FieldsBarWithExpressionEditor";
 
 import SECTIONS from "./style";
 
@@ -128,12 +128,16 @@ export default class Worksheet extends React.Component {
           }}
         >
           {(showFilterSection || showSummarizeSection) && (
-            <FieldsBar
+            <FieldsBarWithExpressionEditor
               color={SECTIONS.data.color}
               fieldOptions={query.fieldOptions()}
               isPickerOpen={isPickerOpen}
               onOpenPicker={this.openPicker}
               onClosePicker={this.closePicker}
+              query={query}
+              onAddExpression={(name, expression) =>
+                query.addExpression(name, expression).update(setDatasetQuery)
+              }
             />
           )}
           {isRunnable &&
