@@ -30,80 +30,77 @@
             [yaml.core :as yaml]))
 
 (defmulti
-  ^{:doc      "Get the logical path starting at `prefix` for entity `entity`.
+  ^{:doc      "Get the logical path for entity `entity`.
 
                The idea is to replace all IDs with these human readable paths which are also
                instance-independent, making deserialization eaiser."
     :private  true
-    :arglists '([prefix entity])}
-  fully-qualified-name (fn [_ entity]
-                         (type entity)))
+    :arglists '([entity])}
+  fully-qualified-name type)
 
 (defmethod fully-qualified-name (type Database)
-  [prefix db]
-  (str prefix "/databases/" (:name db)))
+  [db]
+  (str "/databases/" (:name db)))
 
 (defmethod fully-qualified-name (type Table)
-  [prefix table]
+  [table]
   (format "%s/schemas/%s/tables/%s"
-          (->> table :db_id Database (fully-qualified-name prefix))
+          (->> table :db_id Database fully-qualified-name)
           (:schema table)
           (:name table)))
 
 (defmethod fully-qualified-name (type Field)
-  [prefix field]
-  (str (->> field :table_id Table (fully-qualified-name prefix)) "/fields/" (:name field)))
+  [field]
+  (str (->> field :table_id Table fully-qualified-name) "/fields/" (:name field)))
 
 (defmethod fully-qualified-name (type Metric)
-  [prefix metric]
-  (str (->> metric :table_id Table (fully-qualified-name prefix)) "/metrics/" (:name metric)))
+  [metric]
+  (str (->> metric :table_id Table fully-qualified-name) "/metrics/" (:name metric)))
 
 (defmethod fully-qualified-name (type Segment)
-  [prefix segment]
-  (str (->> segment :table_id Table (fully-qualified-name prefix)) "/segments/" (:name segment)))
+  [segment]
+  (str (->> segment :table_id Table fully-qualified-name) "/segments/" (:name segment)))
 
 (defmethod fully-qualified-name (type Collection)
-  [prefix collection]
-  (let [parents (if (= (:location collection) "/")
-                  ""
-                  (->> (str/split (:location collection) #"/")
-                       rest
-                       (map #(-> % Integer/parseInt Collection :name (str "/collections")))
-                       (str/join "/")
-                       (format "%s/")))]
-    (str prefix "/collections/" parents (:name collection))))
+  [collection]
+  (let [parents (->> (str/split (:location collection) #"/")
+                     rest
+                     (map #(-> % Integer/parseInt Collection :name (str "/collections")))
+                     (str/join "/")
+                     (format "%s/"))]
+    (str "/collections/collections/" parents (:name collection))))
 
 (defmethod fully-qualified-name (type Dashboard)
-  [prefix dashboard]
+  [dashboard]
   (format "%s/dashboards/%s"
-          (or (some->> dashboard :collection_id Collection (fully-qualified-name prefix))
-              (str prefix "/collections"))
+          (or (some->> dashboard :collection_id Collection fully-qualified-name)
+              "/collections")
           (:name dashboard)))
 
 (defmethod fully-qualified-name (type Pulse)
-  [prefix pulse]
+  [pulse]
   (format "%s/pulses/%s"
-          (or (some->> pulse :collection_id Collection (fully-qualified-name prefix))
-              (str prefix "/collections"))
+          (or (some->> pulse :collection_id Collection fully-qualified-name)
+              "/collections")
           (:name pulse)))
 
 (defmethod fully-qualified-name (type Card)
-  [prefix card]
+  [card]
   (format "%s/cards/%s"
           (or (some->> card
                        :dataset_query
                        qp.util/query->source-card-id
                        Card
-                       (fully-qualified-name prefix))
+                       fully-qualified-name)
               (some->> card
                        :collection_id
                        Collection
-                       (fully-qualified-name prefix))
-              (str prefix "/collections"))
+                       fully-qualified-name)
+              "/collections")
           (:name card)))
 
 (defmethod fully-qualified-name nil
-  [prefix _]
+  [_]
   nil)
 
 (def ^:private SegmentOrMetric
@@ -117,33 +114,33 @@
   (some-fn field-reference? (complement (s/checker SegmentOrMetric))))
 
 (defn- entity-reference->fully-qualified-name
-  [prefix [op & args :as entity-reference]]
+  [[op & args :as entity-reference]]
   (case (qp.util/normalize-token op)
-    :metric        [:metric (fully-qualified-name prefix (Metric (first args)))]
-    :segment       [:segment (fully-qualified-name prefix (Segment (first args)))]
-    :field-id      [:field-id (if (string? (first args))
-                                (first args)
-                                (fully-qualified-name prefix (Field (first args))))]
-    :fk->          (into [:fk->]
+    :metric        [op (fully-qualified-name (Metric (first args)))]
+    :segment       [op (fully-qualified-name (Segment (first args)))]
+    :field-id      [op (if (string? (first args))
+                         (first args)
+                         (fully-qualified-name (Field (first args))))]
+    :fk->          (into [op]
                          (for [arg args]
                            (if (number? arg)
                              (Field arg)
-                             (entity-reference->fully-qualified-name prefix arg))))
+                             (entity-reference->fully-qualified-name arg))))
     :field-literal entity-reference))
 
 (defn- humanize-entity-references
-  [prefix entity]
+  [entity]
   (walk/postwalk
    (fn [form]
      (cond
        (entity-reference? form)
-       (entity-reference->fully-qualified-name prefix form)
+       (entity-reference->fully-qualified-name form)
 
        (map? form)
        (let [id->fully-qualified-name (fn [entity-id model]
                                         (if (string? entity-id)
                                           entity-id
-                                          (fully-qualified-name prefix (model entity-id))))]
+                                          (fully-qualified-name (model entity-id))))]
          (-> form
              (u/update-when :database (fn [db]
                                         (if (= db -1337)
@@ -192,11 +189,11 @@
   ([path entity] (spit-entity path :dir entity))
   ([path mode entity]
    (spit-yaml (if (= mode :dir)
-                (format "%s/%s.yaml" (fully-qualified-name path entity) (:name entity))
-                (str (fully-qualified-name path entity) ".yaml"))
+                (format "%s/%s/%s.yaml" path (fully-qualified-name entity) (:name entity))
+                (format "%s/%s.yaml" path (fully-qualified-name entity)))
               (->> entity
                    strip-crud
-                   (humanize-entity-references path)))))
+                   humanize-entity-references))))
 
 (defmethod dump (type Database)
   [path db]
@@ -208,17 +205,9 @@
 
 (defmethod dump (type Field)
   [path field]
-  (let [dimension    (some-> (db/select-one Dimension :field_id (u/get-id field))
-                             not-empty
-                             (select-keys [:type :human_readable_field_id])
-                             (update :human_readable_field_id
-                                     (comp (partial fully-qualified-name path) Field)))
-        field-values (-> (db/select-one FieldValues :field_id (u/get-id field))
-                         (u/select-non-nil-keys [:values :human_readable_values]))]
-    (spit-entity path :file (-> field
-                                (merge field-values)
-                                (cond->
-                                  dimension (assoc :dimension dimension))))))
+  (spit-entity path :file (merge field
+                                 (-> (db/select-one FieldValues :field_id (u/get-id field))
+                                     (u/select-non-nil-keys [:values :human_readable_values])))))
 
 (defmethod dump (type Segment)
   [path segment]
@@ -229,7 +218,7 @@
   (spit-entity path :file metric))
 
 (defn- dashboard-cards-for-dashboard
-  [path dashboard]
+  [dashboard]
   (->> dashboard
        u/get-id
        (db/select DashboardCard :dashboard_id)
@@ -238,15 +227,15 @@
                      :series (for [series (db/select DashboardCardSeries
                                             :dashboardcard_id (u/get-id dashboard-card))]
                                (-> series
-                                   (update :card_id (comp (partial fully-qualified-name path) Card))
+                                   (update :card_id (comp fully-qualified-name Card))
                                    (dissoc :id :dashboardcard_id))))
                    strip-crud
-                   (humanize-entity-references path))))))
+                   humanize-entity-references)))))
 
 (defmethod dump (type Dashboard)
   [path dashboard]
   (spit-entity path :file (assoc dashboard
-                            :dashboard_cards (dashboard-cards-for-dashboard path dashboard))))
+                            :dashboard_cards (dashboard-cards-for-dashboard dashboard))))
 
 (defmethod dump (type Collection)
   [path collection]
@@ -254,7 +243,7 @@
 
 (defmethod dump (type Card)
   [path card]
-  (->> (u/update-when card :table_id (comp (partial fully-qualified-name path) Table))
+  (->> (u/update-when card :table_id (comp fully-qualified-name Table))
        (spit-entity path)))
 
 (defmethod dump (type Pulse)
@@ -264,7 +253,7 @@
                  :cards    (for [card (db/select PulseCard :pulse_id (u/get-id pulse))]
                              (-> card
                                  (dissoc :id :pulse_id)
-                                 (update :card_id (comp (partial fully-qualified-name path) Card))))
+                                 (update :card_id (comp fully-qualified-name Card))))
                  :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
                              (strip-crud channel)))))
 
@@ -278,8 +267,8 @@
   [path]
   (spit-yaml (str path "/dependencies.yaml")
              (for [{:keys [model_id model dependent_on_id dependent_on_model]} (Dependency)]
-               {:model_id        (fully-qualified-name path ((model-name->model model) model_id))
-                :dependent_on_id (fully-qualified-name path ((model-name->model dependent_on_model) dependent_on_id))})))
+               {:model_id        (fully-qualified-name ((model-name->model model) model_id))
+                :dependent_on_id (fully-qualified-name ((model-name->model dependent_on_model) dependent_on_id))})))
 
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."
@@ -287,3 +276,19 @@
   (spit-yaml (str path "/settings.yaml")
              (into {} (for [{:keys [key value]} (setting/all setting/get-string)]
                         [key value]))))
+
+(defn dump-dimensions
+  "Combine all dimensions into a vector and dump it into YAML at in the directory for the
+   corresponding schema starting at `path`."
+  [path]
+  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (Dimension))
+          :let [table (Table table-id)]]
+    (spit-yaml (format "%s/%s/schemas/%s/dimensions.yaml"
+                       path
+                       (->> table :db_id Database fully-qualified-name)
+                       (:schema table))
+               (for [dimension dimensions]
+                 (-> dimension
+                     (update :human_readable_field_id (comp fully-qualified-name Field))
+                     strip-crud
+                     humanize-entity-references)))))

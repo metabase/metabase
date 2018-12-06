@@ -20,6 +20,7 @@
              [config :as config]
              [db :as mdb]
              [util :as u]]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util.date :as du]))
 
 (defn ^:command migrate
@@ -122,10 +123,13 @@
   ((resolve 'metabase.core/start-normally)))
 
 (defn ^:command load
-  "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [path]
-  (require 'metabase.cmd.serialization)
-  ((resolve 'metabase.cmd.serialization/load) path))
+  "Load serialized metabase instance as created by `dump` command from directory `path`.
+
+   `mode` can be one of `:update` (default) or `:skip`."
+  ([path] (load path :update))
+  ([path mode]
+   (require 'metabase.cmd.serialization)
+   ((resolve 'metabase.cmd.serialization/load) path (qp.util/normalize-token mode))))
 
 (defn ^:command dump
   "Serialized metabase instance into directory `path`."

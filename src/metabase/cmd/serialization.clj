@@ -5,6 +5,7 @@
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [database :refer [Database]]
+             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
@@ -12,17 +13,20 @@
              [table :refer [Table]]]
             [metabase.serialization
              [dump :as dump]
-             [load :as load]])
+             [load :as load]]
+            [toucan.db :as db])
   (:refer-clojure :exclude [load]))
 
 (defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [path]
+  [mode path]
   (mdb/setup-db-if-needed!)
-  (load/load path {} Database)
-  (load/load path {} Collection)
-  (load/load-settings path)
-  (load/load-dependencies path))
+  (load/with-upsert-statistics
+    (let [context {:mode mode}]
+      (load/load path context Database)
+      (load/load path context Collection)
+      (load/load-settings path context)
+      (load/load-dependencies path context))))
 
 (defn- dump-all
   [path entities]
@@ -38,9 +42,10 @@
   (dump-all path (Field))
   (dump-all path (Metric))
   (dump-all path (Segment))
-  (dump-all path (Collection))
+  (dump-all path (db/select Collection :personal_owner_id nil))
   (dump-all path (Card))
   (dump-all path (Dashboard))
   (dump-all path (Pulse))
   (dump/dump-settings path)
-  (dump/dump-dependencies path))
+  (dump/dump-dependencies path)
+  (dump/dump-dimensions path))
