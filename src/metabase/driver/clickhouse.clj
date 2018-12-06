@@ -2,6 +2,7 @@
   (:require [clojure
              [set :as set]
              [string :as string]]
+            [clojure.java.jdbc :as jdbc]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -17,7 +18,8 @@
             [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]])
+  (:import java.sql.DatabaseMetaData))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
@@ -25,7 +27,7 @@
   {"Array"       :type/*
    "Date"        :type/Date
    "DateTime"    :type/DateTime
-   "Decimal"     :type/Decimal
+   "Decimal"     :type/Decimal ;; FIXME Decimal(12,3)
    "Enum8"       :type/*
    "Enum16"      :type/*
    "FixedString" :type/Text
@@ -124,9 +126,6 @@
 (defn- to-start-of-quarter [expr]
   (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
 
-(defn- to-day [expr]
-  (hsql/call :toDate expr))
-
 (defmethod sql.qp/date [:clickhouse :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:clickhouse :minute]          [_ _ expr] (to-start-of-minute expr))
 (defmethod sql.qp/date [:clickhouse :minute-of-hour]  [_ _ expr] (to-minute expr))
@@ -141,7 +140,7 @@
 (defmethod sql.qp/date [:clickhouse :quarter-of-year] [_ _ expr] (to-quarter-of-year expr))
 (defmethod sql.qp/date [:clickhouse :year]            [_ _ expr] (to-year expr))
 
-(defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (to-day expr))
+(defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (hsql/call :toDate expr))
 (defmethod sql.qp/date [:clickhouse :week]            [_ _ expr] (to-start-of-week expr))
 (defmethod sql.qp/date [:clickhouse :quarter]         [_ _ expr] (to-start-of-quarter expr))
 
@@ -181,12 +180,47 @@
   [driver [_ field]]
   (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/quote-style :clickhouse [_] :mysql)
+
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
-  #{"system", "default", "probi"})
+  #{"system"})
+
+(defn- get-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
+  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  (vec
+   (jdbc/metadata-result
+    (.getTables metadata db-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"])))))
+
+(defn- post-filtered-active-tables
+  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  (set (for [table   (filter #(not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem %)))
+                             (get-tables metadata db-name-or-nil nil))]
+         (let [remarks (:remarks table)]
+           {:name        (:table_name  table)
+            :schema      (:table_schem table)
+            :description (when-not (string/blank? remarks)
+                           remarks)}))))
+
+(defn- ->spec [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+    db-or-id-or-spec))
+
+;; ClickHouse exposes databases as schemas, but MetaBase sees
+;; schemas as sub-entities of a database, at least the fast-active-tables
+;; implementation would lead to duplicate tables because it iterates
+;; over all schemas of the current dbs and then retrieves all
+;; tables of a schema
+(defmethod driver/describe-database :clickhouse
+  [driver db-or-id-or-spec]
+  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+    {:tables (post-filtered-active-tables
+              ;; TODO: this only covers the db case, not id or spec
+              driver metadata (get-in db-or-id-or-spec [:details :db]))}))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-
-(defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
 (defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] false)
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
@@ -195,8 +229,8 @@
   (ssh/with-tunnel-config
     [driver.common/default-host-details
      (assoc driver.common/default-port-details :default 8123)
-     driver.common/default-dbname-details :required false
-     driver.common/default-user-details :required false
-     driver.common/default-password-details :required false
+     driver.common/default-dbname-details
+     (assoc driver.common/default-user-details :required false)
+     (assoc driver.common/default-password-details :required false)
      (assoc driver.common/default-additional-options-details
-       :placeholder  "use_server_time_zone_for_dates=true")]))
+       :placeholder "use_server_time_zone_for_dates=true")]))
