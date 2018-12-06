@@ -177,10 +177,11 @@ export function generateTimeValueDescription(value, bucketing) {
             } else {
                 let [singular_unit, plural_unit] = UNIT_NAMES[unit];
                 let abs_n = Math.abs(n);
-                let txt = (n < 0 ? t ` ago` : t ` from now`);
-                return (
-                    ngettext(msgid `${abs_n} ${singular_unit}${txt}`, `${abs_n} ${plural_unit}${txt}`, abs_n);
-                );
+                if (n < 0) {
+                    return ngettext(msgid `${abs_n} ${singular_unit} ago`, `${abs_n} ${plural_unit} ago`, abs_n);
+                } else {
+                    return ngettext(msgid `${abs_n} ${singular_unit} from now`, `${abs_n} ${plural_unit} from now`, abs_n);
+                }
             }
         }
     } else {

@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-12-06 17:21+0800\n"
+"POT-Creation-Date: 2018-12-06 21:32+0800\n"
 "Language: zh-CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -2231,7 +2231,9 @@ msgstr "错误排查记录"
 msgid ""
 "Trying to get to the bottom of something? This section shows logs of "
 "Metabase's background tasks, which can help shed light on what's going on."
-msgstr "想彻底了解一些事情吗？本区域显示Metabase的后天任务的日志，可以帮助你弄明白到底在发生什么。"
+msgstr ""
+"想彻底了解一些事情吗？本区域显示Metabase的后天任务的日志，可以帮助你弄明白到"
+"底在发生什么。"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:63
 msgid "Task"
@@ -3583,7 +3585,7 @@ msgid "received the latest data from"
 msgstr "接收最新的数据来自"
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
-#: frontend/src/metabase/lib/query_time.js:187
+#: frontend/src/metabase/lib/query_time.js:189
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr "未知"
@@ -4248,38 +4250,50 @@ msgstr "明天"
 msgid "Yesterday"
 msgstr "昨天"
 
-#: frontend/src/metabase/lib/query_time.js:135
+#: frontend/src/metabase/lib/query_time.js:136
 msgid "this"
 msgstr "本"
 
-#: frontend/src/metabase/lib/query_time.js:142
+#: frontend/src/metabase/lib/query_time.js:143
 msgid "Past {0} {1}"
 msgid_plural "Past {0} {1}"
 msgstr[0] "前{0}{1}"
 msgstr[1] "前{0}{1}"
 
-#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:145
 msgid "Next {0} {1}"
 msgid_plural "Next {0} {1}"
 msgstr[0] "后{0}{1}"
 msgstr[1] "后{0}{1}"
 
-
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "This {0}"
 msgstr "本{0}"
 
-#: frontend/src/metabase/lib/query_time.js:175
+#: frontend/src/metabase/lib/query_time.js:158
+msgid "MMMM D, YYYY hh:mm a"
+msgstr "YYYY年MMMMD hh:mm a"
+
+#: frontend/src/metabase/lib/query_time.js:160
+msgid "MMMM D, YYYY"
+msgstr "YYYY年MMMMD"
+
+#: frontend/src/metabase/lib/query_time.js:176
 msgid "Now"
 msgstr "现在"
 
 #: frontend/src/metabase/lib/query_time.js:181
-msgid " ago"
-msgstr "以前"
+msgid "{0} {1} ago"
+msgid_plural "{0} {1} ago"
+msgstr[0] "{0}{1}以前"
+msgstr[1] "{0}{1}以前"
 
-#: frontend/src/metabase/lib/query_time.js:181
-msgid " from now"
-msgstr "距今"
+#: frontend/src/metabase/lib/query_time.js:183
+msgid "{0} {1} from now"
+msgid_plural "{0} {1} from now"
+msgstr[0] "距今{0}{1}"
+msgstr[1] "距今{0}{1}"
+
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
@@ -10561,7 +10575,9 @@ msgstr "用于签署发起`/api/embed`请求的JSON Web令牌的密钥"
 msgid ""
 "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-"
 "bit key (i.e., a 64-character string)."
-msgstr "非法的embedding-secret-key！密钥必须是16进制编码的256位整数（即：64个字符的字符串）"
+msgstr ""
+"非法的embedding-secret-key！密钥必须是16进制编码的256位整数（即：64个字符的字"
+"符串）"
 
 #: src/metabase/util/embed.clj
 msgid "JWT is missing `alg`."
@@ -11884,6 +11900,9 @@ msgstr ""
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Months when [[this.short-name]] joined"
 msgstr ""
+
+#~ msgid " ago"
+#~ msgstr "以前"
 
 #, fuzzy
 #~ msgid "Hour-of-day"

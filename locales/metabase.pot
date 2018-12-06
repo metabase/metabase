@@ -13,7 +13,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#\n"
 "Project-Id-Version: metabase\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2018-12-06 17:21+0800\n"
+"POT-Creation-Date: 2018-12-06 21:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3553,7 +3553,7 @@ msgid "received the latest data from"
 msgstr ""
 
 #: frontend/src/metabase/home/components/Activity.jsx:244
-#: frontend/src/metabase/lib/query_time.js:187
+#: frontend/src/metabase/lib/query_time.js:189
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:273
 msgid "Unknown"
 msgstr ""
@@ -4218,37 +4218,49 @@ msgstr ""
 msgid "Yesterday"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:135
+#: frontend/src/metabase/lib/query_time.js:136
 msgid "this"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:142
+#: frontend/src/metabase/lib/query_time.js:143
 msgid "Past {0} {1}"
 msgid_plural "Past {0} {1}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:145
 msgid "Next {0} {1}"
 msgid_plural "Next {0} {1}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "This {0}"
 msgstr ""
 
-#: frontend/src/metabase/lib/query_time.js:175
+#: frontend/src/metabase/lib/query_time.js:158
+msgid "MMMM D, YYYY hh:mm a"
+msgstr ""
+
+#: frontend/src/metabase/lib/query_time.js:160
+msgid "MMMM D, YYYY"
+msgstr ""
+
+#: frontend/src/metabase/lib/query_time.js:176
 msgid "Now"
 msgstr ""
 
 #: frontend/src/metabase/lib/query_time.js:181
-msgid " ago"
-msgstr ""
+msgid "{0} {1} ago"
+msgid_plural "{0} {1} ago"
+msgstr[0] ""
+msgstr[1] ""
 
-#: frontend/src/metabase/lib/query_time.js:181
-msgid " from now"
-msgstr ""
+#: frontend/src/metabase/lib/query_time.js:183
+msgid "{0} {1} from now"
+msgid_plural "{0} {1} from now"
+msgstr[0] ""
+msgstr[1] ""
 
 #: frontend/src/metabase/lib/schema_metadata.js:221
 msgid "True"
