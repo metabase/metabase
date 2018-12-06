@@ -8,6 +8,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 import { t } from "c-3po";
+import Mustache from "mustache";
+import { getIn } from "icepick";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -48,13 +50,17 @@ export default class Text extends Component {
 
   static disableSettingsConfig = false;
   static noHeader = true;
-  static supportsSeries = false;
+  static supportsSeries = true;
   static hidden = true;
 
   static minSize = { width: 4, height: 1 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here
+  }
+
+  static seriesAreCompatible(initialSeries, newSeries) {
+    return newSeries.card.display === "scalar";
   }
 
   static settings = {
@@ -122,6 +128,16 @@ export default class Text extends Component {
     this.setState({ isShowingRenderedOutput: true });
   }
 
+  getMarkdown() {
+    const { series, settings } = this.props;
+    try {
+      const values = series.slice(1).map(s => getIn(s, ["data", "rows", 0, 0]));
+      return Mustache.render(settings.text, [null, ...values]);
+    } catch (e) {
+      return settings.text;
+    }
+  }
+
   render() {
     let {
       className,
@@ -155,7 +171,7 @@ export default class Text extends Component {
                 styles["text-card-markdown"],
                 getSettingsStyle(settings),
               )}
-              source={settings.text}
+              source={this.getMarkdown()}
             />
           ) : (
             <textarea
@@ -189,7 +205,7 @@ export default class Text extends Component {
               styles["text-card-markdown"],
               getSettingsStyle(settings),
             )}
-            source={settings.text}
+            source={this.getMarkdown()}
           />
         </div>
       );

@@ -88,6 +88,13 @@ export default class AddSeriesModal extends Component {
     this.setState({ searchValue: e.target.value.toLowerCase() });
   }
 
+  getDashcardData(dashcard, card) {
+    if (card.display === "text") {
+      return { rows: [], cols: [], columns: [] };
+    }
+    return getIn(this.props.dashcardData, [dashcard.id, card.id]).data;
+  }
+
   async onCardChange(card, e) {
     const { dashcard, dashcardData } = this.props;
     let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
@@ -100,18 +107,12 @@ export default class AddSeriesModal extends Component {
             clear: true,
           });
         }
-        let sourceDataset = getIn(this.props.dashcardData, [
-          dashcard.id,
-          dashcard.card.id,
-        ]);
-        let seriesDataset = getIn(this.props.dashcardData, [
-          dashcard.id,
-          card.id,
-        ]);
+        let sourceData = this.getDashcardData(dashcard, dashcard.card);
+        let seriesData = this.getDashcardData(dashcard, card);
         if (
           CardVisualization.seriesAreCompatible(
-            { card: dashcard.card, data: sourceDataset.data },
-            { card: card, data: seriesDataset.data },
+            { card: dashcard.card, data: sourceData },
+            { card: card, data: seriesData },
           )
         ) {
           this.setState({
@@ -241,7 +242,7 @@ export default class AddSeriesModal extends Component {
       .concat(this.state.series)
       .map(card => ({
         card: card,
-        data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
+        data: this.getDashcardData(dashcard, card),
       }))
       .filter(s => !!s.data);
 
