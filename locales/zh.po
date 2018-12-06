@@ -6058,11 +6058,11 @@ msgstr "今天"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:24
 msgid "this week"
-msgstr "这周"
+msgstr "本周"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:25
 msgid "this month"
-msgstr "这个月"
+msgstr "本月"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:26
 msgid "this year"
@@ -6070,11 +6070,11 @@ msgstr "今年"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:27
 msgid "this minute"
-msgstr "这一分钟"
+msgstr "这分钟"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:28
 msgid "this hour"
-msgstr "这个小时"
+msgstr "这小时"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:285
 msgid "not implemented {0}"
