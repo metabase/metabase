@@ -21,7 +21,8 @@
              [db :as mdb]
              [util :as u]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util.date :as du]))
+            [metabase.util.date :as du])
+  (:refer-clojure :exclude [load]))
 
 (defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."

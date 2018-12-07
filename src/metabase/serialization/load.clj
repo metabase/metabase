@@ -119,6 +119,7 @@
                                        ((some-fn :email :name) entity))))
                   (swap! *upsert-statistics* update-in [:insert (:name model)] (fnil inc 0))
                   (db/insert! model entity)))
+
       :skip   (if existing
                 (do
                   (log/infof (str (trs "{0} \"{1}\" (ID {2}) already exists -- skipping"
@@ -188,13 +189,9 @@
                         :name     segment-name))
       (path->context path)))
 
-(def ^:private reserved-collection-names #{"dashboards" "cards" "pulses" "collections"})
-
 (defmethod path->context "collections"
-  [context [_ & [collection-name & path-rest :as full-path]]]
-  (if (reserved-collection-names collection-name)
-    ;; root collection
-    (path->context context full-path)
+  [context [_ & [collection-name & path-rest :as path]]]
+  (if (contains? context :collection)
     (-> context
         (assoc :collection (db/select-one-id Collection
                              :name     collection-name
@@ -204,7 +201,9 @@
                                                    :location
                                                    (str (:collection context) "/"))
                                            "/")))
-        (path->context path-rest))))
+        (path->context path-rest))
+    ;; root collection
+    (path->context (assoc context :collection nil) path)))
 
 (defmethod path->context "dashboards"
   [context [_ & [dashboard-name & path]]]
