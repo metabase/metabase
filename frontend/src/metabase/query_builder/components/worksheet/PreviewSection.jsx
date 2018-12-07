@@ -14,11 +14,16 @@ import WorksheetSection from "./WorksheetSection";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
+import ExpressionEditorTextfield from "../expressions/ExpressionEditorTextfield";
+
 import { Dimension } from "./FieldsBar";
 
 import SECTIONS from "./style";
 
 const MIN_PREVIEW_WIDTH = 300;
+
+const HEADER_HEIGHT = 48;
+const SUB_HEADER_HEIGHT = 54;
 
 function getFakePreviewSeries(query) {
   const card = query.question().card();
@@ -62,6 +67,8 @@ class PreviewSection extends React.Component {
     const rawSeries =
       previewSeries && assocIn(previewSeries, [0, "card", "display"], "table");
 
+    const showExpressionEditor = true;
+
     return (
       <WorksheetSection
         {...SECTIONS.preview}
@@ -92,14 +99,21 @@ class PreviewSection extends React.Component {
               className="spread"
               rawSeries={rawSeries}
               onContentWidthChange={this.handleWidthChange}
-              tableHeaderHeight={44}
+              tableHeaderHeight={
+                HEADER_HEIGHT + (showExpressionEditor ? SUB_HEADER_HEIGHT : 0)
+              }
               renderTableHeaderWrapper={(children, column) => {
                 const dimension = query.dimensionForColumn(column);
                 const icon = dimension && dimension.field().icon();
                 return (
                   <Dimension
-                    className="flex align-center flex-full cellData"
-                    style={{ marginLeft: "0.5em", marginRight: 0 }}
+                    className="flex align-center flex-full cellData align-self-start"
+                    style={{
+                      marginLeft: "0.5em",
+                      marginRight: 0,
+                      marginTop: "0.5em",
+                      // height: HEADER_HEIGHT,
+                    }}
                     icon={icon}
                   >
                     {children}
@@ -108,6 +122,31 @@ class PreviewSection extends React.Component {
               }}
             />
           )}
+          {rawSeries &&
+            showExpressionEditor && (
+              <div
+                className="absolute left right px1"
+                style={{
+                  top: HEADER_HEIGHT,
+                  height: SUB_HEADER_HEIGHT,
+                }}
+              >
+                <ExpressionEditorTextfield
+                  className="bg-white"
+                  style={{
+                    margin: 0,
+                  }}
+                  expression={null}
+                  tableMetadata={query.tableMetadata()}
+                  onChange={parsedExpression =>
+                    this.setState({ expression: parsedExpression, error: null })
+                  }
+                  onError={errorMessage =>
+                    this.setState({ error: errorMessage })
+                  }
+                />
+              </div>
+            )}
           {!isPreviewCurrent && (
             <div
               onClick={preview}

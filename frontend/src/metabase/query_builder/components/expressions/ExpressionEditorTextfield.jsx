@@ -276,13 +276,14 @@ export default class ExpressionEditorTextfield extends Component {
       errorMessage = t`unknown error`;
     }
 
-    const { placeholder, className } = this.props;
+    const { placeholder, className, style } = this.props;
     const { suggestions, showAll } = this.state;
 
     return (
       <div className={cx(S.editor, "relative")}>
         <TokenizedInput
           ref="input"
+          style={style}
           className={cx(
             S.input,
             "my1 input block full",
