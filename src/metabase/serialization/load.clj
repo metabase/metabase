@@ -88,6 +88,7 @@
   (atom {}))
 
 (defmacro with-upsert-statistics
+  "Collect and return statistics about what was updated/skipped/added."
   [& body]
   `(binding [*upsert-statistics* (atom {})]
      ~@body

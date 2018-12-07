@@ -5,7 +5,6 @@
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [database :refer [Database]]
-             [dimension :refer [Dimension]]
              [field :refer [Field]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
