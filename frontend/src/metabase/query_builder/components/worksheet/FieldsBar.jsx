@@ -129,3 +129,16 @@ export default class FieldsBar extends React.Component {
     );
   }
 }
+
+export const Dimension = ({ className, icon, style, children }) => (
+  <div
+    style={style}
+    className={cx(
+      className,
+      "bordered rounded shadowed bg-white py1 px1 text-medium cursor-pointer text-bold",
+    )}
+  >
+    {icon && <Icon size={12} name={icon} className="mr1" />}
+    {children}
+  </div>
+);

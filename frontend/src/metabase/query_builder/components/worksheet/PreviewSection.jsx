@@ -14,6 +14,8 @@ import WorksheetSection from "./WorksheetSection";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
+import { Dimension } from "./FieldsBar";
+
 import SECTIONS from "./style";
 
 const MIN_PREVIEW_WIDTH = 300;
@@ -90,6 +92,20 @@ class PreviewSection extends React.Component {
               className="spread"
               rawSeries={rawSeries}
               onContentWidthChange={this.handleWidthChange}
+              tableHeaderHeight={44}
+              renderTableHeaderWrapper={(children, column) => {
+                const dimension = query.dimensionForColumn(column);
+                const icon = dimension && dimension.field().icon();
+                return (
+                  <Dimension
+                    className="flex align-center flex-full cellData"
+                    style={{ marginLeft: "0.5em", marginRight: 0 }}
+                    icon={icon}
+                  >
+                    {children}
+                  </Dimension>
+                );
+              }}
             />
           )}
           {!isPreviewCurrent && (

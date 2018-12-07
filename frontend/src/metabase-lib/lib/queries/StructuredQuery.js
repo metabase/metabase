@@ -776,10 +776,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   columns() {
-    return this.columnDimensions().map(dimension => ({
-      name: dimension.field().name || dimension.displayName(),
-      display_name: dimension.displayName(),
-    }));
+    return this.columnDimensions().map(dimension => dimension.column())
   }
 
   fieldReferenceForColumn(column) {
@@ -804,6 +801,14 @@ export default class StructuredQuery extends AtomicQuery {
       }
       return dimension;
     }
+  }
+
+  dimensionForColumn(column) {
+    const fieldRef = this.fieldReferenceForColumn(column);
+    if (fieldRef) {
+      return this.parseFieldReference(fieldRef);
+    }
+    return null;
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {

@@ -3,6 +3,8 @@
 import Base from "./Base";
 import Table from "./Table";
 
+import _ from "underscore"
+
 import { FieldIDDimension } from "../Dimension";
 
 import { getFieldValues } from "metabase/lib/query/field";
@@ -203,5 +205,9 @@ export default class Field extends Base {
     } else {
       return this.parameterSearchField();
     }
+  }
+
+  column() {
+    return _.pick(this.getPlainObject(), "id", "name", "display_name", "base_type", "special_type")
   }
 }

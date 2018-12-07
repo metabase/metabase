@@ -262,6 +262,16 @@ export default class Dimension {
     return "";
   }
 
+  column() {
+    return {
+      name: this.displayName(),
+      display_name: this.displayName(),
+      ...this.baseDimension()
+        .field()
+        .column(),
+    };
+  }
+
   /**
    * The name to be shown when this dimension is being displayed as a sub-dimension of another
    * @abstract
@@ -409,6 +419,13 @@ export class FKDimension extends FieldDimension {
 
   destination() {
     return this._dest;
+  }
+
+  column() {
+    return {
+      ...super.column(),
+      fk_field_id: this.fk().field().id,
+    };
   }
 
   render() {

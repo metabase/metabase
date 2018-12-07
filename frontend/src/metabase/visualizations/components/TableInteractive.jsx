@@ -122,6 +122,12 @@ export default class TableInteractive extends Component {
 
   static defaultProps = {
     isPivoted: false,
+    renderTableHeaderWrapper: children => (
+      <div className="cellData">{children}</div>
+    ),
+    renderTableCellWrapper: children => (
+      <div className="cellData">{children}</div>
+    ),
   };
 
   componentWillMount() {
@@ -370,8 +376,8 @@ export default class TableInteractive extends Component {
             : undefined
         }
       >
-        <div className="cellData">
-          {columnSettings["show_mini_bar"] ? (
+        {this.props.renderTableCellWrapper(
+          columnSettings["show_mini_bar"] ? (
             <MiniBar
               value={value}
               options={columnSettings}
@@ -386,8 +392,8 @@ export default class TableInteractive extends Component {
               jsx: true,
               rich: true,
             })
-          )}
-        </div>
+          ),
+        )}
       </div>
     );
   };
@@ -452,7 +458,12 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted, getColumnTitle } = this.props;
+    const {
+      sort,
+      isPivoted,
+      getColumnTitle,
+      renderTableHeaderWrapper,
+    } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
@@ -559,25 +570,29 @@ export default class TableInteractive extends Component {
               : undefined
           }
         >
-          <div className="cellData">
-            {isSortable &&
-              isRightAligned && (
-                <Icon
-                  className="Icon mr1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-            {columnTitle}
-            {isSortable &&
-              !isRightAligned && (
-                <Icon
-                  className="Icon ml1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-          </div>
+          {renderTableHeaderWrapper(
+            [
+              isSortable &&
+                isRightAligned && (
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                ),
+              columnTitle,
+              isSortable &&
+                !isRightAligned && (
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                ),
+            ],
+            column,
+            columnIndex,
+          )}
           <Draggable
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
@@ -627,6 +642,8 @@ export default class TableInteractive extends Component {
       return <div className={className} />;
     }
 
+    const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
+
     return (
       <ScrollSync>
         {({ onScroll, scrollLeft, scrollTop }) => (
@@ -650,15 +667,15 @@ export default class TableInteractive extends Component {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: HEADER_HEIGHT,
+                height: headerHeight,
                 position: "absolute",
                 overflow: "hidden",
               }}
               className="TableInteractive-header scroll-hide-all"
               width={width || 0}
-              height={HEADER_HEIGHT}
+              height={headerHeight}
               rowCount={1}
-              rowHeight={HEADER_HEIGHT}
+              rowHeight={headerHeight}
               // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
               columnCount={cols.length + 1}
               columnWidth={props =>
@@ -676,7 +693,7 @@ export default class TableInteractive extends Component {
             <Grid
               ref={ref => (this.grid = ref)}
               style={{
-                top: HEADER_HEIGHT,
+                top: headerHeight,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -684,7 +701,7 @@ export default class TableInteractive extends Component {
               }}
               className=""
               width={width}
-              height={height - HEADER_HEIGHT}
+              height={height - headerHeight}
               columnCount={cols.length}
               columnWidth={this.getColumnWidth}
               rowCount={rows.length}
