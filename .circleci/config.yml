@@ -108,7 +108,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run Bikeshed linter
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
@@ -120,9 +120,25 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
+
+  be-install-for-building-drivers:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Install Metabase for building drivers
+          command: lein install-for-building-drivers
+          no_output_timeout: 5m
+      - persist_to_workspace:
+          root: /home/circleci/
+          paths:
+            - .m2/repository/metabase-core
 
   be-tests-mysql:
     working_directory: /home/circleci/metabase/metabase/
@@ -314,12 +330,43 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
+          name: Build SQLite driver
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
+            ./bin/build-driver.sh sqlite
+      - run:
           name: Run backend unit tests (SQLite)
           environment:
             DRIVERS: h2,sqlite
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
             lein with-profile +ci test
+
+  be-linters-sqlite:
+    <<: *defaults
+    working_directory: /home/circleci/metabase/metabase/modules/drivers/sqlite
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run Eastwood linter (SQLite)
+          command: lein eastwood
+          no_output_timeout: 5m
+      - run:
+          name: Run dockstring-checker (SQLite)
+          command: lein docstring-checker
+          no_output_timeout: 5m
+      - run:
+          name: Run Bikeshed linter (SQLite)
+          command: lein bikeshed
+          no_output_timeout: 5m
+      # Disabled for now until I figure out how to run this without having to completely rewrite the script. Probably should just bite the bullet and write a Lein plugin for it
+      # - run:
+      #     name: Run reflection warnings checker (SQLite)
+      #     command: ./bin/reflection-linter
+      #     no_output_timeout: 5m
 
   be-tests-druid:
     <<: *defaults
@@ -578,6 +625,9 @@ workflows:
       - be-linter-reflection-warnings:
           requires:
             - be-deps
+      - be-install-for-building-drivers:
+          requires:
+            - be-deps
       - be-tests-mysql:
           requires:
             - be-tests
@@ -598,7 +648,10 @@ workflows:
             - be-tests
       - be-tests-sqlite:
           requires:
-            - be-tests
+            - be-install-for-building-drivers
+      - be-linters-sqlite:
+          requires:
+            - be-install-for-building-drivers
       - be-tests-presto:
           requires:
             - be-tests
@@ -648,6 +701,7 @@ workflows:
             - be-linter-docstring-checker
             - be-linter-bikeshed
             - be-linter-reflection-warnings
+
             - be-tests
             - be-tests-mysql
             - be-tests-postgres
@@ -662,6 +716,9 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
+            - be-linters-sqlite
+
             - fe-linter-eslint
             - fe-linter-prettier
             - fe-linter-flow

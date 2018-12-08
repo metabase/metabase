@@ -334,7 +334,7 @@
                       :tunnel-port    22
                       :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver.u/can-connect-with-details? engine details :rethrow-exceptions)))
+        (driver.u/can-connect-with-details? engine details :throw-exceptions)))
        (catch Exception e
          (.getMessage e))))
 

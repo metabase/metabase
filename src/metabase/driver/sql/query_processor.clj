@@ -42,7 +42,7 @@
 (defmulti current-datetime-fn
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-fn :sql [_] :%now)
@@ -52,7 +52,7 @@
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
   component."
   {:arglists '([driver unit field-or-value])}
-  (fn [driver unit _] [(driver/dispatch-on-driver driver) unit])
+  (fn [driver unit _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
 
 ;; default implementation for `:default` bucketing returns expression as-is
@@ -66,7 +66,7 @@
   writing, this is only used by the SQL parameters implementation; in the future it will probably be used in more
   places as well.)"
   {:arglists '([driver field])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod field->identifier :sql [_ field]
@@ -79,7 +79,7 @@
 
   Return `nil` to prevent `field` from being aliased."
   {:arglists '([driver field])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod field->alias :sql [_ field]
@@ -93,7 +93,7 @@
 
     (hsql/format ... :quoting (quote-style driver), :allow-dashed-names? true)"
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod quote-style :sql [_] :ansi)
@@ -106,7 +106,7 @@
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
   {:arglists '([driver seconds-or-milliseconds field-or-value])}
-  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-driver driver) seconds-or-milliseconds])
+  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
 (defmethod unix-timestamp->timestamp [:sql :milliseconds] [driver _ expr]
@@ -121,7 +121,7 @@
   instead of `LIMIT`)."
   {:arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
   (fn [driver top-level-clause _ _]
-    [(driver/dispatch-on-driver driver) top-level-clause])
+    [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
 (defmethod apply-top-level-clause :default [_ _ honeysql-form _]
@@ -134,7 +134,7 @@
   making this easy to override in any places needed for a given driver."
   {:arglists '([driver x]), :style/indent 1}
   (fn [driver x]
-    [(driver/dispatch-on-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
 
 

@@ -115,6 +115,6 @@
                       :user           "postgres"
                       :tunnel-user    "example"}]
          (tu.log/suppress-output
-           (driver.u/can-connect-with-details? engine details :rethrow-exceptions)))
+           (driver.u/can-connect-with-details? engine details :throw-exceptions)))
        (catch Exception e
          (.getMessage e))))

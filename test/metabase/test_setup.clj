@@ -68,7 +68,6 @@
   ;; on a BG thread
   (let [start-jetty! (future (core/start-jetty!))]
     (try
-      (plugins/setup-plugins!)
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
 

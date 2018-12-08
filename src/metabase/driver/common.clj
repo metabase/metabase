@@ -129,7 +129,7 @@
   "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
   implementation below."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti current-db-time-date-formatters
@@ -137,7 +137,7 @@
   `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
   formatters for a date format string."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defn current-db-time

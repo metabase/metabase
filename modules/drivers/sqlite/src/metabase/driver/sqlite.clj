@@ -18,20 +18,16 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
+             [honeysql-extensions :as hx]]
             [schema.core :as s])
   (:import [java.sql Time Timestamp]))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
-(defmethod driver/display-name :sqlite [_] "SQLite")
-
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite [_ {:keys [db]
                                                               :or   {db "sqlite.db"}
                                                               :as   details}]
-  (merge {:classname   "org.sqlite.JDBC"
-          :subprotocol "sqlite"
+  (merge {:subprotocol "sqlite"
           :subname     db}
          (dissoc details :db)))
 
@@ -173,13 +169,6 @@
        tcoerce/to-date-time
        (tformat/unparse (tformat/formatters :hour-minute-second-ms))
        (hsql/call :time)))
-
-
-(defmethod driver/connection-properties :sqlite [_]
-  [{:name         "db"
-    :display-name (tru "Filename")
-    :placeholder  (tru "/home/camsaul/toucan_sightings.sqlite 😋")
-    :required     true}])
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
 ;; we have this 'feature' so the frontend doesn't try to present the option to you.

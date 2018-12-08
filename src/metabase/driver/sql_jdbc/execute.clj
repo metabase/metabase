@@ -25,7 +25,7 @@
 
     \"SET @@session.timezone = %s;\""
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod set-timezone-sql :sql-jdbc [_] nil)
