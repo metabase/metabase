@@ -565,15 +565,15 @@
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
   [s]
-  (let [s (str s)]
-    (str (str/upper-case (subs s 0 1)) (subs s 1))))
+  (str (str/upper-case (subs s 0 1)) (subs s 1)))
 
 (defn- instantiate-metadata
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (string? form)
-           (let [new-form (fill-templates :string context bindings form)]
+         (if (ui18n/localized-string? form)
+           (let [form     (str form)
+                 new-form (fill-templates :string context bindings form)]
              (if (not= new-form form)
                (capitalize-first new-form)
                new-form))
