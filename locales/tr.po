@@ -5175,7 +5175,7 @@ msgstr "{0} {1} gösteriliyor"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:281
 msgid "Doing science"
-msgstr "Bilim yapmak"
+msgstr "Veri Oluşturuluyor."
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:294
 msgid "If you give me some data I can show you something cool. Run a Query!"
@@ -9401,67 +9401,67 @@ msgstr "Aralık ekle"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:26
 msgid "is less than"
-msgstr ""
+msgstr "daha az"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:27
 msgid "is greater than"
-msgstr ""
+msgstr "daha büyüktür"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:28
 msgid "is less than or equal to"
-msgstr ""
+msgstr "küçüktür veya eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:29
 msgid "is greater than or equal to"
-msgstr ""
+msgstr "büyüktür veya eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:30
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:37
 msgid "is equal to"
-msgstr ""
+msgstr "eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:31
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:38
 msgid "is not equal to"
-msgstr ""
+msgstr "eşit değildir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:32
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:39
 msgid "is null"
-msgstr ""
+msgstr "boş"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:33
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:40
 msgid "is not null"
-msgstr ""
+msgstr "boş değil"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:41
 msgid "contains"
-msgstr ""
+msgstr "içinde"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:42
 msgid "does not contain"
-msgstr ""
+msgstr "içermeyen"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:43
 msgid "starts with"
-msgstr ""
+msgstr "ile başlar"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:44
 msgid "ends with"
-msgstr ""
+msgstr "ile biter"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:292
 msgid "When a cell in these columns {0} it will be tinted this color."
-msgstr ""
+msgstr "Bu sütunlardaki bir hücre {0} olduğunda bu renk tonlanır."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:351
 msgid "When a cell in this column…"
-msgstr ""
+msgstr "Bu sütunda bir hücre olduğunda…"
 
 #: frontend/src/metabase/visualizations/lib/errors.js:42
 msgid "This visualization requires you to group by a field."
-msgstr ""
+msgstr "Bu görselleştirme, bir alana göre gruplandırmanızı gerektirir."
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:178
 msgid "Date style"
@@ -9473,11 +9473,11 @@ msgstr "Tarih ayracı"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:215
 msgid "Abbreviate names of days and months"
-msgstr ""
+msgstr "Gün ve ay isimlerini kısaltın"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:225
 msgid "Show the time"
-msgstr ""
+msgstr "Zamanı göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:232
 msgid "HH:MM"
@@ -9505,222 +9505,222 @@ msgstr "Para etiket stili"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:337
 msgid "Where to display the unit of currency"
-msgstr ""
+msgstr "Para biriminin nerede görüntüleneceği"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:370
 msgid "Minimum number of decimal places"
-msgstr ""
+msgstr "Minimum ondalık basamak sayısı"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:271
 msgid "Stacked chart type"
-msgstr ""
+msgstr "Yığılmış grafik türü"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:314
 msgid "Goal label"
-msgstr ""
+msgstr "Hedef etiketi"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:322
 msgid "Show trend line"
-msgstr ""
+msgstr "Trend çizgisini göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:67
 msgid "Line style"
-msgstr ""
+msgstr "Çizgi stili"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:84
 msgid "Show dots on lines"
-msgstr ""
+msgstr "Çizgilerdeki noktaları göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:88
 #: frontend/src/metabase/visualizations/lib/settings/series.js:125
 msgid "Auto"
-msgstr ""
+msgstr "Oto"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:120
 msgid "Which axis?"
-msgstr ""
+msgstr "Hangi eksen?"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Line + Bar"
-msgstr ""
+msgstr "Çizgi + Bar"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:19
 msgid "line and bar chart"
-msgstr ""
+msgstr "Çizgi ve çubuk grafik"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:72
 msgid "Gauge visualization requires a number."
-msgstr ""
+msgstr "Gösterge görselleştirmesi bir sayı gerektirir."
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:60
 msgid "Gauge"
-msgstr ""
+msgstr "Gösterge"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:104
 msgid "Gauge ranges"
-msgstr ""
+msgstr "Gösterge aralıkları"
 
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:91
 msgid "Field to show"
-msgstr ""
+msgstr "Gösterilecek alan"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:118
 msgid "last {0}"
-msgstr ""
+msgstr "son {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:176
 msgid "{0} was {1} {2}"
-msgstr ""
+msgstr "{0} {1} {2} idi"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
 msgid "Group by a time field to see how this has changed over time"
-msgstr ""
+msgstr "Zaman içinde bunun nasıl değiştiğini görmek için bir zaman alanına göre gruplandırın"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:39
 msgid "Switch positive / negative colors?"
-msgstr ""
+msgstr "Pozitif / negatif renkleri değiştirir misiniz?"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:90
 msgid "Pivot column"
-msgstr ""
+msgstr "Pivot sütun"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:107
 msgid "Cell column"
-msgstr ""
+msgstr "Hücre sütunu"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:123
 msgid "Visible columns"
-msgstr ""
+msgstr "Görünür sütunlar"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:143
 msgid "Conditional Formatting"
-msgstr ""
+msgstr "Koşullu biçimlendirme"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:165
 msgid "Column title"
-msgstr ""
+msgstr "Sütun başlığı"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:172
 msgid "Show a mini bar chart"
-msgstr ""
+msgstr "Bir mini çubuk grafik göster"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:183
 msgid "Link"
-msgstr ""
+msgstr "Bağlantı"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:187
 msgid "Email link"
-msgstr ""
+msgstr "E-Mail Bağlantısı"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:191
 msgid "Image"
-msgstr ""
+msgstr "Resim"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:195
 msgid "Automatic"
-msgstr ""
+msgstr "Otomatik"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "View as link or image"
-msgstr ""
+msgstr "Bağlantı veya resim olarak görüntüle"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:210
 msgid "Link text"
-msgstr ""
+msgstr "Bağlantı Metni"
 
 #: src/metabase/api/common/internal.clj
 msgid "Not a valid integer: ''{0}''"
-msgstr ""
+msgstr "Geçerli bir tam sayı değil: ''{0}''"
 
 #: src/metabase/api/embed.clj
 msgid "Embedding is not enabled for this object."
-msgstr ""
+msgstr "Bu nesne için katıştırma etkin değil."
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fallback to local authentication: {0}"
-msgstr ""
+msgstr "LDAP sunucusuna bağlanmada sorun, yerel kimlik doğrulamaya geri dönecektir: {0}"
 
 #: src/metabase/api/task.clj
 msgid "When including an offset, a limit must also be included."
-msgstr ""
+msgstr "Bir ofset dahil edildiğinde, bir sınır da dahil edilmelidir."
 
 #: src/metabase/api/task.clj
 msgid "When including a limit, an offset must also be included."
-msgstr ""
+msgstr "Bir limit dahil edildiğinde, bir ofset de dahil edilmelidir."
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Applying heuristic {0} to {1}."
-msgstr ""
+msgstr "Buluta {0} - {1} uygulanıyor."
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Dimensions bindings:n{0}"
-msgstr ""
+msgstr "Boyutlar bağlamaları:n{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Using definitions:nMetrics:n{0}nFilters:n{1}"
-msgstr ""
+msgstr "Tanımları kullanma: Metrikler:n{0}nFilters:n{1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "minute"
-msgstr ""
+msgstr "dakika"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "hour"
-msgstr ""
+msgstr "saat"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
-msgstr ""
+msgstr "haftanın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of month"
-msgstr ""
+msgstr "ayın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
-msgstr ""
+msgstr "yılın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "week"
-msgstr ""
+msgstr "hafta"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "month"
-msgstr ""
+msgstr "ay"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "quarter"
-msgstr ""
+msgstr "çeyrek"
 
 #: src/metabase/automagic_dashboards/populate.clj
 msgid "Adding {0} cards to dashboard {1}:n{2}"
-msgstr ""
+msgstr "{0} kartına {1} kart ekleyerek:n{2}"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "Error parsing {0}:n{1}"
-msgstr ""
+msgstr "{0} ayrıştırılırken hata oluştu:n{1}"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-msgstr ""
+msgstr "UYARI: Filtreleme sadece boyutlarda çalışır! ''{0}'' bir metrik. Filtre yoksayılıyor."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense."
-msgstr ""
+msgstr "UYARI: Bir tarih, birden fazla ayrık aralığa ait olamaz, onları bir araya getirmek mantıklı değildir."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Ignoring these intervals: {0}"
-msgstr ""
+msgstr "Bu aralıkları göz ardı etmek: {0}"
 
 #. We should never get to this point since the all non-string negations should get automatically rewritten
 #. by the query expander.
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Don't know how to negate: {0}"
-msgstr ""
+msgstr "UYARI: Nasıl reddedileceğini bilmiyorum: {0}"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."
-msgstr ""
+msgstr "Druid ile sıralama yalnızca bir veya daha fazla ayırma sütununa sahip sorgularda kullanılabilir. Görmezden gelme: order-by cümlesi."
 
 #. TODO - this is not really true, is it
 #: src/metabase/driver/druid/query_processor.clj
@@ -11216,7 +11216,7 @@ msgstr ""
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr ""
+msgstr "{0} Raporlama Programı Davetini Kabul Etti"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
