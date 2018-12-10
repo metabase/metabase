@@ -5175,7 +5175,7 @@ msgstr "{0} {1} gösteriliyor"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:281
 msgid "Doing science"
-msgstr "Bilim yapmak"
+msgstr "Veriler Getiriliyor."
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:294
 msgid "If you give me some data I can show you something cool. Run a Query!"
