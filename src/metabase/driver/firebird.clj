@@ -146,33 +146,29 @@
   (hx/cast :TIMESTAMP (format-timestamp expr format-str wanted-unit)))
 
 (defn date [unit expr]
-  ;; First, cast the expression to a timestamp/date
-  (if (or (instance? clojure.lang.Keyword expr) (instance? honeysql.types.SqlCall expr))
-    (do (def expr-timestamp (hx/cast :TIMESTAMP expr))
-        (def expr-date (hx/cast :DATE expr)))
-    (do (def expr-timestamp (hx/cast :TIMESTAMP (hx/literal (str expr))))
-        (def expr-date (hx/cast :DATE (hx/literal (str expr))))))
   (case unit
-    :second           (date-trunc expr-timestamp "YYYY-MM-DD hh:mm:ss" 0)
-    :minute           (date-trunc expr-timestamp "YYYY-MM-DD hh:mm:00" 1)
-    :minute-of-hour   (hsql/call :extract :MINUTE expr-timestamp)
-    :hour             (date-trunc expr-timestamp "YYYY-MM-DD hh:00:00" 2)
-    :hour-of-day      (hsql/call :extract :HOUR   expr-timestamp)
-    :day              (date-trunc expr-timestamp "YYYY-MM-DD" 3)
+    ;; Cast to TIMESTAMP if we need minutes or hours, since expr might be a DATE
+    :minute           (date-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:mm:00" 1)
+    :minute-of-hour   (hsql/call :extract :MINUTE (hx/cast :TIMESTAMP expr))
+    :hour             (date-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:00:00" 2)
+    :hour-of-day      (hsql/call :extract :HOUR (hx/cast :TIMESTAMP expr))
+    :day              (date-trunc expr "YYYY-MM-DD" 3)
     ;; Firebird DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and
     ;; Mongo (1-7)
-    :day-of-week      (hx/+ (hsql/call :extract :WEEKDAY expr-timestamp) 1)
-    :day-of-month     (hsql/call :extract :DAY expr-timestamp)
+    :day-of-week      (hx/+ (hsql/call :extract :WEEKDAY expr) 1)
+    :day-of-month     (hsql/call :extract :DAY expr)
     ;; Firebird YEARDAY starts from 0; increment this
-    :day-of-year      (hx/+ (hsql/call :extract :YEARDAY expr-timestamp) 1)
+    :day-of-year      (hx/+ (hsql/call :extract :YEARDAY expr) 1)
+    ;; CAST to DATE because we want to group by day
     ;; Use hsql/raw for DAY in dateadd because the keyword :WEEK gets surrounded with quotations
-    :week             (hsql/call :dateadd (hsql/raw "DAY") (hx/- 0 (hsql/call :extract :WEEKDAY expr-date)) expr-date)
-    :week-of-year     (hsql/call :extract :WEEK expr-timestamp)
-    :month            (date-trunc expr-timestamp "YYYY-MM-01" 4)
-    :month-of-year    (hsql/call :extract :MONTH expr-timestamp)
-    :quarter          (hsql/call :dateadd (hsql/raw "MONTH") (hx/* (hx// (hx/- (hsql/call :extract :MONTH expr-timestamp) 1) 3) 3) (date-trunc expr-timestamp "YYYY-01-01" 5))
-    :quarter-of-year  (hx/+ (hx// (hx/- (hsql/call :extract :MONTH expr-timestamp) 1) 3) 1)
-    :year             (date-trunc expr-timestamp "YYYY-01-01" 5)
+    :week             (hx/cast :DATE (hsql/call :dateadd (hsql/raw "DAY") (hx/- 0 (hsql/call :extract :WEEKDAY expr)) (hx/cast :DATE expr)))
+    :week-of-year     (hsql/call :extract :WEEK expr)
+    :month            (date-trunc expr "YYYY-MM-01" 4)
+    :month-of-year    (hsql/call :extract :MONTH expr)
+    ;;  Use hsql/raw for MONTH in dateadd because the keyword :MONTH gets surrounded with quotations
+    :quarter          (hsql/call :dateadd (hsql/raw "MONTH") (hx/* (hx// (hx/- (hsql/call :extract :MONTH expr) 1) 3) 3) (date-trunc expr "YYYY-01-01" 5))
+    :quarter-of-year  (hx/+ (hx// (hx/- (hsql/call :extract :MONTH expr) 1) 3) 1)
+    :year             (date-trunc expr "YYYY-01-01" 5)
     :default          expr))
 
 ;; Defaults
