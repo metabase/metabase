@@ -46,11 +46,11 @@ th {
   border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
-.Table td img {
+img {
   transition: transform .2s;
 }
 
-.Table td img:hover {
+img:hover {
   transform: scale(4);
 }
 
