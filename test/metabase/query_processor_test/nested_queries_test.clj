@@ -23,6 +23,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
+             [generic-sql :as sql.test]
              [datasets :as datasets]
              [users :refer [create-users-if-needed! user->client]]]
             [toucan.db :as db]
@@ -63,26 +64,6 @@
                     :limit        5
                     :order-by     [[:asc (data/id :venues :id)]]}})))) ; this ordering is needed for teradata and shouldn't affect others
 
-;; TODO - `identifier`, `quoted-identifier` might belong in some sort of shared util namespace
-(defn- identifier
-  "Return a properly formatted *UNQUOTED* identifier for a Table or Field.
-  (This handles DBs like H2 who require uppercase identifiers, or databases like Redshift do clever hacks
-   like prefixing table names with a unique schema for each test run because we're not
-   allowed to create new databases.)"
-  (^String [table-kw]
-   (let [{schema :schema, table-name :name} (db/select-one [Table :name :schema] :id (data/id table-kw))]
-     (name (hsql/qualify schema table-name))))
-  (^String [table-kw field-kw]
-   (db/select-one-field :name Field :id (data/id table-kw field-kw))))
-
-(defn- quote-identifier [identifier]
-  (first (hsql/format (keyword identifier)
-           :quoting (generic-sql/quote-style datasets/*driver*))))
-
-(def ^:private ^{:arglists '([table-kw] [table-kw field-kw])} ^String quoted-identifier
-  "Return a *QUOTED* identifier for a Table or Field. (This behaves just like `identifier`, but quotes the result)."
-  (comp quote-identifier identifier))
-
 ;; make sure we can do a basic query with a SQL source-query
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
@@ -90,10 +71,11 @@
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
           [4 -118.465 29 2 "Wurstküche"                   33.9997]
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-   :cols [{:name "id",          :base_type (data/expected-base-type->actual :type/Integer)}
+   ;; Oracle doesn't have Integer types, they always come back as DECIMAL
+   :cols [{:name "id",          :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
           {:name "longitude",   :base_type :type/Float}
-          {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}
+          {:name "category_id", :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
+          {:name "price",       :base_type (case datasets/*engine* :oracle :type/Decimal :type/Integer)}
           {:name "name",        :base_type :type/Text}
           {:name "latitude",    :base_type :type/Float}]}
   (format-rows-by [int (partial u/round-to-decimals 4) int int str (partial u/round-to-decimals 4)]
@@ -101,14 +83,15 @@
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:native (format "SELECT %s, %s, %s, %s, %s, %s FROM %s"
-                                                   (quoted-identifier :venues :id)
-                                                   (quoted-identifier :venues :longitude)
-                                                   (quoted-identifier :venues :category_id)
-                                                   (quoted-identifier :venues :price)
-                                                   (quoted-identifier :venues :name)
-                                                   (quoted-identifier :venues :latitude)
-                                                   (quoted-identifier :venues))}
+         :query    {:source-query {:native (:query
+                                            (qp/query->native
+                                              (data/mbql-query venues
+                                                {:fields [[:field-id $id]
+                                                          [:field-id $longitude]
+                                                          [:field-id $category_id]
+                                                          [:field-id $price]
+                                                          [:field-id $name]
+                                                          [:field-id $latitude]]})))}
                     :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
                     :limit        5}}))))
 
@@ -148,6 +131,7 @@
                     :aggregation  [:count]
                     :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
                     :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
+
 
 ;; Test two breakout columns from the nested query, both following an FK
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
@@ -198,13 +182,13 @@
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
-  breakout-results
+   breakout-results
   (rows+cols
     (format-rows-by [int int]
       (qp/process-query
         {:database (data/id)
          :type     :query
-         :query    {:source-query {:native (format "SELECT * FROM %s" (quoted-identifier :venues))}
+         :query    {:source-query {:native (:query (qp/query->native (data/mbql-query venues)))}
                     :aggregation  [:count]
                     :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
 
@@ -504,6 +488,9 @@
         (qp/process-query (query-with-source-card card)))
       results-metadata))
 
+(defn- identifier [table-kw field-kw]
+  (db/select-one-field :name Field :id (data/id table-kw field-kw)))
+
 ;; make sure using a time interval filter works
 (datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
   :completed
@@ -661,3 +648,58 @@
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
         (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+
+;; make sure that if we refer to a Field that is actually inside the source query, the QP is smart enough to figure
+;; out what you were referring to and behave appropriately
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries)
+  [[10]]
+  (format-rows-by [int]
+    (rows
+      (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-query {:source-table (data/id :venues)
+                                   :fields       [(data/id :venues :id)
+                                                  (data/id :venues :name)
+                                                  (data/id :venues :category_id)
+                                                  (data/id :venues :latitude)
+                                                  (data/id :venues :longitude)
+                                                  (data/id :venues :price)]}
+                    :aggregation  [[:count]]
+                    :filter       [:= [:field-id (data/id :venues :category_id)] 50]}}))))
+
+;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  [[31 "Bludso's BBQ"         5 33.8894 -118.207 2]
+   [32 "Boneyard Bistro"      5 34.1477 -118.428 3]
+   [33 "My Brother's Bar-B-Q" 5 34.167  -118.595 2]
+   [35 "Smoke City Market"    5 34.1661 -118.448 1]
+   [37 "bigmista's barbecue"  5 34.118  -118.26  2]
+   [38 "Zeke's Smokehouse"    5 34.2053 -118.226 2]
+   [39 "Baby Blues BBQ"       5 34.0003 -118.465 2]]
+  (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+    (rows
+      (qp/process-query
+        (data/$ids [venues {:wrap-field-ids? true}]
+          {:type     :query
+           :database (data/id)
+           :query    {:source-query {:source-table $$table
+                                     :filter       [:= $venues.category_id->categories.name "BBQ"]
+                                     :order-by     [[:asc $id]]}}})))))
+
+;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
+(datasets/expect-with-engines (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+  [[395]
+   [980]]
+  (format-rows-by [int]
+    (rows
+      (qp/process-query
+        (data/$ids checkins
+          {:type     :query
+           :database (data/id)
+           :query    {:source-query {:source-table $$table
+                                     :order-by     [[:asc [:field-id $id]]]}
+                      :fields       [[:field-id $id]]
+                      :filter       [:=
+                                     [:field-literal (db/select-one-field :name Field :id $date) "type/DateTime"]
+                                     "2014-03-30"]}})))))

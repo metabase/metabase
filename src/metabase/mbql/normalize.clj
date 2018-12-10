@@ -1,7 +1,7 @@
 (ns metabase.mbql.normalize
   "Logic for taking any sort of weird MBQL query and normalizing it into a standardized, canonical form. You can think
   of this like taking any 'valid' MBQL query and rewriting it as-if it was written in perfect up-to-date MBQL in the
-  latest version. There are two main things done here, done as three separate steps:
+  latest version. There are four main things done here, done as four separate steps:
 
   #### NORMALIZING TOKENS
 
@@ -13,6 +13,16 @@
   Rewriting deprecated MBQL 95/98 syntax and other things that are still supported for backwards-compatibility in
   canonical MBQL 2000 syntax. For example `{:breakout [:count 10]}` becomes `{:breakout [[:count [:field-id 10]]]}`.
 
+  #### WHOLE-QUERY TRANSFORMATIONS
+
+  Transformations and cleanup of the query structure as a whole to fix inconsistencies. Whereas the canonicalization
+  phase operates on a lower-level, transforming invidual clauses, this phase focuses on transformations that affect
+  multiple clauses, such as removing duplicate references to Fields if they are specified in both the `:breakout` and
+  `:fields` clauses.
+
+  This is not the only place that does such transformations; several pieces of QP middleware perform similar
+  individual transformations, such as `reconcile-breakout-and-order-by-bucketing`.
+
   #### REMOVING EMPTY CLAUSES
 
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
@@ -21,7 +31,9 @@
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [predicates :as mbql.pred]
+             [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
@@ -188,12 +200,13 @@
               (let [tag-def (-> (normalize-tokens tag-def :ignore-path)
                                 (update :type mbql.u/normalize-token))]
                 (cond-> tag-def
-                  (:widget-type tag-def) (update :widget-type #(when % (mbql.u/normalize-token %)))))])))
+                  (:widget-type tag-def) (update :widget-type mbql.u/normalize-token)))])))
 
-(defn- normalize-query-parameter [param]
-  (-> param
-      (update :type mbql.u/normalize-token)
-      (update :target #(normalize-tokens % :ignore-path))))
+(defn- normalize-query-parameter [{:keys [type target], :as param}]
+  (cond-> param
+    ;; some things that get ran thru here, like dashcard param targets, do not have :type
+    type   (update :type mbql.u/normalize-token)
+    target (update :target #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [{native? :native, :as source-query}]
   (normalize-tokens source-query [(if native? :native :query)]))
@@ -202,7 +215,7 @@
   (-> metadata
       (update :base_type    keyword)
       (update :special_type keyword)
-      (update :fingerprint  walk/keywordize-keys )))
+      (update :fingerprint  walk/keywordize-keys)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
@@ -490,6 +503,42 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- remove-breakout-fields-from-fields
+  "Remove any Fields specified in both `:breakout` and `:fields` from `:fields`; it is implied that any breakout Field
+  will be returned, specifying it in both would imply it is to be returned twice, which tends to cause confusion for
+  the QP and drivers. (This is done to work around historic bugs with the way queries were generated on the frontend;
+  I'm not sure this behavior makes sense, but removing it would break existing queries.)
+
+  We will remove either exact matches:
+
+    {:breakout [[:field-id 10]], :fields [[:field-id 10]]} ; -> {:breakout [[:field-id 10]]}
+
+  or unbucketed matches:
+
+    {:breakout [[:datetime-field [:field-id 10] :month]], :fields [[:field-id 10]]}
+    ;; -> {:breakout [[:field-id 10]]}"
+  [{{:keys [breakout fields]} :query, :as query}]
+  (if-not (and (seq breakout) (seq fields))
+    query
+    ;; get a set of all Field clauses (of any type) in the breakout. For `datetime-field` clauses, we'll include both
+    ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
+    (let [breakout-fields (set (reduce concat (mbql.u/match breakout
+                                                [:datetime-field field-clause _] [&match field-clause]
+                                                mbql.pred/Field?                 [&match])))]
+      ;; now remove all the Fields in `:fields` that match the ones in the set
+      (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
+
+(defn- perform-whole-query-transformations
+  "Perform transformations that operate on the query as a whole, making sure the structure as a whole is logical and
+  consistent."
+  [query]
+  (-> query
+      remove-breakout-fields-from-fields))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -543,6 +592,7 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   (comp remove-empty-clauses
+        perform-whole-query-transformations
         canonicalize
         normalize-tokens))
 

@@ -1,5 +1,5 @@
 (ns metabase.public-settings
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [metabase
              [config :as config]
              [types :as types]]
@@ -47,8 +47,8 @@
   (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
-                                             (cond->> (s/replace new-value #"/$" "")
-                                               (not (s/starts-with? new-value "http")) (str "http://"))))))
+                                             (cond->> (str/replace new-value #"/$" "")
+                                               (not (str/starts-with? new-value "http")) (str "http://"))))))
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
@@ -92,13 +92,27 @@
   :type    :boolean
   :default false)
 
+(def ^:private ^:const global-max-caching-kb
+  "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
+  MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
+  memory and will not truly be streaming. This is a global max in order to prevent our users from setting the caching
+  value so high it becomes a performance issue. The value below represents 200MB"
+  (* 200 1024))
+
 (defsetting query-caching-max-kb
   (tru "The maximum size of the cache, per saved question, in kilobytes:")
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
   :type    :integer
-  :default 1000)
+  :default 1000
+  :setter  (fn [new-value]
+             (when (> new-value global-max-caching-kb)
+               (throw (IllegalArgumentException.
+                       (str
+                        (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
+                        (tru "Values greater than {1} are not allowed." global-max-caching-kb)))))
+             (setting/set-integer! :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
   (tru "The absolute maximum time to keep any cached query results, in seconds.")

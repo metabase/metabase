@@ -24,7 +24,7 @@ export type Column = {
   unit?: DatetimeUnit,
   binning_info?: BinningInfo,
   fk_field_id?: FieldId,
-  "expression-name"?: any,
+  expression_name?: any,
   settings?: ColumnSettings,
 };
 
@@ -35,6 +35,7 @@ export type DatasetData = {
   cols: Column[],
   columns: ColumnName[],
   rows: Row[],
+  rows_truncated?: number,
 };
 
 export type Dataset = {

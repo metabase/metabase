@@ -5,6 +5,7 @@
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -20,7 +21,6 @@
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
              [interface :as i]]
-            [metabase.test.util.log :as tu.log]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -94,7 +94,9 @@
 
 (defn- $->id
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
-  to `id`, optionally wrapping them in `:field-id` or `:fk->` clauses."
+  to `id`.
+
+  Optionally wraps IDs in `:field-id` or `:fk->` clauses as appropriate; this defaults to true."
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? true}}]
   (walk/postwalk
    (fn [form]
@@ -118,10 +120,20 @@
 
   Use `$$table` to refer to the table itself.
 
-    $$table -> (id :venues)"
-  {:style/indent 1}
-  [table-name & body]
-  ($->id (keyword table-name) `(do ~@body) :wrap-field-ids? false))
+    $$table -> (id :venues)
+
+  You can pass options by wrapping `table-name` in a vector:
+
+    ($ids [venues {:wrap-field-ids? true}]
+      $category_id->categories.name)
+    ;; -> [:fk-> [:field-id (id :venues :category_id(] [:field-id (id :categories :name)]]"
+  {:arglists '([table & body] [[table {:keys [wrap-field-ids?]}] & body]), :style/indent 1}
+  [table-and-options & body]
+  (let [[table-name options] (if (sequential? table-and-options)
+                               table-and-options
+                               [table-and-options])]
+    (m/mapply $->id (keyword table-name) `(do ~@body) (merge {:wrap-field-ids? false}
+                                                             options))))
 
 
 (defn wrap-inner-mbql-query
@@ -134,8 +146,8 @@
    :query    query})
 
 (defmacro mbql-query
-  "Build a query, expands symbols like `$field` into calls to `id`. See the dox for `$->id` for more information on how
-  `$`-prefixed expansion behaves.
+  "Build a query, expands symbols like `$field` into calls to `id` and wraps them in `:field-id`. See the dox for
+  `$->id` for more information on how `$`-prefixed expansion behaves.
 
     (mbql-query venues
       {:filter [:= $id 1]})
@@ -167,9 +179,11 @@
 
 (defn- get-table-id-or-explode [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
-  (let [table-name (format-name table-name)]
-    (or (db/select-one-id Table, :db_id db-id, :name table-name)
-        (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
+  (let [table-name        (format-name table-name)
+        table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
+    (or (table-id-for-name table-name)
+        (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
+                             (i/db-qualified-table-name db-name table-name)))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
@@ -219,7 +233,6 @@
   []
   (contains? (driver/features *driver*) :binning))
 
-(defn default-schema [] (i/default-schema *driver*))
 (defn id-field-type  [] (i/id-field-type *driver*))
 
 (defn expected-base-type->actual
@@ -286,16 +299,15 @@
          get-or-create! (fn []
                           (or (i/metabase-instance database-definition engine)
                               (create-database! database-definition engine driver)))]
+     ;; attempt to make sure test extensions are loaded for the driver. This might still fail (see below)
+     (require (symbol (str "metabase.test.data." (name engine))))
      (try
-       ;; it's ok to ignore output here because it's usually the IllegalArgException, and if it fails again we don't
-       ;; suppress it
-       (tu.log/suppress-output
-         (get-or-create!))
+       (get-or-create!)
        ;; occasionally we'll see an error like
        ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
        ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
        ;; to fix this we just need to reload a couple namespaces and then try again
-       (catch IllegalArgumentException _
+       (catch Exception _
          (reload-test-extensions engine)
          (get-or-create!))))))
 
@@ -349,7 +361,7 @@
        ...)"
   {:style/indent 1}
   [dataset & body]
-  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+  `(with-temp-db [~'_ (resolve-dbdef '~dataset)]
      ~@body))
 
 (defn- delete-model-instance!
@@ -371,7 +383,7 @@
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
-(def venue-categories
+(def ^:private venue-categories
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 (defn create-venue-category-remapping

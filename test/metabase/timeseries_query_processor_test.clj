@@ -1,6 +1,6 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
-   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
+  There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require [metabase
              [query-processor-test :refer [first-row format-rows-by rows]]
              [util :as u]]
@@ -889,3 +889,11 @@
   (rows (data/run-mbql-query checkins
           {:aggregation [[:max $venue_latitude]]
            :breakout    [$venue_price]})))
+
+;; Do we properly handle queries that have more than one of the same aggregation? (#4166)
+(expect-with-timeseries-dbs
+  [[35643 1992]]
+  (format-rows-by [int int]
+    (rows
+      (data/run-mbql-query checkins
+        {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]}))))

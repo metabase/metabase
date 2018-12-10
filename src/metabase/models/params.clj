@@ -5,6 +5,10 @@
              [db :as mdb]
              [util :as u]]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util
+             [i18n :as ui18n :refer [trs]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -13,23 +17,15 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn field-form->id
+(s/defn field-form->id :- su/IntGreaterThanZero
   "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references. Also handles unwrapped integers.
 
-     (field-form->id [:field-id 100])  ; -> 100"
+      (field-form->id [:field-id 100])  ; -> 100"
   [field-form]
-  (cond
-    (mbql.u/is-clause? :field-id field-form)
-    (second field-form)
-
-    (mbql.u/is-clause? :fk-> field-form)
-    (last field-form)
-
-    (integer? field-form)
+  (if (integer? field-form)
     field-form
-
-    :else
-    (throw (IllegalArgumentException. (str "Don't know what to do with: " field-form)))))
+    ;; TODO - what are we supposed to do if `field-form` is a field literal?
+    (mbql.u/field-clause->id-or-literal field-form)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -42,7 +38,7 @@
     [:field-id field-id-or-form]
 
     :else
-    (throw (IllegalArgumentException. (str "Don't know how to wrap:" field-id-or-form)))))
+    (throw (IllegalArgumentException. (str (trs "Don't know how to wrap:") " " field-id-or-form)))))
 
 (defn- field-ids->param-field-values
   "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.

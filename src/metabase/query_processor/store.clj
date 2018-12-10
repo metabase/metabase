@@ -13,6 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.util.i18n :refer [tru]]
@@ -69,7 +70,21 @@
   [& body]
   `(do-with-pushed-store (fn [] ~@body)))
 
-;; TODO - DATABASE ??
+(def database-columns-to-fetch
+  "Columns you should fetch for the Database referenced by the query before stashing in the store."
+  [:id
+   :engine
+   :name
+   :details])
+
+(def ^:private DatabaseInstanceWithRequiredStoreKeys
+  (s/both
+   (class Database)
+   {:id      su/IntGreaterThanZero
+    :engine  s/Keyword
+    :name    su/NonBlankString
+    :details su/Map
+    s/Any    s/Any}))
 
 (def table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."
@@ -118,14 +133,20 @@
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------
 
+(s/defn store-database!
+  "Store the Database referenced by this query for the duration of the current query execution. Throws an Exception if
+  database is invalid or doesn't have all the required keys."
+  [database :- DatabaseInstanceWithRequiredStoreKeys]
+  (swap! *store* assoc :database database))
+
 (s/defn store-table!
-  "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if Table is
+  "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
   invalid or doesn't have all required keys."
   [table :- TableInstanceWithRequiredStoreKeys]
   (swap! *store* assoc-in [:tables (u/get-id table)] table))
 
 (s/defn store-field!
-  "Store a `field` in the QP Store for the duration of the current query execution. Throws an Exception if Field is
+  "Store a `field` in the QP Store for the duration of the current query execution. Throws an Exception if field is
   invalid or doesn't have all required keys."
   [field :- FieldInstanceWithRequiredStorekeys]
   (swap! *store* assoc-in [:fields (u/get-id field)] field))
@@ -137,6 +158,13 @@
 
 
 ;;; ---------------------------------------- Fetching objects from the Store -----------------------------------------
+
+(s/defn database :- DatabaseInstanceWithRequiredStoreKeys
+  "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
+  returned."
+  []
+  (or (:database @*store*)
+      (throw (Exception. (str (tru "Error: Database is not present in the Query Processor Store."))))))
 
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."

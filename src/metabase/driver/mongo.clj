@@ -8,16 +8,16 @@
             [metabase.driver.mongo
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
-            [metabase.models.database :refer [Database]]
-            [metabase.util.ssh :as ssh]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util
+             [i18n :refer [tru]]
+             [ssh :as ssh]]
             [monger
              [collection :as mc]
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver
@@ -51,7 +51,7 @@
 
 (defn- process-query-in-context [qp]
   (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (db/select-one [Database :details], :id database-id)]
+    (with-mongo-connection [_ (qp.store/database)]
       (qp query))))
 
 

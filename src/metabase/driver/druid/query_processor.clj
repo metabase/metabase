@@ -10,7 +10,6 @@
             [clojure.tools.logging :as log]
             [metabase.driver.druid.js :as js]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -18,8 +17,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]]
-            [toucan.db :as db])
+             [i18n :as ui18n :refer [tru]]])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
@@ -372,20 +370,21 @@
         (update :query #(merge-with concat % {:postAggregations [post-agg]})))))
 
 (defn- handle-aggregations [query-type {aggregations :aggregation} query-context]
-  (loop [[ag & more] aggregations, query query-context]
-    (cond
-      (and (mbql.u/is-clause? :named ag)
-           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
-      (handle-expression-aggregation query-type ag query)
+  (let [aggregations (mbql.u/pre-alias-and-uniquify-aggregations annotate/aggregation-name aggregations)]
+    (loop [[ag & more] aggregations, query query-context]
+      (cond
+        (and (mbql.u/is-clause? :named ag)
+             (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
+        (handle-expression-aggregation query-type ag query)
 
-      (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-      (handle-expression-aggregation query-type ag query)
+        (mbql.u/is-clause? #{:+ :- :/ :*} ag)
+        (handle-expression-aggregation query-type ag query)
 
-      (not ag)
-      query
+        (not ag)
+        query
 
-      :else
-      (recur more (handle-aggregation query-type ag query)))))
+        :else
+        (recur more (handle-aggregation query-type ag query))))))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
@@ -838,7 +837,7 @@
   (when limit
     (log/warn
      (u/format-color 'red
-         (tru "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause."))))
+         (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
   query-context)
 
 (defmethod handle-limit ::topN [_ {limit :limit} query-context]
@@ -1034,7 +1033,7 @@
     middleware                                   :middleware
     :as                                          query-context}]
   {:pre [query]}
-  (let [details       (db/select-one-field :details Database :id (u/get-id database-id))
+  (let [details       (:details (qp.store/database))
         query         (if (string? query)
                         (json/parse-string query keyword)
                         query)

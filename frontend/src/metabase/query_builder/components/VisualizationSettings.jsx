@@ -37,21 +37,15 @@ export default class VisualizationSettings extends React.Component {
     ]);
 
     let triggerElement = (
-      <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
+      <div className="p1 text-bold cursor-pointer text-default flex align-center">
         <Icon className="mr1" name={CardVisualization.iconName} size={12} />
         {CardVisualization.uiName}
         <Icon className="ml1" name="chevrondown" size={8} />
-      </span>
+      </div>
     );
 
     return (
       <div className="relative">
-        <span
-          className="GuiBuilder-section-label pl0 Query-label"
-          style={{ marginLeft: 4 }}
-        >
-          {t`Visualization`}
-        </span>
         <PopoverWithTrigger
           id="VisualizationPopover"
           ref="displayPopover"
@@ -90,8 +84,8 @@ export default class VisualizationSettings extends React.Component {
     );
   }
 
-  open = () => {
-    this.props.showChartSettings({});
+  open = initial => {
+    this.props.showChartSettings(initial || {});
   };
 
   close = () => {
@@ -102,15 +96,18 @@ export default class VisualizationSettings extends React.Component {
     if (this.props.result && this.props.result.error === undefined) {
       const { chartSettings } = this.props.uiControls;
       return (
-        <div className="VisualizationSettings flex align-center">
-          {this.renderChartTypePicker()}
-          <span
-            className="text-brand-hover"
-            data-metabase-event="Query Builder;Chart Settings"
-            onClick={this.open}
-          >
-            <Icon name="gear" />
-          </span>
+        <div className="VisualizationSettings">
+          <div className="pl0 Query-label">{t`Visualization`}</div>
+          <div className="flex align-center">
+            {this.renderChartTypePicker()}
+            <span
+              className="text-brand-hover cursor-pointer"
+              data-metabase-event="Query Builder;Chart Settings"
+              onClick={this.open}
+            >
+              <Icon name="gear" />
+            </span>
+          </div>
           <Modal wide tall isOpen={chartSettings} onClose={this.close}>
             <ChartSettings
               question={this.props.question}
@@ -123,7 +120,7 @@ export default class VisualizationSettings extends React.Component {
               ]}
               onChange={this.props.onReplaceAllVisualizationSettings}
               onClose={this.close}
-              initialWidget={chartSettings && chartSettings.widget}
+              initial={chartSettings}
             />
           </Modal>
         </div>

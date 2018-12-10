@@ -38,7 +38,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru] :as ui18n]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -417,9 +417,9 @@
                  (fn [[_ identifier attribute]]
                    (let [entity    (bindings identifier)
                          attribute (some-> attribute qp.util/normalize-token)]
-                     (or (and (ifn? entity) (entity attribute))
-                         (root attribute)
-                         (->reference template-type entity)))))))
+                     (str (or (and (ifn? entity) (entity attribute))
+                              (root attribute)
+                              (->reference template-type entity))))))))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -564,7 +564,8 @@
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
   [s]
-  (str (str/upper-case (subs s 0 1)) (subs s 1)))
+  (let [s (str s)]
+    (str (str/upper-case (subs s 0 1)) (subs s 1))))
 
 (defn- instantiate-metadata
   [x context bindings]
@@ -982,15 +983,15 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
-      (log/infof (trs "Dimensions bindings:\n%s")
-                 (->> context
-                      :dimensions
-                      (m/map-vals #(update % :matches (partial map :name)))
-                      u/pprint-to-str))
-      (log/infof (trs "Using definitions:\nMetrics:\n%s\nFilters:\n%s")
-                 (-> context :metrics u/pprint-to-str)
-                 (-> context :filters u/pprint-to-str))
+      (log/infof (str (trs "Applying heuristic {0} to {1}." (:rule rule) full-name)))
+      (log/infof (str (trs "Dimensions bindings:\n{0}"
+                           (->> context
+                                :dimensions
+                                (m/map-vals #(update % :matches (partial map :name)))
+                                u/pprint-to-str))))
+      (log/infof (str (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                           (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                           (-> context :filters u/pprint-to-str))))
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)
@@ -999,7 +1000,7 @@
                                       (format "%s#show=all" (:url root)))
                  :transient_filters (:query-filter context)
                  :param_fields      (->> context :query-filter (filter-referenced-fields root)))))
-    (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
+    (throw (ui18n/ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -1105,14 +1106,14 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  "minute"
-                                :hour-of-day     "hour"
-                                :day-of-week     "day of week"
-                                :day-of-month    "day of month"
-                                :day-of-year     "day of year"
-                                :week-of-year    "week"
-                                :month-of-year   "month"
-                                :quarter-of-year "quarter"}
+(def ^:private unit-name (comp {:minute-of-hour  (tru "minute")
+                                :hour-of-day     (tru "hour")
+                                :day-of-week     (tru "day of week")
+                                :day-of-month    (tru "day of month")
+                                :day-of-year     (tru "day of year")
+                                :week-of-year    (tru "week")
+                                :month-of-year   (tru "month")
+                                :quarter-of-year (tru "quarter")}
                                qp.util/normalize-token))
 
 (defn- field-name
@@ -1120,7 +1121,7 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (and (filters/periodic-datetime? field) unit) (format "%s of %s" (unit-name unit)))))
+     (and (filters/periodic-datetime? field) unit) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]

@@ -4,7 +4,6 @@
 
 Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Metabase has a feature called sandboxing that lets you do just that.
 
-
 The way it works is that you pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users so that Metabase will know how to filter things for them specifically.
 
 ### Getting user attributes
@@ -104,6 +103,9 @@ My user's attribute is defined like this, and I got here by clicking on the `…
 Now, when I log in as this user and look at the `Orders` table, I only see the columns I included in the filtering question, and the rows are filtered as I specified in my `WHERE` clause:
 
 ![Results](images/sandboxing/advanced-example-2-results.png)
+
+#### Current limitations
+Currently, a user can only have one sandbox per table. I.e., if a user belongs to two user groups, both of which have been given sandboxed access to the same table, that user will not be able to access data from that table. You will either need to remove that user from one of those groups, or remove the sandboxed access from one of those groups.
 
 ---
 

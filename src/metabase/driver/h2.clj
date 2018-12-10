@@ -7,11 +7,10 @@
              [util :as u]]
             [metabase.db.spec :as dbspec]
             [metabase.driver.generic-sql :as sql]
-            [metabase.models.database :refer [Database]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
-            [toucan.db :as db]))
+             [i18n :refer [tru]]]))
 
 (def ^:private ^:const column->base-type
   {:ARRAY                       :type/*
@@ -129,7 +128,7 @@
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (db/select-one-field :details Database :id database-id)
+      (let [{:keys [db]}   (:details (qp.store/database))
             _              (assert db)
             [_ options]    (connection-string->file+options db)
             {:strs [USER]} options]

@@ -8,6 +8,7 @@
             [metabase.test.data :as data :refer :all]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util.log :as tu.log]
+            [metabase.util.date :as du]
             [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
@@ -16,12 +17,14 @@
 (def ^:private users-name-field (delay (Field (id :users :name))))
 
 (def ^:private generic-sql-engines
-  (delay (set (for [engine datasets/all-valid-engines
-                    :let   [driver (driver/engine->driver engine)]
-                    :when  (not (contains? #{:bigquery :presto :sparksql} engine))       ; bigquery, presto and sparksql don't use the generic sql implementations of things like `field-avg-length`
-                    :when  (extends? ISQLDriver (class driver))]
-                (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
-                    engine)))))
+  (delay
+   (du/profile "resolve metabase.driver.generic-sql-test/generic-sql-engines"
+     (set (for [engine datasets/all-valid-engines
+                :let   [driver (driver/engine->driver engine)]
+                :when  (not (contains? #{:bigquery :presto :sparksql} engine)) ; bigquery, presto and sparksql don't use the generic sql implementations of things like `field-avg-length`
+                :when  (extends? ISQLDriver (class driver))]
+            (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
+                engine))))))
 
 
 ;; DESCRIBE-DATABASE
@@ -84,9 +87,9 @@
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
    {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
    {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (#'sql/table-rows-seq datasets/*driver*
-                                   (db/select-one 'Database :id (id))
-                                   (db/select-one 'Table :id (id :venues)))))]
+  (for [row (take 5 (sort-by :id (driver/table-rows-seq datasets/*driver*
+                                                        (db/select-one 'Database :id (id))
+                                                        (db/select-one 'Table :id (id :venues)))))]
     ;; different DBs use different precisions for these
     (-> (dissoc row :latitude :longitude)
         (update :price int)

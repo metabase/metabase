@@ -1,8 +1,3 @@
-.Dashboard {
-  background-color: var(--color-bg-light);
-  min-height: 100vh;
-}
-
 .DashboardHeader {
   background-color: white;
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
@@ -378,17 +373,20 @@
 
 .Dashboard .SmartWrapper {
   position: relative;
-  margin-top: 20px;
   font-size: inherit;
+}
+
+.AutomaticDashboard.AutomaticDashboard--withSidebar #SmartScalar-PreviousValue {
+  display: none !important;
 }
 
 @media screen and (min-width: 1280px) {
   .ScalarValue {
     font-size: 2.2rem;
   }
-  .Dashboard .SmartWrapper {
-    position: absolute;
-    bottom: 10px;
+  .AutomaticDashboard.AutomaticDashboard--withSidebar
+    #SmartScalar-PreviousValue {
+    display: none;
   }
 }
 
@@ -396,7 +394,8 @@
   .ScalarValue {
     font-size: 2.8rem;
   }
-  .Dashboard .SmartWrapper {
-    bottom: 20px;
+  .AutomaticDashboard.AutomaticDashboard--withSidebar
+    #SmartScalar-PreviousValue {
+    display: inherit;
   }
 }

@@ -189,6 +189,10 @@
   [_ bool]
   (if bool 1 0))
 
+(defmethod sqlqp/->honeysql [TeradataDriver :stddev]
+  [driver [_ field]]
+  (hsql/call :stddev_samp (sqlqp/->honeysql driver field)))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
   ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
@@ -224,7 +228,7 @@
         [columns & rows] (jdbc/query connection statement {:identifiers    identity, :as-arrays? true
                                                            :read-columns   (#'metabase.driver.generic-sql.query-processor/read-columns-with-date-handling timezone)})]
     {:rows    (or rows [])
-     :columns columns}))
+     :columns (map u/keyword->qualified-name columns)}))
 
 (defn- run-query-without-timezone [driver settings connection query]
   (#'metabase.driver.generic-sql.query-processor/do-in-transaction connection (partial run-query query nil)))

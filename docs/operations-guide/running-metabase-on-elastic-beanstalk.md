@@ -68,7 +68,7 @@ For the base configuration settings we want to make the following selections:
 
 This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
 
-If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](https://www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
 
 When your environment type settings look like the above then go ahead and click `Review and launch`.
 

@@ -117,6 +117,12 @@
 (expect false (perms/valid-object-path? "/db/1/SCHEMA/PUBLIC/"))
 (expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/TABLE/1/"))
 
+;; do we allow backslashes in permissions paths? (#8693)
+(expect
+  (perms/valid-object-path? "/db/16/schema/COMPANY-NET\\john.doe/"))
+
+;; TODO - it would be nice if we could escape forward slashes somehow too...
+
 
 ;;; -------------------------------------------------- object-path ---------------------------------------------------
 

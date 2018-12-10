@@ -18,7 +18,7 @@
 
 (defn- throw-503-unavailable
   []
-  (throw (ex-info (tru "Max concurrent query limit reached")
+  (throw (ex-info (str (tru "Max concurrent query limit reached"))
            {:type        ::concurrent-query-limit-reached
             :status-code 503})))
 

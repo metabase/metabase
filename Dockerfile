@@ -12,13 +12,11 @@ ENV LC_CTYPE en_US.UTF-8
 # bash:    various shell scripts
 # wget:    installing lein
 # git:     ./bin/version
-# nodejs:  frontend building
+# yarn:  frontend building
 # make:    backend building
 # gettext: translations
-RUN apk add --update bash nodejs nodejs-npm git wget make gettext
 
-# yarn:    frontend dependencies
-RUN npm install -g yarn
+RUN apk add --update bash yarn git wget make gettext
 
 # lein:    backend dependencies and building
 ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
@@ -55,7 +53,7 @@ RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
 # # STAGE 2: runner
 # ###################
 
-FROM java:openjdk-8-jre-alpine as runner
+FROM openjdk:8-jre-alpine as runner
 
 WORKDIR /app
 
