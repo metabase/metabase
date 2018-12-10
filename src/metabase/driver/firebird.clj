@@ -161,7 +161,7 @@
     :day-of-year      (hx/+ (hsql/call :extract :YEARDAY expr) 1)
     ;; CAST to DATE because we want to group by day
     ;; Use hsql/raw for DAY in dateadd because the keyword :WEEK gets surrounded with quotations
-    :week             (hx/cast :DATE (hsql/call :dateadd (hsql/raw "DAY") (hx/- 0 (hsql/call :extract :WEEKDAY expr)) (hx/cast :DATE expr)))
+    :week             (hsql/call :dateadd (hsql/raw "DAY") (hx/- 0 (hsql/call :extract :WEEKDAY expr)) (hx/cast :DATE expr))
     :week-of-year     (hsql/call :extract :WEEK expr)
     :month            (date-trunc expr "YYYY-MM-01" 4)
     :month-of-year    (hsql/call :extract :MONTH expr)
