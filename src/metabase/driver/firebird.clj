@@ -142,15 +142,18 @@
 
 ;; Firebird doesn't have a date_trunc function, so use a workaround: First format the timestamp to a
 ;; string of the wanted resulution, then convert it back to a timestamp
-(defn date-trunc [expr format-str wanted-unit]
+(defn timestamp-trunc [expr format-str wanted-unit]
   (hx/cast :TIMESTAMP (format-timestamp expr format-str wanted-unit)))
+
+(defn date-trunc [expr format-str wanted-unit]
+  (hx/cast :DATE (format-timestamp expr format-str wanted-unit)))
 
 (defn date [unit expr]
   (case unit
     ;; Cast to TIMESTAMP if we need minutes or hours, since expr might be a DATE
-    :minute           (date-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:mm:00" 1)
+    :minute           (timestamp-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:mm:00" 1)
     :minute-of-hour   (hsql/call :extract :MINUTE (hx/cast :TIMESTAMP expr))
-    :hour             (date-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:00:00" 2)
+    :hour             (timestamp-trunc (hx/cast :TIMESTAMP expr) "YYYY-MM-DD hh:00:00" 2)
     :hour-of-day      (hsql/call :extract :HOUR (hx/cast :TIMESTAMP expr))
     :day              (date-trunc expr "YYYY-MM-DD" 3)
     ;; Firebird DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and
