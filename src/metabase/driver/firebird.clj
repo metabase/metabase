@@ -146,9 +146,12 @@
   (hx/cast :TIMESTAMP (format-timestamp expr format-str wanted-unit)))
 
 (defn date [unit expr]
+  ;; First, cast the expression to a timestamp/date
   (if (or (instance? clojure.lang.Keyword expr) (instance? honeysql.types.SqlCall expr))
-    (def expr-timestamp (hx/cast :TIMESTAMP expr))
-    (def expr-timestamp (hx/cast :TIMESTAMP (hx/literal (str expr)))))
+    (do (def expr-timestamp (hx/cast :TIMESTAMP expr))
+        (def expr-date (hx/cast :DATE expr)))
+    (do (def expr-timestamp (hx/cast :TIMESTAMP (hx/literal (str expr))))
+        (def expr-date (hx/cast :DATE (hx/literal (str expr))))))
   (case unit
     :second           (date-trunc expr-timestamp "YYYY-MM-DD hh:mm:ss" 0)
     :minute           (date-trunc expr-timestamp "YYYY-MM-DD hh:mm:00" 1)
@@ -160,10 +163,10 @@
     ;; Mongo (1-7)
     :day-of-week      (hx/+ (hsql/call :extract :WEEKDAY expr-timestamp) 1)
     :day-of-month     (hsql/call :extract :DAY expr-timestamp)
-    :day-of-year      (hsql/call :extract :YEARDAY expr-timestamp)
-    ;; Use hsql/raw for WEEK in dateadd because the keyword :WEEK gets surrounded with quotations
-    ;; which doesn't work for dateadd
-    :week             (hsql/call :dateadd (hsql/raw "WEEK") (hx/- (hsql/call :extract :WEEK expr-timestamp) 1) (date-trunc expr-timestamp "YYYY-01-01" 5))
+    ;; Firebird YEARDAY starts from 0; increment this
+    :day-of-year      (hx/+ (hsql/call :extract :YEARDAY expr-timestamp) 1)
+    ;; Use hsql/raw for DAY in dateadd because the keyword :WEEK gets surrounded with quotations
+    :week             (hsql/call :dateadd (hsql/raw "DAY") (hx/- 0 (hsql/call :extract :WEEKDAY expr-date)) expr-date)
     :week-of-year     (hsql/call :extract :WEEK expr-timestamp)
     :month            (date-trunc expr-timestamp "YYYY-MM-01" 4)
     :month-of-year    (hsql/call :extract :MONTH expr-timestamp)
