@@ -122,11 +122,11 @@
     (add-to-classpath! path)))
 
 (defn- init-plugins! [paths]
-  (doseq [path paths]
+  (doseq [^Path path paths]
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/error e (u/format-color 'red (trs "Failied to initialize plugin")))))))
+        (log/error e (u/format-color 'red (trs "Failied to initialize plugin {0}" (.getFileName path))))))))
 
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the

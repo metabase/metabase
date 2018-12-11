@@ -61,13 +61,17 @@
 
 (defn register-lazy-loaded-driver!
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
-  [{init-steps :init, {driver-name :name, :keys [display-name parent], :as driver} :driver}]
+  [{init-steps :init, {driver-name :name, :keys [display-name parent], :as driver-info} :driver}]
+  ;; Make sure the driver has required properties like driver-name
+  (when-not (seq driver-name)
+    (throw (ex-info (str (trs "Cannot initialize plugin: missing required property `driver-name`"))
+             driver-info)))
   (let [driver (keyword driver-name)]
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver init-steps)
              driver/available?            (constantly true)
              driver/display-name          (constantly display-name)
-             driver/connection-properties (constantly (parse-connection-properties driver))}]
+             driver/connection-properties (constantly (parse-connection-properties driver-info))}]
       (.addMethod multifn driver f))
 
     (log/info (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))

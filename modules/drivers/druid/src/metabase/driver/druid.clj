@@ -6,11 +6,8 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.common :as driver.common]
             [metabase.driver.druid.query-processor :as qp]
-            [metabase.util
-             [i18n :refer [tru]]
-             [ssh :as ssh]]))
+            [metabase.util.ssh :as ssh]))
 
 (driver/register! :druid)
 
@@ -152,10 +149,3 @@
 
 (defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
 (defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)
-
-(defmethod driver/connection-properties :druid [_]
-  (ssh/with-tunnel-config
-    [(assoc driver.common/default-host-details :default "http://localhost")
-     (assoc driver.common/default-port-details
-       :display-name (tru "Broker node port")
-       :default      8082)]))

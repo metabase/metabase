@@ -234,7 +234,7 @@
         ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
         ;; whatever thread(s) we were waiting on.
         (when-not (initialized? driver)
-          (log/info (u/format-color 'cyan (trs "Initializing driver {0}..." driver)))
+          (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
           (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (swap! initialized-drivers conj driver)
           (initialize! driver))))))
