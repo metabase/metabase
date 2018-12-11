@@ -684,7 +684,7 @@
                                      :order-by     [[:asc $id]]}}})))))
 
 ;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
-(datasets/expect-with-drivers (non-timeseries-engines-with-feature :nested-queries :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [[395]
    [980]]
   (format-rows-by [int]

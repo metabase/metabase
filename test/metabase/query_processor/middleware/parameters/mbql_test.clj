@@ -278,8 +278,7 @@
                                       :name   "Venue ID"}))
 
 ;; Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)
-(datasets/expect-with-drivers (filter #(driver/supports? (driver/engine->driver %) :foreign-keys)
-                                      params-test-engines)
+(datasets/expect-with-drivers (filter #(driver/supports? % :foreign-keys) params-test-drivers)
   [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
    [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
    [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
