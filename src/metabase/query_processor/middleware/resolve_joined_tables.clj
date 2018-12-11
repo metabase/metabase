@@ -10,9 +10,7 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor
-             [interface :as qp.i]
-             [store :as qp.store]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -139,8 +137,8 @@
 
 (defn- resolve-joined-tables* [{query-type :type, :as query}]
   (if (or (= query-type :native)
-          (and qp.i/*driver*
-               (not (driver/driver-supports? qp.i/*driver* :foreign-keys))))
+          (and driver/*driver*
+               (not (driver/supports? driver/*driver* :foreign-keys))))
     query
     (resolve-joined-tables-in-query-all-levels query)))
 

@@ -4,7 +4,8 @@
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.test.util.log :as tu.log]))
 
 (def ^:private ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
@@ -62,35 +63,38 @@
 ;; Test that a bad url will return a descriptive error message
 (expect
   #"Unable to retrieve resource"
-  ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
-  (u/auto-retry 3
-    ;; bind a temporary value so it will get set back to its old value here after the API calls are done
-    ;; stomping all over it
-    (tu/with-temporary-setting-values [custom-geojson nil]
-      (let [bad-url-custom-geojson (update-in test-custom-geojson [:middle-earth :url] str "something-random")]
-        (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson}))))))
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (update-in test-custom-geojson [:middle-earth :url] str "something-random")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
 
 ;; Test that a bad host will return a connection refused error
 (expect
   #"Unable to connect"
-  ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
-  (u/auto-retry 3
-    ;; bind a temporary value so it will get set back to its old value here after the API calls are done
-    ;; stomping all over it
-    (tu/with-temporary-setting-values [custom-geojson nil]
-      (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "https://somethingrandom.metabase.com")]
-        (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson}))))))
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "https://somethingrandom.metabase.com")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
 
 ;; Test out the error message for a relative path file we can't find
 (expect
   #"Unable to find JSON via relative path"
-  ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
-  (u/auto-retry 3
-    ;; bind a temporary value so it will get set back to its old value here after the API calls are done
-    ;; stomping all over it
-    (tu/with-temporary-setting-values [custom-geojson nil]
-      (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "some/relative/path")]
-        (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson}))))))
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "some/relative/path")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
 
 
 ;;; test the endpoint that acts as a proxy for JSON files

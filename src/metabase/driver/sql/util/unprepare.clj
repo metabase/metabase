@@ -1,4 +1,4 @@
-(ns metabase.driver.generic-sql.util.unprepare
+(ns metabase.driver.sql.util.unprepare
   "Utility functions for converting a prepared statement with `?` into a plain SQL query."
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]

@@ -39,7 +39,7 @@ groups:
       comparison_title: How they compare across time
   - Geographical:
       title: The [[this]] by location
-      comparison_title: How they compare acrosss location
+      comparison_title: How they compare across location
   - Categories:
       title: How this metric is distributed across different categories
       comparison_title: How they compare across different categories

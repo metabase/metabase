@@ -10466,7 +10466,7 @@ msgstr "Gdzie pozyskaliście swoich użytkowników"
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
-msgid "How they compare acrosss location"
+msgid "How they compare across location"
 msgstr "Jak porównują różne lokalizacje"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml

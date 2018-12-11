@@ -7,12 +7,13 @@
              [db :as mdb]
              [driver :as driver]
              [sync :as sync]]
-            [metabase.driver.generic-sql :as sql]
+
             [metabase.models.database :refer [Database]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."
@@ -27,7 +28,7 @@
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
         (data/with-db db
-          (jdbc/with-db-connection [conn (sql/connection-details->spec (driver/engine->driver :h2) details)]
+          (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :h2 details)]
             (binding [*conn* conn]
               (f))))))))
 

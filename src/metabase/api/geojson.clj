@@ -72,7 +72,7 @@
       (catch NoRouteToHostException e
         (rethrow-with-message (tru "Unable to connect to host at URL `{0}`" url) e))
       (catch ConnectException e
-        (rethrow-with-message (tru "Connection refused by host at for URL `{0}`" url) e))
+        (rethrow-with-message (tru "Connection refused by host for URL `{0}`" url) e))
       (catch FileNotFoundException e
         (rethrow-with-message (tru "Unable to retrieve resource at URL `{0}`" url) e))
       (catch JsonParseException e

@@ -1,5 +1,8 @@
 (ns metabase.sync.sync-metadata.sync-timezone-test
   (:require [clj-time.core :as time]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.util-test :as sut]
@@ -7,7 +10,6 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defn- db-timezone [db-or-id]
@@ -16,7 +18,7 @@
 ;; This tests populating the timezone field for a given database. The
 ;; sync happens automatically, so this test removes it first to ensure
 ;; that it gets set when missing
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   (concat
    (repeat 2 {:timezone-id "UTC"})
    [true true true])
@@ -27,7 +29,7 @@
           tz-after-update                  (db-timezone db)
           ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
           ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
-          _                                (tu/clear-connection-pool db)
+          _                                (driver/notify-database-updated driver/*driver* db)
           {:keys [step-info task-history]} (sut/sync-database! "sync-timezone" db)]
 
       [(sut/only-step-keys step-info)
@@ -40,7 +42,7 @@
        (boolean (time/time-zone-for-id (db-timezone db)))])))
 
 ;; TODO - this works for me ok with Postgres 9.6 & Java 10. Returns Australia/Hobart
-(datasets/expect-with-engines #{:postgres}
+(datasets/expect-with-drivers #{:postgres}
   ["UTC" "UTC"]
   (data/dataset test-data
     (let [db (data/db)]

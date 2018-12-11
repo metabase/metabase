@@ -40,7 +40,7 @@
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)]
-    (api/cancellable-json-response
+    (api/cancelable-json-response
      (fn []
        (qp/process-query-and-save-with-max!
            query

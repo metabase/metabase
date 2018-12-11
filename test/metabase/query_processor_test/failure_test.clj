@@ -3,8 +3,7 @@
   (:require [expectations :refer [expect]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.test.data :as data])
-  (:import metabase.driver.h2.H2Driver))
+            [metabase.test.data :as data]))
 
 (defn- bad-query []
   {:database (data/id)
@@ -18,7 +17,7 @@
    :query    {:source-table (data/id :venues)
               :fields       [[:datetime-field [:field-id (data/id :venues :id)] :month]]
               :limit        qp.i/absolute-max-results}
-   :driver   (H2Driver.)
+   :driver   :h2
    :settings {}})
 
 (def ^:private bad-query:native

@@ -8,7 +8,10 @@
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
              [util :as u]]
-            [metabase.driver.druid :as druid]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver
+             [druid :as druid]
+             [util :as driver.u]]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -16,27 +19,27 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
+            [metabase.test.data.datasets :as datasets :refer [expect-with-driver]]
             [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan.util.test :as tt]))
 
 ;;; table-rows-sample
-(datasets/expect-with-engine :druid
+(datasets/expect-with-driver :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
   [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T07:00:00.000Z"]
    ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T07:00:00.000Z"]
    ["100"  "PizzaHacker"                 #inst "2014-07-26T07:00:00.000Z"]
    ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
-  (->> (driver/table-rows-sample (Table (data/id :checkins))
+  (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
                                  [(Field (data/id :checkins :id))
                                   (Field (data/id :checkins :venue_name))
                                   (Field (data/id :checkins :timestamp))])
        (sort-by first)
        (take 5)))
 
-(datasets/expect-with-engine :druid
+(datasets/expect-with-driver :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
   [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T00:00:00.000-07:00"]
    ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T00:00:00.000-07:00"]
@@ -44,14 +47,14 @@
    ["1000" "Tito's Tacos"                #inst "2014-06-03T00:00:00.000-07:00"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (->> (driver/table-rows-sample (Table (data/id :checkins))
+    (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
                                     (Field (data/id :checkins :venue_name))
                                     (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
-(datasets/expect-with-engine :druid
+(datasets/expect-with-driver :druid
   ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
   [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T02:00:00.000-05:00"]
    ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T02:00:00.000-05:00"]
@@ -59,7 +62,7 @@
    ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
   (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
-    (->> (driver/table-rows-sample (Table (data/id :checkins))
+    (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
                                     (Field (data/id :checkins :venue_name))
                                     (Field (data/id :checkins :timestamp))])
@@ -80,7 +83,7 @@
      :metrics     [:count]}))
 
 (defn- process-native-query [query]
-  (datasets/with-engine :druid
+  (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (-> (qp/process-query {:native   {:query query}
                              :type     :native
@@ -91,7 +94,7 @@
   {:base_type :type/Text})
 
 ;; test druid native queries
-(expect-with-engine :druid
+(expect-with-driver :druid
   {:row_count 2
    :status    :completed
    :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
@@ -121,7 +124,7 @@
      :aggregations [{:type :count
                      :name :count}]}))
 
-(expect-with-engine :druid
+(expect-with-driver :druid
   :completed
   (:status (process-native-query native-query-2)))
 
@@ -142,7 +145,7 @@
 ;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
 ;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
 ;; have counted for the previous week
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["2015-10-04" 9]]
   (druid-query-returning-rows
     {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
@@ -150,7 +153,7 @@
      :breakout    [[:datetime-field $timestamp :week]]}))
 
 ;; sum, *
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" 110688.0]
    ["2" 616708.0]
    ["3" 179661.0]
@@ -160,7 +163,7 @@
      :breakout    [$venue_price]}))
 
 ;; min, +
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  4.0]
    ["2"  3.0]
    ["3"  8.0]
@@ -170,7 +173,7 @@
      :breakout    [$venue_price]}))
 
 ;; max, /
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" 1000.0]
    ["2"  499.5]
    ["3"  332.0]
@@ -180,7 +183,7 @@
      :breakout    [$venue_price]}))
 
 ;; avg, -
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" 500.85067873303166]
    ["2" 1002.7772357723577]
    ["3" 1562.2695652173913]
@@ -190,7 +193,7 @@
      :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ 2 args: count + sum
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  442.0]
    ["2" 1845.0]
    ["3"  460.0]
@@ -200,7 +203,7 @@
      :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ 3 args: count + sum + count
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  663.0]
    ["2" 2460.0]
    ["3"  575.0]
@@ -213,7 +216,7 @@
      :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ a constant: count * 10
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" 2210.0]
    ["2" 6150.0]
    ["3" 1150.0]
@@ -223,7 +226,7 @@
      :breakout    [$venue_price]}))
 
 ;; nested post-aggregation math: count + (count * sum)
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  49062.0]
    ["2" 757065.0]
    ["3"  39790.0]
@@ -235,7 +238,7 @@
      :breakout    [$venue_price]}))
 
 ;; post-aggregation math w/ avg: count + avg
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  721.8506787330316]
    ["2" 1116.388617886179]
    ["3"  635.7565217391304]
@@ -245,7 +248,7 @@
      :breakout    [$venue_price]}))
 
 ;; post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" -998.0]
    ["2" -995.0]
    ["3" -990.0]
@@ -257,7 +260,7 @@
      :breakout    [$venue_price]}))
 
 ;; aggregation w/o field
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1" 222.0]
    ["2" 616.0]
    ["3" 116.0]
@@ -267,7 +270,7 @@
      :breakout    [$venue_price]}))
 
 ;; aggregation with math inside the aggregation :scream_cat:
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["1"  442.0]
    ["2" 1845.0]
    ["3"  460.0]
@@ -277,7 +280,7 @@
      :breakout    [$venue_price]}))
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
-(expect-with-engine :druid
+(expect-with-driver :druid
   {:rows    [["1"  442.0]
              ["2" 1845.0]
              ["3"  460.0]
@@ -290,7 +293,7 @@
        :breakout    [$venue_price]})))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
-(expect-with-engine :druid
+(expect-with-driver :druid
   {:rows    [["1"  180.0]
              ["2" 1189.0]
              ["3"  304.0]
@@ -302,7 +305,7 @@
        :breakout    [$venue_price]})))
 
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
-(expect-with-engine :druid
+(expect-with-driver :druid
   [["2" 1231.0]
    ["3"  346.0]
    ["4" 197.0]]
@@ -331,13 +334,13 @@
                       :tunnel-port    22
                       :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver/can-connect-with-details? engine details :rethrow-exceptions)))
+        (driver.u/can-connect-with-details? engine details :rethrow-exceptions)))
        (catch Exception e
          (.getMessage e))))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
-(datasets/expect-with-engine :druid
+(datasets/expect-with-driver :druid
   [false ;; Ensure the query promise hasn't fired yet
    false ;; Ensure the cancellation promise hasn't fired yet
    true  ;; Was query called?

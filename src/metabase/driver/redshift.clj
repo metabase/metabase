@@ -5,45 +5,38 @@
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.driver
-             [generic-sql :as sql]
-             [postgres :as postgres]]
+             [driver :as driver]]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
              [ssh :as ssh]]))
 
-(defn- connection-details->spec
-  "Create a database specification for a redshift database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
-  [{:keys [host port db],
-    :as opts}]
-  (merge {:classname "com.amazon.redshift.jdbc.Driver" ; must be in classpath
-          :subprotocol "redshift"
-          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=false")
-          :ssl true}
-         (dissoc opts :host :port :db)))
+(driver/register! :redshift, :parent :postgres)
 
-(defn- date-interval [unit amount]
-  (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (case seconds-or-milliseconds
-    :seconds      (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
-                        (hx/* expr
-                              (hsql/raw "INTERVAL '1 second'")))
-    :milliseconds (recur (hx// expr 1000) :seconds)))
+(defmethod driver/display-name :redshift [_] "Amazon Redshift")
+
+;; don't use the Postgres implementation for `describe-table` since it tries to fetch enums which Redshift doesn't
+;; support
+(defmethod driver/describe-table :redshift [& args]
+  (apply (get-method driver/describe-table :sql-jdbc) args))
 
 ;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access
 ;; information_schema.constraint_column_usage, so we'll have to use this custom query instead
 ;;
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
-(defn- describe-table-fks [database table]
-  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec database)
+(defmethod driver/describe-table-fks :redshift [_ database table]
+  (set (for [fk (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                             ["SELECT source_column.attname AS \"fk-column-name\",
                                      dest_table.relname    AS \"dest-table-name\",
                                      dest_table_ns.nspname AS \"dest-table-schema\",
@@ -67,52 +60,73 @@
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
 
-(defrecord RedshiftDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "Amazon Redshift"))
+(defmethod driver/connection-properties :redshift [_]
+  (ssh/with-tunnel-config
+    [(assoc driver.common/default-host-details
+       :placeholder (tru "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"))
+     (assoc driver.common/default-port-details :default 5439)
+     (assoc driver.common/default-dbname-details
+       :name         "db"
+       :placeholder  (tru "toucan_sightings"))
+     driver.common/default-user-details
+     driver.common/default-password-details]))
+
+(defmethod driver/format-custom-field-name :redshift [_ custom-field-name]
+  (str/lower-case custom-field-name))
 
 ;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
 ;; Redshift is always in UTC and doesn't return it's timezone
-(def ^:private redshift-date-formatters (driver/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-(def ^:private redshift-db-time-query "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
+(defmethod driver.common/current-db-time-date-formatters :redshift [_]
+  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 
-(u/strict-extend RedshiftDriver
-  driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval            (u/drop-first-arg date-interval)
-          :describe-table-fks       (u/drop-first-arg describe-table-fks)
-          :details-fields           (constantly (ssh/with-tunnel-config
-                                                  [(assoc driver/default-host-details
-                                                     :placeholder (tru "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"))
-                                                   (assoc driver/default-port-details :default 5439)
-                                                   (assoc driver/default-dbname-details
-                                                     :name         "db"
-                                                     :placeholder  (tru "toucan_sightings"))
-                                                   driver/default-user-details
-                                                   driver/default-password-details]))
-          :format-custom-field-name (u/drop-first-arg str/lower-case)
-          :current-db-time          (driver/make-current-db-time-fn redshift-db-time-query redshift-date-formatters)})
+(defmethod driver.common/current-db-time-native-query :redshift [_]
+  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
-  sql/ISQLDriver
-  (merge postgres/PostgresISQLDriverMixin
-         {:connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly :%getdate)
-          :set-timezone-sql          (constantly "SET TIMEZONE TO %s;")
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
-         ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
-         ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
-         (when config/is-test?
-           {:excluded-schemas (memoize
-                               (fn [_]
-                                 (require 'metabase.test.data.redshift)
-                                 (let [session-schema-number @(resolve 'metabase.test.data.redshift/session-schema-number)]
-                                   (set (conj (for [i (range 240)
-                                                    :when (not= i session-schema-number)]
-                                                (str "schema_" i))
-                                              "public")))))})))
+(defmethod driver/current-db-time :redshift [& args]
+  (apply driver.common/current-db-time args))
 
-(defn -init-driver
-  "Register the Redshift driver"
-  []
-  (driver/register-driver! :redshift (RedshiftDriver.)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           metabase.driver.sql impls                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/date-interval :redshift [_ unit amount]
+  (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
+
+(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds] [_ _ expr]
+  (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
+        (hx/* expr
+              (hsql/raw "INTERVAL '1 second'"))))
+
+(defmethod sql.qp/current-datetime-fn :redshift [_]
+  :%getdate)
+
+(defmethod sql-jdbc.execute/set-timezone-sql :redshift [_]
+  "SET TIMEZONE TO %s;")
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         metabase.driver.sql-jdbc impls                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql-jdbc.conn/connection-details->spec :redshift [_ {:keys [host port db], :as opts}]
+  (merge {:classname "com.amazon.redshift.jdbc.Driver" ; must be in classpath
+          :subprotocol "redshift"
+          :subname (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=false")
+          :ssl true}
+         (dissoc opts :host :port :db)))
+
+;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
+;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
+(def ^:private excluded-schemas
+  (when config/is-test?
+    (memoize
+     (fn []
+       (require 'metabase.test.data.redshift)
+       (let [session-schema-number @(resolve 'metabase.test.data.redshift/session-schema-number)]
+         (set (conj (for [i     (range 240)
+                          :when (not= i session-schema-number)]
+                      (str "schema_" i))
+                    "public")))))))
+
+(defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
+  (excluded-schemas))

@@ -4,14 +4,13 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor
-             [interface :as i]
-             [store :as qp.store]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -47,8 +46,8 @@
          {:name         (name col)
           :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
                             (u/keyword->qualified-name col))
-          :base_type    (or (driver/values->base-type (for [row rows]
-                                                        (nth row i)))
+          :base_type    (or (driver.common/values->base-type (for [row rows]
+                                                               (nth row i)))
                             :type/*)
           :source       :native})))
 
@@ -138,12 +137,12 @@
   true}` will cause a name to be generated that will appear in the results, other names with a leading __ will be
   trimmed on some backends."
   [ag-clause :- mbql.s/Aggregation & [{:keys [top-level?]}]]
-  (when-not i/*driver*
-    (throw (Exception. (str (tru "metabase.query-processor.interface/*driver* is unbound.")))))
+  (when-not driver/*driver*
+    (throw (Exception. (str (tru "*driver* is unbound.")))))
   (mbql.u/match-one ag-clause
     ;; if a custom name was provided use it
     [:named _ ag-name]
-    (driver/format-custom-field-name i/*driver* ag-name)
+    (driver/format-custom-field-name driver/*driver* ag-name)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
     ;; Top level expressions need a name without a leading __ as those are automatically removed from the results

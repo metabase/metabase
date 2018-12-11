@@ -1,4 +1,4 @@
-(ns metabase.publc-settings-test
+(ns metabase.public-settings-test
   (:require [expectations :refer :all]
             [metabase.public-settings :as public-settings]
             [metabase.test.util :as tu]

@@ -7,10 +7,10 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
-             [driver :as driver]
              [query-processor :as qp]
              [sync :as sync]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [database :refer [Database]]
              [dimension :refer [Dimension]]
@@ -19,8 +19,7 @@
              [table :refer [Table]]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [*driver*]]
-             [interface :as i]]
+             [interface :as tx]]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -32,13 +31,13 @@
 ;; combos.
 
 (defn get-or-create-test-data-db!
-  "Get or create the Test Data database for DRIVER, which defaults to `*driver*`."
-  ([]       (get-or-create-test-data-db! *driver*))
+  "Get or create the Test Data database for DRIVER, which defaults to driver/`*driver*`."
+  ([]       (get-or-create-test-data-db! (tx/driver)))
   ([driver] (get-or-create-database! driver defs/test-data)))
 
 (def ^:dynamic ^:private *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current `*driver*`, which does exactly what it
+  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly what it
   suggests."
   get-or-create-test-data-db!)
 
@@ -175,7 +174,7 @@
   implementation of `format-name`. (Most databases use the default implementation of `identity`; H2 uses
   `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
   [nm]
-  (i/format-name *driver* (name nm)))
+  (tx/format-name (tx/driver) (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
@@ -183,7 +182,7 @@
         table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
-                             (i/db-qualified-table-name db-name table-name)))
+                             (tx/db-qualified-table-name db-name table-name)))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
@@ -226,20 +225,20 @@
 (defn fks-supported?
   "Does the current engine support foreign keys?"
   []
-  (contains? (driver/features *driver*) :foreign-keys))
+  (contains? (driver.u/features (or (tx/driver))) :foreign-keys))
 
 (defn binning-supported?
   "Does the current engine support binning?"
   []
-  (contains? (driver/features *driver*) :binning))
+  (contains? (driver.u/features (tx/driver)) :binning))
 
-(defn id-field-type  [] (i/id-field-type *driver*))
+(defn id-field-type  [] (tx/id-field-type (tx/driver)))
 
 (defn expected-base-type->actual
   "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE. Mainly for Oracle
   because it doesn't have `INTEGER` types and uses decimals instead."
   [base-type]
-  (i/expected-base-type->actual *driver* base-type))
+  (tx/expected-base-type->actual (tx/driver) base-type))
 
 
 ;; ## Loading / Deleting Test Datasets
@@ -249,13 +248,13 @@
   [database-definition db]
   (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
     (let [table-name (:table-name table-definition)
-          table      (delay (or  (i/metabase-instance table-definition db)
+          table      (delay (or  (tx/metabase-instance table-definition db)
                                  (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
                                                             table-name
                                                             (u/pprint-to-str (dissoc table-definition :rows))
                                                             (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
       (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
-        (let [field (delay (or (i/metabase-instance field-definition @table)
+        (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
@@ -266,14 +265,14 @@
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
             (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
 
-(defn- create-database! [{:keys [database-name], :as database-definition} engine driver]
+(defn- create-database! [{:keys [database-name], :as database-definition} driver]
   ;; Create the database
-  (i/create-db! driver database-definition)
+  (tx/create-db! driver database-definition)
   ;; Add DB object to Metabase DB
   (let [db (db/insert! Database
              :name    database-name
-             :engine  (name engine)
-             :details (i/database->connection-details driver :db database-definition))]
+             :engine  (name driver)
+             :details (tx/dbdef->connection-details driver :db database-definition))]
     ;; sync newly added DB
     (sync/sync-database! db)
     ;; add extra metadata for fields
@@ -281,45 +280,26 @@
     ;; make sure we're returing an up-to-date copy of the DB
     (Database (u/get-id db))))
 
-(defn- reload-test-extensions [engine]
-  (println "Reloading test extensions for driver:" engine)
-  (let [extension-ns (symbol (str "metabase.test.data." (name engine)))]
-    (println (format "(require '%s 'metabase.test.data.datasets :reload)" extension-ns))
-    (require extension-ns 'metabase.test.data.datasets :reload)))
-
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase
   `Databases`/`Tables`/`Fields`, and sync the `Database`. DRIVER should be an object that implements
   `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the current
-  dataset (`*driver*`), which is H2 by default."
+  dataset (driver/`*driver*`), which is H2 by default."
   ([database-definition]
-   (get-or-create-database! *driver* database-definition))
+   (get-or-create-database! (tx/driver) database-definition))
   ([driver database-definition]
-   (let [engine         (i/engine driver)
-         get-or-create! (fn []
-                          (or (i/metabase-instance database-definition engine)
-                              (create-database! database-definition engine driver)))]
-     ;; attempt to make sure test extensions are loaded for the driver. This might still fail (see below)
-     (require (symbol (str "metabase.test.data." (name engine))))
-     (try
-       (get-or-create!)
-       ;; occasionally we'll see an error like
-       ;;   java.lang.IllegalArgumentException: No implementation of method: :database->connection-details
-       ;;   of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
-       ;; to fix this we just need to reload a couple namespaces and then try again
-       (catch Exception _
-         (reload-test-extensions engine)
-         (get-or-create!))))))
+   (let [driver (tx/the-driver-with-test-extensions driver)]
+     (or (tx/metabase-instance database-definition driver)
+         (create-database! database-definition driver)))))
 
 
 (defn do-with-temp-db
   "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was
   loaded and synced from DBDEF."
   [^DatabaseDefinition dbdef, f]
-  (let [driver *driver*
-        dbdef  (i/map->DatabaseDefinition dbdef)]
+  (let [dbdef  (tx/map->DatabaseDefinition dbdef)]
     (binding [db/*disable-db-logging* true]
-      (let [db (get-or-create-database! driver dbdef)]
+      (let [db (get-or-create-database! (tx/driver) dbdef)]
         (assert db)
         (assert (db/exists? Database :id (u/get-id db)))
         (with-db db

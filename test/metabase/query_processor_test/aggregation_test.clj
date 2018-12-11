@@ -13,7 +13,7 @@
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[100]]
    :columns     ["count"]
    :cols        [(aggregate-col :count)]
@@ -25,7 +25,7 @@
 
 
 ;;; ----------------------------------------------- "SUM" AGGREGATION ------------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[203]]
    :columns     ["sum"]
    :cols        [(aggregate-col :sum (venues-col :price))]
@@ -37,7 +37,7 @@
 
 
 ;;; ----------------------------------------------- "AVG" AGGREGATION ------------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[35.5059]]
    :columns     ["avg"]
    :cols        [(aggregate-col :avg (venues-col :latitude))]
@@ -49,7 +49,7 @@
 
 
 ;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[15]]
    :columns     ["count"]
    :cols        [(aggregate-col :count (Field (data/id :checkins :user_id)))]
@@ -62,7 +62,7 @@
 
 ;;; ------------------------------------------------- NO AGGREGATION -------------------------------------------------
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
                  [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
                  [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -86,7 +86,7 @@
 
 ;;; ----------------------------------------------- STDDEV AGGREGATION -----------------------------------------------
 
-(qp-expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
+(qp-expect-with-drivers (non-timeseries-drivers-with-feature :standard-deviation-aggregations)
   {:columns     ["stddev"]
    :cols        [(aggregate-col :stddev (venues-col :latitude))]
    :rows        [[3.4]]
@@ -98,7 +98,7 @@
                                  [[(u/round-to-decimals 1 v)]]))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (data/run-mbql-query venues
@@ -162,7 +162,7 @@
 ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
 ;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
 ;; so we can use it with Mongo
-(datasets/expect-with-engines (disj non-timeseries-engines :mongo)
+(datasets/expect-with-drivers (disj non-timeseries-drivers :mongo)
   [(aggregate-col :count)
    (assoc (aggregate-col :count) :name "count_2")]
   (-> (data/run-mbql-query venues
@@ -173,7 +173,7 @@
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
 ;;; cum_sum w/o breakout should be treated the same as sum
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[120]]
    :columns     ["sum"]
    :cols        [(aggregate-col :sum (users-col :id))]
@@ -185,7 +185,7 @@
 
 
 ;;; Simple cumulative sum where breakout field is same as cum_sum field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[ 1   1]
                  [ 2   3]
                  [ 3   6]
@@ -214,7 +214,7 @@
 
 
 ;;; Cumulative sum w/ a different breakout field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["Broen Olujimi"        14]
                  ["Conchúr Tihomir"      21]
                  ["Dwight Gresham"       34]
@@ -244,7 +244,7 @@
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "sum"]
    :cols        [(breakout-col (venues-col :price))
@@ -270,7 +270,7 @@
     :special_type :type/Number))
 
 ;;; cum_count w/o breakout should be treated the same as count
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[15]]
    :columns     ["count"]
    :cols        [(cumulative-count-col users-col :id)]
@@ -281,7 +281,7 @@
        (format-rows-by [int])))
 
 ;;; Cumulative count w/ a different breakout field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["Broen Olujimi"        1]
                  ["Conchúr Tihomir"      2]
                  ["Dwight Gresham"       3]
@@ -311,7 +311,7 @@
 
 
 ;; Cumulative count w/ a different breakout field that requires grouping
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "count"]
    :cols        [(breakout-col (venues-col :price))

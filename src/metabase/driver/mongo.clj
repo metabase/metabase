@@ -5,6 +5,8 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
@@ -20,36 +22,40 @@
             [schema.core :as s])
   (:import com.mongodb.DB))
 
+(driver/register! :mongo)
+
+(defmethod driver/display-name :mongo [_] "MongoDB")
+
 ;;; ## MongoDriver
 
-(defn- can-connect? [details]
+(defmethod driver/can-connect? :mongo [_ details]
   (with-mongo-connection [^DB conn, details]
     (= (float (-> (cmd/db-stats conn)
                   (conv/from-db-object :keywordize)
                   :ok))
        1.0)))
 
-(defn- humanize-connection-error-message [message]
+(defmethod driver/humanize-connection-error-message :mongo [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
-    (driver/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^host and port should be specified in host:port format$"
-    (driver/connection-error-messages :invalid-hostname)
+    (driver.common/connection-error-messages :invalid-hostname)
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
-    (driver/connection-error-messages :password-required)
+    (driver.common/connection-error-messages :password-required)
 
     #"^com.jcraft.jsch.JSchException: Auth fail$"
-    (driver/connection-error-messages :ssh-tunnel-auth-fail)
+    (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
 
     #".*JSchException: java.net.ConnectException: Connection refused.*"
-    (driver/connection-error-messages :ssh-tunnel-connection-fail)
+    (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default
     message))
 
-(defn- process-query-in-context [qp]
+(defmethod driver/process-query-in-context :mongo [_ qp]
   (fn [{database-id :database, :as query}]
     (with-mongo-connection [_ (qp.store/database)]
       (qp query))))
@@ -59,7 +65,7 @@
 
 (declare update-field-attrs)
 
-(defn- sync-in-context [database do-sync-fn]
+(defmethod driver/sync-in-context :mongo [_ database do-sync-fn]
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
@@ -118,7 +124,7 @@
   (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
     (cond-> {:name          (name field-kw)
              :database-type (some-> most-common-object-type .getName)
-             :base-type     (driver/class->base-type most-common-object-type)}
+             :base-type     (driver.common/class->base-type most-common-object-type)}
       (= :_id field-kw)           (assoc :pk? true)
       (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
                                                             (filter #(some? (first %)))
@@ -128,7 +134,7 @@
       (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
                                                                (describe-table-field field (field (:nested-fields field-info)))))))))
 
-(defn- describe-database [database]
+(defmethod driver/describe-database :mongo [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
@@ -142,7 +148,7 @@
   [^com.mongodb.DB conn, table]
   (try
     (->> (mc/find-maps conn (:name table))
-         (take driver/max-sample-rows)
+         (take metadata-queries/max-sample-rows)
          (reduce
           (fn [field-defs row]
             (loop [[k & more-keys] (keys row), fields field-defs]
@@ -153,7 +159,7 @@
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
-(defn- describe-table [database table]
+(defmethod driver/describe-table :mongo [_ database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (let [column-info (table-sample-column-info conn table)]
       {:schema nil
@@ -161,40 +167,27 @@
        :fields (set (for [[field info] column-info]
                       (describe-table-field field info)))})))
 
+(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
+(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
 
-(defrecord MongoDriver []
-  :load-ns true
-  clojure.lang.Named
-  (getName [_] "MongoDB"))
+(defmethod driver/connection-properties :mongo [_]
+  (ssh/with-tunnel-config
+    [driver.common/default-host-details
+     (assoc driver.common/default-port-details :default 27017)
+     (assoc driver.common/default-dbname-details
+       :placeholder  (tru "carrierPigeonDeliveries"))
+     (assoc driver.common/default-user-details :required false)
+     (assoc driver.common/default-password-details :name "pass")
+     {:name         "authdb"
+      :display-name (tru "Authentication Database")
+      :placeholder  (tru "Optional database to use when authenticating")}
+     driver.common/default-ssl-details
+     (assoc driver.common/default-additional-options-details
+       :display-name (tru "Additional Mongo connection string options")
+       :placeholder  "readPreference=nearest&replicaSet=test")]))
 
-(u/strict-extend MongoDriver
-  driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:can-connect?                      (u/drop-first-arg can-connect?)
-          :describe-database                 (u/drop-first-arg describe-database)
-          :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly (ssh/with-tunnel-config
-                                                           [driver/default-host-details
-                                                            (assoc driver/default-port-details :default 27017)
-                                                            (assoc driver/default-dbname-details
-                                                              :placeholder  (tru "carrierPigeonDeliveries"))
-                                                            (assoc driver/default-user-details :required false)
-                                                            (assoc driver/default-password-details :name "pass")
-                                                            {:name         "authdb"
-                                                             :display-name (tru "Authentication Database")
-                                                             :placeholder  (tru "Optional database to use when authenticating")}
-                                                            driver/default-ssl-details
-                                                            (assoc driver/default-additional-options-details
-                                                              :display-name (tru "Additional Mongo connection string options")
-                                                              :placeholder  "readPreference=nearest&replicaSet=test")]))
-          :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:basic-aggregations :nested-fields})
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :mbql->native                      (u/drop-first-arg qp/mbql->native)
-          :process-query-in-context          (u/drop-first-arg process-query-in-context)
-          :sync-in-context                   (u/drop-first-arg sync-in-context)}))
+(defmethod driver/mbql->native :mongo [_ query]
+  (qp/mbql->native query))
 
-(defn -init-driver
-  "Register the MongoDB driver"
-  []
-  (driver/register-driver! :mongo (MongoDriver.)))
+(defmethod driver/execute-query :mongo [_ query]
+  (qp/execute-query query))

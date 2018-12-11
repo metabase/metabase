@@ -37,8 +37,9 @@
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
-            [metabase.util.date :as date]
-            [metabase.util.i18n :refer [trs tru] :as ui18n]
+            [metabase.util
+             [date :as date]
+             [i18n :as ui18n :refer [trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -584,7 +585,7 @@
   [{:keys [base_type engine fingerprint aggregation]}]
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
-      (and (driver/driver-supports? (driver/engine->driver engine) :binning)
+      (and (driver/supports? engine :binning)
            (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions

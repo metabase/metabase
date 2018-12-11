@@ -19,7 +19,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [expect-with-engine]]
+             [datasets :refer [expect-with-driver]]
              [users :refer :all]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
@@ -192,7 +192,7 @@
       (take 5 (parse-and-sort-csv result)))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
-(expect-with-engine :sqlite
+(expect-with-driver :sqlite
   [["1" "2014-04-07" "5" "12"]
    ["2" "2014-09-18" "1" "31"]
    ["3" "2014-09-15" "8" "56"]

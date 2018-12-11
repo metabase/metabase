@@ -1,13 +1,12 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [expectations :refer [expect]]
+            [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
-             [interface :as qp.i]
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data])
-  (:import metabase.driver.h2.H2Driver))
+            [metabase.test.data :as data]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             add-native-column-info                                             |
@@ -115,7 +114,7 @@
 
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-name [ag-clause]
-  (binding [qp.i/*driver* (H2Driver.)]
+  (binding [driver/*driver* :h2]
     (annotate/aggregation-name ag-clause)))
 
 (expect
@@ -160,7 +159,7 @@
 
 ;; make sure custom aggregation names get included in the col info
 (defn- col-info-for-aggregation-clause [clause]
-  (binding [qp.i/*driver* (metabase.driver.h2.H2Driver.)]
+  (binding [driver/*driver* :h2]
     (#'annotate/col-info-for-aggregation-clause clause)))
 
 (expect
@@ -188,7 +187,7 @@
               :base_type    :type/Text
               :source       :aggregation}]
    :columns ["totalEvents"]}
-  (binding [qp.i/*driver* (H2Driver.)]
+  (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "totalEvents"
                                                        :display_name "Total Events"
                                                        :base_type    :type/Text}]
@@ -221,7 +220,7 @@
      :display_name "count_2"
      :source       :aggregation}]
    :columns ["count" "sum" "count" "count_2"]}
-  (binding [qp.i/*driver* (H2Driver.)]
+  (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "count"
                                                        :display_name "count"
                                                        :base_type    :type/Number}

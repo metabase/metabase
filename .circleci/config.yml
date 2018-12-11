@@ -137,7 +137,7 @@ jobs:
       - run:
           name: Run backend unit tests (MySQL)
           environment:
-            ENGINES: h2,mysql
+            DRIVERS: h2,mysql
             MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
             MB_DB_TYPE: mysql
             MB_DB_HOST: localhost
@@ -166,7 +166,7 @@ jobs:
       - run:
           name: Run backend unit tests (Postgres)
           environment:
-            ENGINES: h2,postgres
+            DRIVERS: h2,postgres
             MB_DB_TYPE: postgres
             MB_DB_PORT: 5432
             MB_DB_HOST: localhost
@@ -203,7 +203,7 @@ jobs:
       - run:
           name: Run backend unit tests (SparkSQL)
           environment:
-            ENGINES: h2,sparksql
+            DRIVERS: h2,sparksql
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
             lein with-profile +ci test
@@ -222,7 +222,7 @@ jobs:
       - run:
           name: Run backend unit tests (MongoDB 3.2)
           environment:
-            ENGINES: h2,mongo
+            DRIVERS: h2,mongo
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
             lein with-profile +ci test
@@ -250,7 +250,7 @@ jobs:
       - run:
           name: Run backend unit tests (Vertica)
           environment:
-            ENGINES: h2,vertica
+            DRIVERS: h2,vertica
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
             lein with-profile +ci test
@@ -268,7 +268,7 @@ jobs:
       - run:
           name: Run backend unit tests (Snowflake)
           environment:
-            ENGINES: h2,snowflake
+            DRIVERS: h2,snowflake
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
             lein with-profile +ci test
@@ -284,7 +284,7 @@ jobs:
       - run:
           name: Run backend unit tests (SQL Server)
           environment:
-            ENGINES: h2,sqlserver
+            DRIVERS: h2,sqlserver
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
             lein with-profile +ci test
@@ -300,7 +300,7 @@ jobs:
       - run:
           name: Run backend unit tests (BigQuery)
           environment:
-            ENGINES: h2,bigquery
+            DRIVERS: h2,bigquery
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
             lein with-profile +ci test
@@ -316,7 +316,7 @@ jobs:
       - run:
           name: Run backend unit tests (SQLite)
           environment:
-            ENGINES: h2,sqlite
+            DRIVERS: h2,sqlite
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
             lein with-profile +ci test
@@ -331,7 +331,7 @@ jobs:
       - run:
           name: Run backend unit tests (Druid)
           environment:
-            ENGINES: h2,druid
+            DRIVERS: h2,druid
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
             lein with-profile +ci test
@@ -347,7 +347,7 @@ jobs:
       - run:
           name: Run backend unit tests (Redshift)
           environment:
-            ENGINES: h2,redshift
+            DRIVERS: h2,redshift
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
             lein with-profile +ci test
@@ -375,7 +375,7 @@ jobs:
       - run:
           name: Run backend unit tests (Presto)
           environment:
-            ENGINES: h2,presto
+            DRIVERS: h2,presto
             MB_PRESTO_TEST_HOST: localhost
             MB_PRESTO_TEST_PORT: 8080
           command: >
@@ -402,7 +402,7 @@ jobs:
       - run:
           name: Run backend unit tests (Oracle)
           environment:
-            ENGINES: h2,oracle
+            DRIVERS: h2,oracle
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
             lein with-profile +ci test

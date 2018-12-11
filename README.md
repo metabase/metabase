@@ -31,7 +31,6 @@ For more information check out [metabase.com](http://www.metabase.com)
 - Google BigQuery
 - SQLite
 - H2
-- CrateDB
 - Oracle
 - Vertica
 - Presto

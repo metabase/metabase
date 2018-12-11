@@ -12,7 +12,7 @@
             [colorize.core :as colorize]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [tru trs]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
@@ -334,7 +334,7 @@
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
 
-(defn drop-first-arg
+(defn ^:deprecated drop-first-arg
   "Returns a new fn that drops its first arg and applies the rest to the original.
    Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
 
@@ -450,16 +450,30 @@
   (when k
     (s/replace (str k) #"^:" "")))
 
-(defn get-id
-  "Return the value of `:id` if OBJECT-OR-ID is a map, or otherwise return OBJECT-OR-ID as-is if it is an integer.
-   This is guaranteed to return an integer ID; it will throw an Exception if it cannot find one.
-   This is provided as a convenience to allow model-layer functions to easily accept either an object or raw ID."
-  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
+(defn id
+  "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
+  Otherwise returns `nil`.
+
+  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID. Use this in
+  cases where the ID/object is allowed to be `nil`. Use `get-id` below in cases where you would also like to guarantee
+  it is non-`nil`."
   ^Integer [object-or-id]
   (cond
     (map? object-or-id)     (recur (:id object-or-id))
-    (integer? object-or-id) object-or-id
-    :else                   (throw (Exception. (str "Not something with an ID: " object-or-id)))))
+    (integer? object-or-id) object-or-id))
+
+;; TODO - now that I think about this, I think this should be called `the-id` instead, because the idea is similar to
+;; `clojure.core/the-ns`
+(defn get-id
+  "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
+  Otherwise, throws an Exception.
+
+  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID, and to assert
+  that you have a valid ID."
+  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
+  ^Integer [object-or-id]
+  (or (id object-or-id)
+      (throw (Exception. (str (tru "Not something with an ID: {0}" object-or-id))))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.

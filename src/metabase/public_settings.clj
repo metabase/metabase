@@ -3,6 +3,7 @@
             [metabase
              [config :as config]
              [types :as types]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
@@ -179,17 +180,19 @@
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
    :custom_formatting     (setting/get :custom-formatting)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
+   :email_configured      (do (require 'metabase.email)
+                              ((resolve 'metabase.email/email-configured?)))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
    :enable_xrays          (enable-xrays)
-   :engines               ((resolve 'metabase.driver/available-drivers))
+   :engines               (driver.u/available-drivers-info)
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
+   :ldap_configured       (do (require 'metabase.integrations.ldap)
+                              ((resolve 'metabase.integrations.ldap/ldap-configured?)))
    :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
    :metastore_url         metastore/store-url
@@ -197,7 +200,9 @@
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
-   :setup_token           ((resolve 'metabase.setup/token-value))
+   :setup_token           (do
+                            (require 'metabase.setup)
+                            ((resolve 'metabase.setup/token-value)))
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))

@@ -18,9 +18,3 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."
   false)
-
-(def ^:dynamic *driver*
-  "The driver that will be used to run the query we are currently parsing.
-   Always bound when running queries the normal way, e.g. via `metabase.driver/process-query`.
-   Not neccesarily bound when using various functions like `fk->` in the REPL."
-  nil)
