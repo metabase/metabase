@@ -84,6 +84,24 @@
   {:name         "additional-options"
    :display-name (tru "Additional JDBC connection string options")})
 
+(def default-options
+  "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
+  properties for drivers shipped as separate modules, e.g.:
+
+    connection-properties:
+      - db-name
+      - host
+
+  See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
+  for more details."
+  {:additional-options default-additional-options-details
+   :dbname             default-dbname-details
+   :host               default-host-details
+   :password           default-password-details
+   :port               default-port-details
+   :ssl                default-ssl-details
+   :user               default-user-details})
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Fetching Current Timezone                                            |

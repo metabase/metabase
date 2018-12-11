@@ -184,8 +184,9 @@
          (if (metabase.driver/abstract? driver)
            (trs "Registered abstract driver {0}" driver)
            (trs "Registered driver {0}" driver)))
-     (when parent
-       (trs "(parent(s): {0})" parent))
+     (if parent
+       (trs "(parent(s): {0})" parent)
+       "")
      (u/emoji "🚚"))))
 
 (defn- dispatch-on-uninitialized-driver

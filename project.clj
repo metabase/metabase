@@ -7,15 +7,17 @@
   :min-lein-version "2.5.0"
 
   :aliases
-  {"bikeshed"                          ["bikeshed" "--max-line-length" "205"]
-   "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
-   "test"                              ["with-profile" "+expectations" "expectations"]
-   "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
-   "generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
+  {"generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
    "profile"                           ["with-profile" "+profile" "run" "profile"]
    "h2"                                ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db"
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
-   "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]}
+   "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
+   "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
+   "test"                              ["with-profile" "+expectations" "expectations"]
+   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
+   "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
+   "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
+   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -67,7 +69,6 @@
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib
    [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
-   [com.microsoft.sqlserver/mssql-jdbc "6.4.0.jre8"]                  ; SQLServer JDBC driver
    [com.novemberain/monger "3.1.0"]                                   ; MongoDB Driver
    [com.taoensso/nippy "2.13.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [compojure "1.5.2"]                                                ; HTTP Routing library built on Ring
@@ -139,25 +140,6 @@
    :destroy      metabase.core/destroy
    :reload-paths ["src"]}
 
-  :eastwood
-  {:exclude-namespaces [:test-paths]
-   :config-files       ["./test_resources/eastwood-config.clj"]
-   :add-linters        [:unused-private-vars
-                        :unused-namespaces
-                        ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
-                        ;; For example see https://github.com/jonase/eastwood/issues/193
-                        ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issue above
-                        ;; and re-enable them if we can get them to work
-                        #_:unused-fn-args
-                        #_:unused-locals]
-   ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
-   :exclude-linters    [:deprecations]}
-
-  :docstring-checker
-  {:include [#"^metabase"]
-   :exclude [#"test"
-             #"^metabase\.http-client$"]}
-
   :profiles
   {:dev
    {:dependencies
@@ -188,36 +170,69 @@
    {:auto-clean true
     :aot        :all}
 
-   ;; run `lein check-reflection-warnings` to check for reflection warnings
-   :reflection-warnings
-   {:global-vars {*warn-on-reflection* true}}
-
-   :expectations
+   :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.0"]]
+    [[metabase/lein-include-drivers "1.0.1"]]
 
     :middleware
-    [leiningen.include-drivers/middleware]
+    [leiningen.include-drivers/middleware]}
 
-    :injections
-    [(require 'metabase.test-setup                                    ; for test setup stuff
-              'metabase.test.util)]                                   ; for the toucan.util.tes t default values for temp models
+   :expectations
+   [:with-include-drivers-middleware
+    {:injections
+     [(require 'metabase.test-setup                                   ; for test setup stuff
+               'metabase.test.util)]                                  ; for the toucan.util.tes t default values for temp models
 
-    :resource-paths
-    ["test_resources"]
+     :resource-paths
+     ["test_resources"]
 
-    :env
-    {:mb-test-setting-1 "ABCDEFG"
-     :mb-run-mode       "test"}
+     :env
+     {:mb-test-setting-1 "ABCDEFG"
+      :mb-run-mode       "test"}
 
-    :jvm-opts
-    ["-Xms1024m"                                                      ; give JVM a decent heap size to start with
-     "-Duser.timezone=UTC"
-     "-Dmb.db.in.memory=true"
-     "-Dmb.jetty.join=false"
-     "-Dmb.jetty.port=3010"
-     "-Dmb.api.key=test-api-key"
-     "-Duser.language=en"]}
+     :jvm-opts
+     ["-Xms1024m"                                                     ; give JVM a decent heap size to start with
+      "-Duser.timezone=UTC"
+      "-Dmb.db.in.memory=true"
+      "-Dmb.jetty.join=false"
+      "-Dmb.jetty.port=3010"
+      "-Dmb.api.key=test-api-key"
+      "-Duser.language=en"]}]
+
+   :include-all-drivers
+   [:with-include-drivers-middleware
+    {:include-drivers :all}]
+
+   :bikeshed
+   [:include-all-drivers]
+
+   :eastwood
+   [:include-all-drivers
+    {:eastwood
+     {:exclude-namespaces [:test-paths]
+      :config-files       ["./test_resources/eastwood-config.clj"]
+      :add-linters        [:unused-private-vars
+                           :unused-namespaces
+                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
+                           ;; For example see https://github.com/jonase/eastwood/issues/193
+                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issue above
+                           ;; and re-enable them if we can get them to work
+                           #_:unused-fn-args
+                           #_:unused-locals]
+      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
+      :exclude-linters    [:deprecations]}}]
+
+   ;; run `lein check-reflection-warnings` to check for reflection warnings
+   :reflection-warnings
+   [:include-all-drivers
+    {:global-vars {*warn-on-reflection* true}}]
+
+   :docstring-checker
+   [:include-all-drivers
+    {:docstring-checker
+     {:include [#"^metabase"]
+      :exclude [#"test"
+                #"^metabase\.http-client$"]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar

@@ -1,8 +1,8 @@
-(defproject metabase/sqlite-driver "1.0.0-SNAPSHOT"
+(defproject metabase/sqlserver-driver "1.0.0-SNAPSHOT"
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[org.xerial/sqlite-jdbc "3.25.2"]]
+  [[com.microsoft.sqlserver/mssql-jdbc "7.0.0.jre8"]]
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"
@@ -17,4 +17,4 @@
     :aot           :all
     :javac-options ["-target" "1.8", "-source" "1.8"]
     :target-path   "target/%s"
-    :uberjar-name  "sqlite.metabase-driver.jar"}})
+    :uberjar-name  "sqlserver.metabase-driver.jar"}})

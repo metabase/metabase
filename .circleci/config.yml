@@ -298,6 +298,11 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
+          name: Build SQL Server driver
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
+            ./bin/build-driver.sh sqlserver
+      - run:
           name: Run backend unit tests (SQL Server)
           environment:
             DRIVERS: h2,sqlserver
@@ -341,32 +346,6 @@ jobs:
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
             lein with-profile +ci test
-
-  be-linters-sqlite:
-    <<: *defaults
-    working_directory: /home/circleci/metabase/metabase/modules/drivers/sqlite
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run Eastwood linter (SQLite)
-          command: lein eastwood
-          no_output_timeout: 5m
-      - run:
-          name: Run dockstring-checker (SQLite)
-          command: lein docstring-checker
-          no_output_timeout: 5m
-      - run:
-          name: Run Bikeshed linter (SQLite)
-          command: lein bikeshed
-          no_output_timeout: 5m
-      # Disabled for now until I figure out how to run this without having to completely rewrite the script. Probably should just bite the bullet and write a Lein plugin for it
-      # - run:
-      #     name: Run reflection warnings checker (SQLite)
-      #     command: ./bin/reflection-linter
-      #     no_output_timeout: 5m
 
   be-tests-druid:
     <<: *defaults
@@ -649,9 +628,6 @@ workflows:
       - be-tests-sqlite:
           requires:
             - be-install-for-building-drivers
-      - be-linters-sqlite:
-          requires:
-            - be-install-for-building-drivers
       - be-tests-presto:
           requires:
             - be-tests
@@ -716,8 +692,6 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
-
-            - be-linters-sqlite
 
             - fe-linter-eslint
             - fe-linter-prettier
