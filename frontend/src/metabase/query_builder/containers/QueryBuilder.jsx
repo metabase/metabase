@@ -252,6 +252,7 @@ export default class QueryBuilder extends Component {
             </div>
           </div>
           <QuestionPresent {...this.props} />
+          <ModeSelect {...this.props} />
         </div>
       );
     } else if (uiControls.mode === "visualize") {
