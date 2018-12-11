@@ -17,43 +17,51 @@
             [metabase.models.field :as field]
             [metabase.util :as u]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.DatabaseMetaData))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
-(def ^:private default-base-types
-  {"Array"       :type/*
-   "Date"        :type/Date
-   "DateTime"    :type/DateTime
-   "Decimal"     :type/Decimal ;; FIXME Decimal(12,3)
-   "Enum8"       :type/*
-   "Enum16"      :type/*
-   "FixedString" :type/Text
-   "Float32"     :type/Float
-   "Float64"     :type/Float
-   "Int8"        :type/Integer
-   "Int16"       :type/Integer
-   "Int32"       :type/Integer
-   "Int64"       :type/BigInteger
-   "String"      :type/Text
-   "Tuple"       :type/*
-   "UInt8"       :type/Integer
-   "UInt16"      :type/Integer
-   "UInt32"      :type/Integer
-   "UInt64"      :type/BigInteger
-   "UUID"        :type/UUID})
+(def ^:private database-type->base-type
+  (sql-jdbc.sync/pattern-based-database-type->base-type
+   [
+    [#"Array"       :type/*]
+    [#"DateTime"    :type/DateTime]
+    [#"Date"        :type/Date]
+    [#"Decimal"     :type/Decimal]
+    [#"Enum8"       :type/*]
+    [#"Enum16"      :type/*]
+    [#"FixedString" :type/Text]
+    [#"Float32"     :type/Float]
+    [#"Float64"     :type/Float]
+    [#"Int8"        :type/Integer]
+    [#"Int16"       :type/Integer]
+    [#"Int32"       :type/Integer]
+    [#"Int64"       :type/BigInteger]
+    [#"String"      :type/Text]
+    [#"Tuple"       :type/*]
+    [#"UInt8"       :type/Integer]
+    [#"UInt16"      :type/Integer]
+    [#"UInt32"      :type/Integer]
+    [#"UInt64"      :type/BigInteger]
+    [#"UUID"        :type/UUID]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse [_ database-type]
-  (default-base-types (string/replace (name database-type) #"Nullable\((\S+)\)" "$1")))
+  (database-type->base-type
+   (string/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse [_ details]
   (let [{:keys [host port dbname]} details]
     (-> (dissoc details :host :port :dbname)
         (merge {:classname   "ru.yandex.clickhouse.ClickHouseDriver"
                 :subprotocol "clickhouse"
-                :subname     (str "//" host ":" port "/" dbname)})
+                :subname     (str "//" host
+                                  ":" port
+                                  (when dbname
+                                    (str "/" dbname)))
+                :use_server_time_zone_for_dates true})
         (sql-jdbc.common/handle-additional-options details))))
 
 (defn- modulo [a b]
@@ -113,6 +121,9 @@
 (defn- to-year [expr]
   (hsql/call :toYear (hsql/call :toDateTime expr)))
 
+(defn- to-day [expr]
+  (hsql/call :toDate expr))
+
 (defn- to-day-of-week [expr]
   ;; ClickHouse weeks start on Monday
   (hx/+ (modulo (hsql/call :toDayOfWeek (hsql/call :toDateTime expr)) 7) 1))
@@ -140,7 +151,7 @@
 (defmethod sql.qp/date [:clickhouse :quarter-of-year] [_ _ expr] (to-quarter-of-year expr))
 (defmethod sql.qp/date [:clickhouse :year]            [_ _ expr] (to-year expr))
 
-(defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (hsql/call :toDate expr))
+(defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (to-day expr))
 (defmethod sql.qp/date [:clickhouse :week]            [_ _ expr] (to-start-of-week expr))
 (defmethod sql.qp/date [:clickhouse :quarter]         [_ _ expr] (to-start-of-quarter expr))
 
@@ -220,9 +231,18 @@
               ;; TODO: this only covers the db case, not id or spec
               driver metadata (get-in db-or-id-or-spec [:details :db]))}))
 
+(defmethod driver.common/current-db-time-date-formatters :clickhouse [_]
+  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
+
+(defmethod driver.common/current-db-time-native-query :clickhouse [_]
+  "SELECT NOW()")
+
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
 (defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] false)
+
+;; TODO: Nested queries are actually supported, but I do not know how
+;; to make the driver use correct aliases per sub-query
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
 
 (defmethod driver/connection-properties :clickhouse [_]
@@ -232,5 +252,4 @@
      driver.common/default-dbname-details
      (assoc driver.common/default-user-details :required false)
      (assoc driver.common/default-password-details :required false)
-     (assoc driver.common/default-additional-options-details
-       :placeholder "use_server_time_zone_for_dates=true")]))
+     driver.common/default-additional-options-details]))
