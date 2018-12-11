@@ -21,6 +21,7 @@ import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
+import Icon from "metabase/components/Icon";
 
 import QuestionDataWorksheet from "../components/worksheet/Worksheet";
 import QuestionPresent from "../components/QuestionPresent";
@@ -246,12 +247,42 @@ export default class QueryBuilder extends Component {
       return (
         <div className={cx("flex-column", this.props.fitClassNames)}>
           <div className="full relative py2 px4 border-bottom bg-white flex">
-            <ViewHeader question={this.props.question} />
+            <span className="z3">
+              <ViewHeader question={this.props.question} />
+            </span>
             <div
-              className="bordered rounded shadowed inline-block ml-auto mr-auto bg-white px2 py1 cursor-pointer text-brand-hover"
+              className="absolute bottom left right flex z2"
+              style={{ bottom: -18 }}
               onClick={() => this.props.setMode("worksheet")}
             >
-              View Worksheet
+              <div
+                className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white px2 py1 cursor-pointer text-light text-bold"
+                style={{ borderRadius: 99 }}
+              >
+                {this.props.question.query().table() && (
+                  <span className="text-brand">
+                    {this.props.question.query().table().display_name}
+                  </span>
+                )}
+                {this.props.question.query().aggregationName() && (
+                  <span>
+                    <span className="mx1">•</span>
+                    {/* todo - this should be changed to use the canonical color names */}
+                    <span className="text-green">
+                      {this.props.question.query().aggregationName()}
+                    </span>
+                  </span>
+                )}
+                {this.props.question.query().filters().length > 0 && (
+                  <span className="flex align-center">
+                    <span className="mx1">•</span>
+                    {/* todo - this should be changed to use the canonical color names */}
+                    <span className="text-purple">
+                      <Icon name="filter" size={20} />
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <QuestionPresent {...this.props} />
