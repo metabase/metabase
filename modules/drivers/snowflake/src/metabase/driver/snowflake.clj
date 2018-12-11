@@ -22,15 +22,11 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
-             [ssh :as ssh]]
+             [i18n :refer [tru]]]
             [toucan.db :as db])
   (:import java.sql.Time))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
-
-(defmethod driver/display-name :snowflake [_]
-  "Snowflake")
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake [_ {:keys [account regionid], :as opts}]
   (let [host (if regionid
@@ -38,8 +34,8 @@
                account)]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (merge {:subprotocol                                "snowflake"
-            :classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+    (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+            :subprotocol                                "snowflake"
             :subname                                    (str "//" host ".snowflakecomputing.com/")
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true
@@ -57,39 +53,39 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake [_ base-type]
   ({:NUMBER                     :type/Number
-     :DECIMAL                    :type/Decimal
-     :NUMERIC                    :type/Number
-     :INT                        :type/Integer
-     :INTEGER                    :type/Integer
-     :BIGINT                     :type/BigInteger
-     :SMALLINT                   :type/Integer
-     :TINYINT                    :type/Integer
-     :BYTEINT                    :type/Integer
-     :FLOAT                      :type/Float
-     :FLOAT4                     :type/Float
-     :FLOAT8                     :type/Float
-     :DOUBLE                     :type/Float
-     (keyword "DOUBLE PRECISON") :type/Float
-     :REAL                       :type/Float
-     :VARCHAR                    :type/Text
-     :CHAR                       :type/Text
-     :CHARACTER                  :type/Text
-     :STRING                     :type/Text
-     :TEXT                       :type/Text
-     :BINARY                     :type/*
-     :VARBINARY                  :type/*
-     :BOOLEAN                    :type/Boolean
-     :DATE                       :type/Date
-     :DATETIME                   :type/DateTime
-     :TIME                       :type/Time
-     :TIMESTAMP                  :type/DateTime
-     :TIMESTAMPLTZ               :type/DateTime
-     :TIMESTAMPNTZ               :type/DateTime
-     :TIMESTAMPTZ                :type/DateTime
-     :VARIANT                    :type/*
-     ;; Maybe also type *
-     :OBJECT                     :type/Dictionary
-     :ARRAY                      :type/*} base-type))
+    :DECIMAL                    :type/Decimal
+    :NUMERIC                    :type/Number
+    :INT                        :type/Integer
+    :INTEGER                    :type/Integer
+    :BIGINT                     :type/BigInteger
+    :SMALLINT                   :type/Integer
+    :TINYINT                    :type/Integer
+    :BYTEINT                    :type/Integer
+    :FLOAT                      :type/Float
+    :FLOAT4                     :type/Float
+    :FLOAT8                     :type/Float
+    :DOUBLE                     :type/Float
+    (keyword "DOUBLE PRECISON") :type/Float
+    :REAL                       :type/Float
+    :VARCHAR                    :type/Text
+    :CHAR                       :type/Text
+    :CHARACTER                  :type/Text
+    :STRING                     :type/Text
+    :TEXT                       :type/Text
+    :BINARY                     :type/*
+    :VARBINARY                  :type/*
+    :BOOLEAN                    :type/Boolean
+    :DATE                       :type/Date
+    :DATETIME                   :type/DateTime
+    :TIME                       :type/Time
+    :TIMESTAMP                  :type/DateTime
+    :TIMESTAMPLTZ               :type/DateTime
+    :TIMESTAMPNTZ               :type/DateTime
+    :TIMESTAMPTZ                :type/DateTime
+    :VARIANT                    :type/*
+    ;; Maybe also type *
+    :OBJECT                     :type/Dictionary
+    :ARRAY                      :type/*} base-type))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
@@ -180,37 +176,6 @@
 
 (defmethod driver/describe-table-fks :snowflake [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table (db-name database)))
-
-(defmethod driver/connection-properties :snowflake [_]
-  (ssh/with-tunnel-config
-    [{:name         "account"
-      :display-name "Account"
-      :placeholder  "Your snowflake account name."
-      :required     true}
-     {:name         "user"
-      :display-name "Database username"
-      :placeholder  "ken bier"
-      :required     true}
-     {:name         "password"
-      :display-name "Database user password"
-      :type         :password
-      :placeholder  "*******"
-      :required     true}
-     {:name         "warehouse"
-      :display-name "Warehouse"
-      :placeholder  "my_warehouse"}
-     {:name         "db"
-      :display-name "Database name"
-      :placeholder  "cockerel"}
-     {:name         "regionid"
-      :display-name "Region Id"
-      :placeholder  "my_region"}
-     {:name         "schema"
-      :display-name "Schema"
-      :placeholder  "my_schema"}
-     {:name         "role"
-      :display-name "Role"
-      :placeholder  "my_role"}]))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
 

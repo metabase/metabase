@@ -32,6 +32,7 @@
   [^String class-name]
   (let [klass  (Class/forName class-name true (classloader/the-classloader))
         driver (proxy-driver (.newInstance klass))]
+    (log/debug (u/format-color 'blue "Registering JDBC proxy driver for {0}..." klass))
     (DriverManager/registerDriver driver)
 
     ;; deregister the non-proxy version of the driver so it doesn't try to handle our URLs. Most JDBC drivers register
