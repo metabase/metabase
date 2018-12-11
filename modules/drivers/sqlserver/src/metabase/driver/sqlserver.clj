@@ -11,15 +11,10 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
-             [ssh :as ssh]])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Time))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
-
-(defmethod driver/display-name :sqlserver [_] "SQL Server")
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver [_ column-type]
@@ -66,7 +61,6 @@
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
   (-> {:applicationName config/mb-app-id-string
-       :classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
        :subprotocol     "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
@@ -199,25 +193,6 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
-
-(defmethod driver/connection-properties :sqlserver [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :placeholder "1433")
-     (assoc driver.common/default-dbname-details
-       :name         "db"
-       :placeholder  (tru "BirdsOfTheWorld"))
-     {:name         "instance"
-      :display-name (tru "Database instance name")
-      :placeholder  (tru "N/A")}
-     {:name         "domain"
-      :display-name (tru "Windows domain")
-      :placeholder  (tru "N/A")}
-     driver.common/default-user-details
-     driver.common/default-password-details
-     driver.common/default-ssl-details
-     (assoc driver.common/default-additional-options-details
-       :placeholder  "trustServerCertificate=false")]))
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver [_]
   #{"sys" "INFORMATION_SCHEMA"})

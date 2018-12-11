@@ -35,8 +35,7 @@
 
 ;;; Test that additional connection string options work (#5296)
 (expect
-  {:classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-   :subprotocol     "sqlserver"
+  {:subprotocol     "sqlserver"
    :applicationName "Metabase <version>"
    :subname         "//localhost;trustServerCertificate=false"
    :database        "birddb"
