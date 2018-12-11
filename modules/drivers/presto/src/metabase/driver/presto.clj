@@ -25,7 +25,6 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
@@ -33,8 +32,6 @@
            java.util.Date))
 
 (driver/register! :presto, :parent :sql)
-
-(defmethod driver/display-name :presto [_] "Presto")
 
 ;;; Presto API helpers
 
@@ -356,14 +353,3 @@
 
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
-
-(defmethod driver/connection-properties :presto [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 8080)
-     (assoc driver.common/default-dbname-details
-       :name         "catalog"
-       :placeholder  (tru "hive"))
-     driver.common/default-user-details
-     driver.common/default-password-details
-     driver.common/default-ssl-details]))
