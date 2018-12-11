@@ -52,7 +52,6 @@ export default class DisplayPicker extends React.Component {
 
   handleChange(viz) {
     const { onChange } = this.props;
-    console.log("viz.identifier", viz.identifier);
     onChange(viz.identifier);
   }
 
@@ -66,7 +65,7 @@ export default class DisplayPicker extends React.Component {
   }
 
   render() {
-    const { value, onToggleSettings } = this.props;
+    const { value, showSettings, onToggleSettings } = this.props;
     const { group } = this.state;
     if (group && group.visualizations.length > 1) {
       return (
@@ -86,7 +85,10 @@ export default class DisplayPicker extends React.Component {
               );
             }
           })}
-          <RoundButtonBarSettingsButton onClick={onToggleSettings} />
+          <RoundButtonBarSettingsButton
+            selected={showSettings}
+            onClick={onToggleSettings}
+          />
         </RoundButtonBar>
       );
     } else {
@@ -105,7 +107,10 @@ export default class DisplayPicker extends React.Component {
               />
             );
           })}
-          <RoundButtonBarSettingsButton onClick={onToggleSettings} />
+          <RoundButtonBarSettingsButton
+            selected={showSettings}
+            onClick={onToggleSettings}
+          />
         </RoundButtonBar>
       );
     }
