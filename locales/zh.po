@@ -7780,7 +7780,7 @@ msgstr "系统时区是“{0}”"
 #. startup database.  validates connection & runs any necessary migrations
 #: src/metabase/core.clj
 msgid "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."
-msgstr "Metabse数据库设置、迁移中。坐稳了，这个可能要花一年时间……"
+msgstr "Metabse数据库设置、迁移中。坐稳了，这个可能要花一点时间……"
 
 #: src/metabase/core.clj
 msgid "Looks like this is a new installation ... preparing setup wizard"
