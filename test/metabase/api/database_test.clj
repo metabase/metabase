@@ -426,15 +426,19 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(tt/expect-with-temp [Database [druid-db   {:engine :druid, :details {}}]
-                      Card     [druid-card {:name             "Druid Card"
-                                            :dataset_query    {:database (u/get-id druid-db)
-                                                               :type     :native
-                                                               :native   {:query "[DRUID QUERY GOES HERE]"}}
-                                            :result_metadata [{:name "sparrows"}]
-                                            :database_id     (u/get-id druid-db)}]
-                      Card     [ok-card (assoc (card-with-native-query "OK Card")
-                                          :result_metadata [{:name "finches"}])]]
+(driver/register! ::no-nested-query-support :parent :h2)
+
+(defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
+
+(tt/expect-with-temp [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                      Card     [bad-card {:name            "Bad Card"
+                                          :dataset_query   {:database (u/get-id bad-db)
+                                                            :type     :native
+                                                            :native   {:query "[QUERY GOES HERE]"}}
+                                          :result_metadata [{:name "sparrows"}]
+                                          :database_id     (u/get-id bad-db)}]
+                      Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                           :result_metadata [{:name "finches"}])]]
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
