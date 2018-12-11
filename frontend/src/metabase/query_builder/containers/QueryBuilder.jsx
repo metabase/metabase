@@ -238,8 +238,6 @@ export default class QueryBuilder extends Component {
           ) : (
             <div>sql mode not yet implemented</div>
           )}
-
-          <ModeSelect {...this.props} />
         </div>
       );
     } else if (uiControls.mode === "present") {
@@ -286,14 +284,15 @@ export default class QueryBuilder extends Component {
             </div>
           </div>
           <QuestionPresent {...this.props} />
-          <ModeSelect {...this.props} />
         </div>
       );
     } else if (uiControls.mode === "visualize") {
       return (
-        <div className={this.props.fitClassNames}>
+        <div className={cx("flex-column", this.props.fitClassNames)}>
+          <div className="full relative py2 px4 border-bottom bg-white flex">
+            <ViewHeader question={this.props.question} />
+          </div>
           <QuestionVisualize {...this.props} />
-          <ModeSelect {...this.props} />
         </div>
       );
     } else if (uiControls.mode === "legacy") {
