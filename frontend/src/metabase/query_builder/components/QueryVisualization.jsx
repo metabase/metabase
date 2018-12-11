@@ -283,6 +283,13 @@ export default class QueryVisualization extends Component {
           </div>
         )}
         <div className={visualizationClasses}>{viz}</div>
+        <div
+          className="bordered rounded absolute bottom left bg-white p2 m1"
+          style={{ borderRadius: 99 }}
+          onClick={() => this.props.setMode("visualize")}
+        >
+          <Icon name="bar" />
+        </div>
       </div>
     );
   }
