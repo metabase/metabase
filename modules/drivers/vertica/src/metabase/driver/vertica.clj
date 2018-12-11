@@ -3,9 +3,7 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
@@ -15,13 +13,9 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [honeysql-extensions :as hx]]))
 
 (driver/register! :vertica, :parent :sql-jdbc)
-
-(defmethod driver/available? :vertica [_]
-  (u/ignore-exceptions (Class/forName "com.vertica.jdbc.Driver")))
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica [_ database-type]
   ({:Boolean                   :type/Boolean
@@ -117,15 +111,5 @@
 
 (defmethod driver/current-db-time :vertica [& args]
   (apply driver.common/current-db-time args))
-
-(defmethod driver/connection-properties :vertica [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 5433)
-     driver.common/default-dbname-details
-     driver.common/default-user-details
-     driver.common/default-password-details
-     (assoc driver.common/default-additional-options-details
-       :placeholder "ConnectionLoadBalance=1")]))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")

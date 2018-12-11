@@ -32,6 +32,47 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Check Plugin Dependencies                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dependency-type [{classname :class}]
+  (if classname
+    :class
+    :unknown))
+
+(defmulti ^:private dependency-satisfied?
+  {:arglists '([plugin-nane dependency])}
+  (fn [_ dep] (dependency-type dep)))
+
+(defmethod dependency-satisfied? :default [plugin-name dep]
+  (log/error (u/format-color 'red
+                 (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
+             (trs "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:")
+             "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
+  false)
+
+(defmethod dependency-satisfied? :class [plugin-name {^String classname :class, message :message, :as dep}]
+  (try
+    (Class/forName classname false (classloader/the-classloader))
+    (catch ClassNotFoundException _
+      (log/info (u/format-color 'red
+                    (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
+                (or message
+                    (trs "Class not found: {0}" classname)))
+      false)))
+
+(defn- all-dependencies-satisfied?
+  "Check whether all dependencies are satisfied for a plugin; return truthy if all are; otherwise log explanations about
+  why they are not, and return falsey."
+  [{{plugin-name :name, :keys [version]} :info, :keys [dependencies]}]
+  (let [plugin-name (format "%s %s" plugin-name version)]
+    (every? (fn [dep]
+              (u/prog1 (dependency-satisfied? plugin-name dep)
+                (log/debug (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))
+            dependencies)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Initialize Plugin                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -42,12 +83,19 @@
   (some-> (files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
           yaml/parse-string))
 
-(defn- init-plugin! [^Path jar-path]
-  (when-let [{init-steps :init, {:keys [lazy-load]} :driver, :or {lazy-load true}, :as info} (plugin-info jar-path)]
+(defn- init-plugin-with-info!
+  "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
+  falsey otherwise."
+  [{init-steps :init, {:keys [lazy-load], :or {lazy-load true}} :driver, :as info}]
+  (when (all-dependencies-satisfied? info)
     (if lazy-load
-      ;; TODO - if we're delaying loading we should wait until loading to add the driver to the Classpath!!!
       (lazy-loaded-driver/register-lazy-loaded-driver! info)
-      (init/initialize! init-steps))))
+      (init/initialize! init-steps))
+    :ok))
+
+(defn- init-plugin! [^Path jar-path]
+  (when-let [info (plugin-info jar-path)]
+    (init-plugin-with-info! info)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

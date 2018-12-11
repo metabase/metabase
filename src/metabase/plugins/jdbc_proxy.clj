@@ -38,5 +38,5 @@
     ;; themseleves when the classes are loaded
     (doseq [driver (enumeration-seq (DriverManager/getDrivers))
             :when (instance? klass driver)]
-      (log/debug (u/format-color 'blue (trs "Deregistering original JDBC driver {0}..." driver)))
+      (log/debug (u/format-color 'cyan (trs "Deregistering original JDBC driver {0}..." driver)))
       (DriverManager/deregisterDriver driver))))

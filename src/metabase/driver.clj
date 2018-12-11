@@ -234,7 +234,7 @@
         ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
         ;; whatever thread(s) we were waiting on.
         (when-not (initialized? driver)
-          (log/info (u/format-color 'blue (trs "Initializing driver {0}..." driver)))
+          (log/info (u/format-color 'cyan (trs "Initializing driver {0}..." driver)))
           (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (swap! initialized-drivers conj driver)
           (initialize! driver))))))
@@ -305,14 +305,18 @@
 (defmethod initialize! :default [_]) ; no-op
 
 
-(defmulti available?
+(defmulti ^:deprecated available?
   "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true` by
   default for all non-abstract driver types and false for abstract ones; some drivers might want to override this to
   return false even if the driver isn't abstract -- for example, the Oracle driver might return false if the JDBC
   driver it depends on is not available.
 
   This method is also used in tests to determine whether the standard set of Query Processor tests should
-  automatically against it; for one-off test drivers to test specific functionality, you should return `false`."
+  automatically against it; for one-off test drivers to test specific functionality, you should return `false`.
+
+  DEPRECATED -- drivers that require external dependencies are now shipping as plugins; they can declare dependencies
+  on external classes, and we can skip loading them entirely if the dependencies are not available. Please do not
+  implement this method; it will most likely be removed before version 1.0 ships."
   {:arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
