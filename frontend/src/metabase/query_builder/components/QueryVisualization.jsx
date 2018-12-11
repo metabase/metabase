@@ -56,6 +56,7 @@ type Props = {
   runQuestionQuery: any => void,
   cancelQuery?: any => void,
   className: string,
+  noHeader?: boolean,
 };
 
 type State = {

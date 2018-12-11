@@ -2,7 +2,7 @@ import React from "react";
 
 import QueryVisualization from "../components/QueryVisualization";
 
-export default class QuesitonPresent extends React.Component {
+export default class QuestionPresent extends React.Component {
   render() {
     return (
       <div
