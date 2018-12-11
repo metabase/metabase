@@ -12,18 +12,13 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
-             [ssh :as ssh]]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (driver/register! :redshift, :parent :postgres)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/display-name :redshift [_] "Amazon Redshift")
 
 ;; don't use the Postgres implementation for `describe-table` since it tries to fetch enums which Redshift doesn't
 ;; support
@@ -59,17 +54,6 @@
           :dest-table       {:name   (:dest-table-name fk)
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
-
-(defmethod driver/connection-properties :redshift [_]
-  (ssh/with-tunnel-config
-    [(assoc driver.common/default-host-details
-       :placeholder (tru "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"))
-     (assoc driver.common/default-port-details :default 5439)
-     (assoc driver.common/default-dbname-details
-       :name         "db"
-       :placeholder  (tru "toucan_sightings"))
-     driver.common/default-user-details
-     driver.common/default-password-details]))
 
 (defmethod driver/format-custom-field-name :redshift [_ custom-field-name]
   (str/lower-case custom-field-name))
