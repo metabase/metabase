@@ -8,7 +8,8 @@
              [sql-jdbc :as sql-jdbc.tx]]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]]))
+             [load-data :as load-data]]
+            [metabase.util :as u]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
