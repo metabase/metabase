@@ -7,14 +7,15 @@
              [field :refer [Field]]
              [params :as params]]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- parse-param-value-for-type
+(s/defn ^:private parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [param-type param-value field-id]
+  [param-type param-value, field-id :- su/IntGreaterThanZero]
   (cond
     ;; for `id` type params look up the base-type of the Field and see if it's a number or not. If it *is* a number
     ;; then recursively call this function and parse the param value as a number as appropriate.

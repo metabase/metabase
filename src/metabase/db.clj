@@ -55,18 +55,28 @@
   return a broken-out map."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
-    (merge {:type     (case (keyword protocol)
-                        :postgres   :postgres
-                        :postgresql :postgres
-                        :mysql      :mysql)
-            :user     user
-            :password pass
-            :host     host
-            :port     port
-            :dbname   db}
-           (some-> query
-                   codec/form-decode
-                   walk/keywordize-keys))))
+    (u/prog1 (merge {:type     (case (keyword protocol)
+                                 :postgres   :postgres
+                                 :postgresql :postgres
+                                 :mysql      :mysql)
+                     :user     user
+                     :password pass
+                     :host     host
+                     :port     port
+                     :dbname   db}
+                    (some-> query
+                            codec/form-decode
+                            walk/keywordize-keys))
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
+      ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
+      ;; for more details.
+      (when (and (= (:type <>) :postgres)
+                 (= (:ssl <>) "true")
+                 (not (:sslmode <>)))
+        (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
+                  (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+                  (trs "If Metabase fails to launch, please add it and try again.")
+                  (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
 (def ^:private connection-string-details
   (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
@@ -215,7 +225,8 @@
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
   "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
   otherwise it adds 2 seconds to startup time."
-  (partial deref (future (DatabaseFactory/getInstance))))
+  (when-not *compile-files*
+    (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."

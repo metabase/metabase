@@ -18,11 +18,11 @@ msgstr "我们查看了你的数据，有一些自动化的探索，我们可以
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:35
 msgid "I'm good thanks"
-msgstr ""
+msgstr "很好谢谢"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:42
 msgid "Explore this data"
-msgstr ""
+msgstr "导出该数据"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditForms.jsx:42
 msgid "Select a database type"
@@ -56,31 +56,31 @@ msgstr "数据库同步中"
 msgid "This is a lightweight process that checks for\n"
 "updates to this database’s schema. In most cases, you should be fine leaving this\n"
 "set to sync hourly."
-msgstr ""
+msgstr "这是一个用来检查数据库表结构定义是否更新的轻量化进程。多数情况下应该保持设置为每小时同步一次"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
 msgid "Scan"
-msgstr ""
+msgstr "扫描"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:152
 msgid "Scanning for Filter Values"
-msgstr ""
+msgstr "扫描过滤值"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
 msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr ""
+msgstr "Metabase 可以扫描开启了多选框过滤器的数据库中的每个字段，这将是一个耗时耗力的过程，尤其是数据非常多的时候"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:159
 msgid "When should Metabase automatically scan and cache field values?"
-msgstr ""
+msgstr "Metabase 应该在什么时候自动扫描和缓存字段值？"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:164
 msgid "Regularly, on a schedule"
-msgstr ""
+msgstr "按计划定期执行"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:195
 msgid "Only when adding a new filter widget"
@@ -89,11 +89,11 @@ msgstr "只有当你在添加一个新的过滤控件时"
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:199
 msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
-msgstr ""
+msgstr "当用户添加过滤器到 Dashboard 或者 SQL 问题中，Metabase 将会扫描过滤器到全部字段并展现选定字段的列表"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:210
 msgid "Never, I'll do this manually if I need to"
-msgstr ""
+msgstr "从不，如果需要，我将手工执行"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:222
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:27
@@ -108,7 +108,7 @@ msgstr "保存中......"
 #: frontend/src/metabase/components/form/FormMessage.jsx:4
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:144
 msgid "Server error encountered"
-msgstr ""
+msgstr "服务器出错了"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:58
 msgid "Delete this database?"
@@ -1368,7 +1368,7 @@ msgstr "配置"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:13
 #: frontend/src/metabase/admin/settings/selectors.js:207
 msgid "LDAP"
-msgstr "联机分析处理"
+msgstr "LDAP资源管理服务（权限管理）"
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:25
 msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
@@ -3608,7 +3608,7 @@ msgstr "你好"
 
 #: frontend/src/metabase/lib/greeting.js:7
 msgid "Greetings"
-msgstr "问候"
+msgstr "你好"
 
 #: frontend/src/metabase/lib/greeting.js:8
 msgid "Good to see you"
@@ -9305,7 +9305,7 @@ msgstr "使用Java虚拟机时区"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:29
 msgid "We're currently analyzing the tables and fields to help you explore your data."
-msgstr ""
+msgstr "正在分析表格和字段，以帮助您浏览数据"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:432
 msgid "Tip: "
@@ -9322,15 +9322,15 @@ msgstr "字段类型"
 #: frontend/src/metabase/admin/routes.jsx:83
 #: frontend/src/metabase/nav/containers/Navbar.jsx:225
 msgid "Troubleshooting"
-msgstr ""
+msgstr "分析问题中"
 
 #: frontend/src/metabase/admin/settings/selectors.js:96
 msgid "Enable X-ray features"
-msgstr ""
+msgstr "开启 X-ray 功能"
 
 #: frontend/src/metabase/admin/settings/selectors.js:323
 msgid "Formatting Options"
-msgstr ""
+msgstr "格式化"
 
 #: frontend/src/metabase/admin/tasks/containers/TaskModal.jsx:20
 msgid "Task details"
@@ -9338,7 +9338,7 @@ msgstr "任务详情"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:36
 msgid "Troubleshooting logs"
-msgstr ""
+msgstr "分析日志"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:38
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
@@ -9350,31 +9350,31 @@ msgstr "任务"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:64
 msgid "DB ID"
-msgstr ""
+msgstr "数据库 ID"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
 msgid "Started at"
-msgstr ""
+msgstr "开始于"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
 msgid "Ended at"
-msgstr ""
+msgstr "结束于"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
 msgid "Duration (ms)"
-msgstr ""
+msgstr "用时"
 
 #: frontend/src/metabase/lib/core.js:45
 msgid "Currency"
-msgstr ""
+msgstr "货币"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:163
 msgid "Pick a user or channel..."
-msgstr ""
+msgstr "选择一个用户或频道"
 
 #: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:90
 msgid "No formatting settings"
-msgstr ""
+msgstr "无格式"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:81
 msgid "Label for this range (optional)"
@@ -9386,15 +9386,15 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:26
 msgid "is less than"
-msgstr ""
+msgstr "小于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:27
 msgid "is greater than"
-msgstr ""
+msgstr "大于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:28
 msgid "is less than or equal to"
-msgstr ""
+msgstr "小于等于"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:29
 msgid "is greater than or equal to"
@@ -9454,11 +9454,11 @@ msgstr "日期格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:196
 msgid "Date separators"
-msgstr ""
+msgstr "日期分隔符"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:215
 msgid "Abbreviate names of days and months"
-msgstr ""
+msgstr "天和月的缩写名称"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:225
 msgid "Show the time"
@@ -9482,23 +9482,23 @@ msgstr "时间格式"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:299
 msgid "Unit of currency"
-msgstr ""
+msgstr "货币单位"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:319
 msgid "Currency label style"
-msgstr ""
+msgstr "货币标签样式"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:337
 msgid "Where to display the unit of currency"
-msgstr ""
+msgstr "货币单位显示位置"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:370
 msgid "Minimum number of decimal places"
-msgstr ""
+msgstr "小数点后位数"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:271
 msgid "Stacked chart type"
-msgstr ""
+msgstr "堆积图表类型"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:314
 msgid "Goal label"
@@ -9575,19 +9575,19 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:123
 msgid "Visible columns"
-msgstr ""
+msgstr "可见列"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:143
 msgid "Conditional Formatting"
-msgstr ""
+msgstr "条件格式"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:165
 msgid "Column title"
-msgstr ""
+msgstr "列标题"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:172
 msgid "Show a mini bar chart"
-msgstr ""
+msgstr "显示迷你条形图"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:183
 msgid "Link"
@@ -9607,15 +9607,15 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "View as link or image"
-msgstr ""
+msgstr "查看链接或图像"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:210
 msgid "Link text"
-msgstr ""
+msgstr "链接文本"
 
 #: src/metabase/api/common/internal.clj
 msgid "Not a valid integer: ''{0}''"
-msgstr ""
+msgstr "无效的整数：“{0}”"
 
 #: src/metabase/api/embed.clj
 msgid "Embedding is not enabled for this object."
@@ -9647,7 +9647,7 @@ msgstr ""
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "minute"
-msgstr ""
+msgstr "分"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "hour"
@@ -9762,7 +9762,7 @@ msgstr ""
 
 #: src/metabase/mbql/normalize.clj
 msgid "Illegal filter clause: {0}"
-msgstr ""
+msgstr "非法的过滤条件：{0}"
 
 #: src/metabase/mbql/normalize.clj
 msgid "Invalid clause:"
@@ -9823,7 +9823,7 @@ msgstr ""
 
 #: src/metabase/plugins.clj
 msgid "Loading plugin {0}... {1}"
-msgstr ""
+msgstr "加载插件 {0}...{1}"
 
 #: src/metabase/public_settings.clj
 msgid "Object keyed by type, containing formatting settings"
@@ -9831,7 +9831,7 @@ msgstr ""
 
 #: src/metabase/public_settings.clj
 msgid "Allow users to explore data using X-rays"
-msgstr ""
+msgstr "允许用户使用X-rays探索数据"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Using this URL to check token: {0}"
@@ -11241,7 +11241,7 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/resolve_database.clj
 msgid "Database {0} does not exist."
-msgstr ""
+msgstr "数据库 {0} 不存在。"
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."

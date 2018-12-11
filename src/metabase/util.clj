@@ -21,15 +21,17 @@
 ;; This is the very first log message that will get printed.
 ;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
 ;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-(log/info (trs "Loading Metabase..."))
+(when-not *compile-files*
+  (log/info (trs "Loading Metabase...")))
 
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
-(log/info (trs "Maximum memory available to JVM: {0}"
-               (loop [mem (.maxMemory (Runtime/getRuntime)), [suffix & more] ["B" "KB" "MB" "GB"]]
-                 (if (and (seq more)
-                          (>= mem 1024))
-                   (recur (/ mem 1024.0) more)
-                   (format "%.1f %s" mem suffix)))))
+(when-not *compile-files*
+  (log/info (trs "Maximum memory available to JVM: {0}"
+                 (loop [mem (.maxMemory (Runtime/getRuntime)), [suffix & more] ["B" "KB" "MB" "GB"]]
+                   (if (and (seq more)
+                            (>= mem 1024))
+                     (recur (/ mem 1024.0) more)
+                     (format "%.1f %s" mem suffix))))))
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries

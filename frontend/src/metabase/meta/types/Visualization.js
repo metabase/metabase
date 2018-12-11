@@ -48,6 +48,8 @@ export type ClickAction = {
   action?: () => ?ReduxAction,
   section?: string,
   name?: string,
+  default?: boolean,
+  defaultAlways?: boolean,
 };
 
 export type ClickActionProps = {
