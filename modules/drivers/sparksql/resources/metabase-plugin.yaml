@@ -1,0 +1,32 @@
+info:
+  name: Metabase Spark SQL Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Spark SQL databases.
+driver:
+  - name: hive-like
+    lazy-load: true
+    abstract: true
+  - name: sparksql
+    display-name: Spark SQL
+    lazy-load: true
+    parent: hive-like
+    connection-properties:
+      - host
+      - merge:
+          - port
+          - default: 10000
+      - merge:
+          - dbname
+          - placeholder: default
+      - user
+      - password
+      - merge:
+          - additional-options
+          - name: jdbc-flags
+            placeholder: ';transportMode=http'
+    connection-properties-include-tunnel-config: false
+init:
+  - step: load-namespace
+    namespace: metabase.driver.sparksql
+  - step: register-jdbc-driver
+    class: metabase.driver.FixedHiveDriver

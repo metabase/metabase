@@ -6,7 +6,6 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.hive-like.register-driver :as register-driver]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -18,10 +17,6 @@
   (:import java.util.Date))
 
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
-
-(defmethod driver/available? :hive-like [driver]
-  (and (register-driver/available?)
-       (not (driver/abstract? driver))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like [_ database-type]
   ({ ;; Numeric types

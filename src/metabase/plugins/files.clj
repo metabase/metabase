@@ -7,6 +7,7 @@
   *file-manipulation* functions for the sorts of operations the plugin system needs to perform."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]])
@@ -16,16 +17,10 @@
            java.nio.file.attribute.FileAttribute
            java.util.Collections))
 
-(defmacro ^:private varargs
-  "Make a properly-tagged Java interop varargs argument."
-  [klass & [objects]]
-  (vary-meta `(into-array ~klass ~objects)
-             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
-
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 
 (defn- get-path-in-filesystem ^Path [^FileSystem filesystem, ^String path-component & more-components]
-  (.getPath filesystem path-component (varargs String more-components)))
+  (.getPath filesystem path-component (u/varargs String more-components)))
 
 (defn get-path
   "Get a `Path` for a file or directory in the default (i.e., system) filesystem named by string path component(s).
@@ -45,12 +40,12 @@
 ;;; ----------------------------------------------- Other Basic Utils ------------------------------------------------
 
 (defn- exists? [^Path path]
-  (Files/exists path (varargs LinkOption)))
+  (Files/exists path (u/varargs LinkOption)))
 
 (defn regular-file?
   "True if `path` refers to a regular file (as opposed to something like directory)."
   [^Path path]
-  (Files/isRegularFile path (varargs LinkOption)))
+  (Files/isRegularFile path (u/varargs LinkOption)))
 
 (defn readable?
   "True if we can read the file at `path`."
@@ -64,7 +59,7 @@
   "Self-explanatory. Create a directory with `path` if it does not already exist."
   [^Path path]
   (when-not (exists? path)
-    (Files/createDirectory path (varargs FileAttribute))))
+    (Files/createDirectory path (u/varargs FileAttribute))))
 
 (defn files-seq
   "Get a sequence of all files in `path`, presumably a directory or an archive of some sort (like a JAR)."
@@ -76,7 +71,7 @@
 
 (defn- copy! [^Path source, ^Path dest]
   (du/profile (trs "Extract file {0} -> {1}" source dest)
-    (Files/copy source dest (varargs CopyOption))))
+    (Files/copy source dest (u/varargs CopyOption))))
 
 (defn- copy-if-not-exists! [^Path source, ^Path dest]
   (when-not (exists? dest)
@@ -133,5 +128,5 @@
   (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
     (let [file-path (apply get-path-in-filesystem fs path-components)]
       (when (exists? file-path)
-        (with-open [is (Files/newInputStream file-path (varargs OpenOption))]
+        (with-open [is (Files/newInputStream file-path (u/varargs OpenOption))]
           (slurp is))))))

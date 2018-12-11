@@ -17,7 +17,8 @@
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
-   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]}
+   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
+   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -66,7 +67,7 @@
    [com.google.apis/google-api-services-bigquery "v2-rev387-1.23.0"]  ; Google BigQuery Java Client Library
    [com.jcraft/jsch "0.1.54"]                                         ; SSH client for tunnels
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
-   [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib
+   [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
    [com.novemberain/monger "3.1.0"]                                   ; MongoDB Driver
    [com.taoensso/nippy "2.13.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
@@ -80,7 +81,7 @@
     :exclusions [org.clojure/clojure
                  org.yaml/snakeyaml]]
    [kixi/stats "0.4.1" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
-   [log4j/log4j "1.2.17"                                              ; logging framework
+   [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
     :exclusions [javax.mail/mail
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
@@ -168,7 +169,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.2"]]
+    [[metabase/lein-include-drivers "1.0.3"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
@@ -238,8 +239,13 @@
    ;; generate sample dataset with `lein generate-sample-dataset`
    :generate-sample-dataset
    {:dependencies [[faker "0.2.2"]]                                   ; Fake data generator -- port of Perl/Ruby library
-    :source-paths ["sample_dataset"]
+    :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
+
+   :strip-and-compress
+   {:source-paths ["src"
+                   "lein-commands/strip-and-compress"]
+    :main ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
    :profile

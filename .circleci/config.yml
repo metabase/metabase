@@ -58,7 +58,7 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run: lein deps
+      - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
@@ -188,12 +188,6 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download SparkSQL deps JAR
-          command: wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
       - run:
           name: Wait for SparkSQL to be ready
           command: >
@@ -369,7 +363,7 @@ jobs:
       - run:
           name: Wait for Presto to be ready
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
             while ! nc -z localhost 8080; do sleep 0.1; done
           no_output_timeout: 5m
       - run:

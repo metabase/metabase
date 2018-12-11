@@ -86,11 +86,12 @@
 (defn- init-plugin-with-info!
   "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
-  [{init-steps :init, {:keys [lazy-load], :or {lazy-load true}} :driver, :as info}]
+  [{init-steps :init, driver-or-drivers :driver, :as info}]
   (when (all-dependencies-satisfied? info)
-    (if lazy-load
-      (lazy-loaded-driver/register-lazy-loaded-driver! info)
-      (init/initialize! init-steps))
+    (doseq [{:keys [lazy-load], :or {lazy-load true}, :as driver} (u/one-or-many driver-or-drivers)]
+      (if lazy-load
+        (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))
+        (init/initialize! init-steps)))
     :ok))
 
 (defn- init-plugin! [^Path jar-path]

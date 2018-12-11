@@ -61,18 +61,28 @@
 
 (defn register-lazy-loaded-driver!
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
-  [{init-steps :init, {driver-name :name, :keys [display-name parent], :as driver-info} :driver}]
-  ;; Make sure the driver has required properties like driver-name
-  (when-not (seq driver-name)
-    (throw (ex-info (str (trs "Cannot initialize plugin: missing required property `driver-name`"))
-             driver-info)))
-  (let [driver (keyword driver-name)]
+  [{init-steps                                                                                      :init
+    {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
+  (let [driver           (keyword driver-name)
+        connection-props (parse-connection-properties driver-info)]
+    ;; Make sure the driver has required properties like driver-name
+    (when-not (seq driver-name)
+      (throw (ex-info (str (trs "Cannot initialize plugin: missing required property `driver-name`"))
+               driver-info)))
+    ;; if someone forgot to include connection properties for a non-abstract driver throw them a bone and warn them
+    ;; about it
+    (when (and (not abstract)
+               (empty? connection-props))
+      (log/warn
+       (u/format-color 'red (trs "Warning: plugin manifest for {0} does not include connection properties" driver))))
+    ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver init-steps)
-             driver/available?            (constantly true)
-             driver/display-name          (constantly display-name)
-             driver/connection-properties (constantly (parse-connection-properties driver-info))}]
-      (.addMethod multifn driver f))
-
+             driver/available?            (constantly (not abstract))
+             driver/display-name          (when display-name (constantly display-name))
+             driver/connection-properties (constantly connection-props)}]
+      (when f
+        (.addMethod multifn driver f)))
+    ;; finally, register the Metabase driver
     (log/info (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
-    (driver/register! driver, :parent (keyword parent))))
+    (driver/register! driver, :parent (keyword parent), :abstract? abstract)))

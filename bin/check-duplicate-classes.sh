@@ -9,7 +9,7 @@ if [ ! "$2" ]; then
 fi
 
 list-files() {
-    jar -tf "$1" grep -E 'class$|clj$'
+    jar -tf "$1" | grep -E 'class$|clj$'
 }
 
 duplicates=`{ list-files "$1"; list-files "$2"; } | sort | uniq -d`
@@ -17,7 +17,7 @@ duplicates=`{ list-files "$1"; list-files "$2"; } | sort | uniq -d`
 if [ "$duplicates" ]; then
     echo "Duplicate files found:"
     for file in "$duplicates"; do
-        echo $file
+        printf "$file\n"
     done
     exit -1
 else

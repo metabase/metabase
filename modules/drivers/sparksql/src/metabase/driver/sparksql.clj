@@ -9,9 +9,7 @@
             [metabase
              [config :as config]
              [driver :as driver]]
-            [metabase.driver
-             [common :as driver.common]
-             [hive-like :as hive-like]]
+            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -22,14 +20,9 @@
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (driver/register! :sparksql, :parent :hive-like)
-
-(defmethod driver/display-name :sparksql [_] "Spark SQL")
-
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
@@ -141,15 +134,5 @@
 
 ;; during unit tests don't treat Spark SQL as having FK support
 (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
-
-(defmethod driver/connection-properties :sparksql [_]
-  [driver.common/default-host-details
-   (assoc driver.common/default-port-details :default 10000)
-   (assoc driver.common/default-dbname-details :placeholder (tru "default"))
-   driver.common/default-user-details
-   driver.common/default-password-details
-   (assoc driver.common/default-additional-options-details
-     :name        "jdbc-flags"
-     :placeholder ";transportMode=http")])
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)
