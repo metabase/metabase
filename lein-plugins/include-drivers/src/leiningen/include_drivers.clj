@@ -43,9 +43,19 @@
          :when  (not= 'metabase-core/metabase-core (first dep))]
      dep)))
 
+(defn- test-drivers-repositories [test-drivers]
+  (vec
+   (for [driver test-drivers
+         :let   [project-file (format "modules/drivers/%s/project.clj" driver)]
+         :when  (file-exists? project-file)
+         :let   [{:keys [repositories]} (p/read project-file)]
+         repo   repositories]
+     repo)))
+
 (defn- test-drivers-profile [project]
   (let [test-drivers (test-drivers project)]
-    {:dependencies (test-drivers-dependencies test-drivers)
+    {:repositories (test-drivers-repositories test-drivers)
+     :dependencies (test-drivers-dependencies test-drivers)
      :source-paths (test-drivers-source-paths test-drivers)
      :test-paths   (test-drivers-test-paths   test-drivers)}))
 

@@ -124,22 +124,6 @@ jobs:
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
-  be-install-for-building-drivers:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Install Metabase for building drivers
-          command: lein install-for-building-drivers
-          no_output_timeout: 5m
-      - persist_to_workspace:
-          root: /home/circleci/
-          paths:
-            - .m2/repository/metabase-core
-
   be-tests-mysql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -298,11 +282,6 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Build SQL Server driver
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
-            ./bin/build-driver.sh sqlserver
-      - run:
           name: Run backend unit tests (SQL Server)
           environment:
             DRIVERS: h2,sqlserver
@@ -334,11 +313,6 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run:
-          name: Build SQLite driver
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
-            ./bin/build-driver.sh sqlite
       - run:
           name: Run backend unit tests (SQLite)
           environment:
@@ -604,9 +578,6 @@ workflows:
       - be-linter-reflection-warnings:
           requires:
             - be-deps
-      - be-install-for-building-drivers:
-          requires:
-            - be-deps
       - be-tests-mysql:
           requires:
             - be-tests
@@ -627,7 +598,7 @@ workflows:
             - be-tests
       - be-tests-sqlite:
           requires:
-            - be-install-for-building-drivers
+            - be-tests
       - be-tests-presto:
           requires:
             - be-tests

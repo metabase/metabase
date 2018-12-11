@@ -1,4 +1,4 @@
-(defproject metabase/sqlite-driver "1.0.0-SNAPSHOT"
+(defproject metabase/sqlite-driver "1.0.0-SNAPSHOT-3.25.2"
   :min-lein-version "2.5.0"
 
   :dependencies
