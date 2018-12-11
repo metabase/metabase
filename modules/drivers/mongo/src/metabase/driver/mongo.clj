@@ -1,6 +1,8 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [cheshire.core :as json]
+  (:require [cheshire
+             [core :as json]
+             [generate :as json.generate]]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
@@ -11,20 +13,21 @@
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util
-             [i18n :refer [tru]]
-             [ssh :as ssh]]
             [monger
              [collection :as mc]
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
             [schema.core :as s])
-  (:import com.mongodb.DB))
+  (:import com.mongodb.DB
+           org.bson.BsonUndefined))
+
+;; JSON Encoding (etc.)
+
+;; Encode BSON undefined like `nil`
+(json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
 (driver/register! :mongo)
-
-(defmethod driver/display-name :mongo [_] "MongoDB")
 
 ;;; ## MongoDriver
 
@@ -120,11 +123,16 @@
        last
        first))
 
+(defn- class->base-type [^Class klass]
+  (if (isa? klass org.bson.types.ObjectId)
+    :type/MongoBSONID
+    (driver.common/class->base-type klass)))
+
 (defn- describe-table-field [field-kw field-info]
   (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
     (cond-> {:name          (name field-kw)
              :database-type (some-> most-common-object-type .getName)
-             :base-type     (driver.common/class->base-type most-common-object-type)}
+             :base-type     (class->base-type most-common-object-type)}
       (= :_id field-kw)           (assoc :pk? true)
       (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
                                                             (filter #(some? (first %)))
@@ -169,22 +177,6 @@
 
 (defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
 (defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
-
-(defmethod driver/connection-properties :mongo [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 27017)
-     (assoc driver.common/default-dbname-details
-       :placeholder  (tru "carrierPigeonDeliveries"))
-     (assoc driver.common/default-user-details :required false)
-     (assoc driver.common/default-password-details :name "pass")
-     {:name         "authdb"
-      :display-name (tru "Authentication Database")
-      :placeholder  (tru "Optional database to use when authenticating")}
-     driver.common/default-ssl-details
-     (assoc driver.common/default-additional-options-details
-       :display-name (tru "Additional Mongo connection string options")
-       :placeholder  "readPreference=nearest&replicaSet=test")]))
 
 (defmethod driver/mbql->native :mongo [_ query]
   (qp/mbql->native query))

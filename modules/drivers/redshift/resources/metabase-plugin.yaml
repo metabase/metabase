@@ -23,6 +23,6 @@ driver:
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace
-    namespace: metabase.driver.sqlite
+    namespace: metabase.driver.redshift
   - step: register-jdbc-driver
-    class: org.sqlite.JDBC
+    class: com.amazon.redshift.jdbc.Driver
