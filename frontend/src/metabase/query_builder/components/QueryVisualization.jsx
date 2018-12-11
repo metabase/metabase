@@ -160,11 +160,6 @@ export default class QueryVisualization extends Component {
     return (
       <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
         <div>
-          {!isObjectDetail && (
-            <VisualizationSettings ref="settings" {...this.props} />
-          )}
-        </div>
-        <div>
           <Tooltip tooltip={runButtonTooltip}>
             <RunButton
               isRunnable={isRunnable}
