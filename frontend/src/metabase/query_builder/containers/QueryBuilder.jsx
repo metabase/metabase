@@ -25,6 +25,7 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 import QuestionDataWorksheet from "../components/worksheet/Worksheet";
 import QuestionPresent from "../components/QuestionPresent";
 import QuestionVisualize from "../components/QuestionVisualize";
+import ViewHeader from "../components/ViewHeader";
 
 import title from "metabase/hoc/Title";
 
@@ -241,9 +242,11 @@ export default class QueryBuilder extends Component {
         </div>
       );
     } else if (uiControls.mode === "present") {
+      window.q = this.props.question;
       return (
         <div className={cx("flex-column", this.props.fitClassNames)}>
-          <div className="full relative py2 border-bottom bg-white flex">
+          <div className="full relative py2 px4 border-bottom bg-white flex">
+            <ViewHeader question={this.props.question} />
             <div
               className="bordered rounded shadowed inline-block ml-auto mr-auto bg-white px2 py1 cursor-pointer text-brand-hover"
               onClick={() => this.props.setMode("worksheet")}
