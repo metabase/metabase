@@ -253,11 +253,11 @@ export default class QueryBuilder extends Component {
             <div
               className="absolute bottom left right flex z2"
               style={{ bottom: -18 }}
-              onClick={() => this.props.setMode("worksheet")}
             >
               <div
                 className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white px2 py1 cursor-pointer text-light text-bold"
                 style={{ borderRadius: 99 }}
+                onClick={() => this.props.setMode("worksheet")}
               >
                 {this.props.question.query().table() && (
                   <span className="text-brand">
