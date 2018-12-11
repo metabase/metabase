@@ -6,8 +6,7 @@
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
-             [driver :as driver]
-             [util :as u]]
+             [driver :as driver]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
@@ -16,15 +15,9 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
              [ssh :as ssh]]))
 
 (driver/register! :oracle, :parent :sql-jdbc)
-
-(defmethod driver/available? :oracle [_]
-  (boolean
-   (u/ignore-exceptions
-     (Class/forName "oracle.jdbc.OracleDriver"))))
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -67,7 +60,8 @@
                                                               :as   details}]
   (assert (or sid service-name))
   (merge
-   {:subprotocol "oracle:thin"
+   {:classname   "oracle.jdbc.OracleDriver"
+    :subprotocol "oracle:thin"
     :subname     (str "@" host
                       ":" port
                       (when sid
@@ -279,21 +273,6 @@
   (if (str/includes? message "(or sid service-name)")
     "You must specify the SID and/or the Service Name."
     message))
-
-(defmethod driver/connection-properties :oracle [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 1521)
-     {:name         "sid"
-      :display-name (tru "Oracle system ID (SID)")
-      :placeholder  (str (tru "Usually something like ORCL or XE.")
-                         " "
-                         (tru "Optional if using service name"))}
-     {:name         "service-name"
-      :display-name (tru "Oracle service name")
-      :placeholder  (tru "Optional TNS alias")}
-     driver.common/default-user-details
-     driver.common/default-password-details]))
 
 (defmethod driver/execute-query :oracle [driver query]
   (remove-rownum-column ((get-method driver/execute-query :sql-jdbc) driver query)))

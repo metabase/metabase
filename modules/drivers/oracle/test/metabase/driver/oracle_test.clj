@@ -9,7 +9,8 @@
 
 ;; make sure we can connect with an SID
 (expect
-  {:subprotocol                 "oracle:thin"
+  {:classname                   "oracle.jdbc.OracleDriver"
+   :subprotocol                 "oracle:thin"
    :subname                     "@localhost:1521:ORCL"
    :oracle.jdbc.J2EE13Compliant true}
   (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
@@ -31,7 +32,8 @@
 
 ;; make sure you can specify a Service Name with no SID
 (expect
-  {:subprotocol                 "oracle:thin"
+  {:classname                   "oracle.jdbc.OracleDriver"
+   :subprotocol                 "oracle:thin"
    :subname                     "@localhost:1521/MyCoolService"
    :oracle.jdbc.J2EE13Compliant true}
   (sql-jdbc.conn/connection-details->spec :oracle {:host         "localhost"
@@ -40,7 +42,8 @@
 
 ;; make sure you can specify a Service Name and an SID
 (expect
-  {:subprotocol                 "oracle:thin"
+  {:classname                   "oracle.jdbc.OracleDriver"
+   :subprotocol                 "oracle:thin"
    :subname                     "@localhost:1521:ORCL/MyCoolService"
    :oracle.jdbc.J2EE13Compliant true}
   (sql-jdbc.conn/connection-details->spec :oracle {:host         "localhost"
