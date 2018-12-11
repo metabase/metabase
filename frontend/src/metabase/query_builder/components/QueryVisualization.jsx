@@ -158,12 +158,12 @@ export default class QueryVisualization extends Component {
     const isEmbeddingEnabled = MetabaseSettings.get("embedding");
     return (
       <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
-        <div className="z4 absolute left hide sm-show">
+        <div>
           {!isObjectDetail && (
             <VisualizationSettings ref="settings" {...this.props} />
           )}
         </div>
-        <div className="z3 sm-absolute left right">
+        <div>
           <Tooltip tooltip={runButtonTooltip}>
             <RunButton
               isRunnable={isRunnable}
