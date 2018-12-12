@@ -22,7 +22,7 @@ const HeaderButton = styled(Button)`
   }
 `;
 
-const Title = styled("h1")`
+const Title = styled("h2")`
   ${color} font-weight: 900;
 `;
 
