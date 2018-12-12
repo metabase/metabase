@@ -52,7 +52,7 @@ export default class QuestionVisualize extends React.Component {
             }
           />
         </Flex>
-        <Absolute top={0} bottom={0} right={0}>
+        <Absolute top={0} bottom={80} right={0}>
           <QuestionVisualizeColumns {...this.props} />
         </Absolute>
       </Flex>

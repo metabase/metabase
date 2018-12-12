@@ -48,6 +48,43 @@ function getDefaultQuestionForTable(table) {
   });
 }
 
+function getDefaultVizQuestionForTable(table) {
+  if (table.entity_type === "entity/GoogleAnalyticsTable") {
+    const dateField = _.findWhere(table.fields, { name: "ga:date" });
+    if (dateField) {
+      return Question.create()
+        .setDatasetQuery({
+          database: table.db_id,
+          type: "query",
+          query: {
+            "source-table": table.id,
+            aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
+            breakout: [
+              ["datetime-field", ["field-id", dateField.id], "as", "week"],
+            ],
+            filter: ["time-interval", ["field-id", dateField.id], -365, "day"],
+          },
+        })
+        .setDisplay("line");
+    }
+  }
+  return Question.create()
+    .setDatasetQuery({
+      database: table.db_id,
+      type: "query",
+      query: {
+        "source-table": table.id,
+        aggregation: [],
+        breakout: [],
+      },
+    })
+    .setDisplay("line")
+    .setVisualizationSettings({
+      "graph.dimensions": [null],
+      "graph.metrics": [null],
+    });
+}
+
 export const DatabaseListLoader = props => (
   <EntityListLoader entityType="databases" {...props} />
 );
@@ -166,7 +203,7 @@ export class TableBrowser extends React.Component {
                 <Grid>
                   {tables.map(table => {
                     const link = getDefaultQuestionForTable(table).getUrl();
-                    const vizLink = getDefaultQuestionForTable(
+                    const vizLink = getDefaultVizQuestionForTable(
                       table,
                     ).getVizUrl();
                     return (
