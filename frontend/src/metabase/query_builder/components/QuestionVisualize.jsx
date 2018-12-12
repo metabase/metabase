@@ -1,7 +1,11 @@
 import React from "react";
+import { Box, Flex } from "grid-styled";
 
 import QueryVisualization from "../components/QueryVisualization";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+
+import { Absolute, Fixed } from "metabase/components/Position";
+import Card from "metabase/components/Card";
 
 import FloatingButton from "metabase/query_builder/components/FloatingButton";
 
@@ -15,24 +19,22 @@ export default class QuestionVisualize extends React.Component {
   render() {
     const { showSettings } = this.state;
     return (
-      <div className="flex-full flex flex-column">
-        <div className="flex-full flex flex-row">
-          {showSettings && (
-            <QuestionVisualizeSettings
-              {...this.props}
-              onClose={() => this.setState({ showSettings: false })}
-            />
-          )}
-          <QuestionVisualizeMain
+      <Flex flex={1} style={{ overflow: "hidden" }}>
+        {showSettings && (
+          <QuestionVisualizeSettings
             {...this.props}
-            showSettings={showSettings}
-            onToggleSettings={() =>
-              this.setState({ showSettings: !showSettings })
-            }
+            onClose={() => this.setState({ showSettings: false })}
           />
-          <QuestionVisualizeColumns {...this.props} />
-        </div>
-      </div>
+        )}
+        <QuestionVisualizeMain
+          {...this.props}
+          showSettings={showSettings}
+          onToggleSettings={() =>
+            this.setState({ showSettings: !showSettings })
+          }
+        />
+        <QuestionVisualizeColumns {...this.props} />
+      </Flex>
     );
   }
 }
@@ -40,7 +42,7 @@ export default class QuestionVisualize extends React.Component {
 const QuestionVisualizeMain = props => {
   const { setMode, showSettings } = props;
   return (
-    <div className="m3 flex-full flex flex-column">
+    <Flex flex={1} m={4}>
       <ColumnWells className="flex-full flex" {...props}>
         <div className="flex-full flex relative rounded bordered shadowed bg-white">
           <QueryVisualization
@@ -54,7 +56,7 @@ const QuestionVisualizeMain = props => {
         </div>
       </ColumnWells>
       <QuestionVisualizeFooter {...props} showSettings={showSettings} />
-    </div>
+    </Flex>
   );
 };
 
@@ -64,22 +66,21 @@ const QuestionVisualizeFooter = ({
   showSettings,
   onToggleSettings,
 }) => (
-  <div className="mt3 flex-no-shrink flex layout-centered">
-    <DisplayPicker
-      value={question.display()}
-      onChange={setDisplayFn}
-      showSettings={showSettings}
-      onToggleSettings={onToggleSettings}
-    />
-  </div>
+  <Fixed bottom={0} left={0} right={0} className="z5 flex">
+    <Box ml="auto" mr="auto" mb={2}>
+      <DisplayPicker
+        value={question.display()}
+        onChange={setDisplayFn}
+        showSettings={showSettings}
+        onToggleSettings={onToggleSettings}
+      />
+    </Box>
+  </Fixed>
 );
 
 const QuestionVisualizeSettings = props => {
   return (
-    <div
-      className="m3 rounded bordered shadowed bg-white"
-      style={{ width: 300 }}
-    >
+    <Card m={3} style={{ width: 300 }}>
       <ChartSettings
         question={props.question}
         addField={props.addField}
@@ -101,16 +102,13 @@ const QuestionVisualizeSettings = props => {
           </div>
         )}
       </ChartSettings>
-    </div>
+    </Card>
   );
 };
 const QuestionVisualizeColumns = () => {
   return (
-    <div
-      className="m3 p3 rounded bordered shadowed bg-white"
-      style={{ width: 300 }}
-    >
+    <Card m={3} style={{ width: 300 }}>
       columns
-    </div>
+    </Card>
   );
 };

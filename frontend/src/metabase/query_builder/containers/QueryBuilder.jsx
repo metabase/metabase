@@ -258,7 +258,12 @@ export default class QueryBuilder extends Component {
       );
     } else if (uiControls.mode === "visualize") {
       return (
-        <div className={cx("flex-column", this.props.fitClassNames)}>
+        <div
+          className={cx(
+            "flex-column overflow-hidden relative",
+            this.props.fitClassNames,
+          )}
+        >
           <ViewHeader
             question={this.props.question}
             setMode={this.props.setMode}
