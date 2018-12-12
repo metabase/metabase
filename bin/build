@@ -48,17 +48,22 @@ sample-dataset() {
     fi
 }
 
+drivers() {
+    echo "Building Metabase drivers..."
+    ./bin/build-drivers.sh clean
+}
+
 uberjar() {
     echo "Running 'lein uberjar'..."
-    lein uberjar
+    lein clean && lein uberjar
 }
 
 all() {
-    version && translations && frontend && sample-dataset && uberjar
+    version && translations && frontend && sample-dataset && drivers
 }
 
 no-translations() {
-    version && frontend && sample-dataset && uberjar
+    version && frontend && sample-dataset && drivers && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

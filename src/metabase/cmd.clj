@@ -101,7 +101,7 @@
 
 (defn ^:command check-i18n
   "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
-  things need to be translated."
+  things need to be wrapped with i18n forms."
   []
   (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
   (require 'puppetlabs.i18n.core)
