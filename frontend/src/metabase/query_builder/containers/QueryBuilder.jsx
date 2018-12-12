@@ -241,57 +241,29 @@ export default class QueryBuilder extends Component {
         </div>
       );
     } else if (uiControls.mode === "present") {
-      window.q = this.props.question;
       return (
         <div className={cx("flex-column", this.props.fitClassNames)}>
-          <div className="full relative py2 px4 border-bottom bg-white flex">
-            <span className="z3">
-              <ViewHeader question={this.props.question} />
-            </span>
-            <div
-              className="absolute bottom left right flex z2"
-              style={{ bottom: -18 }}
-            >
-              <div
-                className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white px2 py1 cursor-pointer text-light text-bold"
-                style={{ borderRadius: 99 }}
-                onClick={() => this.props.setMode("worksheet")}
-              >
-                {this.props.question.query().table() && (
-                  <span className="text-brand">
-                    {this.props.question.query().table().display_name}
-                  </span>
-                )}
-                {this.props.question.query().aggregationName() && (
-                  <span>
-                    <span className="mx1">•</span>
-                    {/* todo - this should be changed to use the canonical color names */}
-                    <span className="text-green">
-                      {this.props.question.query().aggregationName()}
-                    </span>
-                  </span>
-                )}
-                {this.props.question.query().filters().length > 0 && (
-                  <span className="flex align-center">
-                    <span className="mx1">•</span>
-                    {/* todo - this should be changed to use the canonical color names */}
-                    <span className="text-purple">
-                      <Icon name="filter" size={20} />
-                    </span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+          <ViewHeader
+            question={this.props.question}
+            setMode={this.props.setMode}
+          />
           <QuestionPresent {...this.props} />
+          <div
+            className="bordered rounded absolute bottom left bg-white p2 m1 cursor-pointer text-brand z4"
+            style={{ borderRadius: 99 }}
+            onClick={() => this.props.setMode("visualize")}
+          >
+            <Icon name="bar" />
+          </div>
         </div>
       );
     } else if (uiControls.mode === "visualize") {
       return (
         <div className={cx("flex-column", this.props.fitClassNames)}>
-          <div className="full relative py2 px4 border-bottom bg-white flex">
-            <ViewHeader question={this.props.question} />
-          </div>
+          <ViewHeader
+            question={this.props.question}
+            setMode={this.props.setMode}
+          />
           <QuestionVisualize {...this.props} />
         </div>
       );

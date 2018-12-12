@@ -158,7 +158,7 @@ export default class QueryVisualization extends Component {
     const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
     const isEmbeddingEnabled = MetabaseSettings.get("embedding");
     return (
-      <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
+      <div className="relative flex align-center flex-no-shrink mt2 mb1 px2">
         <div>
           <Tooltip tooltip={runButtonTooltip}>
             <RunButton
@@ -279,13 +279,6 @@ export default class QueryVisualization extends Component {
           </div>
         )}
         <div className={visualizationClasses}>{viz}</div>
-        <div
-          className="bordered rounded absolute bottom left bg-white p2 m1"
-          style={{ borderRadius: 99 }}
-          onClick={() => this.props.setMode("visualize")}
-        >
-          <Icon name="bar" />
-        </div>
       </div>
     );
   }
