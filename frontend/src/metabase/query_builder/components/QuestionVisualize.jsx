@@ -11,6 +11,7 @@ import RoundButtonWithIcon from "metabase/components/RoundButtonWithIcon";
 
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
+import ColumnList from "./visualize/ColumnList";
 
 export default class QuestionVisualize extends React.Component {
   state = {
@@ -116,13 +117,13 @@ const QuestionVisualizeSettings = props => {
     </div>
   );
 };
-const QuestionVisualizeColumns = () => {
+const QuestionVisualizeColumns = ({ query, rawSeries }) => {
   return (
-    <div
-      className="m3 p3 rounded bordered shadowed bg-white"
+    <ColumnList
+      className="m3 rounded bordered shadowed bg-white"
       style={{ width: 300 }}
-    >
-      columns
-    </div>
+      query={query}
+      rawSeries={rawSeries}
+    />
   );
 };
