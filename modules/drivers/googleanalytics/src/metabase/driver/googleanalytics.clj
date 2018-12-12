@@ -13,9 +13,7 @@
            [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
            [java.util Collections Date Map]))
 
-(driver/register! :googleanalytics)
-
-(defmethod driver/display-name :googleanalytics [_] "Google Analytics")
+(driver/register! :googleanalytics, :parent :google)
 
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
@@ -231,24 +229,6 @@
     (str (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
               enable-api-url))
     message))
-
-(defmethod driver/connection-properties :googleanalytics [_]
-  [{:name         "account-id"
-    :display-name (tru "Google Analytics Account ID")
-    :placeholder  "1234567"
-    :required     true}
-   {:name         "client-id"
-    :display-name (tru "Client ID")
-    :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-    :required     true}
-   {:name         "client-secret"
-    :display-name (tru "Client Secret")
-    :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-    :required     true}
-   {:name         "auth-code"
-    :display-name (tru "Auth Code")
-    :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-    :required     true}])
 
 (defmethod driver/mbql->native :googleanalytics [_ query]
   (qp/mbql->native query))

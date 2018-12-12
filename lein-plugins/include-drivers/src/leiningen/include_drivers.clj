@@ -6,18 +6,28 @@
 (defn- file-exists? [^String filename]
   (.exists (File. filename)))
 
+(defn- driver-parents
+  "As listed in a 'parents' file in the module source directory. Add to the list of drivers to add sources for"
+  [driver]
+  (let [parents-file (File. (format "modules/drivers/%s/parents" driver))]
+    (when (.exists parents-file)
+      (str/split-lines (slurp parents-file)))))
+
 ;; if :include-drivers is specified in the project, and its value is `:all`, include all drivers; if it's a collection
 ;; of driver names, include the specified drivers; otherwise include whatever was set in the `DRIVERS` env var
 (defn- test-drivers [{:keys [include-drivers]}]
-  (cond
-    (= include-drivers :all)
-    (.list (java.io.File. "modules/drivers"))
+  (let [drivers
+        (cond
+          (= include-drivers :all)
+          (.list (java.io.File. "modules/drivers"))
 
-    (coll? include-drivers)
-    include-drivers
+          (coll? include-drivers)
+          include-drivers
 
-    :else
-    (some-> (System/getenv "DRIVERS") (str/split #","))))
+          :else
+          (some-> (System/getenv "DRIVERS") (str/split #",")))]
+    (concat drivers
+            (set (mapcat driver-parents drivers)))))
 
 (defn- test-drivers-source-paths [test-drivers]
   (vec
@@ -43,7 +53,7 @@
   (vec
    (for [{:keys [dependencies]} test-projects
          dep                    dependencies
-         :when                  (not= 'metabase-core/metabase-core (first dep))]
+         :when                  (not= :provided (keyword (:scope (apply array-map dep))))]
      dep)))
 
 (defn- test-drivers-repositories [test-projects]
@@ -63,6 +73,8 @@
 (defn- test-drivers-profile [project]
   (let [test-drivers  (test-drivers project)
         test-projects (test-drivers-projects test-drivers)]
+    (when (seq test-drivers)
+      (println "[include drivers middleware] adding sources/deps for these drivers:" test-drivers))
     {:repositories (test-drivers-repositories test-projects)
      :dependencies (test-drivers-dependencies test-projects)
      :aot          (test-drivers-aot          test-projects)

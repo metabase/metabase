@@ -11,7 +11,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
-            [metabase.plugins.initialize :as plugins.init]
+            [metabase.plugins.init-steps :as init-steps]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]
@@ -53,7 +53,7 @@
     (remove-method driver/initialize! driver)
     ;; ok, do the init steps listed in the plugin mainfest
     (du/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
-      (plugins.init/initialize! init-steps))
+      (init-steps/do-init-steps! init-steps))
     ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has
     ;; an implementation of `initialize!` other than this one. If it does not, we'll just end up hitting
     ;; the default implementation, which is a no-op
@@ -63,6 +63,7 @@
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
   [{init-steps                                                                                      :init
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
+  {:pre [(map? driver-info)]}
   (let [driver           (keyword driver-name)
         connection-props (parse-connection-properties driver-info)]
     ;; Make sure the driver has required properties like driver-name
@@ -85,4 +86,4 @@
         (.addMethod multifn driver f)))
     ;; finally, register the Metabase driver
     (log/info (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
-    (driver/register! driver, :parent (keyword parent), :abstract? abstract)))
+    (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))

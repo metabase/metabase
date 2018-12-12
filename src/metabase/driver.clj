@@ -182,8 +182,8 @@
          (if (metabase.driver/abstract? driver)
            (trs "Registered abstract driver {0}" driver)
            (trs "Registered driver {0}" driver)))
-     (if parent
-       (trs "(parent(s): {0})" parent)
+     (if (seq (filter some? (u/one-or-many parent)))
+       (trs "(parents: {0})" parent)
        "")
      (u/emoji "🚚"))))
 
@@ -347,6 +347,8 @@
   :hierarchy #'hierarchy)
 
 
+;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
+;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
 (defmulti date-interval
   "Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this
   returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should return a
@@ -365,7 +367,7 @@
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-  Results should match the `DatabaseMetadata` schema."
+  Results should match the `metabase.sync.interface/DatabaseMetadata` schema."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -373,9 +375,9 @@
 
 (defmulti describe-table
   "Return a map containing information that describes the physical schema of `table` (i.e. the fields contained
-  therein). `database` will be an instance of the `Database` model; and `table` an instance of the `Table` model. It is
+  therein). `database` will be an instance of the `Database` model; and `table`, an instance of the `Table` model. It is
   expected that this function will be peformant and avoid draining meaningful resources of the database. Results
-  should match the `TableMetadata` schema."
+  should match the `metabase.sync.interface/TableMetadata` schema."
   {:arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -383,7 +385,7 @@
 
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
-  should match the `FKMetadata` schema."
+  should match the `metabase.sync.interface/FKMetadata` schema."
   {:arglists '([this database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

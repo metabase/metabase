@@ -5,12 +5,14 @@ set -eu
 project_root=`pwd`
 
 driver="$1"
-driver_jar="$driver.metabase-driver.jar"
 
 if [ ! "$driver" ]; then
     echo "Usage: ./bin/build-driver.sh [driver]"
     exit -1
 fi
+
+# First, remove any existing drivers
+driver_jar="$driver.metabase-driver.jar"
 
 mkdir -p resources/modules
 
@@ -18,19 +20,50 @@ echo "Deleting existing $driver drivers..."
 rm -f resources/modules/"$driver_jar"
 rm -f plugins/"$driver_jar"
 
-mb_jar=`find ~/.m2/repository/metabase-core/metabase-core/ -name '*.jar'`
+driver_project_dir="$project_root/modules/drivers/$driver"
 
-if [ ! "$mb_jar" ]; then
+# Check if Metabase is installed locally for building drivers; install it if not
+if [ ! `find ~/.m2/repository/metabase-core/metabase-core -name '*.jar'`]; then
     echo "Building Metabase and installing locally..."
     lein clean
     lein install-for-building-drivers
 fi
 
-driver_project_dir="$project_root/modules/drivers/$driver"
+# Build Metabase uberjar if needed, we'll need this for stripping duplicate classes
+metabase_uberjar="$project_root/target/uberjar/metabase.jar"
 
-# echo "Checking if $driver has duplicate dependencies with the core Metabase project..."
-# lein run find-duplicate-deps "$driver_project_dir"
+if [ ! -f "$metabase_uberjar" ]; then
+    echo 'Building Metabase uberjar...'
+    lein uberjar
+fi
 
+# Take a look at the `parents` file listing the parents to build, if applicable
+parents_list="$driver_project_dir"/parents
+parents=''
+
+if [ -f "$parents_list" ]; then
+    parents=`cat "$parents_list"`
+    echo "Found driver parents: $parents"
+fi
+
+# Check and see if we need to recursively build or install any of our parents before proceeding
+for parent in $parents; do
+    if [ ! -f resources/modules/"$parent.metabase-driver.jar" ]; then
+        echo "Building $parent..."
+        ./bin/build-driver.sh "$parent"
+    fi
+
+    if [ ! `find "~/.m2/repository/metabase/$parent-driver/" -name '*.jar'` ]; then
+        parent_project_dir="$project_root/modules/drivers/$parent"
+        echo "Installing $parent locally..."
+        cd "$parent_project_dir"
+        lein clean
+        lein install-for-building-drivers
+        cd "$project_root"
+    fi
+done
+
+# ok, now we can build the driver! wow
 echo "Building $driver driver..."
 
 cd "$driver_project_dir"
@@ -49,19 +82,16 @@ if [ ! -f "$target_jar" ]; then
     exit -1
 fi
 
-METABASE_UBERJAR=target/uberjar/metabase.jar
-
-if [ ! -f $METABASE_UBERJAR ]; then
-    echo 'Building Metabase uberjar...'
-    lein uberjar
-fi
-
+# ok, first things first, strip out any classes also found in the core Metabase uberjar
 lein strip-and-compress "$target_jar"
 
-# TODO - this step is actually uneccesary now that we have the strip-and-compress command above
-echo "Checking if driver Contains duplicate classes..."
-./bin/check-duplicate-classes.sh "$target_jar" $METABASE_UBERJAR
+# next, remove any classes also found in any of the parent JARs
+for parent in $parents; do
+    echo "Removing duplicate classes with $parent uberjar..."
+    lein strip-and-compress "$target_jar" "resources/modules/$parent.metabase-driver.jar"
+done
 
+# ok, finally, copy finished JAR to the resources dir
 dest_location="$project_root/resources/modules/$driver_jar"
 
 echo "Copying $target_jar -> $dest_location"

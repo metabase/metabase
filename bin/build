@@ -50,7 +50,7 @@ sample-dataset() {
 
 drivers() {
     echo "Building Metabase drivers..."
-    ./bin/build-drivers.sh
+    ./bin/build-drivers.sh clean
 }
 
 uberjar() {
@@ -58,20 +58,12 @@ uberjar() {
     lein clean && lein uberjar
 }
 
-check-for-duplicate-classes() {
-    echo "Checking for duplicate classes in core uberjar and included modules..."
-    for module in resources/modules/*.jar; do
-        echo "Checking $module"
-        ./bin/check-duplicate-classes.sh target/uberjar/metabase.jar "$module"
-    done
-}
-
 all() {
-    version && translations && frontend && sample-dataset && drivers && uberjar
+    version && translations && frontend && sample-dataset && drivers
 }
 
 no-translations() {
-    version && frontend && sample-dataset && uberjar && check-for-duplicate-classes
+    version && frontend && sample-dataset && drivers && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

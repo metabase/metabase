@@ -645,7 +645,7 @@
     (u/one-or-many 1)     ; -> [1]
     (u/one-or-many [1 2]) ; -> [1 2]"
   [arg]
-  (if (coll? arg)
+  (if ((some-fn sequential? set?) arg)
     arg
     [arg]))
 

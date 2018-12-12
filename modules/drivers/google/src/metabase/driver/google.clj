@@ -3,18 +3,21 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
+             [driver :as driver]
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow
-            GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
+  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder
+            GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
            com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
            [com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException]
            com.google.api.client.googleapis.services.AbstractGoogleClientRequest
            com.google.api.client.http.HttpTransport
            com.google.api.client.json.jackson2.JacksonFactory
            com.google.api.client.json.JsonFactory))
+
+(driver/register! :google, :abstract? true)
 
 (def ^HttpTransport http-transport
   "`HttpTransport` for use with Google drivers."
