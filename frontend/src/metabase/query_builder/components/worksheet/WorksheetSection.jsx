@@ -16,7 +16,7 @@ const WorksheetSection = ({
 }) => (
   <div
     style={style}
-    className={cx(className, "wrapper border-row-divider py3")}
+    className={cx(className, "wrapper border-row-divider bg-white py3")}
   >
     {(icon || name || header) && (
       <div className={cx("flex align-center", { mb2: !!children })}>

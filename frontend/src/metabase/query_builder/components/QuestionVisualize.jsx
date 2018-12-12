@@ -1,13 +1,9 @@
 import React from "react";
 
-import cx from "classnames";
-import _ from "underscore";
-
 import QueryVisualization from "../components/QueryVisualization";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
-import Icon from "metabase/components/Icon";
-import RoundButtonWithIcon from "metabase/components/RoundButtonWithIcon";
+import FloatingButton from "metabase/query_builder/components/FloatingButton";
 
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
@@ -52,12 +48,9 @@ const QuestionVisualizeMain = props => {
             className="flex-full wrapper mb2 z1"
             noHeader
           />
-          <RoundButtonWithIcon
-            icon="expand"
-            className="absolute bordered bg-white text-brand"
-            style={{ bottom: -16, left: -16 }}
-            onClick={() => setMode("present")}
-          />
+          <span className="absolute" style={{ bottom: -16, left: -16 }}>
+            <FloatingButton icon="expand" onClick={() => setMode("present")} />
+          </span>
         </div>
       </ColumnWells>
       <QuestionVisualizeFooter {...props} showSettings={showSettings} />

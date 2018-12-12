@@ -21,7 +21,7 @@ import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
-import Icon from "metabase/components/Icon";
+import FloatingButton from "metabase/query_builder/components/FloatingButton";
 
 import QuestionDataWorksheet from "../components/worksheet/Worksheet";
 import QuestionPresent from "../components/QuestionPresent";
@@ -248,13 +248,12 @@ export default class QueryBuilder extends Component {
             setMode={this.props.setMode}
           />
           <QuestionPresent {...this.props} />
-          <div
-            className="bordered rounded absolute bottom left bg-white p2 m1 cursor-pointer text-brand z4"
-            style={{ borderRadius: 99 }}
-            onClick={() => this.props.setMode("visualize")}
-          >
-            <Icon name="bar" />
-          </div>
+          <span className="absolute bottom left z4 m4">
+            <FloatingButton
+              icon="bar"
+              onClick={() => this.props.setMode("visualize")}
+            />
+          </span>
         </div>
       );
     } else if (uiControls.mode === "visualize") {
