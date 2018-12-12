@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
+import styled from "styled-components";
 
 import QueryVisualization from "../components/QueryVisualization";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
@@ -12,6 +13,15 @@ import FloatingButton from "metabase/query_builder/components/FloatingButton";
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
 import ColumnList from "./visualize/ColumnList";
+
+const Panel = styled(Card)`
+  overflow: hidden;
+`;
+
+Panel.defaultProps = {
+  m: 3,
+  w: 300,
+};
 
 export default class QuestionVisualize extends React.Component {
   state = {
@@ -81,7 +91,7 @@ const QuestionVisualizeFooter = ({
 
 const QuestionVisualizeSettings = props => {
   return (
-    <Card m={3} style={{ width: 300 }}>
+    <Panel>
       <ChartSettings
         question={props.question}
         addField={props.addField}
@@ -103,16 +113,13 @@ const QuestionVisualizeSettings = props => {
           </div>
         )}
       </ChartSettings>
-    </Card>
+    </Panel>
   );
 };
 const QuestionVisualizeColumns = ({ query, rawSeries }) => {
   return (
-    <Card m={3} style={{ width: 300 }}>
-      <ColumnList
-        query={query}
-        rawSeries={rawSeries}
-      />
-    </Card>
+    <Panel>
+      <ColumnList query={query} rawSeries={rawSeries} />
+    </Panel>
   );
 };
