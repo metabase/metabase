@@ -7,6 +7,8 @@ import Icon from "metabase/components/Icon";
 
 import visualizations from "metabase/visualizations";
 
+const ICON_SIZE = 22;
+
 function getDisplayPickerGroups() {
   const groups = [
     { icon: "table", visualizations: ["table"] },
@@ -118,17 +120,18 @@ export default class DisplayPicker extends React.Component {
 }
 
 const RoundButtonBar = ({ children }) => (
-  <div className="circular p1 bg-black text-white flex align-center">
+  <div className="circular p1 px2 bg-black text-white flex align-center">
     {children}
   </div>
 );
 
 const RoundButtonBarButton = ({ icon, selected, onClick }) => (
   <Icon
+    size={ICON_SIZE}
     name={icon}
     onClick={onClick}
     className={cx(
-      "p1 text-brand-hover",
+      "p1 text-brand-hover cursor-pointer",
       selected ? "text-white" : "text-medium",
     )}
   />
@@ -138,16 +141,19 @@ const RoundButtonBarBackButton = ({ onClick }) => (
   <Icon
     name="chevronleft"
     onClick={onClick}
-    className={cx("mr1 p1 text-brand-hover circular bg-dark text-white")}
+    className={cx(
+      "mr1 p1 text-brand-hover circular bg-dark text-white cursor-pointer",
+    )}
   />
 );
 
 const RoundButtonBarSettingsButton = ({ onClick, selected }) => (
   <Icon
+    size={ICON_SIZE}
     name="gear"
     onClick={onClick}
     className={cx(
-      "ml1 p1 border-left text-brand-hover",
+      "ml1 p1 border-left text-brand-hover cursor-pointer",
       selected ? "text-white" : "text-medium",
     )}
   />
