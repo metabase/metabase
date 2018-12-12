@@ -300,6 +300,22 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-googleanalytics:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Google Analytics)
+          environment:
+            DRIVERS: h2,googleanalytics
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
   be-tests-sqlite:
     <<: *defaults
     steps:
@@ -590,6 +606,9 @@ workflows:
       - be-tests-bigquery:
           requires:
             - be-tests
+      - be-tests-googleanalytics:
+          requires:
+            - be-tests
       - be-tests-sqlite:
           requires:
             - be-tests
@@ -650,6 +669,7 @@ workflows:
             - be-tests-mongo
             - be-tests-sqlserver
             - be-tests-bigquery
+            - be-tests-googleanalytics
             - be-tests-sqlite
             - be-tests-presto
             - be-tests-oracle

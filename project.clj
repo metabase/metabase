@@ -12,6 +12,7 @@
    "h2"                                ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db"
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
+   "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "test"                              ["with-profile" "+expectations" "expectations"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
@@ -41,16 +42,16 @@
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
    [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
-   [aleph "0.4.5-alpha2" :exclusions [org.clojure/tools.logging]]     ; Async HTTP library; WebSockets
+   [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
    [buddy/buddy-core "1.2.0"]                                         ; various cryptograhpic functions
    [buddy/buddy-sign "1.5.0"]                                         ; JSON Web Tokens; High-Level message signing library
-   [cheshire "5.7.0"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
-   [clj-http "3.4.1"                                                  ; HTTP client
+   [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
+   [clj-http "3.9.1"                                                  ; HTTP client
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
-   [clj-time "0.13.0"]                                                ; library for dealing with date/time
+   [clj-time "0.15.1"]                                                ; library for dealing with date/time
    [clojurewerkz/quartzite "2.0.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -63,8 +64,6 @@
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.2"]                                       ; SMTP library
-   [com.google.apis/google-api-services-analytics "v3-rev154-1.23.0"] ; Google Analytics Java Client Library
-   [com.google.apis/google-api-services-bigquery "v2-rev387-1.23.0"]  ; Google BigQuery Java Client Library
    [com.jcraft/jsch "0.1.54"]                                         ; SSH client for tunnels
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
@@ -163,13 +162,17 @@
    :ci
    {:jvm-opts ["-Xmx2500m"]}
 
+   :install
+   {:aot [metabase.logger
+          metabase.task.DynamicClassLoadHelper]}
+
    :install-for-building-drivers
    {:auto-clean true
     :aot        :all}
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.3"]]
+    [[metabase/lein-include-drivers "1.0.4"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}

@@ -6,8 +6,7 @@
             [metabase.plugins
              [classloader :as classloader]
              [files :as files]
-             [initialize :as init]
-             [lazy-loaded-driver :as lazy-loaded-driver]]
+             [initialize :as initialize]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
@@ -32,48 +31,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Check Plugin Dependencies                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- dependency-type [{classname :class}]
-  (if classname
-    :class
-    :unknown))
-
-(defmulti ^:private dependency-satisfied?
-  {:arglists '([plugin-nane dependency])}
-  (fn [_ dep] (dependency-type dep)))
-
-(defmethod dependency-satisfied? :default [plugin-name dep]
-  (log/error (u/format-color 'red
-                 (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
-             (trs "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:")
-             "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
-  false)
-
-(defmethod dependency-satisfied? :class [plugin-name {^String classname :class, message :message, :as dep}]
-  (try
-    (Class/forName classname false (classloader/the-classloader))
-    (catch ClassNotFoundException _
-      (log/info (u/format-color 'red
-                    (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
-                (or message
-                    (trs "Class not found: {0}" classname)))
-      false)))
-
-(defn- all-dependencies-satisfied?
-  "Check whether all dependencies are satisfied for a plugin; return truthy if all are; otherwise log explanations about
-  why they are not, and return falsey."
-  [{{plugin-name :name, :keys [version]} :info, :keys [dependencies]}]
-  (let [plugin-name (format "%s %s" plugin-name version)]
-    (every? (fn [dep]
-              (u/prog1 (dependency-satisfied? plugin-name dep)
-                (log/debug (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))
-            dependencies)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               Initialize Plugin                                                |
+;;; |                                          loading/initializing plugins                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- add-to-classpath! [^Path jar-path]
@@ -86,15 +44,12 @@
 (defn- init-plugin-with-info!
   "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
-  [{init-steps :init, driver-or-drivers :driver, :as info}]
-  (when (all-dependencies-satisfied? info)
-    (doseq [{:keys [lazy-load], :or {lazy-load true}, :as driver} (u/one-or-many driver-or-drivers)]
-      (if lazy-load
-        (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))
-        (init/initialize! init-steps)))
-    :ok))
+  [info]
+  (initialize/init-plugin-with-info! info))
 
-(defn- init-plugin! [^Path jar-path]
+(defn- init-plugin!
+  "Init plugin JAR file; returns truthy if plugin initialization was successful."
+  [^Path jar-path]
   (when-let [info (plugin-info jar-path)]
     (init-plugin-with-info! info)))
 

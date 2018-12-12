@@ -1,37 +1,50 @@
 (ns metabase.plugins.initialize
-  "Logic for performing the `init-steps` listed in a Metabase plugin's manifest. For driver plugins that specify that we
-  should `lazy-load`, these steps are lazily performed the first time non-trivial driver methods (such as connecting
-  to a Database) are called; for all other Metabase plugins these are perfomed during launch.
-
-  The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require [clojure.tools.logging :as log]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+            [metabase.plugins
+             [dependencies :as deps]
+             [init-steps :as init-steps]
+             [lazy-loaded-driver :as lazy-loaded-driver]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
-(defmulti ^:private do-init-step!
-  "Perform a driver init step. Steps are listed in `init:` in the plugin manifest; impls for each step are found below
-  by dispatching off the value of `step:` for each step. Other properties specified for that step are passed as a map."
-  {:arglists '([m])}
-  (comp keyword :step))
+(defonce ^:private initialized-plugin-names (atom #{}))
 
-(defmethod do-init-step! :load-namespace [{nmspace :namespace}]
-  (log/debug (u/format-color 'blue (trs "Loading plugin namespace {0}..." nmspace)))
-  ;; done for side-effects to ensure context classloader is the right one
-  (classloader/the-classloader)
-  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
-  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-  (binding [*use-context-classloader* true]
-    (require (symbol nmspace))))
+(defn- init! [{init-steps :init, {plugin-name :name} :info, driver-or-drivers :driver, :as info}]
+  {:pre [(string? plugin-name)]}
+  (when (deps/all-dependencies-satisfied? @initialized-plugin-names info)
+    ;; for each driver, if it's lazy load, register a lazy-loaded placeholder driver
+    (let [drivers (u/one-or-many driver-or-drivers)]
+      (doseq [{:keys [lazy-load], :or {lazy-load true}, :as driver} drivers]
+        (when lazy-load
+          (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))))
+      ;; if *any* of the drivers is not lazy-load, initialize it now
+      (when (some false? (map :lazy-load drivers))
+        (init-steps/do-init-steps! init-steps)))
+    ;; record this plugin as initialized and find any plugins ready to be initialized because depended on this one !
+    ;;
+    ;; Fun fact: we already have the `plugin-initialization-lock` if we're here so we don't need to worry about
+    ;; getting it again
+    (let [plugins-ready-to-init (deps/update-unsatisfied-deps! (swap! initialized-plugin-names conj plugin-name))]
+      (when (seq plugins-ready-to-init)
+        (log/debug (u/format-color 'yellow (trs "Dependencies satisfied; these plugins will now be loaded: {0}"
+                                                (mapv (comp :name :info) plugins-ready-to-init)))))
+      (doseq [plugin-info plugins-ready-to-init]
+        (init! plugin-info)))
+    :ok))
 
-(defmethod do-init-step! :register-jdbc-driver [{class-name :class}]
-  (log/debug (u/format-color 'blue (trs "Registering JDBC proxy driver wrapping {0}..." class-name)))
-  (jdbc-proxy/create-and-register-proxy-driver! class-name))
 
-(defn initialize!
-  "Perform the initialization steps for a Metabase plugin as specified under `init:` in its plugin
-  manifest (`metabase-plugin.yaml`) by calling `do-init-step!` for each step."
-  [init-steps]
-  (doseq [step init-steps]
-    (do-init-step! step)))
+(defn- initialized? [{plugin-name :name}]
+  (@initialized-plugin-names plugin-name))
+
+(defonce ^:private plugin-initialization-lock (Object.))
+
+(defn init-plugin-with-info!
+  "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
+  falsey otherwise."
+  [info]
+  (or
+   (initialized? info)
+   (locking plugin-initialization-lock
+     (or
+      (initialized? info)
+      (init! info)))))

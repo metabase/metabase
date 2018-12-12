@@ -1,6 +1,5 @@
 (ns metabase.driver.google-test
   (:require [expectations :refer :all]
-            [metabase.config :as config]
             [metabase.driver.google :as google]))
 
 ;; Typical scenario, all config information included

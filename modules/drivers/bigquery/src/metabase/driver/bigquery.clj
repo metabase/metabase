@@ -45,9 +45,7 @@
            java.sql.Time
            [java.util Collections Date]))
 
-(driver/register! :bigquery, :parent :sql)
-
-(defmethod driver/display-name :bigquery [_] "BigQuery")
+(driver/register! :bigquery, :parent #{:google :sql})
 
 (defn- valid-bigquery-identifier?
   "Is String `s` a valid BigQuery identifiers? Identifiers are only allowed to contain letters, numbers, and
@@ -518,32 +516,6 @@
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
 
 (defmethod sql.qp/quote-style :bigquery [_] :mysql)
-
-(defmethod driver/connection-properties :bigquery [_]
-  [{:name         "project-id"
-    :display-name (tru "Project ID")
-    :placeholder  (tru "praxis-beacon-120871")
-    :required     true}
-   {:name         "dataset-id"
-    :display-name (tru "Dataset ID")
-    :placeholder  (tru "toucanSightings")
-    :required     true}
-   {:name         "client-id"
-    :display-name (tru "Client ID")
-    :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-    :required     true}
-   {:name         "client-secret"
-    :display-name (tru "Client Secret")
-    :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-    :required     true}
-   {:name         "auth-code"
-    :display-name (tru "Auth Code")
-    :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-    :required     true}
-   {:name         "use-jvm-timezone"
-    :display-name (tru "Use JVM Time Zone")
-    :default      "false"
-    :type         :boolean}])
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 
