@@ -14,8 +14,12 @@ import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
 import ColumnList from "./visualize/ColumnList";
 
+// the margin for the viz with panels open
+const VIZ_MARGIN = 340;
+
 const Panel = styled(Card)`
-  overflow: hidden;
+  overflow-y: scroll;
+  max-height: 100%;
 `;
 
 Panel.defaultProps = {
@@ -30,21 +34,27 @@ export default class QuestionVisualize extends React.Component {
   render() {
     const { showSettings } = this.state;
     return (
-      <Flex flex={1} style={{ overflow: "hidden" }}>
+      <Flex flex={1} className="relative" style={{ overflow: "hidden" }}>
         {showSettings && (
-          <QuestionVisualizeSettings
-            {...this.props}
-            onClose={() => this.setState({ showSettings: false })}
-          />
+          <Absolute top={0} bottom={80} left={0}>
+            <QuestionVisualizeSettings
+              {...this.props}
+              onClose={() => this.setState({ showSettings: false })}
+            />
+          </Absolute>
         )}
-        <QuestionVisualizeMain
-          {...this.props}
-          showSettings={showSettings}
-          onToggleSettings={() =>
-            this.setState({ showSettings: !showSettings })
-          }
-        />
-        <QuestionVisualizeColumns {...this.props} />
+        <Flex flex={1} ml={showSettings ? VIZ_MARGIN : 20} mr={VIZ_MARGIN}>
+          <QuestionVisualizeMain
+            {...this.props}
+            showSettings={showSettings}
+            onToggleSettings={() =>
+              this.setState({ showSettings: !showSettings })
+            }
+          />
+        </Flex>
+        <Absolute top={0} bottom={0} right={0}>
+          <QuestionVisualizeColumns {...this.props} />
+        </Absolute>
       </Flex>
     );
   }
@@ -53,7 +63,7 @@ export default class QuestionVisualize extends React.Component {
 const QuestionVisualizeMain = props => {
   const { setMode, showSettings } = props;
   return (
-    <Flex flex={1} m={4}>
+    <Flex flex={1} m={3} mb={5}>
       <ColumnWells className="flex-full flex" {...props}>
         <div className="flex-full flex relative rounded bordered shadowed bg-white">
           <QueryVisualization
