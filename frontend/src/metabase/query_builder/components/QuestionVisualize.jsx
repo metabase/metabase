@@ -11,6 +11,7 @@ import FloatingButton from "metabase/query_builder/components/FloatingButton";
 
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
+import ColumnList from "./visualize/ColumnList";
 
 export default class QuestionVisualize extends React.Component {
   state = {
@@ -105,10 +106,13 @@ const QuestionVisualizeSettings = props => {
     </Card>
   );
 };
-const QuestionVisualizeColumns = () => {
+const QuestionVisualizeColumns = ({ query, rawSeries }) => {
   return (
     <Card m={3} style={{ width: 300 }}>
-      columns
+      <ColumnList
+        query={query}
+        rawSeries={rawSeries}
+      />
     </Card>
   );
 };
