@@ -1,14 +1,19 @@
 import React from "react";
 
 import cx from "classnames";
+import _ from "underscore";
 
 import colors, { alpha } from "metabase/lib/colors";
 
+import { formatColumn } from "metabase/lib/formatting";
+
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+
 export default class ColumnWells extends React.Component {
   render() {
-    const { question, settings, style, className, children } = this.props;
+    const { question, style, className, children, rawSeries } = this.props;
 
-    const wells = getColumnWells(question, settings);
+    const wells = getColumnWells(rawSeries);
     return (
       <div style={style} className={cx(className, "flex flex-row")}>
         {wells.left && (
@@ -32,14 +37,18 @@ export default class ColumnWells extends React.Component {
 const WELL_MIN_WIDTH = 180;
 const WELL_BORDER = 10;
 
-const WELL_STYLE = {
+const WELL_COLUMN_STYLE = {
+  backgroundColor: colors["brand"],
+  color: colors["text-white"],
+};
+
+const WELL_PLACEHOLDER_STYLE = {
   backgroundColor: alpha(colors["text-medium"], 0.2),
   boxShadow: `0 0 0 ${WELL_BORDER}px ${alpha(colors["text-medium"], 0.1)}`,
 };
 
-// FIXME: ensure browser compatibility
 const WELL_VERTICAL_STYLE = {
-  ...WELL_STYLE,
+  // FIXME: ensure browser compatibility
   writingMode: "vertical-rl",
   transform: "rotate(180deg)",
   whiteSpace: "nowrap",
@@ -49,7 +58,6 @@ const WELL_VERTICAL_STYLE = {
 };
 
 const WELL_HORIZONTAL_STYLE = {
-  ...WELL_STYLE,
   minWidth: WELL_MIN_WIDTH,
 };
 
@@ -63,19 +71,53 @@ const Well = ({ well, vertical }) => (
       "m3 circular p1 bg-medium h3 text-medium text-centered",
       vertical ? "py2" : "px2",
     )}
-    style={vertical ? WELL_VERTICAL_STYLE : WELL_HORIZONTAL_STYLE}
+    style={{
+      ...(vertical ? WELL_VERTICAL_STYLE : WELL_HORIZONTAL_STYLE),
+      ...(well.column
+        ? { ...WELL_COLUMN_STYLE, backgroundColor: well.color }
+        : WELL_PLACEHOLDER_STYLE),
+    }}
   >
-    {well.placeholder}
+    {well.column ? formatColumn(well.column) : well.placeholder}
   </span>
 );
 
-function getColumnWells(question, settings) {
-  const display = question.display();
+function getColumnWells(series) {
+  if (!series) {
+    return {};
+  }
+
+  const display = series[0].card.display;
+  const settings = getComputedSettingsForSeries(series);
+  const cols = series[0].data.cols;
+
   if (display === "line" || display === "area" || display === "bar") {
-    return {
-      left: [{ placeholder: "y" }],
-      bottom: [{ placeholder: "x" }],
+    const wells = {
+      left: [],
+      bottom: [],
     };
+    for (const name of settings["graph.metrics"]) {
+      wells.left.push({
+        column: _.findWhere(cols, { name }),
+        color: colors["accent1"],
+      });
+    }
+    for (const name of settings["graph.dimensions"]) {
+      wells.bottom.push({
+        column: _.findWhere(cols, { name }),
+        color: colors["accent2"],
+      });
+    }
+    if (wells.left.length === 0) {
+      wells.left.push({ placeholder: "y" });
+    }
+    if (wells.bottom.length === 0) {
+      wells.bottom.push({ placeholder: "x" });
+    }
+    if (wells.bottom.length === 1) {
+      wells.bottom.push({ placeholder: "Series breakout" });
+    }
+    return wells;
   }
   return {};
 }
