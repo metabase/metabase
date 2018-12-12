@@ -166,6 +166,9 @@ export class TableBrowser extends React.Component {
                 <Grid>
                   {tables.map(table => {
                     const link = getDefaultQuestionForTable(table).getUrl();
+                    const vizLink = getDefaultQuestionForTable(
+                      table,
+                    ).getVizUrl();
                     return (
                       <GridItem w={ITEM_WIDTHS} key={table.id}>
                         <Card
@@ -190,6 +193,11 @@ export class TableBrowser extends React.Component {
                             </Link>
                             <Box ml="auto" mr={1} className="hover-child">
                               <Flex align="center">
+                                <Tooltip tooltip={t`Chart this`}>
+                                  <Link to={vizLink}>
+                                    <Icon name="bar" />
+                                  </Link>
+                                </Tooltip>
                                 {this.props.xraysEnabled && (
                                   <Tooltip tooltip={t`X-ray this table`}>
                                     <Link

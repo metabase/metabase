@@ -390,6 +390,15 @@ export default class Question {
       : Urls.question(this.id(), "");
   }
 
+  getVizUrl(originalQuestion?: Question): string {
+    const isDirty =
+      !originalQuestion || this.isDirtyComparedTo(originalQuestion);
+
+    return isDirty
+      ? Urls.vizQuestion(null, this._serializeForUrl())
+      : Urls.vizQuestion(this.id(), "");
+  }
+
   getAutomaticDashboardUrl(filters /*?: Filter[] = []*/) {
     let cellQuery = "";
     if (filters.length > 0) {

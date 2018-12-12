@@ -37,6 +37,27 @@ export function question(cardId, hash = "", query = "") {
     : `/question${query}${hash}`;
 }
 
+export function vizQuestion(cardId, hash = "", query = "") {
+  if (hash && typeof hash === "object") {
+    hash = serializeCardForUrl(hash);
+  }
+  if (query && typeof query === "object") {
+    query = extractQueryParams(query)
+      .map(kv => kv.map(encodeURIComponent).join("="))
+      .join("&");
+  }
+  if (hash && hash.charAt(0) !== "#") {
+    hash = "#" + hash;
+  }
+  if (query && query.charAt(0) !== "?") {
+    query = "?" + query;
+  }
+  // NOTE that this is for an ephemeral card link, not an editable card
+  return cardId != null
+    ? `/question/viz/${cardId}${query}${hash}`
+    : `/question/viz/${query}${hash}`;
+}
+
 export const extractQueryParams = (query: Object): Array => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };

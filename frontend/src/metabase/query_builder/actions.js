@@ -219,6 +219,10 @@ export const initializeQB = (location, params) => {
       // return { uiControls };
     }
 
+    if (location.pathname.indexOf("viz") >= -1) {
+      uiControls.mode = "visualize";
+    }
+
     // load up or initialize the card we'll be working on
     let options = {};
     let serializedCard;

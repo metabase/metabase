@@ -225,6 +225,7 @@ export const getRoutes = store => (
 
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
+          <Route path="viz" component={QueryBuilder} />
           {/* NEW QUESTION FLOW */}
           <Route path="new" title={t`New Question`}>
             <IndexRoute component={NewQuestionStart} />
