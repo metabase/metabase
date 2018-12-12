@@ -20,7 +20,6 @@ export default class QuestionVisualize extends React.Component {
     const { showSettings } = this.state;
     return (
       <div className="flex-full flex flex-column">
-        <QuestionHeader {...this.props} />
         <div className="flex-full flex flex-row">
           {showSettings && (
             <QuestionVisualizeSettings
@@ -41,10 +40,6 @@ export default class QuestionVisualize extends React.Component {
     );
   }
 }
-
-const QuestionHeader = ({ question }) => {
-  return <div className="p4 bg-white">{question.displayName()}</div>;
-};
 
 const QuestionVisualizeMain = props => {
   const { setMode, showSettings } = props;

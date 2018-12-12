@@ -8,6 +8,8 @@ import colors, { lighten } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 
+import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
+
 const HeaderButton = styled(Button)`
   background-color: ${lighten(colors["brand"], 0.6)} !important;
   color: ${colors["brand"]};
@@ -24,8 +26,12 @@ const Title = styled("h1")`
   ${color} font-weight: 900;
 `;
 
-const ViewHeader = ({ question }) => (
-  <Flex align="center">
+const ViewHeader = ({ question, setMode }) => (
+  <Flex
+    align="center"
+    className="full relative py2 px4 border-bottom bg-white flex"
+  >
+    <span className="z3" />
     <Title color={question.displayName() ? "inherit" : colors["text-light"]}>
       {question.displayName() || t`Untitled question`}
     </Title>
@@ -42,6 +48,15 @@ const ViewHeader = ({ question }) => (
         iconSize={22}
       />
     </Flex>
+    <div className="absolute bottom left right flex z2" style={{ bottom: -18 }}>
+      <div
+        className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white px2 py1 cursor-pointer text-light text-bold"
+        style={{ borderRadius: 99 }}
+        onClick={() => setMode("worksheet")}
+      >
+        <QueryDefinition question={question} />
+      </div>
+    </div>
   </Flex>
 );
 
