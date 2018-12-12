@@ -33,29 +33,39 @@
          :when  (file-exists? test-path)]
      test-path)))
 
-(defn- test-drivers-dependencies [test-drivers]
+(defn- test-drivers-projects [test-drivers]
+  (for [driver test-drivers
+        :let   [project-file (format "modules/drivers/%s/project.clj" driver)]
+        :when  (file-exists? project-file)]
+    (p/read project-file)))
+
+(defn- test-drivers-dependencies [test-projects]
   (vec
-   (for [driver test-drivers
-         :let   [project-file (format "modules/drivers/%s/project.clj" driver)]
-         :when  (file-exists? project-file)
-         :let   [{:keys [dependencies]} (p/read project-file)]
-         dep    dependencies
-         :when  (not= 'metabase-core/metabase-core (first dep))]
+   (for [{:keys [dependencies]} test-projects
+         dep                    dependencies
+         :when                  (not= 'metabase-core/metabase-core (first dep))]
      dep)))
 
-(defn- test-drivers-repositories [test-drivers]
+(defn- test-drivers-repositories [test-projects]
   (vec
-   (for [driver test-drivers
-         :let   [project-file (format "modules/drivers/%s/project.clj" driver)]
-         :when  (file-exists? project-file)
-         :let   [{:keys [repositories]} (p/read project-file)]
-         repo   repositories]
+   (for [{:keys [repositories]} test-projects
+         repo                   repositories]
      repo)))
 
+(defn- test-drivers-aot [test-projects]
+  (vec
+   (for [{:keys [aot]} test-projects
+         ;; if aot is something like all we don't want to merge it into the MB project
+         :when         (sequential? aot)
+         klass         aot]
+     klass)))
+
 (defn- test-drivers-profile [project]
-  (let [test-drivers (test-drivers project)]
-    {:repositories (test-drivers-repositories test-drivers)
-     :dependencies (test-drivers-dependencies test-drivers)
+  (let [test-drivers  (test-drivers project)
+        test-projects (test-drivers-projects test-drivers)]
+    {:repositories (test-drivers-repositories test-projects)
+     :dependencies (test-drivers-dependencies test-projects)
+     :aot          (test-drivers-aot          test-projects)
      :source-paths (test-drivers-source-paths test-drivers)
      :test-paths   (test-drivers-test-paths   test-drivers)}))
 

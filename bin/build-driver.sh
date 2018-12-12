@@ -26,28 +26,41 @@ if [ ! "$mb_jar" ]; then
     lein install-for-building-drivers
 fi
 
+driver_project_dir="$project_root/modules/drivers/$driver"
+
+# echo "Checking if $driver has duplicate dependencies with the core Metabase project..."
+# lein run find-duplicate-deps "$driver_project_dir"
+
 echo "Building $driver driver..."
 
-driver_source_dir="$project_root/modules/drivers/$driver"
+cd "$driver_project_dir"
 
-cd "$driver_source_dir"
+rm -rf target
 
 lein clean
-lein uberjar
+LEIN_SNAPSHOTS_IN_RELEASE=true lein uberjar
 
 cd "$project_root"
 
-target_jar="$driver_source_dir/target/uberjar/$driver_jar"
+target_jar="$driver_project_dir/target/uberjar/$driver_jar"
 
 if [ ! -f "$target_jar" ]; then
     echo "Error: could not find $target_jar. Build failed."
     exit -1
 fi
 
-if [ `jar -tf $target_jar | grep metabase/src/api` ]; then
-    echo "Error: driver JAR contains metabase-core files. Build failed."
-    exit -1
+METABASE_UBERJAR=target/uberjar/metabase.jar
+
+if [ ! -f $METABASE_UBERJAR ]; then
+    echo 'Building Metabase uberjar...'
+    lein uberjar
 fi
+
+lein strip-and-compress "$target_jar"
+
+# TODO - this step is actually uneccesary now that we have the strip-and-compress command above
+echo "Checking if driver Contains duplicate classes..."
+./bin/check-duplicate-classes.sh "$target_jar" $METABASE_UBERJAR
 
 dest_location="$project_root/resources/modules/$driver_jar"
 

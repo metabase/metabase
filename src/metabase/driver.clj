@@ -172,9 +172,7 @@
       (derive! ::driver)
       (when-not abstract?
         (derive! ::concrete))
-      (doseq [parent (cond
-                       (coll? parent) parent
-                       parent         [parent])
+      (doseq [parent (u/one-or-many parent)
               :when  parent]
         (load-driver-namespace-if-needed parent)
         (derive! parent)))
