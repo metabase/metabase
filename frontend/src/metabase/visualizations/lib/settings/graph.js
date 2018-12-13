@@ -251,6 +251,18 @@ export const GRAPH_DATA_SETTINGS = {
     useRawSeries: true,
   },
 
+  _column_list: {
+    getValue([{ data: { cols } }], settings) {
+      const used = new Set([
+        ...settings["graph.dimensions"],
+        ...settings["graph.metrics"],
+      ]);
+      return cols.filter(col => col && !used.has(col.name));
+    },
+    readDependencies: ["graph.dimensions", "graph.metrics"],
+    useRawSeries: true,
+  },
+
   ...seriesSetting(),
 };
 
