@@ -233,6 +233,11 @@ export default class QueryBuilder extends Component {
     if (uiControls.mode === "worksheet") {
       return (
         <div>
+          <ViewHeader
+            question={this.props.question}
+            setMode={this.props.setMode}
+            mode={uiControls.mode}
+          />
           {query instanceof StructuredQuery ? (
             <QuestionDataWorksheet {...this.props} />
           ) : (
@@ -246,6 +251,7 @@ export default class QueryBuilder extends Component {
           <ViewHeader
             question={this.props.question}
             setMode={this.props.setMode}
+            mode={uiControls.mode}
           />
           <QuestionPresent {...this.props} />
           <span className="absolute bottom left z4 m4">
@@ -267,6 +273,7 @@ export default class QueryBuilder extends Component {
           <ViewHeader
             question={this.props.question}
             setMode={this.props.setMode}
+            mode={uiControls.mode}
           />
           <QuestionVisualize {...this.props} />
         </div>
