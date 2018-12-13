@@ -25,21 +25,45 @@ export default class ColumnWells extends React.Component {
       onReplaceAllVisualizationSettings,
     } = this.props;
 
-    const wells = getColumnWells(rawSeries, onReplaceAllVisualizationSettings);
+    let wells;
+    let onChangeSettings;
+    if (rawSeries) {
+      const storedSettings = rawSeries[0].card.visualization_settings;
+      const computedSettings = getComputedSettingsForSeries(rawSeries);
+
+      wells = computedSettings["_column_wells"];
+      onChangeSettings = changedSettings => {
+        console.log(changedSettings);
+        onReplaceAllVisualizationSettings(
+          updateSettings(storedSettings, changedSettings),
+        );
+      };
+    }
+
     return (
       <div style={style} className={cx(className, "flex flex-row")}>
-        {wells.left && (
-          <WellArea vertical>
-            {wells.left.map(well => <Well vertical well={well} />)}
-          </WellArea>
-        )}
-        <div className="flex-full flex flex-column">
-          {children}
-          {wells.bottom && (
-            <WellArea>
-              {wells.bottom.map(well => <Well well={well} />)}
+        {wells &&
+          wells.left && (
+            <WellArea vertical>
+              {wells.left.map(well => (
+                <Well
+                  vertical
+                  well={well}
+                  onChangeSettings={onChangeSettings}
+                />
+              ))}
             </WellArea>
           )}
+        <div className="flex-full flex flex-column">
+          {children}
+          {wells &&
+            wells.bottom && (
+              <WellArea>
+                {wells.bottom.map(well => (
+                  <Well well={well} onChangeSettings={onChangeSettings} />
+                ))}
+              </WellArea>
+            )}
         </div>
       </div>
     );
@@ -76,14 +100,16 @@ const WELL_HORIZONTAL_STYLE = {
 };
 
 const WellArea = ({ vertical, children }) => (
-  <div className={cx("flex layout-centered", { "flex-column": vertical })}>
+  <div
+    className={cx("flex layout-centered", { "flex-column-reverse": vertical })}
+  >
     {children}
   </div>
 );
 
-const Well = ({ well, vertical }) => {
+const Well = ({ well, vertical, onChangeSettings }) => {
   return (
-    <ColumnDropTarget onDrop={column => well.onAdd(column)}>
+    <ColumnDropTarget onDrop={column => onChangeSettings(well.onAdd(column))}>
       {({ hovered, highlighted }) => (
         <span
           className={cx(
@@ -110,7 +136,7 @@ const Well = ({ well, vertical }) => {
                 "text-light text-medium-hover cursor-pointer",
                 vertical ? "my1" : "mx1",
               )}
-              onClick={well.onRemove}
+              onClick={() => onChangeSettings(well.onRemove())}
             />
           )}
         </span>
@@ -118,94 +144,3 @@ const Well = ({ well, vertical }) => {
     </ColumnDropTarget>
   );
 };
-
-// FIMEX: lots of cleanup, extract logic into each visualization
-function getColumnWells(series, onReplaceAllVisualizationSettings) {
-  if (!series) {
-    return {};
-  }
-
-  const display = series[0].card.display;
-  const storedSettings = series[0].card.visualization_settings;
-  const computedSettings = getComputedSettingsForSeries(series);
-  const cols = series[0].data.cols;
-
-  const changeSetting = (id, value) =>
-    console.log(id, storedSettings[id], "=>", value) ||
-    onReplaceAllVisualizationSettings(
-      updateSettings(storedSettings, {
-        [id]: value,
-      }),
-    );
-
-  if (display === "line" || display === "area" || display === "bar") {
-    console.log(
-      "stored",
-      storedSettings["graph.metrics"],
-      storedSettings["graph.dimensions"],
-    );
-    console.log(
-      "computed",
-      computedSettings["graph.metrics"],
-      computedSettings["graph.dimensions"],
-    );
-
-    const wells = {
-      left: [],
-      bottom: [],
-    };
-
-    for (const name of computedSettings["graph.metrics"].filter(
-      n => n != null,
-    )) {
-      wells.left.push({
-        column: _.findWhere(cols, { name }),
-        color: colors["accent1"],
-        onRemove: () =>
-          changeSetting(
-            "graph.metrics",
-            computedSettings["graph.metrics"].map(n => (n === name ? null : n)),
-          ),
-      });
-    }
-    for (const name of computedSettings["graph.dimensions"].filter(
-      n => n != null,
-    )) {
-      wells.bottom.push({
-        column: _.findWhere(cols, { name }),
-        color: colors["accent2"],
-        onRemove: () =>
-          changeSetting(
-            "graph.dimensions",
-            computedSettings["graph.dimensions"].map(
-              n => (n === name ? null : n),
-            ),
-          ),
-      });
-    }
-
-    // if (wells.left.length === 0) {
-    wells.left.push({
-      placeholder: "y",
-      onAdd: column => changeSetting("graph.metrics", [column.name]),
-    });
-    // }
-    if (wells.bottom.length === 0) {
-      wells.bottom.push({
-        placeholder: "x",
-        onAdd: column => changeSetting("graph.dimensions", [column.name]),
-      });
-    } else if (wells.bottom.length === 1) {
-      wells.bottom.push({
-        placeholder: "Series breakout",
-        onAdd: column =>
-          changeSetting("graph.dimensions", [
-            computedSettings["graph.dimensions"][0],
-            column.name,
-          ]),
-      });
-    }
-    return wells;
-  }
-  return {};
-}

@@ -150,6 +150,10 @@
   flex-direction: column;
 }
 
+.flex-column-reverse {
+  flex-direction: column-reverse;
+}
+
 @media screen and (--breakpoint-min-sm) {
   .sm-flex-column {
     flex-direction: column;

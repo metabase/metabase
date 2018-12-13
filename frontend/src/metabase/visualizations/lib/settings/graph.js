@@ -23,6 +23,8 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
+import colors from "metabase/lib/colors";
+
 import _ from "underscore";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
@@ -113,17 +115,17 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
-      ),
+    // isValid: ([{ card, data }], vizSettings) =>
+    //   columnsAreValid(
+    //     card.visualization_settings["graph.dimensions"],
+    //     data,
+    //     vizSettings["graph._dimension_filter"],
+    //   ) &&
+    //   columnsAreValid(
+    //     card.visualization_settings["graph.metrics"],
+    //     data,
+    //     vizSettings["graph._metric_filter"],
+    //   ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).dimensions,
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
@@ -152,17 +154,17 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
-      ),
+    // isValid: ([{ card, data }], vizSettings) =>
+    //   columnsAreValid(
+    //     card.visualization_settings["graph.dimensions"],
+    //     data,
+    //     vizSettings["graph._dimension_filter"],
+    //   ) &&
+    //   columnsAreValid(
+    //     card.visualization_settings["graph.metrics"],
+    //     data,
+    //     vizSettings["graph._metric_filter"],
+    //   ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
@@ -186,6 +188,61 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
+
+  _column_wells: {
+    getValue([{ data: { cols } }], settings) {
+      const wells = {
+        left: [],
+        bottom: [],
+      };
+
+      const metrics = settings["graph.metrics"];
+      const dimensions = settings["graph.dimensions"];
+
+      for (const name of metrics.filter(n => n != null)) {
+        wells.left.push({
+          column: _.findWhere(cols, { name }),
+          color: colors["accent1"],
+          onRemove: () => ({
+            "graph.metrics": metrics.map(n => (n === name ? null : n)),
+          }),
+        });
+      }
+      for (const name of dimensions.filter(n => n != null)) {
+        wells.bottom.push({
+          column: _.findWhere(cols, { name }),
+          color: colors["accent2"],
+          onRemove: () => ({
+            "graph.dimensions": dimensions.map(n => (n === name ? null : n)),
+          }),
+        });
+      }
+
+      // if (wells.left.length === 0) {
+      wells.left.push({
+        placeholder: "y",
+        onAdd: column => ({ "graph.metrics": [...metrics, column.name] }),
+      });
+      // }
+      if (wells.bottom.length === 0) {
+        wells.bottom.push({
+          placeholder: "x",
+          onAdd: column => ({ "graph.dimensions": [column.name] }),
+        });
+      } else if (wells.bottom.length === 1) {
+        wells.bottom.push({
+          placeholder: "Series breakout",
+          onAdd: column => ({
+            "graph.dimensions": [dimensions[0], column.name],
+          }),
+        });
+      }
+      return wells;
+    },
+    readDependencies: ["graph.dimensions", "graph.metrics"],
+    useRawSeries: true,
+  },
+
   ...seriesSetting(),
 };
 
