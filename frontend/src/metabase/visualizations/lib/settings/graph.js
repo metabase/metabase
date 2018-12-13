@@ -221,17 +221,20 @@ export const GRAPH_DATA_SETTINGS = {
       // if (wells.left.length === 0) {
       wells.left.push({
         placeholder: "y",
+        canAdd: settings["graph._metric_filter"],
         onAdd: column => ({ "graph.metrics": [...metrics, column.name] }),
       });
       // }
       if (wells.bottom.length === 0) {
         wells.bottom.push({
           placeholder: "x",
+          canAdd: settings["graph._dimension_filter"],
           onAdd: column => ({ "graph.dimensions": [column.name] }),
         });
       } else if (wells.bottom.length === 1) {
         wells.bottom.push({
           placeholder: "Series breakout",
+          canAdd: settings["graph._dimension_filter"],
           onAdd: column => ({
             "graph.dimensions": [dimensions[0], column.name],
           }),
@@ -239,7 +242,12 @@ export const GRAPH_DATA_SETTINGS = {
       }
       return wells;
     },
-    readDependencies: ["graph.dimensions", "graph.metrics"],
+    readDependencies: [
+      "graph.dimensions",
+      "graph.metrics",
+      "graph._metric_filter",
+      "graph._dimension_filter",
+    ],
     useRawSeries: true,
   },
 

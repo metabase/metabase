@@ -109,7 +109,10 @@ const WellArea = ({ vertical, children }) => (
 
 const Well = ({ well, vertical, onChangeSettings }) => {
   return (
-    <ColumnDropTarget onDrop={column => onChangeSettings(well.onAdd(column))}>
+    <ColumnDropTarget
+      canDrop={column => well.canAdd && well.canAdd(column)}
+      onDrop={column => onChangeSettings(well.onAdd(column))}
+    >
       {({ hovered, highlighted }) => (
         <span
           className={cx(
