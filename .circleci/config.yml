@@ -58,7 +58,7 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run: lein deps
+      - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
@@ -108,7 +108,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run Bikeshed linter
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
@@ -120,7 +120,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
@@ -188,12 +188,6 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download SparkSQL deps JAR
-          command: wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
       - run:
           name: Wait for SparkSQL to be ready
           command: >
@@ -306,6 +300,22 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-googleanalytics:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Google Analytics)
+          environment:
+            DRIVERS: h2,googleanalytics
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
   be-tests-sqlite:
     <<: *defaults
     steps:
@@ -369,7 +379,7 @@ jobs:
       - run:
           name: Wait for Presto to be ready
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
             while ! nc -z localhost 8080; do sleep 0.1; done
           no_output_timeout: 5m
       - run:
@@ -596,6 +606,9 @@ workflows:
       - be-tests-bigquery:
           requires:
             - be-tests
+      - be-tests-googleanalytics:
+          requires:
+            - be-tests
       - be-tests-sqlite:
           requires:
             - be-tests
@@ -648,6 +661,7 @@ workflows:
             - be-linter-docstring-checker
             - be-linter-bikeshed
             - be-linter-reflection-warnings
+
             - be-tests
             - be-tests-mysql
             - be-tests-postgres
@@ -655,6 +669,7 @@ workflows:
             - be-tests-mongo
             - be-tests-sqlserver
             - be-tests-bigquery
+            - be-tests-googleanalytics
             - be-tests-sqlite
             - be-tests-presto
             - be-tests-oracle
@@ -662,6 +677,7 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
             - fe-linter-eslint
             - fe-linter-prettier
             - fe-linter-flow

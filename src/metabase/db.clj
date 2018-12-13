@@ -10,13 +10,13 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [connection-pool :as connection-pool]
+             [spec :as dbspec]]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.ComboPooledDataSource
-           java.io.StringWriter
-           java.util.Properties
+  (:import java.io.StringWriter
            [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
@@ -328,31 +328,17 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private application-db-connection-pool-properties
+  "c3p0 connection pool properties for the application DB. See
+  https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
+  {"minPoolSize"     1
+   "initialPoolSize" 1
+   "maxPoolSize"     15})
+
 (defn connection-pool
   "Create a C3P0 connection pool for the given database `spec`."
-  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
-    :or   {minimum-pool-size           3
-           idle-connection-test-period 0
-           excess-timeout              (* 30 60)}
-    :as   spec}]
-  {:datasource (doto (ComboPooledDataSource.)
-                 (.setDriverClass                  classname)
-                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                 (.setMaxIdleTimeExcessConnections excess-timeout)
-                 (.setMaxIdleTime                  (* 3 60 60))
-                 (.setInitialPoolSize              3)
-                 (.setMinPoolSize                  minimum-pool-size)
-                 (.setMaxPoolSize                  15)
-                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
-                 (.setTestConnectionOnCheckin      false)
-                 (.setTestConnectionOnCheckout     false)
-                 (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (Properties.)
-                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname
-                                                                                :naming :delimiters :alias-delimiter
-                                                                                :excess-timeout :minimum-pool-size
-                                                                                :idle-connection-test-period)]
-                                                       (.setProperty <> (name k) (str v))))))})
+  [spec]
+  (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
@@ -396,13 +382,13 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
-  ([engine details]
-   {:pre [(keyword? engine) (map? details)]}
-   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
+  ([driver details]
+   {:pre [(keyword? driver) (map? details)]}
+   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
              (require 'metabase.driver.util)
-             ((resolve 'metabase.driver.util/can-connect-with-details?) engine details))
-     (format "Unable to connect to Metabase %s DB." (name engine)))
+             ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
+     (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 
 

@@ -1,0 +1,31 @@
+info:
+  name: Metabase MongoDB Driver
+  version: 1.0.0-SNAPSHOT-3.9.0
+  description: Allows Metabase to connect to MongoDB databases.
+driver:
+  name: mongo
+  display-name: MongoDB
+  lazy-load: true
+  connection-properties:
+    - host
+    - dbname
+    - merge:
+        - port
+        - default: 27017
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - name: pass
+    - name: authdb
+      display-name: Authentication Database
+      placeholder: Optional database to use when authenticating
+    - merge:
+        - additional-options
+        - display-name: Additional Mongo connection string options
+          placeholder: 'readPreference=nearest&replicaSet=test'
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.mongo

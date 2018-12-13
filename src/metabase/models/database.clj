@@ -73,7 +73,7 @@
 (defn- post-select [{driver :engine, :as database}]
   ;; TODO - this is only really needed for API responses
   (cond-> database
-    (driver/registered? driver) (assoc :features (driver.u/features driver))))
+    (driver/initialized? driver) (assoc :features (driver.u/features driver))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
