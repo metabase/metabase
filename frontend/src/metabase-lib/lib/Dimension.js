@@ -159,6 +159,14 @@ export default class Dimension {
     }
   }
 
+  defaultAggregation() {
+    const aggregations = this.field().aggregations();
+    if (aggregations && aggregations.length > 0) {
+      return [aggregations[0].short, this.mbql()];
+    }
+    return null;
+  }
+
   // Internal method gets a Dimension from a DimensionOption
   _dimensionForOption(option: DimensionOption) {
     // fill in the parent field ref

@@ -199,46 +199,89 @@ export const GRAPH_DATA_SETTINGS = {
       const metrics = settings["graph.metrics"];
       const dimensions = settings["graph.dimensions"];
 
+      const hasMoreColumns = settings["_column_list"].length > 0;
+
       for (const name of metrics.filter(n => n != null)) {
         wells.left.push({
           column: _.findWhere(cols, { name }),
           color: colors["accent1"],
-          onRemove: () => ({
-            "graph.metrics": metrics.map(n => (n === name ? null : n)),
-          }),
+          onRemove: ({ onChangeSettings }) =>
+            onChangeSettings({
+              "graph.metrics": metrics.map(n => (n === name ? null : n)),
+            }),
         });
       }
       for (const name of dimensions.filter(n => n != null)) {
         wells.bottom.push({
           column: _.findWhere(cols, { name }),
           color: colors["accent2"],
-          onRemove: () => ({
-            "graph.dimensions": dimensions.map(n => (n === name ? null : n)),
-          }),
+          onRemove: ({ onChangeSettings }) =>
+            onChangeSettings({
+              "graph.dimensions": dimensions.map(n => (n === name ? null : n)),
+            }),
         });
       }
 
-      // if (wells.left.length === 0) {
-      wells.left.push({
-        placeholder: "y",
-        canAdd: settings["graph._metric_filter"],
-        onAdd: column => ({ "graph.metrics": [...metrics, column.name] }),
-      });
-      // }
-      if (wells.bottom.length === 0) {
-        wells.bottom.push({
-          placeholder: "x",
-          canAdd: settings["graph._dimension_filter"],
-          onAdd: column => ({ "graph.dimensions": [column.name] }),
+      if (hasMoreColumns) {
+        wells.left.push({
+          placeholder: wells.left.length === 0 ? "y" : "+",
+          canAdd: settings["graph._metric_filter"],
+          onAdd: (column, { onChangeSettings, query, setDatasetQuery }) => {
+            const d = query.dimensionForColumn(column);
+            const aggregation = d.defaultAggregation();
+            if (aggregation) {
+              query = query.addAggregation(aggregation);
+              const readyToRun =
+                query.aggregations().length > 0 && query.breakouts().length > 0;
+              query.update(q => setDatasetQuery(q, readyToRun));
+              onChangeSettings({
+                "graph.metrics": query.aggregations().map(a => a[0]),
+                "graph.dimensions": query
+                  .breakoutDimensions()
+                  .map(b => b.field().name),
+              });
+            } else {
+              onChangeSettings({ "graph.metrics": [...metrics, column.name] });
+            }
+          },
         });
-      } else if (wells.bottom.length === 1) {
-        wells.bottom.push({
-          placeholder: "Series breakout",
-          canAdd: settings["graph._dimension_filter"],
-          onAdd: column => ({
-            "graph.dimensions": [dimensions[0], column.name],
-          }),
-        });
+        if (wells.bottom.length === 0) {
+          wells.bottom.push({
+            placeholder: "x",
+            canAdd: settings["graph._dimension_filter"],
+            onAdd: (column, { onChangeSettings, query, setDatasetQuery }) => {
+              const d = query.dimensionForColumn(column);
+              const breakout = d.defaultBreakout();
+              if (breakout) {
+                query = query.addBreakout(breakout);
+                if (query.aggregations().length === 0) {
+                  query = query.addAggregation(["count"]);
+                }
+                const readyToRun =
+                  query.aggregations().length > 0 &&
+                  query.breakouts().length > 0;
+                query.update(q => setDatasetQuery(q, readyToRun));
+                onChangeSettings({
+                  "graph.metrics": query.aggregations().map(a => a[0]),
+                  "graph.dimensions": query
+                    .breakoutDimensions()
+                    .map(b => b.field().name),
+                });
+              } else {
+                onChangeSettings({ "graph.dimensions": [column.name] });
+              }
+            },
+          });
+        } else if (wells.bottom.length === 1) {
+          wells.bottom.push({
+            placeholder: "Series breakout",
+            canAdd: settings["graph._dimension_filter"],
+            onAdd: (column, { onChangeSettings }) =>
+              onChangeSettings({
+                "graph.dimensions": [dimensions[0], column.name],
+              }),
+          });
+        }
       }
       return wells;
     },
@@ -247,6 +290,7 @@ export const GRAPH_DATA_SETTINGS = {
       "graph.metrics",
       "graph._metric_filter",
       "graph._dimension_filter",
+      "_column_list",
     ],
     useRawSeries: true,
   },

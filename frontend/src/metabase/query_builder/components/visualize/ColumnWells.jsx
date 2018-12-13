@@ -22,6 +22,8 @@ export default class ColumnWells extends React.Component {
       className,
       children,
       rawSeries,
+      query,
+      setDatasetQuery,
       onReplaceAllVisualizationSettings,
     } = this.props;
 
@@ -40,17 +42,19 @@ export default class ColumnWells extends React.Component {
       };
     }
 
+    const actionProps = {
+      onChangeSettings,
+      query,
+      setDatasetQuery,
+    };
+
     return (
       <div style={style} className={cx(className, "flex flex-row")}>
         {wells &&
           wells.left && (
             <WellArea vertical>
               {wells.left.map(well => (
-                <Well
-                  vertical
-                  well={well}
-                  onChangeSettings={onChangeSettings}
-                />
+                <Well vertical well={well} actionProps={actionProps} />
               ))}
             </WellArea>
           )}
@@ -60,7 +64,7 @@ export default class ColumnWells extends React.Component {
             wells.bottom && (
               <WellArea>
                 {wells.bottom.map(well => (
-                  <Well well={well} onChangeSettings={onChangeSettings} />
+                  <Well well={well} actionProps={actionProps} />
                 ))}
               </WellArea>
             )}
@@ -92,11 +96,11 @@ const WELL_VERTICAL_STYLE = {
   whiteSpace: "nowrap",
   display: "inline-block",
   overflow: "visible",
-  minHeight: WELL_MIN_WIDTH,
+  // minHeight: WELL_MIN_WIDTH,
 };
 
 const WELL_HORIZONTAL_STYLE = {
-  minWidth: WELL_MIN_WIDTH,
+  // minWidth: WELL_MIN_WIDTH,
 };
 
 const WellArea = ({ vertical, children }) => (
@@ -107,17 +111,17 @@ const WellArea = ({ vertical, children }) => (
   </div>
 );
 
-const Well = ({ well, vertical, onChangeSettings }) => {
+const Well = ({ well, vertical, actionProps }) => {
   return (
     <ColumnDropTarget
       canDrop={column => well.canAdd && well.canAdd(column)}
-      onDrop={column => onChangeSettings(well.onAdd(column))}
+      onDrop={column => well.onAdd(column, actionProps)}
     >
       {({ hovered, highlighted }) => (
         <span
           className={cx(
             "m3 circular p1 bg-medium h3 text-medium text-centered flex layout-centered",
-            vertical ? "py2" : "px2",
+            vertical ? "py3" : "px3",
           )}
           style={{
             ...(vertical ? WELL_VERTICAL_STYLE : WELL_HORIZONTAL_STYLE),
@@ -137,9 +141,9 @@ const Well = ({ well, vertical, onChangeSettings }) => {
               name="close"
               className={cx(
                 "text-light text-medium-hover cursor-pointer",
-                vertical ? "my1" : "mx1",
+                vertical ? "mt1" : "ml1",
               )}
-              onClick={() => onChangeSettings(well.onRemove())}
+              onClick={() => well.onRemove(actionProps)}
             />
           )}
         </span>
