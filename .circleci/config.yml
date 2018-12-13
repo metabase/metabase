@@ -254,6 +254,8 @@ jobs:
     docker:
     - image: circleci/clojure:lein-2.8.1-node-browsers
     - image: yandex/clickhouse-server:latest
+      environment:
+        TZ: "/usr/share/zoneinfo/UTC"
     steps:
     - attach_workspace:
         at: /home/circleci/
@@ -261,6 +263,8 @@ jobs:
         <<: *restore-be-deps-cache
     - run:
         name: Run backend unit tests (Clickhouse)
+        environment:
+            DRIVERS: h2,clickhouse
         command: >
           /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh clickhouse ||
           lein with-profile +ci test

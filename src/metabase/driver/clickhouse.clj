@@ -1,8 +1,6 @@
 (ns metabase.driver.clickhouse
-  (:require [clojure
-             [set :as set]
-             [string :as string]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as string]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -14,10 +12,8 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :as field]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.DatabaseMetaData))
@@ -69,9 +65,6 @@
 
 (defn- to-relative-day-num [expr]
   (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
-
-(defn- to-relative-week-num [expr]
-  (hsql/call :toRelativeWeekNum (hsql/call :toDateTime expr)))
 
 (defn- to-relative-month-num [expr]
   (hsql/call :toRelativeMonthNum (hsql/call :toDateTime expr)))
