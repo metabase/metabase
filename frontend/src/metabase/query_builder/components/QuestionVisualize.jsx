@@ -10,6 +10,10 @@ import Card from "metabase/components/Card";
 
 import FloatingButton from "metabase/query_builder/components/FloatingButton";
 
+import colors from "metabase/lib/colors";
+import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
+
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
 import ColumnList from "./visualize/ColumnList";
@@ -18,8 +22,11 @@ import ColumnList from "./visualize/ColumnList";
 const VIZ_MARGIN = 340;
 
 const Panel = styled(Card)`
-  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   max-height: 100%;
+  border-radius: 8px;
 `;
 
 Panel.defaultProps = {
@@ -126,10 +133,63 @@ const QuestionVisualizeSettings = props => {
     </Panel>
   );
 };
-const QuestionVisualizeColumns = ({ query, rawSeries }) => {
-  return (
-    <Panel>
-      <ColumnList query={query} rawSeries={rawSeries} />
-    </Panel>
-  );
+
+const BucketHeaderButton = styled(Button)`
+  border: none;
+  background: ${props =>
+    props.active ? `rgba(255, 255, 255, 0.12)` : "transparent"};
+  color: white;
+  &:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.22);
+    transition: background 300ms linear;
+  }
+`;
+
+BucketHeaderButton.defaultProps = {
+  p: 1,
+  m: 1,
+  iconSize: 22,
+};
+
+class Bucket extends React.Component {
+  state = {
+    showSource: true,
+  };
+  render() {
+    const { query, rawSeries } = this.props;
+    const { showSource } = this.state;
+    return (
+      <Panel>
+        <Flex
+          align="center"
+          justify="center"
+          p={1}
+          style={{ flexShrink: 0 }}
+          bg={showSource ? colors["accent1"] : colors["accent7"]}
+        >
+          <BucketHeaderButton
+            icon="grid"
+            onClick={() => this.setState({ showSource: true })}
+            active={showSource}
+          />
+          <BucketHeaderButton
+            icon="insight"
+            onClick={() => this.setState({ showSource: false })}
+            active={!showSource}
+          />
+        </Flex>
+        <Box style={{ overflowY: "scroll", flex: 1 }} pt={2}>
+          {showSource ? (
+            <ColumnList query={query} rawSeries={rawSeries} />
+          ) : (
+            <Box>Metrics and aggs here please</Box>
+          )}
+        </Box>
+      </Panel>
+    );
+  }
+}
+const QuestionVisualizeColumns = props => {
+  return <Bucket {...props} />;
 };
