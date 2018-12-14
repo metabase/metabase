@@ -17,7 +17,6 @@ const ColumnList = ({ style, className, query, rawSeries }) => {
 
   return (
     <div className={className} style={style}>
-      <div className="bg-brand text-white p2 text-centered h3 mb2">{`Columns`}</div>
       <div>
         {!rawSeries ? (
           <div className="mb2 text-centered">Loading...</div>

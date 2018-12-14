@@ -26,6 +26,7 @@ const BaseButton = ({
   icon,
   iconRight,
   iconSize,
+  iconColor,
   children,
   ...props
 }) => {
@@ -43,6 +44,7 @@ const BaseButton = ({
       <div className="flex layout-centered">
         {icon && (
           <Icon
+            color={iconColor}
             name={icon}
             size={iconSize ? iconSize : 14}
             className={cx({ mr1: !onlyIcon })}
@@ -51,6 +53,7 @@ const BaseButton = ({
         <div>{children}</div>
         {iconRight && (
           <Icon
+            color={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 14}
             className={cx({ ml1: !onlyIcon })}

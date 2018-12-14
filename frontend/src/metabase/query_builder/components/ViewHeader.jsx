@@ -10,6 +10,18 @@ import Button from "metabase/components/Button";
 
 import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 
+const RoundButton = styled(Button)`
+  border-radius: 99px;
+  border: none;
+  &:hover {
+    background-color: ${lighten(colors["brand"], 0.4)} !important;
+    transition: background-color 300ms linear;
+  }
+`;
+
+RoundButton.defaultProps = {
+  mx: 1,
+};
 const HeaderButton = styled(Button)`
   background-color: ${lighten(colors["brand"], 0.6)} !important;
   color: ${colors["brand"]};
@@ -26,7 +38,7 @@ const Title = styled("h2")`
   ${color} font-weight: 900;
 `;
 
-const ViewHeader = ({ question, setMode }) => (
+const ViewHeader = ({ question, setMode, mode }) => (
   <Flex
     align="center"
     className="full relative py2 px4 border-bottom bg-white flex"
@@ -50,11 +62,31 @@ const ViewHeader = ({ question, setMode }) => (
     </Flex>
     <div className="absolute bottom left right flex z2" style={{ bottom: -18 }}>
       <div
-        className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white px2 py1 cursor-pointer text-light text-bold"
+        className="bordered rounded px2 shadowed flex align-center ml-auto mr-auto bg-white p1 cursor-pointer text-light text-bold"
         style={{ borderRadius: 99 }}
-        onClick={() => setMode("worksheet")}
       >
         <QueryDefinition question={question} />
+        <RoundButton
+          iconColor={
+            mode === "worksheet" ? colors["brand"] : colors["text-medium"]
+          }
+          icon="pencil"
+          onClick={() => setMode("worksheet")}
+        />
+        <RoundButton
+          iconColor={
+            mode === "visualize" ? colors["brand"] : colors["text-medium"]
+          }
+          icon="area"
+          onClick={() => setMode("visualize")}
+        />
+        <RoundButton
+          iconColor={
+            mode === "present" ? colors["brand"] : colors["text-medium"]
+          }
+          icon="star"
+          onClick={() => setMode("present")}
+        />
       </div>
     </div>
   </Flex>
