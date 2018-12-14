@@ -10,13 +10,6 @@ const QueryDefinition = ({ question }) => (
         {question.query().table().display_name}
       </span>
     )}
-    {question.query().aggregationName() && (
-      <span>
-        <span className="mx1">•</span>
-        {/* todo - this should be changed to use the canonical color names */}
-        <span className="text-green">{question.query().aggregationName()}</span>
-      </span>
-    )}
     {question.query().filters().length > 0 && (
       <span className="flex align-center">
         <span className="mx1">•</span>

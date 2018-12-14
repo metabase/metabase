@@ -62,9 +62,10 @@ const ViewHeader = ({ question, setMode, mode }) => (
     </Flex>
     <div className="absolute bottom left right flex z2" style={{ bottom: -18 }}>
       <div
-        className="bordered rounded shadowed flex align-center ml-auto mr-auto bg-white p1 cursor-pointer text-light text-bold"
+        className="bordered rounded px2 shadowed flex align-center ml-auto mr-auto bg-white p1 cursor-pointer text-light text-bold"
         style={{ borderRadius: 99 }}
       >
+        <QueryDefinition question={question} />
         <RoundButton
           iconColor={
             mode === "worksheet" ? colors["brand"] : colors["text-medium"]

@@ -254,12 +254,6 @@ export default class QueryBuilder extends Component {
             mode={uiControls.mode}
           />
           <QuestionPresent {...this.props} />
-          <span className="absolute bottom left z4 m4">
-            <FloatingButton
-              icon="bar"
-              onClick={() => this.props.setMode("visualize")}
-            />
-          </span>
         </div>
       );
     } else if (uiControls.mode === "visualize") {

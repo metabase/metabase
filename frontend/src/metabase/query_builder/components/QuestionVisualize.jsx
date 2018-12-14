@@ -8,11 +8,8 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import { Absolute, Fixed } from "metabase/components/Position";
 import Card from "metabase/components/Card";
 
-import FloatingButton from "metabase/query_builder/components/FloatingButton";
-
 import colors from "metabase/lib/colors";
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
 
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
@@ -68,7 +65,7 @@ export default class QuestionVisualize extends React.Component {
 }
 
 const QuestionVisualizeMain = props => {
-  const { setMode, showSettings } = props;
+  const { showSettings } = props;
   return (
     <Flex flex={1} m={3} mb={5}>
       <ColumnWells className="flex-full flex" {...props}>
@@ -78,9 +75,6 @@ const QuestionVisualizeMain = props => {
             className="flex-full wrapper mb2 z1"
             noHeader
           />
-          <span className="absolute" style={{ bottom: -16, left: -16 }}>
-            <FloatingButton icon="expand" onClick={() => setMode("present")} />
-          </span>
         </div>
       </ColumnWells>
       <QuestionVisualizeFooter {...props} showSettings={showSettings} />
