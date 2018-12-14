@@ -510,11 +510,9 @@
                                               :as                                                    outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
-      (let [comment (str "-- " (qputil/query->remark outer-query) "\n")
-            sql (cond->> (str (if (seq params)
-                                (unprepare/unprepare (cons sql params))
-                                sql))
-                        (get-in database [:details :add-comment]) (str comment)))]
+      (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                     (unprepare/unprepare (cons sql params))
+                                                                     sql))]
         (process-native* database sql)))))
 
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
@@ -545,12 +543,7 @@
    {:name         "use-jvm-timezone"
     :display-name (tru "Use JVM Time Zone")
     :default      "false"
-    :type         :boolean}
-   {:name         "add-comment"
-    :display-name (tru "Add SQL comment from queries")
-    :default      "true"
-    :type         :boolean
-    :required     true}])
+    :type         :boolean}])
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 
