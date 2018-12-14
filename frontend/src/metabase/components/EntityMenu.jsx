@@ -21,6 +21,35 @@ type Props = {
   tooltip?: string,
 };
 
+/* Note: @kdoh 10/12/17
+ * React Motion has a flow type problem with children see
+ * https://github.com/chenglou/react-motion/issues/375
+ * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
+ */
+export const AnimatedMenuWrapper = ({ children, open }) => (
+  <Motion
+    defaultStyle={{
+      opacity: 0,
+      translateY: 0,
+    }}
+    style={{
+      opacity: open ? spring(1) : spring(0),
+      translateY: open ? spring(10) : spring(0),
+    }}
+  >
+    {({ opacity, translateY }) => (
+      <div
+        style={{
+          opacity: opacity,
+          transform: `translateY(${translateY}px)`,
+        }}
+      >
+        {children}
+      </div>
+    )}
+  </Motion>
+);
+
 class EntityMenu extends Component {
   props: Props;
 
@@ -66,77 +95,54 @@ class EntityMenu extends Component {
           horizontalAttachments={["right"]}
           targetOffsetY={0}
         >
-          {/* Note: @kdoh 10/12/17
-            * React Motion has a flow type problem with children see
-            * https://github.com/chenglou/react-motion/issues/375
-            * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
-            */}
-          <Motion
-            defaultStyle={{
-              opacity: 0,
-              translateY: 0,
-            }}
-            style={{
-              opacity: open ? spring(1) : spring(0),
-              translateY: open ? spring(10) : spring(0),
-            }}
-          >
-            {({ opacity, translateY }) => (
-              <div
-                style={{
-                  opacity: opacity,
-                  transform: `translateY(${translateY}px)`,
-                }}
-              >
-                <Card>
-                  {menuItemContent || (
-                    <ol className="py1" style={{ minWidth: 210 }}>
-                      {items.map(item => {
-                        if (item.content) {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                action={() =>
-                                  this.replaceMenuWithItemContent(
-                                    item.content(
-                                      this.toggleMenu,
-                                      this.setFreezeMenu,
-                                    ),
-                                  )
-                                }
-                              />
-                            </li>
-                          );
-                        } else {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                externalLink={item.externalLink}
-                                action={
-                                  item.action &&
-                                  (() => {
-                                    item.action();
-                                    this.toggleMenu();
-                                  })
-                                }
-                                event={item.event && item.event}
-                                link={item.link}
-                                onClose={() => this.toggleMenu()}
-                              />
-                            </li>
-                          );
-                        }
-                      })}
-                    </ol>
-                  )}
-                </Card>
-              </div>
-            )}
-          </Motion>
+          <AnimatedMenuWrapper open={open}>
+            <Card>
+              {menuItemContent || (
+                <ol className="py1" style={{ minWidth: 210 }}>
+                  {items.map(item => {
+                    if (item.content) {
+                      return (
+                        <li key={item.title}>
+                          <EntityMenuItem
+                            icon={item.icon}
+                            title={item.title}
+                            action={() =>
+                              this.replaceMenuWithItemContent(
+                                item.content(
+                                  this.toggleMenu,
+                                  this.setFreezeMenu,
+                                ),
+                              )
+                            }
+                          />
+                        </li>
+                      );
+                    } else {
+                      return (
+                        <li key={item.title}>
+                          <EntityMenuItem
+                            icon={item.icon}
+                            title={item.title}
+                            externalLink={item.externalLink}
+                            action={
+                              item.action &&
+                              (() => {
+                                item.action();
+                                this.toggleMenu();
+                              })
+                            }
+                            event={item.event && item.event}
+                            link={item.link}
+                            onClose={() => this.toggleMenu()}
+                          />
+                        </li>
+                      );
+                    }
+                  })}
+                </ol>
+              )}
+            </Card>
+          </AnimatedMenuWrapper>
         </Popover>
       </div>
     );
