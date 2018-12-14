@@ -47,8 +47,9 @@
 
 (s/defn ^:private field-should-be-auto-list? :- (s/maybe s/Bool)
   "Based on `distinct-count`, should we mark this `field` as `has_field_values` = `auto-list`?"
-  [fingerprint :- (s/maybe i/Fingerprint), field :- {:has_field_values (s/maybe (apply s/enum field/has-field-values-options))
-                                      s/Keyword         s/Any}]
+  [fingerprint :- (s/maybe i/Fingerprint),
+   field :- {(s/optional-key :has_field_values) (s/maybe (apply s/enum field/has-field-values-options))
+             s/Keyword         s/Any}]
   ;; only update has_field_values if it hasn't been set yet. If it's already been set then it was probably done so
   ;; manually by an admin, and we don't want to stomp over their choices.
   (let [distinct-count (get-in fingerprint [:global :distinct-count])]
