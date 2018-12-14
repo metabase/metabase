@@ -99,7 +99,7 @@
   (let [existing (select-identical model entity)]
     (case mode
       :update (cond
-                (= (select-keys existing (keys entity)) entity)
+                (= (select-keys existing (keys entity)) (into {} entity))
                 existing
 
                 existing
@@ -189,9 +189,13 @@
                         :name     segment-name))
       (path->context path)))
 
+(def ^:private reserved-collection-name? #{"collections" "cards" "dashboards"})
+
 (defmethod path->context "collections"
   [context [_ & [collection-name & path-rest :as path]]]
-  (if (contains? context :collection)
+  (if (reserved-collection-name? collection-name)
+    ;; root collection
+    (path->context (assoc context :collection nil) path)
     (-> context
         (assoc :collection (db/select-one-id Collection
                              :name     collection-name
@@ -201,9 +205,7 @@
                                                    :location
                                                    (str (:collection context) "/"))
                                            "/")))
-        (path->context path-rest))
-    ;; root collection
-    (path->context (assoc context :collection nil) path)))
+        (path->context path-rest))))
 
 (defmethod path->context "dashboards"
   [context [_ & [dashboard-name & path]]]
