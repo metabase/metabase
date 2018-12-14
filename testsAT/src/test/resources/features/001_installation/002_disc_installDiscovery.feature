@@ -26,7 +26,7 @@ Feature: Install Discovery for Discovery
 
   @runOnEnv(DISC_VERSION>0.29.0)
   Scenario: [Basic Installation Discovery][03] Check Crossdata is running
-    Given I run 'dcos marathon task list ${DISCOVERY_TENANT_NAME:-crossdata-1} | awk '{print $5}' | grep ${DISCOVERY_TENANT_NAME:-crossdata-1}' in the ssh connection and save the value in environment variable 'crossdataTaskId'
+    Given I run 'dcos marathon task list | grep ${DISCOVERY_TENANT_NAME:-crossdata-1} | awk '{print $5}'' in the ssh connection and save the value in environment variable 'crossdataTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"state": "TASK_RUNNING"' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep 'healthCheckResults' | wc -l' contains '1'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{crossdataTaskId} | grep '"alive": true' | wc -l' contains '2'
@@ -97,12 +97,12 @@ Feature: Install Discovery for Discovery
     Then I run 'rm -rf /tmp/config_discovery_${DISC_VERSION}.json' in the ssh connection
 
   @runOnEnv(DISC_VERSION=0.28.9)
-  Scenario: [Basic Installation Discovery][07] Check Discovery installation
+  Scenario: [Basic Installation Discovery][07a] Check Discovery installation
     Given I run 'dcos marathon task list ${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'
 
   @runOnEnv(DISC_VERSION>0.29.0)
-  Scenario: [Basic Installation Discovery][07] Check Discovery installation
+  Scenario: [Basic Installation Discovery][07b] Check Discovery installation
     Given in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery} | wc -l' contains '1'
     And I run 'dcos marathon task list ${DISCOVERY_SERVICE_FOLDER:-discovery}/${DISCOVERY_SERVICE_NAME:-discovery} | awk '{print $5}' | grep ${DISCOVERY_SERVICE_NAME:-discovery}' in the ssh connection and save the value in environment variable 'discoveryTaskId'
     Then in less than '300' seconds, checking each '10' seconds, the command output 'dcos marathon task show !{discoveryTaskId} | grep TASK_RUNNING | wc -l' contains '1'
@@ -111,5 +111,13 @@ Feature: Install Discovery for Discovery
 
   Scenario: [Basic Installation Discovery][08] Check Discovery frontend
     Given I securely send requests to '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}'
-    And in less than '600' seconds, checking each '10' seconds, I send a 'GET' request to '${DISCOVERY_DISCOVERY_PATH:-/discovery}' so that the response contains 'Metabase'
+    And in less than '600' seconds, checking each '100' seconds, I send a 'GET' request to '${DISCOVERY_DISCOVERY_PATH:-/discovery}' so that the response contains 'Metabase'
     Then the service response status must be '200'
+
+  @web
+  @runOnEnv(DISC_VERSION=0.31.1||DISC_VERSION>0.31.1)
+  Scenario: [Basic Installation Discovery][09] Check Discovery frontend
+    Given My app is running in '${DISCOVERY_SERVICE_VHOST:-nightlypublic.labs.stratio.com}:443'
+    When I securely browse to '${DISCOVERY_DISCOVERY_PATH:-/discovery}'
+    And in less than '300' seconds, checking each '10' seconds, '1' elements exists with 'xpath://input[@name="username"]'
+    And in less than '300' seconds, checking each '10' seconds, '1' elements exists with 'xpath://input[@name="password"]'
