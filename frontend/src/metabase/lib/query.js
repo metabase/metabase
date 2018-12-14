@@ -48,9 +48,9 @@ export function createQuery(type = "query", databaseId, tableId) {
 
 const METRIC_NAME_BY_AGGREGATION = {
   count: "count",
-  cum_count: "count",
+  "cum-count": "count",
   sum: "sum",
-  cum_sum: "sum",
+  "cum-sum": "sum",
   distinct: "count",
   avg: "avg",
   min: "min",
@@ -59,9 +59,9 @@ const METRIC_NAME_BY_AGGREGATION = {
 
 const METRIC_TYPE_BY_AGGREGATION = {
   count: TYPE.Integer,
-  cum_count: TYPE.Integer,
+  "cum-count": TYPE.Integer,
   sum: TYPE.Float,
-  cum_sum: TYPE.Float,
+  "cum-sum": TYPE.Float,
   distinct: TYPE.Integer,
   avg: TYPE.Float,
   min: TYPE.Float,
@@ -612,7 +612,7 @@ const Query = {
             return [t`Raw data`];
           case "count":
             return [t`Count`];
-          case "cum_count":
+          case "cum-count":
             return [t`Cumulative count`];
           case "avg":
             return [
@@ -634,7 +634,7 @@ const Query = {
               t`Sum of `,
               Query.getFieldName(tableMetadata, aggregation[1], options),
             ];
-          case "cum_sum":
+          case "cum-sum":
             return [
               t`Cumulative sum of `,
               Query.getFieldName(tableMetadata, aggregation[1], options),

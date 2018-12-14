@@ -84,6 +84,24 @@
   {:name         "additional-options"
    :display-name (tru "Additional JDBC connection string options")})
 
+(def default-options
+  "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
+  properties for drivers shipped as separate modules, e.g.:
+
+    connection-properties:
+      - db-name
+      - host
+
+  See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
+  for more details."
+  {:additional-options default-additional-options-details
+   :dbname             default-dbname-details
+   :host               default-host-details
+   :password           default-password-details
+   :port               default-port-details
+   :ssl                default-ssl-details
+   :user               default-user-details})
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Fetching Current Timezone                                            |
@@ -129,7 +147,7 @@
   "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
   implementation below."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti current-db-time-date-formatters
@@ -137,7 +155,7 @@
   `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
   formatters for a date format string."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defn current-db-time
@@ -203,7 +221,6 @@
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
-             [org.bson.types.ObjectId        :type/MongoBSONID]
              [org.postgresql.util.PGobject   :type/*]
              [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))

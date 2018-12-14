@@ -150,8 +150,6 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (plugins/setup-plugins!)
-  (init-status/set-progress! 0.35)
 
   ;; Load up all of our Database drivers, which are used for app db work
   (driver.u/find-and-load-all-drivers!)

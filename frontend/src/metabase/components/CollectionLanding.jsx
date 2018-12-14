@@ -528,7 +528,6 @@ class DefaultLanding extends React.Component {
               />
             </Modal>
           )}
-        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );

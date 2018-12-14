@@ -31,7 +31,7 @@
   SQL replacement text (usually just ?). The param value is already prepared and ready for inlcusion in the query,
   such as what's needed for SQLite and timestamps."
   {:arglists '([driver x])}
-  (fn [driver x] [(driver/dispatch-on-driver driver) (class x)])
+  (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
 

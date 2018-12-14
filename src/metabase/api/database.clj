@@ -313,7 +313,7 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver.u/can-connect-with-details? engine details :rethrow-exceptions)
+          (driver.u/can-connect-with-details? engine details :throw-exceptions)
           nil
 
           (and host port (u/host-port-up? host port))

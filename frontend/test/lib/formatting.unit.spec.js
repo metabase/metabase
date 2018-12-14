@@ -54,6 +54,44 @@ describe("formatting", () => {
       expect(formatNumber(1.111)).toEqual("1.11");
       expect(formatNumber(111.111)).toEqual("111.11");
     });
+
+    describe("number_style = currency", () => {
+      it("should handle positive currency", () => {
+        expect(
+          formatNumber(1.23, { number_style: "currency", currency: "USD" }),
+        ).toBe("$1.23");
+      });
+
+      it("should handle negative currency", () => {
+        expect(
+          formatNumber(-1.23, { number_style: "currency", currency: "USD" }),
+        ).toBe("-$1.23");
+      });
+
+      describe("with currency_in_header = true and type = cell", () => {
+        it("should handle positive currency", () => {
+          expect(
+            formatNumber(1.23, {
+              number_style: "currency",
+              currency: "USD",
+              currency_in_header: true,
+              type: "cell",
+            }),
+          ).toBe("1.23");
+        });
+
+        it("should handle negative currency", () => {
+          expect(
+            formatNumber(-1.23, {
+              number_style: "currency",
+              currency: "USD",
+              currency_in_header: true,
+              type: "cell",
+            }),
+          ).toBe("-1.23");
+        });
+      });
+    });
   });
 
   describe("formatValue", () => {
