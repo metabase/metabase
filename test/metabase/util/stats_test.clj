@@ -1,14 +1,14 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
-            [metabase.models [query-execution :refer [QueryExecution]]
-             [pulse :refer [Pulse]]
-             [pulse-channel :refer [PulseChannel]]
+            [metabase.models
              [card :refer [Card]]
-             [pulse-card :refer [PulseCard]]]
-            [metabase.test.util :as tu]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [query-execution :refer [QueryExecution]]]
+            [metabase.util :as u]
             [metabase.util.stats :as stats-util :refer :all]
             [toucan.db :as db]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 #_(expect "0" (#'stats-util/bin-micro-number 0))

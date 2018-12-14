@@ -124,7 +124,8 @@ const getDayFormat = options =>
 const RANGE_SEPARATOR = ` – `;
 
 // for extracting number portion from a formatted currency string
-const NUMBER_REGEX = /[\+\-]?[0-9\., ]+/;
+// NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
+const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
@@ -190,7 +191,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       ) {
         const match = formatted.match(NUMBER_REGEX);
         if (match) {
-          formatted = match[0].trim();
+          formatted = (match[1] || "").trim() + (match[2] || "").trim();
         }
       }
 
@@ -405,25 +406,7 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 }
 
 function formatDateTime(value, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
-  if (!m.isValid()) {
-    return String(value);
-  }
-
-  if (options.date_format || options.time_format) {
-    formatDateTimeWithFormats(
-      value,
-      options.date_format,
-      options.time_format,
-      options,
-    );
-  } else {
-    if (options.time_enabled === false) {
-      return m.format(options.date_abbreviate ? "ll" : "LL");
-    } else {
-      return m.format(options.date_abbreviate ? "llll" : "LLLL");
-    }
-  }
+  return formatDateTimeWithUnit(value, "minute", options);
 }
 
 export function formatDateTimeWithUnit(

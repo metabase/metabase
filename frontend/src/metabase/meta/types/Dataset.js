@@ -35,6 +35,7 @@ export type DatasetData = {
   cols: Column[],
   columns: ColumnName[],
   rows: Row[],
+  rows_truncated?: number,
 };
 
 export type Dataset = {

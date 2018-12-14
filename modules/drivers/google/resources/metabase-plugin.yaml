@@ -1,0 +1,11 @@
+info:
+  name: Metabase Google Drivers Shared Dependencies
+  version: 1.0.0-SNAPSHOT-1.27.0
+  description: Shared dependencies for BigQuery, Google Analytics, and other Google drivers.
+driver:
+  name: google
+  abstract: true
+  lazy-load: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.google

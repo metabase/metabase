@@ -11,9 +11,9 @@
             [puppetlabs.i18n.core :refer [trs]]
             [toucan.db :as db]))
 
-(def ^:private ^:const job-name    "task-history-cleanup")
-(def ^:private ^:const job-key     (format "metabase.task.%s.job" job-name))
-(def ^:private ^:const trigger-key (format "metabase.task.%s.trigger" job-name))
+(def ^:private job-name    "task-history-cleanup")
+(def ^:private job-key     (format "metabase.task.%s.job" job-name))
+(def ^:private trigger-key (format "metabase.task.%s.trigger" job-name))
 
 (defonce ^:private job     (atom nil))
 (defonce ^:private trigger (atom nil))

@@ -1483,7 +1483,7 @@ msgstr "MetaBot için bir Slack Bot Kullanıcısı Oluştur"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:261
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
-msgstr "Orada bir isim verin ve {0} 'ı tıklayın. Ardından Bot API Jetonunu aşağıdaki alana kopyalayıp yapıştırın. İşiniz bittiğinde, Slack'de bir \"metabase_files\" kanalı oluşturun. Metabase, grafikleri yüklemek için buna ihtiyaç duyar."
+msgstr "Orada bir isim verin ve {0} 'ı tıklayın. Ardından Bot API Tokeni aşağıdaki alana kopyalayıp yapıştırın. İşiniz bittiğinde, Slack'de bir \"metabase_files\" kanalı oluşturun. Metabase, grafikleri yüklemek için buna ihtiyaç duyar."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:90
 msgid "You're running Metabase {0} which is the latest and greatest!"
@@ -1611,7 +1611,7 @@ msgstr "Premium yerleştirme etkinleştirildi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
 msgid "Enter the token you bought from the Metabase Store"
-msgstr "Metabase Mağazasından satın aldığınız jetonu girin"
+msgstr "Metabase Mağazasından satın aldığınız jetoni girin"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
@@ -1619,11 +1619,11 @@ msgstr "Premium yerleştirme, gömülü kontrol panellerinizde ve sorgularınız
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
-msgstr "Bir jeton al"
+msgstr "Bir token al"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:63
 msgid "Enter a token"
-msgstr "Bir jeton girin"
+msgstr "Bir tokene girin"
 
 #: frontend/src/metabase/admin/settings/components/widgets/LdapGroupMappingsWidget.jsx:134
 msgid "Edit Mappings"
@@ -1827,11 +1827,11 @@ msgstr "Kimden"
 
 #: frontend/src/metabase/admin/settings/selectors.js:170
 msgid "Slack API Token"
-msgstr "Slack API Jetonu"
+msgstr "Slack API Tokeni"
 
 #: frontend/src/metabase/admin/settings/selectors.js:172
 msgid "Enter the token you received from Slack"
-msgstr "Slack'ten aldığınız jetonu girin"
+msgstr "Slack'ten aldığınız tokeni girin"
 
 #: frontend/src/metabase/admin/settings/selectors.js:189
 msgid "Single Sign-On"
@@ -3543,7 +3543,7 @@ msgstr "Metatabanı bu alanı asla alamaz. Hassas veya alakasız bilgiler için 
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/GenericField.yaml
 msgid "Count"
-msgstr "Saymak"
+msgstr "Adet"
 
 #: frontend/src/metabase/lib/expressions/config.js:8
 msgid "CumulativeCount"
@@ -4323,7 +4323,7 @@ msgstr "Kilitli Parametrelerin Önizle"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:115
 msgid "Try passing some values to your locked parameters here. Your server will have to provide the actual values in the signed token when using this for real."
-msgstr "Bazı değerleri burada kilitli parametrelerinize geçirmeyi deneyin. Sunucumuz, bunu gerçek için kullanırken gerçek değerleri imzalı belirtecin içinde vermek zorunda olacaktır."
+msgstr "Bazı değerleri burada kilitli parametrelerinize geçirmeyi deneyin. Sunucumuz, bunu gerçek için kullanırken gerçek değerleri imzalı tokenin içinde vermek zorundadır."
 
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:126
 msgid "Danger zone"
@@ -5509,7 +5509,7 @@ msgstr "Bir Alan Filtresi değişkenini eklerken, belirli bir alana eşlemeniz g
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:130
 msgid "Optional Clauses"
-msgstr "İsteğe bağlı Hükümler"
+msgstr "İsteğe bağlı Seçenekler"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:132
 msgid "brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
@@ -6471,7 +6471,7 @@ msgstr "Ayarını kaldır"
 
 #: frontend/src/metabase/visualizations/components/TableSimple.jsx:253
 msgid "Rows {0}-{1} of {2}"
-msgstr "{0} - {1} / {1} satırları"
+msgstr "{0}-{1} / {2} satırları"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:187
 msgid "Data truncated to {0} rows."
@@ -8078,7 +8078,7 @@ msgstr "Metatabanı grup eşlemelerine LDAP içeren JSON."
 #. Define a setting which captures our Slack api token
 #: src/metabase/integrations/slack.clj
 msgid "Slack API bearer token obtained from https://api.slack.com/web#authentication"
-msgstr "Https://api.slack.com/web#authentication adresinden elde edilen Slack API taşıyıcısı jetonu"
+msgstr "Https://api.slack.com/web#authentication adresinden elde edilen Slack API taşıyıcısı token"
 
 #: src/metabase/metabot.clj
 msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
@@ -8743,7 +8743,7 @@ msgstr "Uygun tarih ve saat dönüşümlerini sağlamak için bir rapor zaman di
 
 #: src/metabase/util/embed.clj
 msgid "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints."
-msgstr "Gizli anahtar, / api / embed` son noktalarına yönelik isteklerde JSON Web Jetonlarını imzalamak için kullanılır."
+msgstr "Gizli anahtar, / api / embed` son noktalarına yönelik isteklerde JSON Web Tokenleri imzalamak için kullanılır."
 
 #: src/metabase/util/encryption.clj
 msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
@@ -9357,7 +9357,7 @@ msgstr "Loglar"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:38
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
-msgstr ""
+msgstr "Detaylı mı görmek istiyorsunuz? Bu bölüm, Metabase'in arka planda çalışan görevlerde neler olup bittiğini anlatan logları gösterir. "
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:63
 msgid "Task"
@@ -9401,67 +9401,67 @@ msgstr "Aralık ekle"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:26
 msgid "is less than"
-msgstr ""
+msgstr "küçüktür"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:27
 msgid "is greater than"
-msgstr ""
+msgstr "büyüktür"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:28
 msgid "is less than or equal to"
-msgstr ""
+msgstr "küçüktür veya eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:29
 msgid "is greater than or equal to"
-msgstr ""
+msgstr "büyüktür veya eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:30
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:37
 msgid "is equal to"
-msgstr ""
+msgstr "eşittir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:31
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:38
 msgid "is not equal to"
-msgstr ""
+msgstr "eşit değildir"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:32
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:39
 msgid "is null"
-msgstr ""
+msgstr "sıfır"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:33
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:40
 msgid "is not null"
-msgstr ""
+msgstr "sıfır değil"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:41
 msgid "contains"
-msgstr ""
+msgstr "içeriyor"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:42
 msgid "does not contain"
-msgstr ""
+msgstr "içermiyor"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:43
 msgid "starts with"
-msgstr ""
+msgstr "ile başlıyor"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:44
 msgid "ends with"
-msgstr ""
+msgstr "ile bitiyor"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:292
 msgid "When a cell in these columns {0} it will be tinted this color."
-msgstr ""
+msgstr "{0} sütunlarındaki hücre olduğunda bu renkte görünecek"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:351
 msgid "When a cell in this column…"
-msgstr ""
+msgstr "Bu sütundaki bir hücre..."
 
 #: frontend/src/metabase/visualizations/lib/errors.js:42
 msgid "This visualization requires you to group by a field."
-msgstr ""
+msgstr "Bu göreselleştirme bir alana göre gruplandırma yapmanızı gerektiriyor."
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:178
 msgid "Date style"
@@ -9473,19 +9473,19 @@ msgstr "Tarih ayracı"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:215
 msgid "Abbreviate names of days and months"
-msgstr ""
+msgstr "Gün ve ay adlarını kısalt"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:225
 msgid "Show the time"
-msgstr ""
+msgstr "Zamanı göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:232
 msgid "HH:MM"
-msgstr ""
+msgstr "Saat:Dakika"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:240
 msgid "HH:MM:SS"
-msgstr ""
+msgstr "Saat:Dakika:Saniye"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:243
 msgid "HH:MM:SS.MS"
@@ -9505,360 +9505,360 @@ msgstr "Para etiket stili"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:337
 msgid "Where to display the unit of currency"
-msgstr ""
+msgstr "Döviz biriminin gösterildiği yer"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:370
 msgid "Minimum number of decimal places"
-msgstr ""
+msgstr "En az ondalık basamak sayısı"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:271
 msgid "Stacked chart type"
-msgstr ""
+msgstr "Yığılı sütun tipi"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:314
 msgid "Goal label"
-msgstr ""
+msgstr "Hedef etiketi"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:322
 msgid "Show trend line"
-msgstr ""
+msgstr "Eğim çizgisini göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:67
 msgid "Line style"
-msgstr ""
+msgstr "Çizgi stili"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:84
 msgid "Show dots on lines"
-msgstr ""
+msgstr "Çizgleride nokta göster"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:88
 #: frontend/src/metabase/visualizations/lib/settings/series.js:125
 msgid "Auto"
-msgstr ""
+msgstr "Otomatik"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:120
 msgid "Which axis?"
-msgstr ""
+msgstr "Hangi eksen?"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Line + Bar"
-msgstr ""
+msgstr "Çizgi + Çubuk"
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:19
 msgid "line and bar chart"
-msgstr ""
+msgstr "çizgi ve çubuk çzigesi"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:72
 msgid "Gauge visualization requires a number."
-msgstr ""
+msgstr "Gösterge için bir sayı gerekiyor."
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:60
 msgid "Gauge"
-msgstr ""
+msgstr "Gösterge"
 
 #: frontend/src/metabase/visualizations/visualizations/Gauge.jsx:104
 msgid "Gauge ranges"
-msgstr ""
+msgstr "Gösterge aralığı"
 
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:91
 msgid "Field to show"
-msgstr ""
+msgstr "Gösterilecek alan"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:118
 msgid "last {0}"
-msgstr ""
+msgstr "son {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:176
 msgid "{0} was {1} {2}"
-msgstr ""
+msgstr "{0}, {1} {2} idi."
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
 msgid "Group by a time field to see how this has changed over time"
-msgstr ""
+msgstr "Zaman bağlı olarak değişimi görmek için zaman içeren alana göre gruplandırınız"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:39
 msgid "Switch positive / negative colors?"
-msgstr ""
+msgstr "Pozitif / negatif renklere geçilsin mi?"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:90
 msgid "Pivot column"
-msgstr ""
+msgstr "Özet sütunu"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:107
 msgid "Cell column"
-msgstr ""
+msgstr "Hücre sütunu"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:123
 msgid "Visible columns"
-msgstr ""
+msgstr "Görünen sütunlar"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:143
 msgid "Conditional Formatting"
-msgstr ""
+msgstr "Koşullu biçimlendirme"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:165
 msgid "Column title"
-msgstr ""
+msgstr "Sütun başlığı"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:172
 msgid "Show a mini bar chart"
-msgstr ""
+msgstr "Küçük çubuk çizlgesi göster"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:183
 msgid "Link"
-msgstr ""
+msgstr "Bağlantı"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:187
 msgid "Email link"
-msgstr ""
+msgstr "Bağlantıyı e-postala"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:191
 msgid "Image"
-msgstr ""
+msgstr "Görüntü"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:195
 msgid "Automatic"
-msgstr ""
+msgstr "Otomatik"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "View as link or image"
-msgstr ""
+msgstr "Bağlantı ya da görüntü olarak izle"
 
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:210
 msgid "Link text"
-msgstr ""
+msgstr "Bağlantı metni"
 
 #: src/metabase/api/common/internal.clj
 msgid "Not a valid integer: ''{0}''"
-msgstr ""
+msgstr "Geçerli bir tamsayı değil: \"{0}\""
 
 #: src/metabase/api/embed.clj
 msgid "Embedding is not enabled for this object."
-msgstr ""
+msgstr "Bu obje için gömme işlemi etkin değil."
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fallback to local authentication: {0}"
-msgstr ""
+msgstr "LDAP sunucusuna bağlanırken sorun oluştu, yerel kimlik doğrulamaya dönülüyor: {0}"
 
 #: src/metabase/api/task.clj
 msgid "When including an offset, a limit must also be included."
-msgstr ""
+msgstr "Kaydrıma dahil edildiğinde, bir sınır da dahil edilmeli."
 
 #: src/metabase/api/task.clj
 msgid "When including a limit, an offset must also be included."
-msgstr ""
+msgstr "Bir sınır dahil edildiğinde, bir kaydırma değeri de dahil edilmeli."
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Applying heuristic {0} to {1}."
-msgstr ""
+msgstr "Sezgi {0} {1}'e uygulanıyor."
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Dimensions bindings:n{0}"
-msgstr ""
+msgstr "Boyutların ilişkilendirilmesi:n{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Using definitions:nMetrics:n{0}nFilters:n{1}"
-msgstr ""
+msgstr "Tanımlamalar kullanılıyor:nÖlçevler:n{0}nSüzgeçler:n{1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "minute"
-msgstr ""
+msgstr "dakika"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "hour"
-msgstr ""
+msgstr "saat"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of week"
-msgstr ""
+msgstr "haftanın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of month"
-msgstr ""
+msgstr "ayın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "day of year"
-msgstr ""
+msgstr "yılın günü"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "week"
-msgstr ""
+msgstr "hafta"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "month"
-msgstr ""
+msgstr "ay"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "quarter"
-msgstr ""
+msgstr "çeyrek yıl"
 
 #: src/metabase/automagic_dashboards/populate.clj
 msgid "Adding {0} cards to dashboard {1}:n{2}"
-msgstr ""
+msgstr "{0} kartları {1}:n{2} panosuna ekle"
 
 #: src/metabase/automagic_dashboards/rules.clj
 msgid "Error parsing {0}:n{1}"
-msgstr ""
+msgstr "Hata ayıklama {0}:n{1}"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-msgstr ""
+msgstr "UYARI: Filtreleme sadece boyutlarda çalışır! '' {0} '' bir metrik. Filtre yoksayılıyor."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense."
-msgstr ""
+msgstr "UYARI: Bir tarih çoklu bağımsiz aralıklara ait olamaz, VE operatörü mantıksız olur."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Ignoring these intervals: {0}"
-msgstr ""
+msgstr "Bu aralıklar dikkate alınmayacaktır: {0}"
 
 #. We should never get to this point since the all non-string negations should get automatically rewritten
 #. by the query expander.
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Don't know how to negate: {0}"
-msgstr ""
+msgstr "UYARI: {0} nasıl negatif yapılır bilmiyorum"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause."
-msgstr ""
+msgstr "Veri kaynağı ile sıralama yalnızca bir veya daha fazla ara bloğuna sahip sorgularda çalışır. Sıralama seçeneğini yok say."
 
 #. TODO - this is not really true, is it
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."
-msgstr ""
+msgstr "UYARI: Sadece bir sorgulama için alanları belirtmek daha uygun. Seçeneğini yok say."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause."
-msgstr ""
+msgstr "UYARI: Veri kaynağı, zaman aralıkları sorgularında limitSpec'e izin vermez. LIMIT Seçeneğini yok say."
 
 #: src/metabase/driver/generic_sql/query_processor.clj
 msgid "HoneySQL Form:"
-msgstr ""
+msgstr "HoneySQL Formu:"
 
 #: src/metabase/driver/generic_sql/query_processor.clj
 msgid "Unable to parse date ''{0}''"
-msgstr ""
+msgstr "Tarih ''{0}'' ayıklanamadı"
 
 #: src/metabase/driver/generic_sql/query_processor.clj
 msgid "Client closed connection, cancelling query"
-msgstr ""
+msgstr "İstemci bağlantıyı kapattı, sorgulama iptal ediliyor"
 
 #: src/metabase/driver/generic_sql/query_processor.clj
 msgid "Setting timezone with statement: {0}"
-msgstr ""
+msgstr "Zaman dilimini {0} ifadesi ile ayarlama"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Multiple date filters are not supported"
-msgstr ""
+msgstr "Çoklu tarih filterleri desteklenmiyor"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid ":not is not yet implemented"
-msgstr ""
+msgstr ":not henüz uygulanmadı"
 
 #: src/metabase/driver/googleanalytics/query_processor.clj
 msgid "Only one Google Analytics segment allowed at a time."
-msgstr ""
+msgstr "Aynı anda sadece bir Google Analytics kesiti izinli"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr ""
+msgstr "MONGO AGGREGATION PIPELINE:"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
-msgstr ""
+msgstr "Hata: sütunlar uyuşmadı! {0} Beklendi {1} Erişildi"
 
 #: src/metabase/email/messages.clj
 msgid "Unable to create temp file in `{0}` for email attachments "
-msgstr ""
+msgstr "E-posta eklentisi için geçici dosya `{0}` oluşturulamıyor:"
 
 #: src/metabase/events/activity_feed.clj
 msgid "Error preprocessing query:"
-msgstr ""
+msgstr "Sorgu ön işlemesinde hata:"
 
 #: src/metabase/mbql/normalize.clj
 msgid "Illegal filter clause: {0}"
-msgstr ""
+msgstr "Geçersiz süzgeç koşulu: {0}"
 
 #: src/metabase/mbql/normalize.clj
 msgid "Invalid clause:"
-msgstr ""
+msgstr "Geçersiz koşul:"
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query's source query has not been resolved. You probably need to `preprocess` the query first."
-msgstr ""
+msgstr "Hata: sorgulamanın kaynak sorgusu çözümlenemedi. Büyük olasılıkla sorguyu ön işleme tabi tutmanız gerekiyor."
 
 #: src/metabase/mbql/util.clj
 msgid "No expression named ''{0}''"
-msgstr ""
+msgstr "\"{0}\" diye bir ifade yok"
 
 #: src/metabase/mbql/util.clj
 msgid "No aggregation at index: {0}"
-msgstr ""
+msgstr "Göstergede kümeleşme yok: {0}"
 
 #: src/metabase/models/field_values.clj
 msgid "Field values total length is {0} (max {1})."
-msgstr ""
+msgstr "Alan değerleri toplam uzunluğu {0} (en fazla {1})."
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues are allowed for this Field."
-msgstr ""
+msgstr "Bu alan için FieldValues izni vardır."
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues are NOT allowed for this Field."
-msgstr ""
+msgstr "Bu alan için FieldValues izni yoktur."
 
 #: src/metabase/models/field_values.clj
 msgid "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-msgstr ""
+msgstr "Alan {0} \"{1}\" FieldValues olmalı ve talep üzerine FieldValues güncellemesine sahip bir veritabanında bulunmalı."
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot create or revoke permissions for the ''Admin'' group."
-msgstr ""
+msgstr "\"Yönetici\" grubu için izin oluşturulamaz ya da etkisiz kılınamaz."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr ""
+msgstr "\"MetaBot\" grubuna kullanıcı ekleyemez ya da silemezsiniz."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
-msgstr ""
+msgstr "\"Tüm kullanıcılar\" grubuna kullanıcı ekleyemez ya da silemezsiniz."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
-msgstr ""
+msgstr "\"Yönetici\" grubunun son üyesini çıkarmazsınız."
 
 #. go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
 #: src/metabase/models/setting.clj
 msgid "Error inserting a new Setting: {0}"
-msgstr ""
+msgstr "Yeni ayar {0} eklenirken hata oluştu"
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
-msgstr ""
+msgstr "defsetting string tanımlamaları `dahili mi olmalı?` veya uluslararasılaştırılmış mı olmalı, `{0}` bulundu"
 
 #: src/metabase/plugins.clj
 msgid "Loading plugin {0}... {1}"
-msgstr ""
+msgstr "Eklenti {0}...{1} yükleniyor"
 
 #: src/metabase/public_settings.clj
 msgid "Object keyed by type, containing formatting settings"
-msgstr ""
+msgstr "Biçimlendirme ayarları içeren tip anahtarlı nesne"
 
 #: src/metabase/public_settings.clj
 msgid "Allow users to explore data using X-rays"
-msgstr ""
+msgstr "Kullanıclara veri araştırması için X-rays kullanımına izin ver"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Using this URL to check token: {0}"
-msgstr ""
+msgstr " {0} tokeni kontrol etmek için bu URL'yi kullanıyor"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Unable to validate token: 404 not found."
-msgstr ""
+msgstr "Token doğrulanamadı: 404 bulunamadı."
 
 #: src/metabase/public_settings/metastore.clj
 msgid "There was an error checking whether this token was valid:"
-msgstr ""
+msgstr "Bu tokenin geçerli olup olmadığını kontrol ederken bir hata oluştu:"
 
 #. +----------------------------------------------------------------------------------------------------------------+
 #. |                                             SETTING & RELATED FNS                                              |
@@ -9866,23 +9866,23 @@ msgstr ""
 #. TODO - rename this to premium-features-token?
 #: src/metabase/public_settings/metastore.clj
 msgid "Token for premium features. Go to the MetaStore to get yours!"
-msgstr ""
+msgstr "Premium özellikler için token. Almak için MetaStore'a git!"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Token format is invalid. Token should be 64 hexadecimal characters."
-msgstr ""
+msgstr "Token formatı geçerli değil. Token 64 hexadecimal karakterde olmalıdır."
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Error setting premium features token"
-msgstr ""
+msgstr "Premium özelliklere sahip olan tokenleri ayarlanırken hata oluştu"
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Error validating token:"
-msgstr ""
+msgstr "Token doğrulanırken hata oluştu:"
 
 #: src/metabase/query_processor.clj
 msgid "Error preprocessing query"
-msgstr ""
+msgstr "Sorgulamanın önişlemi sırasında hata oluştu"
 
 #: src/metabase/query_processor.clj
 msgid "No native form returned."
@@ -9890,29 +9890,29 @@ msgstr ""
 
 #: src/metabase/query_processor.clj
 msgid "Invalid response from database driver. No :status provided."
-msgstr ""
+msgstr "Veritabanı sürücüsünden geçerli cevap alınamadı. :status iletilmedi."
 
 #: src/metabase/query_processor.clj
 msgid "General error"
-msgstr ""
+msgstr "Genel hata"
 
 #: src/metabase/query_processor.clj
 msgid "Missing query hash!"
-msgstr ""
+msgstr "Sorgu karması eksik!"
 
 #: src/metabase/query_processor/middleware/add_implicit_clauses.clj
 msgid "Table ''{0}'' has no Fields associated with it."
-msgstr ""
+msgstr "Tablo \"{0}\" ile ilişkilendirilmiş alan yok."
 
 #: src/metabase/query_processor/middleware/add_query_throttle.clj
 msgid "Max concurrent query limit reached"
-msgstr ""
+msgstr "En fazla eşzamanlı sorgulama sınırı aşıldı"
 
 #. we should never reach this if our patterns are written right so this is more to catch code mistakes than
 #. something the user should expect to see
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Don't know how to get information about Field:"
-msgstr ""
+msgstr "Hakkında nasıl bilgi alınacağı bilinmeyen alan:"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "metabase.query-processor.interface/*driver* is unbound."
@@ -9932,87 +9932,87 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Actual: {0}"
-msgstr ""
+msgstr "Güncel: {0}"
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Unable to bin Field without a min/max value"
-msgstr ""
+msgstr "Alan en/an fazla değeri olmadan beslenemez"
 
 #: src/metabase/query_processor/middleware/check_features.clj
 msgid "{0} is not supported by this driver."
-msgstr ""
+msgstr "{0} bu sürücü tarafından desteklenmiyor."
 
 #: src/metabase/query_processor/middleware/expand_macros.clj
 msgid "Segment {0} does not exist, or is invalid."
-msgstr ""
+msgstr "{0} dilimi yok ya da geçersiz."
 
 #: src/metabase/query_processor/middleware/expand_macros.clj
 msgid "Metric {0} does not exist, or is invalid."
-msgstr ""
+msgstr "{0} ölçevi yok ya da geçersiz."
 
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Missing source query in Card {0}"
-msgstr ""
+msgstr "Kart {0}'da kaynak sorgu eksik"
 
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
 msgid "Fetched source query from Card {0}:"
-msgstr ""
+msgstr "Kart {0}'dan kaynak sorgu alındı:"
 
 #: src/metabase/query_processor/middleware/mbql_to_native.clj
 msgid "Error transforming MBQL query to native:"
-msgstr ""
+msgstr "MBQL sorugusu özgün şekle dönüştürülürken hata oluştu:"
 
 #: src/metabase/query_processor/middleware/resolve_source_table.clj
 msgid "Cannot run query: could not find source table {0}."
-msgstr ""
+msgstr "Sorgu çalıştırma hatası: kaynak tablo {0} bulunamadı."
 
 #: src/metabase/query_processor/middleware/results_metadata.clj
 msgid "Error recording results metadata for query:"
-msgstr ""
+msgstr "Sorgu için üstveri sonuçları kayıt edilirken hata oluştu:"
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Query Processor store is not initialized."
-msgstr ""
+msgstr "Hata: Sorgu işlemci alanı atanmamış."
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Table {0} is not present in the Query Processor Store."
-msgstr ""
+msgstr "Hata: Tablo {0} sorgu işlemci alanında yok."
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Field {0} is not present in the Query Processor Store."
-msgstr ""
+msgstr "Hata: Alan {0} sorgu işlemci alanında yok."
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, rows were {0}deleted"
-msgstr ""
+msgstr "Görev geçmişi başarı ile temizlendi, {0} satır silindi. "
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "not"
-msgstr ""
+msgstr "değil"
 
 #: src/metabase/util/encryption.clj
 msgid "For more information, see"
-msgstr ""
+msgstr "Daha fazla bilgi için, bakınız"
 
 #: src/metabase/util/schema.clj
 msgid "Integer greater than or equal to zero"
-msgstr ""
+msgstr "Sıfıra eşit ya da sıfırdan büyük tam sayı"
 
 #: src/metabase/util/schema.clj
 msgid "value must be an integer greater than or equal to zero."
-msgstr ""
+msgstr "değer sıfıra eşit ya da sıfırdan büyük bir tam sayı olmalıdır."
 
 #: src/metabase/util/schema.clj
 msgid "value must be an integer zero or greater."
-msgstr ""
+msgstr "değer sıfır ya da daha büyük olmalıdır."
 
 #: src/metabase/util/schema.clj
 msgid "value must be a valid integer greater than or equal to zero."
-msgstr ""
+msgstr "değer sıfıra eşit ya da sıfırdan büyük geçerli bir tam sayı olmalıdır."
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "New users per state in the last 30 days"
-msgstr ""
+msgstr "Son 30 gün içerisinde eyalet bazında yeni kullanıcılar"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Created At by day of the week"
@@ -10028,7 +10028,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Users per source"
-msgstr ""
+msgstr "Kaynak başına kullanıcı"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "The top external pages that brought users to your site"
@@ -10085,73 +10085,73 @@ msgstr ""
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "Bottom 5 per category"
-msgstr ""
+msgstr "Kategori başına 5 alt"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Number of orders"
-msgstr ""
+msgstr "Sıra sayısı"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Event growth"
-msgstr ""
+msgstr "Olay gelişimi"
 
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "Total [[GenericTable]]"
-msgstr ""
+msgstr "Toplam [[GenericTable]]"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Income growth"
-msgstr ""
+msgstr "Gelir artışı"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales in the last 30 days"
-msgstr ""
+msgstr "Son 30 günde en fazla satış yapan 10 ülke"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "[[this]] by month of the year"
-msgstr ""
+msgstr "Yılın ayına göre [[this]]"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Transactions per day of the week"
-msgstr ""
+msgstr "Haftanın günü bazında işlemler"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Sessions by device type"
-msgstr ""
+msgstr "Cihaz tipine göre oturumlar"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Transactions per country"
-msgstr ""
+msgstr "Ülkeye göre işlemler"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Join date by quarter of the year"
-msgstr ""
+msgstr "Yılın üç aylık dönemine göre katılım tarihleri"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events per hour of the day"
-msgstr ""
+msgstr "Günün saatine göre olaylar"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Singleton]]"
-msgstr ""
+msgstr "[[Singleton]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
 msgid "Top 5 [[this]]"
-msgstr ""
+msgstr "Üst 5 [[this]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
 msgid "Bottom 5 [[this]]"
-msgstr ""
+msgstr "Alt 5 [[this]]"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "[[Timestamp]] by day of the month"
-msgstr ""
+msgstr "Ayın gününe göre [[Timestamp]]"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per [[GenericCategoryLarge]]"
-msgstr ""
+msgstr "[[GenericCategoryLarge]] başına"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
@@ -10159,60 +10159,60 @@ msgstr ""
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/GenericField.yaml
 msgid "Null values"
-msgstr ""
+msgstr "Sıfır değerler"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Total events"
-msgstr ""
+msgstr "Toplam olaylar"
 
 #: resources/automagic_dashboards/field/GenericField.yaml
 msgid "A look at [[GenericTable]] across your [[this]], and how it changes over time."
-msgstr ""
+msgstr "[[this]]'lerinizdeki [[GenericTable]'a bakış, ve zaman bağlı olarak değişimi."
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per [[GenericCategoryMedium]]"
-msgstr ""
+msgstr "[[GenericCategoryMedium]] başına [[this]]"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "How the [[this]] changes with time"
-msgstr ""
+msgstr "[[this]]'in zamana göre değişimi"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "How they compare by seasonality"
-msgstr ""
+msgstr "Dönemsel olarak karşılaştırılması"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Average income per transaction"
-msgstr ""
+msgstr "İşlem başına ortalama gelir"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per country"
-msgstr ""
+msgstr "[[this]] ülke başına"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Income per state"
-msgstr ""
+msgstr "Eyalet başına gelir"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per [[GenericCategoryMedium]]"
-msgstr ""
+msgstr "Her [[GenericCategoryMedium]]"
 
 #: resources/automagic_dashboards/question/GenericQuestion.yaml
 msgid "A closer look at your [[this]]"
-msgstr ""
+msgstr "[[this]] İyice bir bakış"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "How [[GenericNumber]] is distributed"
-msgstr ""
+msgstr "[[GenericNumber]] nasıl dağıtılır"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "[[Timestamp]] by quarter of year"
-msgstr ""
+msgstr "çeyrek yıl [[Timestamp]]"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events per country"
-msgstr ""
+msgstr "Ülke başına hareket"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Weekdays when [[this.short-name]] were added"
@@ -10248,7 +10248,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Total orders per source"
-msgstr ""
+msgstr "Kaynak başına toplam sipariş"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "[[this]] by quarter of the year"
@@ -10264,27 +10264,27 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Top landing pages"
-msgstr ""
+msgstr "Arama sonuçlarından ulaşılan sayfaların başında gelenler"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Heres a closer look at your [[this]] over time"
-msgstr ""
+msgstr "[[this]]'inize zamana bağlı yakın bakış"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "Sum of [[this]] by [[Country]]"
-msgstr ""
+msgstr "[[this]]'in [[Country]]'e göre toplamı"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "States that are performing best"
-msgstr ""
+msgstr "En iyi eyaletler"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Created At by month of the year"
-msgstr ""
+msgstr "Yılın ayına göre oluşturulma tarihi"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "Sum of [[this]] by [[State]]"
-msgstr ""
+msgstr "[[this]]'in [[State]]'e göre toplamı"
 
 #: resources/automagic_dashboards/field/State.yaml
 msgid "Sum of [[GenericNumber]] per [[this]]"
@@ -10292,15 +10292,15 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events by coordinates"
-msgstr ""
+msgstr "Koordinatlara göre olaylar"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Top referral pages"
-msgstr ""
+msgstr "Yönlendirilmiş sayfaların başında gelenler"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "An exploration of your users to get you started."
-msgstr ""
+msgstr "Başlangıç için kullanıclarınızın incelemesi."
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "An overview of your [[this]] and how its distributed across time, place, and categories."
@@ -10308,7 +10308,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Average income per state"
-msgstr ""
+msgstr "Eyalete göre ortalama gelir"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -10319,7 +10319,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Total transactions"
-msgstr ""
+msgstr "Toplam işlem"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[this.short-name]] that have joined over time"
@@ -10331,7 +10331,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events per month of the year"
-msgstr ""
+msgstr "Yılın ayına göre olaylar"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] by [[GenericNumber]]"
@@ -10388,11 +10388,11 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Average discount %"
-msgstr ""
+msgstr "Ortalama inidirm %"
 
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Autogenerated metrics about [[GenericTable]]."
-msgstr ""
+msgstr "Ortalama indirim %"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per day of the month"
@@ -10400,7 +10400,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Total sessions in each country"
-msgstr ""
+msgstr "Ülke başına toplam oturum"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Transactions per month of the year"
@@ -10408,11 +10408,11 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Sales per product"
-msgstr ""
+msgstr "Ürün başına satış"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Users in each country"
-msgstr ""
+msgstr "Ülke başına kullanıcı"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "[[this]] by hour of the day"
@@ -10446,7 +10446,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per country"
-msgstr ""
+msgstr "Ülke başına"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "A deeper look at how different countries are performing for you."
@@ -10455,7 +10455,7 @@ msgstr ""
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Sales per state"
-msgstr ""
+msgstr "Eyalet başına satış"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events by [[GenericNumber]]"
@@ -10558,7 +10558,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "By coordinates"
-msgstr ""
+msgstr "Koordinatlara göre"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Heres a closer look at your [[this]] by products"
@@ -10582,11 +10582,11 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Total sessions by desktop, mobile, or tablet"
-msgstr ""
+msgstr "Masaüstü, mobil ya da tablet başına toplam oturum"
 
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "Indepth example"
-msgstr ""
+msgstr "Ayrıntılı örnek"
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Average income per source"
@@ -10608,7 +10608,7 @@ msgstr ""
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Summary"
-msgstr ""
+msgstr "Özet"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "How the [[this]] is distributed geographically"
@@ -10644,7 +10644,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Sales by state"
-msgstr ""
+msgstr "Eyalet başına satış"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Where most of your sessions originate from"
@@ -10660,15 +10660,15 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Average quantity"
-msgstr ""
+msgstr "Ortalama kalite"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Sales per source"
-msgstr ""
+msgstr "Kaynak başına satış"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Average income per country"
-msgstr ""
+msgstr "Ülke başına ortalama gelir"
 
 #: resources/automagic_dashboards/comparison/State.yaml
 #: resources/automagic_dashboards/comparison/FK.yaml
@@ -10727,7 +10727,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Most-viewed pages"
-msgstr ""
+msgstr "En fazla görüntülenen sayfalar"
 
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Example exploration"
@@ -10759,7 +10759,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "Over time"
-msgstr ""
+msgstr "Zamanaşımı"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "A summary of the events in your [[this]] table"
@@ -10779,7 +10779,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Total income per source"
-msgstr ""
+msgstr "Kaynak başına toplam gelir"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/table/UserTable.yaml
@@ -10792,7 +10792,7 @@ msgstr ""
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "How your different products are performing."
-msgstr ""
+msgstr "Çeşitli ürünlerinizin performansı"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Where these events are happening"
@@ -11285,3 +11285,4 @@ msgstr ""
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
 msgstr ""
+

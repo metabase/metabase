@@ -489,7 +489,7 @@ let Aggregators = [
   },
   {
     name: t`Cumulative sum of ...`,
-    short: "cum_sum",
+    short: "cum-sum",
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -497,7 +497,7 @@ let Aggregators = [
   },
   {
     name: t`Cumulative count of rows`,
-    short: "cum_count",
+    short: "cum-count",
     description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,

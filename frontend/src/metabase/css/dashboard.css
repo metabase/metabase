@@ -1,8 +1,3 @@
-.Dashboard {
-  background-color: var(--color-bg-light);
-  min-height: 100vh;
-}
-
 .DashboardHeader {
   background-color: white;
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
