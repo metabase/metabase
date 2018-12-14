@@ -518,14 +518,14 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 701,
-	  "nil%": 0.898,
+          "nil%": 0.898,
         },
         "type": Object {
           "type/Number": Object {
              "avg": 5.161255547580326,
              "max": 61.69684269960571,
-	     "min": 0.17088996672584322,
-    	     "q1": 2.9786226681458743,
+             "min": 0.17088996672584322,
+                 "q1": 2.9786226681458743,
              "q3": 7.338187788658235,
              "sd": 3.053663125001991,
           },
@@ -561,7 +561,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
-	  "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -571,7 +570,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 4,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 2,
@@ -601,7 +600,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -635,7 +634,6 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 200,
-	    "nil%": 0,
           },
           "type": Object {
             "type/Number": Object {
@@ -645,7 +643,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 4,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 24,
@@ -729,16 +727,16 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 62,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
             "avg": 3.7015,
             "max": 100,
             "min": 0,
-	    "q1": 1.755882607764982,
+            "q1": 1.755882607764982,
             "q3": 4.882654507928044,
-    	    "sd": 4.214258386403798,
+                "sd": 4.214258386403798,
           },
         },
       },
@@ -825,7 +823,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 340,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -921,7 +919,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 797,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1017,7 +1015,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1057,7 +1055,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 929,
-	  "nil%": 0,
+          "nil%": 0,
         },
       },
       "fingerprint_version": 4,
@@ -1084,7 +1082,6 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 2500,
-	    "nil%": 0,
           },
           "type": Object {
             "type/Number": Object {
@@ -1097,7 +1094,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 4,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 13,
@@ -1410,7 +1407,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2490,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1634,7 +1631,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1966,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1858,7 +1855,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1899,7 +1896,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
-	  "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -1909,7 +1905,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 4,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 13,
@@ -2002,7 +1998,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2105,7 +2101,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2145,7 +2141,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2499,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2186,7 +2182,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2227,7 +2223,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2268,7 +2264,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 49,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2309,7 +2305,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2235,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2632,7 +2628,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 4,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2856,7 +2852,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2897,7 +2893,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-	  "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -2907,7 +2902,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 4,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 24,
@@ -2990,7 +2985,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 170,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3083,7 +3078,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 23,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3123,7 +3118,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 199,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3164,7 +3159,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3487,7 +3482,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3711,7 +3706,6 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
-	  "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3721,7 +3715,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 4,
+      "fingerprint_version": 2,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 31,
@@ -3751,7 +3745,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 176,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3785,7 +3779,6 @@ Object {
         "fingerprint": Object {
           "global": Object {
             "distinct-count": 200,
-	    "nil%": 0,
           },
           "type": Object {
             "type/Number": Object {
@@ -3795,7 +3788,7 @@ Object {
             },
           },
         },
-        "fingerprint_version": 4,
+        "fingerprint_version": 2,
         "fk_target_field_id": null,
         "has_field_values": "none",
         "id": 24,
@@ -3879,7 +3872,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
@@ -3919,7 +3912,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1076,
-	  "nil%": 0,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
