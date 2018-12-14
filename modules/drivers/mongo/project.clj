@@ -2,12 +2,7 @@
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[com.novemberain/monger "3.1.0"
-    :exclusions
-    [org.clojure/clojure
-     org.mongodb/mongodb-driver]]
-   ;; MongoDB driver. Used interally by Monger. Using newer version than what ships with Monger -- see #6678
-   [org.mongodb/mongodb-driver "3.9.0"]]
+  [[com.novemberain/monger "3.5.0"]]
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"
