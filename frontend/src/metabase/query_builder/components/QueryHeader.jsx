@@ -19,6 +19,7 @@ import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuest
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
+import ViewHeader from "metabase/query_builder/components/ViewHeader";
 
 import { clearRequestState } from "metabase/redux/requests";
 
@@ -57,15 +58,11 @@ const ICON_SIZE = 16;
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class QueryHeader extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      recentlySaved: null,
-      modal: null,
-      revisions: null,
-    };
-  }
+  state = {
+    recentlySaved: null,
+    modal: null,
+    revisions: null,
+  };
 
   static propTypes = {
     question: PropTypes.object.isRequired,
@@ -339,37 +336,7 @@ export default class QueryHeader extends Component {
     } else if (isNew && isDirty) {
       // this is a new card, so we need the user to save first then they can add to dash
       buttonSections.push([
-        <Tooltip key="addtodashsave" tooltip={t`Add to dashboard`}>
-          <ModalWithTrigger
-            ref="addToDashSaveModal"
-            triggerClasses="h4 text-brand-hover text-uppercase"
-            triggerElement={
-              <span
-                data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"}
-                className="text-brand-hover"
-              >
-                <Icon name="addtodash" size={ICON_SIZE} />
-              </span>
-            }
-          >
-            <SaveQuestionModal
-              card={this.props.card}
-              originalCard={this.props.originalCard}
-              tableMetadata={this.props.tableMetadata}
-              saveFn={async card => {
-                await this.onSave(card, false);
-                this.setState({ modal: "add-to-dashboard" });
-              }}
-              createFn={async card => {
-                await this.onCreate(card, false);
-                this.setState({ modal: "add-to-dashboard" });
-              }}
-              onClose={() => this.refs.addToDashSaveModal.toggle()}
-              multiStep
-              initiCollectionId={this.props.initiCollectionId}
-            />
-          </ModalWithTrigger>
-        </Tooltip>,
+        <Tooltip key="addtodashsave" tooltip={t`Add to dashboard`} />,
       ]);
     }
 
@@ -511,33 +478,13 @@ export default class QueryHeader extends Component {
 
   render() {
     return (
-      <div className="relative px2 sm-px0">
-        <HeaderBar
-          isEditing={this.props.isEditing}
-          name={this.props.isNew ? t`New question` : this.props.card.name}
-          description={this.props.card ? this.props.card.description : null}
-          breadcrumb={
-            !this.props.card.id && this.props.originalCard ? (
-              <span className="pl2">
-                {t`started from`}{" "}
-                <a className="link" onClick={this.onFollowBreadcrumb}>
-                  {this.props.originalCard.name}
-                </a>
-              </span>
-            ) : null
-          }
-          buttons={this.getHeaderButtons()}
-          setItemAttributeFn={this.props.onSetCardAttribute}
-          badge={
-            this.props.card.id && (
-              <CollectionBadge
-                collectionId={this.props.card.collection_id}
-                analyticsContext="QueryBuilder"
-              />
-            )
-          }
+      <div className="relative">
+        <ViewHeader
+          question={this.props.question}
+          setMode={this.props.setMode}
+          mode={this.props.mode}
+          setModal={modal => this.setState({ modal })}
         />
-
         <Modal
           small
           isOpen={this.state.modal === "saved"}
@@ -595,6 +542,27 @@ export default class QueryHeader extends Component {
               this.state.modal === "save-question-before-alert" &&
               this.setState({ modal: null })
             }
+            multiStep
+            initiCollectionId={this.props.initiCollectionId}
+          />
+        </Modal>
+        <Modal
+          isOpen={this.state.modal === "save-question"}
+          onClose={this.onCloseModal}
+        >
+          <SaveQuestionModal
+            card={this.props.card}
+            originalCard={this.props.originalCard}
+            tableMetadata={this.props.tableMetadata}
+            saveFn={async card => {
+              await this.onSave(card, false);
+              this.setState({ modal: "saved" });
+            }}
+            createFn={async card => {
+              await this.onCreate(card, false);
+              this.setState({ modal: "saved" });
+            }}
+            onClose={() => this.refs.addToDashSaveModal.toggle()}
             multiStep
             initiCollectionId={this.props.initiCollectionId}
           />

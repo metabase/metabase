@@ -3,14 +3,11 @@ import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import { color } from "styled-system";
 import styled from "styled-components";
-import { Motion, spring } from "react-motion";
 
 import colors, { lighten } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { AnimatedMenuWrapper } from "metabase/components/EntityMenu";
@@ -53,7 +50,7 @@ MenuSection.defaultProps = {
   className: "border-bottom",
 };
 
-const ViewHeader = ({ question, setMode, mode }) => (
+const ViewHeader = ({ question, setMode, mode, setModal }) => (
   <Flex
     align="center"
     className="full relative py2 px4 border-bottom bg-white flex"
@@ -64,7 +61,7 @@ const ViewHeader = ({ question, setMode, mode }) => (
       </Title>
       <Flex ml={1}>
         <HeaderButton
-          onClick={() => alert("Save me")}
+          onClick={() => setModal("save-question")}
           p={1}
           mr={1}
         >{t`Save`}</HeaderButton>
@@ -84,8 +81,8 @@ const ViewHeader = ({ question, setMode, mode }) => (
               </MenuSection>
               <MenuSection>
                 <EntityMenuItem
-                  link="/"
-                  icon="pencil"
+                  action={() => setModal("add-to-dashboard")}
+                  icon="addtodash"
                   title={t`Add to dashboard`}
                 />
                 <EntityMenuItem
@@ -96,7 +93,7 @@ const ViewHeader = ({ question, setMode, mode }) => (
                 <EntityMenuItem link="/" icon="share" title={t`Share`} />
               </MenuSection>
               <MenuSection>
-                <EntityMenuItem link="/" icon="archive" title={t`Get alerts`} />
+                <EntityMenuItem link="/" icon="alert" title={t`Get alerts`} />
               </MenuSection>
               <MenuSection>
                 <EntityMenuItem
