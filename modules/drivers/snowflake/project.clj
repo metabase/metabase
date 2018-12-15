@@ -4,10 +4,6 @@
   :dependencies
   [[net.snowflake/snowflake-jdbc "3.6.20"]]
 
-  :jvm-opts
-  ["-XX:+IgnoreUnrecognizedVMOptions"
-   "--add-modules=java.xml.bind"]
-
   :profiles
   {:provided
    {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}

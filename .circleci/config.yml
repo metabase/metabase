@@ -72,7 +72,21 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests
+          name: Run backend unit tests with Java 8
+          command: lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-java-11:
+    <<: *defaults
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.8.1
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests with Java 11
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
@@ -574,6 +588,9 @@ workflows:
           requires:
             - checkout
       - be-tests:
+          requires:
+            - be-deps
+      - be-tests-java-11:
           requires:
             - be-deps
       - be-linter-eastwood:
