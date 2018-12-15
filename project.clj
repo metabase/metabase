@@ -38,7 +38,7 @@
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "0.4.1"]                                ; logging framework
    [org.clojure/tools.namespace "0.2.11"]
-   [amalloy/ring-buffer "1.2.1"
+   [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
    [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
@@ -77,6 +77,7 @@
    [honeysql "0.9.2" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
    [io.forward/yaml "1.0.6"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
     :exclusions [org.clojure/clojure
+                 org.flatland/ordered
                  org.yaml/snakeyaml]]
    [kixi/stats "0.4.1" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
    [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
@@ -86,10 +87,12 @@
                  com.sun.jmx/jmxri]]
    [medley "0.8.4"]                                                   ; lightweight lib of useful functions
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [mysql/mysql-connector-java "5.1.45"]                              ; !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+   [mysql/mysql-connector-java "5.1.45"]                              ; MySQL JDBC driver
+   [javax.xml.bind/jaxb-api "2.3.0"]                                  ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]] ; Distribution statistic tests
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.clojars.pntblnk/clj-ldap "0.0.12"]                            ; LDAP client
+   [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.2"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.postgresql/postgresql "42.2.2"]                               ; Postgres driver
@@ -101,7 +104,7 @@
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [ring/ring-core "1.6.3"]
    [ring/ring-jetty-adapter "1.6.3"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [org.eclipse.jetty/jetty-server "9.4.11.v20180605"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [org.eclipse.jetty/jetty-server "9.4.14.v20181114"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
@@ -122,7 +125,6 @@
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
    "-Xverify:none"                                                    ; disable bytecode verification when running in dev so it starts slightly faster
-   "--add-modules=java.xml.bind"                                      ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
    "-Djava.awt.headless=true"]                                        ; prevent Java icon from randomly popping up in dock when running `lein ring server`
 
   :javac-options ["-target" "1.8", "-source" "1.8"]

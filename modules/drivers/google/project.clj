@@ -7,10 +7,6 @@
   :dependencies
   [[com.google.api-client/google-api-client "1.27.0"]]
 
-  :jvm-opts
-  ["-XX:+IgnoreUnrecognizedVMOptions"
-   "--add-modules=java.xml.bind"]
-
   :profiles
   {:provided
    {:dependencies
