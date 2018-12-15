@@ -15,6 +15,7 @@
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
@@ -736,3 +737,28 @@
     (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
       (map #(dimension-options-for-field response %)
            ["latitude" "longitude"]))))
+
+;; test POST /api/table/:id/discard_values
+(defn- discard-values [user expected-status-code]
+  (tt/with-temp* [Table       [table        {}]
+                  Field       [field        {:table_id (u/get-id table)}]
+                  FieldValues [field-values {:field_id (u/get-id field), :values ["A" "B" "C"]}]]
+    {:response ((user->client user) :post expected-status-code (format "table/%d/discard_values" (u/get-id table)))
+     :deleted? (not (db/exists? FieldValues :id (u/get-id field-values)))}))
+
+;; Non-admin toucans should not be allowed to discard values
+(expect
+  {:response "You don't have permissions to do that."
+   :deleted? false}
+  (discard-values :rasta 403))
+
+;; Admins should be able to successfuly delete them
+(expect
+  {:response {:status "success"}
+   :deleted? true}
+  (discard-values :crowberto 200))
+
+;; For tables that don't exist, we should return a 404
+(expect
+  "Not found."
+  ((user->client :crowberto) :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))
