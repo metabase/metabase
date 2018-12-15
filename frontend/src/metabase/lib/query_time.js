@@ -212,7 +212,7 @@ export function formatBucketing(bucketing = "", n = 1) {
     case "week-of-year":
       return ngettext(msgid`Week of year`, `Weeks of year`, n);
     case "month-of-year":
-      return ngettext(msgid`Month of year`, `Month of year`, n);
+      return ngettext(msgid`Month of year`, `Months of year`, n);
     case "quarter-of-year":
       return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
   }
