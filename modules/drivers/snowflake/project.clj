@@ -2,7 +2,7 @@
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[net.snowflake/snowflake-jdbc "3.6.20"]]
+  [[net.snowflake/snowflake-jdbc "3.6.21"]]
 
   :profiles
   {:provided

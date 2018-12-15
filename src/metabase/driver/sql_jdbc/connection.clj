@@ -28,8 +28,8 @@
 ;;; |                                           Creating Connection Pools                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private database-id->connection-pool
-  "A map of our currently open connection pools, keyed by Database `:id`."
+(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
+  database-id->connection-pool
   (atom {}))
 
 (def ^:private data-warehouse-connection-pool-properties
