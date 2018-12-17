@@ -13,17 +13,19 @@ fi
 
 # First, remove any existing drivers
 driver_jar="$driver.metabase-driver.jar"
+dest_location="$project_root/resources/modules/$driver_jar.pack.xz"
 
-if [ -f resources/modules/"$driver.metabase-driver.jar" ]; then
+if [ -f "$dest_location" ]; then
     echo "$driver is already built."
-    echo "To rebuild the driver, delete resources/modules/$driver.metabase-driver.jar and run this script again."
+    echo "To rebuild the driver, delete \"$dest_location\" and run this script again."
     exit 0
 fi
 
 mkdir -p resources/modules
 
 echo "Deleting old versions of $driver driver..."
-rm -f plugins/"$driver_jar"
+rm -f plugins/"$driver_jar"'*'
+rm -f modules/resources/"$driver_jar"'*'
 
 driver_project_dir="$project_root/modules/drivers/$driver"
 
@@ -34,12 +36,13 @@ if [ ! `find ~/.m2/repository/metabase-core/metabase-core -name '*.jar'` ]; then
     lein install-for-building-drivers
 fi
 
-# Build Metabase uberjar if needed, we'll need this for stripping duplicate classes
-metabase_uberjar="$project_root/target/uberjar/metabase.jar"
+# Generate Metabase uberjar blacklist file if needed!
+uberjar_blacklist="$project_root/uberjar-blacklist.txt"
 
-if [ ! -f "$metabase_uberjar" ]; then
+if [ ! -f "$uberjar_blacklist" ]; then
     echo 'Building Metabase uberjar...'
     lein uberjar
+    jar -tf "$project_root/target/uberjar/metabase.jar" > "$uberjar_blacklist"
 fi
 
 # Take a look at the `parents` file listing the parents to build, if applicable
@@ -87,17 +90,27 @@ if [ ! -f "$target_jar" ]; then
     exit -1
 fi
 
-# ok, first things first, strip out any classes also found in the core Metabase uberjar
-lein strip-and-compress "$target_jar"
+# Ok, now run the JAR compressor on the JAR
 
-# next, remove any classes also found in any of the parent JARs
-for parent in $parents; do
-    echo "Removing duplicate classes with $parent uberjar..."
-    lein strip-and-compress "$target_jar" "resources/modules/$parent.metabase-driver.jar"
-done
+packed_target_jar="$target_jar.pack.xz"
 
-# ok, finally, copy finished JAR to the resources dir
-dest_location="$project_root/resources/modules/$driver_jar"
+pack200_skipped_files_list="$driver_project_dir/pack200-skipped-files.txt"
 
-echo "Copying $target_jar -> $dest_location"
-cp "$target_jar" "$dest_location"
+pack200_options="true"
+if [ -f "$pack200_skipped_files_list" ]; then
+    pack200_options="{:classes-to-skip \"$pack200_skipped_files_list\"}"
+fi
+
+lein compress-jar "$target_jar" \
+     :blacklist "\"$uberjar_blacklist\"" \
+     :pack200 "$pack200_options" \
+     :out "\"$packed_target_jar\""
+
+echo "File size before packing:"
+du -h "$target_jar"
+
+echo "File size after packing:"
+du -h "$packed_target_jar"
+
+echo "Copying $packed_target_jar -> $dest_location"
+cp "$packed_target_jar" "$dest_location"

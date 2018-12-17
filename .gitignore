@@ -8,6 +8,8 @@
 pom.xml
 pom.xml.asc
 *.jar
+*.jar.pack.gz
+*.jar.pack.xz
 *.class
 /.lein-env
 /.lein-failures
@@ -58,3 +60,4 @@ bin/node_modules/
 *.trace.db
 /backend-checksums.txt
 .vscode
+/uberjar-blacklist.txt

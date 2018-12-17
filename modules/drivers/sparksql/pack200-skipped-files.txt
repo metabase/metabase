@@ -1,0 +1,1 @@
+org/apache/hadoop/hive/shims/Hadoop23Shims.class

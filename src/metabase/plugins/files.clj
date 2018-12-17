@@ -7,15 +7,18 @@
   *file-manipulation* functions for the sorts of operations the plugin system needs to perform."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [metabase.util :as u]
+            [metabase
+             [jar-compression :as jar-compression]
+             [util :as u]]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]])
   (:import java.io.FileNotFoundException
            java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path]
+           [java.nio.file Files FileSystem FileSystems LinkOption OpenOption Path]
            java.nio.file.attribute.FileAttribute
-           java.util.Collections))
+           java.util.Collections
+           org.apache.commons.io.IOUtils))
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 
@@ -69,20 +72,28 @@
 
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
-(defn- copy! [^Path source, ^Path dest]
+(defn- copy! [compressed?, ^Path source, ^Path dest]
   (du/profile (trs "Extract file {0} -> {1}" source dest)
-    (Files/copy source dest (u/varargs CopyOption))))
+    (if compressed?
+      (jar-compression/decompress! source, :out dest)
+      (with-open [is (Files/newInputStream source (u/varargs OpenOption))
+                  os (Files/newOutputStream dest (u/varargs OpenOption))]
+        (IOUtils/copy is os)))))
 
-(defn- copy-if-not-exists! [^Path source, ^Path dest]
+(defn- copy-if-not-exists! [compressed?, ^Path source, ^Path dest]
   (when-not (exists? dest)
-    (copy! source dest)))
+    (copy! compressed? source dest)))
+
+(defn- copy-source! [^Path dest-dir, ^Path source]
+  (let [filename              (str (.getFileName source))
+        [_ decompressed-name] (re-matches #"(^.*\.jar)((?:\.pack)?(?:\.[^\.]+)$)" filename)
+        target                (append-to-path dest-dir (or decompressed-name filename))]
+    (copy-if-not-exists! (boolean decompressed-name) source target)))
 
 (defn copy-files-if-not-exists!
   "Copy all files in `source-dir` to `dest-dir`; skip files if a file of the same name already exists in `dest-dir`."
   [^Path source-dir, ^Path dest-dir]
-  (doseq [^Path source (files-seq source-dir)
-          :let [target (append-to-path dest-dir (str (.getFileName source)))]]
-    (copy-if-not-exists! source target)))
+  (dorun (pmap (partial copy-source! dest-dir) (files-seq source-dir))))
 
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------

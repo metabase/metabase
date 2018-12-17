@@ -15,7 +15,8 @@
              [spec :as dbspec]]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.util.date :as du])
   (:import java.io.StringWriter
            [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
@@ -222,11 +223,15 @@
                (.rollback (jdbc/get-connection nested-transaction-connection))
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
-(def ^{:arglists '([])} ^DatabaseFactory database-factory
-  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
-  otherwise it adds 2 seconds to startup time."
+(def ^:private the-database-factory
   (when-not *compile-files*
-    (partial deref (future (DatabaseFactory/getInstance)))))
+    (future (du/profile (DatabaseFactory/getInstance)))))
+
+(defn- database-factory ^DatabaseFactory []
+  (if the-database-factory
+    (u/prog1 @the-database-factory
+      (intern *ns* 'the-database-factory nil))
+    (DatabaseFactory/getInstance)))
 
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."

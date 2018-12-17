@@ -18,8 +18,7 @@
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
-   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
+   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -30,7 +29,7 @@
    [org.clojure/core.async "0.4.490"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0-alpha4"]                            ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "0.7.1"]                                 ; useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
    [org.clojure/java.jdbc "0.7.8"]                                    ; basic JDBC access from Clojure
@@ -69,6 +68,7 @@
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
+   [commons-io "2.6"]                                                 ; Apache Commons IO util library
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
@@ -86,6 +86,7 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [medley "1.0.0"]                                                   ; lightweight lib of useful functions
+   [metabase/jar-compression "1.0.1"]                                 ; JAR decompression/unpacking, used for system modules
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [mysql/mysql-connector-java "5.1.45"]                              ; MySQL JDBC driver
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
@@ -98,7 +99,8 @@
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-   [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
+   [org.tukaani/xz "1.8"]
+
    [prismatic/schema "1.1.9"]                                         ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
@@ -109,6 +111,10 @@
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
    [toucan "1.1.9" :exclusions [org.clojure/java.jdbc honeysql]]]     ; Model layer, hydration, and DB utilities
+
+  :managed-dependencies
+  [[org.tukaani/xz "1.8"]                                             ; XZ/LZMA2 compression
+   [org.yaml/snakeyaml "1.23"]]                                       ; YAML parser, used by liquibase and io.forward/yaml
 
   :main ^:skip-aot metabase.core
 
@@ -151,7 +157,8 @@
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
      [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
      [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
-      :exclusions [org.clojure/clojure]]]
+      :exclusions [org.clojure/clojure]]
+     [metabase/lein-compress-jar "1.0.0"]]                            ; compress driver modules with `lein compress-jar <jar-name>`
 
     :env      {:mb-run-mode "dev"}
     :jvm-opts ["-Dlogfile.path=target/log"]
@@ -244,11 +251,6 @@
    {:dependencies [[faker "0.3.2"]]                                   ; Fake data generator -- port of Perl/Ruby library
     :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
-
-   :strip-and-compress
-   {:source-paths ["src"
-                   "lein-commands/strip-and-compress"]
-    :main ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
    :profile
