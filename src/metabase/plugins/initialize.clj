@@ -9,7 +9,8 @@
 
 (defonce ^:private initialized-plugin-names (atom #{}))
 
-(defn- init! [{init-steps :init, {plugin-name :name} :info, driver-or-drivers :driver, :as info}]
+(defn- init!
+  [{:keys [add-to-classpath!], init-steps :init, {plugin-name :name} :info, driver-or-drivers :driver, :as info}]
   {:pre [(string? plugin-name)]}
   (when (deps/all-dependencies-satisfied? @initialized-plugin-names info)
     ;; for each driver, if it's lazy load, register a lazy-loaded placeholder driver
@@ -19,6 +20,7 @@
           (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))))
       ;; if *any* of the drivers is not lazy-load, initialize it now
       (when (some false? (map :lazy-load drivers))
+        (add-to-classpath!)
         (init-steps/do-init-steps! init-steps)))
     ;; record this plugin as initialized and find any plugins ready to be initialized because depended on this one !
     ;;

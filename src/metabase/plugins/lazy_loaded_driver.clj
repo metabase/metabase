@@ -44,8 +44,10 @@
     connection-properties-include-tunnel-config
     ssh/with-tunnel-config))
 
-(defn- make-initialize! [driver init-steps]
+(defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
+    ;; First things first: add the driver to the classpath!
+    (add-to-classpath!)
     ;; remove *this* implementation of `initialize!`, because as you will see below, we want to give
     ;; lazy-load drivers the option to implement `initialize!` and do other things, which means we need to
     ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
@@ -61,7 +63,8 @@
 
 (defn register-lazy-loaded-driver!
   "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
-  [{init-steps                                                                                      :init
+  [{:keys                                                                                            [add-to-classpath!]
+    init-steps                                                                                       :init
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
   {:pre [(map? driver-info)]}
   (let [driver           (keyword driver-name)
@@ -78,7 +81,7 @@
        (u/format-color 'red (trs "Warning: plugin manifest for {0} does not include connection properties" driver))))
     ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
     (doseq [[^MultiFn multifn, f]
-            {driver/initialize!           (make-initialize! driver init-steps)
+            {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
              driver/available?            (constantly (not abstract))
              driver/display-name          (when display-name (constantly display-name))
              driver/connection-properties (constantly connection-props)}]
