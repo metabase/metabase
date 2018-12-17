@@ -5,7 +5,7 @@
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [database :refer [Database]]
-             [field :refer [Field]]
+             [field :refer [Field] :as field]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
@@ -38,7 +38,7 @@
   (mdb/setup-db-if-needed!)
   (dump-all path (Database))
   (dump-all path (Table))
-  (dump-all path (Field))
+  (dump-all path (field/with-values (Field)))
   (dump-all path (Metric))
   (dump-all path (Segment))
   (dump-all path (db/select Collection :personal_owner_id nil))

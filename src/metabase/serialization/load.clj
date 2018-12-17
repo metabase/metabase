@@ -1,6 +1,7 @@
 (ns metabase.serialization.load
   "Load entities serialized by `metabase.serialization.dump`."
   (:require [cheshire.core :as json]
+            [clojure.data :as diff]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
@@ -138,125 +139,104 @@
 (defmulti
   ^{:doc      "Extract entities from a logical path."
     :private  true
-    :arglists '([path context])}
-  path->context (fn [_ [model & _]]
-                  model))
+    :arglists '([context model entity-name])}
+  path->context* (fn [_ model _]
+                   model))
 
-(defmethod path->context "databases"
-  [context [_ & [db-name & path]]]
-  (-> context
-      (assoc :database (if (= db-name "__virtual")
-                         -1337
-                         (db/select-one-id Database :name db-name)))
-      (path->context path)))
+(def ^:private ^{:arglists '([context model entity-name])} path->context
+  (memoize path->context*))
 
-(defmethod path->context "schemas"
-  [context [_ & [schema & path]]]
-  (-> context
-      (assoc :schema schema)
-      (path->context path)))
+(defmethod path->context* "databases"
+  [context _ db-name]
+  (assoc context :database (if (= db-name "__virtual")
+                             -1337
+                             (db/select-one-id Database :name db-name))))
 
-(defmethod path->context "tables"
-  [context [_ & [table-name & path]]]
-  (-> context
-      (assoc :table (db/select-one-id Table
-                      :db_id  (:database context)
-                      :schema (:schema context)
-                      :name   table-name))
-      (path->context path)))
+(defmethod path->context* "schemas"
+  [context _ schema]
+  (assoc context :schema schema))
 
-(defmethod path->context "fields"
-  [context [_ & [field-name & path]]]
-  (-> context
-      (assoc :field (db/select-one-id Field
-                      :table_id (:table context)
-                      :name     field-name))
-      (path->context path)))
+(defmethod path->context* "tables"
+  [context _ table-name]
+  (assoc context :table (db/select-one-id Table
+                          :db_id  (:database context)
+                          :schema (:schema context)
+                          :name   table-name)))
 
-(defmethod path->context "metrics"
-  [context [_ & [metric-name & path]]]
-  (-> context
-      (assoc :metric (db/select-one-id Metric
-                       :table_id (:table context)
-                       :name     metric-name))
-      (path->context path)))
+(defmethod path->context* "fields"
+  [context _ field-name]
+  (assoc context :field (db/select-one-id Field
+                          :table_id (:table context)
+                          :name     field-name)))
 
-(defmethod path->context "segments"
-  [context [_ & [segment-name & path]]]
-  (-> context
-      (assoc :segment (db/select-one-id Segment
-                        :table_id (:table context)
-                        :name     segment-name))
-      (path->context path)))
+(defmethod path->context* "metrics"
+  [context _ metric-name]
+  (assoc context :metric (db/select-one-id Metric
+                           :table_id (:table context)
+                           :name     metric-name)))
 
-(def ^:private reserved-collection-name? #{"collections" "cards" "dashboards"})
+(defmethod path->context* "segments"
+  [context _ segment-name]
+  (assoc context :segment (db/select-one-id Segment
+                            :table_id (:table context)
+                            :name     segment-name)))
 
-(defmethod path->context "collections"
-  [context [_ & [collection-name & path-rest :as path]]]
-  (if (reserved-collection-name? collection-name)
-    ;; root collection
-    (path->context (assoc context :collection nil) path)
-    (-> context
-        (assoc :collection (db/select-one-id Collection
-                             :name     collection-name
-                             :location (or (some-> context
-                                                   :collection
-                                                   Collection
-                                                   :location
-                                                   (str (:collection context) "/"))
-                                           "/")))
-        (path->context path-rest))))
+(defmethod path->context* "collections"
+  [context _ [collection-name & path-rest :as path]]
+  (if (= collection-name "root")
+    (assoc context :collection nil)
+    (assoc context :collection (db/select-one-id Collection
+                                 :name     collection-name
+                                 :location (or (some-> context
+                                                       :collection
+                                                       Collection
+                                                       :location
+                                                       (str (:collection context) "/"))
+                                               "/")))))
 
-(defmethod path->context "dashboards"
-  [context [_ & [dashboard-name & path]]]
-  (-> context
-      (assoc :dashboard (db/select-one-id Dashboard
-                          :collection_id (:collection context)
-                          :name          dashboard-name))
-      (path->context path)))
+(defmethod path->context* "dashboards"
+  [context _ dashboard-name]
+  (assoc context :dashboard (db/select-one-id Dashboard
+                              :collection_id (:collection context)
+                              :name          dashboard-name)))
 
-(defmethod path->context "pulses"
-  [context [_ & [pulse-name & path]]]
-  (-> context
-      (assoc :dashboard (db/select-one-id Pulse
-                          :collection_id (:collection context)
-                          :name          pulse-name))
-      (path->context path)))
+(defmethod path->context* "pulses"
+  [context _ pulse-name]
+  (assoc context :dashboard (db/select-one-id Pulse
+                              :collection_id (:collection context)
+                              :name          pulse-name)))
 
-(defmethod path->context "cards"
-  [context [_ & [dashboard-name & path]]]
-  (-> context
-      (assoc :card (db/select-one-id Card
-                     :collection_id (:collection context)
-                     :name          dashboard-name))
-      (path->context path)))
-
-(defmethod path->context nil
-  [context _]
-  context)
+(defmethod path->context* "cards"
+  [context _ dashboard-name]
+  (assoc context :card (db/select-one-id Card
+                         :collection_id (:collection context)
+                         :name          dashboard-name)))
 
 (defn- fully-qualified-name->context
-  [context fully-qualified-name]
+  [fully-qualified-name]
   (->> (str/split fully-qualified-name #"/")
        rest
-       (path->context context)))
+       (partition 2)
+       (reduce (fn [context [model entity-name]]
+                 (path->context context model entity-name))
+               {})))
 
 (defn- fully-qualified-name->entity-reference
-  [context [op & args :as form]]
+  [[op & args :as form]]
   (if (-> op qp.util/normalize-token (= :field-literal))
     form
     (into [op]
           (map (fn [arg]
                  (if (string? arg)
-                   ((some-fn :field :metric :segment) (fully-qualified-name->context context arg))
+                   ((some-fn :field :metric :segment) (fully-qualified-name->context arg))
                    arg)))
           args)))
 
 (defn- humanized-field-references->ids
-  [entity context]
+  [entity]
   (walk/postwalk (fn [form]
                    (if (dump/entity-reference? form)
-                     (fully-qualified-name->entity-reference context form)
+                     (fully-qualified-name->entity-reference form)
                      form))
                  entity))
 
@@ -279,12 +259,11 @@
 
 (defn- load-dimensions
   [path context]
-  (let [fully-qualified-name->field-id (comp :field (partial fully-qualified-name->context context))]
-    (doseq [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
-      (maybe-upsert! (:mode context) Dimension
-        (-> dimension
-            (update :human_readable_field_id fully-qualified-name->field-id)
-            (update :field_id fully-qualified-name->field-id))))))
+  (doseq [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
+    (maybe-upsert! (:mode context) Dimension
+      (-> dimension
+          (update :human_readable_field_id (comp :field fully-qualified-name->context))
+          (update :field_id (comp :field fully-qualified-name->context))))))
 
 (defmethod load Database
   [path context _]
@@ -296,7 +275,7 @@
 
 (defmethod load Table
   [path context _]
-  (let [context (merge context (fully-qualified-name->context context path))]
+  (let [context (merge context (fully-qualified-name->context path))]
     (doseq [path (list-dirs (str path "/tables"))]
       (let [context (assoc context
                       :table (slurp-one-id (fn [table]
@@ -308,8 +287,8 @@
         (load path context Segment)))))
 
 (defn- fully-qualified-name->card-id
-  [context fully-qualified-name]
-  (some->> fully-qualified-name (fully-qualified-name->context context) :card))
+  [fully-qualified-name]
+  (some->> fully-qualified-name fully-qualified-name->context :card))
 
 (defmethod load Field
   [path context _]
@@ -334,7 +313,7 @@
                      (assoc :table_id   (:table context)
                             :creator_id @default-user)
                      (assoc-in [:definition :source-table] (:table context))
-                     (humanized-field-references->ids context))))
+                     humanized-field-references->ids)))
              (str path "/metrics")))
 
 (defmethod load Segment
@@ -345,12 +324,12 @@
                      (assoc :table_id   (:table context)
                             :creator_id @default-user)
                      (assoc-in [:definition :source-table] (:table context))
-                     (humanized-field-references->ids context))))
+                     humanized-field-references->ids)))
              (str path "/segments")))
 
 (defn- update-parameter-mappings
-  [parameter-mappings context]
-  (map #(update % :card_id (partial fully-qualified-name->card-id context)) parameter-mappings))
+  [parameter-mappings]
+  (map #(update % :card_id fully-qualified-name->card-id) parameter-mappings))
 
 (defmethod load Dashboard
   [path context _]
@@ -362,21 +341,21 @@
                                  (dissoc :dashboard_cards)
                                  (assoc :collection_id (:collection context)
                                         :creator_id @default-user)
-                                 (humanized-field-references->ids context)))]
+                                 humanized-field-references->ids))]
        (doseq [dashboard-card dashboard-cards]
          (let [series         (:series dashboard-card)
                dashboard-card (maybe-upsert! (:mode context) DashboardCard
                                 (-> dashboard-card
                                     (dissoc :series)
-                                    (update :card_id (partial fully-qualified-name->card-id context))
+                                    (update :card_id fully-qualified-name->card-id)
                                     (assoc :dashboard_id (:id dashboard))
-                                    (update :parameter_mappings update-parameter-mappings context)
-                                    (humanized-field-references->ids context)))]
+                                    (update :parameter_mappings update-parameter-mappings)
+                                    humanized-field-references->ids))]
            (doseq [dashboard-card-series series]
              (maybe-upsert! (:mode context) DashboardCardSeries
                (-> dashboard-card-series
                    (assoc :dashboardcard_id (:id dashboard-card))
-                   (update :card_id (partial fully-qualified-name->card-id context)))))))
+                   (update :card_id fully-qualified-name->card-id))))))
        dashboard))
    (str path "/dashboards")))
 
@@ -394,15 +373,15 @@
          (maybe-upsert! (:mode context) PulseCard
            (-> card
                (assoc :pulse_id (u/get-id pulse))
-               (update :card_id (partial fully-qualified-name->card-id context)))))
+               (update :card_id fully-qualified-name->card-id))))
        (doseq [channel channels]
          (maybe-upsert! (:mode context) PulseChannel
            (assoc channel :pulse_id (u/get-id pulse))))))
    (str path "/pulses")))
 
 (defn- source-table
-  [source-table context]
-  (let [{:keys [card table]} (fully-qualified-name->context context source-table)]
+  [source-table]
+  (let [{:keys [card table]} (fully-qualified-name->context source-table)]
     (if card
       (str "card__" card)
       table)))
@@ -415,7 +394,7 @@
                            (fn [card]
                              (let [table (->> card
                                               :table_id
-                                              (fully-qualified-name->context context)
+                                              fully-qualified-name->context
                                               :table
                                               Table)
                                    db    (:db_id table)]
@@ -432,8 +411,8 @@
                                            :type
                                            qp.util/normalize-token
                                            (= :query))
-                                       (update-in [:dataset_query :query :source-table] source-table context))
-                                     (humanized-field-references->ids context)))))
+                                       (update-in [:dataset_query :query :source-table] source-table))
+                                     humanized-field-references->ids))))
                            path))]
       ;; Nested cards
       (load path context Card))))
@@ -477,7 +456,7 @@
                                                     (comp Metric :metric)
                                                     (comp Segment :segment)
                                                     (comp Pulse :pulse))
-                                           (partial fully-qualified-name->context {}))]
+                                           fully-qualified-name->context)]
     (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
       (let [model        (fully-qualified-name->entity model_id)
             dependent-on (fully-qualified-name->entity dependent_on_id)]
