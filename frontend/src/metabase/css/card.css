@@ -29,7 +29,13 @@
 .Card-defaultBox {
   height: 500px;
 }
-
+/*--Added By SagarDobariya --*/
+.DashboardGrid .DashCard:nth-child(3) .Card {
+    background-color: #ff7b00;
+    color: #fff;
+    border-color: #ff7b00;
+}
+/*----*/
 @media screen and (--breakpoint-min-md) {
   .Card-title {
     font-size: 0.8em;
