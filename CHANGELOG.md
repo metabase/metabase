@@ -2,11 +2,16 @@
 
 ## 0.32.0 (upcoming)
 
-* Pending changelog
+* [DGPB-1653] Crossdata queries impersonation
+* [DGPB-1617] Upgrade XD library to 2.13.4
+
+## 0.31.1 (November 13, 2018)
+
+* [DGPB-1583] Fix init login function
 
 ## 0.31.0-ccddeec (Built: October 08, 2018 | Released: October 30, 2018)
 
-* [DGPB-1426] Error de agregacion de fechas
+* [DGPB-1426] Fix: Date aggregation query
 * [DGPB-1357] Upgrade to metabase 0.30.1
 * [DGPB-1345] Add more metadata refresh options
 

@@ -5,6 +5,8 @@
                      [string :as s])
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [metabase.api.common :as api]
+            [metabase.models.user :as user :refer [User]]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver
@@ -36,17 +38,17 @@
   "Map of Crossdata2 column types -> Field base types.
    Add more mappings here as you come across them."
   {
-   :SQL_DECIMAL             :type/Float
-   :SQL_DOUBLE              :type/Decimal
-   :SQL_FLOAT               :type/Float
-   :SQL_INTEGER             :type/Integer
-   :SQL_REAL                :type/Decimal
-   :SQL_VARCHAR             :type/Text
-   :SQL_LONGVARCHAR         :type/Text
-   :SQL_CHAR                :type/Text
-   :TIMESTAMP               :type/DateTime
-   :DATE                    :type/Date
-   :SQL_BOOLEAN             :type/Boolean
+   :SQL_DECIMAL                           :type/Float
+   :SQL_DOUBLE                            :type/Decimal
+   :SQL_FLOAT                             :type/Float
+   :SQL_INTEGER                           :type/Integer
+   :SQL_REAL                              :type/Decimal
+   :SQL_VARCHAR                           :type/Text
+   :SQL_LONGVARCHAR                       :type/Text
+   :SQL_CHAR                              :type/Text
+   :TIMESTAMP                             :type/DateTime
+   :DATE                                  :type/Date
+   :SQL_BOOLEAN                           :type/Boolean
    (keyword "bit varying")                :type/*
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
@@ -99,18 +101,19 @@
                      :database-type (:data_type result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
+
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings ], query :native, {sql :query, params :params} :native, :as outer-query}]
-  (let [sql (str
-              (if (seq params)
-                (unprepare/unprepare (cons sql params))
-                sql))]
-    (let [query (assoc query :remark  "", :query  sql, :params  nil)]
+  [driver {:keys [database settings], query :native, :as outer-query}]
+
+  (let [db-connection (sql/db->jdbc-connection-spec
+                       (if (true? (get-in database [:details :impersonate] ))
+                         (assoc-in database [:details :user] (get @api/*current-user* :first_name)) database))]
+    (let [query (assoc query :remark (qputil/query->remark outer-query))]
       (qprocessor/do-with-try-catch
-        (fn []
-          (let [db-connection (sql/db->jdbc-connection-spec database)]
-            (qprocessor/do-in-transaction db-connection (partial qprocessor/run-query-with-out-remark query))))))))
+       (fn []
+         (qprocessor/do-in-transaction db-connection (partial qprocessor/run-query-with-out-remark query)))))))
+
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
@@ -300,15 +303,15 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-source-table        (u/drop-first-arg apply-source-table)
           :apply-join-tables         (u/drop-first-arg apply-join-tables)
-          :column->base-type         (u/drop-first-arg column->base-type)
+          :column->base-type         (u/drop-first-arg hive-like/column->base-type)
           :column->special-type      (u/drop-first-arg column->special-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :date                      (u/drop-first-arg date)
+          :date                      (u/drop-first-arg hive-like/date)
           :field->identifier         (u/drop-first-arg field->identifier)
           :quote-style               (constantly :mysql)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+          :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
 (u/strict-extend CrossdataDriver
                  driver/IDriver
@@ -330,6 +333,10 @@
                                                            :display-name "Database username"
                                                            :placeholder  "What username do you use to login to the database?"
                                                            :required     true}
+                                                          {:name         "impersonate"
+                                                           :display-name "Connect with Discovery login user?"
+                                                           :default      false
+                                                           :type         :boolean}
                                                           {:name         "ssl"
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean

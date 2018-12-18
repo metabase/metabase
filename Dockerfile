@@ -30,7 +30,7 @@ ENV MAVEN_VERSION="3.2.5" \
     M2_HOME=/usr/lib/mvn
 
 # To generate local docker, comment mvn dependency:get and mv. Download jar in ./bin/lib/
-# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.0-5000715/stratio-crossdata-jdbc4-2.13.0-5000715.jar
+# http://qa.stratio.com/repository/releases/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.4-cb4ebcf/stratio-crossdata-jdbc4-2.13.4-cb4ebcf.jar
 RUN apk add --update wget && \
     cd /tmp && \
     wget "http://ftp.unicamp.br/pub/apache/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz" && \
@@ -40,9 +40,9 @@ RUN apk add --update wget && \
     mvn package -f /app/source/local-query-execution-factory/pom.xml && \
     mv /app/source/local-query-execution-factory/target/local-query-execution-factory-0.2.jar /app/source/bin/lib/local-query-execution-factory-0.2.jar && \
     mvn install:install-file -Dfile=/app/source/bin/lib/local-query-execution-factory-0.2.jar -DgroupId=com.stratio.metabase -DartifactId=local-query-execution-factory -Dversion=0.2 -Dpackaging=jar && \
-    mvn dependency:get -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.0-5000715 -DremoteRepositories=http://sodio.stratio.com/repository/public/ -Dtransitive=false && \
-    mv /root/.m2/repository/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.0-5000715/stratio-crossdata-jdbc4-2.13.0-5000715.jar /app/source/bin/lib/stratio-crossdata-jdbc4-2.13.0-5000715.jar && \
-    mvn install:install-file -Dfile=/app/source/bin/lib/stratio-crossdata-jdbc4-2.13.0-5000715.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.0-5000715 -Dpackaging=jar
+    mvn dependency:get -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.4-cb4ebcf -DremoteRepositories=http://sodio.stratio.com/repository/public/ -Dtransitive=false && \
+    mv /root/.m2/repository/com/stratio/jdbc/stratio-crossdata-jdbc4/2.13.4-cb4ebcf/stratio-crossdata-jdbc4-2.13.4-cb4ebcf.jar /app/source/bin/lib/stratio-crossdata-jdbc4-2.13.4-cb4ebcf.jar && \
+    mvn install:install-file -Dfile=/app/source/bin/lib/stratio-crossdata-jdbc4-2.13.4-cb4ebcf.jar -DgroupId=com.stratio.jdbc -DartifactId=stratio-crossdata-jdbc4 -Dversion=2.13.4-cb4ebcf -Dpackaging=jar
 
 # yarn:    frontend dependencies
 RUN npm install -g yarn
