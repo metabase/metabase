@@ -18,6 +18,7 @@ import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
 
+import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
