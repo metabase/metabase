@@ -583,21 +583,43 @@ export class ExpressionDimension extends Dimension {
 export class AggregationDimension extends Dimension {
   static parseMBQL(mbql: any, metadata?: ?Metadata): ?Dimension {
     if (Array.isArray(mbql) && mbql[0] === "aggregation") {
-      return new AggregationDimension(null, mbql.slice(1));
+      return new AggregationDimension(null, mbql.slice(1), metadata);
     }
   }
 
-  constructor(parent, args, metadata, displayName) {
+  constructor(parent, args, metadata, query) {
     super(parent, args, metadata);
-    this._displayName = displayName;
-  }
-
-  displayName(): string {
-    return this._displayName;
+    this._query = query;
   }
 
   aggregationIndex(): number {
     return this._args[0];
+  }
+
+  displayName(): string {
+    const aggregation = this.aggregation();
+    return aggregation ? aggregation[0] : "[Unknown]";
+  }
+
+  fieldDimension() {
+    const aggregation = this.aggregation();
+    if (aggregation.length === 2 && aggregation[1]) {
+      return Dimension.parseMBQL(aggregation[1], this._metadata);
+    }
+    return null;
+  }
+
+  field() {
+    const dimension = this.fieldDimension();
+    return dimension ? dimension.field() : super.field();
+  }
+
+  // MBQL of the underlying aggregation
+  aggregation() {
+    return (
+      (this._query && this._query.aggregations()[this.aggregationIndex()]) ||
+      null
+    );
   }
 
   mbql() {

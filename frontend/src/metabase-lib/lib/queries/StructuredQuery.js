@@ -578,7 +578,7 @@ export default class StructuredQuery extends AtomicQuery {
               null,
               [index],
               this._metadata,
-              aggregation[0],
+              this,
             ),
           );
           sortOptions.count++;
@@ -741,7 +741,7 @@ export default class StructuredQuery extends AtomicQuery {
   aggregationDimensions() {
     return this.aggregations().map(
       (aggregation, index) =>
-        new AggregationDimension(null, [index], this._metadata, aggregation[0]),
+        new AggregationDimension(null, [index], this._metadata, this),
     );
   }
 
@@ -776,7 +776,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   columns() {
-    return this.columnDimensions().map(dimension => dimension.column())
+    return this.columnDimensions().map(dimension => dimension.column());
   }
 
   fieldReferenceForColumn(column) {
@@ -795,18 +795,20 @@ export default class StructuredQuery extends AtomicQuery {
   parseFieldReference(fieldRef): ?Dimension {
     const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
     if (dimension) {
-      // HACK
+      // HACK: we should probably pass the query into parseMBQL like we do for metadata
       if (dimension instanceof AggregationDimension) {
-        dimension._displayName = this.aggregations()[dimension._args[0]][0];
+        dimension._query = this;
       }
       return dimension;
     }
   }
 
   dimensionForColumn(column) {
-    const fieldRef = this.fieldReferenceForColumn(column);
-    if (fieldRef) {
-      return this.parseFieldReference(fieldRef);
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+      if (fieldRef) {
+        return this.parseFieldReference(fieldRef);
+      }
     }
     return null;
   }

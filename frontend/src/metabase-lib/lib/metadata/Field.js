@@ -3,7 +3,7 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import _ from "underscore"
+import _ from "underscore";
 
 import { FieldIDDimension } from "../Dimension";
 
@@ -126,7 +126,13 @@ export default class Field extends Base {
   }
 
   aggregations() {
-    return this.table.aggregation_options.filter(aggregation => aggregation.validFieldsFilters[0] && aggregation.validFieldsFilters[0]([this]).length === 1)
+    return this.table
+      ? this.table.aggregation_options.filter(
+          aggregation =>
+            aggregation.validFieldsFilters[0] &&
+            aggregation.validFieldsFilters[0]([this]).length === 1,
+        )
+      : null;
   }
 
   /**
@@ -208,6 +214,13 @@ export default class Field extends Base {
   }
 
   column() {
-    return _.pick(this.getPlainObject(), "id", "name", "display_name", "base_type", "special_type")
+    return _.pick(
+      this.getPlainObject(),
+      "id",
+      "name",
+      "display_name",
+      "base_type",
+      "special_type",
+    );
   }
 }
