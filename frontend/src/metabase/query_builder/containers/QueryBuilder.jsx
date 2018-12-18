@@ -233,8 +233,8 @@ export default class QueryBuilder extends Component {
     if (uiControls.mode === "worksheet") {
       return (
         <div>
-          <ViewHeader
-            question={this.props.question}
+          <QueryHeader
+            {...this.props}
             setMode={this.props.setMode}
             mode={uiControls.mode}
           />
@@ -248,8 +248,8 @@ export default class QueryBuilder extends Component {
     } else if (uiControls.mode === "present") {
       return (
         <div className={cx("flex-column", this.props.fitClassNames)}>
-          <ViewHeader
-            question={this.props.question}
+          <QueryHeader
+            {...this.props}
             setMode={this.props.setMode}
             mode={uiControls.mode}
           />
@@ -264,8 +264,8 @@ export default class QueryBuilder extends Component {
             this.props.fitClassNames,
           )}
         >
-          <ViewHeader
-            question={this.props.question}
+          <QueryHeader
+            {...this.props}
             setMode={this.props.setMode}
             mode={uiControls.mode}
           />
