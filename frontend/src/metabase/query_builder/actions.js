@@ -868,19 +868,26 @@ export const apiUpdateQuestion = question => {
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(
   SET_DATASET_QUERY,
-  (dataset_query, run = false) => {
-    return (dispatch, getState) => {
+  (datasetQuery, run = false) => {
+    return async (dispatch, getState) => {
+      const question = getQuestion(getState());
+      await dispatch(setQuestion(question.setDatasetQuery(datasetQuery), run))
+    }
+  },
+);
+
+export const SET_QUESTION = "metabase/qb/SET_QUESTION";
+export const setQuestion = createThunkAction(
+  SET_QUESTION,
+  (newQuestion, run = false) => {
+    return async (dispatch, getState) => {
       const { qb: { uiControls } } = getState();
       const question = getQuestion(getState());
-
-      let newQuestion = question;
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
       if (!uiControls.isEditing && question.isSaved()) {
         newQuestion = newQuestion.withoutNameAndId();
       }
-
-      newQuestion = newQuestion.setDatasetQuery(dataset_query);
 
       const oldTagCount = getTemplateTagCount(question);
       const newTagCount = getTemplateTagCount(newQuestion);
