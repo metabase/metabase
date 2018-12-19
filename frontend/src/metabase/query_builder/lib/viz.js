@@ -68,16 +68,25 @@ export function getColumnWells(
   if (hasMoreColumns) {
     wells.left.push({
       placeholder: wells.left.length === 0 ? "y" : "+",
-      canAdd: ({ column, dimension }) =>
-        settings["graph._metric_filter"](column || dimension.field()),
+      canAdd: ({ metric, column, dimension }) =>
+        metric
+          ? true
+          : settings["graph._metric_filter"](column || dimension.field()),
       onAdd: (
-        { column, dimension },
+        { metric, column, dimension },
         { onChangeSettings, query, onChangeDatasetQuery },
       ) => {
         if (column) {
           addRawMetric(column, { settings, onChangeSettings });
+        } else if (metric) {
+          addSummarizedMetricMetric(metric, {
+            settings,
+            onChangeSettings,
+            query,
+            onChangeDatasetQuery,
+          });
         } else if (dimension) {
-          addSummarizedMetric(dimension, {
+          addSummarizedDimensionMetric(dimension, {
             settings,
             onChangeSettings,
             query,
@@ -89,7 +98,8 @@ export function getColumnWells(
     if (wells.bottom.length === 0) {
       wells.bottom.push({
         placeholder: "x",
-        canAdd: ({ column, dimension }) =>
+        canAdd: ({ metric, column, dimension }) =>
+          !metric &&
           settings["graph._dimension_filter"](column || dimension.field()),
         onAdd: (
           { column, dimension },
@@ -163,13 +173,28 @@ function removeRawDimension(index, { settings, onChangeSettings }) {
   });
 }
 
-async function addSummarizedMetric(
+async function addSummarizedDimensionMetric(
   dimension,
   { query, settings, onChangeSettings, onChangeDatasetQuery },
 ) {
   const aggregation = dimension.defaultAggregation();
   const name = query.formatExpression(aggregation);
   console.log("addSummarizedMetric", name, aggregation);
+  await query
+    .addAggregation(["named", aggregation, name])
+    .update(q => onChangeDatasetQuery(q, true));
+  onChangeSettings({
+    "graph.metrics": settings["graph.metrics"].concat([name]),
+  });
+}
+
+async function addSummarizedMetricMetric(
+  metric,
+  { query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  const aggregation = ["metric", metric.id];
+  const name = query.formatExpression(aggregation);
+  console.log("addSummarizedMetricMetric", name, aggregation);
   await query
     .addAggregation(["named", aggregation, name])
     .update(q => onChangeDatasetQuery(q, true));

@@ -10,6 +10,7 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import ColumnDragSource from "./dnd/ColumnDragSource";
+import ColumnItem from "./ColumnItem";
 
 const ColumnList = ({ style, className, query, rawSeries }) => {
   if (!rawSeries) {
@@ -29,10 +30,9 @@ const ColumnList = ({ style, className, query, rawSeries }) => {
       <div className={className} style={style}>
         {cols.map(col => (
           <ColumnDragSource column={col}>
-            <div className="mx2 mb2 p1 px2 bg-light rounded h4 text-medium flex align-center">
-              <Icon name={getIconForField(col)} className="mr1" />
+            <ColumnItem icon={getIconForField(col)}>
               {formatColumn(col)}
-            </div>
+            </ColumnItem>
           </ColumnDragSource>
         ))}
       </div>
@@ -43,10 +43,9 @@ const ColumnList = ({ style, className, query, rawSeries }) => {
       <div className={className} style={style}>
         {dimensionOptions.dimensions.map(dimension => (
           <ColumnDragSource dimension={dimension}>
-            <div className="mx2 mb2 p1 px2 bg-light rounded h4 text-medium flex align-center">
-              <Icon name={dimension.field().icon()} className="mr1" />
+            <ColumnItem icon={dimension.field().icon()}>
               {dimension.displayName()}
-            </div>
+            </ColumnItem>
           </ColumnDragSource>
         ))}
       </div>

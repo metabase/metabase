@@ -14,6 +14,7 @@ import Button from "metabase/components/Button";
 import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
 import ColumnList from "./visualize/ColumnList";
+import MetricList from "./visualize/MetricList";
 
 // the margin for the viz with panels open
 const VIZ_MARGIN = 340;
@@ -177,7 +178,7 @@ class Bucket extends React.Component {
           {showSource ? (
             <ColumnList query={query} rawSeries={rawSeries} />
           ) : (
-            <Box>Metrics and aggs here please</Box>
+            <MetricList query={query} rawSeries={rawSeries} />
           )}
         </Box>
       </Panel>
