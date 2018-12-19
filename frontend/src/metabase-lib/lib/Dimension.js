@@ -616,10 +616,12 @@ export class AggregationDimension extends Dimension {
 
   // MBQL of the underlying aggregation
   aggregation() {
-    return (
-      (this._query && this._query.aggregations()[this.aggregationIndex()]) ||
-      null
-    );
+    const aggregation =
+      this._query && this._query.aggregations()[this.aggregationIndex()];
+    if (aggregation) {
+      return aggregation[0] === "named" ? aggregation[1] : aggregation;
+    }
+    return null;
   }
 
   mbql() {

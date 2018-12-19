@@ -336,6 +336,13 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * @returns true if the query has no aggregation or breakouts
+   */
+  isRaw(): boolean {
+    return this.breakouts().length === 0 && this.aggregations().length === 0;
+  }
+
+  /**
    * @returns the formatted named of the aggregation at the provided index.
    */
   aggregationName(index: number = 0): ?string {

@@ -21,7 +21,7 @@ const ColumnList = ({ style, className, query, rawSeries }) => {
     );
   }
 
-  if (query.isBareRows()) {
+  if (query.isRaw()) {
     const computedSettings = rawSeries
       ? getComputedSettingsForSeries(rawSeries)
       : {};

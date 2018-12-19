@@ -23,8 +23,8 @@ export function getColumnWells(
         column: column,
         // dimension: query.dimensionForColumn(_.findWhere(cols, { name }));
         color: colors["accent1"],
-        onRemove: ({ onChangeSettings }) => {
-          removeRawMetric(metricIndex, { settings, onChangeSettings });
+        onRemove: props => {
+          removeMetric(metricIndex, { settings, ...props });
         },
         renderPopover: props => {
           return (
@@ -39,8 +39,8 @@ export function getColumnWells(
     } else if (name) {
       wells.left.push({
         column: { name },
-        onRemove: ({ onChangeSettings }) => {
-          removeRawMetric(metricIndex, { settings, onChangeSettings });
+        onRemove: props => {
+          removeMetric(metricIndex, { settings, ...props });
         },
       });
     }
@@ -51,15 +51,21 @@ export function getColumnWells(
       wells.bottom.push({
         column: column,
         color: colors["accent2"],
-        onRemove: ({ onChangeSettings }) => {
-          removeRawDimension(dimensionIndex, { settings, onChangeSettings });
+        onRemove: props => {
+          removeDimension(dimensionIndex, {
+            settings,
+            ...props,
+          });
         },
       });
     } else if (name) {
       wells.bottom.push({
         column: { name },
-        onRemove: ({ onChangeSettings }) => {
-          removeRawDimension(dimensionIndex, { settings, onChangeSettings });
+        onRemove: props => {
+          removeDimension(dimensionIndex, {
+            settings,
+            ...props,
+          });
         },
       });
     }
@@ -72,27 +78,8 @@ export function getColumnWells(
         metric
           ? true
           : settings["graph._metric_filter"](column || dimension.field()),
-      onAdd: (
-        { metric, column, dimension },
-        { onChangeSettings, query, onChangeDatasetQuery },
-      ) => {
-        if (column) {
-          addRawMetric(column, { settings, onChangeSettings });
-        } else if (metric) {
-          addSummarizedMetricMetric(metric, {
-            settings,
-            onChangeSettings,
-            query,
-            onChangeDatasetQuery,
-          });
-        } else if (dimension) {
-          addSummarizedDimensionMetric(dimension, {
-            settings,
-            onChangeSettings,
-            query,
-            onChangeDatasetQuery,
-          });
-        }
+      onAdd: (item, props) => {
+        addMetric(item, { settings, ...props });
       },
     });
     if (wells.bottom.length === 0) {
@@ -101,20 +88,8 @@ export function getColumnWells(
         canAdd: ({ metric, column, dimension }) =>
           !metric &&
           settings["graph._dimension_filter"](column || dimension.field()),
-        onAdd: (
-          { column, dimension },
-          { onChangeSettings, query, onChangeDatasetQuery },
-        ) => {
-          if (column) {
-            addRawDimension(column, { settings, onChangeSettings });
-          } else if (dimension) {
-            addSummarizedDimension(dimension, {
-              settings,
-              onChangeSettings,
-              query,
-              onChangeDatasetQuery,
-            });
-          }
+        onAdd: (item, props) => {
+          addDimension(item, { settings, ...props });
         },
       });
     } else if (wells.bottom.length === 1) {
@@ -122,25 +97,72 @@ export function getColumnWells(
         placeholder: "Series breakout",
         canAdd: ({ column, dimension }) =>
           settings["graph._dimension_filter"](column || dimension.field()),
-        onAdd: (
-          { column, dimension },
-          { onChangeSettings, query, onChangeDatasetQuery },
-        ) => {
-          if (column) {
-            addRawDimension(column, { settings, onChangeSettings });
-          } else if (dimension) {
-            addSummarizedDimension(dimension, {
-              settings,
-              onChangeSettings,
-              query,
-              onChangeDatasetQuery,
-            });
-          }
+        onAdd: (item, props) => {
+          addDimension(item, { settings, ...props });
         },
       });
     }
   }
   return wells;
+}
+
+function isNew(question, settings) {
+  return (
+    settings["graph.dimensions"].filter(n => n).length === 0 ||
+    settings["graph.metrics"].filter(n => n).length === 0
+  );
+}
+
+function isSummarized(question) {
+  return !question.query().isRaw();
+}
+
+function addMetric({ column, dimension, metric }, props) {
+  if (column) {
+    if (isNew(props.question, props.settings)) {
+      const dimension = props.query.dimensionForColumn(column);
+      if (dimension) {
+        addSummarizedDimensionMetric(dimension, props);
+      }
+    } else {
+      addRawMetric(column, props);
+    }
+  } else if (metric) {
+    addSummarizedMetricMetric(metric, props);
+  } else if (dimension) {
+    addSummarizedDimensionMetric(dimension, props);
+  }
+}
+
+function addDimension({ column, dimension }, props) {
+  if (column) {
+    if (isNew(props.question, props.settings)) {
+      const dimension = props.query.dimensionForColumn(column);
+      if (dimension) {
+        addSummarizedDimension(dimension, props);
+      }
+    } else {
+      addRawDimension(column, props);
+    }
+  } else if (dimension) {
+    addSummarizedDimension(dimension, props);
+  }
+}
+
+function removeDimension(dimensionIndex, props) {
+  if (isSummarized(props.question)) {
+    removeSummarizedDimension(dimensionIndex, props);
+  } else {
+    removeRawDimension(dimensionIndex, props);
+  }
+}
+
+function removeMetric(metricIndex, props) {
+  if (isSummarized(props.question, props.settings)) {
+    removeSummarizedMetric(metricIndex, props);
+  } else {
+    removeRawMetric(metricIndex, props);
+  }
 }
 
 function addRawMetric(column, { settings, onChangeSettings }) {
@@ -235,7 +257,7 @@ async function removeSummarizedDimension(
   const name = settings["graph.dimensions"][index];
   console.log("removeSummarizedDimension", name, index);
   // remove breakout from query and settings
-  for (const [index, dimension] of query.breakoutDimensions()) {
+  for (const [index, dimension] of query.breakoutDimensions().entries()) {
     if (dimension.field().name === name) {
       console.log("removing", name);
       await query.removeBreakout(index).update(onChangeDatasetQuery);
