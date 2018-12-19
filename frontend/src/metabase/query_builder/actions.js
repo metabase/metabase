@@ -43,6 +43,7 @@ import {
   getTransformedSeries,
   getResultsMetadata,
   getFirstQueryResult,
+  getQBMode
 } from "./selectors";
 
 import {
@@ -67,11 +68,18 @@ import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
 
+export const QB_MODE_PRESENT = "present";
+export const QB_MODE_VISUALIZE = "visualize";
+export const QB_MODE_WORKSHEET = "worksheet";
+
+type QBMode = "present" | "visualize" | "worksheet"
+
 type UiControls = {
   isEditing?: boolean,
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   isShowingTutorial?: boolean,
+  mode?: QBMode
 };
 
 const getTemplateTagCount = (question: Question) => {
@@ -200,7 +208,7 @@ export const initializeQB = (location, params) => {
 
     let card, databasesList, originalCard;
     let uiControls: UiControls = {
-      mode: "present",
+      mode: QB_MODE_PRESENT,
       isEditing: false,
       isShowingTemplateTagsEditor: false,
     };
@@ -220,7 +228,7 @@ export const initializeQB = (location, params) => {
     }
 
     if (location.pathname.indexOf("viz") >= -1) {
-      uiControls.mode = "visualize";
+      uiControls.mode = QB_MODE_VISUALIZE;
     }
 
     // load up or initialize the card we'll be working on
@@ -1291,9 +1299,14 @@ export const getDisplayTypeForCard = (card, queryResults) => {
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (card, queryResults) => {
   return async (dispatch, getState) => {
+    const qbMode = getQBMode(getState())
+    // do not automatically change `display` in viz mode
+    const cardDisplay = qbMode === QB_MODE_VISUALIZE ?
+      card.display :
+      getDisplayTypeForCard(card, queryResults)
     dispatch.action(QUERY_COMPLETED, {
       card,
-      cardDisplay: getDisplayTypeForCard(card, queryResults),
+      cardDisplay,
       queryResults,
     });
   };
