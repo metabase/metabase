@@ -5,6 +5,7 @@ import {
   isAny,
   isDate,
 } from "metabase/lib/schema_metadata";
+import Query from "metabase/lib/query";
 import { t } from "c-3po";
 import {
   columnsAreValid,
@@ -64,8 +65,10 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
   }
 }
 
-function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
-  let type = getChartTypeFromData(cols, rows, false);
+function getDefaultLineAreaBarColumns([{ card, data: { cols, rows } }]) {
+  // strict mode disallows extra columns, enable for structured queries
+  const strict = Query.isStructured(card.dataset_query);
+  const type = getChartTypeFromData(cols, rows, strict);
   if (type === DIMENSION_DIMENSION_METRIC) {
     let dimensions = [cols[0], cols[1]];
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
