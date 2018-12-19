@@ -25,6 +25,7 @@ export default class ColumnWells extends React.Component {
       rawSeries,
       query,
       setDatasetQuery,
+      setQuestion,
       onReplaceAllVisualizationSettings,
     } = this.props;
 
@@ -43,13 +44,20 @@ export default class ColumnWells extends React.Component {
       };
     }
 
+    // TODO: push this binding up to QueryBuilder
+    const boundQuestion = question.bindUpdate(setQuestion);
+
     const actionProps = {
       settings: computedSettings,
       onChangeSettings: onChangeSettings,
-      query: query,
+      query: boundQuestion.query(),
       onChangeDatasetQuery: setDatasetQuery,
       series: rawSeries,
+
+      question: boundQuestion,
     };
+
+    window.q = boundQuestion;
 
     return (
       <div style={style} className={cx(className, "flex flex-row")}>
