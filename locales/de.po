@@ -269,7 +269,7 @@ msgstr "Gefahrenzone"
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:221
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:224
 msgid "Discard saved field values"
-msgstr "Verwefen gespeicherter Werte"
+msgstr "Verwerfen gespeicherter Werte"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:239
 msgid "Remove this database"
@@ -313,7 +313,7 @@ msgstr "Wiederherstellen der Beispieldaten"
 
 #: frontend/src/metabase/admin/databases/database.js:175
 msgid "Couldn't connect to the database. Please check the connection details."
-msgstr "Konnte keine Verbindugn zur Datenbank herstellen. Bitte prüfe die Verbindungsdaten."
+msgstr "Konnte keine Verbindung zur Datenbank herstellen. Bitte prüfe die Verbindungsdaten."
 
 #: frontend/src/metabase/admin/databases/database.js:383
 msgid "Successfully created!"
@@ -440,7 +440,7 @@ msgstr "Zusatzinformationen"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchemaList.jsx:44
 msgid "Find a schema"
-msgstr "Schema Suchen"
+msgstr "Schema suchen"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchemaList.jsx:51
 msgid "{0} schema"
@@ -906,7 +906,7 @@ msgstr "Email"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:203
 msgid "A group is only as good as its members."
-msgstr "Eine Gruppe ist nur so gut, wie seine Mitglieder."
+msgstr "Eine Gruppe ist nur so gut wie ihre Mitglieder."
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:15
 #: frontend/src/metabase/admin/routes.jsx:38
@@ -1217,7 +1217,7 @@ msgstr "Berechtigungen dieser Sammlung"
 
 #: frontend/src/metabase/admin/permissions/containers/PermissionsApp.jsx:53
 msgid "You have unsaved changes"
-msgstr "Du hast ungespeicherte änderungen"
+msgstr "Du hast ungespeicherte Änderungen"
 
 #: frontend/src/metabase/admin/permissions/containers/PermissionsApp.jsx:54
 msgid "Do you want to leave this page and discard your changes?"
@@ -1245,7 +1245,7 @@ msgstr "Die Gruppe \"{0}\" hat anderen Zugriff auf {1} als diese Gruppe, was die
 
 #: frontend/src/metabase/admin/permissions/selectors.js:120
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
-msgstr "Die Gruppe \"{0}\" hat höheren Zugriff als diese, was widerrum ein Überschreiben dieser Einstellung mit sich bringt. Du solltest den Zugriff der Gruppe \"{1}\" auf das Element beschränken oder revidieren."
+msgstr "Die Gruppe \"{0}\" hat höheren Zugriff als diese, was wiederum ein Überschreiben dieser Einstellung mit sich bringt. Du solltest den Zugriff der Gruppe \"{1}\" auf das Element beschränken oder revidieren."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:150
 msgid "Limit"
@@ -1363,7 +1363,7 @@ msgstr "Anmeldung über Google"
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:13
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "Ermöglicht es bestehenden Benutzerkonten, sich, neben ihren Metabase Benutzernamen udn Passwort, mit einem Google-Konto anzumelden, ihrer E-Mail-Adresse entspricht."
+msgstr "Ermöglicht es bestehenden Benutzerkonten, sich, neben ihren Metabase Benutzernamen und Passwort, mit einem Google-Konto anzumelden, ihrer E-Mail-Adresse entspricht."
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:17
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:29
@@ -2052,7 +2052,7 @@ msgstr "Ich habe mein Passwort vermeintlich vergessen"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:102
 msgid "request a new reset email"
-msgstr "benatrage eine neue Email zur Kennwortzurücksetzung"
+msgstr "beantrage eine neue Email zur Kennwortzurücksetzung"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:120
 msgid "Whoops, that's an expired link"
@@ -2089,7 +2089,7 @@ msgstr "Bestätige neues Passwort"
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:191
 #: frontend/src/metabase/user/components/SetUserPassword.jsx:159
 msgid "Make sure it matches the one you just entered"
-msgstr "Stelle sicher, dass es dem bereits Eingebenen entspricht"
+msgstr "Stelle sicher, dass es dem bereits Eingegebenen entspricht"
 
 #: frontend/src/metabase/auth/containers/PasswordResetApp.jsx:216
 msgid "Your password has been reset."
@@ -2181,7 +2181,7 @@ msgstr "Klicke auf"
 
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:9
 msgid "Saved!"
-msgstr "Gespeicher!"
+msgstr "Gespeichert!"
 
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:10
 msgid "Saving failed."
@@ -2433,7 +2433,7 @@ msgstr "Zu Dashboard hinzufügen"
 #: frontend/src/metabase/components/EntityMenu.info.js:49
 #: frontend/src/metabase/components/EntityMenu.info.js:101
 msgid "Download results"
-msgstr "Ergebniss downloaden"
+msgstr "Ergebnis downloaden"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:51
 #: frontend/src/metabase/components/EntityMenu.info.js:103
@@ -2490,7 +2490,7 @@ msgstr "Liste durchsuchen"
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:238
 msgid "Search by {0}"
-msgstr "Such nach {0}"
+msgstr "Suche nach {0}"
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:240
 msgid " or enter an ID"
@@ -2613,7 +2613,7 @@ msgstr "Fragen"
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:28
 #: frontend/src/metabase/routes.jsx:320
 msgid "Pulses"
-msgstr "Impuse"
+msgstr "Pulses"
 
 #: frontend/src/metabase/components/LeftNavPane.jsx:36
 #: frontend/src/metabase/query_builder/components/dataref/DataReference.jsx:86
@@ -2767,7 +2767,7 @@ msgstr "Nichts zu wählen"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:54
 msgid "Sorry, you don’t have permission to see that."
-msgstr "Tut mir leid, du hast keine berechtigung um das zu sehen."
+msgstr "Tut mir leid, du hast keine Berechtigung um das zu sehen."
 
 #: frontend/src/metabase/components/form/FormMessage.jsx:5
 msgid "Unknown error encountered"
@@ -2913,7 +2913,7 @@ msgstr "Suche nach einer Frage"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:339
 msgid "We're not sure if this question is compatible"
-msgstr "Wir sind uns nicht sicher, ob die Frage komptatibel ist"
+msgstr "Wir sind uns nicht sicher, ob die Frage kompatibel ist"
 
 #: frontend/src/metabase/dashboard/components/ArchiveDashboardModal.jsx:43
 msgid "Archive Dashboard"
@@ -3001,7 +3001,7 @@ msgstr "Bewege das Dashboard nach..."
 
 #: frontend/src/metabase/dashboard/components/DashboardMoveModal.jsx:52
 msgid "Dashboard moved to {0}"
-msgstr "Dashboard wurde nach {0} bewegt"
+msgstr "Dashboard wurde nach {0} verschoben"
 
 #: frontend/src/metabase/dashboard/components/ParametersPopover.jsx:82
 msgid "What do you want to filter?"
@@ -3137,7 +3137,7 @@ msgstr "fügte eine Frage zum Dashboard hinzu - "
 #: frontend/src/metabase/home/components/Activity.jsx:206
 #: frontend/src/metabase/home/components/Activity.jsx:221
 msgid "removed a question from the dashboard - "
-msgstr "Löshcte eine Frage vom Dashboard - "
+msgstr "Löschte eine Frage vom Dashboard - "
 
 #: frontend/src/metabase/home/components/Activity.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:238
@@ -3216,11 +3216,11 @@ msgstr "beigetreten!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:529
 msgid "Hmmm, looks like nothing has happened yet."
-msgstr "Hmm, sieht so aus als wäre nichts bis jetzt passiert."
+msgstr "Hmm, sieht so aus als wäre bis jetzt nichts passiert."
 
 #: frontend/src/metabase/home/components/Activity.jsx:532
 msgid "Save a question and get this baby going!"
-msgstr "Speichere eine Frage und brigne damit das Baby zum Laufen!"
+msgstr "Speichere eine Frage und bringe damit das Baby zum Laufen!"
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:19
 msgid "Ask questions and explore"
@@ -3236,7 +3236,7 @@ msgstr "Erstelle deine eigenen Diagramme"
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:31
 msgid "Create line charts, scatter plots, maps, and more."
-msgstr "Erstelle Linien-, Streu-, Karten- oder weitere Diagrame."
+msgstr "Erstelle Linien-, Streu-, Karten- oder weitere Diagramme."
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:41
 msgid "Share what you find"
@@ -3611,7 +3611,7 @@ msgstr "Hallo"
 #: frontend/src/metabase/lib/greeting.js:5
 #: frontend/src/metabase/lib/greeting.js:29
 msgid "How's it going"
-msgstr "Wie ist es gehen"
+msgstr "Wie geht's"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Howdy"
@@ -3631,7 +3631,7 @@ msgstr "Was möchtest du wissen?"
 
 #: frontend/src/metabase/lib/greeting.js:13
 msgid "What's on your mind?"
-msgstr "Was auf dem herzen?"
+msgstr "Was hast du auf dem Herzen?"
 
 #: frontend/src/metabase/lib/greeting.js:14
 msgid "What do you want to find out?"
@@ -4502,7 +4502,7 @@ msgstr "Sieht so aus, als würde der Pulse größer werden"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:120
 msgid "We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team."
-msgstr "Wir empfehlen, die Pulse klein und essentiell zu halten, damit diese für das team verständlich bleiben."
+msgstr "Wir empfehlen, die Pulse klein und essentiell zu halten, damit diese für das Team verständlich bleiben."
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:160
 msgid "Pick your data"
@@ -4873,15 +4873,15 @@ msgstr "Erreicht das Ziel"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal line"
-msgstr "Geht vor die Ziellinie"
+msgstr "Unterschreitet die Ziellinie"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal"
-msgstr "Geht vor das Ziel"
+msgstr "Unterschreitet das Ziel"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:510
 msgid "The first time it crosses, or every time?"
-msgstr "Das erste Mal, wenn es überquert oder dauerhaft?"
+msgstr "Das erste Mal, wenn es überschneidet oder dauerhaft?"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:511
 msgid "The first time it reaches the goal, or every time?"
@@ -4909,7 +4909,7 @@ msgstr "{0} zielbasierte Alarme werden für Diagramme mit mehr als einer Zeile n
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:673
 msgid "results"
-msgstr "Ergebniss"
+msgstr "Ergebnis"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:677
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
@@ -5886,7 +5886,7 @@ msgstr "Alle Metriken ansehen"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:235
 msgid "Segments and tables"
-msgstr "Segmente und tabellen"
+msgstr "Segmente und Tabellen"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:236
 msgid "Tables"
@@ -6206,7 +6206,7 @@ msgstr "ist nur einen Klick entfernt."
 
 #: frontend/src/metabase/setup/components/Setup.jsx:95
 msgid "Welcome to Metabase"
-msgstr "Wilkommen bei Metabase"
+msgstr "Willkommen bei Metabase"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:96
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
@@ -7204,7 +7204,7 @@ msgstr "Ungültiger Wert für Regelbezeichnung"
 #: src/metabase/api/automagic_dashboards.clj
 #, fuzzy
 msgid "value couldn''t be parsed as base64 encoded JSON"
-msgstr "Wert konnte nicht als base64-kodierter JSON zergliedert werden"
+msgstr "Wert konnte nicht als base64-kodierter JSON geparsed werden"
 
 #: src/metabase/api/automagic_dashboards.clj
 msgid "Invalid entity type"
@@ -7363,7 +7363,7 @@ msgstr "Google Auth Token erfolgreich authentifiziert für: {0} {1}"
 
 #: src/metabase/api/setup.clj
 msgid "Add a database"
-msgstr "Fügen sue eine Übersicht"
+msgstr "Fügen sie eine Übersicht"
 
 #: src/metabase/api/setup.clj
 msgid "Get connected"
@@ -7855,19 +7855,19 @@ msgstr "Du kannst das Lösen dieser Sperren erzwingen, indem du ' java-jar Metab
 
 #: src/metabase/db.clj
 msgid "Checking if Database has unrun migrations..."
-msgstr "Prüfe ob Datenbank Migrierungen benötigt..."
+msgstr "Prüfe ob Datenbank-Migrationen benötigt..."
 
 #: src/metabase/db.clj
 msgid "Database has unrun migrations. Waiting for migration lock to be cleared..."
-msgstr "Datenbank hat unverarbeitete Migrierungen. Warte auf bereinigung des Migrations-Locks..."
+msgstr "Datenbank hat unverarbeitete Migration. Warte auf Bereinigung des Migrations-Locks..."
 
 #: src/metabase/db.clj
 msgid "Migration lock is cleared. Running migrations..."
-msgstr "Migrations-Lock bereinigt. Verarbeite Migrierungen..."
+msgstr "Migrations-Lock bereinigt. Verarbeite Migrationen..."
 
 #: src/metabase/db.clj
 msgid "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."
-msgstr "Migrations-Lock bereinigt, jedoch keine Migrierungen mehr zu verarbeiten! Migrierungen wurden von einer anderen Instanz verarbeitet."
+msgstr "Migrations-Lock bereinigt, jedoch keine Migrationen mehr zu verarbeiten!  Migrationen wurden von einer anderen Instanz verarbeitet."
 
 #. Set up liquibase and let it do its thing
 #: src/metabase/db.clj
@@ -8022,7 +8022,7 @@ msgstr "SMTP Passwort."
 
 #: src/metabase/email.clj
 msgid "The port your SMTP server uses for outgoing emails."
-msgstr "Der Port den dein SMTP-Servers verwendet um E-Mails zu versenden."
+msgstr "Der Port den dein SMTP-Server verwendet um E-Mails zu versenden."
 
 #: src/metabase/email.clj
 msgid "SMTP secure connection protocol. (tls, ssl, starttls, or none)"
@@ -8180,7 +8180,7 @@ msgstr "Fehler beim Starten von MetaBot:"
 
 #: src/metabase/metabot.clj
 msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "MetaBot WebSocket ist geschlossen. Wiederverbinde."
+msgstr "MetaBot WebSocket ist geschlossen. Verbinde erneut."
 
 #: src/metabase/metabot.clj
 msgid "Error connecting websocket:"
@@ -8414,7 +8414,7 @@ msgstr "Ungültiger Abfrage-Typ: {0}"
 
 #: src/metabase/models/query_execution.clj
 msgid "You cannot update a QueryExecution!"
-msgstr "Du kannst keine Abfrage-Ausführung aktualiseren!"
+msgstr "Du kannst keine Abfrage-Ausführung aktualisieren!"
 
 #: src/metabase/models/revision.clj
 msgid "You cannot update a Revision!"
@@ -8489,7 +8489,7 @@ msgstr "Weitere Informationen findest du auf https://Metabase.com/docs/Latest/Op
 
 #: src/metabase/plugins.clj
 msgid "(If you're already running Metabase this way, you can ignore this message.)"
-msgstr "(wenn du Metabase bereits auf diese Weise betreibest, kannst du diese Nachricht ignorieren.)"
+msgstr "(wenn du Metabase bereits auf diese Weise betreibst, kannst du diese Nachricht ignorieren.)"
 
 #: src/metabase/public_settings.clj
 msgid "Identify when new versions of Metabase are available."
@@ -8497,7 +8497,7 @@ msgstr "Erkenne wenn neue Versionen von Metabase zur Verfügung stehen."
 
 #: src/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
-msgstr "Informationen über verfügbare Metabaseversionen."
+msgstr "Informationen über verfügbare Metabase-Versionen."
 
 #: src/metabase/public_settings.clj
 msgid "The name used for this instance of Metabase."
@@ -8509,7 +8509,7 @@ msgstr "Die Basis-URL dieser Metabase-Instanz. Bspw.: \"http://metabase.meine-fi
 
 #: src/metabase/public_settings.clj
 msgid "The default language for this Metabase instance."
-msgstr "Die Standardsprache für diese Metabaseinstanz."
+msgstr "Die Standardsprache für diese Metabase-Instanz."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
@@ -8569,7 +8569,7 @@ msgstr "Wenn du die Standard-Klasseneinteilung verwendest und keine Anzahl an Kl
 
 #: src/metabase/public_settings.clj
 msgid "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees)."
-msgstr "Wenn du die Standard-Klasseneinteilung für ein Feld vom Typ Koordinate (wie z.B. Längengrad und Breitengrad) verwendest, wird diese Nummer (in Grad) als Standartwert verwendet."
+msgstr "Wenn du die Standard-Klasseneinteilung für ein Feld vom Typ Koordinate (wie z.B. Längengrad und Breitengrad) verwendest, wird diese Nummer (in Grad) als Standardwert verwendet."
 
 #: src/metabase/public_settings/metastore.clj
 msgid "Unable to validate token."
@@ -8665,7 +8665,7 @@ msgstr "\"{0}\" ohne abschließendes \"{1}\" in Abfrage \"{2}\" gefunden"
 
 #: src/metabase/query_processor/middleware/parameters/sql.clj
 msgid "Unable to substitute ''{0}'': param not specified.nFound: {1}"
-msgstr "Unmöglich \"{0}\" zu ersetzen: Parameter ist nicht spezifiziert.nGefdunen: {1}"
+msgstr "Unmöglich \"{0}\" zu ersetzen: Parameter ist nicht spezifiziert.nGefunden: {1}"
 
 #: src/metabase/query_processor/middleware/permissions.clj
 msgid "You do not have permissions to view Card {0}."
@@ -9768,7 +9768,7 @@ msgstr "WARNUNG: Ein Datum kann nicht mehreren diskreten Intervallen angehören,
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "Ignoring these intervals: {0}"
-msgstr "Ignoriere diese Intrervalle: {0}"
+msgstr "Ignoriere diese Intervalle: {0}"
 
 #. We should never get to this point since the all non-string negations should get automatically rewritten
 #. by the query expander.
