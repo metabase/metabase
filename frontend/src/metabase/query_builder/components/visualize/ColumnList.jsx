@@ -1,5 +1,7 @@
 import React from "react";
 
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 
 import { formatColumn } from "metabase/lib/formatting";
@@ -10,33 +12,46 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import ColumnDragSource from "./dnd/ColumnDragSource";
 
 const ColumnList = ({ style, className, query, rawSeries }) => {
-  const computedSettings = rawSeries
-    ? getComputedSettingsForSeries(rawSeries)
-    : {};
-  const cols = computedSettings["_column_list"] || [];
-
-  return (
-    <div className={className} style={style}>
-      <div>
-        {!rawSeries ? (
-          <div className="mb2 text-centered">Loading...</div>
-        ) : cols.length === 0 ? (
-          <div className="mb2 text-centered">No columns left</div>
-        ) : (
-          cols.map(col => {
-            return (
-              <ColumnDragSource column={col}>
-                <div className="mx2 mb2 p1 px2 bg-light rounded h4 text-medium flex align-center">
-                  <Icon name={getIconForField(col)} className="mr1" />
-                  {formatColumn(col)}
-                </div>
-              </ColumnDragSource>
-            );
-          })
-        )}
+  if (!rawSeries) {
+    return (
+      <div style={style} className={cx(className, "text-centered")}>
+        Loading...
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (query.isBareRows()) {
+    const computedSettings = rawSeries
+      ? getComputedSettingsForSeries(rawSeries)
+      : {};
+    const cols = computedSettings["_column_list"] || [];
+    return (
+      <div className={className} style={style}>
+        {cols.map(col => (
+          <ColumnDragSource column={col}>
+            <div className="mx2 mb2 p1 px2 bg-light rounded h4 text-medium flex align-center">
+              <Icon name={getIconForField(col)} className="mr1" />
+              {formatColumn(col)}
+            </div>
+          </ColumnDragSource>
+        ))}
+      </div>
+    );
+  } else {
+    const dimensionOptions = query.dimensionOptions();
+    return (
+      <div className={className} style={style}>
+        {dimensionOptions.dimensions.map(dimension => (
+          <ColumnDragSource dimension={dimension}>
+            <div className="mx2 mb2 p1 px2 bg-light rounded h4 text-medium flex align-center">
+              <Icon name={dimension.field().icon()} className="mr1" />
+              {dimension.displayName()}
+            </div>
+          </ColumnDragSource>
+        ))}
+      </div>
+    );
+  }
 };
 
 export default ColumnList;

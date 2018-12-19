@@ -13,7 +13,7 @@ export function getColumnWells(
     bottom: [],
   };
 
-  const hasMoreColumns = settings["_column_list"].length > 0;
+  const hasMoreColumns = true; //settings["_column_list"].length > 0;
 
   for (const [metricIndex, name] of settings["graph.metrics"].entries()) {
     const columnIndex = _.findIndex(cols, col => col.name === name);
@@ -21,6 +21,7 @@ export function getColumnWells(
       const column = cols[columnIndex];
       wells.left.push({
         column: column,
+        // dimension: query.dimensionForColumn(_.findWhere(cols, { name }));
         color: colors["accent1"],
         onRemove: ({ onChangeSettings }) => {
           removeRawMetric(metricIndex, { settings, onChangeSettings });
@@ -67,25 +68,64 @@ export function getColumnWells(
   if (hasMoreColumns) {
     wells.left.push({
       placeholder: wells.left.length === 0 ? "y" : "+",
-      canAdd: settings["graph._metric_filter"],
-      onAdd: (column, { onChangeSettings }) => {
-        addRawMetric(column, { settings, onChangeSettings });
+      canAdd: ({ column, dimension }) =>
+        settings["graph._metric_filter"](column || dimension.field()),
+      onAdd: (
+        { column, dimension },
+        { onChangeSettings, query, onChangeDatasetQuery },
+      ) => {
+        if (column) {
+          addRawMetric(column, { settings, onChangeSettings });
+        } else if (dimension) {
+          addSummarizedMetric(dimension, {
+            settings,
+            onChangeSettings,
+            query,
+            onChangeDatasetQuery,
+          });
+        }
       },
     });
     if (wells.bottom.length === 0) {
       wells.bottom.push({
         placeholder: "x",
-        canAdd: settings["graph._dimension_filter"],
-        onAdd: (column, { onChangeSettings }) => {
-          addRawDimension(column, { settings, onChangeSettings });
+        canAdd: ({ column, dimension }) =>
+          settings["graph._dimension_filter"](column || dimension.field()),
+        onAdd: (
+          { column, dimension },
+          { onChangeSettings, query, onChangeDatasetQuery },
+        ) => {
+          if (column) {
+            addRawDimension(column, { settings, onChangeSettings });
+          } else if (dimension) {
+            addSummarizedDimension(dimension, {
+              settings,
+              onChangeSettings,
+              query,
+              onChangeDatasetQuery,
+            });
+          }
         },
       });
     } else if (wells.bottom.length === 1) {
       wells.bottom.push({
         placeholder: "Series breakout",
-        canAdd: settings["graph._dimension_filter"],
-        onAdd: (column, { onChangeSettings }) => {
-          addRawDimension(column, { settings, onChangeSettings });
+        canAdd: ({ column, dimension }) =>
+          settings["graph._dimension_filter"](column || dimension.field()),
+        onAdd: (
+          { column, dimension },
+          { onChangeSettings, query, onChangeDatasetQuery },
+        ) => {
+          if (column) {
+            addRawDimension(column, { settings, onChangeSettings });
+          } else if (dimension) {
+            addSummarizedDimension(dimension, {
+              settings,
+              onChangeSettings,
+              query,
+              onChangeDatasetQuery,
+            });
+          }
         },
       });
     }
@@ -123,13 +163,74 @@ function removeRawDimension(index, { settings, onChangeSettings }) {
   });
 }
 
-function addSummarizedMetric() {}
+async function addSummarizedMetric(
+  dimension,
+  { query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  const aggregation = dimension.defaultAggregation();
+  const name = query.formatExpression(aggregation);
+  console.log("addSummarizedMetric", name, aggregation);
+  await query
+    .addAggregation(["named", aggregation, name])
+    .update(q => onChangeDatasetQuery(q, true));
+  onChangeSettings({
+    "graph.metrics": settings["graph.metrics"].concat([name]),
+  });
+}
 
-function addBreakoutDimension() {}
+function removeSummarizedMetric(
+  index,
+  { series, query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  const name = settings["graph.metrics"][index];
+  console.log("removeSummarizedMetric", name, index);
+  // leave aggregation in query so it can easily be added back in, only remove from settings
+  onChangeSettings({
+    "graph.metrics": settings["graph.metrics"].filter((n, i) => i !== index),
+  });
+}
 
-function removeSummarizedMetric() {}
+async function addSummarizedDimension(
+  dimension,
+  { series, query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  const breakout = dimension.defaultBreakout();
+  const name = dimension.field().name;
+  console.log("addSummarizedDimension", name, breakout);
+  await query.addBreakout(breakout).update(q => onChangeDatasetQuery(q, true));
+  onChangeSettings({
+    "graph.dimensions": settings["graph.dimensions"].concat([name]),
+  });
+}
 
-function removeBreakoutDimension() {}
+async function removeSummarizedDimension(
+  index,
+  { series, query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  const name = settings["graph.dimensions"][index];
+  console.log("removeSummarizedDimension", name, index);
+  // remove breakout from query and settings
+  for (const [index, dimension] of query.breakoutDimensions()) {
+    if (dimension.field().name === name) {
+      console.log("removing", name);
+      await query.removeBreakout(index).update(onChangeDatasetQuery);
+      break;
+    }
+  }
+  onChangeSettings({
+    "graph.dimensions": settings["graph.dimensions"].filter(
+      (n, i) => i !== index,
+    ),
+  });
+}
+
+async function changeSummarizedAggregation(
+  index,
+  agg,
+  { series, query, settings, onChangeSettings, onChangeDatasetQuery },
+) {
+  alert("nyi");
+}
 
 async function switchToSummarized(
   index,
@@ -146,7 +247,8 @@ async function switchToSummarized(
       if (metricIndex === index) {
         aggregation[0] = agg.short;
       }
-      query = query.addAggregation(aggregation);
+      const name = query.formatExpression(aggregation);
+      query = query.addAggregation(["named", aggregation, name]);
     }
   }
 
@@ -224,7 +326,10 @@ const SummarizePopover = props => {
                     switchToSummarized(metricIndex, agg, props);
                     onClose();
                   }
-                : () => alert("nyi")
+                : () => {
+                    changeSummarizedAggregation(metricIndex, agg, props);
+                    onClose();
+                  }
             }
           >
             {agg.name}

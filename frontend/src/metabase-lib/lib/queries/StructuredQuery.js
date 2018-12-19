@@ -343,10 +343,7 @@ export default class StructuredQuery extends AtomicQuery {
     if (NamedClause.isNamed(aggregation)) {
       return NamedClause.getName(aggregation);
     } else if (AggregationClause.isCustom(aggregation)) {
-      return formatExpression(aggregation, {
-        tableMetadata: this.tableMetadata(),
-        customFields: this.expressions(),
-      });
+      return this.formatExpression(aggregation);
     } else if (AggregationClause.isMetric(aggregation)) {
       const metricId = AggregationClause.getMetric(aggregation);
       const metric = this._metadata.metrics[metricId];
@@ -370,6 +367,13 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
     return null;
+  }
+
+  formatExpression(expression) {
+    return formatExpression(expression, {
+      tableMetadata: this.tableMetadata(),
+      customFields: this.expressions(),
+    })
   }
 
   /**

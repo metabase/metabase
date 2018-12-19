@@ -118,8 +118,8 @@ const Well = ({ well, vertical, actionProps }) => {
   const { query } = actionProps;
   return (
     <ColumnDropTarget
-      canDrop={column => well.canAdd && well.canAdd(column)}
-      onDrop={column => well.onAdd(column, actionProps)}
+      canDrop={item => well.canAdd && well.canAdd(item)}
+      onDrop={item => well.onAdd(item, actionProps)}
     >
       {({ hovered, highlighted }) => {
         const trigger = (

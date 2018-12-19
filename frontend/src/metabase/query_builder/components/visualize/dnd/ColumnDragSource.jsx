@@ -6,7 +6,10 @@ import { DragTypes } from ".";
 
 const columnSource = {
   beginDrag(props) {
-    return { column: props.column };
+    return {
+      column: props.column,
+      dimension: props.dimension,
+    };
   },
 };
 

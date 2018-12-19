@@ -32,13 +32,13 @@ const ColumnDropTarget = DropTarget(
     drop(props, monitor, component) {
       const item = monitor.getItem();
       if (props.onDrop && item) {
-        props.onDrop(item.column);
+        props.onDrop(item);
       }
     },
     canDrop(props, monitor) {
       const item = monitor.getItem();
       if (props.canDrop && item) {
-        return props.canDrop(item.column);
+        return props.canDrop(item);
       }
       return true;
     },
