@@ -43,7 +43,7 @@ import {
   getTransformedSeries,
   getResultsMetadata,
   getFirstQueryResult,
-  getQBMode
+  getQBMode,
 } from "./selectors";
 
 import {
@@ -72,14 +72,14 @@ export const QB_MODE_PRESENT = "present";
 export const QB_MODE_VISUALIZE = "visualize";
 export const QB_MODE_WORKSHEET = "worksheet";
 
-type QBMode = "present" | "visualize" | "worksheet"
+type QBMode = "present" | "visualize" | "worksheet";
 
 type UiControls = {
   isEditing?: boolean,
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   isShowingTutorial?: boolean,
-  mode?: QBMode
+  mode?: QBMode,
 };
 
 const getTemplateTagCount = (question: Question) => {
@@ -871,8 +871,8 @@ export const setDatasetQuery = createThunkAction(
   (datasetQuery, run = false) => {
     return async (dispatch, getState) => {
       const question = getQuestion(getState());
-      await dispatch(setQuestion(question.setDatasetQuery(datasetQuery), run))
-    }
+      await dispatch(setQuestion(question.setDatasetQuery(datasetQuery), run));
+    };
   },
 );
 
@@ -1306,11 +1306,12 @@ export const getDisplayTypeForCard = (card, queryResults) => {
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (card, queryResults) => {
   return async (dispatch, getState) => {
-    const qbMode = getQBMode(getState())
+    const qbMode = getQBMode(getState());
     // do not automatically change `display` in viz mode
-    const cardDisplay = qbMode === QB_MODE_VISUALIZE ?
-      card.display :
-      getDisplayTypeForCard(card, queryResults)
+    const cardDisplay =
+      qbMode === QB_MODE_VISUALIZE
+        ? card.display
+        : getDisplayTypeForCard(card, queryResults);
     dispatch.action(QUERY_COMPLETED, {
       card,
       cardDisplay,

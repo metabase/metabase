@@ -45,7 +45,7 @@ export default class ColumnWells extends React.Component {
     }
 
     // TODO: push this binding up to QueryBuilder
-    const boundQuestion = question.bindUpdate(setQuestion);
+    const boundQuestion = question.bindUpdate(q => setQuestion(q, true));
 
     const actionProps = {
       settings: computedSettings,

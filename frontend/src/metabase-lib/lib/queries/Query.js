@@ -7,7 +7,7 @@ import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import { memoize } from "metabase-lib/lib/utils";
 
-type QueryUpdateFn = (datasetQuery: DatasetQuery) => void
+type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)

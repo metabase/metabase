@@ -380,7 +380,7 @@ export default class StructuredQuery extends AtomicQuery {
     return formatExpression(expression, {
       tableMetadata: this.tableMetadata(),
       customFields: this.expressions(),
-    })
+    });
   }
 
   /**
@@ -585,12 +585,7 @@ export default class StructuredQuery extends AtomicQuery {
       for (const [index, aggregation] of this.aggregations().entries()) {
         if (Q_deprecated.canSortByAggregateField(this.query(), index)) {
           sortOptions.dimensions.push(
-            new AggregationDimension(
-              null,
-              [index],
-              this._metadata,
-              this,
-            ),
+            new AggregationDimension(null, [index], this._metadata, this),
           );
           sortOptions.count++;
         }
@@ -762,6 +757,8 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
+  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
+  // NOTE: these will not have the correct columnName() if there are duplicates
   columnDimensions() {
     const aggregations = this.aggregationDimensions();
     const breakouts = this.breakoutDimensions();
@@ -786,8 +783,28 @@ export default class StructuredQuery extends AtomicQuery {
     return dimensions;
   }
 
+  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
+  columnNames() {
+    // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
+    const nameCounts = new Map();
+    return this.columnDimensions().map(dimension => {
+      let name = dimension.columnName();
+      if (nameCounts.has(name)) {
+        const count = nameCounts.get(name) + 1;
+        nameCounts.set(name, count);
+        return `${name}_${count}`;
+      } else {
+        return name;
+      }
+    });
+  }
+
   columns() {
-    return this.columnDimensions().map(dimension => dimension.column());
+    const names = this.columnNames();
+    return this.columnDimensions().map((dimension, index) => ({
+      ...dimension.column(),
+      name: names[index],
+    }));
   }
 
   fieldReferenceForColumn(column) {
@@ -798,9 +815,15 @@ export default class StructuredQuery extends AtomicQuery {
     } else if (column.expression_name != null) {
       return ["expression", column.expression_name];
     } else if (column.source === "aggregation") {
-      // FIXME: aggregations > 0?
-      return ["aggregation", 0];
+      const aggregationIndex = _.findIndex(
+        this.aggregationDimensions(),
+        dimension => dimension.columnName() === column.name,
+      );
+      if (aggregationIndex >= 0) {
+        return ["aggregation", aggregationIndex];
+      }
     }
+    return null;
   }
 
   parseFieldReference(fieldRef): ?Dimension {

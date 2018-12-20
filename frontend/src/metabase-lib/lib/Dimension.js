@@ -246,6 +246,13 @@ export default class Dimension {
   }
 
   /**
+   * The `name` appearing in the column object (except duplicates would normally be suffxied)
+   */
+  columnName(): string {
+    return this.field().name;
+  }
+
+  /**
    * Valid filter operators on this dimension
    */
   operators() {
@@ -577,6 +584,10 @@ export class ExpressionDimension extends Dimension {
     return this._args[0];
   }
 
+  columnName() {
+    return this._args[0];
+  }
+
   icon(): IconName {
     // TODO: eventually will need to get the type from the return type of the expression
     return "int";
@@ -626,6 +637,22 @@ export class AggregationDimension extends Dimension {
       this._query && this._query.aggregations()[this.aggregationIndex()];
     if (aggregation) {
       return aggregation[0] === "named" ? aggregation[1] : aggregation;
+    }
+    return null;
+  }
+
+  columnName() {
+    const aggregation =
+      this._query && this._query.aggregations()[this.aggregationIndex()];
+    if (aggregation) {
+      // FIXME: query lib
+      if (aggregation[0] === "named") {
+        return aggregation[2];
+      } else {
+        const short = aggregation[0];
+        // NOTE: special case for "distinct"
+        return short === "distinct" ? "count" : short;
+      }
     }
     return null;
   }

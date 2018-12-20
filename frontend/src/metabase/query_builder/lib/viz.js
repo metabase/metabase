@@ -3,6 +3,7 @@ import React from "react";
 import _ from "underscore";
 import colors from "metabase/lib/colors";
 import cx from "classnames";
+import { assoc } from "icepick";
 
 export function getColumnWells(
   [{ card: { dataset_query: datasetQuery }, data: { cols } }],
@@ -250,19 +251,29 @@ async function addSummarizedDimension(
   });
 }
 
+function findBreakoutIndex(query, name) {
+  return _.findIndex(query.breakoutDimensions(), d => d.columnName() === name);
+}
+
+function findAggregationIndex(query, name) {
+  return _.findIndex(
+    query.aggregationDimensions(),
+    d => d.columnName() === name,
+  );
+}
+
 async function removeSummarizedDimension(
   index,
   { series, query, settings, onChangeSettings, onChangeDatasetQuery },
 ) {
   const name = settings["graph.dimensions"][index];
-  console.log("removeSummarizedDimension", name, index);
   // remove breakout from query and settings
-  for (const [index, dimension] of query.breakoutDimensions().entries()) {
-    if (dimension.field().name === name) {
-      console.log("removing", name);
-      await query.removeBreakout(index).update(onChangeDatasetQuery);
-      break;
-    }
+  const breakoutIndex = findBreakoutIndex(query, name);
+  console.log("removeSummarizedDimension", name, index, breakoutIndex);
+  if (breakoutIndex >= 0) {
+    await query
+      .removeBreakout(index)
+      .update(q => onChangeDatasetQuery(q, true));
   }
   onChangeSettings({
     "graph.dimensions": settings["graph.dimensions"].filter(
@@ -272,21 +283,38 @@ async function removeSummarizedDimension(
 }
 
 async function changeSummarizedAggregation(
-  index,
+  metricIndex,
   agg,
   { series, query, settings, onChangeSettings, onChangeDatasetQuery },
 ) {
-  alert("nyi");
+  const name = settings["graph.metrics"][metricIndex];
+  const aggregationIndex = findAggregationIndex(query, name);
+  if (aggregationIndex >= 0) {
+    let aggregation = query.aggregations()[aggregationIndex];
+    // FIXME: query lib
+    if (aggregation[0] === "named") {
+      aggregation = aggregation[1];
+    }
+    aggregation = assoc(aggregation, 0, agg.short);
+    const newName = query.formatExpression(aggregation);
+    await query
+      .updateAggregation(aggregationIndex, ["named", aggregation, newName])
+      .question()
+      .updateSettings({
+        "graph.metrics": assoc(settings["graph.metrics"], metricIndex, newName),
+      })
+      .update(null, true);
+  }
 }
 
 async function switchToSummarized(
-  index,
+  metricIndex,
   agg,
   { series, query, settings, onChangeSettings, onChangeDatasetQuery },
 ) {
   const [{ data: { cols } }] = series;
 
-  for (const [metricIndex, name] of settings["graph.metrics"].entries()) {
+  for (const [index, name] of settings["graph.metrics"].entries()) {
     const dimension = query.dimensionForColumn(_.findWhere(cols, { name }));
     if (dimension) {
       const aggregation = dimension.defaultAggregation();
