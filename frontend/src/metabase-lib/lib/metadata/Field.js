@@ -4,6 +4,7 @@ import Base from "./Base";
 import Table from "./Table";
 
 import _ from "underscore";
+import moment from "moment";
 
 import { FieldIDDimension } from "../Dimension";
 
@@ -138,9 +139,33 @@ export default class Field extends Base {
   /**
    * Returns a default breakout MBQL clause for this field
    */
-  getDefaultBreakout = () => {
+  getDefaultBreakout() {
     return this.dimension().defaultBreakout();
-  };
+  }
+
+  /**
+   * Returns a default date/time unit for this field
+   */
+  getDefaultDateTimeUnit() {
+    try {
+      const fingerprint = this.fingerprint.type["type/DateTime"];
+      const days = moment(fingerprint.latest).diff(
+        moment(fingerprint.earliest),
+        "day",
+      );
+      if (days < 1) {
+        return "minute";
+      } else if (days < 31) {
+        return "day";
+      } else if (days < 365) {
+        return "week";
+      } else {
+        return "month";
+      }
+    } catch (e) {
+      return "day";
+    }
+  }
 
   /**
    * Returns the remapped field, if any

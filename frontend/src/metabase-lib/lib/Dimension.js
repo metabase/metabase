@@ -131,13 +131,17 @@ export default class Dimension {
   defaultDimension(DimensionTypes: any[] = DIMENSION_TYPES): ?Dimension {
     const defaultDimensionOption = this.field().default_dimension_option;
     if (defaultDimensionOption) {
-      return this._dimensionForOption(defaultDimensionOption);
-    } else {
-      for (const DimensionType of DimensionTypes) {
-        const defaultDimension = DimensionType.defaultDimension(this);
-        if (defaultDimension) {
-          return defaultDimension;
-        }
+      const dimension = this._dimensionForOption(defaultDimensionOption);
+      // NOTE: temporarily disable for DatetimeFieldDimension until backend automatically picks appropriate bucketing
+      if (!(dimension instanceof DatetimeFieldDimension)) {
+        return dimension;
+      }
+    }
+
+    for (const DimensionType of DimensionTypes) {
+      const defaultDimension = DimensionType.defaultDimension(this);
+      if (defaultDimension) {
+        return defaultDimension;
       }
     }
 
@@ -478,7 +482,9 @@ export class DatetimeFieldDimension extends FieldDimension {
 
   static defaultDimension(parent: Dimension): ?Dimension {
     if (isFieldDimension(parent) && parent.field().isDate()) {
-      return new DatetimeFieldDimension(parent, ["day"]);
+      return new DatetimeFieldDimension(parent, [
+        parent.field().getDefaultDateTimeUnit(),
+      ]);
     }
     return null;
   }
