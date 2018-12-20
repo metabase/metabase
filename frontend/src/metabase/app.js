@@ -43,6 +43,9 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
+import { hello } from "metabase-cljs/metabase.foo";
+console.log(hello("world"))
+
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 

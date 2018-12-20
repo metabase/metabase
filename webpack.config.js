@@ -19,8 +19,7 @@ var chevrotain = require("chevrotain");
 var allTokens = require("./frontend/src/metabase/lib/expressions/tokens")
   .allTokens;
 
-var SRC_PATH = __dirname + "/frontend/src/metabase";
-var LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
+var SRC_PATH = __dirname + "/frontend/src";
 var TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 var BUILD_PATH = __dirname + "/resources/frontend_client";
 
@@ -42,7 +41,7 @@ var CSS_CONFIG = {
 };
 
 var config = (module.exports = {
-  context: SRC_PATH,
+  context: SRC_PATH+"/metabase",
 
   // output a bundle for the app JS and a bundle for styles
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
@@ -65,12 +64,12 @@ var config = (module.exports = {
     rules: [
       {
         test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
+        exclude: /node_modules|metabase-cljs/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
         test: /\.(js|jsx)$/,
-        exclude: /node_modules|\.spec\.js/,
+        exclude: /node_modules|metabase-cljs|\.spec\.js/,
         use: [
           {
             loader: "eslint-loader",
@@ -99,10 +98,11 @@ var config = (module.exports = {
   resolve: {
     extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css"],
     alias: {
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
+      metabase: SRC_PATH + "/metabase",
+      "metabase-lib": SRC_PATH + "/metabase-lib",
+      "metabase-cljs": SRC_PATH + "/metabase-cljs",
       __support__: TEST_SUPPORT_PATH,
-      style: SRC_PATH + "/css/core/index",
+      style: SRC_PATH + "/metabase/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
       // NOTE @kdoh - 7/24/18
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
@@ -197,7 +197,7 @@ if (NODE_ENV === "hot") {
   config.module.rules.unshift({
     test: /\.jsx$/,
     // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
-    exclude: /node_modules|DragLayer\.jsx$/,
+    exclude: /node_modules|metabase-cljs|DragLayer\.jsx$/,
     use: [
       // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
       // because newer versions would require us to upgrade to react-router v4 and possibly deal with

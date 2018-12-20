@@ -58,3 +58,5 @@ bin/node_modules/
 *.trace.db
 /backend-checksums.txt
 .vscode
+.shadow-cljs
+frontend/src/metabase-cljs
