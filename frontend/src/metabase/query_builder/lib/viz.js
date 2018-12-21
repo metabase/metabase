@@ -1,9 +1,11 @@
 import React from "react";
 
-import _ from "underscore";
-import colors from "metabase/lib/colors";
 import cx from "classnames";
 import { assoc } from "icepick";
+import _ from "underscore";
+
+import colors from "metabase/lib/colors";
+import { stripNamedClause } from "metabase/lib/query/named"
 
 export function getColumnWells(
   [{ card: { dataset_query: datasetQuery }, data: { cols } }],
@@ -300,11 +302,7 @@ async function changeSummarizedAggregation(
   const name = settings["graph.metrics"][metricIndex];
   const aggregationIndex = findAggregationIndex(query, name);
   if (aggregationIndex >= 0) {
-    let aggregation = query.aggregations()[aggregationIndex];
-    // FIXME: query lib
-    if (aggregation[0] === "named") {
-      aggregation = aggregation[1];
-    }
+    let aggregation = stripNamedClause(query.aggregations()[aggregationIndex]);
     aggregation = assoc(aggregation, 0, agg.short);
     const newName = query.formatExpression(aggregation);
     await query
