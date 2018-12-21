@@ -20,12 +20,11 @@
   "Load serialized metabase instance as created by `dump` command from directory `path`."
   [mode path]
   (mdb/setup-db-if-needed!)
-  (load/with-upsert-statistics
-    (let [context {:mode mode}]
-      (load/load path context Database)
-      (load/load path context Collection)
-      (load/load-settings path context)
-      (load/load-dependencies path context))))
+  (let [context {:mode mode}]
+    (load/load path context Database)
+    (load/load path context Collection)
+    (load/load-settings path context)
+    (load/load-dependencies path context)))
 
 (defn- dump-all
   [path entities]

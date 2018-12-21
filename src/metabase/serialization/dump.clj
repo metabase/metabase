@@ -208,10 +208,7 @@
 
 (defmethod dump (type Field)
   [path field]
-  (spit-entity path :file (merge field
-                                 (-> field
-                                     :values
-                                     (u/select-non-nil-keys [:values :human_readable_values])))))
+  (spit-entity path :file (update field :values u/select-non-nil-keys [:values :human_readable_values])))
 
 (defmethod dump (type Segment)
   [path segment]

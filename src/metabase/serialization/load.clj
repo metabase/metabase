@@ -35,18 +35,15 @@
   (:refer-clojure :exclude [load]))
 
 (defn- slurp-dir
-  [f path]
+  [path]
   (doall
    (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
          :when (-> file (.getName) (str/ends-with? ".yaml"))]
-     (f (yaml/from-file file true)))))
+     (yaml/from-file file true))))
 
-(defn- slurp-one-id
-  [f path]
-  (some->> path
-           (slurp-dir f)
-           first
-           u/get-id))
+(defn- slurp-many
+  [paths]
+  (apply concat (map slurp-dir paths)))
 
 (defn- list-dirs
   [path]
@@ -73,6 +70,7 @@
    PulseChannel        [:pulse_id :channel_type :details]
    Card                [:name :collection_id]})
 
+;; This could potentially be unrolled into one giant select
 (defn- select-identical
   [model entity]
   (->> model
@@ -84,57 +82,50 @@
                        v)))
        (m/mapply db/select-one model)))
 
-(def ^:dynamic *upsert-statistics*
-  "Accumulator for statistics on what we updated/skipped/added."
-  (atom {}))
+(defn- name-for-logging
+  [{:keys [name id]}]
+  (if name
+    (format "\"%s\" (ID %s)" name id)
+    (str "ID " id)))
 
-(defmacro with-upsert-statistics
-  "Collect and return statistics about what was updated/skipped/added."
-  [& body]
-  `(binding [*upsert-statistics* (atom {})]
-     ~@body
-     @*upsert-statistics*))
+(defn- maybe-upsert-many!
+  [mode model entities]
+  (let [same?                        (comp nil? second diff/diff)
+        {:keys [update insert skip]} (->> entities
+                                          (map-indexed (fn [position entity]
+                                                         [position
+                                                          entity
+                                                          (select-identical model entity)]))
+                                          (group-by (fn [[_ entity existing]]
+                                                      (case mode
+                                                        :update (cond
+                                                                  (same? existing entity) :skip
+                                                                  existing                :update
+                                                                  :else                   :insert)
+                                                        :skip   (if existing
+                                                                  :skip
+                                                                  :insert)))))]
 
-(defn- maybe-upsert!
-  [mode model entity]
-  (let [existing (select-identical model entity)]
-    (case mode
-      :update (cond
-                (= (select-keys existing (keys entity)) (into {} entity))
-                existing
+    (doseq [[_ entity _] insert]
+      (log/info (trs "Inserting {0} {1}" (:name model) (name-for-logging entity))))
+    (doseq [[_ _ existing] skip]
+      (if (= mode :skip)
+        (log/info (trs "{0} {1} already exists -- skipping"
+                       (:name model) (name-for-logging existing)))
+        (log/info (trs "Skipping {0} {1} (nothing to update)"
+                       (:name model) (name-for-logging existing)))))
+    (doseq [[_ _ existing] update]
+      (log/info (trs "Updating {0} {1}" (:name model) (name-for-logging existing))))
 
-                existing
-                (do
-                  (log/infof (str (trs "Updating {0} \"{1}\" (ID {2})"
-                                       (:name model)
-                                       ((some-fn :email :name) existing)
-                                       (u/get-id existing))))
-                  (swap! *upsert-statistics* update-in [:update (:name model)] (fnil inc 0))
-                  (db/update! model (u/get-id existing) entity)
-                  (merge existing entity))
-
-                :else
-                (do
-                  (log/infof (str (trs "Adding {0} \"{1}\""
-                                       (:name model)
-                                       ((some-fn :email :name) entity))))
-                  (swap! *upsert-statistics* update-in [:insert (:name model)] (fnil inc 0))
-                  (db/insert! model entity)))
-
-      :skip   (if existing
-                (do
-                  (log/infof (str (trs "{0} \"{1}\" (ID {2}) already exists -- skipping"
-                                       (:name model)
-                                       ((some-fn :email :name) existing)
-                                       (u/get-id existing))))
-                  (swap! *upsert-statistics* update-in [:skip (:name model)] (fnil inc 0))
-                  existing)
-                (do
-                  (log/infof (str (trs "Adding {0} \"{1}\""
-                                       (:name model)
-                                       ((some-fn :email :name) entity))))
-                  (swap! *upsert-statistics* update-in [:insert (:name model)] (fnil inc 0))
-                  (db/insert! model entity))))))
+    (->> (concat (for [[position _ existing] skip]
+                   [(u/get-id existing) position])
+                 (map vector (db/insert-many! model (map second insert)) (map first insert))
+                 (for [[position entity existing] update]
+                   (let [id (u/get-id existing)]
+                     (db/update! model id entity)
+                     [id position])))
+         (sort-by second)
+         (map first))))
 
 (defmulti
   ^{:doc      "Extract entities from a logical path."
@@ -259,8 +250,8 @@
 
 (defn- load-dimensions
   [path context]
-  (doseq [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
-    (maybe-upsert! (:mode context) Dimension
+  (maybe-upsert-many! (:mode context) Dimension
+    (for [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
       (-> dimension
           (update :human_readable_field_id (comp :field fully-qualified-name->context))
           (update :field_id (comp :field fully-qualified-name->context))))))
@@ -268,20 +259,20 @@
 (defmethod load Database
   [path context _]
   (doseq [path (list-dirs (str path "/databases"))]
-    (slurp-dir (partial maybe-upsert! (:mode context) Database) path)
+    (maybe-upsert-many! (:mode context) Database (slurp-dir path))
     (doseq [path (list-dirs (str path "/schemas"))]
       (load path context Table)
       (load-dimensions path context))))
 
 (defmethod load Table
   [path context _]
-  (let [context (merge context (fully-qualified-name->context path))]
-    (doseq [path (list-dirs (str path "/tables"))]
-      (let [context (assoc context
-                      :table (slurp-one-id (fn [table]
-                                             (maybe-upsert! (:mode context) Table
-                                               (assoc table :db_id (:database context))))
-                                           path))]
+  (let [context   (merge context (fully-qualified-name->context path))
+        paths     (list-dirs (str path "/tables"))
+        table-ids (maybe-upsert-many! (:mode context) Table
+                                    (for [table (slurp-many paths)]
+                                      (assoc table :db_id (:database context))))]
+    (doseq [[path table-id] (map vector paths table-ids)]
+      (let [context (assoc context :table table-id)]
         (load path context Field)
         (load path context Metric)
         (load path context Segment)))))
@@ -292,40 +283,36 @@
 
 (defmethod load Field
   [path context _]
-  (slurp-dir
-   (fn [field]
-     (let [field-values (select-keys field [:values :human_readable_values])
-           field        (maybe-upsert! (:mode context) Field
-                          (-> field
-                              (dissoc :values :human_readable_values)
-                              (assoc :table_id (:table context))))]
-       (when (:values field-values)
-         (maybe-upsert! (:mode context) FieldValues
-           (assoc field-values :field_id (u/get-id field))))
-       field))
-   (str path "/fields")))
+  (let [fields       (slurp-dir (str path "/fields"))
+        field-values (map :values fields)
+        field-ids    (maybe-upsert-many! (:mode context) Field
+                                         (for [field fields]
+                                           (-> field
+                                               (dissoc :values)
+                                               (assoc :table_id (:table context)))))]
+    (maybe-upsert-many! (:mode context) FieldValues
+      (for [[field-value field-id] (map vector field-values field-ids)]
+        (assoc field-value :field_id field-id)))))
 
 (defmethod load Metric
   [path context _]
-  (slurp-dir (fn [metric]
-               (maybe-upsert! (:mode context) Metric
-                 (-> metric
-                     (assoc :table_id   (:table context)
-                            :creator_id @default-user)
-                     (assoc-in [:definition :source-table] (:table context))
-                     humanized-field-references->ids)))
-             (str path "/metrics")))
+  (maybe-upsert-many! (:mode context) Metric
+    (for [metric (slurp-dir (str path "/metrics"))]
+      (-> metric
+          (assoc :table_id   (:table context)
+                 :creator_id @default-user)
+          (assoc-in [:definition :source-table] (:table context))
+          humanized-field-references->ids))))
 
 (defmethod load Segment
   [path context _]
-  (slurp-dir (fn [segment]
-               (maybe-upsert! (:mode context) Segment
-                 (-> segment
-                     (assoc :table_id   (:table context)
-                            :creator_id @default-user)
-                     (assoc-in [:definition :source-table] (:table context))
-                     humanized-field-references->ids)))
-             (str path "/segments")))
+  (maybe-upsert-many! (:mode context) Segment
+    (for [metric (slurp-dir (str path "/segments"))]
+      (-> metric
+          (assoc :table_id   (:table context)
+                 :creator_id @default-user)
+          (assoc-in [:definition :source-table] (:table context))
+          humanized-field-references->ids))))
 
 (defn- update-parameter-mappings
   [parameter-mappings]
@@ -333,51 +320,52 @@
 
 (defmethod load Dashboard
   [path context _]
-  (slurp-dir
-   (fn [dashboard]
-     (let [dashboard-cards (:dashboard_cards dashboard)
-           dashboard       (maybe-upsert! (:mode context) Dashboard
-                             (-> dashboard
-                                 (dissoc :dashboard_cards)
-                                 (assoc :collection_id (:collection context)
-                                        :creator_id @default-user)
-                                 humanized-field-references->ids))]
-       (doseq [dashboard-card dashboard-cards]
-         (let [series         (:series dashboard-card)
-               dashboard-card (maybe-upsert! (:mode context) DashboardCard
-                                (-> dashboard-card
-                                    (dissoc :series)
-                                    (update :card_id fully-qualified-name->card-id)
-                                    (assoc :dashboard_id (:id dashboard))
-                                    (update :parameter_mappings update-parameter-mappings)
-                                    humanized-field-references->ids))]
-           (doseq [dashboard-card-series series]
-             (maybe-upsert! (:mode context) DashboardCardSeries
-               (-> dashboard-card-series
-                   (assoc :dashboardcard_id (:id dashboard-card))
-                   (update :card_id fully-qualified-name->card-id))))))
-       dashboard))
-   (str path "/dashboards")))
+  (let [dashboards         (slurp-dir "/dashboards")
+        dashboard-ids      (maybe-upsert-many! (:mode context) Dashboard
+                             (for [dashboard dashboards]
+                               (-> dashboard
+                                   (dissoc :dashboard_cards)
+                                   (assoc :collection_id (:collection context)
+                                          :creator_id @default-user)
+                                   humanized-field-references->ids)))
+        dashboard-cards    (map :dashboard_cards dashboards)
+        dashboard-card-ids (maybe-upsert-many! (:mode context) DashboardCard
+                             (for [[dashboard-card dashboard-id] (map vector dashboard-cards
+                                                                      dashboard-ids)]
+                               (-> dashboard-card
+                                   (dissoc :series)
+                                   (update :card_id fully-qualified-name->card-id)
+                                   (assoc :dashboard_id dashboard-id)
+                                   (update :parameter_mappings update-parameter-mappings)
+                                   humanized-field-references->ids)))]
+    (maybe-upsert-many! (:mode context) DashboardCardSeries
+      (for [[dashboard-card-series dashboard-card-id] (map vector (map :series dashboard-cards)
+                                                           dashboard-card-ids)]
+        (-> dashboard-card-series
+            (assoc :dashboardcard_id dashboard-card-id)
+            (update :card_id fully-qualified-name->card-id))))))
 
 (defmethod load Pulse
   [path context _]
-  (slurp-dir
-   (fn [pulse]
-     (let [{:keys [cards channels]} pulse
-           pulse                    (maybe-upsert! (:mode context) Pulse
-                                      (-> pulse
-                                          (assoc :collection_id (:collection context)
-                                                 :creator_id    @default-user)
-                                          (dissoc :channels :cards)))]
-       (doseq [card cards]
-         (maybe-upsert! (:mode context) PulseCard
-           (-> card
-               (assoc :pulse_id (u/get-id pulse))
-               (update :card_id fully-qualified-name->card-id))))
-       (doseq [channel channels]
-         (maybe-upsert! (:mode context) PulseChannel
-           (assoc channel :pulse_id (u/get-id pulse))))))
-   (str path "/pulses")))
+  (let [pulses    (slurp-dir (str path "/pulses"))
+        cards     (map :cards pulses)
+        channels  (map :channels pulses)
+        pulse-ids (maybe-upsert-many! (:mode context) Pulse
+                                      (for [pulse pulses]
+                                        (-> pulse
+                                            (assoc :collection_id (:collection context)
+                                                   :creator_id    @default-user)
+                                            (dissoc :channels :cards))))]
+    (maybe-upsert-many! (:mode context) PulseCard
+      (for [[cards pulse-id] (map vector cards pulse-ids)
+            card             cards]
+        (-> card
+            (assoc :pulse_id pulse-id)
+            (update :card_id fully-qualified-name->card-id))))
+    (maybe-upsert-many! (:mode context) PulseChannel
+      (for [[channels pulse-id] (map vector channels pulse-ids)
+            channel             channels]
+        (assoc channel :pulse_id pulse-id)))))
 
 (defn- source-table
   [source-table]
@@ -388,34 +376,32 @@
 
 (defmethod load Card
   [path context _]
-  (doseq [path (list-dirs (str path "/cards"))]
-    (let [context (assoc context
-                    :card (slurp-one-id
-                           (fn [card]
-                             (let [table (->> card
-                                              :table_id
-                                              fully-qualified-name->context
-                                              :table
-                                              Table)
-                                   db    (:db_id table)]
-                               (maybe-upsert! (:mode context) Card
-                                 (-> card
-                                     (assoc :table_id      (u/get-id table)
-                                            :creator_id    @default-user
-                                            :collection_id (:collection context)
-                                            :database_id   db)
-                                     (assoc-in [:dataset_query :database] db)
-                                     (cond->
-                                       (-> card
-                                           :dataset_query
-                                           :type
-                                           qp.util/normalize-token
-                                           (= :query))
-                                       (update-in [:dataset_query :query :source-table] source-table))
-                                     humanized-field-references->ids))))
-                           path))]
-      ;; Nested cards
-      (load path context Card))))
+  (let [paths    (list-dirs (str path "/cards"))
+        card-ids (maybe-upsert-many! (:mode context) Card
+                   (for [card (slurp-many paths)]
+                     (let [table (->> card
+                                      :table_id
+                                      fully-qualified-name->context
+                                      :table
+                                      Table)
+                           db    (:db_id table)]
+                       (-> card
+                           (assoc :table_id      (u/get-id table)
+                                  :creator_id    @default-user
+                                  :collection_id (:collection context)
+                                  :database_id   db)
+                           (assoc-in [:dataset_query :database] db)
+                           (cond->
+                               (-> card
+                                   :dataset_quer
+                                   :type
+                                   qp.util/normalize-token
+                                   (= :query))
+                             (update-in [:dataset_query :query :source-table] source-table))
+                           humanized-field-references->ids))))]
+    ;; Nested cards
+    (doseq [[path card-id] (map vector paths card-ids)]
+      (load path (assoc context :card card-id) Card))))
 
 (defn- derive-location
   [context]
@@ -441,13 +427,32 @@
     (load path context Pulse)
     (load path context Dashboard)))
 
+(defmethod load Collection
+  [path context _]
+  (let [root?   (not (contains? context :collection))
+        context (assoc context
+                  :collection (when (not root?)
+                                (->> (slurp-dir path)
+                                     (map (fn [collection]
+                                            (assoc collection
+                                              :location (derive-location context))))
+                                     (maybe-upsert-many! (:mode context) Collection)
+                                     first)))]
+    (doseq [path (list-dirs (if root?
+                              (str path "/collections/collections")
+                              (str path "/collections")))]
+      (load path context Collection))
+    (load path context Card)
+    (load path context Pulse)
+    (load path context Dashboard)))
+
 (defn load-settings
   "Load a dump of settings."
   [path context]
-  (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)]
-    (when (or (= (:mode context) :update)
-              (nil? (setting/get-string k)))
-      (setting/set-string! k v))))
+  (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)
+          :when (or (= (:mode context) :update)
+                    (nil? (setting/get-string k)))]
+    (setting/set-string! k v)))
 
 (defn load-dependencies
   "Load a dump of dependencies."
@@ -457,11 +462,12 @@
                                                     (comp Segment :segment)
                                                     (comp Pulse :pulse))
                                            fully-qualified-name->context)]
-    (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
-      (let [model        (fully-qualified-name->entity model_id)
-            dependent-on (fully-qualified-name->entity dependent_on_id)]
-        (maybe-upsert! (:mode context) Dependency {:model              (name model)
-                                                   :model_id           (u/get-id model)
-                                                   :dependent_on_model (name dependent-on)
-                                                   :dependent_on_id    (u/get-id dependent-on)
-                                                   :created_at         (java.util.Date.)})))))
+    (maybe-upsert-many! (:mode context) Dependency
+      (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
+        (let [model        (fully-qualified-name->entity model_id)
+              dependent-on (fully-qualified-name->entity dependent_on_id)]
+          {:model              (name model)
+           :model_id           (u/get-id model)
+           :dependent_on_model (name dependent-on)
+           :dependent_on_id    (u/get-id dependent-on)
+           :created_at         (java.util.Date.)})))))
