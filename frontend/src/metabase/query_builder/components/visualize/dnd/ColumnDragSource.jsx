@@ -9,7 +9,7 @@ const columnSource = {
     return {
       column: props.column,
       dimension: props.dimension,
-      metric: props.metric,
+      aggregation: props.aggregation,
     };
   },
 };

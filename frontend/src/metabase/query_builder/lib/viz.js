@@ -75,10 +75,14 @@ export function getColumnWells(
   if (hasMoreColumns) {
     wells.left.push({
       placeholder: wells.left.length === 0 ? "y" : "+",
-      canAdd: ({ metric, column, dimension }) =>
-        metric
+      canAdd: ({ aggregation, column, dimension }) =>
+        aggregation
           ? true
-          : settings["graph._metric_filter"](column || dimension.field()),
+          : column
+            ? settings["graph._metric_filter"](column)
+            : dimension
+              ? settings["graph._metric_filter"](dimension.field())
+              : false,
       onAdd: (item, props) => {
         addMetric(item, { settings, ...props });
       },
@@ -86,9 +90,12 @@ export function getColumnWells(
     if (wells.bottom.length === 0) {
       wells.bottom.push({
         placeholder: "x",
-        canAdd: ({ metric, column, dimension }) =>
-          !metric &&
-          settings["graph._dimension_filter"](column || dimension.field()),
+        canAdd: ({ column, dimension }) =>
+          column
+            ? settings["graph._dimension_filter"](column)
+            : dimension
+              ? settings["graph._dimension_filter"](dimension.field())
+              : false,
         onAdd: (item, props) => {
           addDimension(item, { settings, ...props });
         },
@@ -97,7 +104,11 @@ export function getColumnWells(
       wells.bottom.push({
         placeholder: "Series breakout",
         canAdd: ({ column, dimension }) =>
-          settings["graph._dimension_filter"](column || dimension.field()),
+          column
+            ? settings["graph._dimension_filter"](column)
+            : dimension
+              ? settings["graph._dimension_filter"](dimension.field())
+              : false,
         onAdd: (item, props) => {
           addDimension(item, { settings, ...props });
         },
@@ -118,7 +129,7 @@ function isSummarized(question) {
   return !question.query().isRaw();
 }
 
-function addMetric({ column, dimension, metric }, props) {
+function addMetric({ column, dimension, aggregation }, props) {
   if (column) {
     if (isNew(props.question, props.settings)) {
       const dimension = props.query.dimensionForColumn(column);
@@ -128,8 +139,8 @@ function addMetric({ column, dimension, metric }, props) {
     } else {
       addRawMetric(column, props);
     }
-  } else if (metric) {
-    addSummarizedMetricMetric(metric, props);
+  } else if (aggregation) {
+    addSummarizedAggregationMetric(aggregation, props);
   } else if (dimension) {
     addSummarizedDimensionMetric(dimension, props);
   }
@@ -211,11 +222,10 @@ async function addSummarizedDimensionMetric(
   });
 }
 
-async function addSummarizedMetricMetric(
-  metric,
+async function addSummarizedAggregationMetric(
+  aggregation,
   { query, settings, onChangeSettings, onChangeDatasetQuery },
 ) {
-  const aggregation = ["metric", metric.id];
   const name = query.formatExpression(aggregation);
   console.log("addSummarizedMetricMetric", name, aggregation);
   await query

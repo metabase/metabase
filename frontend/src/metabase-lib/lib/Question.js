@@ -242,9 +242,13 @@ export default class Question {
   }
 
   // DEPRECATED: use settings
-  visualizationSettings(...args) { return this.settings(...args) }
+  visualizationSettings(...args) {
+    return this.settings(...args);
+  }
   // DEPRECATED: use setSettings
-  setVisualizationSettings(...args) { return this.setSettings(...args) }
+  setVisualizationSettings(...args) {
+    return this.setSettings(...args);
+  }
 
   settings(): VisualizationSettings {
     return this._card && this._card.visualization_settings;
@@ -253,7 +257,7 @@ export default class Question {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
   updateSettings(settings: VisualizationSettings) {
-    return this.setVisualizationSettings({ ...this.settings(), ...settings })
+    return this.setVisualizationSettings({ ...this.settings(), ...settings });
   }
 
   isEmpty(): boolean {
