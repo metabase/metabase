@@ -20,7 +20,8 @@
           (lazy-loaded-driver/register-lazy-loaded-driver! (assoc info :driver driver))))
       ;; if *any* of the drivers is not lazy-load, initialize it now
       (when (some false? (map :lazy-load drivers))
-        (add-to-classpath!)
+        (when add-to-classpath!
+          (add-to-classpath!))
         (init-steps/do-init-steps! init-steps)))
     ;; record this plugin as initialized and find any plugins ready to be initialized because depended on this one !
     ;;

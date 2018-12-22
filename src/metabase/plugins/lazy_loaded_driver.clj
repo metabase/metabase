@@ -47,7 +47,8 @@
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
     ;; First things first: add the driver to the classpath!
-    (add-to-classpath!)
+    (when add-to-classpath!
+      (add-to-classpath!))
     ;; remove *this* implementation of `initialize!`, because as you will see below, we want to give
     ;; lazy-load drivers the option to implement `initialize!` and do other things, which means we need to
     ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
