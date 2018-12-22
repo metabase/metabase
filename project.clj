@@ -14,6 +14,8 @@
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
+   "run"                               ["with-profile" "+run" "run"]
+   "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+expectations" "expectations"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
@@ -150,6 +152,7 @@
      [lein-bikeshed "0.4.1"]                                          ; Linting
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
      [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
+     ;; TODO - should this be moved to the new RING profile?
      [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
       :exclusions [org.clojure/clojure]]]
 
@@ -170,6 +173,15 @@
    {:auto-clean true
     :aot        :all}
 
+   :exclude-tests
+   {:test-paths ^:replace []}
+
+   :run
+   [:exclude-tests {}]
+
+   :ring
+   [:exclude-tests {}]
+
    :with-include-drivers-middleware
    {:plugins
     [[metabase/lein-include-drivers "1.0.4"]]
@@ -181,7 +193,7 @@
    [:with-include-drivers-middleware
     {:injections
      [(require 'metabase.test-setup                                   ; for test setup stuff
-               'metabase.test.util)]                                  ; for the toucan.util.tes t default values for temp models
+               'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
      :resource-paths
      ["test_resources"]
