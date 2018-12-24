@@ -44,9 +44,8 @@
   ((type-fn :metric-segment-definition :in)
    {:filter 1000}))
 
-;; same for `:parameter-mappings`. I wasn't actually able to figure out any input that would make this fail, so cheat
-;; and override the `normalization-tokens` function to always throw an Exception so we can make sure the Toucan type
-;; fn handles the error gracefully
+;; Cheat ;; and override the `normalization-tokens` function to always throw an Exception so we can make sure the
+;; Toucan type fn handles the error gracefully
 (expect
   nil
   (tu.log/suppress-output
@@ -62,3 +61,25 @@
   (with-redefs [normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
     ((type-fn :parameter-mappings :in)
      [{:target [:dimension [:field-id "ABC"]]}])))
+
+;; make sure parameter mappings correctly normalize things like fk->
+(expect
+  [{:target [:dimension [:fk-> [:field-id 23] [:field-id 30]]]}]
+  ((type-fn :parameter-mappings :out)
+   (json/generate-string
+    [{:target [:dimension [:fk-> 23 30]]}])))
+
+;; ...but parameter mappings we should not normalize things like :target
+(expect
+  [{:card-id 123, :hash "abc", :target "foo"}]
+  ((type-fn :parameter-mappings :out)
+   (json/generate-string
+    [{:card-id 123, :hash "abc", :target "foo"}])))
+
+;; we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes them because
+;; they are empty)
+;; (I think this is to prevent NPEs on the FE? Not sure why we do this)
+(expect
+  []
+  ((type-fn :parameter-mappings :out)
+   (json/generate-string [])))

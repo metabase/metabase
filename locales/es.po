@@ -11159,145 +11159,145 @@ msgstr "Meses cuando se une por [[this.short-name]]"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource `{0}` as JSON"
-msgstr ""
+msgstr "Respuesta JSON incorrecta: `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to find JSON via relative path `{0}`"
-msgstr ""
+msgstr "No se puede encontrar JSON a través de la ruta relativa `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection to host timed out for URL `{0}`"
-msgstr ""
+msgstr "La conexión con el host ha caducado para la URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to unknown host at URL `{0}`"
-msgstr ""
+msgstr "No se puede conectar a un host desconocido en la URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to host at URL `{0}`"
-msgstr ""
+msgstr "No se puede conectar con el host en la URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host at for URL `{0}`"
-msgstr ""
+msgstr "Conexión rechazada por el host en la URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to retrieve resource at URL `{0}`"
-msgstr ""
+msgstr "No se puede recuperar el recurso en la URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource at URL `{0}` as JSON"
-msgstr ""
+msgstr "No se puede analizar el recurso en la URL `{0}` como JSON"
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fall back to local authentication: {0}"
-msgstr ""
+msgstr "Problema al conectarse al servidor LDAP, se volverá a la autenticación local: {0}"
 
 #: src/metabase/driver/bigquery.clj
 msgid "BigQuery statements can''t be parameterized!"
-msgstr ""
+msgstr "Las consultas BigQuery no se pueden paramerizar!"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
-msgstr ""
+msgstr "ADVERTENCIA: Druid no permite limitSpec en consultas de series de tiempo. Ignorando la cláusula LIMIT."
 
 #: src/metabase/driver/snowflake.clj
 msgid "Invalid Snowflake connection details: missing DB name."
-msgstr ""
+msgstr "Valores de conexión a SnowFlake inválidas: falta el nombre de la BBDD"
 
 #: src/metabase/email/messages.clj
 msgid "We’d love your feedback."
-msgstr ""
+msgstr "Nos encantaría tus comentarios."
 
 #: src/metabase/email/messages.clj
 msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr ""
+msgstr "Parece que Metabase no se ha ajustado a tus expectativas."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr ""
+msgstr "¿Te importaría realizar una encuesta rápida de 5 preguntas para ayudar al equipo de Metabase a comprender por qué y mejorar las cosas en el futuro?"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr ""
+msgstr "Esperamos que hayas estado disfrutando de Metabase."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-msgstr ""
+msgstr "¿Te importaría hacer una encuesta rápida de 6 preguntas para decirnos cómo va?"
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
-msgstr ""
+msgstr "{0} ha creado una cuenta en Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr ""
+msgstr "{0} ha aceptado su invitación a Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
-msgstr ""
+msgstr "[Metabase] Solicitud Reestablecer Contraseña"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
-msgstr ""
+msgstr "[Metabase] Notificación"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr ""
+msgstr "[Metabase] Ayuda a mejorar Metabase."
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
-msgstr ""
+msgstr "[Metabase] Dinos como van las cosas."
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
-msgstr ""
+msgstr "Error: la consulta fuente de la consulta no se ha resuelto. Probablemente necesites 'preprocesar' la consulta primero."
 
 #: src/metabase/models/params.clj
 msgid "Don't know what to do with:"
-msgstr ""
+msgstr "No se que hacer con:"
 
 #: src/metabase/models/params.clj
 msgid "Don't know how to wrap:"
-msgstr ""
+msgstr "No se como envolver:"
 
 #: src/metabase/public_settings.clj
 msgid "Failed setting `query-caching-max-kb` to {0}."
-msgstr ""
+msgstr "No se ha podido establecer `query-caching-max-kb` a {0}"
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {1} are not allowed."
-msgstr ""
+msgstr "No se permiten valores superiores a {1}"
 
 #: src/metabase/query_processor/middleware/resolve_database.clj
 msgid "Database {0} does not exist."
-msgstr ""
+msgstr "La base de datos {0} no existe."
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."
-msgstr ""
+msgstr "Error: La base de datos no está presente en el procesador de consultas."
 
 #: src/metabase/util/embed.clj
 msgid "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."
-msgstr ""
+msgstr "¡Clave secreta no válida! La clave secreta debe ser una clave de 256 bits codificada en hexadecimal (es decir, una cadena de 64 caracteres)."
 
 #: src/metabase/util/embed.clj
 msgid "JWT is missing `alg`."
-msgstr ""
+msgstr "Falta el JWT `alg`."
 
 #: src/metabase/util/embed.clj
 msgid "JWT `alg` cannot be `none`."
-msgstr ""
+msgstr "JWT `alg` no puede ser `none`."
 
 #: src/metabase/util/embed.clj
 msgid "The embedding secret key has not been set."
-msgstr ""
+msgstr "No se ha establecido la clave secreta embebida."
 
 #: src/metabase/util/embed.clj
 msgid "Token is missing value for keypath"
-msgstr ""
+msgstr "Falta el valor de keypath en el token."
 
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
-msgstr ""
+msgstr "Ejemplo avanzado"
 

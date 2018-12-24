@@ -31,14 +31,15 @@
       (secret-key->hash secret-key))))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
-(log/info
- (if default-secret-key
-   (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
-   (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
- (u/emoji (if default-secret-key "🔐" "🔓"))
- "\n"
- (trs "For more information, see")
- "https://www.metabase.com/docs/latest/operations-guide/start.html#encrypting-your-database-connection-details-at-rest")
+(when-not *compile-files*
+  (log/info
+   (if default-secret-key
+     (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
+     (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
+   (u/emoji (if default-secret-key "🔐" "🔓"))
+   "\n"
+   (trs "For more information, see")
+   "https://www.metabase.com/docs/latest/operations-guide/start.html#encrypting-your-database-connection-details-at-rest"))
 
 (defn encrypt
   "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), by default the hashed value of

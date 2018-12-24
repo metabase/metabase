@@ -1,0 +1,19 @@
+info:
+  name: Metabase SQLite Driver
+  version: 1.0.0-SNAPSHOT-3.25.2
+  description: Allows Metabase to connect to SQLite databases.
+driver:
+  name: sqlite
+  display-name: SQLite
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: db
+      display-name: Filename
+      placeholder: /home/camsaul/toucan_sightings.sqlite
+      required: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.sqlite
+  - step: register-jdbc-driver
+    class: org.sqlite.JDBC

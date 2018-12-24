@@ -22,7 +22,7 @@ msgstr "Estou bem, obrigado"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:42
 msgid "Explore this data"
-msgstr "Explore esses dados"
+msgstr "Explorar esses dados"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditForms.jsx:42
 msgid "Select a database type"
@@ -63,11 +63,11 @@ msgstr "Este é um processo rápido que procura \n"
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
 msgid "Scan"
-msgstr "Explorar"
+msgstr "Escanear"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:152
 msgid "Scanning for Filter Values"
-msgstr "Procurando por valores de filtragem"
+msgstr "Procurando por Valores de Filtro"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
 msgid "Metabase can scan the values present in each\n"
@@ -1331,7 +1331,7 @@ msgstr "Você pode escrever consultas diretas"
 #. Isso foi tradução automática? Sugestão: "Cuide da coleção"
 #: frontend/src/metabase/admin/permissions/selectors.js:277
 msgid "Curate collection"
-msgstr "Pamper a coleção"
+msgstr "Curar a coleção"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:284
 msgid "View collection"
@@ -3847,7 +3847,7 @@ msgstr "Soma de ..."
 msgid "Sum of all the values of a column."
 msgstr "Soma de todos os valores de uma coluna."
 
-#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em
+#. Acho que a agregação de "Medium of.... " está ficando errada, pois traduz em 
 #. "Média de... de" mas vou deixar a tradução assim por enquanto
 #: frontend/src/metabase/lib/schema_metadata.js:475
 msgid "Average of ..."
@@ -5464,8 +5464,9 @@ msgstr "Atual"
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:278
 #: frontend/src/metabase/visualizations/lib/settings/column.js:246
 #: frontend/src/metabase/visualizations/lib/settings/series.js:89
+#, fuzzy
 msgid "On"
-msgstr "Ativado"
+msgstr "Em"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/NumberPicker.jsx:47
 msgid "Enter desired number"
@@ -8286,7 +8287,7 @@ msgstr "Você não pode remover uma coleção pessoal."
 
 #: src/metabase/models/collection.clj
 msgid "{0} {1}''s Personal Collection"
-msgstr "{0} Coleção pessoal de {1}"
+msgstr "Coleção pessoal de {0} {1}"
 
 #: src/metabase/models/collection_revision.clj
 msgid "You cannot update a CollectionRevision!"
@@ -8338,7 +8339,7 @@ msgstr "Remova a atual e crie uma nova."
 
 #: src/metabase/models/permissions.clj
 msgid "You cannot edit permissions for a Personal Collection or its descendants."
-msgstr "Você não pode editar permissões para uma coleção pessoal ou suas vinculadas."
+msgstr "Você não pode editar permissões para uma coleção pessoal ou suas coleções vinculadas."
 
 #: src/metabase/models/permissions.clj
 msgid "Looks like someone else edited the permissions and your data is out of date."
@@ -11171,144 +11172,145 @@ msgstr "Meses quando [[this.short-name]] ingressou"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource `{0}` as JSON"
-msgstr ""
+msgstr "Não foi possível parsear recurso `{0}`como JSON"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to find JSON via relative path `{0}`"
-msgstr ""
+msgstr "Não foi possível encontrar JSON via caminho relativo `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection to host timed out for URL `{0}`"
-msgstr ""
+msgstr "Conexão ao host expirou para a URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to unknown host at URL `{0}`"
-msgstr ""
+msgstr "Não foi possível conectar a um host desconhecido na URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to connect to host at URL `{0}`"
-msgstr ""
+msgstr "Não foi possível conectar a um host na URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host at for URL `{0}`"
-msgstr ""
+msgstr "Conexão recusada pelo servidor para URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to retrieve resource at URL `{0}`"
-msgstr ""
+msgstr "Não foi possível capturar recurso na URL `{0}`"
 
 #: src/metabase/api/geojson.clj
 msgid "Unable to parse resource at URL `{0}` as JSON"
-msgstr ""
+msgstr "Não foi possível parsear recurso na URL `{0}`como JSON"
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fall back to local authentication: {0}"
-msgstr ""
+msgstr "Problema encontrado ao tentar se conectar ao servidor LDAP, autenticação local será utilizada: {0}"
 
 #: src/metabase/driver/bigquery.clj
 msgid "BigQuery statements can''t be parameterized!"
-msgstr ""
+msgstr "Declarações do BigQuery não podem ser parametrizadas!"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
-msgstr ""
+msgstr "AVISO: Druida não permite limitSpec em consultas de linha temporal. Ignorando a cláusula LIMIT."
 
 #: src/metabase/driver/snowflake.clj
 msgid "Invalid Snowflake connection details: missing DB name."
-msgstr ""
+msgstr "Informações da conexão com o Snowflake inválidas: faltando o nome do DB"
 
 #: src/metabase/email/messages.clj
 msgid "We’d love your feedback."
-msgstr ""
+msgstr "Adoraríamos a sua opinião."
 
 #: src/metabase/email/messages.clj
 msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr ""
+msgstr "Parece que o metabase não foi o ideal para você"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr ""
+msgstr "Você poderia fazer um rápido questionário de 5 questões para ajudar o time do Metabase a entender por quê e como melhorar as coisas no futuro?"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
-msgstr ""
+msgstr "Esperamos que você esteja gostando do Metabase."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-msgstr ""
+msgstr "Você poderia fazer um rápido questionário de 6 questões para nos contar como estão indo as coisas?"
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
-msgstr ""
+msgstr "{0} criou uma conta do Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "{0} accepted their Metabase invite"
-msgstr ""
+msgstr "{0} aceitaram seus convites do Metabase"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Password Reset Request"
-msgstr ""
+msgstr "[Metabase] Pedido de redefinição de senha solicitado"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
-msgstr ""
+msgstr "[Metabase] Notificação"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Help make Metabase better."
-msgstr ""
+msgstr "[Metabase] Ajude a fazer o Metabase melhor."
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Tell us how things are going."
-msgstr ""
+msgstr "[Metabase] Conte-se como estão indo as coisas."
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
-msgstr ""
+msgstr "Erro: Fonte de consulta não resolvida. Você provavelmente precisa `preprocessar` a consulta primeiro."
 
 #: src/metabase/models/params.clj
 msgid "Don't know what to do with:"
-msgstr ""
+msgstr "Não sabemos o que fazer com:"
 
 #: src/metabase/models/params.clj
 msgid "Don't know how to wrap:"
-msgstr ""
+msgstr "Sem informações para envelopar:"
 
 #: src/metabase/public_settings.clj
 msgid "Failed setting `query-caching-max-kb` to {0}."
-msgstr ""
+msgstr "Falha ao configurar {0} para `query-caching-max-kb`."
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {1} are not allowed."
-msgstr ""
+msgstr "Valores maiores que {1} não são permitidos."
 
 #: src/metabase/query_processor/middleware/resolve_database.clj
 msgid "Database {0} does not exist."
-msgstr ""
+msgstr "Banco de dados {0} não existe."
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."
-msgstr ""
+msgstr "Erro: o Banco de Dados não está presente no Query Processor Store"
 
 #: src/metabase/util/embed.clj
 msgid "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."
-msgstr ""
+msgstr "embedding-secret-key inválida! Chave secreta precisa ser um valor hexadecimal de 256 bits (ou seja, uma string de 64 caracteres)."
 
 #: src/metabase/util/embed.clj
 msgid "JWT is missing `alg`."
-msgstr ""
+msgstr "JWT faltando `alg`."
 
 #: src/metabase/util/embed.clj
 msgid "JWT `alg` cannot be `none`."
-msgstr ""
+msgstr "JWT `alg` não pode ser `none`."
 
 #: src/metabase/util/embed.clj
 msgid "The embedding secret key has not been set."
-msgstr ""
+msgstr "A chave secreta embutida não foi configurada."
 
 #: src/metabase/util/embed.clj
 msgid "Token is missing value for keypath"
-msgstr ""
+msgstr "Token faltando valor para keypath"
 
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
-msgstr ""
+msgstr "Exemplo detalhado"
+

@@ -1,6 +1,8 @@
 \#*\#
 .\#*
 /target
+/modules/drivers/*/target
+/lein-plugins/*/target
 /classes
 /checkouts
 pom.xml
@@ -11,7 +13,7 @@ pom.xml.asc
 /.lein-failures
 /.lein-plugins
 /.lein-repl-history
-/.nrepl-port
+.nrepl-port
 .idea/
 /docs/uberdoc.html
 profiles.clj

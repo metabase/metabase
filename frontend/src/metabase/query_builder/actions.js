@@ -22,6 +22,7 @@ import {
   cleanCopyCard,
   urlForCardState,
 } from "metabase/lib/card";
+import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
@@ -729,13 +730,17 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
-        if (!cardQueryIsEquivalent(previousCard, nextCard)) {
-          // clear the query result so we don't try to display the new visualization before running the new query
-          dispatch(clearQueryResult());
+        const card = getCardAfterVisualizationClick(nextCard, previousCard);
+        const url = Urls.question(null, card);
+        if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
+          open(url);
+        } else {
+          if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+            // clear the query result so we don't try to display the new visualization before running the new query
+            dispatch(clearQueryResult());
+          }
+          dispatch(setCardAndRun(card));
         }
-        dispatch(
-          setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)),
-        );
       }
     };
   },

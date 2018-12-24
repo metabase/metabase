@@ -9331,7 +9331,7 @@ msgstr "استفاده از منطقه زمانی JVM"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:29
 msgid "We're currently analyzing the tables and fields to help you explore your data."
-msgstr ""
+msgstr "برای کمک به  در حال تحلیل جداول و "
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:432
 msgid "Tip: "
@@ -9339,7 +9339,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:258
 msgid "Select a currency type"
-msgstr ""
+msgstr "یک واحد پول انتخاب کنید"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:318
 msgid "Field Type"
@@ -9348,11 +9348,11 @@ msgstr ""
 #: frontend/src/metabase/admin/routes.jsx:83
 #: frontend/src/metabase/nav/containers/Navbar.jsx:225
 msgid "Troubleshooting"
-msgstr ""
+msgstr "عیب‌یابی"
 
 #: frontend/src/metabase/admin/settings/selectors.js:96
 msgid "Enable X-ray features"
-msgstr ""
+msgstr "فعال‌کردن ویژگی X-ray"
 
 #: frontend/src/metabase/admin/settings/selectors.js:323
 msgid "Formatting Options"
@@ -9364,7 +9364,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:36
 msgid "Troubleshooting logs"
-msgstr ""
+msgstr "لاگ‌های عیب‌یابی"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:38
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
@@ -9376,27 +9376,27 @@ msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:64
 msgid "DB ID"
-msgstr ""
+msgstr "شناسه پایگاه‌داده"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
 msgid "Started at"
-msgstr ""
+msgstr "زمان شروع"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
 msgid "Ended at"
-msgstr ""
+msgstr "زمان پایان"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
 msgid "Duration (ms)"
-msgstr ""
+msgstr "دیرش (میلی ثانیه)"
 
 #: frontend/src/metabase/lib/core.js:45
 msgid "Currency"
-msgstr ""
+msgstr "واحد پول"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:163
 msgid "Pick a user or channel..."
-msgstr ""
+msgstr "یک کاربر یا کانال را انتخاب کنید..."
 
 #: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:90
 msgid "No formatting settings"
@@ -9408,7 +9408,7 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:93
 msgid "Add a range"
-msgstr ""
+msgstr "یک بازه اضافه کنید"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:26
 msgid "is less than"
@@ -11296,3 +11296,4 @@ msgstr ""
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
 msgstr ""
+
