@@ -325,7 +325,7 @@ and in the backend using `trs` and related macros (see more details in https://g
 
 ### Translation errors or missing strings
 
-If you see incorrect or missing strings for yourlangauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit the fixes there.
+If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
