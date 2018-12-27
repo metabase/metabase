@@ -119,11 +119,14 @@
    (some #(when (instance? DynamicClassLoader %) %)
          (classloader-hierarchy (.getContextClassLoader (Thread/currentThread))))))
 
+(defonce ^:private already-added (atom #{}))
 
 (defn add-url-to-classpath!
   "Add a URL (presumably for a local JAR) to the classpath."
   [^URL url]
-  ;; `add-classpath-url` will return non-truthy if it couldn't add the URL, e.g. because the classloader wasn't one
-  ;; that allowed it
-  (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
-  (log/info (u/format-color 'blue (trs "Added URL {0} to classpath" url))))
+  (when-not (@already-added url)
+    (swap! already-added conj url)
+    ;; `add-classpath-url` will return non-truthy if it couldn't add the URL, e.g. because the classloader wasn't one
+    ;; that allowed it
+    (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
+    (log/info (u/format-color 'blue (trs "Added URL {0} to classpath" url)))))
