@@ -1,7 +1,7 @@
 
 
 ###### Before submitting the PR, please make sure you do the following
-- [ ] If you're attempting to fix an i18n issue, please submit your changes to our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) instead of opening a PR.
+- [ ] If you're attempting to fix a translation issue, please submit your changes to our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) instead of opening a PR.
 ### Tests
 -  [ ] Run the frontend and integration tests with  `yarn lint && yarn flow && yarn test`)
 -  [ ] If there are changes to the backend codebase, run the backend tests with `lein test && lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter`
