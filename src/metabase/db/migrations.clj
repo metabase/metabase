@@ -279,17 +279,26 @@
   (doseq [database-id (db/select-ids Database :engine "bigquery")]
     ;; For each Card belonging to that BigQuery database...
     (doseq [{query :dataset_query, card-id :id} (db/select [Card :id :dataset_query] :database_id database-id)]
-      ;; If the Card isn't native, ignore it
-      (when (= (keyword (:type query)) :native)
-        (let [sql (get-in query [:native :query])]
-          ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
-          (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
-            ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
-            ;; #legacySQL directive...
-            (let [updated-sql (str "#legacySQL\n" sql)]
-              ;; and save the updated dataset_query map
-              (db/update! Card (u/get-id card-id)
-                :dataset_query (assoc-in query [:native :query] updated-sql)))))))))
+      (try
+        ;; If the Card isn't native, ignore it
+        (when (= (keyword (:type query)) :native)
+          ;; there apparently are cases where we have a `:native` query with no `:query`. See #8924
+          (when-let [sql (get-in query [:native :query])]
+            ;; if the Card already contains a #standardSQL or #legacySQL (both are case-insenstive) directive, ignore it
+            (when-not (re-find #"(?i)#(standard|legacy)sql" sql)
+              ;; if it doesn't have a directive it would have (under old behavior) defaulted to legacy SQL, so give it a
+              ;; #legacySQL directive...
+              (let [updated-sql (str "#legacySQL\n" sql)]
+                ;; and save the updated dataset_query map
+                (db/update! Card (u/get-id card-id)
+                  :dataset_query (assoc-in query [:native :query] updated-sql))))))
+        ;; if for some reason something above fails (as in #8924) let's log the error and proceed. It's not mission
+        ;; critical that we migrate existing queries anyway, and for ones that are impossible to migrate (e.g. ones
+        ;; that are invalid in the first place) it's best to fail gracefully and proceed rather than nuke someone's MB
+        ;; instance
+        (catch Throwable e
+          (log/error e (trs "Error adding legacy SQL directive to BigQuery saved Question")))))))
+
 
 ;; Before 0.30.0, we were storing the LDAP user's password in the `core_user` table (though it wasn't used).  This
 ;; migration clears those passwords and replaces them with a UUID. This is similar to a new account setup, or how we
@@ -342,3 +351,12 @@
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
+
+
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                                               !!
+;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!
+;; !!    (using preConditions where appropriate). Only add things here if absolutely necessary. If you do add       !!
+;; !!    do add new ones here, please add them above this warning message, so people will see it in the future.     !!
+;; !!                                                                                                               !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

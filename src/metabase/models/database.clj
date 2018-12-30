@@ -3,8 +3,10 @@
             [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
+             [driver :as driver]
              [util :as u]]
             [metabase.api.common :refer [*current-user*]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [interface :as i]
              [permissions :as perms]
@@ -68,20 +70,17 @@
     ;; schedule the Database sync tasks
     (schedule-tasks! database)))
 
-(defn- db->driver [{:keys [engine] :as db}]
-  ((resolve 'metabase.driver/engine->driver) engine))
+(defn- post-select [{driver :engine, :as database}]
+  ;; TODO - this is only really needed for API responses
+  (cond-> database
+    (driver/initialized? driver) (assoc :features (driver.u/features driver))))
 
-(defn- post-select [{:keys [engine] :as database}]
-  (if-not engine database
-          (assoc database :features (set (when-let [driver (db->driver database)]
-                                           ((resolve 'metabase.driver/features) driver))))))
-
-(defn- pre-delete [{id :id, :as database}]
+(defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
   (db/delete! 'Table       :db_id       id)
-  ((resolve 'metabase.driver/notify-database-updated) (db->driver database) database))
+  (driver/notify-database-updated driver database))
 
 ;; TODO - this logic would make more sense in post-update if such a method existed
 (defn- pre-update [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]

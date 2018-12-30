@@ -2,9 +2,10 @@
   "Tests for `/api/field` endpoints."
   (:require [expectations :refer :all]
             [metabase
-             [driver :as driver]
-             [query-processor-test :as qpt]]
+             [query-processor-test :as qpt]
+             [util :as u]]
             [metabase.api.field :as field-api]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
@@ -13,14 +14,13 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.users :refer [user->client]]
+            [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [ring.util.codec :as codec]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]
-            [metabase.util :as u]
-            [metabase.test.util.log :as tu.log]))
+            [toucan.util.test :as tt]))
 
 ;; Helper Fns
 
@@ -37,7 +37,7 @@
      :is_full_sync                true
      :is_on_demand                false
      :description                 nil
-     :features                    (mapv name (driver/features (driver/engine->driver :h2)))
+     :features                    (mapv name (driver.u/features :h2))
      :cache_field_values_schedule "0 50 0 * * ? *"
      :metadata_sync_schedule      "0 50 * * * ? *"
      :options                     nil

@@ -1,10 +1,8 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require [expectations :refer :all]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
             [metabase.api.database :as database-api]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -23,10 +21,14 @@
              [util :as tu :refer [match-$]]]
             [metabase.test.data
              [datasets :as datasets]
+             [env :as tx.env]
              [users :refer :all]]
             [metabase.test.util.log :as tu.log]
+            [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
+            [clojure.string :as str]))
 
 ;; HELPER FNS
 
@@ -53,14 +55,14 @@
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since
   ;; expectations hashes its body to generate function names it will treat every usage this as the same test and only
   ;; a single one will end up being ran
-  (let [result (gensym "result-")]
-    `(let [~result (delay (do-with-temp-db-created-via-api ~options (fn [~db-binding]
-                                                                      [~expected
-                                                                       ~actual])))]
+  (let [result-symb (gensym "result-")]
+    `(let [~result-symb (delay (do-with-temp-db-created-via-api ~options (fn [~db-binding]
+                                                                           [~expected
+                                                                            ~actual])))]
        (expect
          ;; in case @result# barfs we don't want the test to succeed (Exception == Exception for expectations)
-         (u/ignore-exceptions (first @~result))
-         (second @~result)))))
+         (u/ignore-exceptions (first (deref ~result-symb)))
+         (second (deref ~result-symb))))))
 
 (def ^:private default-db-details
   {:engine                      "h2"
@@ -88,7 +90,7 @@
              :details    $
              :updated_at $
              :timezone   $
-             :features   (map name (driver/features (driver/engine->driver (:engine db))))}))))
+             :features   (map name (driver.u/features (:engine db)))}))))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
@@ -126,7 +128,7 @@
             :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
             :updated_at   $
             :name         $
-            :features     (driver/features (driver/engine->driver :postgres))}))
+            :features     (driver.u/features :postgres)}))
   (Database (:id db)))
 
 
@@ -181,68 +183,78 @@
       (update :entity_type (comp (partial str "entity/") name))))
 
 ;; ## GET /api/database
-;; Test that we can get all the DBs (ordered by name)
+;; Test that we can get all the DBs (ordered by name, then driver)
 ;; Database details *should not* come back for Rasta since she's not a superuser
 (expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
-  (set (filter some? (conj (for [engine datasets/all-valid-engines]
-                             (datasets/when-testing-engine engine
-                               (merge default-db-details
-                                      (match-$ (data/get-or-create-test-data-db! (driver/engine->driver engine))
-                                        {:created_at         $
-                                         :engine             (name $engine)
-                                         :id                 $
-                                         :updated_at         $
-                                         :timezone           $
-                                         :name               "test-data"
-                                         :native_permissions "write"
-                                         :features           (map name (driver/features (driver/engine->driver engine)))}))))
-                           (merge default-db-details
-                                  (match-$ (Database db-id)
-                                    {:created_at         $
-                                     :engine             "postgres"
-                                     :id                 $
-                                     :updated_at         $
-                                     :name               $
-                                     :timezone           $
-                                     :native_permissions "write"
-                                     :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
-  (->> ((user->client :rasta) :get 200 "database")
-       (filter #(#{"test-data" db-name} (:name %)))
-       set))
+  (vec
+   (sort-by
+    (fn [{db-name :name, driver :engine}] (mapv (comp str/lower-case name) [db-name driver]))
+    (cons
+     (merge
+      default-db-details
+      (match-$ (Database db-id)
+        {:created_at         $
+         :engine             "postgres"
+         :id                 $
+         :updated_at         $
+         :name               $
+         :timezone           $
+         :native_permissions "write"
+         :features           (map name (driver.u/features :postgres))}))
+     (for [driver (conj tx.env/test-drivers :h2)
+           ;; GA has no test extensions impl and thus data/db doesn't work with it
+           :when  (not= driver :googleanalytics)]
+       (merge
+        default-db-details
+        (match-$ (driver/with-driver driver (data/db))
+          {:created_at         $
+           :engine             (name $engine)
+           :id                 $
+           :updated_at         $
+           :timezone           $
+           :name               "test-data"
+           :native_permissions "write"
+           :features           (map name (driver.u/features driver))}))))))
+  (filterv #(#{"test-data" db-name} (:name %))
+           ((user->client :rasta) :get 200 "database")))
 
 
 
 ;; GET /api/databases (include tables)
 (expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
-  (set (cons (merge default-db-details
-                    (match-$ (Database db-id)
-                      {:created_at         $
-                       :engine             "postgres"
-                       :id                 $
-                       :updated_at         $
-                       :name               $
-                       :timezone           $
-                       :native_permissions "write"
-                       :tables             []
-                       :features           (map name (driver/features (driver/engine->driver :postgres)))}))
-             (filter identity (for [engine datasets/all-valid-engines]
-                                (datasets/when-testing-engine engine
-                                  (let [database (data/get-or-create-test-data-db! (driver/engine->driver engine))]
-                                    (merge default-db-details
-                                           (match-$ database
-                                             {:created_at         $
-                                              :engine             (name $engine)
-                                              :id                 $
-                                              :updated_at         $
-                                              :timezone           $
-                                              :name               "test-data"
-                                              :native_permissions "write"
-                                              :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
-                                                                                   (table-details table)))
-                                              :features           (map name (driver/features (driver/engine->driver engine)))}))))))))
-  (->> ((user->client :rasta) :get 200 "database" :include_tables true)
-       (filter #(#{"test-data" db-name} (:name %)))
-       set))
+  (vec
+   (sort-by
+    (fn [{db-name :name, driver :engine}] (mapv (comp str/lower-case name) [db-name driver]))
+    (cons
+     (merge
+      default-db-details
+      (match-$ (Database db-id)
+        {:created_at         $
+         :engine             "postgres"
+         :id                 $
+         :updated_at         $
+         :name               $
+         :timezone           $
+         :native_permissions "write"
+         :tables             []
+         :features           (map name (driver.u/features :postgres))}))
+     (for [driver (conj tx.env/test-drivers :h2)
+           :when  (not= driver :googleanalytics)
+           :let   [database (driver/with-driver driver (data/db))]]
+       (merge
+        default-db-details
+        (match-$ database
+          {:created_at         $
+           :engine             (name $engine)
+           :id                 $
+           :updated_at         $
+           :timezone           $
+           :name               "test-data"
+           :native_permissions "write"
+           :tables             (sort-by :name (map table-details (db/select Table, :db_id (:id database))))
+           :features           (map name (driver.u/features driver))}))))))
+  (filterv #(#{"test-data" db-name} (:name %))
+           ((user->client :rasta) :get 200 "database" :include_tables true)))
 
 (def ^:private default-field-details
   {:description        nil
@@ -277,7 +289,7 @@
             :updated_at $
             :name       "test-data"
             :timezone   $
-            :features   (mapv name (driver/features (driver/engine->driver :h2)))
+            :features   (mapv name (driver.u/features :h2))
             :tables     [(merge default-table-details
                                 (match-$ (Table (data/id :categories))
                                   {:schema       "PUBLIC"
@@ -417,15 +429,19 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(tt/expect-with-temp [Database [druid-db   {:engine :druid, :details {}}]
-                      Card     [druid-card {:name             "Druid Card"
-                                            :dataset_query    {:database (u/get-id druid-db)
-                                                               :type     :native
-                                                               :native   {:query "[DRUID QUERY GOES HERE]"}}
-                                            :result_metadata [{:name "sparrows"}]
-                                            :database_id     (u/get-id druid-db)}]
-                      Card     [ok-card (assoc (card-with-native-query "OK Card")
-                                          :result_metadata [{:name "finches"}])]]
+(driver/register! ::no-nested-query-support :parent :h2)
+
+(defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
+
+(tt/expect-with-temp [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                      Card     [bad-card {:name            "Bad Card"
+                                          :dataset_query   {:database (u/get-id bad-db)
+                                                            :type     :native
+                                                            :native   {:query "[QUERY GOES HERE]"}}
+                                          :result_metadata [{:name "sparrows"}]
+                                          :database_id     (u/get-id bad-db)}]
+                      Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                           :result_metadata [{:name "finches"}])]]
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))
@@ -599,7 +615,7 @@
 ;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
 ;; here to simulate its *normal* behavior. :unamused:
 (defn- test-database-connection [engine details]
-  (if (driver/can-connect-with-details? (keyword engine) details)
+  (if (driver.u/can-connect-with-details? (keyword engine) details)
     nil
     {:valid false, :message "Error!"}))
 

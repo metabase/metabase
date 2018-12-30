@@ -21,3 +21,7 @@
 (def ^{:arglists '([field-clause])} Field?
   "Is this a valid Field clause?"
   (complement (s/checker mbql.s/Field)))
+
+(def ^{:arglists '([filter-clause])} Filter?
+  "Is this a valid `:filter` clause?"
+  (complement (s/checker mbql.s/Filter)))

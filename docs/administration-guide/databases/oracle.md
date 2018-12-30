@@ -36,24 +36,3 @@ If you're running Metabase from the Mac App, the plugins directory defaults to `
 ```
 
 Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.
-
-
-### Adding Additional Dependencies with Java 9
-
-Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
-Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
-launch time. Run Metabase as follows:
-
-```bash
-# Unix
-java -cp metabase.jar:plugins/* metabase.core
-```
-
-On Windows, use a semicolon instead:
-
-```powershell
-# Windows
-java -cp metabase.jar;plugins/* metabase.core
-```
-
-The default Docker images use Java 8 so this step is only needed when running the JAR directly.

@@ -1,0 +1,20 @@
+info:
+  name: Metabase Druid Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Druid databases.
+driver:
+  name: druid
+  display-name: Druid
+  lazy-load: true
+  connection-properties:
+    - merge:
+        - host
+        - default: http://localhost
+    - merge:
+        - port
+        - display-name: Broker node port
+          default: 8082
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.druid

@@ -2,56 +2,23 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]))
 
+(driver/register! ::test-driver)
 
-(defrecord ^:private TestDriver []
-  clojure.lang.Named
-  (getName [_] "TestDriver"))
+(defmethod driver/available? ::test-driver [_] false)
 
-(extend TestDriver
-  driver/IDriver
-  {:features (constantly #{:a})})
-
+(defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
 
 ;; driver-supports?
 
-(expect true  (driver/driver-supports? (TestDriver.) :a))
-(expect false (driver/driver-supports? (TestDriver.) :b))
+(expect true  (driver/supports? ::test-driver :foreign-keys))
+(expect false (driver/supports? ::test-driver :expressions))
 
-;; values->base-type
+;; expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`
 (expect
-  :type/Text
-  (driver/values->base-type ["A" "B" "C"]))
+  'metabase.driver.sql-jdbc
+  (#'driver/driver->expected-namespace :sql-jdbc))
 
-;; should ignore nils
+;; for a namespaced driver it should be the namespace of the keyword
 (expect
-  :type/Text
-  (driver/values->base-type [nil nil "C"]))
-
-;; should pick base-type of most common class
-(expect
-  :type/Text
-  (driver/values->base-type ["A" 100 "C"]))
-
-;; should fall back to :type/* if no better type is found
-(expect
-  :type/*
-  (driver/values->base-type [(Object.)]))
-
-;; Should work with initial nils even if sequence is lazy
-(expect
-  [:type/Integer true]
-  (let [realized-lazy-seq? (atom false)]
-    [(driver/values->base-type (lazy-cat [nil nil nil]
-                                (do (reset! realized-lazy-seq? true)
-                                    [4 5 6])))
-     @realized-lazy-seq?]))
-
-;; but it should respect laziness and not keep scanning after it finds 100 values
-(expect
-  [:type/Integer false]
-  (let [realized-lazy-seq? (atom false)]
-    [(driver/values->base-type (lazy-cat [1 2 3]
-                                         (repeat 1000 nil)
-                                         (do (reset! realized-lazy-seq? true)
-                                             [4 5 6])))
-     @realized-lazy-seq?]))
+  'metabase.driver-test
+  (#'driver/driver->expected-namespace ::toucans))

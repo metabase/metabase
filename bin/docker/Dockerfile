@@ -1,4 +1,4 @@
-FROM java:openjdk-8-jre-alpine
+FROM openjdk:8-jre-alpine
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8

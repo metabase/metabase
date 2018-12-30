@@ -8,7 +8,6 @@
             [metabase
              [config :as config]
              [db :as mdb]
-             [driver :as driver]
              [events :as events]
              [metabot :as metabot]
              [middleware :as mb-middleware]
@@ -19,6 +18,7 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
@@ -150,11 +150,9 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (plugins/setup-plugins!)
-  (init-status/set-progress! 0.35)
 
   ;; Load up all of our Database drivers, which are used for app db work
-  (driver/find-and-load-drivers!)
+  (driver.u/find-and-load-all-drivers!)
   (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations

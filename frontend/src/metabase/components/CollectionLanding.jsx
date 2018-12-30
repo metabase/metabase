@@ -5,6 +5,9 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 import cx from "classnames";
+import { dissoc } from "icepick";
+
+import withToast from "metabase/hoc/Toast";
 
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
@@ -29,7 +32,9 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import { entityTypeForObject } from "metabase/schema";
 
 import CollectionList from "metabase/components/CollectionList";
 
@@ -122,7 +127,8 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 @withRouter
 class DefaultLanding extends React.Component {
   state = {
-    moveItems: null,
+    selectedItems: null,
+    selectedAction: null,
   };
 
   handleBulkArchive = async () => {
@@ -136,15 +142,18 @@ class DefaultLanding extends React.Component {
   };
 
   handleBulkMoveStart = () => {
-    this.setState({ moveItems: this.props.selected });
+    this.setState({
+      selectedItems: this.props.selected,
+      selectedAction: "move",
+    });
   };
 
   handleBulkMove = async collection => {
     try {
       await Promise.all(
-        this.state.moveItems.map(item => item.setCollection(collection)),
+        this.state.selectedItems.map(item => item.setCollection(collection)),
       );
-      this.setState({ moveItems: null });
+      this.setState({ selectedItems: null, selectedAction: null });
     } finally {
       this.handleBulkActionSuccess();
     }
@@ -174,7 +183,7 @@ class DefaultLanding extends React.Component {
       onToggleSelected,
       location,
     } = this.props;
-    const { moveItems } = this.state;
+    const { selectedItems, selectedAction } = this.state;
 
     const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
     const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
@@ -288,7 +297,7 @@ class DefaultLanding extends React.Component {
                         >
                           <ItemDragSource item={item} collection={collection}>
                             <PinnedItem
-                              key={`${item.type}:${item.id}`}
+                              key={`${item.model}:${item.id}`}
                               index={index}
                               item={item}
                               collection={collection}
@@ -377,13 +386,22 @@ class DefaultLanding extends React.Component {
                                         collection={collection}
                                       >
                                         <NormalItem
-                                          key={`${item.type}:${item.id}`}
+                                          key={`${item.model}:${item.id}`}
                                           item={item}
                                           collection={collection}
                                           selection={selection}
                                           onToggleSelected={onToggleSelected}
-                                          onMove={moveItems =>
-                                            this.setState({ moveItems })
+                                          onMove={selectedItems =>
+                                            this.setState({
+                                              selectedItems,
+                                              selectedAction: "move",
+                                            })
+                                          }
+                                          onCopy={selectedItems =>
+                                            this.setState({
+                                              selectedItems,
+                                              selectedAction: "copy",
+                                            })
                                           }
                                         />
                                       </ItemDragSource>
@@ -479,19 +497,37 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(moveItems) && (
-          <Modal>
-            <CollectionMoveModal
-              title={
-                moveItems.length > 1
-                  ? t`Move ${moveItems.length} items?`
-                  : t`Move "${moveItems[0].getName()}"?`
-              }
-              onClose={() => this.setState({ moveItems: null })}
-              onMove={this.handleBulkMove}
-            />
-          </Modal>
-        )}
+        {!_.isEmpty(selectedItems) &&
+          selectedAction == "copy" && (
+            <Modal>
+              <CollectionCopyEntityModal
+                entityObject={selectedItems[0]}
+                onClose={() =>
+                  this.setState({ selectedItems: null, selectedAction: null })
+                }
+                onSaved={newEntityObject => {
+                  this.setState({ selectedItems: null, selectedAction: null });
+                  this.handleBulkActionSuccess();
+                }}
+              />
+            </Modal>
+          )}
+        {!_.isEmpty(selectedItems) &&
+          selectedAction == "move" && (
+            <Modal>
+              <CollectionMoveModal
+                title={
+                  selectedItems.length > 1
+                    ? t`Move ${selectedItems.length} items?`
+                    : t`Move "${selectedItems[0].getName()}"?`
+                }
+                onClose={() =>
+                  this.setState({ selectedItems: null, selectedAction: null })
+                }
+                onMove={this.handleBulkMove}
+              />
+            </Modal>
+          )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
@@ -504,6 +540,7 @@ export const NormalItem = ({
   selection = new Set(),
   onToggleSelected,
   onMove,
+  onCopy,
 }) => (
   <Link
     to={item.getUrl()}
@@ -515,7 +552,7 @@ export const NormalItem = ({
       showSelect={selection.size > 0}
       selectable
       item={item}
-      type={item.type}
+      type={entityTypeForObject(item)}
       name={item.getName()}
       iconName={item.getIcon()}
       iconColor={item.getColor()}
@@ -531,6 +568,7 @@ export const NormalItem = ({
       onMove={
         collection.can_write && item.setCollection ? () => onMove([item]) : null
       }
+      onCopy={item.copy ? () => onCopy([item]) : null}
       onArchive={
         collection.can_write && item.setArchived
           ? () => item.setArchived(true)
@@ -685,5 +723,38 @@ const CollectionBurgerMenu = () => (
     triggerIcon="burger"
   />
 );
+@withToast
+class CollectionCopyEntityModal extends React.Component {
+  render() {
+    const { entityObject, onClose, onSaved, triggerToast } = this.props;
+
+    return (
+      <EntityCopyModal
+        entityType={entityTypeForObject(entityObject)}
+        entityObject={entityObject}
+        copy={async values => {
+          return entityObject.copy(dissoc(values, "id"));
+        }}
+        onClose={onClose}
+        onSaved={newEntityObject => {
+          triggerToast(
+            <div className="flex align-center">
+              {t`Duplicated ${entityObject.model}`}
+              <Link
+                className="link text-bold ml1"
+                to={Urls.modelToUrl(entityObject.model, newEntityObject.id)}
+              >
+                {t`See it`}
+              </Link>
+            </div>,
+            { icon: entityObject.model },
+          );
+
+          onSaved(newEntityObject);
+        }}
+      />
+    );
+  }
+}
 
 export default CollectionLanding;

@@ -58,7 +58,7 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run: lein deps
+      - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
@@ -72,7 +72,21 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests
+          name: Run backend unit tests with Java 8
+          command: lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-java-11:
+    <<: *defaults
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.8.1
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests with Java 11
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
@@ -108,7 +122,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run Bikeshed linter
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
@@ -120,7 +134,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
@@ -137,7 +151,7 @@ jobs:
       - run:
           name: Run backend unit tests (MySQL)
           environment:
-            ENGINES: h2,mysql
+            DRIVERS: h2,mysql
             MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
             MB_DB_TYPE: mysql
             MB_DB_HOST: localhost
@@ -166,7 +180,7 @@ jobs:
       - run:
           name: Run backend unit tests (Postgres)
           environment:
-            ENGINES: h2,postgres
+            DRIVERS: h2,postgres
             MB_DB_TYPE: postgres
             MB_DB_PORT: 5432
             MB_DB_HOST: localhost
@@ -189,12 +203,6 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download SparkSQL deps JAR
-          command: wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
-      - run:
           name: Wait for SparkSQL to be ready
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
@@ -203,7 +211,7 @@ jobs:
       - run:
           name: Run backend unit tests (SparkSQL)
           environment:
-            ENGINES: h2,sparksql
+            DRIVERS: h2,sparksql
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
             lein with-profile +ci test
@@ -222,7 +230,7 @@ jobs:
       - run:
           name: Run backend unit tests (MongoDB 3.2)
           environment:
-            ENGINES: h2,mongo
+            DRIVERS: h2,mongo
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
             lein with-profile +ci test
@@ -250,7 +258,7 @@ jobs:
       - run:
           name: Run backend unit tests (Vertica)
           environment:
-            ENGINES: h2,vertica
+            DRIVERS: h2,vertica
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
             lein with-profile +ci test
@@ -268,7 +276,7 @@ jobs:
       - run:
           name: Run backend unit tests (Snowflake)
           environment:
-            ENGINES: h2,snowflake
+            DRIVERS: h2,snowflake
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
             lein with-profile +ci test
@@ -284,7 +292,7 @@ jobs:
       - run:
           name: Run backend unit tests (SQL Server)
           environment:
-            ENGINES: h2,sqlserver
+            DRIVERS: h2,sqlserver
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
             lein with-profile +ci test
@@ -300,9 +308,25 @@ jobs:
       - run:
           name: Run backend unit tests (BigQuery)
           environment:
-            ENGINES: h2,bigquery
+            DRIVERS: h2,bigquery
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-googleanalytics:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Google Analytics)
+          environment:
+            DRIVERS: h2,googleanalytics
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
             lein with-profile +ci test
           no_output_timeout: 5m
 
@@ -316,7 +340,7 @@ jobs:
       - run:
           name: Run backend unit tests (SQLite)
           environment:
-            ENGINES: h2,sqlite
+            DRIVERS: h2,sqlite
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
             lein with-profile +ci test
@@ -331,7 +355,7 @@ jobs:
       - run:
           name: Run backend unit tests (Druid)
           environment:
-            ENGINES: h2,druid
+            DRIVERS: h2,druid
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
             lein with-profile +ci test
@@ -347,7 +371,7 @@ jobs:
       - run:
           name: Run backend unit tests (Redshift)
           environment:
-            ENGINES: h2,redshift
+            DRIVERS: h2,redshift
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
             lein with-profile +ci test
@@ -369,13 +393,13 @@ jobs:
       - run:
           name: Wait for Presto to be ready
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
             while ! nc -z localhost 8080; do sleep 0.1; done
           no_output_timeout: 5m
       - run:
           name: Run backend unit tests (Presto)
           environment:
-            ENGINES: h2,presto
+            DRIVERS: h2,presto
             MB_PRESTO_TEST_HOST: localhost
             MB_PRESTO_TEST_PORT: 8080
           command: >
@@ -402,7 +426,7 @@ jobs:
       - run:
           name: Run backend unit tests (Oracle)
           environment:
-            ENGINES: h2,oracle
+            DRIVERS: h2,oracle
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
             lein with-profile +ci test
@@ -566,6 +590,9 @@ workflows:
       - be-tests:
           requires:
             - be-deps
+      - be-tests-java-11:
+          requires:
+            - be-deps
       - be-linter-eastwood:
           requires:
             - be-deps
@@ -594,6 +621,9 @@ workflows:
           requires:
             - be-tests
       - be-tests-bigquery:
+          requires:
+            - be-tests
+      - be-tests-googleanalytics:
           requires:
             - be-tests
       - be-tests-sqlite:
@@ -648,6 +678,7 @@ workflows:
             - be-linter-docstring-checker
             - be-linter-bikeshed
             - be-linter-reflection-warnings
+
             - be-tests
             - be-tests-mysql
             - be-tests-postgres
@@ -655,6 +686,7 @@ workflows:
             - be-tests-mongo
             - be-tests-sqlserver
             - be-tests-bigquery
+            - be-tests-googleanalytics
             - be-tests-sqlite
             - be-tests-presto
             - be-tests-oracle
@@ -662,6 +694,7 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
             - fe-linter-eslint
             - fe-linter-prettier
             - fe-linter-flow

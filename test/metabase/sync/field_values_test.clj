@@ -26,7 +26,7 @@
 (expect
   {1 [1 2 3 4]
    2 nil
-   3 (repeat 2 {:errors 0, :created 1, :updated 5, :deleted 0})
+   3 (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
    4 [1 2 3 4]}
   {;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)
@@ -43,7 +43,7 @@
 (expect
   {1 [1 2 3 4]
    2 [1 2 3]
-   3 (repeat 2 {:errors 0, :created 0, :updated 6, :deleted 0})
+   3 (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
    4 [1 2 3 4]}
   { ;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)

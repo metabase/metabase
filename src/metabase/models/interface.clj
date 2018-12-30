@@ -1,12 +1,14 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as normalize]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
              [date :as du]
-             [encryption :as encryption]]
+             [encryption :as encryption]
+             [i18n :refer [tru]]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan
@@ -59,11 +61,25 @@
 
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
-  (when query (normalize/normalize query)))
+  (when query
+    (normalize/normalize query)))
+
+(defn- catch-normalization-exceptions
+  "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
+  invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
+  letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
+  [f]
+  (fn [query]
+    (try
+      (doall (f query))
+      (catch Throwable e
+        (log/error e (tru "Unable to normalize:") "\n"
+                   (u/pprint-to-str 'red query))
+        nil))))
 
 (models/add-type! :metabase-query
   :in  (comp json-in maybe-normalize)
-  :out (comp maybe-normalize json-out-with-keywordization))
+  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
 ;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
@@ -73,24 +89,23 @@
 ;; For inner queries like those in Metric definitions
 (models/add-type! :metric-segment-definition
   :in  (comp json-in normalize-metric-segment-definition)
-  :out (comp normalize-metric-segment-definition json-out-with-keywordization))
+  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]
-  (for [{:keys [target], :as mapping} parameter-mappings]
-    (cond-> mapping
-      target (update :target normalize/normalize-tokens :ignore-path))))
+  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
+      []))
 
 (models/add-type! :parameter-mappings
   :in  (comp json-in normalize-parameter-mapping-targets)
-  :out (comp normalize-parameter-mapping-targets json-out-with-keywordization))
+  :out (comp (catch-normalization-exceptions normalize-parameter-mapping-targets) json-out-with-keywordization))
 
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
 (models/add-type! :json-set
   :in  json-in
-  :out #(when % (set (json-out-with-keywordization %))))
+  :out #(some-> % json-out-with-keywordization set))
 
 (models/add-type! :clob
   :in  identity

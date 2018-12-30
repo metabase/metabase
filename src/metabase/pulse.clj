@@ -2,10 +2,10 @@
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
             [metabase
-             [driver :as driver]
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.models
@@ -48,7 +48,7 @@
   "Returns the timezone for the given `CARD`. Either the report
   timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
+  (let [^String timezone-str (or (some-> card database-id driver.u/database->driver driver.u/report-timezone-if-supported)
                                  (System/getProperty "user.timezone"))]
     (TimeZone/getTimeZone timezone-str)))
 
