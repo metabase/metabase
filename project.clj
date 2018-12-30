@@ -5,6 +5,7 @@
   :description      "Metabase Community Edition"
   :url              "https://metabase.com/"
   :min-lein-version "2.5.0"
+
   :aliases
   {"generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
    "profile"                           ["with-profile" "+profile" "run" "profile"]
@@ -110,6 +111,7 @@
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
    [toucan "1.1.9" :exclusions [org.clojure/java.jdbc honeysql]]]     ; Model layer, hydration, and DB utilities
+
   :main ^:skip-aot metabase.core
 
   ;; TODO - WHAT DOES THIS DO?
