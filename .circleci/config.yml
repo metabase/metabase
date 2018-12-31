@@ -248,7 +248,6 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
-
   be-tests-clickhouse:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -262,7 +261,7 @@ jobs:
     - restore_cache:
         <<: *restore-be-deps-cache
     - run:
-        name: Run backend unit tests (Clickhouse)
+        name: Run backend unit tests (ClickHouse)
         environment:
             DRIVERS: h2,clickhouse
         command: >
@@ -676,9 +675,10 @@ workflows:
             - be-tests
       - be-tests-sparksql:
           requires:
+            - be-tests
       - be-tests-clickhouse:
           requires:
-          - be-tests
+            - be-tests
       - be-tests-mongo:
           requires:
             - be-tests

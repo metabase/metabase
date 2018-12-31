@@ -1,0 +1,29 @@
+info:
+  name: Metabase ClickHouse Driver
+  version: 1.0.0-SNAPSHOT-0.1.48
+  description: Allows Metabase to connect to ClickHouse databases.
+driver:
+  name: clickhouse
+  display-name: ClickHouse
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: dbname
+      display-name: Database Name
+      placeholder: default
+    - host
+    - merge:
+        - port
+        - default: 8123
+    - user
+    - password
+    - ssl
+    - merge:
+        - additional-options
+        - placeholder: "max_rows_to_group_by=42"
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.clickhouse
+  - step: register-jdbc-driver
+    class: ru.yandex.clickhouse.ClickHouseDriver

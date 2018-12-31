@@ -1,9 +1,11 @@
 (ns metabase.driver.clickhouse
+  "Driver for ClickHouse databases"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as string]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -16,8 +18,7 @@
             [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
-             [date :as du]
-             [ssh :as ssh]]
+             [date :as du]]
             [schema.core :as sc])
   (:import java.sql.DatabaseMetaData))
 
@@ -51,17 +52,20 @@
   (database-type->base-type
    (string/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
 
-(defmethod sql-jdbc.conn/connection-details->spec :clickhouse [_ details]
-  (let [{:keys [host port dbname]} details]
-    (-> (dissoc details :host :port :dbname)
-        (merge {:classname   "ru.yandex.clickhouse.ClickHouseDriver"
-                :subprotocol "clickhouse"
-                :subname     (str "//" host
-                                  ":" port
-                                  (when dbname
-                                    (str "/" dbname)))
-                :use_server_time_zone_for_dates true})
-        (sql-jdbc.common/handle-additional-options details))))
+(defmethod sql-jdbc.conn/connection-details->spec :clickhouse
+  [_ {:keys [user password dbname host port ssl]
+      :or   {user "default", password "", dbname "default", host "localhost", port "8123"}
+      :as   details}]
+  (-> {:applicationName                config/mb-app-id-string
+       :classname                      "ru.yandex.clickhouse.ClickHouseDriver"
+       :subprotocol                    "clickhouse"
+       :subname                        (str "//" host ":" port)
+       :database                       dbname
+       :password                       password
+       :user                           user
+       :ssl                            (boolean ssl)
+       :use_server_time_zone_for_dates true}
+      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defn- modulo [a b]
   (hsql/call :modulo a b))
@@ -177,10 +181,11 @@
         (recur honeysql-form more)
         honeysql-form))))
 
+;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
+;; server, so we override the default formatter
 (sc/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
   [_ date]
   (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
-
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
 ;; convert these booleans to numbers.
@@ -245,12 +250,3 @@
 ;; TODO: Nested queries are actually supported, but I do not know how
 ;; to make the driver use correct aliases per sub-query
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
-
-(defmethod driver/connection-properties :clickhouse [_]
-  (ssh/with-tunnel-config
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 8123)
-     driver.common/default-dbname-details
-     (assoc driver.common/default-user-details :required false)
-     (assoc driver.common/default-password-details :required false)
-     driver.common/default-additional-options-details]))
