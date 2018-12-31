@@ -10,12 +10,15 @@
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql :as sql]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [date :as du]
+             [ssh :as ssh]]
+            [schema.core :as sc])
   (:import java.sql.DatabaseMetaData))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
@@ -173,6 +176,11 @@
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
+
+(sc/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
+  [_ date]
+  (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
+
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
 ;; convert these booleans to numbers.
