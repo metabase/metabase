@@ -127,19 +127,6 @@ export default class Worksheet extends React.Component {
             this.reset();
           }}
         >
-          {(showFilterSection || showSummarizeSection) && (
-            <FieldsBarWithExpressionEditor
-              color={SECTIONS.data.color}
-              fieldOptions={query.fieldOptions()}
-              isPickerOpen={isPickerOpen}
-              onOpenPicker={this.openPicker}
-              onClosePicker={this.closePicker}
-              query={query}
-              onAddExpression={(name, expression) =>
-                query.addExpression(name, expression).update(setDatasetQuery)
-              }
-            />
-          )}
           {isRunnable &&
             !showFilterSection &&
             showSummarizeSection && <FilterButton onClick={this.filter} />}

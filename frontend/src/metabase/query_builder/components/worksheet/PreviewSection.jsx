@@ -67,7 +67,7 @@ class PreviewSection extends React.Component {
     const rawSeries =
       previewSeries && assocIn(previewSeries, [0, "card", "display"], "table");
 
-    const showExpressionEditor = true;
+    const showExpressionEditor = false;
 
     return (
       <WorksheetSection
@@ -102,24 +102,24 @@ class PreviewSection extends React.Component {
               tableHeaderHeight={
                 HEADER_HEIGHT + (showExpressionEditor ? SUB_HEADER_HEIGHT : 0)
               }
-              renderTableHeaderWrapper={(children, column) => {
-                const dimension = query.dimensionForColumn(column);
-                const icon = dimension && dimension.field().icon();
-                return (
-                  <Dimension
-                    className="flex align-center flex-full cellData align-self-start"
-                    style={{
-                      marginLeft: "0.5em",
-                      marginRight: 0,
-                      marginTop: "0.5em",
-                      // height: HEADER_HEIGHT,
-                    }}
-                    icon={icon}
-                  >
-                    {children}
-                  </Dimension>
-                );
-              }}
+              // renderTableHeaderWrapper={(children, column) => {
+              //   const dimension = query.dimensionForColumn(column);
+              //   const icon = dimension && dimension.field().icon();
+              //   return (
+              //     <Dimension
+              //       className="flex align-center flex-full cellData align-self-start"
+              //       style={{
+              //         marginLeft: "0.5em",
+              //         marginRight: 0,
+              //         marginTop: "0.5em",
+              //         // height: HEADER_HEIGHT,
+              //       }}
+              //       icon={icon}
+              //     >
+              //       {children}
+              //     </Dimension>
+              //   );
+              // }}
             />
           )}
           {rawSeries &&
