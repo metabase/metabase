@@ -154,7 +154,7 @@
                                (-> dashboard
                                    (dissoc :dashboard_cards)
                                    (assoc :collection_id (:collection context)
-                                          :creator_id @default-user)
+                                          :creator_id    @default-user)
                                    humanized-field-references->ids)))
         dashboard-cards    (map :dashboard_cards dashboards)
         dashboard-card-ids (maybe-upsert-many! (:mode context) DashboardCard
@@ -244,8 +244,7 @@
                   :collection (when nested?
                                 (->> (slurp-dir path)
                                      (map (fn [collection]
-                                            (assoc collection
-                                              :location (derive-location context))))
+                                            (assoc collection :location (derive-location context))))
                                      (maybe-upsert-many! (:mode context) Collection)
                                      first)))]
     (doseq [path (list-dirs (if nested?

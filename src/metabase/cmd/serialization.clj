@@ -13,12 +13,20 @@
             [metabase.serialization
              [dump :as dump]
              [load :as load]]
-            [toucan.db :as db])
+            [schema.core :as s]
+            [toucan.db :as db]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]])
   (:refer-clojure :exclude [load]))
 
-(defn load
+(def ^:private Mode
+  (su/with-api-error-message (s/enum :skip :update)
+    (trs "invalid mode value")))
+
+(s/defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [mode path]
+  [mode :- Mode, path]
   (mdb/setup-db-if-needed!)
   (let [context {:mode mode}]
     (load/load path context Database)

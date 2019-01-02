@@ -1,10 +1,6 @@
 (ns metabase.serialization.names
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [util :as mbql.util]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -176,6 +172,7 @@
                          :name          dashboard-name)))
 
 (defn fully-qualified-name->context
+  "Parse a logcial path into a context map."
   [fully-qualified-name]
   (->> (str/split fully-qualified-name #"/")
        rest

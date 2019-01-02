@@ -16,7 +16,6 @@
              [dependency :refer [Dependency]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
-             [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
@@ -24,7 +23,6 @@
              [segment :refer [Segment]]
              [setting :as setting]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qp.util]
             [metabase.serialization.names :refer [fully-qualified-name safe-name]]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -119,6 +117,8 @@
 
 (defmethod dump (type Field)
   [path field]
+  ;; Note, we expect the field to be hydrated wrt FieldValues. This is done upstream, so hydration
+  ;; can be done in batch.
   (spit-entity path :file (update field :values u/select-non-nil-keys [:values :human_readable_values])))
 
 (defmethod dump (type Segment)

@@ -64,6 +64,7 @@
     (str "ID " id)))
 
 (defn maybe-upsert-many!
+  "Batch upsert-or-skip"
   [mode model entities]
   (let [same?                        (comp nil? second diff/diff)
         {:keys [update insert skip]} (->> entities
