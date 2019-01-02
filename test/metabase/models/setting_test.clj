@@ -207,7 +207,7 @@
       (some (fn [setting]
               (when (re-find #"^test-setting-2$" (name (:key setting)))
                 setting))
-            (setting/all (comp count setting/get)))))
+            (setting/all (comp count setting/get-string)))))
 
 ;; all
 (expect
