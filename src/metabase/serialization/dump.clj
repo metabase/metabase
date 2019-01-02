@@ -2,15 +2,17 @@
   "Serialize a Matabase instance into a directory structure of YAMLs."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.walk :as walk]
-            [metabase.automagic-dashboards.filters :refer [field-reference?]]
+            [medley.core :as m]
+            [metabase.mbql
+             [normalize :as mbql.normalize]
+             [util :as mbql.util]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
+             [database :refer [Database] :as database]
              [dependency :refer [Dependency]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
@@ -23,158 +25,67 @@
              [setting :as setting]
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.serialization.names :refer [fully-qualified-name safe-name]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.db :as db]
             [yaml.core :as yaml]))
 
-(defmulti
-  ^{:doc      "Get the logical path for entity `entity`.
-
-               The idea is to replace all IDs with these human readable paths which are also
-               instance-independent, making deserialization eaiser."
-    :private  true
-    :arglists '([entity])}
-  fully-qualified-name* type)
-
-(def ^:private ^{:arglists '([entity] [model id])} fully-qualified-name
-  (memoize (fn
-             ([entity] (fully-qualified-name* entity))
-             ([model id] (fully-qualified-name* (model id))))))
-
-(defmethod fully-qualified-name* (type Database)
-  [db]
-  (str "/databases/" (:name db)))
-
-(defmethod fully-qualified-name* (type Table)
-  [table]
-  (format "%s/schemas/%s/tables/%s"
-          (->> table :db_id (fully-qualified-name Database))
-          (:schema table)
-          (:name table)))
-
-(defmethod fully-qualified-name* (type Field)
-  [field]
-  (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (:name field)))
-
-(defmethod fully-qualified-name* (type Metric)
-  [metric]
-  (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (:name metric)))
-
-(defmethod fully-qualified-name* (type Segment)
-  [segment]
-  (str (->> segment :table_id (fully-qualified-name Table)) "/segments/" (:name segment)))
-
-(defmethod fully-qualified-name* (type Collection)
-  [collection]
-  (let [parents (->> (str/split (:location collection) #"/")
-                     rest
-                     (map #(-> % Integer/parseInt Collection :name (str "/collections")))
-                     (str/join "/")
-                     (format "%s/"))]
-    (str "/collections/root/collections/" parents (:name collection))))
-
-(defmethod fully-qualified-name* (type Dashboard)
-  [dashboard]
-  (format "%s/dashboards/%s"
-          (or (some->> dashboard :collection_id (fully-qualified-name Collection))
-              "/collections/root")
-          (:name dashboard)))
-
-(defmethod fully-qualified-name* (type Pulse)
-  [pulse]
-  (format "%s/pulses/%s"
-          (or (some->> pulse :collection_id (fully-qualified-name Collection))
-              "/collections/root")
-          (:name pulse)))
-
-(defmethod fully-qualified-name* (type Card)
-  [card]
-  (format "%s/cards/%s"
-          (or (some->> card
-                       :dataset_query
-                       qp.util/query->source-card-id
-                       (fully-qualified-name Card))
-              (some->> card
-                       :collection_id
-                       (fully-qualified-name Collection))
-              "/collections/root")
-          (:name card)))
-
-(defmethod fully-qualified-name* nil
-  [_]
-  nil)
-
-(def ^:private SegmentOrMetric
-  [(s/one (s/constrained su/KeywordOrString
-                         (comp #{:metric :segment} qp.util/normalize-token))
-          "head")
-   (s/cond-pre s/Int su/KeywordOrString)])
-
-(def ^{:arglists '([form])} entity-reference?
+(def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"
-  (some-fn field-reference? (complement (s/checker SegmentOrMetric))))
+  (partial mbql.normalize/is-clause? #{:field-id :fk-> :metric :segment}))
 
-(defn- entity-reference->fully-qualified-name
-  [[op & args :as entity-reference]]
-  (case (qp.util/normalize-token op)
-    :metric        [op (fully-qualified-name Metric (first args))]
-    :segment       [op (fully-qualified-name Segment (first args))]
-    :field-id      [op (if (string? (first args))
-                         (first args)
-                         (fully-qualified-name Field (first args)))]
-    :fk->          (into [op]
-                         (for [arg args]
-                           (if (number? arg)
-                             (Field arg)
-                             (entity-reference->fully-qualified-name arg))))
-    :field-literal entity-reference))
+(defn- humanize-mbql
+  [mbql]
+  (-> mbql
+      mbql.normalize/normalize
+      (mbql.util/replace
+        ;; `integer?` guard is here to make the operation idempotent
+        [:field-id (id :guard integer?)]
+        [:field-id (fully-qualified-name Field id)]
+
+        [:metric (id :guard integer?)]
+        [:metric (fully-qualified-name Metric id)]
+
+        [:segment (id :guard integer?)]
+        [:segment (fully-qualified-name Segment id)]
+
+        ;; Legacy form with raw IDs
+        [:fk-> (from :guard integer?) (to :guard integer?)]
+        [:fk-> [:field-id (fully-qualified-name Field from)]
+         [:field-id (fully-qualified-name Field to)]])))
 
 (defn- humanize-entity-references
   [entity]
-  (walk/postwalk
-   (fn [form]
-     (cond
-       (entity-reference? form)
-       (entity-reference->fully-qualified-name form)
+  (mbql.util/replace entity
+    mbql-entity-reference?
+    (humanize-mbql &match)
 
-       (map? form)
-       (let [id->fully-qualified-name (fn [entity-id model]
-                                        (if (string? entity-id)
-                                          entity-id
-                                          (fully-qualified-name model entity-id)))]
-         (-> form
-             (u/update-when :database (fn [db]
-                                        (if (= db -1337)
-                                          "database/virtual"
-                                          (id->fully-qualified-name db Database))))
-             (u/update-when :card_id id->fully-qualified-name Card)
-             (u/update-when :source-table (fn [source-table]
+    map?
+    (as-> &match entity
+      (u/update-when entity :database (fn [db-id]
+                                        (if (= db-id database/virtual-id)
+                                          "database/__virtual"
+                                          (fully-qualified-name Database db-id))))
+      (u/update-when entity :card_id (partial fully-qualified-name Card))
+      (u/update-when entity :source-table (fn [source-table]
                                             (if (and (string? source-table)
                                                      (str/starts-with? source-table "card__"))
-                                              (-> source-table
-                                                  (str/split #"__")
-                                                  second
-                                                  Integer/parseInt
-                                                  (id->fully-qualified-name Card))
-                                              (id->fully-qualified-name source-table Table))))))
+                                              (fully-qualified-name Card (-> source-table
+                                                                             (str/split #"__")
+                                                                             second
+                                                                             Integer/parseInt))
+                                              (fully-qualified-name Table source-table))))
+      (m/map-vals humanize-entity-references entity))))
 
-       :else
-       form))
-   entity))
+(defmulti dump
+  "Serialize entity `entity` to location `dir`.
 
-(defmulti
-  ^{:doc      "Serialize entity `entity` to location `dir`.
+   Depending on the entity, it will be serialized either as a single YAML, or a directory structure.
 
-               Depending on the entity, it will be serialized either as a single YAML, or a
-               directory structure.
-
-               Removes unneeded fields that can either be reconstructed from context or are
-               meaningless (eg. :created_at)."
-    :arglists '([dir entity])}
-  dump (fn [_ entity]
-         (type entity)))
+   Removes unneeded fields that can either be reconstructed from context or are meaningless
+   (eg. :created_at)."
+  (fn [_ entity]
+    (type entity)))
 
 (defn- strip-crud
   [entity]
@@ -192,7 +103,7 @@
   ([path entity] (spit-entity path :dir entity))
   ([path mode entity]
    (spit-yaml (if (= mode :dir)
-                (format "%s/%s/%s.yaml" path (fully-qualified-name entity) (:name entity))
+                (format "%s/%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity))
                 (format "%s/%s.yaml" path (fully-qualified-name entity)))
               (->> entity
                    strip-crud
@@ -259,18 +170,13 @@
                  :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
                              (strip-crud channel)))))
 
-(def ^:private model-name->model
-  {"Card"    Card
-   "Segment" Segment
-   "Metric"  Metric})
-
 (defn dump-dependencies
   "Combine all dependencies into a vector and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/dependencies.yaml")
              (for [{:keys [model_id model dependent_on_id dependent_on_model]} (Dependency)]
-               {:model_id        (fully-qualified-name (model-name->model model) model_id)
-                :dependent_on_id (fully-qualified-name (model-name->model dependent_on_model) dependent_on_id)})))
+               {:dependent_on_id (fully-qualified-name (symbol dependent_on_model) dependent_on_id)
+                :model_id        (fully-qualified-name (symbol model) model_id)})))
 
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."
@@ -291,6 +197,7 @@
                        (:schema table))
                (for [dimension dimensions]
                  (-> dimension
+                     (update :field_id (partial fully-qualified-name Field))
                      (update :human_readable_field_id (partial fully-qualified-name Field))
                      strip-crud
                      humanize-entity-references)))))

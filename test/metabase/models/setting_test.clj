@@ -195,6 +195,20 @@
                 setting))
             (setting/all))))
 
+;; all with custom getter
+(expect
+  {:key            :test-setting-2
+   :value          7
+   :description    "Test setting - this only shows up in dev (2)"
+   :is_env_setting false
+   :env_name       "MB_TEST_SETTING_2"
+   :default        "[Default Value]"}
+  (do (set-settings! nil "TOUCANS")
+      (some (fn [setting]
+              (when (re-find #"^test-setting-2$" (name (:key setting)))
+                setting))
+            (setting/all (comp count setting/get)))))
+
 ;; all
 (expect
   [{:key            :test-setting-1

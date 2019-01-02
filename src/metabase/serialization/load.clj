@@ -1,19 +1,15 @@
 (ns metabase.serialization.load
   "Load entities serialized by `metabase.serialization.dump`."
-  (:require [cheshire.core :as json]
-            [clojure.data :as diff]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
+  (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.walk :as walk]
-            [medley.core :as m]
+            [metabase.mbql.util :as mbql.util]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
+             [database :refer [Database] :as database]
              [dependency :refer [Dependency]]
              [dimension :refer [Dimension]]
              [field :refer [Field]]
@@ -27,9 +23,10 @@
              [table :refer [Table]]
              [user :refer [User]]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.serialization.dump :as dump]
+            [metabase.serialization
+             [names :refer [fully-qualified-name->context]]
+             [upsert :refer [maybe-upsert-many!]]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
             [yaml.core :as yaml])
   (:refer-clojure :exclude [load]))
@@ -51,185 +48,17 @@
         :when (.isDirectory file)]
     (.getPath file)))
 
-(def ^:private identity-condition
-  {Database            [:name]
-   Table               [:schema :name :db_id]
-   Field               [:name :table_id]
-   Metric              [:name :table_id]
-   Segment             [:name :table_id]
-   Collection          [:name :location]
-   Dashboard           [:name :collection_id]
-   DashboardCard       [:card_id :dashboard_id :visualiation_settings]
-   DashboardCardSeries [:dashboardcard_id :card_id]
-   FieldValues         [:field_id]
-   Dimension           [:field_id :human_readable_field_id]
-   Dependency          [:model_id :model :dependent_on_model :dependent_on_id]
-   Setting             [:key]
-   Pulse               [:name :collection_id]
-   PulseCard           [:pulse_id :card_id]
-   PulseChannel        [:pulse_id :channel_type :details]
-   Card                [:name :collection_id]})
-
-;; This could potentially be unrolled into one giant select
-(defn- select-identical
-  [model entity]
-  (->> model
-       identity-condition
-       (select-keys entity)
-       (m/map-vals (fn [v]
-                     (if (coll? v)
-                       (json/encode v)
-                       v)))
-       (m/mapply db/select-one model)))
-
-(defn- name-for-logging
-  [{:keys [name id]}]
-  (if name
-    (format "\"%s\" (ID %s)" name id)
-    (str "ID " id)))
-
-(defn- maybe-upsert-many!
-  [mode model entities]
-  (let [same?                        (comp nil? second diff/diff)
-        {:keys [update insert skip]} (->> entities
-                                          (map-indexed (fn [position entity]
-                                                         [position
-                                                          entity
-                                                          (select-identical model entity)]))
-                                          (group-by (fn [[_ entity existing]]
-                                                      (case mode
-                                                        :update (cond
-                                                                  (same? existing entity) :skip
-                                                                  existing                :update
-                                                                  :else                   :insert)
-                                                        :skip   (if existing
-                                                                  :skip
-                                                                  :insert)))))]
-
-    (doseq [[_ entity _] insert]
-      (log/info (trs "Inserting {0} {1}" (:name model) (name-for-logging entity))))
-    (doseq [[_ _ existing] skip]
-      (if (= mode :skip)
-        (log/info (trs "{0} {1} already exists -- skipping"
-                       (:name model) (name-for-logging existing)))
-        (log/info (trs "Skipping {0} {1} (nothing to update)"
-                       (:name model) (name-for-logging existing)))))
-    (doseq [[_ _ existing] update]
-      (log/info (trs "Updating {0} {1}" (:name model) (name-for-logging existing))))
-
-    (->> (concat (for [[position _ existing] skip]
-                   [(u/get-id existing) position])
-                 (map vector (db/insert-many! model (map second insert)) (map first insert))
-                 (for [[position entity existing] update]
-                   (let [id (u/get-id existing)]
-                     (db/update! model id entity)
-                     [id position])))
-         (sort-by second)
-         (map first))))
-
-(defmulti
-  ^{:doc      "Extract entities from a logical path."
-    :private  true
-    :arglists '([context model entity-name])}
-  path->context* (fn [_ model _]
-                   model))
-
-(def ^:private ^{:arglists '([context model entity-name])} path->context
-  (memoize path->context*))
-
-(defmethod path->context* "databases"
-  [context _ db-name]
-  (assoc context :database (if (= db-name "__virtual")
-                             -1337
-                             (db/select-one-id Database :name db-name))))
-
-(defmethod path->context* "schemas"
-  [context _ schema]
-  (assoc context :schema schema))
-
-(defmethod path->context* "tables"
-  [context _ table-name]
-  (assoc context :table (db/select-one-id Table
-                          :db_id  (:database context)
-                          :schema (:schema context)
-                          :name   table-name)))
-
-(defmethod path->context* "fields"
-  [context _ field-name]
-  (assoc context :field (db/select-one-id Field
-                          :table_id (:table context)
-                          :name     field-name)))
-
-(defmethod path->context* "metrics"
-  [context _ metric-name]
-  (assoc context :metric (db/select-one-id Metric
-                           :table_id (:table context)
-                           :name     metric-name)))
-
-(defmethod path->context* "segments"
-  [context _ segment-name]
-  (assoc context :segment (db/select-one-id Segment
-                            :table_id (:table context)
-                            :name     segment-name)))
-
-(defmethod path->context* "collections"
-  [context _ [collection-name & path-rest :as path]]
-  (if (= collection-name "root")
-    (assoc context :collection nil)
-    (assoc context :collection (db/select-one-id Collection
-                                 :name     collection-name
-                                 :location (or (some-> context
-                                                       :collection
-                                                       Collection
-                                                       :location
-                                                       (str (:collection context) "/"))
-                                               "/")))))
-
-(defmethod path->context* "dashboards"
-  [context _ dashboard-name]
-  (assoc context :dashboard (db/select-one-id Dashboard
-                              :collection_id (:collection context)
-                              :name          dashboard-name)))
-
-(defmethod path->context* "pulses"
-  [context _ pulse-name]
-  (assoc context :dashboard (db/select-one-id Pulse
-                              :collection_id (:collection context)
-                              :name          pulse-name)))
-
-(defmethod path->context* "cards"
-  [context _ dashboard-name]
-  (assoc context :card (db/select-one-id Card
-                         :collection_id (:collection context)
-                         :name          dashboard-name)))
-
-(defn- fully-qualified-name->context
-  [fully-qualified-name]
-  (->> (str/split fully-qualified-name #"/")
-       rest
-       (partition 2)
-       (reduce (fn [context [model entity-name]]
-                 (path->context context model entity-name))
-               {})))
-
-(defn- fully-qualified-name->entity-reference
-  [[op & args :as form]]
-  (if (-> op qp.util/normalize-token (= :field-literal))
-    form
-    (into [op]
-          (map (fn [arg]
-                 (if (string? arg)
-                   ((some-fn :field :metric :segment) (fully-qualified-name->context arg))
-                   arg)))
-          args)))
-
 (defn- humanized-field-references->ids
   [entity]
-  (walk/postwalk (fn [form]
-                   (if (dump/entity-reference? form)
-                     (fully-qualified-name->entity-reference form)
-                     form))
-                 entity))
+  (mbql.util/replace entity
+    [:field-id (fully-qualified-name :guard string?)]
+    [:field-id (:field (fully-qualified-name->context fully-qualified-name))]
+
+    [:metric (fully-qualified-name :guard string?)]
+    [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
+
+    [:segment (fully-qualified-name :guard string?)]
+    [:segment (:segment (fully-qualified-name->context fully-qualified-name))]))
 
 (def ^:private default-user (delay (or (db/select-one-id User :is_superuser true)
                                        (u/get-id
@@ -239,14 +68,13 @@
                                                           :last_name    ""
                                                           :is_superuser true})))))
 
-(defmulti
-  ^{:doc      "Load an entity of type `model` stored at `path` in the context `context`.
+(defmulti load
+  "Load an entity of type `model` stored at `path` in the context `context`.
 
-               Passing in parent entities as context instead of decoding them from the path each
-               time, saves a lot of queriying."
-    :arglists '([path context model])}
-  load (fn [_ _ model]
-         model))
+   Passing in parent entities as context instead of decoding them from the path each time,
+   saves a lot of queriying."
+  (fn [_ _ model]
+    model))
 
 (defn- load-dimensions
   [path context]
@@ -392,11 +220,11 @@
                                   :database_id   db)
                            (assoc-in [:dataset_query :database] db)
                            (cond->
-                               (-> card
-                                   :dataset_quer
-                                   :type
-                                   qp.util/normalize-token
-                                   (= :query))
+                             (-> card
+                                 :dataset_query
+                                 :type
+                                 qp.util/normalize-token
+                                 (= :query))
                              (update-in [:dataset_query :query :source-table] source-table))
                            humanized-field-references->ids))))]
     ;; Nested cards
@@ -411,36 +239,18 @@
 
 (defmethod load Collection
   [path context _]
-  (let [root?   (not (contains? context :collection))
+  (let [nested? (contains? context :collection)
         context (assoc context
-                  :collection (when (not root?)
-                                (slurp-one-id (fn [collection]
-                                                (maybe-upsert! (:mode context) Collection
-                                                  (assoc collection
-                                                    :location (derive-location context))))
-                                              path)))]
-    (doseq [path (list-dirs (if root?
-                              (str path "/collections/collections")
-                              (str path "/collections")))]
-      (load path context Collection))
-    (load path context Card)
-    (load path context Pulse)
-    (load path context Dashboard)))
-
-(defmethod load Collection
-  [path context _]
-  (let [root?   (not (contains? context :collection))
-        context (assoc context
-                  :collection (when (not root?)
+                  :collection (when nested?
                                 (->> (slurp-dir path)
                                      (map (fn [collection]
                                             (assoc collection
                                               :location (derive-location context))))
                                      (maybe-upsert-many! (:mode context) Collection)
                                      first)))]
-    (doseq [path (list-dirs (if root?
-                              (str path "/collections/collections")
-                              (str path "/collections")))]
+    (doseq [path (list-dirs (if nested?
+                              (str path "/collections")
+                              (str path "/collections/collections")))]
       (load path context Collection))
     (load path context Card)
     (load path context Pulse)
