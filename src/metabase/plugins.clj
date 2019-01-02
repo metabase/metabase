@@ -50,8 +50,11 @@
 (defn- init-plugin!
   "Init plugin JAR file; returns truthy if plugin initialization was successful."
   [^Path jar-path]
-  (when-let [info (plugin-info jar-path)]
-    (init-plugin-with-info! info)))
+  (if-let [info (plugin-info jar-path)]
+    ;; for plugins that include a metabase-plugin.yaml manifest run the normal init steps, don't add to classpath yet
+    (init-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
+    ;; for all other JARs just add to classpath and call it a day
+    (add-to-classpath! jar-path)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -72,10 +75,6 @@
                              (u/format-color 'red
                                  (trs "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.")))))]
     path))
-
-(defn- add-plugins-to-classpath! [paths]
-  (doseq [path paths]
-    (add-to-classpath! path)))
 
 (defn- init-plugins! [paths]
   (doseq [^Path path paths]
@@ -100,5 +99,4 @@
   (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
   (extract-system-modules!)
   (let [paths (plugins-paths)]
-    (add-plugins-to-classpath! paths)
     (init-plugins! paths)))

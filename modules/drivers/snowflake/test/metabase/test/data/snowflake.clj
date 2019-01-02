@@ -15,16 +15,15 @@
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
-(defmethod sql.tx/field-base-type->sql-type :snowflake [_ field]
-  ({:type/BigInteger "BIGINT"
-     :type/Boolean    "BOOLEAN"
-     :type/Date       "DATE"
-     :type/DateTime   "TIMESTAMPLTZ"
-     :type/Decimal    "DECIMAL"
-     :type/Float      "FLOAT"
-     :type/Integer    "INTEGER"
-     :type/Text       "TEXT"
-     :type/Time       "TIME"} field))
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/BigInteger] [_ _] "BIGINT")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Boolean]    [_ _] "BOOLEAN")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Date]       [_ _] "DATE")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/DateTime]   [_ _] "TIMESTAMPLTZ")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Decimal]    [_ _] "DECIMAL")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Float]      [_ _] "FLOAT")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Integer]    [_ _] "INTEGER")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Text]       [_ _] "TEXT")
+(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Time]       [_ _] "TIME")
 
 (defmethod tx/dbdef->connection-details :snowflake [_ context {:keys [database-name]}]
   (merge

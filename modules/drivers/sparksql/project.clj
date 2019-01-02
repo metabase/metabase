@@ -34,10 +34,6 @@
   :aot [metabase.driver.FixedHiveConnection
         metabase.driver.FixedHiveDriver]
 
-  :jvm-opts
-  ["-XX:+IgnoreUnrecognizedVMOptions"
-   "--add-modules=java.xml.bind"]
-
   :profiles
   {:provided
    {:dependencies

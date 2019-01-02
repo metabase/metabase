@@ -14,6 +14,8 @@
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
+   "run"                               ["with-profile" "+run" "run"]
+   "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+expectations" "expectations"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
@@ -27,32 +29,32 @@
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   :dependencies
   [[org.clojure/clojure "1.9.0"]
-   [org.clojure/core.async "0.3.442"
+   [org.clojure/core.async "0.4.490"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0-alpha4"]                            ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "0.5.9"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
-   [org.clojure/data.csv "0.1.3"]                                     ; CSV parsing / generation
+   [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
-   [org.clojure/java.jdbc "0.7.6"]                                    ; basic JDBC access from Clojure
+   [org.clojure/java.jdbc "0.7.8"]                                    ; basic JDBC access from Clojure
    [org.clojure/math.combinatorics "0.1.4"]                           ; combinatorics functions
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "0.4.1"]                                ; logging framework
    [org.clojure/tools.namespace "0.2.11"]
-   [amalloy/ring-buffer "1.2.1"
+   [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
    [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
-   [buddy/buddy-core "1.2.0"]                                         ; various cryptograhpic functions
-   [buddy/buddy-sign "1.5.0"]                                         ; JSON Web Tokens; High-Level message signing library
+   [buddy/buddy-core "1.5.0"]                                         ; various cryptograhpic functions
+   [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
    [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
    [clj-http "3.9.1"                                                  ; HTTP client
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
    [clj-time "0.15.1"]                                                ; library for dealing with date/time
-   [clojurewerkz/quartzite "2.0.0"                                    ; scheduling library
+   [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
    [com.cemerick/friend "0.2.3"                                       ; auth library
@@ -60,48 +62,51 @@
                  org.apache.httpcomponents/httpclient
                  net.sourceforge.nekohtml/nekohtml
                  ring/ring-core]]
-   [com.clearspring.analytics/stream "2.9.5"                          ; Various sketching algorithms
+   [com.clearspring.analytics/stream "2.9.6"                          ; Various sketching algorithms
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
-   [com.draines/postal "2.0.2"]                                       ; SMTP library
-   [com.jcraft/jsch "0.1.54"]                                         ; SSH client for tunnels
+   [com.draines/postal "2.0.3"]                                       ; SMTP library
+   [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
-   [com.taoensso/nippy "2.13.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
-   [compojure "1.5.2"]                                                ; HTTP Routing library built on Ring
+   [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
+   [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
-   [dk.ative/docjure "1.11.0"]                                        ; Excel export
+   [dk.ative/docjure "1.13.0"]                                        ; Excel export
    [environ "1.1.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
-   [honeysql "0.9.2" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
+   [honeysql "0.9.4" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
    [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
     :exclusions [org.clojure/clojure
+                 org.flatland/ordered
                  org.yaml/snakeyaml]]
-   [kixi/stats "0.4.1" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
+   [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
    [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
     :exclusions [javax.mail/mail
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
-   [medley "0.8.4"]                                                   ; lightweight lib of useful functions
+   [medley "1.0.0"]                                                   ; lightweight lib of useful functions
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [mysql/mysql-connector-java "5.1.45"]                              ; !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
+   [mysql/mysql-connector-java "5.1.45"]                              ; MySQL JDBC driver
+   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]] ; Distribution statistic tests
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
-   [org.clojars.pntblnk/clj-ldap "0.0.12"]                            ; LDAP client
+   [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
+   [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.2"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
-   [org.postgresql/postgresql "42.2.2"]                               ; Postgres driver
+   [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-   [org.yaml/snakeyaml "1.18"]                                        ; YAML parser (required by liquibase)
+   [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [prismatic/schema "1.1.9"]                                         ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
-   [ring/ring-core "1.6.3"]
-   [ring/ring-jetty-adapter "1.6.3"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [org.eclipse.jetty/jetty-server "9.4.11.v20180605"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [ring/ring-core "1.7.1"]
+   [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+   [org.eclipse.jetty/jetty-server "9.4.14.v20181114"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
@@ -122,7 +127,6 @@
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
    "-Xverify:none"                                                    ; disable bytecode verification when running in dev so it starts slightly faster
-   "--add-modules=java.xml.bind"                                      ; tell Java 9 (Oracle VM only) to add java.xml.bind to classpath. No longer on it by default. See https://stackoverflow.com/questions/43574426/how-to-resolve-java-lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j
    "-Djava.awt.headless=true"]                                        ; prevent Java icon from randomly popping up in dock when running `lein ring server`
 
   :javac-options ["-target" "1.8", "-source" "1.8"]
@@ -139,7 +143,7 @@
    {:dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [expectations "2.2.0-beta2"]                                     ; unit tests
-     [ring/ring-mock "0.3.0"]]
+     [ring/ring-mock "0.3.2"]]
 
     :plugins
     [[docstring-checker "1.0.3"]                                      ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
@@ -148,6 +152,7 @@
      [lein-bikeshed "0.4.1"]                                          ; Linting
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
      [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
+     ;; TODO - should this be moved to the new RING profile?
      [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
       :exclusions [org.clojure/clojure]]]
 
@@ -168,6 +173,15 @@
    {:auto-clean true
     :aot        :all}
 
+   :exclude-tests
+   {:test-paths ^:replace []}
+
+   :run
+   [:exclude-tests {}]
+
+   :ring
+   [:exclude-tests {}]
+
    :with-include-drivers-middleware
    {:plugins
     [[metabase/lein-include-drivers "1.0.4"]]
@@ -179,7 +193,7 @@
    [:with-include-drivers-middleware
     {:injections
      [(require 'metabase.test-setup                                   ; for test setup stuff
-               'metabase.test.util)]                                  ; for the toucan.util.tes t default values for temp models
+               'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
      :resource-paths
      ["test_resources"]
@@ -239,7 +253,7 @@
 
    ;; generate sample dataset with `lein generate-sample-dataset`
    :generate-sample-dataset
-   {:dependencies [[faker "0.2.2"]]                                   ; Fake data generator -- port of Perl/Ruby library
+   {:dependencies [[faker "0.3.2"]]                                   ; Fake data generator -- port of Perl/Ruby library
     :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
 
