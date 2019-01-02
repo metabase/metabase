@@ -21,8 +21,8 @@
 
 (defn unescape-name
   "Inverse of `safe-name`. Replaces `FRACTION SLASH` back to forward slash."
-  [name]
-  (str/replace name \⁄ \/))
+  [entity-name]
+  (str/replace entity-name \⁄ \/))
 
 (defmulti ^:private fully-qualified-name* type)
 
