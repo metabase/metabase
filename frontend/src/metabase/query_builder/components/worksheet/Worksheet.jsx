@@ -14,6 +14,8 @@ import WorksheetSidebar from "./WorksheetSidebar";
 
 import FieldsBarWithExpressionEditor from "./FieldsBarWithExpressionEditor";
 
+import Toggle from "metabase/components/Toggle"
+
 import SECTIONS from "./style";
 
 const SIDEBAR_MARGIN = 25;
@@ -29,6 +31,7 @@ export default class Worksheet extends React.Component {
       showSummarizeSection:
         query.aggregations().length > 0 || query.breakouts().length > 0,
       isPickerOpen: false,
+      autoRefreshPreview: true,
     };
   }
 
@@ -98,9 +101,24 @@ export default class Worksheet extends React.Component {
     });
   };
 
+  handleToggleAutoRefreshPreview = (value) => {
+    this.setState({ autoRefreshPreview: value })
+    if (value && !this.isPreviewCurrent()) {
+      this.preview();
+    }
+  }
+
+  handleSetDatasetQuery = (...args) => {
+    this.props.setDatasetQuery(...args);
+    if (this.state.autoRefreshPreview) {
+      setTimeout(this.preview)
+    }
+  }
+
   render() {
-    const { isRunnable, query, setDatasetQuery } = this.props;
+    const { isRunnable, query } = this.props;
     const { isPickerOpen } = this.state;
+    const setDatasetQuery = this.handleSetDatasetQuery;
 
     const showFilterSection =
       isRunnable &&
@@ -126,6 +144,7 @@ export default class Worksheet extends React.Component {
             // make sure we reset state when switching tables
             this.reset();
           }}
+          setDatasetQuery={setDatasetQuery}
         >
           {isRunnable &&
             !showFilterSection &&
@@ -136,6 +155,7 @@ export default class Worksheet extends React.Component {
             style={sectionStyle}
             onClear={() => this.setState({ showFilterSection: false })}
             {...this.props}
+            setDatasetQuery={setDatasetQuery}
           />
         )}
         {showSummarizeSection && (
@@ -143,6 +163,7 @@ export default class Worksheet extends React.Component {
             style={sectionStyle}
             onClear={() => this.setState({ showSummarizeSection: false })}
             {...this.props}
+            setDatasetQuery={setDatasetQuery}
           />
         )}
         {isRunnable && (
@@ -155,6 +176,10 @@ export default class Worksheet extends React.Component {
             isPreviewCurrent={this.isPreviewCurrent()}
             isPreviewDisabled={this.isPreviewDisabled()}
           >
+            <div className="flex align-center">
+              <span className="mr1">Refresh Preview:</span>
+              <Toggle small value={this.state.autoRefreshPreview} onChange={this.handleToggleAutoRefreshPreview}/>
+            </div>
             {isRunnable &&
               !showSummarizeSection && (
                 <SummarizeButton onClick={this.summarize} />
