@@ -49,3 +49,10 @@
     (i18n/with-user-locale zz
       [(= zz (i18n/user-locale))
        (tru "Host")])))
+
+;; Make sure Max Cache Entry Size can be set via with a string value, which is what comes back from the API (#9143)
+(expect
+  "1000"
+  ;; use with temp value macro so original value gets reset after test run
+  (tu/with-temporary-setting-values [query-caching-max-kb nil]
+    (public-settings/query-caching-max-kb "1000")))
