@@ -15,6 +15,7 @@ import Clause from "./Clause";
 import ClauseDropTarget from "./dnd/ClauseDropTarget";
 import DropTargetEmptyState from "./DropTargetEmptyState";
 import AddClauseWidget from "./AddClauseWidget";
+import AddClauseEmptyState from "./AddClauseEmptyState";
 
 import SECTIONS from "./style";
 
@@ -63,13 +64,25 @@ class FiltersSection extends React.Component {
                 query={query}
                 setDatasetQuery={setDatasetQuery}
               />
+            )).concat(query.canAddFilter() && (
+              <AddClauseWidget color={COLOR}>
+                <FilterPopover
+                  query={query}
+                  onCommitFilter={filter =>
+                    query.addFilter(filter).update(setDatasetQuery)
+                  }
+                />
+              </AddClauseWidget>
             ))
           ) : !newFilterDimension ? (
-            <DropTargetEmptyState
-              message={jt`Drag a column here to ${(
-                <strong>{t`filter`}</strong>
-              )} with it`}
-            />
+            <AddClauseEmptyState message="Add a filter">
+              <FilterPopover
+                query={query}
+                onCommitFilter={filter =>
+                  query.addFilter(filter).update(setDatasetQuery)
+                }
+              />
+            </AddClauseEmptyState>
           ) : null}
           {newFilterDimension && (
             <FilterWidgetNew
@@ -78,16 +91,6 @@ class FiltersSection extends React.Component {
               setDatasetQuery={setDatasetQuery}
               onRemove={() => this.setState({ newFilterDimension: null })}
             />
-          )}
-          {query.canAddFilter() && (
-            <AddClauseWidget color={COLOR}>
-              <FilterPopover
-                query={query}
-                onCommitFilter={filter =>
-                  query.addFilter(filter).update(setDatasetQuery)
-                }
-              />
-            </AddClauseWidget>
           )}
         </ClauseDropTarget>
         {children}

@@ -9,6 +9,7 @@ import Clause from "./Clause";
 import ClauseDropTarget from "./dnd/ClauseDropTarget";
 import DropTargetEmptyState from "./DropTargetEmptyState";
 import AddClauseWidget from "./AddClauseWidget";
+import AddClauseEmptyState from "./AddClauseEmptyState";
 
 import FieldName from "../FieldName";
 import BreakoutName from "../BreakoutName";
@@ -67,13 +68,23 @@ class SummarizeSection extends React.Component {
                     query={query}
                     setDatasetQuery={setDatasetQuery}
                   />
-                ))
+                )).concat(<AddClauseWidget color={COLOR}>
+                  <AggregationPopover
+                    query={query}
+                    onCommitAggregation={aggregation =>
+                      query.addAggregation(aggregation).update(setDatasetQuery)
+                    }
+                  />
+                  </AddClauseWidget>)
               ) : !newAggregationDimension ? (
-                <DropTargetEmptyState
-                  message={jt`Drag a column here to ${(
-                    <strong>{t`summarize`}</strong>
-                  )} it`}
-                />
+                <AddClauseEmptyState message="Add a metric">
+                  <AggregationPopover
+                    query={query}
+                    onCommitAggregation={aggregation =>
+                      query.addAggregation(aggregation).update(setDatasetQuery)
+                    }
+                  />
+                </AddClauseEmptyState>
               ) : null}
               {newAggregationDimension && (
                 <AggregationWidgetNew
@@ -85,19 +96,11 @@ class SummarizeSection extends React.Component {
                   }
                 />
               )}
-              <AddClauseWidget color={COLOR}>
-                <AggregationPopover
-                  query={query}
-                  onCommitAggregation={aggregation =>
-                    query.addAggregation(aggregation).update(setDatasetQuery)
-                  }
-                />
-              </AddClauseWidget>
             </ClauseDropTarget>
           </div>
           <div className="Grid-cell">
             <WorksheetSectionSubHeading
-            >{t`Dimensions`}</WorksheetSectionSubHeading>
+            >{t`Groupings`}</WorksheetSectionSubHeading>
             <ClauseDropTarget
               color={COLOR}
               onDrop={dimension => {
@@ -114,23 +117,25 @@ class SummarizeSection extends React.Component {
                     query={query}
                     setDatasetQuery={setDatasetQuery}
                   />
+                )).concat(query.canAddBreakout() && (
+                  <AddClauseWidget color={COLOR}>
+                    <BreakoutPopover
+                      query={query}
+                      onCommitBreakout={breakout =>
+                        query.addBreakout(breakout).update(setDatasetQuery)
+                      }
+                    />
+                  </AddClauseWidget>
                 ))
               ) : (
-                <DropTargetEmptyState
-                  message={jt`Drag a column here to ${(
-                    <strong>{t`group`}</strong>
-                  )} it`}
-                />
-              )}
-              {query.canAddBreakout() && (
-                <AddClauseWidget color={COLOR}>
+                <AddClauseEmptyState message="Add a breakout">
                   <BreakoutPopover
                     query={query}
                     onCommitBreakout={breakout =>
                       query.addBreakout(breakout).update(setDatasetQuery)
                     }
                   />
-                </AddClauseWidget>
+                </AddClauseEmptyState>
               )}
             </ClauseDropTarget>
           </div>

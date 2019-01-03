@@ -3,15 +3,17 @@ import React from "react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 
-const AddClauseWidget = ({ color, children }) => (
+const AddClauseEmptyState = ({ message, children }) => (
   <PopoverWithTrigger
     triggerElement={
-      <Icon name="add" size={20} className="p1" style={{ color }} />
+      <div className="py1">
+        <strong>{message}</strong>
+      </div>
     }
-    triggerClasses="flex align-center"
+    triggerClasses="flex-full flex layout-centered"
   >
     {children}
   </PopoverWithTrigger>
 );
 
-export default AddClauseWidget;
+export default AddClauseEmptyState;
