@@ -35,6 +35,17 @@ export default class Worksheet extends React.Component {
     };
   }
 
+  componentDidMount() {
+    // auto load the preview if autoRefreshPreview is true and it's out of date
+    if (
+      !this.isPreviewCurrent() &&
+      !this.props.isRunning &&
+      this.state.autoRefreshPreview
+    ) {
+      this.preview();
+    }
+  }
+
   preview = () => {
     const { runQuestionQuery } = this.props;
     runQuestionQuery({

@@ -147,14 +147,16 @@ class PreviewSection extends React.Component {
                 />
               </div>
             )}
-          {!isPreviewCurrent && (
+          {this.props.isRunning ? (
+            <div className="spread flex layout-centered">Loading...</div>
+          ) : !isPreviewCurrent ? (
             <div
               onClick={preview}
               className="cursor-pointer spread flex layout-centered"
             >
               <Button round>{t`Show preview`}</Button>
             </div>
-          )}
+          ) : null}
         </div>
         {children && <div className="mt2">{children}</div>}
       </WorksheetSection>
