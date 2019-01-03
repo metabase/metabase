@@ -7,7 +7,10 @@ import { t } from "c-3po";
 import ChartTooltip from "../components/ChartTooltip.jsx";
 import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
-import { ChartSettingsError, MinRowsError } from "metabase/visualizations/lib/errors";
+import {
+  ChartSettingsError,
+  MinRowsError,
+} from "metabase/visualizations/lib/errors";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
