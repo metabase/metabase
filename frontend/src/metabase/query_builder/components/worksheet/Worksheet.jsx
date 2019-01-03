@@ -14,7 +14,7 @@ import WorksheetSidebar from "./WorksheetSidebar";
 
 import FieldsBarWithExpressionEditor from "./FieldsBarWithExpressionEditor";
 
-import Toggle from "metabase/components/Toggle"
+import Toggle from "metabase/components/Toggle";
 
 import SECTIONS from "./style";
 
@@ -101,19 +101,19 @@ export default class Worksheet extends React.Component {
     });
   };
 
-  handleToggleAutoRefreshPreview = (value) => {
-    this.setState({ autoRefreshPreview: value })
+  handleToggleAutoRefreshPreview = value => {
+    this.setState({ autoRefreshPreview: value });
     if (value && !this.isPreviewCurrent()) {
       this.preview();
     }
-  }
+  };
 
   handleSetDatasetQuery = (...args) => {
     this.props.setDatasetQuery(...args);
     if (this.state.autoRefreshPreview) {
-      setTimeout(this.preview)
+      setTimeout(this.preview);
     }
-  }
+  };
 
   render() {
     const { isRunnable, query } = this.props;
@@ -178,7 +178,11 @@ export default class Worksheet extends React.Component {
           >
             <div className="flex align-center">
               <span className="mr1">Refresh Preview:</span>
-              <Toggle small value={this.state.autoRefreshPreview} onChange={this.handleToggleAutoRefreshPreview}/>
+              <Toggle
+                small
+                value={this.state.autoRefreshPreview}
+                onChange={this.handleToggleAutoRefreshPreview}
+              />
             </div>
             {isRunnable &&
               !showSummarizeSection && (

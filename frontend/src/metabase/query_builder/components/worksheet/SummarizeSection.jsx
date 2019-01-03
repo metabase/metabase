@@ -61,21 +61,27 @@ class SummarizeSection extends React.Component {
               }
             >
               {aggregations.length > 0 ? (
-                aggregations.map((aggregation, index) => (
-                  <AggregationWidget
-                    aggregation={aggregation}
-                    index={index}
-                    query={query}
-                    setDatasetQuery={setDatasetQuery}
-                  />
-                )).concat(<AddClauseWidget color={COLOR}>
-                  <AggregationPopover
-                    query={query}
-                    onCommitAggregation={aggregation =>
-                      query.addAggregation(aggregation).update(setDatasetQuery)
-                    }
-                  />
-                  </AddClauseWidget>)
+                aggregations
+                  .map((aggregation, index) => (
+                    <AggregationWidget
+                      aggregation={aggregation}
+                      index={index}
+                      query={query}
+                      setDatasetQuery={setDatasetQuery}
+                    />
+                  ))
+                  .concat(
+                    <AddClauseWidget color={COLOR}>
+                      <AggregationPopover
+                        query={query}
+                        onCommitAggregation={aggregation =>
+                          query
+                            .addAggregation(aggregation)
+                            .update(setDatasetQuery)
+                        }
+                      />
+                    </AddClauseWidget>,
+                  )
               ) : !newAggregationDimension ? (
                 <AddClauseEmptyState message="Add a metric">
                   <AggregationPopover
@@ -110,23 +116,27 @@ class SummarizeSection extends React.Component {
               }}
             >
               {breakouts.length > 0 ? (
-                breakouts.map((breakout, index) => (
-                  <BreakoutWidget
-                    breakout={breakout}
-                    index={index}
-                    query={query}
-                    setDatasetQuery={setDatasetQuery}
-                  />
-                )).concat(query.canAddBreakout() && (
-                  <AddClauseWidget color={COLOR}>
-                    <BreakoutPopover
+                breakouts
+                  .map((breakout, index) => (
+                    <BreakoutWidget
+                      breakout={breakout}
+                      index={index}
                       query={query}
-                      onCommitBreakout={breakout =>
-                        query.addBreakout(breakout).update(setDatasetQuery)
-                      }
+                      setDatasetQuery={setDatasetQuery}
                     />
-                  </AddClauseWidget>
-                ))
+                  ))
+                  .concat(
+                    query.canAddBreakout() && (
+                      <AddClauseWidget color={COLOR}>
+                        <BreakoutPopover
+                          query={query}
+                          onCommitBreakout={breakout =>
+                            query.addBreakout(breakout).update(setDatasetQuery)
+                          }
+                        />
+                      </AddClauseWidget>
+                    ),
+                  )
               ) : (
                 <AddClauseEmptyState message="Add a breakout">
                   <BreakoutPopover

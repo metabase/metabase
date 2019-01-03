@@ -5,7 +5,7 @@ import { assoc } from "icepick";
 import _ from "underscore";
 
 import colors from "metabase/lib/colors";
-import { stripNamedClause } from "metabase/lib/query/named"
+import { stripNamedClause } from "metabase/lib/query/named";
 
 export function getColumnWells(
   [{ card: { dataset_query: datasetQuery }, data: { cols } }],

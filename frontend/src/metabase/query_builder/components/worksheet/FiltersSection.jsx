@@ -57,23 +57,27 @@ class FiltersSection extends React.Component {
           }}
         >
           {filters.length > 0 ? (
-            filters.map((filter, index) => (
-              <FilterWidget
-                filter={filter}
-                index={index}
-                query={query}
-                setDatasetQuery={setDatasetQuery}
-              />
-            )).concat(query.canAddFilter() && (
-              <AddClauseWidget color={COLOR}>
-                <FilterPopover
+            filters
+              .map((filter, index) => (
+                <FilterWidget
+                  filter={filter}
+                  index={index}
                   query={query}
-                  onCommitFilter={filter =>
-                    query.addFilter(filter).update(setDatasetQuery)
-                  }
+                  setDatasetQuery={setDatasetQuery}
                 />
-              </AddClauseWidget>
-            ))
+              ))
+              .concat(
+                query.canAddFilter() && (
+                  <AddClauseWidget color={COLOR}>
+                    <FilterPopover
+                      query={query}
+                      onCommitFilter={filter =>
+                        query.addFilter(filter).update(setDatasetQuery)
+                      }
+                    />
+                  </AddClauseWidget>
+                ),
+              )
           ) : !newFilterDimension ? (
             <AddClauseEmptyState message="Add a filter">
               <FilterPopover
