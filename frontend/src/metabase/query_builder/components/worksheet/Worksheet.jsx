@@ -66,6 +66,7 @@ export default class Worksheet extends React.Component {
   isPreviewCurrent() {
     return (
       this.props.rawSeries &&
+      this.props.lastRunCard &&
       _.isEqual(
         this.props.lastRunCard.dataset_query,
         this.getPreviewCard().dataset_query,
