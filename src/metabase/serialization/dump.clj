@@ -9,7 +9,8 @@
              [field :refer [Field]]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
-             [segment :refer [Segment]]]
+             [segment :refer [Segment]]
+             [setting :as setting]]
             [metabase.serialization
              [names :refer [fully-qualified-name safe-name]]
              [serialize :refer [serialize]]]

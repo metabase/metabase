@@ -7,7 +7,6 @@
              [util :as mbql.util]]
             [metabase.models
              [card :refer [Card]]
-             [collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
