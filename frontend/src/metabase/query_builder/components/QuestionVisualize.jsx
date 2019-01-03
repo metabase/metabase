@@ -38,46 +38,57 @@ export default class QuestionVisualize extends React.Component {
   };
   render() {
     const { showSettings } = this.state;
+    const showWells = !showSettings;
     return (
       <Flex flex={1} className="relative" style={{ overflow: "hidden" }}>
-        {showSettings && (
-          <Absolute top={0} bottom={80} left={0}>
-            <QuestionVisualizeSettings
-              {...this.props}
-              onClose={() => this.setState({ showSettings: false })}
-            />
-          </Absolute>
-        )}
-        <Flex flex={1} ml={showSettings ? VIZ_MARGIN : 20} mr={VIZ_MARGIN}>
+        <Flex flex={1} ml={20} mr={showWells || showSettings ? VIZ_MARGIN : 20}>
           <QuestionVisualizeMain
             {...this.props}
             showSettings={showSettings}
+            showWells={showWells}
             onToggleSettings={() =>
               this.setState({ showSettings: !showSettings })
             }
           />
         </Flex>
-        <Absolute top={0} bottom={80} right={0}>
-          <QuestionVisualizeColumns {...this.props} />
-        </Absolute>
+        {showSettings ? (
+          <Absolute top={0} bottom={80} right={0}>
+            <QuestionVisualizeSettings
+              {...this.props}
+              onClose={() => this.setState({ showSettings: false })}
+            />
+          </Absolute>
+        ) : showWells ? (
+          <Absolute top={0} bottom={80} right={0}>
+            <QuestionVisualizeColumns {...this.props} />
+          </Absolute>
+        ) : null}
       </Flex>
     );
   }
 }
 
 const QuestionVisualizeMain = props => {
-  const { showSettings } = props;
+  const { showSettings, showWells } = props;
+  const content = (
+    <div className="flex-full flex relative rounded bordered shadowed bg-white">
+      <QueryVisualization
+        {...props}
+        className="flex-full wrapper mb2 z1"
+        noHeader
+      />
+    </div>
+  );
   return (
     <Flex flex={1} m={3} mb={5}>
-      <ColumnWells className="flex-full flex" {...props}>
-        <div className="flex-full flex relative rounded bordered shadowed bg-white">
-          <QueryVisualization
-            {...props}
-            className="flex-full wrapper mb2 z1"
-            noHeader
-          />
-        </div>
-      </ColumnWells>
+      {showWells ? (
+        <ColumnWells className="flex-full flex" {...props}>
+          {content}
+        </ColumnWells>
+      ) : (
+        content
+      )}
+
       <QuestionVisualizeFooter {...props} showSettings={showSettings} />
     </Flex>
   );
