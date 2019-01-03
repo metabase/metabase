@@ -156,17 +156,28 @@ export default class Worksheet extends React.Component {
             this.reset();
           }}
           setDatasetQuery={setDatasetQuery}
-        >
-          {isRunnable &&
-            !showFilterSection &&
-            showSummarizeSection && <FilterButton onClick={this.filter} />}
-        </DataSection>
+          footerButtons={[
+            isRunnable &&
+              !showSummarizeSection &&
+              !showFilterSection && (
+                <SummarizeButton onClick={this.summarize} />
+              ),
+            isRunnable &&
+              !showFilterSection && <FilterButton onClick={this.filter} />,
+          ]}
+        />
         {showFilterSection && (
           <FiltersSection
             style={sectionStyle}
             onClear={() => this.setState({ showFilterSection: false })}
             {...this.props}
             setDatasetQuery={setDatasetQuery}
+            footerButtons={[
+              isRunnable &&
+                !showSummarizeSection && (
+                  <SummarizeButton onClick={this.summarize} />
+                ),
+            ]}
           />
         )}
         {showSummarizeSection && (
@@ -195,13 +206,6 @@ export default class Worksheet extends React.Component {
                 onChange={this.handleToggleAutoRefreshPreview}
               />
             </div>
-            {isRunnable &&
-              !showSummarizeSection && (
-                <SummarizeButton onClick={this.summarize} />
-              )}
-            {isRunnable &&
-              !showFilterSection &&
-              !showSummarizeSection && <FilterButton onClick={this.filter} />}
           </PreviewSection>
         )}
         {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}

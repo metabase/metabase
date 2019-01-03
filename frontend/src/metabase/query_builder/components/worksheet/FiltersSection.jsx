@@ -33,6 +33,7 @@ class FiltersSection extends React.Component {
       style,
       className,
       onClear,
+      footerButtons,
       children,
     } = this.props;
     const { newFilterDimension } = this.state;
@@ -46,6 +47,7 @@ class FiltersSection extends React.Component {
           query.clearFilters().update(setDatasetQuery);
           onClear();
         }}
+        footerButtons={footerButtons}
       >
         <ClauseDropTarget
           color={COLOR}

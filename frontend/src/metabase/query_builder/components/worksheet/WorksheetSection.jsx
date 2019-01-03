@@ -13,10 +13,14 @@ const WorksheetSection = ({
   className,
   children,
   onClear,
+  footerButtons,
 }) => (
   <div
     style={style}
-    className={cx(className, "wrapper border-row-divider bg-white py3")}
+    className={cx(
+      className,
+      "wrapper border-row-divider bg-white py3 relative",
+    )}
   >
     {(icon || name || header) && (
       <div className={cx("flex align-center", { mb2: !!children })}>
@@ -39,6 +43,16 @@ const WorksheetSection = ({
       </div>
     )}
     {children}
+    {footerButtons &&
+      footerButtons.length > 0 && (
+        <div
+          className="absolute bottom left right flex layout-centered z1"
+          // FIXME: don't hardcode -20px
+          style={{ bottom: -20 }}
+        >
+          {footerButtons}
+        </div>
+      )}
   </div>
 );
 

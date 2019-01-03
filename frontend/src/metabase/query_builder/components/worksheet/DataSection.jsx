@@ -17,6 +17,7 @@ const DataSection = ({
   setSourceTableFn,
   style,
   className,
+  footerButtons,
   children,
 }) => {
   const databaseId = query.databaseId();
@@ -46,6 +47,7 @@ const DataSection = ({
           hasArrow={false}
         />
       }
+      footerButtons={footerButtons}
     >
       {children}
     </WorksheetSection>
