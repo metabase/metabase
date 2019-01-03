@@ -34,24 +34,19 @@
     (load/load-settings path context)
     (load/load-dependencies path context)))
 
-(defn- dump-all
-  [path entities]
-  (doseq [e entities]
-    (dump/dump path e)))
-
 (defn dump
   "Serialized metabase instance into directory `path`."
   [path]
   (mdb/setup-db-if-needed!)
-  (dump-all path (Database))
-  (dump-all path (Table))
-  (dump-all path (field/with-values (Field)))
-  (dump-all path (Metric))
-  (dump-all path (Segment))
-  (dump-all path (db/select Collection :personal_owner_id nil))
-  (dump-all path (Card))
-  (dump-all path (Dashboard))
-  (dump-all path (Pulse))
+  (dump/dump path (Database))
+  (dump/dump path (Table))
+  (dump/dump path (field/with-values (Field)))
+  (dump/dump path (Metric))
+  (dump/dump path (Segment))
+  (dump/dump path (db/select Collection :personal_owner_id nil))
+  (dump/dump path (Card))
+  (dump/dump path (Dashboard))
+  (dump/dump path (Pulse))
   (dump/dump-settings path)
   (dump/dump-dependencies path)
   (dump/dump-dimensions path))
