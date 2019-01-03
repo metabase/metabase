@@ -188,8 +188,8 @@
                          FROM pg_stat_activity
                         WHERE pg_stat_activity.datname = ?;" db-name])
     ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS %s;
-                                  CREATE DATABASE %s;"
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                  CREATE DATABASE \"%s\";"
                                  db-name db-name)]
                    {:transaction? false})))
 
@@ -421,3 +421,28 @@
                           :limit        10}})
             :data
             (select-keys [:rows :native_form]))))))
+
+;; make sure schema/table/field names with hyphens in them work correctly (#8766)
+(expect-with-driver :postgres
+  [["Bird Hat"]]
+  (metabase.driver/with-driver :postgres
+    [{:name "angry_birds", :active true}]
+    (let [details (tx/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)
+          exec!   #(doseq [statement %]
+                     (jdbc/execute! spec [statement]))]
+      ;; create the postgres DB
+      (drop-if-exists-and-create-db! "hyphen-names-test")
+      ;; create the DB object
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (let [sync! #(sync/sync-database! database)]
+          ;; populate the DB and create a view
+          (exec! ["CREATE SCHEMA \"x-mas\";"
+                  "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                  "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+          (sync!)
+          (-> (qp/process-query
+                {:database (u/get-id database)
+                 :type     :query
+                 :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}})
+              rows))))))
