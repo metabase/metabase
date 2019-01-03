@@ -10,7 +10,8 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
-             [setting :as setting]]
+             [setting :as setting]
+             [table :refer [Table]]]
             [metabase.serialization
              [names :refer [fully-qualified-name safe-name]]
              [serialize :refer [serialize]]]
