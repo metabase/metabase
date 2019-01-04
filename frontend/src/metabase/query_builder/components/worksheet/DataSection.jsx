@@ -28,27 +28,24 @@ const DataSection = ({
       {...SECTIONS.data}
       style={style}
       className={className}
-      header={
-        <DatabaseSchemaAndTableDataSelector
-          className="rounded py1 px2 text-brand h3"
-          style={{ backgroundColor: alpha(SECTIONS.data.color, 0.2) }}
-          triggerClasses="ml4"
-          databases={databases}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setDatabaseFn={setDatabaseFn}
-          setSourceTableFn={setSourceTableFn}
-          isInitiallyOpen={isInitiallyOpen}
-          tetherOptions={{
-            attachment: "top left",
-            targetAttachment: "bottom left",
-            targetOffset: "15px 0",
-          }}
-          hasArrow={false}
-        />
-      }
       footerButtons={footerButtons}
     >
+      <DatabaseSchemaAndTableDataSelector
+        className="rounded py1 px2 text-brand h3"
+        style={{ backgroundColor: alpha(SECTIONS.data.color, 0.2) }}
+        databases={databases}
+        selectedDatabaseId={databaseId}
+        selectedTableId={tableId}
+        setDatabaseFn={setDatabaseFn}
+        setSourceTableFn={setSourceTableFn}
+        isInitiallyOpen={isInitiallyOpen}
+        tetherOptions={{
+          attachment: "top left",
+          targetAttachment: "bottom left",
+          targetOffset: "15px 0",
+        }}
+        hasArrow={false}
+      />
       {children}
     </WorksheetSection>
   );

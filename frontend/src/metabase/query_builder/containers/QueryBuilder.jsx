@@ -232,7 +232,7 @@ export default class QueryBuilder extends Component {
 
     if (uiControls.mode === "worksheet") {
       return (
-        <div>
+        <div className="flex-full flex flex-column">
           <QueryHeader
             {...this.props}
             setMode={this.props.setMode}

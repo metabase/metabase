@@ -1,6 +1,7 @@
 import React from "react";
 
 import { t, jt } from "c-3po";
+import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -25,6 +26,8 @@ import SECTIONS from "./style";
 
 const COLOR = SECTIONS.summarize.color;
 
+const LAYOUT_HORIZONTAL = false;
+
 class SummarizeSection extends React.Component {
   state = {
     newAggregationDimension: null,
@@ -47,7 +50,11 @@ class SummarizeSection extends React.Component {
           onClear();
         }}
       >
-        <div className="Grid Grid--full md-Grid--1of2 Grid--gutters">
+        <div
+          className={cx("Grid Grid--full Grid--gutters", {
+            "md-Grid--1of2": LAYOUT_HORIZONTAL,
+          })}
+        >
           <div className="Grid-cell">
             <WorksheetSectionSubHeading
             >{t`Metrics`}</WorksheetSectionSubHeading>

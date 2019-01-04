@@ -147,69 +147,73 @@ export default class Worksheet extends React.Component {
     const sectionStyle = showSidebar ? { paddingRight: sidebarWidth } : {};
 
     return (
-      <div className="relative">
-        <DataSection
-          style={sectionStyle}
-          {...this.props}
-          setSourceTableFn={tableId => {
-            this.props.setSourceTableFn(tableId);
-            // make sure we reset state when switching tables
-            this.reset();
-          }}
-          setDatasetQuery={setDatasetQuery}
-          footerButtons={[
-            isRunnable &&
-              !showSummarizeSection &&
-              !showFilterSection && (
-                <SummarizeButton onClick={this.summarize} />
-              ),
-            isRunnable &&
-              !showFilterSection && <FilterButton onClick={this.filter} />,
-          ]}
-        />
-        {showFilterSection && (
-          <FiltersSection
+      <div className="relative flex flex-row flex-full">
+        <div className="border-right" style={{ minWidth: 300 }}>
+          <DataSection
             style={sectionStyle}
-            onClear={() => this.setState({ showFilterSection: false })}
             {...this.props}
+            setSourceTableFn={tableId => {
+              this.props.setSourceTableFn(tableId);
+              // make sure we reset state when switching tables
+              this.reset();
+            }}
             setDatasetQuery={setDatasetQuery}
             footerButtons={[
               isRunnable &&
-                !showSummarizeSection && (
+                !showSummarizeSection &&
+                !showFilterSection && (
                   <SummarizeButton onClick={this.summarize} />
                 ),
+              isRunnable &&
+                !showFilterSection && <FilterButton onClick={this.filter} />,
             ]}
           />
-        )}
-        {showSummarizeSection && (
-          <SummarizeSection
-            style={sectionStyle}
-            onClear={() => this.setState({ showSummarizeSection: false })}
-            {...this.props}
-            setDatasetQuery={setDatasetQuery}
-          />
-        )}
-        {isRunnable && (
-          <PreviewSection
-            style={sectionStyle}
-            {...this.props}
-            preview={this.preview}
-            previewLimit={this.state.previewLimit}
-            setPreviewLimit={this.setPreviewLimit}
-            isPreviewCurrent={this.isPreviewCurrent()}
-            isPreviewDisabled={this.isPreviewDisabled()}
-          >
-            <div className="flex align-center">
-              <span className="mr1">Refresh Preview:</span>
-              <Toggle
-                small
-                value={this.state.autoRefreshPreview}
-                onChange={this.handleToggleAutoRefreshPreview}
-              />
-            </div>
-          </PreviewSection>
-        )}
-        {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
+          {showFilterSection && (
+            <FiltersSection
+              style={sectionStyle}
+              onClear={() => this.setState({ showFilterSection: false })}
+              {...this.props}
+              setDatasetQuery={setDatasetQuery}
+              footerButtons={[
+                isRunnable &&
+                  !showSummarizeSection && (
+                    <SummarizeButton onClick={this.summarize} />
+                  ),
+              ]}
+            />
+          )}
+          {showSummarizeSection && (
+            <SummarizeSection
+              style={sectionStyle}
+              onClear={() => this.setState({ showSummarizeSection: false })}
+              {...this.props}
+              setDatasetQuery={setDatasetQuery}
+            />
+          )}
+          {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
+        </div>
+        <div className="pl4 flex-full bg-white">
+          {isRunnable && (
+            <PreviewSection
+              style={sectionStyle}
+              {...this.props}
+              preview={this.preview}
+              previewLimit={this.state.previewLimit}
+              setPreviewLimit={this.setPreviewLimit}
+              isPreviewCurrent={this.isPreviewCurrent()}
+              isPreviewDisabled={this.isPreviewDisabled()}
+            >
+              <div className="flex align-center">
+                <span className="mr1">Refresh Preview:</span>
+                <Toggle
+                  small
+                  value={this.state.autoRefreshPreview}
+                  onChange={this.handleToggleAutoRefreshPreview}
+                />
+              </div>
+            </PreviewSection>
+          )}
+        </div>
         {showSidebar && (
           <WorksheetSidebar
             query={query}
