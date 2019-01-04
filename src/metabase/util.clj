@@ -21,15 +21,23 @@
 ;; This is the very first log message that will get printed.
 ;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
 ;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-(log/info (trs "Loading Metabase..."))
+(when-not *compile-files*
+  (log/info (trs "Loading Metabase...")))
+
+(defn format-bytes
+  "Nicely format `num-bytes` as kilobytes/megabytes/etc.
+
+    (format-bytes 1024) ; -> 2.0 KB"
+  [num-bytes]
+  (loop [n num-bytes [suffix & more] ["B" "KB" "MB" "GB"]]
+    (if (and (seq more)
+             (>= n 1024))
+      (recur (/ n 1024.0) more)
+      (format "%.1f %s" n suffix))))
 
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
-(log/info (trs "Maximum memory available to JVM: {0}"
-               (loop [mem (.maxMemory (Runtime/getRuntime)), [suffix & more] ["B" "KB" "MB" "GB"]]
-                 (if (and (seq more)
-                          (>= mem 1024))
-                   (recur (/ mem 1024.0) more)
-                   (format "%.1f %s" mem suffix)))))
+(when-not *compile-files*
+  (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
@@ -629,3 +637,22 @@
   "Convert the keys in a map from `lisp-case` to `snake-case`."
   [m]
   (recursive-map-keys snake-key m))
+
+(defn one-or-many
+  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
+  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
+  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
+  your convenience.
+
+    (u/one-or-many 1)     ; -> [1]
+    (u/one-or-many [1 2]) ; -> [1 2]"
+  [arg]
+  (if ((some-fn sequential? set?) arg)
+    arg
+    [arg]))
+
+(defmacro varargs
+  "Make a properly-tagged Java interop varargs argument."
+  [klass & [objects]]
+  (vary-meta `(into-array ~klass ~objects)
+             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))

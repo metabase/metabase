@@ -82,9 +82,11 @@
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  (if is-prod?
-    (version-info-from-properties-file)
-    (version-info-from-shell-script)))
+  (or (if is-prod?
+        (version-info-from-properties-file)
+        (version-info-from-shell-script))
+      ;; if version info is not defined for whatever reason
+      {}))
 
 (def ^String mb-version-string
   "A formatted version string representing the currently running application.

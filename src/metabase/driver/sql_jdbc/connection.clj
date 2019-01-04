@@ -4,16 +4,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
-             [db :as mdb]
              [driver :as driver]
              [util :as u]]
+            [metabase.db.connection-pool :as connection-pool]
             [metabase.models.database :refer [Database]]
             [metabase.util
              [i18n :refer [tru]]
              [ssh :as ssh]]
-            [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.ComboPooledDataSource))
-
+            [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -22,7 +20,7 @@
 (defmulti connection-details->spec
   "Given a Database `details-map`, return a JDBC connection spec."
   {:arglists '([driver details-map]), :style/indent 1}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 
@@ -30,9 +28,21 @@
 ;;; |                                           Creating Connection Pools                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private database-id->connection-pool
-  "A map of our currently open connection pools, keyed by Database `:id`."
+(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
+  database-id->connection-pool
   (atom {}))
+
+(def ^:private data-warehouse-connection-pool-properties
+  "c3p0 connection pool properties for connected data warehouse DBs. See
+  https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
+  {"maxIdleTime"                  (* 3 60 60)
+   "minPoolSize"                  1
+   "initialPoolSize"              1
+   "maxPoolSize"                  15
+   ;; prevent broken connections closed by dbs by testing them every 3 mins
+   "idleConnectionTestPeriod"     (* 3 60)
+   ;; prevent overly large pools by condensing them when connections are idle for 15m+
+   "maxIdleTimeExcessConnections" (* 15 60)})
 
 (defn- create-connection-pool
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
@@ -41,12 +51,7 @@
   (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec engine details-with-tunnel)]
-    (assoc (mdb/connection-pool (assoc spec
-                                  :minimum-pool-size           1
-                                  ;; prevent broken connections closed by dbs by testing them every 3 mins
-                                  :idle-connection-test-period (* 3 60)
-                                  ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                                  :excess-timeout              (* 15 60)))
+    (assoc (connection-pool/connection-pool-spec spec data-warehouse-connection-pool-properties)
       :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn notify-database-updated
@@ -59,7 +64,7 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc (u/get-id database))
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))
+    (connection-pool/destroy-connection-pool! (:datasource pool))
     (when-let [ssh-tunnel (:ssh-tunnel pool)]
       (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 

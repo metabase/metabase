@@ -248,6 +248,81 @@ export function moveToFront(element) {
   }
 }
 
+// need to keep track of the latest click's metaKey state because sometimes
+// `open` is called asynchronously, thus window.event isn't the click event
+let metaKey;
+window.addEventListener(
+  "mouseup",
+  e => {
+    metaKey = e.metaKey;
+  },
+  true,
+);
+
+/**
+ * helper for opening links in same or different window depending on origin and
+ * meta key state
+ */
+export function open(
+  url,
+  {
+    // custom function for opening in same window
+    openInSameWindow = url => clickLink(url, false),
+    // custom function for opening in new window
+    openInBlankWindow = url => clickLink(url, true),
+    ...options
+  } = {},
+) {
+  if (shouldOpenInBlankWindow(url, options)) {
+    openInBlankWindow(url);
+  } else {
+    openInSameWindow(url);
+  }
+}
+
+function clickLink(url, blank = false) {
+  const a = document.createElement("a");
+  a.style.display = "none";
+  document.body.appendChild(a);
+  try {
+    a.href = url;
+    a.rel = "noopener";
+    if (blank) {
+      a.target = "_blank";
+    }
+    a.click();
+  } finally {
+    a.remove();
+  }
+}
+
+export function shouldOpenInBlankWindow(
+  url,
+  {
+    event = window.event,
+    // always open in new window
+    blank = false,
+    // open in new window if command-click
+    blankOnMetaKey = true,
+    // open in new window for different origin
+    blankOnDifferentOrigin = true,
+  } = {},
+) {
+  if (blank) {
+    return true;
+  } else if (
+    blankOnMetaKey &&
+    (event && event.metaKey != null ? event.metaKey : metaKey)
+  ) {
+    return true;
+  } else if (blankOnDifferentOrigin) {
+    const a = document.createElement("a");
+    a.href = url;
+    return a.origin !== window.location.origin;
+  }
+  return false;
+}
+
 /**
  * @returns the clip-path CSS property referencing the clip path in the current document, taking into account the <base> tag.
  */
