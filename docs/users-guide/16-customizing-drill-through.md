@@ -28,7 +28,7 @@ Next we’ll click `Done`, then save our dashboard. Now when we click our chart,
 
 *Note:* One important thing to point out is that when we customize drill-through on a dashboard card, rather than on the standalone saved question, we’re only customizing for that instance of the chart on that one dashboard.
 
-**Linking to another Metabase dashboard or saved question**
+### Linking to another Metabase dashboard or saved question
 
 Now that you know how to create a custom link with variables, let's talk about how to use that to link to another dashboard or saved question in your Metabase instance.
 
@@ -57,18 +57,14 @@ Then I'll find the `Display as link` setting. This dropdown will be slightly dif
 
 We'll now see the same link template input box as with the chart example above. Just as before, we can use the double braces syntax, like `{{PRODUCT_ID}}`, in our URL to refer to a column name to insert the clicked cell's value at that point in the URL.
 
+![Link option](./images/customizing-drill-through/table-options-filled.png)
+
 **Referencing multiple column values**
 
 Note that you can refer to *any* column in the table here, not just the column whose drill-through behavior you're customizing. When you click on a cell, it will insert the value of all referenced columns *in that same row* into your URL. This could let us do things like make clicking on a product's *name* go to a custom destination, but reference the product's *ID* in the URL.
 
 This comes in handy when linking to a dashboard or question with multiple filters: your link template could for example reference two values for two filters in the dashboard you're linking to, like this so, `http://YOUR-METABASE-LOCATION.com/dashboard/5?name={{NAME}}&id={{ID}}`, where `name` and `id` are the filters. Note the ampersand `&` between the two filters in the link; you can string together any number of filters in your link templates by putting an ampersand between them.
 
-![Link option](./images/customizing-drill-through/table-options-filled.png)
-
 **Customizing link text**
+
 Additionally, you can optionally customize what text should be displayed in each cell of this column. You can also use the double braces variable syntax here. The way we've used this in the example above is to refer to the value of our `Product ID` column in a sentence that makes it clearer what will happen when the cell is clicked. So `Look up {{PRODUCT_ID}} in our catalog` gets turned into `Look up Awesome Concrete Shoes in our catalog` in the corresponding cell.
-
----
-
-## That’s it!
-If you still have questions about using alerts, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
