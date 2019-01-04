@@ -179,11 +179,11 @@
         cards     (map :cards pulses)
         channels  (map :channels pulses)
         pulse-ids (maybe-upsert-many! (:mode context) Pulse
-                                      (for [pulse pulses]
-                                        (-> pulse
-                                            (assoc :collection_id (:collection context)
-                                                   :creator_id    @default-user)
-                                            (dissoc :channels :cards))))]
+                    (for [pulse pulses]
+                      (-> pulse
+                          (assoc :collection_id (:collection context)
+                                 :creator_id    @default-user)
+                          (dissoc :channels :cards))))]
     (maybe-upsert-many! (:mode context) PulseCard
       (for [[cards pulse-id] (map vector cards pulse-ids)
             card             cards]

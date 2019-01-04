@@ -78,7 +78,7 @@
                   :pulse_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
-(defmulti ^:privat serialize-one
+(defmulti ^:private serialize-one
   type)
 
 (def ^{:arglists '([entity])} serialize
