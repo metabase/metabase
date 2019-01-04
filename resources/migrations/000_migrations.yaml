@@ -5135,3 +5135,40 @@ databaseChangeLog:
             tableName: query_cache
             columnName: results
             newDataType: longblob
+
+#
+# Add unique constraints for (Field name + table_id + parent_id) and for (Table name + schema + db_id) unless for one
+# reason or another those would-be constraints are already violated. This is to fix issue where sometimes the same Field
+# or Table is synced more than once (see #669, #8950, #9048)
+#
+  - changeSet:
+      id: 98
+      author: camsaul
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_TABLE GROUP BY DB_ID, SCHEMA, NAME HAVING count(*) > 1) t1
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            columnNames: db_id, schema, name
+            constraintName: idx_uniq_table_db_id_schema_name
+
+  - changeSet:
+      id: 99
+      author: camsaul
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_FIELD GROUP BY TABLE_ID, PARENT_ID, NAME HAVING count(*) > 1) t1
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_field
+            columnNames: table_id, parent_id, name
+            constraintName: idx_uniq_field_table_id_parent_id_name
