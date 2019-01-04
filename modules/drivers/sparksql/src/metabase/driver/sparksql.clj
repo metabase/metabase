@@ -105,7 +105,7 @@
                                               (format "describe `%s`.`%s`"
                                                       (dash-to-underscore (:schema table))
                                                       (dash-to-underscore (:name table)))
-                                              (str "describe " (dash-to-underscore (:name table))))])]
+                                              (str "describe " (dash-to-underscore (:name table))))]) :while (and (not(clojure.string/blank? (:col_name result))) (not(clojure.string/blank? (:data_type result))))]
                     {:name          (:col_name result)
                      :database-type (:data_type result)
                      :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword (:data_type result)))}))}))
