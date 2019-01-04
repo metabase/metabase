@@ -50,7 +50,7 @@ sample-dataset() {
 
 drivers() {
     echo "Building Metabase drivers..."
-    ./bin/build-drivers.sh clean
+    ./bin/build-drivers.sh
 }
 
 uberjar() {
