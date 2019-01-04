@@ -26,7 +26,6 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
-import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
