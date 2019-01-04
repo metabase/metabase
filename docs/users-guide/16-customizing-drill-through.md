@@ -1,20 +1,18 @@
 
 ## Customizing drill-through
 
-Out of the box, Metabase comes with some handy actions that you can access when you click on parts of a table or chart: you can filter, break out, zoom in, or x-ray on the thing you click.
+Out of the box, Metabase comes with some handy actions that you can access when you click on parts of a table or chart: you can filter, break out, zoom in, or x-ray things you click.
 
-But the Enterprise Edition of Metabase includes a set of features which allow you to customize what happens when you click on things.
+But the Enterprise Edition of Metabase includes a set of features which allow you to customize what happens when you click on cells in a table or parts of charts.
 
-For example, you might have a high-level executive dashboard with a bar chart which shows your total revenue per product category, and what you’d like to do is allow your users to click on a bar in that chart to see a *different* dashboard with more detail about that product category.
+For example, you might have a high-level executive dashboard with a bar chart which shows your total revenue per product category, and what you’d like to do is allow your users to click on a bar in that chart to see a *different* dashboard with more detail about that product category. Or maybe you have a similar scenario, but you’d like to set things up so that clicking on a bar takes your users to a totally different app or site, like an internal company wiki page.
 
-Or maybe you have a similar scenario, but you’d like to set things up so that clicking on a bar takes your users to a totally different app or site, like an internal company wiki page.
-
-We’ll walk through how to do both of these things. Here’s the chart and table we’ll be using in our examples.
+We’ll walk through how to do both of these things, first for a chart, then for a table. Here’s the chart and table we’ll be using in our examples.
 
 ![Example charts](./images/customizing-drill-through/example-charts.png)
 
 ### Customizing drill-through for a chart
-We’ll need a chart to start, either in a dashboard or a standalone one. Our example chart displays the sum of revenue received from orders in each state of the US (it looks like Texas really loves Widgets and Gizmos).
+To start, we’ll need a chart that's either in a dashboard or that's standalone. Our example chart is in a dashboard, and it displays the sum of revenue received from orders in each state of the US (it looks like Texas really loves Widgets and Gizmos).
 
 Next, we’ll enter edit mode for our dashboard, then click the gear icon on our chart to open up the chart settings. If you’re using a standalone saved question, just click the gear next to the chart type to open up the chart settings.
 
@@ -28,7 +26,19 @@ The important part is the `{{STATE}}` bit — what we’re doing here is referri
 
 Next we’ll click `Done`, then save our dashboard. Now when we click our chart, instead of seeing the actions menu, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL. These links will be opened in a new tab or window unless they link to another chart or dashboard within Metabase.
 
-**Note:** One important thing to point out is that when we customize drill-through on a dashboard card, rather than on the standalone saved question, we’re only customizing for that instance of the chart on that one dashboard.
+*Note:* One important thing to point out is that when we customize drill-through on a dashboard card, rather than on the standalone saved question, we’re only customizing for that instance of the chart on that one dashboard.
+
+**Linking to another Metabase dashboard or saved question**
+
+Now that you know how to create a custom link with variables, let's talk about how to use that to link to another dashboard or saved question in your Metabase instance.
+
+Continuing with our example chart from above, let's say that we have another dashboard with lots more in-depth information and metrics about states. It would be far too much work to recreate the same dashboard 50 times, so instead, we've created a single dashboard that has a `Category` filter on it which has been set to let us filter by State, so we can e.g. select `Delaware` from it to make all of the charts only show Delawarean data.
+
+What's really cool now is that we can use a custom link on the State bar chart in our first dashboard to automatically pick a value for the State filter in our detail dashboard based on which bar is clicked. To do that, we'll go back to the chart on our first dashboard and go to the `Drill-through` tab in its settings.
+
+In the Link Template input box, we'll put in the full URL of the dashboard that we want to link to, with a variable in it to populate the dashboard's filter. Dashboard URLs in Metabase look something like this: `http://YOUR-METABASE-LOCATION.com/dashboard/5`. When you make a selection for a filter on a dashboard, you'll notice some additional text gets added to the URL, like this: `http://YOUR-METABASE-LOCATION.com/dashboard/5?state=DE` In this example, `state` is the name of a filter on our dashboard, and `DE` is the current value of the filter (DE for Delaware). So in our input box, we're going to enter a template that looks like this, with our `{{STATE}}` variable in the spot where the filter's value goes: `http://YOUR-METABASE-LOCATION.com/dashboard/5`. When you make a selection for a filter on a dashboard, you'll notice some additional text gets added to the URL, like this: `http://YOUR-METABASE-LOCATION.com/dashboard/5?state={{STATE}}`. Once we save our changes, whenever someone clicks on a bar in this chart, it will take them to our second dashboard with the State filter on that dashboard filled in with the State value of the bar that was clicked.
+
+Keep in mind that your link needs to use the name you've given to the filter, but with underscores in place of any spaces. So if yoR filter is called `Customer Name`, the part after the question mark in your link should look like `customer_name={{COLUMN}}`.
 
 
 ### Customizing drill-through for a column in a table
@@ -47,7 +57,11 @@ Then I'll find the `Display as link` setting. This dropdown will be slightly dif
 
 We'll now see the same link template input box as with the chart example above. Just as before, we can use the double braces syntax, like `{{PRODUCT_ID}}`, in our URL to refer to a column name to insert the clicked cell's value at that point in the URL.
 
-Note that you can refer to *any* column in the table here, not just the column whose drill-through behavior you're customizing. When you click on a cell, it will insert the value of all referenced columns *in that same row* into your URL. This could let us do things like make clicking on a product's *name* go somewhere custom, but reference the product's *ID* in the URL.
+**Referencing multiple column values**
+
+Note that you can refer to *any* column in the table here, not just the column whose drill-through behavior you're customizing. When you click on a cell, it will insert the value of all referenced columns *in that same row* into your URL. This could let us do things like make clicking on a product's *name* go to a custom destination, but reference the product's *ID* in the URL.
+
+This comes in handy when linking to a dashboard or question with multiple filters: your link template could for example reference two values for two filters in the dashboard you're linking to, like this so, `http://YOUR-METABASE-LOCATION.com/dashboard/5?name={{NAME}}&id={{ID}}`, where `name` and `id` are the filters. Note the ampersand `&` between the two filters in the link; you can string together any number of filters in your link templates by putting an ampersand between them.
 
 ![Link option](./images/customizing-drill-through/table-options-filled.png)
 
