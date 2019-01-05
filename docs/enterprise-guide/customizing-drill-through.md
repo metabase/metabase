@@ -1,4 +1,3 @@
-
 ## Customizing drill-through
 
 Out of the box, Metabase comes with some handy actions that you can access when you click on parts of a table or chart: you can filter, break out, zoom in, or x-ray things you click.

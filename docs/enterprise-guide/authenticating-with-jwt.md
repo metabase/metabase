@@ -1,7 +1,5 @@
 ## JWT-based Authentication
 
-**This feature is available in the Enterprise edition of Metabase**
-
 You can connect Metabase to your JWT-based identity provider to allow your Metabase users to authenticate through it.
 
 ### Enabling JWT authentication
