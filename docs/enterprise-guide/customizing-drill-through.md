@@ -49,15 +49,15 @@ If you want to link to a saved SQL question that has filter widgets in it, you'l
 
 ### Customizing drill-through for a column in a table
 
-Customizing drill-through for a table is very similar to doing it for a chart. Usually what we’re trying to do with a table though is to make it so that clicking on a cell in a specific column will go to a custom destination. E.g., I might have a `Product ID` column, and I’d like to make it so that clicking on a specific product's ID will open up my product catalog web app to the page that has details for the product I clicked on.
+Customizing drill-through for a table is very similar to doing it for a chart. Usually what we’re trying to do with a table though is to make it so that clicking on a cell in a specific column will go to a custom destination. E.g., we might have a `Product ID` column, and we’d like to make it so that clicking on a specific product's ID will open up our product catalog web app to the page that has details for the product we clicked on.
 
 Again, in our example our table visualization is in a dashboard, so we’ll start by entering edit mode for our dashboard and then clicking the settings gear button on our table. If you were doing this on a standalone question, you’d click the gear button next to the visualization dropdown.
 
-From the `Columns` tab I'll find my `Product ID` column and click the gear next to it.
+From the `Columns` tab we'll find the `Product ID` column and click the gear next to it.
 
 ![Column settings](./images/customizing-drill-through/column-settings.png)
 
-Then I'll find the `Display as link` setting. This dropdown will be slightly different depending on what kind of column you're customizing; for example, Email or URL columns will have additional options for how they should be displayed in the table. For our purposes, we'll open the dropdown and select the `Link` option.
+Then we'll find the `Display as link` setting. This dropdown will be slightly different depending on what kind of column you're customizing; for example, Email or URL columns will have additional options for how they should be displayed in the table. For our purposes, we'll open the dropdown and select the `Link` option.
 
 ![Link option](./images/customizing-drill-through/link-option.png)
 
@@ -73,4 +73,4 @@ This comes in handy when linking to a dashboard or question with multiple filter
 
 **Customizing link text**
 
-Additionally, you can optionally customize what text should be displayed in each cell of this column. You can also use the double braces variable syntax here. The way we've used this in the example above is to refer to the value of our `Product ID` column in a sentence that makes it clearer what will happen when the cell is clicked. So `Look up {{PRODUCT_ID}} in our catalog` gets turned into `Look up Awesome Concrete Shoes in our catalog` in the corresponding cell.
+You can also optionally customize what text should be displayed in each cell of this column. You can also use the double braces variable syntax here. The way we've used this in the example above is to refer to the value of our `Product ID` column in a sentence that makes it clearer what will happen when the cell is clicked. So `Look up {{PRODUCT_ID}} in our catalog` gets turned into `Look up Awesome Concrete Shoes in our catalog` in the corresponding cell.
