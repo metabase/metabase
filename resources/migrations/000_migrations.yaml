@@ -5148,9 +5148,19 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - onUpdateSQL: IGNORE
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_TABLE GROUP BY DB_ID, SCHEMA, NAME HAVING count(*) > 1) t1
+        - or:
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_table` GROUP BY `db_id`, `schema`, `name` HAVING count(*) > 1) t1
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_TABLE GROUP BY DB_ID, SCHEMA, NAME HAVING count(*) > 1) t1
       changes:
         - addUniqueConstraint:
             tableName: metabase_table
@@ -5164,9 +5174,19 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - onUpdateSQL: IGNORE
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_FIELD GROUP BY TABLE_ID, PARENT_ID, NAME HAVING count(*) > 1) t1
+        - or:
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_field` GROUP BY `table_id`, `parent_id`, `name` HAVING count(*) > 1) t1
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_FIELD GROUP BY TABLE_ID, PARENT_ID, NAME HAVING count(*) > 1) t1
       changes:
         - addUniqueConstraint:
             tableName: metabase_field
