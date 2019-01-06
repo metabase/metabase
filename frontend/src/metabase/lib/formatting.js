@@ -3,6 +3,9 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
+import momentDurationFormatSetup from "moment-duration-format";
+momentDurationFormatSetup(moment);
+
 import Humanize from "humanize-plus";
 import React from "react";
 import { ngettext, msgid } from "c-3po";
@@ -470,6 +473,10 @@ export function formatTime(value: Value) {
   }
 }
 
+export function formatDuration(value: Value) {
+  return moment.duration(parseInt(value), "seconds").format("h:mm:ss");
+}
+
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
 const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
@@ -613,6 +620,8 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return formatEmail(value, options);
   } else if (column && isa(column.base_type, TYPE.Time)) {
     return formatTime(value);
+  } else if (column && isa(column.special_type, TYPE.Duration)) {
+    return formatDuration(value);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(value, column.unit, options);
   } else if (
