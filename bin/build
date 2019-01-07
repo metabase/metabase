@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # Generate the resources/version.properties file
 version() {
     VERSION_INFO=$(./bin/version)
