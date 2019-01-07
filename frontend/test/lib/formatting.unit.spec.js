@@ -1,6 +1,11 @@
 import { isElementOfType } from "react-dom/test-utils";
 
-import { formatNumber, formatValue, formatUrl } from "metabase/lib/formatting";
+import {
+  formatNumber,
+  formatValue,
+  formatUrl,
+  formatDuration,
+} from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { TYPE } from "metabase/lib/types";
 
@@ -190,6 +195,15 @@ describe("formatting", () => {
           rich: true,
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
+    });
+  });
+
+  describe("formatDuration", () => {
+    it("should format seconds to h:mm:ss format", () => {
+      expect(formatDuration(12345)).toEqual("3:25:45");
+    });
+    it("should format correctly if column is a string", () => {
+      expect(formatDuration("123")).toEqual("2:03");
     });
   });
 });
