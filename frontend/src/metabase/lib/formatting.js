@@ -125,7 +125,7 @@ const RANGE_SEPARATOR = ` – `;
 
 // for extracting number portion from a formatted currency string
 // NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
-const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
+const NUMBER_REGEX = /([+-])?[^0-9]*([0-9., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 

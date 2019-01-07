@@ -29,6 +29,11 @@
         "jest": true
     },
     "parser": "babel-eslint",
+    "parserOptions": {
+      "ecmaFeatures": {
+        "legacyDecorators": true
+      }
+    },
     "plugins": [
         "react",
         "flowtype"

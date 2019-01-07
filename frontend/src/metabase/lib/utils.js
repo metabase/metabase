@@ -55,7 +55,7 @@ let MetabaseUtils = {
     let password = "";
     let tries = 0;
     while (!isStrongEnough(password) && tries < 100) {
-      password = generatePassword(len, false, /[\w\d\?\-]/);
+      password = generatePassword(len, false, /[\w\d?-]/);
       tries++;
     }
     return password;
@@ -64,7 +64,7 @@ let MetabaseUtils = {
       let uc = password.match(/([A-Z])/g);
       let lc = password.match(/([a-z])/g);
       let di = password.match(/([\d])/g);
-      let sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
+      let sc = password.match(/([!@#$%^&*)(+=._-{}])/g);
 
       return (
         uc &&
@@ -151,7 +151,7 @@ let MetabaseUtils = {
   },
 
   validEmail: function(email) {
-    let re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    let re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
   },
 
