@@ -447,8 +447,8 @@ jobs:
       - run:
           name: Run yarn if yarn.lock checksum has changed
           command: >
-            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
-              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
+            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ]; then
+              yarn
             fi
           no_output_timeout: 5m
       - run:
