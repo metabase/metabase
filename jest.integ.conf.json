@@ -5,7 +5,6 @@
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
   "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/legacy-karma",
     "<rootDir>/frontend/test/legacy-selenium"
   ],
   "testMatch": [

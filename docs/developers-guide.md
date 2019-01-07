@@ -113,7 +113,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 yarn run test
 ```
 
-which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
+which will first build the backend JAR and then run integration and unit tests in sequence.
 
 ### Jest integration tests
 
@@ -199,15 +199,6 @@ Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to
 ```
 yarn run test-unit # Run all tests at once
 yarn run test-unit-watch # Watch for file changes
-```
-
-### Karma browser tests
-
-If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
-
-```
-yarn run test-karma # Run all tests once
-yarn run test-karma-watch # Watch for file changes
 ```
 
 ## Backend development
