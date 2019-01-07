@@ -10,14 +10,15 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.query-processor.util :as qp.util]
             [toucan.db :as db]))
 
 (defn safe-name
   "Return entity name with forward slashes replaced by unicode char `FRACTION SLASH`."
   [entity]
-  (-> entity :name (str/escape {\/ "⁄"})))
+  (-> entity ((some-fn :email :name)) (str/escape {\/ "⁄"})))
 
 (defn unescape-name
   "Inverse of `safe-name`. Replaces `FRACTION SLASH` back to forward slash."
@@ -93,6 +94,10 @@
                        (fully-qualified-name Collection))
               "/collections/root")
           (safe-name card)))
+
+(defmethod fully-qualified-name* (type User)
+  [user]
+  (str "/users/" (:email user)))
 
 (defmethod fully-qualified-name* nil
   [_]
@@ -170,6 +175,11 @@
   (assoc context :card (db/select-one-id Card
                          :collection_id (:collection context)
                          :name          dashboard-name)))
+
+(defmethod path->context* "users"
+  [context _ email]
+  (assoc context :user (db/select-one-id User
+                         :email email)))
 
 (defn fully-qualified-name->context
   "Parse a logcial path into a context map."

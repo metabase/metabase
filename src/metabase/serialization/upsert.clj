@@ -21,7 +21,8 @@
              [pulse-channel :refer [PulseChannel]]
              [segment :refer [Segment]]
              [setting :refer [Setting] :as setting]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs] :as i18n]
             [toucan.db :as db]))
@@ -43,7 +44,8 @@
    Pulse               [:name :collection_id]
    PulseCard           [:pulse_id :card_id]
    PulseChannel        [:pulse_id :channel_type :details]
-   Card                [:name :collection_id]})
+   Card                [:name :collection_id]
+   User                [:email]})
 
 ;; This could potentially be unrolled into one giant select
 (defn- select-identical

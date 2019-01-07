@@ -60,13 +60,7 @@
     [:segment (fully-qualified-name :guard string?)]
     [:segment (:segment (fully-qualified-name->context fully-qualified-name))]))
 
-(def ^:private default-user (delay (or (db/select-one-id User :is_superuser true)
-                                       (u/get-id
-                                        (db/insert! User {:email        "admin@example.com"
-                                                          :password     "load"
-                                                          :first_name   "Admin"
-                                                          :last_name    ""
-                                                          :is_superuser true})))))
+(def ^:private default-user (delay (db/select-one-id User :is_superuser true)))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.
@@ -230,6 +224,10 @@
     ;; Nested cards
     (doseq [[path card-id] (map vector paths card-ids)]
       (load path (assoc context :card card-id) Card))))
+
+(defmethod load User
+  [path context _]
+  (maybe-upsert-many! (:mode context) User (slurp-dir (str path "/users"))))
 
 (defn- derive-location
   [context]

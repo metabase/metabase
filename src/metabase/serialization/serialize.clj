@@ -17,7 +17,8 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.serialization.names :refer [fully-qualified-name]]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -132,3 +133,9 @@
                     (update :card_id (partial fully-qualified-name Card))))
     :channels (for [channel (db/select PulseChannel :pulse_id (u/get-id pulse))]
                 (strip-crud channel))))
+
+(defmethod serialize-one (type User)
+  [user]
+  (-> user
+      (select-keys [:first_name :last_name :email :is_superuser])
+      (assoc :password "changeme")))

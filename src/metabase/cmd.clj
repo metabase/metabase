@@ -134,9 +134,9 @@
 
 (defn ^:command dump
   "Serialized metabase instance into directory `path`."
-  [path]
+  [path user]
   (require 'metabase.cmd.serialization)
-  ((resolve 'metabase.cmd.serialization/dump) path))
+  ((resolve 'metabase.cmd.serialization/dump) path user))
 
 
 

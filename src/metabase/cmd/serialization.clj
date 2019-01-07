@@ -9,7 +9,8 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.serialization
              [dump :as dump]
              [load :as load]]
@@ -29,6 +30,7 @@
   [mode :- Mode, path]
   (mdb/setup-db-if-needed!)
   (let [context {:mode mode}]
+    (load/load path context User)
     (load/load path context Database)
     (load/load path context Collection)
     (load/load-settings path context)
@@ -36,7 +38,7 @@
 
 (defn dump
   "Serialized metabase instance into directory `path`."
-  [path]
+  [path user]
   (mdb/setup-db-if-needed!)
   (dump/dump path (Database))
   (dump/dump path (Table))
@@ -47,6 +49,9 @@
   (dump/dump path (Card))
   (dump/dump path (Dashboard))
   (dump/dump path (Pulse))
+  (let [user (db/select-one User :email user)]
+    (assert (:is_superuser user))
+    (dump/dump path [user]))
   (dump/dump-settings path)
   (dump/dump-dependencies path)
   (dump/dump-dimensions path))

@@ -11,7 +11,8 @@
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
              [setting :as setting]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.serialization
              [names :refer [fully-qualified-name safe-name]]
              [serialize :refer [serialize]]]
@@ -23,7 +24,7 @@
   (spit fname (yaml/generate-string obj :dumper-options {:flow-style :block})))
 
 (def ^:private as-file?
-  (comp #{(type Pulse) (type Dashboard) (type Metric) (type Segment) (type Field)} type))
+  (comp (set (map type [Pulse Dashboard Metric Segment Field User])) type))
 
 (defn dump
   "Serialize a entities into a directory structure of YAMLs at `path`."
