@@ -19,7 +19,7 @@ if [ "$1" == clean ]; then
     done
 fi
 
-for driver in `ls modules/drivers/ | perl -pe 's|/$||'`; do # strip trailing slashes if `ls` is set to include them
+for driver in `ls modules/drivers/ | sed 's|/$||'`; do # strip trailing slashes if `ls` is set to include them
     echo "Build: $driver"
     ./bin/build-driver.sh "$driver"
 done
