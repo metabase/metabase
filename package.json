@@ -85,7 +85,6 @@
     "tether": "^1.2.0",
     "uglifyjs-webpack-plugin": "^2.1.1",
     "underscore": "^1.8.3",
-    "webpack-dev-middleware": "^1.12.0",
     "z-index": "0.0.1"
   },
   "devDependencies": {
@@ -115,9 +114,9 @@
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "^2.1.1",
     "eslint-plugin-flowtype": "^2.22.0",
-    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-jasmine": "^2.2.0",
-    "eslint-plugin-react": "^6.3.0",
+    "eslint-plugin-react": "^7.12.3",
     "exports-loader": "^0.6.3",
     "file-loader": "^0.11.1",
     "flow-bin": "^0.37.4",
@@ -157,7 +156,7 @@
     "sauce-connect-launcher": "^1.1.1",
     "selenium-webdriver": "^2.53.3",
     "style-loader": "^0.19.0",
-    "unused-files-webpack-plugin": "^3.0.0",
+    "unused-files-webpack-plugin": "^3.4.0",
     "webchauffeur": "^1.2.0",
     "webpack": "^4.28.3",
     "webpack-cli": "^3.2.0",

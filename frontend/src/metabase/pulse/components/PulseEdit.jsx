@@ -31,6 +31,7 @@ export default class PulseEdit extends Component {
     fetchPulseFormInput: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
+    setPulseArchived: PropTypes.func.isRequired,
     onChangeLocation: PropTypes.func.isRequired,
     goBack: PropTypes.func,
     initialCollectionId: PropTypes.number,

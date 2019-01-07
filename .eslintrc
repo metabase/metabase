@@ -15,6 +15,11 @@
         "react/no-did-mount-set-state": 0,
         "react/no-did-update-set-state": 0,
         "react/no-find-dom-node": 0,
+        "react/no-string-refs": 0,
+        "react/jsx-key": 0,
+        "react/no-unescaped-entities": 0,
+        "react/jsx-no-target-blank": 0,
+        "react/no-children-prop": 0,
         "flowtype/define-flow-type": 1,
         "flowtype/use-flow-type": 1,
         "no-color-literals": 1
@@ -46,6 +51,10 @@
     ],
     "settings": {
       "import/resolver": "webpack",
-      "import/ignore": ["\\.css$"]
+      "import/ignore": ["\\.css$"],
+      "react": {
+        "version": "detect",
+        "flowVersion": "0.37.4"
+      }
     }
 }

@@ -246,7 +246,7 @@ describe("parameters", () => {
       store.pushPath(Urls.publicQuestion(publicQuestion.uuid) + "?id=1");
       app = mount(store.getAppContainer());
 
-      await waitForRequestToComplete("GET", /^\/api\/[^\/]*\/card/);
+      await waitForRequestToComplete("GET", /^\/api\/[^/]*\/card/);
       expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
         "Test Question",
       );
@@ -254,7 +254,7 @@ describe("parameters", () => {
       // wait for the query to load
       await waitForRequestToComplete(
         "GET",
-        /^\/api\/public\/card\/[^\/]+\/query/,
+        /^\/api\/public\/card\/[^/]+\/query/,
       );
     });
     sharedParametersTests(() => ({ app, store }));
@@ -289,7 +289,7 @@ describe("parameters", () => {
       store.pushPath(Urls.embedCard(token) + "?id=1");
       app = mount(store.getAppContainer());
 
-      await waitForRequestToComplete("GET", /\/card\/[^\/]+/);
+      await waitForRequestToComplete("GET", /\/card\/[^/]+/);
 
       expect(app.find(".EmbedFrame-header .h4").text()).toEqual(
         "Test Question",
@@ -298,7 +298,7 @@ describe("parameters", () => {
       // wait for the query to load
       await waitForRequestToComplete(
         "GET",
-        /^\/api\/embed\/card\/[^\/]+\/query/,
+        /^\/api\/embed\/card\/[^/]+\/query/,
       );
     });
     sharedParametersTests(() => ({ app, store }));
@@ -319,10 +319,10 @@ describe("parameters", () => {
       );
 
       // wait for the query to load
-      await waitForRequestToComplete("POST", /^\/api\/card\/[^\/]+\/query/);
+      await waitForRequestToComplete("POST", /^\/api\/card\/[^/]+\/query/);
 
       // wait for required field metadata to load
-      await waitForRequestToComplete("GET", /^\/api\/field\/[^\/]+/);
+      await waitForRequestToComplete("GET", /^\/api\/field\/[^/]+/);
     });
     sharedParametersTests(() => ({ app, store }));
   });
@@ -349,7 +349,7 @@ describe("parameters", () => {
       // wait for the query to load
       await waitForRequestToComplete(
         "GET",
-        /^\/api\/public\/dashboard\/[^\/]+\/card\/[^\/]+/,
+        /^\/api\/public\/dashboard\/[^/]+\/card\/[^/]+/,
       );
     });
     sharedParametersTests(() => ({ app, store }));
@@ -393,7 +393,7 @@ describe("parameters", () => {
       // wait for the query to load
       await waitForRequestToComplete(
         "GET",
-        /^\/api\/embed\/dashboard\/[^\/]+\/dashcard\/\d+\/card\/\d+/,
+        /^\/api\/embed\/dashboard\/[^/]+\/dashcard\/\d+\/card\/\d+/,
       );
     });
     sharedParametersTests(() => ({ app, store }));
