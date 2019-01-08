@@ -1,15 +1,15 @@
 {
     "rules": {
-        "jasmine/no-focused-tests": 2,
-        "jasmine/no-suite-dupes": [2, "branch"],
+        "jest/no-focused-tests": 2,
+        "jest/no-identical-title": [2, "branch"],
         "import/no-commonjs": 0,
         "no-color-literals": 0
     },
     "env": {
-        "jasmine": true,
+        "jest/globals": true,
         "node": true
     },
     "plugins": [
-        "jasmine"
+        "eslint-plugin-jest"
     ]
 }
