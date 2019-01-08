@@ -122,7 +122,7 @@
     "mockdate": "^2.0.2",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
-    "postcss-loader": "^2.0.8",
+    "postcss-loader": "^3.0.0",
     "postcss-url": "^6.0.4",
     "prettier": "^1.10.2",
     "promise-loader": "^1.0.0",
