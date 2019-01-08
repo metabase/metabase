@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 
 import colors from "metabase/lib/colors";
 
-const Item = styled(Link)`
+const Item = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -46,20 +46,20 @@ const Item = styled(Link)`
 `;
 
 const LinkMenuItem = ({ children, link, onClose, event, externalLink }) => (
-  <Item
+  <Link
     to={link}
     target={externalLink ? "_blank" : null}
     onClick={onClose}
     data-metabase-event={event}
   >
     {children}
-  </Item>
+  </Link>
 );
 
 const ActionMenuItem = ({ children, action, event }) => (
-  <Item as="div" onClick={action} data-metabase-event={event}>
+  <div onClick={action} data-metabase-event={event}>
     {children}
-  </Item>
+  </div>
 );
 
 const EntityMenuItem = ({
@@ -78,10 +78,12 @@ const EntityMenuItem = ({
     return <div />;
   }
 
-  const content = [
-    <Icon name={icon} mr={1} />,
-    <span className="text-bold">{title}</span>,
-  ];
+  const content = (
+    <Item>
+      <Icon name={icon} mr={1} />,
+      <span className="text-bold">{title}</span>,
+    </Item>
+  );
 
   if (link) {
     return (
