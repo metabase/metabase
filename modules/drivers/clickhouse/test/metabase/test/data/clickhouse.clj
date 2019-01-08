@@ -4,6 +4,7 @@
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
+            [metabase.test.data :as data]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
              [load-data :as load-data]

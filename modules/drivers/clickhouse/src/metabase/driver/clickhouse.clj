@@ -11,6 +11,7 @@
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -51,6 +52,9 @@
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse [_ database-type]
   (database-type->base-type
    (string/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
+
+(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
+  #{"system"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ {:keys [user password dbname host port ssl]
@@ -158,29 +162,6 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
   (hsql/call :toDateTime expr))
 
-(defmethod sql.qp/apply-top-level-clause [:clickhouse :breakout]
-  [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
-  (-> honeysql-form
-      ;; ClickHouse requires that we refer to Fields using the alias we gave them in the
-      ;; `SELECT` clause, rather than repeating their definitions. See BigQuery driver
-      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakout-field-clauses))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
-      ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
-                                            :when        (not (contains? (set fields-field-clauses) field-clause))]
-                                        (sql.qp/as driver field-clause)))))
-
-(defmethod sql.qp/apply-top-level-clause [:clickhouse :order-by]
-  [driver _ honeysql-form {subclauses :order-by, :as query}]
-  (loop [honeysql-form honeysql-form, [[direction field-clause] & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field-clause)
-                                                           (sql.qp/->honeysql driver field-clause)
-                                                           (sql.qp/field-clause->alias driver field-clause))
-                                                         direction])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
-
 ;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
 ;; server, so we override the default formatter
 (sc/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
@@ -199,8 +180,25 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
-(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
-  #{"system"})
+
+;; ClickHouse aliases are globally usable. Once an alias is introduced, we
+;; can not refer to the same field by qualified name again, unless we mean
+;; it. See https://clickhouse.yandex/docs/en/query_language/syntax/#peculiarities-of-use
+;; We add a suffix to make the reference in the query unique.
+(defmethod sql.qp/field->alias :clickhouse [_ field]
+  (str (:name field) "_mb_alias"))
+
+;; See above. We are removing the artificial alias suffix
+(defmethod driver/execute-query :clickhouse [driver query]
+  (update-in
+   (sql-jdbc.execute/execute-query :sql-jdbc query)
+   [:columns]
+   (fn [columns]
+     (mapv (fn [column]
+             (if (string/ends-with? column "_mb_alias")
+               (subs column 0 (string/last-index-of column "_mb_alias"))
+               column))
+           columns))))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
@@ -250,3 +248,4 @@
 ;; TODO: Nested queries are actually supported, but I do not know how
 ;; to make the driver use correct aliases per sub-query
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
+
