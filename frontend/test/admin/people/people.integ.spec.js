@@ -7,8 +7,6 @@ import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,
-  CREATE_USER,
-  FETCH_USERS,
   LOAD_GROUPS,
   LOAD_MEMBERSHIPS,
   SHOW_MODAL,
@@ -21,7 +19,8 @@ import { getUsers } from "metabase/admin/people/selectors";
 import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
-import UserActionsSelect from "metabase/admin/people/components/UserActionsSelect";
+
+import EntityMenu from "metabase/components/EntityMenu";
 
 describe("admin/people", () => {
   let createdUserId = null;
@@ -35,7 +34,8 @@ describe("admin/people", () => {
       const store = await createTestStore();
       store.pushPath("/admin/people");
       const app = mount(store.getAppContainer());
-      await store.waitForActions([FETCH_USERS, LOAD_GROUPS, LOAD_MEMBERSHIPS]);
+      // TODO - replace fetch users with whatever the entity equivelant is
+      await store.waitForActions([LOAD_GROUPS, LOAD_MEMBERSHIPS]);
 
       const email =
         "testy" + Math.round(Math.random() * 10000) + "@metabase.com";
@@ -59,7 +59,8 @@ describe("admin/people", () => {
       expect(addButton.props().disabled).toBe(false);
       clickButton(addButton);
 
-      await store.waitForActions([CREATE_USER]);
+      // TODO - replace CREATE_USER with equivelant
+      // await store.waitForActions([CREATE_USER]);
       // unsure why a small delay is required here
       await delay(100);
 
@@ -98,7 +99,7 @@ describe("admin/people", () => {
       await store.waitForActions([CREATE_MEMBERSHIP]);
 
       // edit user details
-      click(userRow.find(UserActionsSelect));
+      click(userRow.find(EntityMenu));
       click(app.find(".TestPopover").find('li[children="Edit Details"]'));
 
       const editDetailsModal = app.find(ModalContent);
@@ -134,7 +135,7 @@ describe("admin/people", () => {
           .text(),
       ).toBe(`${firstName}x ${lastName}x`);
 
-      click(userRow.find(UserActionsSelect));
+      click(userRow.find(EntityMenu));
       click(app.find(".TestPopover").find('li[children="Reset Password"]'));
 
       const resetPasswordModal = app.find(ModalContent);
