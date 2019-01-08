@@ -257,6 +257,9 @@
     :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
 
+   ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
+   ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
+   ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
    {:source-paths ["src"
                    "lein-commands/strip-and-compress"]

@@ -1,4 +1,10 @@
 (ns metabase.plugins.initialize
+  "Logic related to initializing plugins, i.e. running the `init` steps listed in the plugin manifest. This is done when
+  Metabase launches as soon as all dependencies for that plugin are met; for plugins with unmet dependencies, it is
+  retried after other plugins are loaded (e.g. for things like BigQuery which depend on the shared Google driver.)
+
+  Note that this is not the same thing as initializing *drivers* -- drivers are initialized lazily when first needed;
+  this step on the other hand runs at launch time and sets up that lazy load logic."
   (:require [clojure.tools.logging :as log]
             [metabase.plugins
              [dependencies :as deps]
