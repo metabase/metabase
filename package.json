@@ -107,7 +107,7 @@
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-jest": "^22.1.2",
     "eslint-plugin-react": "^7.12.3",
-    "exports-loader": "^0.6.3",
+    "exports-loader": "^0.7.0",
     "file-loader": "^0.11.1",
     "flow-bin": "^0.37.4",
     "fs-promise": "^2.0.2",
