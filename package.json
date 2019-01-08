@@ -120,7 +120,6 @@
     "jest": "^19.0.2",
     "jest-localstorage-mock": "^2.2.0",
     "jsonwebtoken": "^7.2.1",
-    "lint-staged": "^3.3.1",
     "mini-css-extract-plugin": "^0.5.0",
     "mockdate": "^2.0.2",
     "postcss-cssnext": "^2.4.0",
@@ -157,18 +156,11 @@
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "start": "yarn build && lein ring server",
-    "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
     "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test"
-  },
-  "lint-staged": {
-    "frontend/**/*.{js,jsx,css}": [
-      "prettier --write",
-      "git add"
-    ]
   }
 }
