@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import { getGroup, getGroups, getUsers } from "../selectors";
-import { loadGroups, loadGroupDetails, fetchUsers } from "../people";
+import { loadGroups, loadGroupDetails } from "../people";
 
 import GroupDetail from "../components/GroupDetail.jsx";
 
@@ -17,14 +17,12 @@ function mapStateToProps(state, props) {
 const mapDispatchToProps = {
   loadGroups,
   loadGroupDetails,
-  fetchUsers,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class GroupDetailApp extends Component {
   async componentWillMount() {
     this.props.loadGroups();
-    this.props.fetchUsers();
     this.props.loadGroupDetails(this.props.params.groupId);
   }
 
