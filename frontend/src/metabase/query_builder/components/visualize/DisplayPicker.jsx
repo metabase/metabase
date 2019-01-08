@@ -87,10 +87,12 @@ export default class DisplayPicker extends React.Component {
               );
             }
           })}
-          <RoundButtonBarSettingsButton
-            selected={showSettings}
-            onClick={onToggleSettings}
-          />
+          {onToggleSettings && (
+            <RoundButtonBarSettingsButton
+              selected={showSettings}
+              onClick={onToggleSettings}
+            />
+          )}
         </RoundButtonBar>
       );
     } else {
@@ -109,10 +111,12 @@ export default class DisplayPicker extends React.Component {
               />
             );
           })}
-          <RoundButtonBarSettingsButton
-            selected={showSettings}
-            onClick={onToggleSettings}
-          />
+          {onToggleSettings && (
+            <RoundButtonBarSettingsButton
+              selected={showSettings}
+              onClick={onToggleSettings}
+            />
+          )}
         </RoundButtonBar>
       );
     }

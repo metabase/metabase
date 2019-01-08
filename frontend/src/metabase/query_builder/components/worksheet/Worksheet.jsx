@@ -4,11 +4,9 @@ import _ from "underscore";
 
 import { WorksheetSectionButton } from "./WorksheetSection";
 
-import DataSection from "./DataSection";
-import FiltersSection from "./FiltersSection";
-import SummarizeSection from "./SummarizeSection";
-import PreviewSection from "./PreviewSection";
+import QuerySections from "./QuerySections";
 import ViewItSection from "./ViewItSection";
+import PreviewSection from "./PreviewSection";
 
 import WorksheetSidebar from "./WorksheetSidebar";
 
@@ -24,12 +22,8 @@ const SIDEBAR_WIDTH = 320;
 export default class Worksheet extends React.Component {
   constructor(props) {
     super(props);
-    const { query } = props;
     this.state = {
       previewLimit: 10,
-      showFilterSection: query.filters().length > 0,
-      showSummarizeSection:
-        query.aggregations().length > 0 || query.breakouts().length > 0,
       isPickerOpen: false,
       autoRefreshPreview: true,
     };
@@ -90,14 +84,6 @@ export default class Worksheet extends React.Component {
     this.setState({ previewLimit }, this.preview);
   };
 
-  filter = () => {
-    this.setState({ showFilterSection: true });
-  };
-
-  summarize = () => {
-    this.setState({ showSummarizeSection: true });
-  };
-
   openPicker = () => {
     this.setState({ isPickerOpen: true });
   };
@@ -130,16 +116,6 @@ export default class Worksheet extends React.Component {
   render() {
     const { isRunnable, query } = this.props;
     const { isPickerOpen } = this.state;
-    const setDatasetQuery = this.handleSetDatasetQuery;
-
-    const showFilterSection =
-      isRunnable &&
-      (this.state.showFilterSection || query.filters().length > 0);
-    const showSummarizeSection =
-      isRunnable &&
-      (this.state.showSummarizeSection ||
-        query.aggregations().length > 0 ||
-        query.breakouts().length > 0);
 
     const showSidebar = isPickerOpen;
 
@@ -149,47 +125,11 @@ export default class Worksheet extends React.Component {
     return (
       <div className="relative flex flex-row flex-full">
         <div className="border-right" style={{ minWidth: 300 }}>
-          <DataSection
-            style={sectionStyle}
+          <QuerySections
             {...this.props}
-            setSourceTableFn={tableId => {
-              this.props.setSourceTableFn(tableId);
-              // make sure we reset state when switching tables
-              this.reset();
-            }}
-            setDatasetQuery={setDatasetQuery}
-            footerButtons={[
-              isRunnable &&
-                !showSummarizeSection &&
-                !showFilterSection && (
-                  <SummarizeButton onClick={this.summarize} />
-                ),
-              isRunnable &&
-                !showFilterSection && <FilterButton onClick={this.filter} />,
-            ]}
+            sectionStyle={sectionStyle}
+            setDatasetQuery={this.handleSetDatasetQuery}
           />
-          {showFilterSection && (
-            <FiltersSection
-              style={sectionStyle}
-              onClear={() => this.setState({ showFilterSection: false })}
-              {...this.props}
-              setDatasetQuery={setDatasetQuery}
-              footerButtons={[
-                isRunnable &&
-                  !showSummarizeSection && (
-                    <SummarizeButton onClick={this.summarize} />
-                  ),
-              ]}
-            />
-          )}
-          {showSummarizeSection && (
-            <SummarizeSection
-              style={sectionStyle}
-              onClear={() => this.setState({ showSummarizeSection: false })}
-              {...this.props}
-              setDatasetQuery={setDatasetQuery}
-            />
-          )}
           {isRunnable && <ViewItSection style={sectionStyle} {...this.props} />}
         </div>
         <div className="pl4 flex-full bg-white">
@@ -221,7 +161,7 @@ export default class Worksheet extends React.Component {
             width={sidebarWidth}
             onFieldClick={field => {
               // TODO: remove this once drag-n-drop is done
-              query.addFilter(["=", field]).update(setDatasetQuery);
+              query.addFilter(["=", field]).update(this.handleSetDatasetQuery);
             }}
           />
         )}
@@ -229,19 +169,3 @@ export default class Worksheet extends React.Component {
     );
   }
 }
-
-const FilterButton = ({ onClick }) => (
-  <WorksheetSectionButton
-    {...SECTIONS.filter}
-    className="mr1 mt2"
-    onClick={onClick}
-  />
-);
-
-const SummarizeButton = ({ onClick }) => (
-  <WorksheetSectionButton
-    {...SECTIONS.summarize}
-    className="mr1 mt2"
-    onClick={onClick}
-  />
-);

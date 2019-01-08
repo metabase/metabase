@@ -3,7 +3,6 @@ import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 
 import QueryVisualization from "../components/QueryVisualization";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
 import { Absolute, Fixed } from "metabase/components/Position";
 import Card from "metabase/components/Card";
@@ -15,6 +14,8 @@ import DisplayPicker from "./visualize/DisplayPicker";
 import ColumnWells from "./visualize/ColumnWells";
 import ColumnList from "./visualize/ColumnList";
 import MetricList from "./visualize/MetricList";
+
+import SettingsPanel from "./panels/SettingsPanel";
 
 // the margin for the viz with panels open
 const VIZ_MARGIN = 340;
@@ -115,27 +116,7 @@ const QuestionVisualizeFooter = ({
 const QuestionVisualizeSettings = props => {
   return (
     <Panel>
-      <ChartSettings
-        question={props.question}
-        addField={props.addField}
-        series={[
-          {
-            card: props.question.card(),
-            data: props.result.data,
-          },
-        ]}
-        onChange={newSettings => {
-          props.onReplaceAllVisualizationSettings(newSettings);
-        }}
-        // initial={chartSettings}
-      >
-        {({ sectionPicker, widgetList }) => (
-          <div>
-            <div className="border-bottom px2">{sectionPicker}</div>
-            <div className="pt4 scroll-y">{widgetList}</div>
-          </div>
-        )}
-      </ChartSettings>
+      <SettingsPanel {...props} />
     </Panel>
   );
 };

@@ -28,6 +28,16 @@ import QuestionPresent from "../components/QuestionPresent";
 import QuestionVisualize from "../components/QuestionVisualize";
 import ViewHeader from "../components/ViewHeader";
 
+import PanelLayout from "../components/PanelLayout";
+import PanelTabs from "../components/PanelTabs";
+
+import QueryPanel from "../components/panels/QueryPanel";
+import SettingsPanel from "../components/panels/SettingsPanel";
+import ChartPanel from "../components/panels/ChartPanel";
+
+import DisplayHeader from "../components/panels/DisplayHeader";
+import ColumnWells from "../components/visualize/ColumnWells";
+
 import title from "metabase/hoc/Title";
 
 import {
@@ -228,54 +238,109 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    const { query, uiControls } = this.props;
+    const { query, question, setMode, uiControls } = this.props;
 
-    if (uiControls.mode === "worksheet") {
-      return (
-        <div className="flex-full flex flex-column">
-          <QueryHeader
-            {...this.props}
-            setMode={this.props.setMode}
-            mode={uiControls.mode}
-          />
-          {query instanceof StructuredQuery ? (
-            <QuestionDataWorksheet {...this.props} />
-          ) : (
-            <div>sql mode not yet implemented</div>
-          )}
-        </div>
-      );
-    } else if (uiControls.mode === "present") {
-      return (
-        <div className={cx("flex-column", this.props.fitClassNames)}>
-          <QueryHeader
-            {...this.props}
-            setMode={this.props.setMode}
-            mode={uiControls.mode}
-          />
-          <QuestionPresent {...this.props} />
-        </div>
-      );
-    } else if (uiControls.mode === "visualize") {
-      return (
-        <div
-          className={cx(
-            "flex-column overflow-hidden relative",
-            this.props.fitClassNames,
-          )}
-        >
-          <QueryHeader
-            {...this.props}
-            setMode={this.props.setMode}
-            mode={uiControls.mode}
-          />
-          <QuestionVisualize {...this.props} />
-        </div>
-      );
-    } else if (uiControls.mode === "legacy") {
-      return <LegacyQueryBuilder {...this.props} />;
+    if (!query || !question) {
+      return null;
     }
-    return null;
+
+    let panel =
+      uiControls.mode === "worksheet" ? (
+        <QueryPanel {...this.props} />
+      ) : uiControls.mode === "visualize" ? (
+        <ChartPanel {...this.props} />
+      ) : uiControls.mode === "settings" ? (
+        <SettingsPanel {...this.props} />
+      ) : null;
+
+    if (panel) {
+      panel = (
+        <div>
+          <PanelTabs
+            value={uiControls.mode}
+            onChange={setMode}
+            options={[
+              { name: "Data", value: "worksheet" },
+              { name: "Chart", value: "visualize" },
+              { name: "Options", value: "settings" },
+            ]}
+          />
+          {panel}
+        </div>
+      );
+    }
+
+    let content = <QuestionPresent {...this.props} />;
+    if (uiControls.mode === "visualize") {
+      content = (
+        <ColumnWells className="flex-full flex" {...this.props}>
+          {content}
+        </ColumnWells>
+      );
+    }
+
+    return (
+      <div className={cx("flex-column", this.props.fitClassNames)}>
+        <QueryHeader
+          {...this.props}
+          setMode={this.props.setMode}
+          mode={uiControls.mode}
+        />
+        <PanelLayout panel={panel}>
+          {uiControls.mode === "visualize" || uiControls.mode === "settings" ? (
+            <DisplayHeader {...this.props} />
+          ) : null}
+          {content}
+        </PanelLayout>
+      </div>
+    );
+
+    // if (uiControls.mode === "worksheet") {
+    //   return (
+    //     <div className="flex-full flex flex-column">
+    //       <QueryHeader
+    //         {...this.props}
+    //         setMode={this.props.setMode}
+    //         mode={uiControls.mode}
+    //       />
+    //       {query instanceof StructuredQuery ? (
+    //         <QuestionDataWorksheet {...this.props} />
+    //       ) : (
+    //         <div>sql mode not yet implemented</div>
+    //       )}
+    //     </div>
+    //   );
+    // } else if (uiControls.mode === "present") {
+    //   return (
+    //     <div className={cx("flex-column", this.props.fitClassNames)}>
+    //       <QueryHeader
+    //         {...this.props}
+    //         setMode={this.props.setMode}
+    //         mode={uiControls.mode}
+    //       />
+    //       <QuestionPresent {...this.props} />
+    //     </div>
+    //   );
+    // } else if (uiControls.mode === "visualize") {
+    //   return (
+    //     <div
+    //       className={cx(
+    //         "flex-column overflow-hidden relative",
+    //         this.props.fitClassNames,
+    //       )}
+    //     >
+    //       <QueryHeader
+    //         {...this.props}
+    //         setMode={this.props.setMode}
+    //         mode={uiControls.mode}
+    //       />
+    //       <QuestionVisualize {...this.props} />
+    //     </div>
+    //   );
+    // } else if (uiControls.mode === "legacy") {
+    //   return <LegacyQueryBuilder {...this.props} />;
+    // }
+    // return null;
   }
 }
 

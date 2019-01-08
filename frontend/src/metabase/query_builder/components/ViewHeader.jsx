@@ -15,6 +15,9 @@ import EntityMenuItem from "metabase/components/EntityMenuItem";
 
 import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 
+const ENABLE_DEFINITION_BUBBLE = false;
+const ENABLE_EDIT_PRESENT_BUTTON = true;
+
 const RoundButton = styled(Button)`
   border-radius: 99px;
   border: none;
@@ -55,7 +58,7 @@ const ViewHeader = ({ question, setMode, mode, setModal }) => (
     align="center"
     className="full relative py2 px4 border-bottom bg-white flex"
   >
-    <Flex align="center" className="z3">
+    <Flex align="center" className="z3 flex-full">
       <Title color={question.displayName() ? "inherit" : colors["text-light"]}>
         {question.displayName() || t`Untitled question`}
       </Title>
@@ -106,36 +109,54 @@ const ViewHeader = ({ question, setMode, mode, setModal }) => (
           </AnimatedMenuWrapper>
         </PopoverWithTrigger>
       </Flex>
+      {ENABLE_EDIT_PRESENT_BUTTON && (
+        <div className="flex-align-right">
+          {mode === "present" ? (
+            <Button primary onClick={() => setMode("worksheet")}>
+              Edit
+            </Button>
+          ) : (
+            <Button primary onClick={() => setMode("present")}>
+              Present
+            </Button>
+          )}
+        </div>
+      )}
     </Flex>
-    <div className="absolute bottom left right flex z2" style={{ bottom: -18 }}>
+    {ENABLE_DEFINITION_BUBBLE && (
       <div
-        className="bordered rounded px2 shadowed flex align-center ml-auto mr-auto bg-white p1 cursor-pointer text-light text-bold"
-        style={{ borderRadius: 99 }}
+        className="absolute bottom left right flex z2"
+        style={{ bottom: -18 }}
       >
-        <QueryDefinition question={question} />
-        <RoundButton
-          iconColor={
-            mode === "worksheet" ? colors["brand"] : colors["text-medium"]
-          }
-          icon="pencil"
-          onClick={() => setMode("worksheet")}
-        />
-        <RoundButton
-          iconColor={
-            mode === "visualize" ? colors["brand"] : colors["text-medium"]
-          }
-          icon="area"
-          onClick={() => setMode("visualize")}
-        />
-        <RoundButton
-          iconColor={
-            mode === "present" ? colors["brand"] : colors["text-medium"]
-          }
-          icon="star"
-          onClick={() => setMode("present")}
-        />
+        <div
+          className="bordered rounded px2 shadowed flex align-center ml-auto mr-auto bg-white p1 cursor-pointer text-light text-bold"
+          style={{ borderRadius: 99 }}
+        >
+          <QueryDefinition question={question} />
+          <RoundButton
+            iconColor={
+              mode === "worksheet" ? colors["brand"] : colors["text-medium"]
+            }
+            icon="pencil"
+            onClick={() => setMode("worksheet")}
+          />
+          <RoundButton
+            iconColor={
+              mode === "visualize" ? colors["brand"] : colors["text-medium"]
+            }
+            icon="area"
+            onClick={() => setMode("visualize")}
+          />
+          <RoundButton
+            iconColor={
+              mode === "present" ? colors["brand"] : colors["text-medium"]
+            }
+            icon="star"
+            onClick={() => setMode("present")}
+          />
+        </div>
       </div>
-    </div>
+    )}
   </Flex>
 );
 
