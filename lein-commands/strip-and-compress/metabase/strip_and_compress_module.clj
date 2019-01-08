@@ -5,13 +5,19 @@
            [java.util.zip ZipEntry ZipFile ZipOutputStream]
            org.apache.commons.io.IOUtils))
 
+(def ^:private files-to-always-include
+  "Files to always include regardless of whether they are present in blacklist JAR."
+  #{"metabase-plugin.yaml"})
+
 (defn- files-blacklist
   "Get a set of all files in the Metabase uberjar."
   [^String blacklist-jar]
   (with-open [zip-file (ZipFile. blacklist-jar)]
     (set
-     (for [^ZipEntry zip-entry (enumeration-seq (.entries zip-file))]
-       (str zip-entry)))))
+     (for [^ZipEntry zip-entry (enumeration-seq (.entries zip-file))
+           :let                [filename (str zip-entry)]
+           :when               (not (files-to-always-include filename))]
+       filename))))
 
 (defn -main
   "Remove any classes from a module JAR that are also found in the Metabase uberjar. Compress the module JAR using the

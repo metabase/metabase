@@ -897,3 +897,17 @@
     (rows
       (data/run-mbql-query checkins
         {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]}))))
+
+;; Make sure sorting by aggregations works correctly for Timeseries queries (#9185)
+(expect-with-timeseries-dbs
+  [["Steakhouse" 3.6]
+   ["Chinese"    3.0]
+   ["Wine Bar"   3.0]
+   ["Japanese"   2.7]]
+  (format-rows-by [str (partial u/round-to-decimals 1)]
+    (rows
+      (data/run-mbql-query checkins
+        {:aggregation  [[:avg $venue_price]]
+         :breakout     [[:field-id $venue_category_name]]
+         :order-by     [[:desc [:aggregation 0]]]
+         :limit        4}))))

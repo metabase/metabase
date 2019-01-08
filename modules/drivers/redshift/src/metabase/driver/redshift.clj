@@ -102,7 +102,8 @@
 ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
 ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
 (def ^:private excluded-schemas
-  (when config/is-test?
+  (if-not config/is-test?
+    (constantly nil)
     (memoize
      (fn []
        (require 'metabase.test.data.redshift)

@@ -1,12 +1,13 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
              [util :as u]]
             [metabase.mbql.util :as mbql.u]
             [metabase.util
-             [i18n :as ui18n :refer [trs]]
+             [i18n :as ui18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -61,9 +62,13 @@
   [target dashcard]
   (when (mbql.u/is-clause? :dimension target)
     (let [[_ dimension] target]
-      (field-form->id (if (mbql.u/is-clause? :template-tag dimension)
-                        (template-tag->field-form dimension dashcard)
-                        dimension)))))
+      (try
+        (field-form->id
+         (if (mbql.u/is-clause? :template-tag dimension)
+           (template-tag->field-form dimension dashcard)
+           dimension))
+        (catch Throwable e
+          (log/error e (tru "Could not find matching Field ID for target:") target))))))
 
 
 (defn- pk-fields
