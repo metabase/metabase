@@ -2,24 +2,23 @@
   "Driver for ClickHouse databases"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as string]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
+            [honeysql.core :as hsql]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver
+             [common :as driver.common]
+             [sql :as sql]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
-            [metabase.driver.sql :as sql]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]
             [metabase.util
-             [honeysql-extensions :as hx]
-             [date :as du]]
+             [date :as du]
+             [honeysql-extensions :as hx]]
             [schema.core :as sc])
   (:import java.sql.DatabaseMetaData))
 
@@ -248,4 +247,3 @@
 ;; TODO: Nested queries are actually supported, but I do not know how
 ;; to make the driver use correct aliases per sub-query
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
-
