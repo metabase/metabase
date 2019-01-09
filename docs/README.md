@@ -13,6 +13,12 @@ This guide is for advanced users and those who will be setting up and maintainin
 This guide contains more detailed information about how to install Metabase for production use. It covers topics like SSL termination, deploying via Docker Containers vs. Jars, as well as the tradeoffs involved.
 
 
+## Enterprise Edition
+
+#### [Enterprise Features Guide](enterprise-guide/start.md)
+Here's where to go for help using the features included in the Enterprise Edition of Metabase.
+
+
 ## For Developers
 
 #### [Developers Guide](developers-guide.md)
