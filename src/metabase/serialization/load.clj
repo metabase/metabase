@@ -81,15 +81,17 @@
 
 (defmethod load Database
   [path context _]
-  (doseq [path (list-dirs (str path "/databases"))]
-    (maybe-upsert-many! (:mode context) Database (slurp-dir path))
-    (doseq [path (conj (list-dirs (str path "/schemas")) path)]
-      (load path context Table)
-      (load-dimensions path context))))
+  (let [context (assoc context :prefix path)]
+    (doseq [path (list-dirs (str path "/databases"))]
+      (maybe-upsert-many! (:mode context) Database (slurp-dir path))
+      (doseq [path (conj (list-dirs (str path "/schemas")) path)]
+        (load path context Table)
+        (load-dimensions path context)))))
 
 (defmethod load Table
   [path context _]
-  (let [context   (merge context (fully-qualified-name->context path))
+  (let [context   (merge context (fully-qualified-name->context (subs path (count (:prefix context))
+                                                                      (count path))))
         paths     (list-dirs (str path "/tables"))
         table-ids (maybe-upsert-many! (:mode context) Table
                     (for [table (slurp-many paths)]
