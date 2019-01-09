@@ -61,11 +61,12 @@
 
 (defmethod fully-qualified-name* (type Collection)
   [collection]
-  (let [parents (->> (str/split (:location collection) #"/")
-                     rest
-                     (map #(-> % Integer/parseInt Collection safe-name (str "/collections")))
-                     (str/join "/")
-                     (format "%s/"))]
+  (let [parents (some->> (str/split (:location collection) #"/")
+                         rest
+                         not-empty
+                         (map #(-> % Integer/parseInt Collection safe-name (str "/collections")))
+                         (str/join "/")
+                         (format "%s/"))]
     (str "/collections/root/collections/" parents (safe-name collection))))
 
 (defmethod fully-qualified-name* (type Dashboard)
@@ -146,7 +147,7 @@
                             :name     segment-name)))
 
 (defmethod path->context* "collections"
-  [context _ [collection-name & path-rest :as path]]
+  [context _ collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
     (assoc context :collection (db/select-one-id Collection
@@ -185,7 +186,7 @@
   "Parse a logcial path into a context map."
   [fully-qualified-name]
   (->> (str/split fully-qualified-name #"/")
-       rest
+       rest ; we start with a /
        (partition 2)
        (reduce (fn [context [model entity-name]]
                  (path->context context model (unescape-name entity-name)))
