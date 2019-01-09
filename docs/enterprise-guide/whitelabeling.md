@@ -14,3 +14,8 @@ You can customize the colors that Metabase uses throughout the app:
 * **Nav bar color:** you can optionally specify a separate color for the nav bar; otherwise it defaults to the Primary color.
 * **Accent colors:** these are the colors that are used for some icons, secondary buttons, elements of the graphical query builder, and chart colors.
 * **Additional chart colors:** as the name implies, these are additional colors that are included in the charting options to give your lines, bars, and pie slices some extra pizazz.
+
+---
+
+## Next: customizing drill-through
+Find out how you can [customize drill-through](customizing-drill-through.md) when users click on a chart to go to a custom destination.

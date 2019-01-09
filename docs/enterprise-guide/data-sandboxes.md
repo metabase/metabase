@@ -104,3 +104,8 @@ Now, when I log in as this user and look at the `Orders` table, I only see the c
 
 #### Current limitations
 Currently, a user can only have one sandbox per table. I.e., if a user belongs to two user groups, both of which have been given sandboxed access to the same table, that user will not be able to access data from that table. You will either need to remove that user from one of those groups, or remove the sandboxed access from one of those groups.
+
+---
+
+## Next: white labeling
+Learn how to quickly add your own logo and customize the way Metabase looks with [white labeling](whitelabeling.md).

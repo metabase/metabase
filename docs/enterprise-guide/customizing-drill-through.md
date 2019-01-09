@@ -73,3 +73,8 @@ This comes in handy when linking to a dashboard or question with multiple filter
 **Customizing link text**
 
 You can also optionally customize what text should be displayed in each cell of this column. You can also use the double braces variable syntax here. The way we've used this in the example above is to refer to the value of our `Product ID` column in a sentence that makes it clearer what will happen when the cell is clicked. So `Look up {{PRODUCT_ID}} in our catalog` gets turned into `Look up Awesome Concrete Shoes in our catalog` in the corresponding cell.
+
+---
+
+## Next: SAML SSO
+Find out how to enable [SAML-based SSO](authenticating-with-saml.md).

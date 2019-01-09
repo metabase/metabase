@@ -4,6 +4,6 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 
 * [Sandboxing data based on user attributes](data-sandboxes.md)
 * [Customizing how Metabase looks with white labeling](whitelabeling.md)
+* [Customizing drill-through for charts and tables](customizing-drill-through.md)
 * [Authenticating with SAML](authenticating-with-saml.md)
 * [Authenticating with JWT](authenticating-with-jwt.md)
-* [Customizing drill-through for charts and tables](customizing-drill-through.md)

@@ -23,3 +23,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 **First Name attribute:** the key to retrieve each JWT user's first name.
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
+
+---
+
+## That's it!
+Still need help? Feel free to reach out to us at the support email address you were provided.
