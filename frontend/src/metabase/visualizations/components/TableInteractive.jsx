@@ -374,15 +374,13 @@ export default class TableInteractive extends Component {
               cellHeight={ROW_HEIGHT}
             />
           ) : (
-            <Ellipsified>
-              {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
-              formatValue(value, {
-                ...columnSettings,
-                type: "cell",
-                jsx: true,
-                rich: true,
-              })}
-            </Ellipsified>
+            /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
+            formatValue(value, {
+              ...columnSettings,
+              type: "cell",
+              jsx: true,
+              rich: true,
+            })
           )}
         </div>
       </div>
