@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+<Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+        <PatternLayout pattern="%d{MM-dd HH:mm:ss} \u001b[1m%p %c{2}\u001b[0m :: %m%n" />
+    </Console>
+
+    <RollingFile name="File" fileName="${logfile.path}/metabase.log"
+                 filePattern="metabase-%d{yyyy-MM-dd}.%i.log">
+        <PatternLayout pattern="%d [%t] %-5p%c - %m%n" />
+        <Policies>
+            <TimeBasedTriggeringPolicy />
+            <SizeBasedTriggeringPolicy size="500 MB" />
+        </Policies>
+    </RollingFile>
+
+</Appenders>
+
+<Loggers>
+
+<Logger name="metabase.driver" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase.middleware" level="debug" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+
+<Logger name="metabase.models.permissions" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase.query-processor.permissions" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase.query-processor" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase.sync" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase.models.field-values" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+<Logger name="metabase" level="info" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+
+<Logger name="com.mchange" level="error" additivity="false">
+    <AppenderRef ref="File" />
+    <AppenderRef ref="Console" />
+</Logger>
+
+<Root level="WARN">
+    <AppenderRef ref="Console" />
+</Root>
+
+</Loggers>
+</Configuration>

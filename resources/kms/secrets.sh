@@ -1,10 +1,6 @@
 #!/bin/bash
 
 
-source /root/kms/kms_utils.sh
-source /root/kms/b-log.sh
-
-
 TENANT_UNDERSCORE=${TENANT_NAME//-/_}
 export TENANT_NORM="${TENANT_UNDERSCORE^^}"
 

@@ -105,6 +105,7 @@ RUN mkdir -p bin target/uberjar && \
     mkdir -p bin /root/.crossdata/
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
+COPY --from=builder /app/source/resources/log4j2.xml /app/target/log/
 COPY --from=builder /root/defaultsecrets/* /root/defaultsecrets/
 COPY --from=builder /root/kms/* /root/kms/
 

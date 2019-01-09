@@ -11,6 +11,10 @@ if [ "$PORT" ]; then
     export MB_JETTY_PORT="$PORT"
 fi
 
+source /root/kms/kms_utils.sh
+source /root/kms/b-log.sh
+
+
 source /root/kms/secrets.sh
 
 
@@ -133,6 +137,7 @@ JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions" # Don't barf if we see a
 JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"         # don't try to start AWT. Not sure this does anything but better safe than wasting memory
 JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"            # Use UTF-8
 JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"      # Enable access to java.xml.bind module (Java 9)
+JAVA_OPTS="$JAVA_OPTS -Dlog4j.configuration=target/log/log4j2.xml"
 
 # Heap Size (defaults to 1g min, 95% of the given memory as max)
 CURRENT_MEMORY=$MARATHON_APP_RESOURCE_MEM
@@ -144,6 +149,8 @@ if [ "$JMX" ]; then
     JAVA_OPTS="$JAVA_OPTS $JMX"
 fi
 
-echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
+INFO "Using these JAVA_OPTS: ${JAVA_OPTS}"
+
+INFO "exec java $JAVA_OPTS -jar ./target/uberjar/metabase.jar"
 
 exec java $JAVA_OPTS -jar ./target/uberjar/metabase.jar
