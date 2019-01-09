@@ -2,6 +2,7 @@
   "Load entities serialized by `metabase.serialization.dump`."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [metabase.config :as config]
             [metabase.mbql.util :as mbql.util]
             [metabase.models
              [card :refer [Card]]
@@ -227,7 +228,9 @@
 
 (defmethod load User
   [path context _]
-  (maybe-upsert-many! (:mode context) User (slurp-dir (str path "/users"))))
+  (maybe-upsert-many! (:mode context) User
+    (for [user (slurp-dir (str path "/users"))]
+      (assoc user :password "changeme"))))
 
 (defn- derive-location
   [context]
@@ -278,3 +281,11 @@
            :dependent_on_model (name dependent-on)
            :dependent_on_id    (u/get-id dependent-on)
            :created_at         (java.util.Date.)})))))
+
+(defn compatible?
+  "Is dump at path `path` compatible with the currently running version of Metabase?"
+  [path]
+  (-> (str path "/manifest.yaml")
+      (yaml/from-file true)
+      :metabase-version
+      (= config/mb-version-info)))

@@ -1,5 +1,6 @@
 (ns metabase.cmd.serialization
-  (:require [metabase.db :as mdb]
+  (:require [clojure.tools.logging :as log]
+            [metabase.db :as mdb]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -14,11 +15,11 @@
             [metabase.serialization
              [dump :as dump]
              [load :as load]]
-            [schema.core :as s]
-            [toucan.db :as db]
             [metabase.util
              [i18n :refer [trs]]
-             [schema :as su]])
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan.db :as db])
   (:refer-clojure :exclude [load]))
 
 (def ^:private Mode
@@ -27,8 +28,10 @@
 
 (s/defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [mode :- Mode, path]
+  [path mode :- Mode]
   (mdb/setup-db-if-needed!)
+  (when-not (load/compatible? path)
+    (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (let [context {:mode mode}]
     (load/load path context User)
     (load/load path context Database)
@@ -40,18 +43,20 @@
   "Serialized metabase instance into directory `path`."
   [path user]
   (mdb/setup-db-if-needed!)
-  (dump/dump path (Database))
-  (dump/dump path (Table))
-  (dump/dump path (field/with-values (Field)))
-  (dump/dump path (Metric))
-  (dump/dump path (Segment))
-  (dump/dump path (db/select Collection :personal_owner_id nil))
-  (dump/dump path (Card))
-  (dump/dump path (Dashboard))
-  (dump/dump path (Pulse))
-  (let [user (db/select-one User :email user)]
-    (assert (:is_superuser user))
-    (dump/dump path [user]))
+  (assert (db/select-one User
+            :email user
+            :is_superuser true)
+    (trs "{0} is not a valid user" user))
+  (dump/dump path
+             (Database)
+             (Table)
+             (field/with-values (Field))
+             (Metric)
+             (Segment)
+             (db/select Collection :personal_owner_id nil)
+             (Card)
+             (Dashboard)
+             (Pulse))
   (dump/dump-settings path)
   (dump/dump-dependencies path)
   (dump/dump-dimensions path))

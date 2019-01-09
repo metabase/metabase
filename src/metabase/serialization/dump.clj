@@ -1,6 +1,7 @@
 (ns metabase.serialization.dump
   "Serialize entities into a directory structure of YAMLs."
   (:require [clojure.java.io :as io]
+            [metabase.config :as config]
             [metabase.models
              [dashboard :refer [Dashboard]]
              [database :refer [Database]]
@@ -15,7 +16,7 @@
              [user :refer [User]]]
             [metabase.serialization
              [names :refer [fully-qualified-name safe-name]]
-             [serialize :refer [serialize]]]
+             [serialize :refer [serialize] :as serialize]]
             [yaml.core :as yaml]))
 
 (defn- spit-yaml
@@ -27,21 +28,21 @@
   (comp (set (map type [Pulse Dashboard Metric Segment Field User])) type))
 
 (defn dump
-  "Serialize a entities into a directory structure of YAMLs at `path`."
-  [path entities]
-  (doseq [entity entities]
+  "Serialize entities into a directory structure of YAMLs at `path`."
+  [path & entities]
+  (doseq [entity (flatten entities)]
     (spit-yaml (if (as-file? entity)
                  (format "%s/%s.yaml" path (fully-qualified-name entity))
                  (format "%s/%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))
-               (serialize entity))))
+               (serialize entity)))
+  (spit-yaml (str path "/manifest.yaml")
+             {:serialization-version serialize/serialization-protocol-version
+              :metabase-version      config/mb-version-info}))
 
 (defn dump-dependencies
   "Combine all dependencies into a vector and dump it into YAML at `path`."
   [path]
-  (spit-yaml (str path "/dependencies.yaml")
-             (for [{:keys [model_id model dependent_on_id dependent_on_model]} (Dependency)]
-               {:dependent_on_id (fully-qualified-name (symbol dependent_on_model) dependent_on_id)
-                :model_id        (fully-qualified-name (symbol model) model_id)})))
+  (spit-yaml (str path "/dependencies.yaml") (map serialize (Dependency))))
 
 (defn dump-settings
   "Combine all settings into a map and dump it into YAML at `path`."
@@ -60,8 +61,4 @@
                        path
                        (->> table :db_id (fully-qualified-name Database))
                        (:schema table))
-               (for [dimension dimensions]
-                 (-> dimension
-                     (update :field_id (partial fully-qualified-name Field))
-                     (update :human_readable_field_id (partial fully-qualified-name Field))
-                     serialize)))))
+               (map serialize dimensions))))

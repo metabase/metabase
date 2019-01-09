@@ -11,6 +11,8 @@
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [database :refer [Database] :as database]
+             [dependency :refer [Dependency]]
+             [dimension :refer [Dimension]]
              [field :refer [Field] :as field]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
@@ -23,11 +25,17 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+(def ^:const ^Long serialization-protocol-version
+  "Current serialization protocol version.
+
+  This gets stored with each dump, so we can correctly recover old dumps."
+  1)
+
 (def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   (partial mbql.normalize/is-clause? #{:field-id :fk-> :metric :segment}))
 
-(defn- humanize-mbql
+(defn- mbql-entity-id->fully-qualified-name
   [mbql]
   (-> mbql
       mbql.normalize/normalize
@@ -47,11 +55,11 @@
         [:fk-> [:field-id (fully-qualified-name Field from)]
          [:field-id (fully-qualified-name Field to)]])))
 
-(defn- humanize-entity-references
+(defn- ids->fully-qualified-names
   [entity]
   (mbql.util/replace entity
     mbql-entity-reference?
-    (humanize-mbql &match)
+    (mbql-entity-id->fully-qualified-name &match)
 
     map?
     (as-> &match entity
@@ -68,7 +76,7 @@
                                                                              second
                                                                              Integer/parseInt))
                                               (fully-qualified-name Table source-table))))
-      (m/map-vals humanize-entity-references entity))))
+      (m/map-vals ids->fully-qualified-names entity))))
 
 (defn- strip-crud
   "Removes unneeded fields that can either be reconstructed from context or are meaningless
@@ -84,7 +92,7 @@
 
 (def ^{:arglists '([entity])} serialize
   "Serialize entity `entity`."
-  (comp humanize-entity-references strip-crud serialize-one))
+  (comp ids->fully-qualified-names strip-crud serialize-one))
 
 (defmethod serialize-one :default
   [entity]
@@ -136,6 +144,17 @@
 
 (defmethod serialize-one (type User)
   [user]
-  (-> user
-      (select-keys [:first_name :last_name :email :is_superuser])
-      (assoc :password "changeme")))
+  (select-keys user [:first_name :last_name :email :is_superuser]))
+
+(defmethod serialize-one (type Dimension)
+  [dimension]
+  (-> dimension
+      (update :field_id (partial fully-qualified-name Field))
+      (update :human_readable_field_id (partial fully-qualified-name Field))))
+
+(defmethod serialize-one (type Dependency)
+  [dependency]
+  (-> dependency
+      (select-keys [:dependent_on_id :model_id])
+      (update :dependent_on_id (partial fully-qualified-name (-> dependency :dependent_on_model symbol)))
+      (update :model_id (partial fully-qualified-name (-> dependency :model symbol)))))
