@@ -10,6 +10,7 @@
              [segment :refer [Segment]]
              [table :refer [Table]]
              [user :refer [User]]]
+            [metabase.serialization.names :as names]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
 

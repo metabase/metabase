@@ -57,8 +57,12 @@
   [path]
   (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (Dimension))
           :let [table (Table table-id)]]
-    (spit-yaml (format "%s/%s/schemas/%s/dimensions.yaml"
-                       path
-                       (->> table :db_id (fully-qualified-name Database))
-                       (:schema table))
+    (spit-yaml (if (:schema table)
+                 (format "%s/%s/schemas/%s/dimensions.yaml"
+                         path
+                         (->> table :db_id (fully-qualified-name Database))
+                         (:schema table))
+                 (format "%s/%s/dimensions.yaml"
+                         path
+                         (->> table :db_id (fully-qualified-name Database))))
                (map serialize dimensions))))

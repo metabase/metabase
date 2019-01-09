@@ -83,7 +83,7 @@
   [path context _]
   (doseq [path (list-dirs (str path "/databases"))]
     (maybe-upsert-many! (:mode context) Database (slurp-dir path))
-    (doseq [path (list-dirs (str path "/schemas"))]
+    (doseq [path (conj (list-dirs (str path "/schemas")) path)]
       (load path context Table)
       (load-dimensions path context))))
 

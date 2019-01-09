@@ -42,10 +42,14 @@
 
 (defmethod fully-qualified-name* (type Table)
   [table]
-  (format "%s/schemas/%s/tables/%s"
-          (->> table :db_id (fully-qualified-name Database))
-          (:schema table)
-          (safe-name table)))
+  (if (:schema table)
+    (format "%s/schemas/%s/tables/%s"
+            (->> table :db_id (fully-qualified-name Database))
+            (:schema table)
+            (safe-name table))
+    (format "%s/%s/tables/%s"
+            (->> table :db_id (fully-qualified-name Database))
+            (safe-name table))))
 
 (defmethod fully-qualified-name* (type Field)
   [field]

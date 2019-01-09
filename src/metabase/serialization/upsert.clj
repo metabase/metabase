@@ -61,9 +61,10 @@
 
 (defn- name-for-logging
   [{:keys [name id]}]
-  (if name
-    (format "\"%s\" (ID %s)" name id)
-    (str "ID " id)))
+  (cond
+    (and name id) (format "\"%s\" (ID %s)" name id)
+    name          (format "\"%s\"" name)
+    :else         (str "ID " id)))
 
 (defn maybe-upsert-many!
   "Batch upsert-or-skip"
