@@ -35,7 +35,7 @@
   "Is given form an MBQL entity reference?"
   (partial mbql.normalize/is-clause? #{:field-id :fk-> :metric :segment}))
 
-(defn- mbql-entity-id->fully-qualified-name
+(defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
       mbql.normalize/normalize
@@ -59,7 +59,7 @@
   [entity]
   (mbql.util/replace entity
     mbql-entity-reference?
-    (mbql-entity-id->fully-qualified-name &match)
+    (mbql-id->fully-qualified-name &match)
 
     map?
     (as-> &match entity

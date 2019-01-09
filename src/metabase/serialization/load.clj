@@ -49,7 +49,7 @@
         :when (.isDirectory file)]
     (.getPath file)))
 
-(defn- humanized-field-references->ids
+(defn- mbql-fully-qualified-names->ids
   [entity]
   (mbql.util/replace entity
     [:field-id (fully-qualified-name :guard string?)]
@@ -92,8 +92,8 @@
   (let [context   (merge context (fully-qualified-name->context path))
         paths     (list-dirs (str path "/tables"))
         table-ids (maybe-upsert-many! (:mode context) Table
-                                    (for [table (slurp-many paths)]
-                                      (assoc table :db_id (:database context))))]
+                    (for [table (slurp-many paths)]
+                      (assoc table :db_id (:database context))))]
     (doseq [[path table-id] (map vector paths table-ids)]
       (let [context (assoc context :table table-id)]
         (load path context Field)
@@ -109,10 +109,10 @@
   (let [fields       (slurp-dir (str path "/fields"))
         field-values (map :values fields)
         field-ids    (maybe-upsert-many! (:mode context) Field
-                                         (for [field fields]
-                                           (-> field
-                                               (dissoc :values)
-                                               (assoc :table_id (:table context)))))]
+                       (for [field fields]
+                         (-> field
+                             (dissoc :values)
+                             (assoc :table_id (:table context)))))]
     (maybe-upsert-many! (:mode context) FieldValues
       (for [[field-value field-id] (map vector field-values field-ids)]
         (assoc field-value :field_id field-id)))))
@@ -125,7 +125,7 @@
           (assoc :table_id   (:table context)
                  :creator_id @default-user)
           (assoc-in [:definition :source-table] (:table context))
-          humanized-field-references->ids))))
+          mbql-fully-qualified-names->ids))))
 
 (defmethod load Segment
   [path context _]
@@ -135,7 +135,7 @@
           (assoc :table_id   (:table context)
                  :creator_id @default-user)
           (assoc-in [:definition :source-table] (:table context))
-          humanized-field-references->ids))))
+          mbql-fully-qualified-names->ids))))
 
 (defn- update-parameter-mappings
   [parameter-mappings]
@@ -143,27 +143,27 @@
 
 (defmethod load Dashboard
   [path context _]
-  (let [dashboards         (slurp-dir "/dashboards")
+  (let [dashboards         (map mbql-fully-qualified-names->ids (slurp-dir (str path "/dashboards")))
         dashboard-ids      (maybe-upsert-many! (:mode context) Dashboard
                              (for [dashboard dashboards]
                                (-> dashboard
                                    (dissoc :dashboard_cards)
                                    (assoc :collection_id (:collection context)
-                                          :creator_id    @default-user)
-                                   humanized-field-references->ids)))
+                                          :creator_id    @default-user))))
         dashboard-cards    (map :dashboard_cards dashboards)
         dashboard-card-ids (maybe-upsert-many! (:mode context) DashboardCard
-                             (for [[dashboard-card dashboard-id] (map vector dashboard-cards
-                                                                      dashboard-ids)]
+                             (for [[dashboard-cards dashboard-id] (map vector dashboard-cards dashboard-ids)
+                                   dashboard-card dashboard-cards]
                                (-> dashboard-card
                                    (dissoc :series)
                                    (update :card_id fully-qualified-name->card-id)
                                    (assoc :dashboard_id dashboard-id)
-                                   (update :parameter_mappings update-parameter-mappings)
-                                   humanized-field-references->ids)))]
+                                   (update :parameter_mappings update-parameter-mappings))))]
     (maybe-upsert-many! (:mode context) DashboardCardSeries
-      (for [[dashboard-card-series dashboard-card-id] (map vector (map :series dashboard-cards)
-                                                           dashboard-card-ids)]
+      (for [[series dashboard-card-id] (map vector (mapcat (partial map :series) dashboard-cards)
+                                                   dashboard-card-ids)
+            dashboard-card-series series
+            :when dashboard-card-series]
         (-> dashboard-card-series
             (assoc :dashboardcard_id dashboard-card-id)
             (update :card_id fully-qualified-name->card-id))))))
@@ -221,7 +221,7 @@
                                  qp.util/normalize-token
                                  (= :query))
                              (update-in [:dataset_query :query :source-table] source-table))
-                           humanized-field-references->ids))))]
+                           mbql-fully-qualified-names->ids))))]
     ;; Nested cards
     (doseq [[path card-id] (map vector paths card-ids)]
       (load path (assoc context :card card-id) Card))))
@@ -250,7 +250,7 @@
                                      first)))]
     (doseq [path (list-dirs (if nested?
                               (str path "/collections")
-                              (str path "/collections/collections")))]
+                              (str path "/collections/root/collections")))]
       (load path context Collection))
     (load path context Card)
     (load path context Pulse)
