@@ -32,8 +32,8 @@
   [path & entities]
   (doseq [entity (flatten entities)]
     (spit-yaml (if (as-file? entity)
-                 (format "%s/%s.yaml" path (fully-qualified-name entity))
-                 (format "%s/%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))
+                 (format "%s%s.yaml" path (fully-qualified-name entity))
+                 (format "%s%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))
                (serialize entity)))
   (spit-yaml (str path "/manifest.yaml")
              {:serialization-version serialize/serialization-protocol-version
@@ -58,11 +58,11 @@
   (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (Dimension))
           :let [table (Table table-id)]]
     (spit-yaml (if (:schema table)
-                 (format "%s/%s/schemas/%s/dimensions.yaml"
+                 (format "%s%s/schemas/%s/dimensions.yaml"
                          path
                          (->> table :db_id (fully-qualified-name Database))
                          (:schema table))
-                 (format "%s/%s/dimensions.yaml"
+                 (format "%s%s/dimensions.yaml"
                          path
                          (->> table :db_id (fully-qualified-name Database))))
                (map serialize dimensions))))

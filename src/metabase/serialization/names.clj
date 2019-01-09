@@ -47,7 +47,7 @@
             (->> table :db_id (fully-qualified-name Database))
             (:schema table)
             (safe-name table))
-    (format "%s/%s/tables/%s"
+    (format "%s/tables/%s"
             (->> table :db_id (fully-qualified-name Database))
             (safe-name table))))
 
