@@ -43,20 +43,21 @@
   "Serialized metabase instance into directory `path`."
   [path user]
   (mdb/setup-db-if-needed!)
-  (assert (db/select-one User
-            :email user
-            :is_superuser true)
-    (trs "{0} is not a valid user" user))
-  (dump/dump path
-             (Database)
-             (Table)
-             (field/with-values (Field))
-             (Metric)
-             (Segment)
-             (db/select Collection :personal_owner_id nil)
-             (Card)
-             (Dashboard)
-             (Pulse))
+  (let [user (db/select-one User
+               :email        user
+               :is_superuser true)]
+    (assert user (trs "{0} is not a valid user" user))
+    (dump/dump path
+               (Database)
+               (Table)
+               (field/with-values (Field))
+               (Metric)
+               (Segment)
+               (db/select Collection :personal_owner_id nil)
+               (Card)
+               (Dashboard)
+               (Pulse)
+               [user]))
   (dump/dump-settings path)
   (dump/dump-dependencies path)
   (dump/dump-dimensions path))
