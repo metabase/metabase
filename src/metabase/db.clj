@@ -410,7 +410,7 @@
                    sql
                    "\n\n"
                    "Once your database is updated try running the application again.\n"))
-    (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (throw (Exception. "Database requires manual upgrade."))))
 
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -431,7 +431,10 @@
     ;; first place, and launch normally.
     (u/auto-retry 1
       (migrate! db-details :up))
-    (print-migrations-and-quit! db-details))
+    ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
+    ;; to start normally
+    (when (has-unrun-migrations? (conn->liquibase))
+      (print-migrations-and-quit! db-details)))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!
