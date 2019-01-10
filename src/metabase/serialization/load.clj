@@ -88,10 +88,16 @@
         (load path context Table)
         (load-dimensions path context)))))
 
+(defn- path->fully-qualified-name
+  [prefix path]
+  (subs path (count prefix) (count path)))
+
 (defmethod load Table
   [path context _]
-  (let [context   (merge context (fully-qualified-name->context (subs path (count (:prefix context))
-                                                                      (count path))))
+  (let [context   (->> path
+                       (path->fully-qualified-name (:prefix context))
+                       fully-qualified-name->context
+                       (merge context))
         paths     (list-dirs (str path "/tables"))
         table-ids (maybe-upsert-many! (:mode context) Table
                     (for [table (slurp-many paths)]
@@ -243,21 +249,17 @@
 
 (defmethod load Collection
   [path context _]
-  (let [nested? (contains? context :collection)
-        context (assoc context
-                  :collection (when nested?
-                                (->> (slurp-dir path)
+  (doseq [path (list-dirs (str path "/collections"))]
+    (let [context (assoc context
+                    :collection (->> (slurp-dir path)
                                      (map (fn [collection]
                                             (assoc collection :location (derive-location context))))
                                      (maybe-upsert-many! (:mode context) Collection)
-                                     first)))]
-    (doseq [path (list-dirs (if nested?
-                              (str path "/collections")
-                              (str path "/collections/root/collections")))]
-      (load path context Collection))
-    (load path context Card)
-    (load path context Pulse)
-    (load path context Dashboard)))
+                                     first))]
+      (load path context Collection)
+      (load path context Card)
+      (load path context Pulse)
+      (load path context Dashboard))))
 
 (defn load-settings
   "Load a dump of settings."
