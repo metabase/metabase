@@ -230,7 +230,8 @@
 
 (defmethod load User
   [path context _]
-  (maybe-upsert-many! (:mode context) User
+  ;; Currently we only serialize the new owner user, so it's fine to ignore mode setting
+  (maybe-upsert-many! :skip User
     (for [user (slurp-dir (str path "/users"))]
       (assoc user :password "changeme"))))
 
