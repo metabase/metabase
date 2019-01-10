@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { t } from "c-3po";
 import cx from "classnames";
 import _ from "underscore";
+import { assocIn } from "icepick";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
@@ -37,6 +38,7 @@ import ChartPanel from "../components/panels/ChartPanel";
 
 import DisplayHeader from "../components/panels/DisplayHeader";
 import ColumnWells from "../components/visualize/ColumnWells";
+import Toggle from "metabase/components/Toggle";
 
 import title from "metabase/hoc/Title";
 
@@ -270,7 +272,23 @@ export default class QueryBuilder extends Component {
       );
     }
 
-    let content = <QuestionPresent {...this.props} />;
+    let content;
+    if (uiControls.isShowingUnderlyingData) {
+      // HACK: force table by updating rawSeries
+      content = (
+        <QuestionPresent
+          {...this.props}
+          rawSeries={assocIn(
+            this.props.rawSeries,
+            [0, "card", "display"],
+            "table",
+          )}
+        />
+      );
+    } else {
+      content = <QuestionPresent {...this.props} />;
+    }
+
     if (uiControls.mode === "visualize") {
       content = (
         <ColumnWells className="flex-full flex" {...this.props}>
@@ -280,7 +298,7 @@ export default class QueryBuilder extends Component {
     }
 
     return (
-      <div className={cx("flex-column", this.props.fitClassNames)}>
+      <div className={cx("flex-column relative", this.props.fitClassNames)}>
         <QueryHeader
           {...this.props}
           setMode={this.props.setMode}
@@ -292,6 +310,15 @@ export default class QueryBuilder extends Component {
           ) : null}
           {content}
         </PanelLayout>
+        {/* Temporary location for these */}
+        <div className="absolute bottom left flex align-center z1 p1">
+          <span className="mr1">Show underlying data:</span>
+          <Toggle
+            small
+            value={uiControls.isShowingUnderlyingData}
+            onChange={this.props.toggleUnderlyingData}
+          />
+        </div>
       </div>
     );
 
