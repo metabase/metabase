@@ -1,45 +1,64 @@
 import React from "react";
-import { Absolute, Relative } from "metabase/components/Position";
+import { ResizableBox } from "react-resizable";
+import { Box } from "grid-styled";
+import { Motion, spring } from "react-motion";
 
-import cx from "classnames";
-
-import { DraggableCore } from "react-draggable";
+const CollapseTrigger = props => (
+  <Box
+    {...props}
+    className="absolute bg-medium bg-brand-hover cursor-pointer"
+    style={{
+      marginTop: "auto",
+      marginBottom: "auto",
+      width: 6,
+      height: 40,
+      top: 0,
+      bottom: 0,
+      right: -10,
+      content: "",
+      borderRadius: 99,
+      zIndex: 4,
+    }}
+  />
+);
 
 export default class ResizablePane extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       width: props.initialWidth,
+      panelOpen: true,
+      panelWidth: window.innerWidth / 3,
     };
   }
 
   render() {
     const { children } = this.props;
-    const { width } = this.state;
+    const { panelOpen, panelWidth } = this.state;
     return (
-      <Relative style={{ width }}>
-        {children}
-        <DraggableCore
-          axis="x"
-          onStart={(e, d) => {
-            console.log("start", e, d);
-          }}
-          onDrag={(e, d) => {
-            console.log("drag", e, d);
-          }}
-          onStop={(e, d) => {
-            console.log("stop", e, d);
-          }}
-        >
-          <Absolute
-            top={0}
-            bottom={0}
-            w={10}
-            right={-5}
-            bg={"rgba(255,0,0,0.1)"}
-          />
-        </DraggableCore>
-      </Relative>
+      <Motion
+        defaultStyle={{ width: 10 }}
+        style={{ width: panelOpen ? panelWidth : spring(20) }}
+      >
+        {({ width }) => (
+          <ResizableBox
+            axis="x"
+            minConstraints={[300]}
+            maxConstraints={[window.innerWidth / 2]}
+            width={width}
+            onResizeStop={(e, d) => this.setState({ panelWidth: d.size.width })}
+          >
+            <span className="overflow-hidden scroll-y absolute top left bottom right">
+              {children}
+            </span>
+            <CollapseTrigger
+              onClick={() =>
+                this.setState({ panelOpen: !this.state.panelOpen })
+              }
+            />
+          </ResizableBox>
+        )}
+      </Motion>
     );
   }
 }
