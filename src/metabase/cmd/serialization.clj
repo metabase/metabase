@@ -54,7 +54,8 @@
                (field/with-values (Field))
                (Metric)
                (Segment)
-               (db/select Collection :personal_owner_id [or nil (u/get-id user)])
+               (db/select Collection
+                 :personal_owner_id [:or nil (u/get-id user)])
                (Card)
                (Dashboard)
                (Pulse)
