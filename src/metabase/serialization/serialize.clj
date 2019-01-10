@@ -82,7 +82,7 @@
   "Removes unneeded fields that can either be reconstructed from context or are meaningless
    (eg. :created_at)."
   [entity]
-  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :database_id :location
+  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
                   :pulse_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
@@ -133,7 +133,9 @@
 
 (defmethod serialize-one (type Card)
   [card]
-  (u/update-when card :table_id (partial fully-qualified-name Table)))
+  (-> card
+      (u/update-when :table_id (partial fully-qualified-name Table))
+      (update :database_id (partial fully-qualified-name Database))))
 
 (defmethod serialize-one (type Pulse)
   [pulse]

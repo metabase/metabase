@@ -189,9 +189,10 @@
 (defn fully-qualified-name->context
   "Parse a logcial path into a context map."
   [fully-qualified-name]
-  (->> (str/split fully-qualified-name #"/")
-       rest ; we start with a /
-       (partition 2)
-       (reduce (fn [context [model entity-name]]
-                 (path->context context model (unescape-name entity-name)))
-               {})))
+  (when fully-qualified-name
+    (->> (str/split fully-qualified-name #"/")
+         rest ; we start with a /
+         (partition 2)
+         (reduce (fn [context [model entity-name]]
+                   (path->context context model (unescape-name entity-name)))
+                 {}))))

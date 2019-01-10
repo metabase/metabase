@@ -119,6 +119,8 @@
         field-ids    (maybe-upsert-many! (:mode context) Field
                        (for [field fields]
                          (-> field
+                             (update :parent_id (comp :field fully-qualified-name->context))
+                             (update :fk_target_field_id (comp :field fully-qualified-name->context))
                              (dissoc :values)
                              (assoc :table_id (:table context)))))]
     (maybe-upsert-many! (:mode context) FieldValues
@@ -210,26 +212,21 @@
   (let [paths    (list-dirs (str path "/cards"))
         card-ids (maybe-upsert-many! (:mode context) Card
                    (for [card (slurp-many paths)]
-                     (let [table (->> card
-                                      :table_id
-                                      fully-qualified-name->context
-                                      :table
-                                      Table)
-                           db    (:db_id table)]
-                       (-> card
-                           (assoc :table_id      (u/get-id table)
-                                  :creator_id    @default-user
-                                  :collection_id (:collection context)
-                                  :database_id   db)
-                           (assoc-in [:dataset_query :database] db)
-                           (cond->
+                     (-> card
+                         (update :table_id (comp :table fully-qualified-name->context))
+                         (update :database_id (comp :database fully-qualified-name->context))
+                         (assoc :creator_id    @default-user
+                                :collection_id (:collection context))
+                         (update-in [:dataset_query :database]
+                                    (comp :database fully-qualified-name->context))
+                         (cond->
                              (-> card
                                  :dataset_query
                                  :type
                                  qp.util/normalize-token
                                  (= :query))
-                             (update-in [:dataset_query :query :source-table] source-table))
-                           mbql-fully-qualified-names->ids))))]
+                           (update-in [:dataset_query :query :source-table] source-table))
+                         mbql-fully-qualified-names->ids)))]
     ;; Nested cards
     (doseq [[path card-id] (map vector paths card-ids)]
       (load path (assoc context :card card-id) Card))))
