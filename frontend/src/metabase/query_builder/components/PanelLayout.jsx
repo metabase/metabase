@@ -3,6 +3,8 @@ import { ResizableBox } from "react-resizable";
 import { Box, Flex } from "grid-styled";
 import { Motion, spring } from "react-motion";
 
+import ResizablePane from "metabase/components/ResizablePane";
+
 const CollapseTrigger = props => (
   <Box
     {...props}
@@ -43,12 +45,13 @@ class PanelLayout extends React.Component {
                 minConstraints={[300]}
                 maxConstraints={[window.innerWidth / 2]}
                 width={width}
-                height="100%"
                 onResizeStop={(e, d) =>
                   this.setState({ panelWidth: d.size.width })
                 }
               >
-                {panel}
+                <span className="overflow-hidden scroll-y absolute top left bottom right">
+                  {panel}
+                </span>
                 <CollapseTrigger
                   onClick={() =>
                     this.setState({ panelOpen: !this.state.panelOpen })
