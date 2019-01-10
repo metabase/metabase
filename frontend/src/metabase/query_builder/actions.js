@@ -403,6 +403,11 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
   MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
 });
 
+export const TOGGLE_UNDERLYING_DATA = "metabase/qb/TOGGLE_UNDERLYING_DATA";
+export const toggleUnderlyingData = createAction(TOGGLE_UNDERLYING_DATA, () => {
+  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Underlying Data");
+});
+
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(
