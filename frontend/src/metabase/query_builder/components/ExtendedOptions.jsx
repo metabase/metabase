@@ -28,14 +28,12 @@ type Props = {
 };
 
 type State = {
-  isOpen: boolean,
   editExpression: any,
 };
 
-export default class ExtendedOptions extends Component {
+export class ExtendedOptionsPopover extends Component {
   props: Props;
   state: State = {
-    isOpen: false,
     editExpression: null,
   };
 
@@ -47,7 +45,10 @@ export default class ExtendedOptions extends Component {
   };
 
   static defaultProps = {
-    expressions: {},
+    features: {
+      sort: true,
+      limit: true,
+    },
   };
 
   setExpression(name, expression, previousName) {
@@ -75,7 +76,9 @@ export default class ExtendedOptions extends Component {
     let { query, setDatasetQuery } = this.props;
     query.updateLimit(limit).update(setDatasetQuery);
     MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
-    this.setState({ isOpen: false });
+    if (this.props.onClose) {
+      this.props.onClose();
+    }
   };
 
   renderSort() {
@@ -144,60 +147,67 @@ export default class ExtendedOptions extends Component {
       : "";
 
     return (
-      <Popover onClose={() => this.setState({ editExpression: null })}>
-        <ExpressionWidget
-          name={name}
-          expression={expression}
-          tableMetadata={query.table()}
-          onSetExpression={(newName, newExpression) =>
-            this.setExpression(newName, newExpression, name)
-          }
-          onRemoveExpression={name => this.removeExpression(name)}
-          onCancel={() => this.setState({ editExpression: null })}
-        />
-      </Popover>
+      <ExpressionWidget
+        name={name}
+        expression={expression}
+        tableMetadata={query.table()}
+        onSetExpression={(newName, newExpression) =>
+          this.setExpression(newName, newExpression, name)
+        }
+        onRemoveExpression={name => this.removeExpression(name)}
+        onCancel={() => this.setState({ editExpression: null })}
+      />
     );
   }
 
   renderPopover() {
-    if (!this.state.isOpen) {
-      return null;
-    }
-
     const { features, query } = this.props;
 
     return (
-      <Popover onClose={() => this.setState({ isOpen: false })}>
-        <div className="p3">
-          {this.renderSort()}
+      <div className="p3">
+        {this.renderSort()}
 
-          {_.contains(query.table().db.features, "expressions") ? (
-            <Expressions
-              expressions={query.expressions()}
-              tableMetadata={query.table()}
-              onAddExpression={() =>
-                this.setState({ isOpen: false, editExpression: true })
-              }
-              onEditExpression={name => {
-                this.setState({ isOpen: false, editExpression: name });
-                MetabaseAnalytics.trackEvent(
-                  "QueryBuilder",
-                  "Show Edit Custom Field",
-                );
-              }}
-            />
-          ) : null}
+        {_.contains(query.table().db.features, "expressions") ? (
+          <Expressions
+            expressions={query.expressions()}
+            tableMetadata={query.table()}
+            onAddExpression={() => this.setState({ editExpression: true })}
+            onEditExpression={name => {
+              this.setState({ editExpression: name });
+              MetabaseAnalytics.trackEvent(
+                "QueryBuilder",
+                "Show Edit Custom Field",
+              );
+            }}
+          />
+        ) : null}
 
-          {features.limit && (
-            <div>
-              <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
-              <LimitWidget limit={query.limit()} onChange={this.setLimit} />
-            </div>
-          )}
-        </div>
-      </Popover>
+        {features.limit && (
+          <div>
+            <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
+            <LimitWidget limit={query.limit()} onChange={this.setLimit} />
+          </div>
+        )}
+      </div>
     );
   }
+
+  render() {
+    return this.renderExpressionWidget() || this.renderPopover();
+  }
+}
+
+export default class ExtendedOptions extends React.Component {
+  state = {
+    isOpen: false,
+  };
+
+  static defaultProps = {
+    features: {
+      sort: true,
+      limit: true,
+    },
+  };
 
   render() {
     const { features } = this.props;
@@ -219,8 +229,12 @@ export default class ExtendedOptions extends Component {
         >
           …
         </span>
-        {this.renderPopover()}
-        {this.renderExpressionWidget()}
+        <Popover
+          isOpen={this.state.isOpen}
+          onClose={() => this.setState({ isOpen: false })}
+        >
+          <ExtendedOptionsPopover {...this.props} />
+        </Popover>
       </div>
     );
   }
