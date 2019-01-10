@@ -104,11 +104,14 @@
 
 (defmethod serialize-one (type Field)
   [field]
-  (if (contains? field :values)
-    (update field :values u/select-non-nil-keys [:values :human_readable_values])
-    (assoc field :values (-> field
-                             field/values
-                             (u/select-non-nil-keys [:values :human_readable_values])))))
+  (let [field (-> field
+                  (update :parent_id (partial fully-qualified-name Field))
+                  (update :fk_target_field_id (partial fully-qualified-name Field)))]
+    (if (contains? field :values)
+      (update field :values u/select-non-nil-keys [:values :human_readable_values])
+      (assoc field :values (-> field
+                               field/values
+                               (u/select-non-nil-keys [:values :human_readable_values]))))))
 
 (defn- dashboard-cards-for-dashboard
   [dashboard]
@@ -122,7 +125,7 @@
                            (-> series
                                (update :card_id (partial fully-qualified-name Card))
                                (dissoc :id :dashboardcard_id))))
-           strip-crud))))
+          strip-crud))))
 
 (defmethod serialize-one (type Dashboard)
   [dashboard]

@@ -15,6 +15,7 @@
             [metabase.serialization
              [dump :as dump]
              [load :as load]]
+            [metabase.util :as u]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
@@ -53,7 +54,7 @@
                (field/with-values (Field))
                (Metric)
                (Segment)
-               (db/select Collection :personal_owner_id nil)
+               (db/select Collection :personal_owner_id [or nil (u/get-id user)])
                (Card)
                (Dashboard)
                (Pulse)
