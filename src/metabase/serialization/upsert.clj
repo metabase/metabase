@@ -25,7 +25,9 @@
              [user :refer [User]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs] :as i18n]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (def ^:private identity-condition
   {Database            [:name]
@@ -66,6 +68,16 @@
     name          (format "\"%s\"" name)
     :else         (str "ID " id)))
 
+(defn- has-post-insert?
+  [model]
+  (not= (find-protocol-method models/IModel :post-insert model) identity))
+
+(defn- maybe-insert-many!
+  [model entities]
+  (if (has-post-insert? model)
+    (map (comp u/get-id (partial db/insert! model)) entities)
+    (db/insert-many! model entities)))
+
 (defn maybe-upsert-many!
   "Batch upsert-or-skip"
   [mode model entities]
@@ -98,7 +110,7 @@
 
     (->> (concat (for [[position _ existing] skip]
                    [(u/get-id existing) position])
-                 (map vector (db/insert-many! model (map second insert)) (map first insert))
+                 (map vector (maybe-insert-many! model (map second insert)) (map first insert))
                  (for [[position entity existing] update]
                    (let [id (u/get-id existing)]
                      (db/update! model id entity)

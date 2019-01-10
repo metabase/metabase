@@ -106,3 +106,11 @@
   (test-select-identical Pulse))
 (expect
   (test-select-identical User))
+
+
+(expect
+  true
+  (#'upsert/has-post-insert? User))
+(expect
+  false
+  (#'upsert/has-post-insert? Table))
