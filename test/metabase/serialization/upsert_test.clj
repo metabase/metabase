@@ -33,40 +33,41 @@
                     v
                     (str (gensym)))]))))
 
-(def ^:private cards [{:name "My Card 1"
-                         :table_id (data/id :venues)
-                         :display :line
-                         :creator_id (users/user->id :rasta)
-                         :visualization_settings {}
-                         :dataset_query {:query {:source-table (data/id :venues)}
-                                         :type :query
-                                         :database (data/id)}}
-                      {:name "My Card 2"
-                       :table_id (data/id :venues)
-                       :display :line
-                       :creator_id (users/user->id :rasta)
-                       :visualization_settings {}
-                       :dataset_query {:query {:source-table (data/id :venues)}
-                                       :type :query
-                                       :database (data/id)}}])
+(def ^:private cards (delay
+                      [{:name "My Card 1"
+                        :table_id (data/id :venues)
+                        :display :line
+                        :creator_id (users/user->id :rasta)
+                        :visualization_settings {}
+                        :dataset_query {:query {:source-table (data/id :venues)}
+                                        :type :query
+                                        :database (data/id)}}
+                       {:name "My Card 2"
+                        :table_id (data/id :venues)
+                        :display :line
+                        :creator_id (users/user->id :rasta)
+                        :visualization_settings {}
+                        :dataset_query {:query {:source-table (data/id :venues)}
+                                        :type :query
+                                        :database (data/id)}}]))
 
 (expect
   (tu/with-model-cleanup [Card]
-    (let [existing-ids (mapv (comp u/get-id (partial db/insert! Card)) cards)
-          inserted-ids (vec (maybe-upsert-many! :skip Card cards))]
+    (let [existing-ids (mapv (comp u/get-id (partial db/insert! Card)) @cards)
+          inserted-ids (vec (maybe-upsert-many! :skip Card @cards))]
       (= existing-ids inserted-ids))))
 
 (expect
   (tu/with-model-cleanup [Card]
     (every? (fn [mode]
-              (let [[e1 e2]   cards
-                    [id1 id2] (maybe-upsert-many! mode Card cards)]
+              (let [[e1 e2]   @cards
+                    [id1 id2] (maybe-upsert-many! mode Card @cards)]
                 (every? (partial apply same?) [[(Card id1) e1] [(Card id2) e2]])))
             [:skip :update])))
 
 (expect
   (tu/with-model-cleanup [Card]
-    (let [[e1 e2]           cards
+    (let [[e1 e2]           @cards
           id1               (u/get-id (db/insert! Card e1))
           e1-mutated        (mutate Card e1)
           [id1-mutated id2] (maybe-upsert-many! :update Card [e1-mutated e2])]
