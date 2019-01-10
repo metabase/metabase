@@ -10,6 +10,10 @@ import _ from "underscore";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 const MetricList = ({ className, style, query, rawSeries }) => {
+  if (!query.table()) {
+    return null;
+  }
+
   const computedSettings = rawSeries
     ? getComputedSettingsForSeries(rawSeries)
     : {};

@@ -7,7 +7,7 @@ import { alpha } from "metabase/lib/colors";
 
 const Clause = ({ children, style = {}, color, onRemove }) => (
   <div
-    className="rounded text-white px2 py1 mr1 flex align-center"
+    className="rounded text-white px2 mr1 flex align-center"
     style={{ backgroundColor: color, ...style }}
   >
     {children}
