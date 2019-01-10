@@ -6,6 +6,8 @@ import SummarizeSection from "./SummarizeSection";
 
 import { WorksheetSectionButton } from "./WorksheetSection";
 
+import { ExtendedOptionsPopover } from "../ExtendedOptions";
+
 import SECTIONS from "./style";
 
 export default class QuerySections extends React.Component {
@@ -86,6 +88,14 @@ export default class QuerySections extends React.Component {
             {...this.props}
           />
         )}
+        {/* FIXME: better layout */}
+        <div className="px2">
+          <ExtendedOptionsPopover
+            query={query}
+            tableMetadata={query.tableMetadata()}
+            setDatasetQuery={this.props.setDatasetQuery}
+          />
+        </div>
       </div>
     );
   }
