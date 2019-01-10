@@ -227,7 +227,7 @@ export const initializeQB = (location, params) => {
       // return { uiControls };
     }
 
-    if (location.pathname.indexOf("viz") >= -1) {
+    if (location.pathname.indexOf("viz") >= 0) {
       uiControls.mode = QB_MODE_VISUALIZE;
     }
 
