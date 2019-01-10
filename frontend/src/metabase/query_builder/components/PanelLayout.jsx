@@ -8,6 +8,8 @@ const CollapseTrigger = props => (
     {...props}
     className="absolute bg-medium bg-brand-hover cursor-pointer"
     style={{
+      marginTop: "auto",
+      marginBottom: "auto",
       width: 6,
       height: 40,
       top: 0,
