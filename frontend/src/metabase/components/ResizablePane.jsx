@@ -1,4 +1,5 @@
 import React from "react";
+import { Absolute, Relative } from "metabase/components/Position";
 
 import cx from "classnames";
 
@@ -13,13 +14,11 @@ export default class ResizablePane extends React.Component {
   }
 
   render() {
-    const { className, style, left } = this.props;
+    const { children } = this.props;
+    const { width } = this.state;
     return (
-      <div
-        className={cx(className, "relative")}
-        style={{ ...(style || {}), width: this.state.width }}
-      >
-        {this.props.children}
+      <Relative style={{ width }}>
+        {children}
         <DraggableCore
           axis="x"
           onStart={(e, d) => {
@@ -32,12 +31,15 @@ export default class ResizablePane extends React.Component {
             console.log("stop", e, d);
           }}
         >
-          <div
-            className="absolute top bottom"
-            style={{ right: -5, width: 10, background: "rgba(255,0,0,0.1)" }}
+          <Absolute
+            top={0}
+            bottom={0}
+            w={10}
+            right={-5}
+            bg={"rgba(255,0,0,0.1)"}
           />
         </DraggableCore>
-      </div>
+      </Relative>
     );
   }
 }
