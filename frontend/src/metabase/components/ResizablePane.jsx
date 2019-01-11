@@ -17,7 +17,7 @@ const CollapseTrigger = props => (
       right: -10,
       content: "",
       borderRadius: 99,
-      zIndex: 4,
+      zIndex: 2,
     }}
   />
 );
