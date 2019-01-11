@@ -84,10 +84,6 @@ export class ExtendedOptionsPopover extends Component {
   renderSort() {
     const { query, setDatasetQuery } = this.props;
 
-    if (!this.props.features.limit) {
-      return;
-    }
-
     let sortList, addSortButton;
 
     const tableMetadata = query.table();
@@ -132,6 +128,34 @@ export class ExtendedOptionsPopover extends Component {
     }
   }
 
+  renderLimit() {
+    const { query } = this.props;
+    return (
+      <div>
+        <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
+        <LimitWidget limit={query.limit()} onChange={this.setLimit} />
+      </div>
+    );
+  }
+
+  renderExpressions() {
+    const { query } = this.props;
+    return (
+      <Expressions
+        expressions={query.expressions()}
+        tableMetadata={query.table()}
+        onAddExpression={() => this.setState({ editExpression: true })}
+        onEditExpression={name => {
+          this.setState({ editExpression: name });
+          MetabaseAnalytics.trackEvent(
+            "QueryBuilder",
+            "Show Edit Custom Field",
+          );
+        }}
+      />
+    );
+  }
+
   renderExpressionWidget() {
     // if we aren't editing any expression then there is nothing to do
     if (!this.state.editExpression || !this.props.tableMetadata) {
@@ -163,31 +187,16 @@ export class ExtendedOptionsPopover extends Component {
   renderPopover() {
     const { features, query } = this.props;
 
+    const sortEnabled = features.sort;
+    const expressionsEnabled =
+      query.table() && _.contains(query.table().db.features, "expressions");
+    const limitEnabled = features.limit;
+
     return (
       <div className="p3">
-        {this.renderSort()}
-
-        {_.contains(query.table().db.features, "expressions") ? (
-          <Expressions
-            expressions={query.expressions()}
-            tableMetadata={query.table()}
-            onAddExpression={() => this.setState({ editExpression: true })}
-            onEditExpression={name => {
-              this.setState({ editExpression: name });
-              MetabaseAnalytics.trackEvent(
-                "QueryBuilder",
-                "Show Edit Custom Field",
-              );
-            }}
-          />
-        ) : null}
-
-        {features.limit && (
-          <div>
-            <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
-            <LimitWidget limit={query.limit()} onChange={this.setLimit} />
-          </div>
-        )}
+        {sortEnabled && this.renderSort()}
+        {expressionsEnabled && this.renderExpressions()}
+        {limitEnabled && this.renderLimit()}
       </div>
     );
   }
