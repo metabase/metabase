@@ -45,6 +45,12 @@
   java.lang.Number
   (to-sql [x] (str x)))
 
+;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
+;; queries. The easiest way around this is to convert them to their decimal representations.
+(extend-protocol honeysql.format/ToSql
+  clojure.lang.Ratio
+  (to-sql [x] (hformat/to-sql (double x))))
+
 ;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
 ;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with
 ;; lozenges, let HoneySQL do its thing, then switch them back at the last second
