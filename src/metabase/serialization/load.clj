@@ -3,7 +3,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [metabase.config :as config]
-            [metabase.mbql.util :as mbql.util]
+            [metabase.mbql
+             [normalize :as mbql.normalize]
+             [util :as mbql.util]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -51,7 +53,7 @@
 
 (defn- mbql-fully-qualified-names->ids
   [entity]
-  (mbql.util/replace entity
+  (mbql.util/replace (mbql.normalize/normalize entity)
     [:field-id (fully-qualified-name :guard string?)]
     [:field-id (:field (fully-qualified-name->context fully-qualified-name))]
 
@@ -135,7 +137,7 @@
           (assoc :table_id   (:table context)
                  :creator_id @default-user)
           (assoc-in [:definition :source-table] (:table context))
-          mbql-fully-qualified-names->ids))))
+          (update :definition mbql-fully-qualified-names->ids)))))
 
 (defmethod load Segment
   [path context _]
@@ -145,15 +147,18 @@
           (assoc :table_id   (:table context)
                  :creator_id @default-user)
           (assoc-in [:definition :source-table] (:table context))
-          mbql-fully-qualified-names->ids))))
+          (update :definition mbql-fully-qualified-names->ids)))))
 
 (defn- update-parameter-mappings
   [parameter-mappings]
-  (map #(update % :card_id fully-qualified-name->card-id) parameter-mappings))
+  (for [parameter-mapping parameter-mappings]
+    (-> parameter-mapping
+        (update :card_id fully-qualified-name->card-id)
+        (update :target mbql-fully-qualified-names->ids))))
 
 (defmethod load Dashboard
   [path context _]
-  (let [dashboards         (map mbql-fully-qualified-names->ids (slurp-dir (str path "/dashboards")))
+  (let [dashboards         (slurp-dir (str path "/dashboards"))
         dashboard-ids      (maybe-upsert-many! (:mode context) Dashboard
                              (for [dashboard dashboards]
                                (-> dashboard
@@ -215,6 +220,7 @@
                      (-> card
                          (update :table_id (comp :table fully-qualified-name->context))
                          (update :database_id (comp :database fully-qualified-name->context))
+                         (update :dataset_query mbql-fully-qualified-names->ids)
                          (assoc :creator_id    @default-user
                                 :collection_id (:collection context))
                          (update-in [:dataset_query :database]
@@ -225,11 +231,10 @@
                                  :type
                                  qp.util/normalize-token
                                  (= :query))
-                           (update-in [:dataset_query :query :source-table] source-table))
-                         mbql-fully-qualified-names->ids)))]
+                           (update-in [:dataset_query :query :source-table] source-table)))))]
     ;; Nested cards
-    (doseq [[path card-id] (map vector paths card-ids)]
-      (load path (assoc context :card card-id) Card))))
+    (doseq [path paths]
+      (load path context Card))))
 
 (defmethod load User
   [path context _]
