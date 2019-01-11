@@ -71,6 +71,7 @@
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
+   [com.zaxxer/HikariCP "3.1.0"]                                      ; connection pool library
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export

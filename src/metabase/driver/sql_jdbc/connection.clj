@@ -64,7 +64,7 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc (u/get-id database))
     ;; now actively shut down the pool so that any open connections are closed
-    (connection-pool/destroy-connection-pool! (:datasource pool))
+    (connection-pool/destroy-connection-pool! pool)
     (when-let [ssh-tunnel (:ssh-tunnel pool)]
       (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
