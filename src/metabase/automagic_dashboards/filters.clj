@@ -1,12 +1,13 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.models.field :as field :refer [Field]]
-            [metabase.mbql.normalize :as normalize]
+  (:require [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.mbql.util :as mbql.u]))
+            [toucan.db :as db]))
 
 (def ^:private FieldReference
   [(s/one (s/constrained su/KeywordOrString

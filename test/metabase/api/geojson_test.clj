@@ -3,9 +3,9 @@
             [metabase.api.geojson :as geojson-api]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
+            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
-            [schema.core :as s]
-            [metabase.test.util.log :as tu.log]))
+            [schema.core :as s]))
 
 (def ^:private ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
