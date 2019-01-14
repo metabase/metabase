@@ -28,7 +28,7 @@
   ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   :dependencies
-  [[org.clojure/clojure "1.9.0"]
+  [[org.clojure/clojure "1.10.0"]
    [org.clojure/core.async "0.4.490"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0-alpha4"]                            ; optimized pattern matching library for Clojure
