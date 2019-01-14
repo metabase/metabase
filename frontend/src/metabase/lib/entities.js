@@ -103,8 +103,10 @@ export type Entity = {
     FETCH_LIST: ActionType,
   },
   actionDecorators: {
-    pre: Function,
-    post: Function,
+    create: {
+      pre: Function,
+      post: Function,
+    },
   },
   actions: {
     [name: string]: ActionCreator,
@@ -206,6 +208,11 @@ export function createEntity(def: EntityDefinition): Entity {
     FETCH_LIST: FETCH_LIST_ACTION,
     INVALIDATE_LISTS_ACTION: INVALIDATE_LISTS_ACTION,
     ...(entity.actionTypes || {}),
+  };
+
+  entity.actionDecorators = {
+    create: {},
+    ...(entity.actionDecorators || {}),
   };
 
   entity.objectActions = {
