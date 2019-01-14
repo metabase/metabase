@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.32.0 (December 19, 2018)
+## 0.32.0 (January 14, 2019)
 
 * [DGPB-1653] Crossdata queries impersonation
 * [DGPB-1617] Upgrade XD library to 2.13.4
