@@ -6,12 +6,13 @@
              [http-client :as http]
              [middleware :as middleware]
              [util :as u]]
-            [metabase.models.user :refer [User]]
+            [metabase.models
+             [collection-test :as collection-test]
+             [user :refer [User]]]
             [metabase.test
              [data :refer :all]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
-            [metabase.models.collection-test :as collection-test]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

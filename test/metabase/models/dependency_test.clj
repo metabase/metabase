@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.models.dependency :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan
              [db :as db]

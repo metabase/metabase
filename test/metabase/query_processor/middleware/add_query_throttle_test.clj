@@ -4,9 +4,7 @@
             [metabase.query-processor.middleware
              [add-query-throttle :as throttle :refer :all]
              [catch-exceptions :as catch-exceptions]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.util :as tu]
             [metabase.util :as u])
   (:import java.util.concurrent.Semaphore))
 

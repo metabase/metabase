@@ -3,9 +3,7 @@
              [core :as t]
              [format :as t.format]]
             [expectations :refer :all]
-            [metabase.api
-             [card :as card.api]
-             [common :as api]]
+            [metabase.api.card :as card.api]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -26,8 +24,7 @@
             [metabase.util.date :as date]
             [puppetlabs.i18n.core :as i18n :refer [tru]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.util :as u]))
+            [toucan.util.test :as tt]))
 
 ;;; ------------------- `->reference` -------------------
 

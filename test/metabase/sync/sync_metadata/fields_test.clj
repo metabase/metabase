@@ -18,8 +18,7 @@
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+             [hydrate :refer [hydrate]]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Dropping & Undropping Columns                                          |

@@ -7,10 +7,11 @@
             [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.driver.sql :as sql]
-            [metabase.models.field :as field :refer [Field]]
+            [metabase.driver
+             [sql :as sql]
+             [util :as driver.u]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
