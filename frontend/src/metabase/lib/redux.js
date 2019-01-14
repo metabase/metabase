@@ -2,11 +2,12 @@ import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { setRequestState, clearRequestState } from "metabase/redux/requests";
-
 // convienence
+// NOTE: most be above any imports that import this file
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
+
+import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 import { createSelectorCreator } from "reselect";
 import memoize from "lodash.memoize";

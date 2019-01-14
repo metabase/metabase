@@ -1,8 +1,8 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 
-require("babel-register");
-require("babel-polyfill");
+require("@babel/register");
+require("@babel/polyfill");
 
 var webpack = require("webpack");
 

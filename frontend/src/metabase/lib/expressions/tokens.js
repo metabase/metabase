@@ -8,23 +8,17 @@ import {
   UNARY_AGGREGATIONS,
 } from "./config";
 
-export const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
-export const Plus = extendToken("Plus", /\+/, AdditiveOperator);
-export const Minus = extendToken("Minus", /-/, AdditiveOperator);
+const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
+const Plus = extendToken("Plus", /\+/, AdditiveOperator);
+const Minus = extendToken("Minus", /-/, AdditiveOperator);
 
-export const MultiplicativeOperator = extendToken(
-  "MultiplicativeOperator",
-  Lexer.NA,
-);
-export const Multi = extendToken("Multi", /\*/, MultiplicativeOperator);
-export const Div = extendToken("Div", /\//, MultiplicativeOperator);
+const MultiplicativeOperator = extendToken("MultiplicativeOperator", Lexer.NA);
+const Multi = extendToken("Multi", /\*/, MultiplicativeOperator);
+const Div = extendToken("Div", /\//, MultiplicativeOperator);
 
-export const Aggregation = extendToken("Aggregation", Lexer.NA);
+const Aggregation = extendToken("Aggregation", Lexer.NA);
 
-export const NullaryAggregation = extendToken(
-  "NullaryAggregation",
-  Aggregation,
-);
+const NullaryAggregation = extendToken("NullaryAggregation", Aggregation);
 const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map(short =>
   extendToken(
     VALID_AGGREGATIONS.get(short),
@@ -33,7 +27,7 @@ const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map(short =>
   ),
 );
 
-export const UnaryAggregation = extendToken("UnaryAggregation", Aggregation);
+const UnaryAggregation = extendToken("UnaryAggregation", Aggregation);
 const unaryAggregationTokens = UNARY_AGGREGATIONS.map(short =>
   extendToken(
     VALID_AGGREGATIONS.get(short),
@@ -42,26 +36,26 @@ const unaryAggregationTokens = UNARY_AGGREGATIONS.map(short =>
   ),
 );
 
-export const Identifier = extendToken("Identifier", /\w+/);
-export const NumberLiteral = extendToken(
+const Identifier = extendToken("Identifier", /\w+/);
+const NumberLiteral = extendToken(
   "NumberLiteral",
   /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
 );
-export const StringLiteral = extendToken(
+const StringLiteral = extendToken(
   "StringLiteral",
   /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
 );
 
-export const Comma = extendToken("Comma", /,/);
+const Comma = extendToken("Comma", /,/);
 Comma.LABEL = "comma";
 
-export const LParen = extendToken("LParen", /\(/);
+const LParen = extendToken("LParen", /\(/);
 LParen.LABEL = "opening parenthesis";
 
-export const RParen = extendToken("RParen", /\)/);
+const RParen = extendToken("RParen", /\)/);
 RParen.LABEL = "closing parenthesis";
 
-export const WhiteSpace = extendToken("WhiteSpace", /\s+/);
+const WhiteSpace = extendToken("WhiteSpace", /\s+/);
 WhiteSpace.GROUP = Lexer.SKIPPED;
 
 // whitespace is normally very common so it is placed first to speed up the lexer
@@ -85,3 +79,9 @@ export const allTokens = [
   NumberLiteral,
   Identifier,
 ];
+
+// NOTE: webpack messes with the token name if exported directly, so export as a map of token names to tokens
+export const tokens = {};
+for (const token of allTokens) {
+  tokens[token.name] = token;
+}

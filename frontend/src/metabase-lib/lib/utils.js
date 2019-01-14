@@ -18,6 +18,7 @@ function getWithFallback(map, key, fallback) {
   return map.get(key);
 }
 
+// decorator
 export function memoize(target, name, descriptor) {
   let method = target[name];
   descriptor.value = function(...args) {
@@ -29,4 +30,5 @@ export function memoize(target, name, descriptor) {
     );
     return getWithFallback(map, last, () => method.apply(this, args));
   };
+  return descriptor;
 }

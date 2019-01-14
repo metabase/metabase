@@ -10,8 +10,8 @@ import {
 } from "../expressions";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
-import {
-  allTokens,
+import { tokens, allTokens } from "./tokens";
+const {
   LParen,
   RParen,
   AdditiveOperator,
@@ -23,7 +23,7 @@ import {
   NumberLiteral,
   Minus,
   Identifier,
-} from "./tokens";
+} = tokens;
 
 const ExpressionsLexer = new Lexer(allTokens);
 

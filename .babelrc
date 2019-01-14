@@ -1,15 +1,22 @@
 {
   "plugins": [
     "babel-plugin-styled-components",
-    "transform-flow-strip-types",
+    "@babel/plugin-transform-flow-strip-types",
+    ["@babel/plugin-proposal-decorators", { "legacy": true }],
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-export-default-from",
+    "@babel/plugin-proposal-export-namespace-from",
     "add-react-displayname",
-    "transform-decorators-legacy",
     ["transform-builtin-extend", {
         "globals": ["Error", "Array"]
     }],
     "syntax-trailing-function-commas"
   ],
-  "presets": ["es2015", "stage-0", "react"],
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react",
+    "@babel/preset-flow"
+  ],
   "env": {
     "development": {
       "presets": []

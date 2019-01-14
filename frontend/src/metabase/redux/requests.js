@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import { handleActions, createAction } from "metabase/lib/redux";
+import { handleActions, createAction } from "redux-actions";
 import { getIn, assocIn } from "icepick";
 import { combineReducers } from "redux";
 

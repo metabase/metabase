@@ -1,4 +1,4 @@
-import "babel-polyfill";
+import "@babel/polyfill";
 import "number-to-locale-string";
 import "metabase/css/index.css";
 

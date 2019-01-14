@@ -353,4 +353,4 @@ export function setFieldEndpoints(prefix: string, params: Data) {
   );
 }
 
-global.services = exports;
+// global.services = exports;
