@@ -301,7 +301,7 @@
    "ga:date"           (partial du/parse-date "yyyyMMdd")
    "ga:dayOfWeek"      (comp inc parse-number)
    "ga:day"            parse-number
-   "ga:isoYearIsoWeek" (partial du/parse-date "YYYYww")
+   "ga:isoYearIsoWeek" (partial du/parse-date "xxxxww")
    "ga:week"           parse-number
    "ga:yearMonth"      (partial du/parse-date "yyyyMM")
    "ga:month"          parse-number

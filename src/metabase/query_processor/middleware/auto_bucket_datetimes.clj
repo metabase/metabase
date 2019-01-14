@@ -6,10 +6,10 @@
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
+            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [schema.core :as s]
             [toucan.db :as db]))
 

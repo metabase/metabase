@@ -269,7 +269,7 @@ Some drivers require additional environment variables when testing since they ar
 
 ##### Run the linters:
 
-    lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter
+    lein eastwood && lein bikeshed && lein docstring-checker && lein check-namespace-decls && ./bin/reflection-linter
 
 #### Developing with Emacs
 

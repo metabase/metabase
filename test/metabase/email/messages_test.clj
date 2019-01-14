@@ -1,8 +1,7 @@
 (ns metabase.email.messages-test
   (:require [expectations :refer :all]
             [metabase.email-test :refer [inbox with-fake-inbox]]
-            [metabase.email.messages :as msgs :refer [send-new-user-email! send-password-reset-email!]]
-            [metabase.test.util :as tu])
+            [metabase.email.messages :as msgs :refer [send-new-user-email! send-password-reset-email!]])
   (:import java.io.IOException))
 
 ;; new user email

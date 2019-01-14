@@ -137,7 +137,7 @@
     "xhr-mock": "^2.4.1"
   },
   "scripts": {
-    "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
+    "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
     "lint": "yarn lint-eslint && yarn lint-prettier",
     "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
@@ -157,7 +157,7 @@
     "start": "yarn build && lein ring server",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
-    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
+    "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test"

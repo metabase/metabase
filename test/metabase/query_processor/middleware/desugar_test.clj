@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.desugar-test
-  (:require [metabase.query-processor.middleware.desugar :as desugar]
-            [expectations :refer [expect]]))
+  (:require [expectations :refer [expect]]
+            [metabase.query-processor.middleware.desugar :as desugar]))
 
 (def ^:private ^{:arglists '([query])} desugar
   (desugar/desugar identity))

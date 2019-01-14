@@ -25,6 +25,7 @@ import MiniBar from "./MiniBar";
 // $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -554,23 +555,25 @@ export default class TableInteractive extends Component {
           }
         >
           <div className="cellData">
-            {isSortable &&
-              isRightAligned && (
-                <Icon
-                  className="Icon mr1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-            {columnTitle}
-            {isSortable &&
-              !isRightAligned && (
-                <Icon
-                  className="Icon ml1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
+            <Ellipsified tooltip={columnTitle}>
+              {isSortable &&
+                isRightAligned && (
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+              {columnTitle}
+              {isSortable &&
+                !isRightAligned && (
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+            </Ellipsified>
           </div>
           <Draggable
             axis="x"

@@ -3,9 +3,7 @@
   (:require [metabase
              [driver :as driver]
              [query-processor-test :refer :all]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
 ;;; FILTER -- "AND", ">", ">="

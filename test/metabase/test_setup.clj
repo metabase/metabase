@@ -2,7 +2,8 @@
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
   (:require [clojure
              [data :as data]
-             [set :as set]]
+             [set :as set]
+             [string :as str]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
@@ -16,8 +17,7 @@
             [metabase.models.setting :as setting]
             [metabase.plugins.initialize :as plugins.init]
             [metabase.test.data.env :as tx.env]
-            [yaml.core :as yaml]
-            [clojure.string :as str]))
+            [yaml.core :as yaml]))
 
 ;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
 

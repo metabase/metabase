@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.public-settings :as public-settings]
             [metabase.test.util :as tu]
-            [puppetlabs.i18n.core :as i18n :refer [tru trs]]))
+            [puppetlabs.i18n.core :as i18n :refer [tru]]))
 
  ;; double-check that setting the `site-url` setting will automatically strip off trailing slashes
 (expect

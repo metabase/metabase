@@ -18,6 +18,7 @@
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+expectations" "expectations"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
+   "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
@@ -28,7 +29,7 @@
   ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   :dependencies
-  [[org.clojure/clojure "1.9.0"]
+  [[org.clojure/clojure "1.10.0"]
    [org.clojure/core.async "0.4.490"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0-alpha4"]                            ; optimized pattern matching library for Clojure
@@ -116,11 +117,11 @@
 
   ;; TODO - WHAT DOES THIS DO?
   :manifest {"Liquibase-Package"
-             #=(eval
-                (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-                     "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-                     "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-                     "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+             #= (eval
+                 (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+                      "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+                      "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+                      "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :target-path "target/%s"
 
@@ -150,6 +151,7 @@
      [jonase/eastwood "0.3.1"
       :exclusions [org.clojure/clojure]]                              ; Linting
      [lein-bikeshed "0.4.1"]                                          ; Linting
+     [lein-check-namespace-decls "1.0.1"]                             ; lints namespace declarations
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
      [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
      ;; TODO - should this be moved to the new RING profile?
@@ -246,6 +248,11 @@
       :exclude [#"test"
                 #"^metabase\.http-client$"]}}]
 
+   :check-namespace-decls
+   [:include-all-drivers
+    {:source-paths          ["test"]
+     :check-namespace-decls {:prefix-rewriting true}}]
+
    ;; build the uberjar with `lein uberjar`
    :uberjar
    {:auto-clean true
@@ -257,6 +264,9 @@
     :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
 
+   ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
+   ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
+   ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
    {:source-paths ["src"
                    "lein-commands/strip-and-compress"]

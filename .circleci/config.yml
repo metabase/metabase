@@ -114,6 +114,18 @@ jobs:
           command: lein with-profile +ci docstring-checker
           no_output_timeout: 5m
 
+  be-linter-namespace-decls:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run namespace decl checker
+          command: lein with-profile +ci check-namespace-decls
+          no_output_timeout: 5m
+
   be-linter-bikeshed:
     <<: *defaults
     steps:
@@ -587,6 +599,9 @@ workflows:
       - be-linter-docstring-checker:
           requires:
             - be-deps
+      - be-linter-namespace-decls:
+          requires:
+            - be-deps
       - be-linter-bikeshed:
           requires:
             - be-deps
@@ -661,6 +676,7 @@ workflows:
           requires:
             - be-linter-eastwood
             - be-linter-docstring-checker
+            - be-linter-namespace-decls
             - be-linter-bikeshed
             - be-linter-reflection-warnings
 
