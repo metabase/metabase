@@ -8,6 +8,7 @@ import {
   SET_MODE,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_UNDERLYING_DATA,
+  TOGGLE_AUTO_REFRESH,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   CLOSE_QB_TUTORIAL,
@@ -65,6 +66,12 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({
         ...state,
         isShowingUnderlyingData: !state.isShowingUnderlyingData,
+      }),
+    },
+    [TOGGLE_AUTO_REFRESH]: {
+      next: (state, { payload }) => ({
+        ...state,
+        isAutoRefreshing: !state.isAutoRefreshing,
       }),
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {

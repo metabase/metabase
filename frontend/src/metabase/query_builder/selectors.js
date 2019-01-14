@@ -257,3 +257,8 @@ export const getQBMode = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.mode,
 );
+
+export const getIsAutoRefreshing = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.isAutoRefreshing,
+);

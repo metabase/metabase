@@ -69,6 +69,11 @@ import {
   getOriginalQuestion,
   getSettings,
   getRawSeries,
+  getIsEditing,
+  getIsRunning,
+  getIsShowingDataReference,
+  getIsShowingTutorial,
+  getIsAutoRefreshing,
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -130,10 +135,12 @@ const mapStateToProps = (state, props) => {
     databaseFields: getDatabaseFields(state),
     sampleDatasetId: getSampleDatasetId(state),
 
-    isShowingDataReference: state.qb.uiControls.isShowingDataReference,
-    isShowingTutorial: state.qb.uiControls.isShowingTutorial,
-    isEditing: state.qb.uiControls.isEditing,
-    isRunning: state.qb.uiControls.isRunning,
+    isShowingDataReference: getIsShowingDataReference(state),
+    isShowingTutorial: getIsShowingTutorial(state),
+    isAutoRefreshing: getIsAutoRefreshing(state),
+
+    isEditing: getIsEditing(state),
+    isRunning: getIsRunning(state),
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
 

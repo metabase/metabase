@@ -44,6 +44,7 @@ import {
   getResultsMetadata,
   getFirstQueryResult,
   getQBMode,
+  getIsAutoRefreshing
 } from "./selectors";
 
 import {
@@ -406,6 +407,11 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
 export const TOGGLE_UNDERLYING_DATA = "metabase/qb/TOGGLE_UNDERLYING_DATA";
 export const toggleUnderlyingData = createAction(TOGGLE_UNDERLYING_DATA, () => {
   MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Underlying Data");
+});
+
+export const TOGGLE_AUTO_REFRESH = "metabase/qb/TOGGLE_AUTO_REFRESH";
+export const toggleAutoRefresh = createAction(TOGGLE_AUTO_REFRESH, () => {
+  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Autorefresh");
 });
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
@@ -873,9 +879,12 @@ export const apiUpdateQuestion = question => {
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(
   SET_DATASET_QUERY,
-  (datasetQuery, run = false) => {
+  (datasetQuery, run) => {
     return async (dispatch, getState) => {
       const question = getQuestion(getState());
+      if (run == null && getIsAutoRefreshing(getState())) {
+        run = true;
+      }
       await dispatch(setQuestion(question.setDatasetQuery(datasetQuery), run));
     };
   },
