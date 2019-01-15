@@ -31,6 +31,8 @@ export const MODAL_RESET_PASSWORD_EMAIL = "MODAL_RESET_PASSWORD_EMAIL";
 export const MODAL_USER_ADDED_WITH_INVITE = "MODAL_USER_ADDED_WITH_INVITE";
 export const MODAL_USER_ADDED_WITH_PASSWORD = "MODAL_USER_ADDED_WITH_PASSWORD";
 
+import { getGroups, getSortedUsers } from "../selectors";
+
 import {
   reactivateUser,
   resetPasswordManually,
@@ -44,9 +46,9 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-    users: props.users,
+    users: getSortedUsers(state, props),
     user: state.currentUser,
-    groups: props.groups,
+    groups: getGroups(state, props),
   };
 };
 
@@ -62,7 +64,9 @@ const mapDispatchToProps = {
   deleteMembership,
 };
 
-@entityListLoader({ entityType: "users" })
+// set outer loadingAndErrorWrapper to false to avoid conflicets. the second loader will handle that
+@entityListLoader({ entityType: "users", loadingAndErrorWrapper: false })
+@entityListLoader({ entityType: "groups" })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
   state = {
@@ -85,14 +89,14 @@ export default class PeopleListingApp extends Component {
 
   async componentDidMount() {
     try {
-      await Promise.all([
-        this.props.loadGroups(),
-        this.props.loadMemberships(),
-      ]);
-    } catch (error) {}
+      await Promise.all([this.props.loadMemberships()]);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   render() {
+    console.log("listing", this.props);
     let { users, groups } = this.props;
     let { showDeactivated } = this.state;
 

@@ -44,7 +44,16 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 @entityType()
 @paginationState()
 @connect((state, props) => {
-  let { entityDef, entityQuery, page, pageSize } = props;
+  let {
+    entityDef,
+    entityQuery,
+    page,
+    pageSize,
+    fetched,
+    loaded,
+    loading,
+    error,
+  } = props;
   if (typeof entityQuery === "function") {
     entityQuery = entityQuery(state, props);
   }
@@ -55,10 +64,18 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   return {
     entityQuery,
     list: entityDef.selectors.getList(state, { entityQuery }),
-    fetched: entityDef.selectors.getFetched(state, { entityQuery }),
-    loaded: entityDef.selectors.getLoaded(state, { entityQuery }),
-    loading: entityDef.selectors.getLoading(state, { entityQuery }),
-    error: entityDef.selectors.getError(state, { entityQuery }),
+    fetched:
+      (fetched != null ? fetched : true) &&
+      !entityDef.selectors.getFetched(state, { entityQuery }),
+    loaded:
+      (loaded != null ? loaded : true) &&
+      entityDef.selectors.getLoaded(state, { entityQuery }),
+    loading:
+      (loading != null ? loading : false) &&
+      entityDef.selectors.getLoading(state, { entityQuery }),
+    error:
+      (error != null ? error : null) &&
+      entityDef.selectors.getError(state, { entityQuery }),
   };
 })
 export default class EntityListLoader extends React.Component {
@@ -101,6 +118,7 @@ export default class EntityListLoader extends React.Component {
   }
 
   componentWillReceiveProps(nextProps: Props) {
+    console.log(nextProps.entityDef, this.props.entityDef);
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
       this.fetchList(nextProps, { reload: nextProps.reload });
@@ -147,6 +165,9 @@ export default class EntityListLoader extends React.Component {
 
   reload = () => {
     this.fetchList(this.props, { reload: true });
+    if (this.props.realod) {
+      this.props.reload();
+    }
   };
 }
 
