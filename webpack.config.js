@@ -116,23 +116,23 @@ var config = (module.exports = {
     },
   },
 
-  // optimization: {
-  //   splitChunks: {
-  //     cacheGroups: {
-  //       // commons: {
-  //       //   name: "commons",
-  //       //   chunks: "initial",
-  //       //   minChunks: 2,
-  //       // },
-  //       styles: {
-  //         name: "styles",
-  //         test: /\.css$/,
-  //         chunks: "all",
-  //         enforce: true,
-  //       },
-  //     },
-  //   },
-  // },
+  optimization: {
+    // splitChunks: {
+    //   cacheGroups: {
+    //     // commons: {
+    //     //   name: "commons",
+    //     //   chunks: "initial",
+    //     //   minChunks: 2,
+    //     // },
+    //     styles: {
+    //       name: "styles",
+    //       test: /\.css$/,
+    //       chunks: "all",
+    //       enforce: true,
+    //     },
+    //   },
+    // },
+  },
 
   plugins: [
     // new webpack.optimize.CommonsChunkPlugin({
