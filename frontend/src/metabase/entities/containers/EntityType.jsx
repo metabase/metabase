@@ -41,9 +41,8 @@ export default (entityType?: string) => (
       }
 
       render() {
-        console.log(this.props.entityDef);
         return (
-          <ComposedComponent {...this._boundActionCreators} {...this.props} />
+          <ComposedComponent {...this.props} {...this._boundActionCreators} />
         );
       }
     },
