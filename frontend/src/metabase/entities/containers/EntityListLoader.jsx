@@ -49,10 +49,10 @@ const getMemoizedEntityQuery = createMemoizedSelector(
     entityQuery,
     page,
     pageSize,
-    fetched,
-    loaded,
-    loading,
-    error,
+    allLoading,
+    allLoaded,
+    allFetched,
+    allError,
   } = props;
   if (typeof entityQuery === "function") {
     entityQuery = entityQuery(state, props);
@@ -61,21 +61,24 @@ const getMemoizedEntityQuery = createMemoizedSelector(
     entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
   }
   entityQuery = getMemoizedEntityQuery(state, { entityQuery });
+
+  const loading = entityDef.selectors.getLoading(state, { entityQuery });
+  const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
+  const fetched = entityDef.selectors.getFetched(state, { entityQuery });
+  const error = entityDef.selectors.getError(state, { entityQuery });
+
   return {
     entityQuery,
     list: entityDef.selectors.getList(state, { entityQuery }),
-    fetched:
-      (fetched != null ? fetched : true) &&
-      !entityDef.selectors.getFetched(state, { entityQuery }),
-    loaded:
-      (loaded != null ? loaded : true) &&
-      entityDef.selectors.getLoaded(state, { entityQuery }),
-    loading:
-      (loading != null ? loading : false) &&
-      entityDef.selectors.getLoading(state, { entityQuery }),
-    error:
-      (error != null ? error : null) &&
-      entityDef.selectors.getError(state, { entityQuery }),
+    loading,
+    loaded,
+    fetched,
+    error,
+    // merge props passed in from stacked Entity*Loaders:
+    allLoading: loading || (allLoading == null ? false : allLoading),
+    allLoaded: loaded && (allLoaded == null ? true : allLoaded),
+    allFetched: fetched && (allFetched == null ? true : allFetched),
+    allError: error || (allError == null ? null : allError),
   };
 })
 export default class EntityListLoader extends React.Component {
@@ -151,11 +154,11 @@ export default class EntityListLoader extends React.Component {
 
   render() {
     // $FlowFixMe: provided by @connect
-    const { fetched, error, loadingAndErrorWrapper } = this.props;
+    const { allFetched, allError, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={!fetched}
-        error={error}
+        loading={!allFetched}
+        error={allError}
         children={this.renderChildren}
       />
     ) : (
