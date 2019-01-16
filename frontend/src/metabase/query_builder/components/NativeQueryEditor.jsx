@@ -303,6 +303,7 @@ export default class NativeQueryEditor extends Component {
             key="db_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
+            <Icon className="Icon text-medium pl2" name="database" size={14} />
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -313,7 +314,7 @@ export default class NativeQueryEditor extends Component {
         );
       } else if (database) {
         dataSelectors.push(
-          <span key="db" className="p2 text-bold text-grey">
+          <span key="db" className="p1 text-bold text-grey">
             {database.name}
           </span>,
         );
@@ -341,7 +342,10 @@ export default class NativeQueryEditor extends Component {
       }
     } else {
       dataSelectors = (
-        <span className="p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
+        <div>
+          <Icon className="Icon text-light pl2" name="database" size={14} />
+          <span className="p2 mr2 text-medium">{database.name}</span>
+        </div>
       );
     }
 
