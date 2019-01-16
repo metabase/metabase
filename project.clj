@@ -90,7 +90,6 @@
                  com.sun.jmx/jmxri]]
    [medley "1.0.0"]                                                   ; lightweight lib of useful functions
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [mysql/mysql-connector-java "5.1.45"]                              ; MySQL JDBC driver
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]] ; Distribution statistic tests
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -98,6 +97,7 @@
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.2"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
+   [org.mariadb.jdbc/mariadb-java-client "2.3.0"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -111,7 +111,7 @@
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
-   [toucan "1.1.9" :exclusions [org.clojure/java.jdbc honeysql]]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.10.1" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
 
   :main ^:skip-aot metabase.core
 

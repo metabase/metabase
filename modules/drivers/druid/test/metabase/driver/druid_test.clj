@@ -20,7 +20,9 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-driver]]
-            [metabase.test.util.log :as tu.log]
+            [metabase.test.util
+             [log :as tu.log]
+             [timezone :as tu.tz]]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan.util.test :as tt]))
 
@@ -61,7 +63,7 @@
    ["100"  "PizzaHacker"                 #inst "2014-07-26T02:00:00.000-05:00"]
    ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
-  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+  (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
                                    [(Field (data/id :checkins :id))
                                     (Field (data/id :checkins :venue_name))

@@ -24,23 +24,20 @@
 
 (defmethod tx/dbdef->connection-details :mysql [_ context {:keys [database-name]}]
   (merge
-   {:host     (tx/db-test-env-var-or-throw :mysql :host "localhost")
-    :port     (tx/db-test-env-var-or-throw :mysql :port 3306)
-    :user     (tx/db-test-env-var :mysql :user "root")
-    ;; :timezone :America/Los_Angeles
+   {:host           (tx/db-test-env-var-or-throw :mysql :host "localhost")
+    :port           (tx/db-test-env-var-or-throw :mysql :port 3306)
+    :user           (tx/db-test-env-var :mysql :user "root")
     :serverTimezone "UTC"
+
+    :useTimezone           true
+    :useLegacyDateTimeCode false
+
+
     }
    (when-let [password (tx/db-test-env-var :mysql :password)]
      {:password password})
    (when (= context :db)
      {:db database-name})))
-
-(defmethod spec/dbdef->spec :mysql [& args]
-  ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer versions of MySQL,
-  ;; but we still want to test that we can handle it correctly for older ones
-  (-> (apply (get-method spec/dbdef->spec :sql-jdbc/test-extensions) args)
-      ;; TODO - could this be passed as a connection PROPERTY instead?
-      (update :subname #(str % "&sessionVariables=sql_mode='ALLOW_INVALID_DATES'"))))
 
 ;; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
 (defmethod execute/execute-sql! :mysql [& args]

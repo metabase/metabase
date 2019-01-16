@@ -8,16 +8,44 @@
   `metabase.driver.sql-jdbc` for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [trs tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.util.TimeZone))
 
-(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
+(declare notify-database-updated)
+
+(defn- notify-all-databases-updated
+  "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
+
+  Currently only used below by `report-timezone` setter (i.e., only used when report timezone changes). Reusing pooled
+  connections with the old session timezone can have weird effects, especially if report timezone is changed to nil
+  (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid by a
+  given Database (meaning subsequent queries will fail to change the session timezone)."
+  []
+  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
+    (try
+      (notify-database-updated driver database)
+      (catch Throwable e
+        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+
+(defsetting report-timezone
+  (tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :setter
+  (fn [new-value]
+    ;; some VERY DUMB JDBC drivers (*cough* MariaDB *cough*) effectively ignore any timezones you try nicely
+    ;; ask them to use and use the default TimeZone for everything. Since we only support one global report
+    ;; timezone at this moment in time setting the default TimeZone as well won't hurt anything.
+    (TimeZone/setDefault (some-> new-value TimeZone/getTimeZone))
+    (setting/set-string! :report-timezone new-value)
+    (notify-all-databases-updated)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |

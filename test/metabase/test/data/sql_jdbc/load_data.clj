@@ -103,8 +103,7 @@
                                 (:field-definitions tabledef))]
     (for [row (:rows tabledef)]
       (zipmap fields-for-insert (for [v row]
-                                  (if (and (not (instance? java.sql.Time v))
-                                           (instance? java.util.Date v))
+                                  (if (instance? java.util.Date v)
                                     (du/->Timestamp v du/utc)
                                     v))))))
 
