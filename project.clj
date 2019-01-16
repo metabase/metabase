@@ -92,7 +92,6 @@
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [mysql/mysql-connector-java "5.1.45"]                              ; MySQL JDBC driver
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
-   [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]] ; Distribution statistic tests
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
@@ -260,7 +259,9 @@
 
    ;; generate sample dataset with `lein generate-sample-dataset`
    :generate-sample-dataset
-   {:dependencies [[faker "0.3.2"]]                                   ; Fake data generator -- port of Perl/Ruby library
+   {:dependencies
+    [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
+     [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
     :source-paths ["lein-commands/sample-dataset"]
     :main         ^:skip-aot metabase.sample-dataset.generate}
 
