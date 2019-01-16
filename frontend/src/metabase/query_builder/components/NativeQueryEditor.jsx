@@ -35,7 +35,7 @@ import Parameters from "metabase/parameters/components/Parameters";
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
-const MIN_HEIGHT_LINES = 1;
+const MIN_HEIGHT_LINES = 12;
 const MAX_AUTO_SIZE_LINES = 12;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
@@ -303,7 +303,6 @@ export default class NativeQueryEditor extends Component {
             key="db_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
-            <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -362,41 +361,39 @@ export default class NativeQueryEditor extends Component {
     }
 
     return (
-      <div className="wrapper">
-        <div className="NativeQueryEditor bordered rounded shadowed">
-          <div className="flex align-center" style={{ minHeight: 50 }}>
-            {dataSelectors}
-            <Parameters
-              parameters={parameters}
-              query={location.query}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              syncQueryString
-              isEditing
-              isQB
-              commitImmediately
-            />
-            <a
-              className="Query-label no-decoration flex-align-right flex align-center px2"
-              onClick={this.toggleEditor}
-            >
-              <span className="mx2">{toggleEditorText}</span>
-              <Icon name={toggleEditorIcon} size={20} />
-            </a>
-          </div>
-          <ResizableBox
-            ref="resizeBox"
-            className={"border-top " + editorClasses}
-            height={this.state.initialHeight}
-            minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-            axis="y"
-            onResizeStop={(e, data) => {
-              this._editor.resize();
-            }}
+      <div className="NativeQueryEditor full border-bottom">
+        <div className="flex align-center" style={{ minHeight: 50 }}>
+          {dataSelectors}
+          <Parameters
+            parameters={parameters}
+            query={location.query}
+            setParameterValue={setParameterValue}
+            setParameterIndex={this.setParameterIndex}
+            syncQueryString
+            isEditing
+            isQB
+            commitImmediately
+          />
+          <a
+            className="Query-label no-decoration flex-align-right flex align-center px2"
+            onClick={this.toggleEditor}
           >
-            <div id="id_sql" ref="editor" />
-          </ResizableBox>
+            <span className="mx2">{toggleEditorText}</span>
+            <Icon name={toggleEditorIcon} size={20} />
+          </a>
         </div>
+        <ResizableBox
+          ref="resizeBox"
+          className={"border-top " + editorClasses}
+          height={this.state.initialHeight}
+          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
+          axis="y"
+          onResizeStop={(e, data) => {
+            this._editor.resize();
+          }}
+        >
+          <div id="id_sql" ref="editor" />
+        </ResizableBox>
       </div>
     );
   }

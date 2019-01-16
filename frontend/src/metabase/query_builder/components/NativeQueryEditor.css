@@ -1,5 +1,7 @@
 .NativeQueryEditor .ace_editor {
   height: 100%;
+  background-color: var(--color-bg-light);
+  min-height: 200px;
 }
 
 .NativeQueryEditor .react-resizable {
@@ -22,7 +24,7 @@
   padding-top: 2px;
   font-size: 10px;
   font-weight: 700;
-  color: var(--color-text-medium);
+  color: var(--color-text-light);
   padding-left: 0;
   padding-right: 0;
   display: block;
@@ -30,8 +32,7 @@
 }
 
 .NativeQueryEditor .ace_editor .ace_gutter {
-  background-color: var(--color-bg-light);
-  border-right: 1px solid var(--color-border);
+  background: none;
   padding-left: 5px;
   padding-right: 5px;
 }
