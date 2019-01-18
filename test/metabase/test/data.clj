@@ -20,6 +20,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.util.timezone :as tu.tz]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -266,8 +267,10 @@
             (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
 
 (defn- create-database! [{:keys [database-name], :as database-definition} driver]
-  ;; Create the database
-  (tx/create-db! driver database-definition)
+  ;; Create the database and load its data
+  ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
+  (tu.tz/with-jvm-tz "UTC"
+    (tx/create-db! driver database-definition))
   ;; Add DB object to Metabase DB
   (let [db (db/insert! Database
              :name    database-name
