@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+
+const { execSync } = require("child_process");
+const { readFileSync } = require("fs");
+const _ = require("underscore");
+
+const LICENSE_WHITELIST = new Set([
+  "Apache*",
+  "Apache-2.0",
+  "Artistic-2.0",
+  "BSD",
+  "BSD*",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "MIT",
+  "MIT*",
+  "MIT Licensed. http://www.opensource.org/licenses/mit-license.php",
+  "MIT (http://mootools.net/license.txt)",
+  "The MIT License (MIT)",
+  "Public Domain",
+]);
+
+const lines = execSync("yarn licenses list --json")
+  .toString("utf-8")
+  .split("\n");
+
+let unknownCount = 0;
+
+const { data } = JSON.parse(lines[lines.length - 2]);
+const licenseColumnIndex = data.head.indexOf("License");
+for (const row of data.body) {
+  const license = row[licenseColumnIndex].replace(/^\((.*)\)$/g, "$1"); // trim parens
+  let licenses;
+  if (/\bOR\b/.test(license) && !/\bAND\b/.test(license)) {
+    licenses = license.split(/\bOR\b/g).map(l => l.trim());
+  } else {
+    licenses = [license.trim()];
+  }
+  if (!_.any(licenses, license => LICENSE_WHITELIST.has(license))) {
+    console.log(row.join("\t"));
+    unknownCount++;
+  }
+}
+
+if (unknownCount > 0) {
+  process.exit(1);
+} else {
+  process.exit(0);
+}
