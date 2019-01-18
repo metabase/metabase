@@ -153,6 +153,7 @@
      [lein-check-namespace-decls "1.0.1"]                             ; lints namespace declarations
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
      [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
+     [lein-licenses "LATEST"]                                         ; for dependencies license checking
      ;; TODO - should this be moved to the new RING profile?
      [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
       :exclusions [org.clojure/clojure]]]

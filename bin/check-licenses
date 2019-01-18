@@ -4,47 +4,151 @@ const { execSync } = require("child_process");
 const { readFileSync } = require("fs");
 const _ = require("underscore");
 
-const LICENSE_WHITELIST = new Set([
-  "Apache*",
-  "Apache-2.0",
-  "Artistic-2.0",
-  "BSD",
-  "BSD*",
-  "BSD-2-Clause",
-  "BSD-3-Clause",
-  "ISC",
-  "MIT",
-  "MIT*",
-  "MIT Licensed. http://www.opensource.org/licenses/mit-license.php",
-  "MIT (http://mootools.net/license.txt)",
-  "The MIT License (MIT)",
-  "Public Domain",
+const DEV_MODE = false;
+
+function normalizeLicense(license) {
+  return license
+    .toLowerCase()
+    .trim()
+    .replace(/^the\s+/, "");
+}
+
+const LICENSE_WHITELIST = new Set(
+  [
+    "Apache 2",
+    "Apache 2.0",
+    "Apache License 2.0",
+    "Apache License",
+    "Apache License, Version 2.0",
+    "Apache Software License - Version 2.0",
+    "Apache Software License, Version 2.0",
+    "Apache v2",
+    "Apache*",
+    "Apache-2.0",
+    "Artistic-2.0",
+    "BSD 3-Clause License",
+    "BSD License",
+    "BSD licence",
+    "BSD",
+    "BSD*",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0 1.0 Universal",
+    "CC0-1.0",
+    "CDDL 1.1",
+    "CDDL License",
+    "COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0",
+    "Common Development and Distribution License (CDDL) v1.0",
+    "Eclipse Public License - v 1.0",
+    "Eclipse Public License 1.0",
+    "Eclipse Public License",
+    "GNU Lesser General Public License 3.0",
+    "GNU Lesser General Public License, Version 2.1",
+    "ISC",
+    "ISC/BSD License",
+    "Lesser GPL",
+    "MIT (http://mootools.net/license.txt)",
+    "MIT License",
+    "MIT Licensed. http://www.opensource.org/licenses/mit-license.php",
+    "MIT",
+    "MIT*",
+    "MPL 2.0",
+    "New BSD License", // same as 3-clause
+    "Public Domain",
+    "Revised BSD",
+    "The MIT License (MIT)",
+    "WTFPL",
+  ].map(normalizeLicense),
+);
+
+const PACKAGE_WHITELIST = new Set([
+  "spdx-license-ids@1.2.2", // CC0-1.0
 ]);
 
-const lines = execSync("yarn licenses list --json")
-  .toString("utf-8")
-  .split("\n");
-
-let unknownCount = 0;
-
-const { data } = JSON.parse(lines[lines.length - 2]);
-const licenseColumnIndex = data.head.indexOf("License");
-for (const row of data.body) {
-  const license = row[licenseColumnIndex].replace(/^\((.*)\)$/g, "$1"); // trim parens
-  let licenses;
-  if (/\bOR\b/.test(license) && !/\bAND\b/.test(license)) {
-    licenses = license.split(/\bOR\b/g).map(l => l.trim());
+function parseLicenses(license) {
+  license = license.replace(/^\((.*)\)$/g, "$1"); // trim parens
+  if (/\bor\b/i.test(license) && !/\band\b/i.test(license)) {
+    return license.split(/\bor\b/gi).map(normalizeLicense);
   } else {
-    licenses = [license.trim()];
-  }
-  if (!_.any(licenses, license => LICENSE_WHITELIST.has(license))) {
-    console.log(row.join("\t"));
-    unknownCount++;
+    return [normalizeLicense(license)];
   }
 }
 
-if (unknownCount > 0) {
-  process.exit(1);
-} else {
-  process.exit(0);
+function getJavaScriptPackageLicences() {
+  return (DEV_MODE
+    ? readFileSync("licenses.json", "utf-8")
+    : execSync("yarn licenses list --json", { encoding: "utf-8" })
+  )
+    .split("\n")
+    .slice(-2, -1) // 2nd to last row
+    .map(line => JSON.parse(line))[0]
+    .data.body.map(row => ({
+      name: row[0],
+      version: row[1],
+      license: row[2],
+      licenses: parseLicenses(row[2]),
+      type: "javascript",
+    }));
 }
+
+function getClojurePackageLicenses() {
+  return (
+    (DEV_MODE
+      ? readFileSync("licenses.csv", "utf-8")
+      : execSync("lein with-profiles +include-all-drivers,-dev licenses :csv", {
+          encoding: "utf-8",
+        })
+    )
+      // rudimentary csv parsing
+      .split("\n")
+      .filter(line => /^".*"$/.test(line))
+      .map(line => line.replace(/^"(.*)"$/g, "$1").split(/","/g))
+      .map(row => ({
+        name: row[0],
+        version: row[1],
+        license: row[2],
+        licenses: parseLicenses(row[2]),
+        type: "clojure",
+      }))
+  );
+}
+
+function checkLicences(packages) {
+  return packages.filter(
+    ({ name, version, licenses }) =>
+      // check if any of the licenses are allowed
+      !_.any(licenses, license => LICENSE_WHITELIST.has(license)) &&
+      // check package whitelist
+      !PACKAGE_WHITELIST.has(`${name}@${version}`),
+  );
+}
+
+const unknownJavaScriptLicenses = checkLicences(getJavaScriptPackageLicences());
+const unknownClojureLicenses = checkLicences(getClojurePackageLicenses());
+
+const unknownPackageLogs = [];
+const unknownLicenseCounts = new Map();
+
+for (const { name, version, license, type } of [
+  ...unknownJavaScriptLicenses,
+  ...unknownClojureLicenses,
+]) {
+  unknownPackageLogs.push(`[${license}] ${name}@${version} (${type})`);
+  unknownLicenseCounts.set(
+    license,
+    (unknownLicenseCounts.get(license) || 0) + 1,
+  );
+}
+
+console.log("Packages\n========\n");
+console.log(unknownPackageLogs.sort().join("\n"));
+
+console.log("\nLicenses\n========\n");
+console.log(
+  _.sortBy(Array.from(unknownLicenseCounts), 1)
+    .reverse()
+    .map(([license, count]) => `[${count}] ${license}`)
+    .join("\n"),
+);
+
+process.exit(unknownLicenseCounts.size === 0 ? 0 : 1);
