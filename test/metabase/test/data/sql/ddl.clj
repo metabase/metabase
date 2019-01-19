@@ -2,8 +2,7 @@
   (:require [metabase.driver :as driver]
             [metabase.test.data
              [interface :as tx]
-             [sql :as sql.tx]]
-            [metabase.util :as u]))
+             [sql :as sql.tx]]))
 
 (defmulti drop-db-ddl-statements
   "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if

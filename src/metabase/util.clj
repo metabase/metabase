@@ -12,7 +12,7 @@
             [colorize.core :as colorize]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.util.i18n :refer [tru trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]

@@ -1,12 +1,12 @@
 (ns metabase.driver.FixedHiveDriver
-  (:import clojure.lang.Reflector
-           java.util.Properties
-           org.apache.hive.jdbc.HiveDriver)
   (:gen-class
    :extends org.apache.hive.jdbc.HiveDriver
    :init init
    :prefix "driver-"
-   :constructors {[] []}))
+   :constructors {[] []})
+  (:import clojure.lang.Reflector
+           java.util.Properties
+           org.apache.hive.jdbc.HiveDriver))
 
 (defn driver-init
   "Initializes the Hive driver, fixed to work with Metabase"

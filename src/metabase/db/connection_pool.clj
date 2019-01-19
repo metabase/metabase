@@ -13,11 +13,6 @@
 
 ;;; ------------------------------------------------ Proxy DataSource ------------------------------------------------
 
-(defn- set-property! [^Properties properties, k v]
-  (if (some? k)
-    (.put properties (name k) v)
-    (.remove properties (name k))))
-
 (defn- proxy-data-source
   "Normal c3p0 DataSource classes do not properly work with our JDBC proxy drivers for whatever reason. Use our own
   instead, which works nicely."
@@ -30,16 +25,23 @@
        (.connect driver jdbc-url properties))
      (getConnection [_ username password]
        (doseq [[k v] {"user" username, "password" password}]
-         (set-property! properties k v))
+         (if (some? k)
+           (.setProperty properties k (name v))
+           (.remove properties k)))
        (.connect driver jdbc-url properties)))))
 
 
 ;;; ------------------------------------------- Creating Connection Pools --------------------------------------------
 
-(defn- map->properties ^Properties [m]
+(defn- map->properties
+  "Create a `Properties` object from a JDBC connection spec map. Properties objects are maps of String -> String, so all
+  keys and values are converted to Strings appropriately."
+  ^Properties [m]
   (u/prog1 (Properties.)
-           (doseq [[k v] m]
-             (.setProperty <> (name k) (str v)))))
+    (doseq [[k v] m]
+      (.setProperty <> (name k) (if (keyword? v)
+                                  (name v)
+                                  (str v))))))
 
 (defn- spec->properties ^Properties [spec]
   (map->properties (dissoc spec :classname :subprotocol :subname)))

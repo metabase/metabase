@@ -29,16 +29,16 @@
   "Execute the query for a single card with CARD-ID. OPTIONS are passed along to `dataset-query`."
   [card-id & {:as options}]
   {:pre [(integer? card-id)]}
-  (when-let [card (Card :id card-id, :archived false)]
-    (let [{:keys [creator_id dataset_query]} card]
-      (try
+  (try
+    (when-let [card (Card :id card-id, :archived false)]
+      (let [{:keys [creator_id dataset_query]} card]
         {:card   card
          :result (qp/process-query-and-save-with-max! dataset_query (merge {:executed-by creator_id,
                                                                             :context     :pulse,
                                                                             :card-id     card-id}
-                                                                           options))}
-        (catch Throwable t
-          (log/warn (format "Error running card query (%n)" card-id) t))))))
+                                                                           options))}))
+    (catch Throwable t
+      (log/warn t (trs "Error running query for Card {0}" card-id)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -230,7 +230,7 @@
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids
-            :let [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
+            :let       [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
         (create-notification pulse results channel)))))
 
 (defn send-pulse!

@@ -61,8 +61,7 @@
   this)
 
 (defmethod ->rvalue :aggregation [[_ index]]
-  (let [ag      (nth (:aggregation *query*) index)
-        ag-type (:aggregation-type ag)]
+  (let [[ag-type :as ag] (nth (:aggregation *query*) index)]
     (cond
 
       (= [:count] ag)

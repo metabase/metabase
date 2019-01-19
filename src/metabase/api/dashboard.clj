@@ -2,13 +2,13 @@
   "/api/dashboard endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [query-processor :as qp]
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection]
