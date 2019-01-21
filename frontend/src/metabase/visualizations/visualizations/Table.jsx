@@ -281,7 +281,7 @@ export default class Table extends Component {
 
       this.setState({
         data: {
-          cols: columnIndexes.map(i => cols[i]),
+          cols: columns.map(column => cols.find(col => col.name === column)),
           columns: columnIndexes.map(i => columns[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
         },
