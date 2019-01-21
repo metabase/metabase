@@ -36,7 +36,7 @@ const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
 const MIN_HEIGHT_LINES = 12;
-const MAX_AUTO_SIZE_LINES = 12;
+const MAX_AUTO_SIZE_LINES = 20;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
@@ -86,7 +86,7 @@ export default class NativeQueryEditor extends Component {
   constructor(props: Props) {
     super(props);
 
-    const lines = Math.min(
+    const lines = Math.max(
       MAX_AUTO_SIZE_LINES,
       (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
     );

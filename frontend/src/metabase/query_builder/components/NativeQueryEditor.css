@@ -1,7 +1,6 @@
 .NativeQueryEditor .ace_editor {
   height: 100%;
   background-color: var(--color-bg-light);
-  min-height: 200px;
 }
 
 .NativeQueryEditor .react-resizable {
