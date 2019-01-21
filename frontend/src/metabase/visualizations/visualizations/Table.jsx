@@ -271,17 +271,24 @@ export default class Table extends Component {
       });
     } else {
       const { cols, rows, columns } = data;
+      // Ensure that column definitions and columns in query result set are in the same order.
+      const orderedCols = columns.map(
+        column => cols.filter(col => col.name === column)[0],
+      );
+
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(columnSetting => columnSetting.enabled)
         .map(columnSetting =>
-          findColumnIndexForColumnSetting(cols, columnSetting),
+          findColumnIndexForColumnSetting(orderedCols, columnSetting),
         )
-        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
+        .filter(
+          columnIndex => columnIndex >= 0 && columnIndex < orderedCols.length,
+        );
 
       this.setState({
         data: {
-          cols: columns.map(column => cols.find(col => col.name === column)),
+          cols: columnIndexes.map(i => orderedCols[i]),
           columns: columnIndexes.map(i => columns[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
         },
