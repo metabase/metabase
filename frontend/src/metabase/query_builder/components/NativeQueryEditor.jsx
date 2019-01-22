@@ -87,7 +87,7 @@ export default class NativeQueryEditor extends Component {
     super(props);
 
     const lines = Math.max(
-      MAX_AUTO_SIZE_LINES,
+      MIN_HEIGHT_LINES,
       (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
     );
 
@@ -239,6 +239,7 @@ export default class NativeQueryEditor extends Component {
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     const newHeight = getEditorLineHeight(doc.getLength());
     if (
+      this.state.showEditor &&
       newHeight > element.offsetHeight &&
       newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES)
     ) {
