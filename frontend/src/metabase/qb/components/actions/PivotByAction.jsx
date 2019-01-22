@@ -59,7 +59,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <BreakoutPopover
           query={query}
-          fieldOptions={breakoutOptions}
+          breakoutOptions={breakoutOptions}
           onCommitBreakout={breakout => {
             const nextCard = question.pivot([breakout], dimensions).card();
 

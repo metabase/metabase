@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
@@ -11,14 +11,21 @@ import { format } from "metabase/lib/expressions/formatter";
 
 import FieldName from "./FieldName";
 
-const AggregationName = ({
-  aggregation,
-  query,
-  // DEPRECATED:
-  tableMetadata = query && query.tableMetadata(),
-  customFields = query && query.expressions(),
-}) =>
-  NamedClause.isNamed(aggregation) ? (
+import type { Aggregation } from "metabase/meta/types/Query";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+type Props = {
+  aggregation: Aggregation,
+  query: StructuredQuery,
+};
+
+const AggregationName = ({ aggregation, query }: Props) => {
+  const tableMetadata = query.tableMetadata();
+  const customFields = query.expressions();
+  if (!tableMetadata) {
+    return null;
+  }
+  return NamedClause.isNamed(aggregation) ? (
     <NamedAggregation aggregation={aggregation} />
   ) : AggregationClause.isCustom(aggregation) ? (
     <CustomAggregation
@@ -38,6 +45,7 @@ const AggregationName = ({
       customFields={customFields}
     />
   );
+};
 
 const NamedAggregation = ({ aggregation }) => (
   <span>{NamedClause.getName(aggregation)}</span>

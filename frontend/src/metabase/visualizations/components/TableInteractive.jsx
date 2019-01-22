@@ -99,6 +99,7 @@ export default class TableInteractive extends Component {
   columnHasResized: { [key: number]: boolean };
   columnNeedsResize: { [key: number]: boolean };
   _div: HTMLElement;
+  _totalContentWidth: ?number;
 
   header: GridComponent;
   grid: GridComponent;

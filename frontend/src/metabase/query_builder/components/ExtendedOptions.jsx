@@ -25,6 +25,7 @@ type Props = {
     options: { run: boolean },
   ) => void,
   features: GuiQueryEditorFeatures,
+  onClose?: () => void,
 };
 
 type State = {
@@ -42,6 +43,7 @@ export class ExtendedOptionsPopover extends Component {
     datasetQuery: PropTypes.object.isRequired,
     tableMetadata: PropTypes.object,
     setDatasetQuery: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
   };
 
   static defaultProps = {

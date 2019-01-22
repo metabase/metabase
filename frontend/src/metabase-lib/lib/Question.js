@@ -80,13 +80,18 @@ export default class Question {
   _parameterValues: ParameterValues;
 
   /**
+   * Bound update function, if any
+   */
+  _update: ?QuestionUpdateFn;
+
+  /**
    * Question constructor
    */
   constructor(
     metadata: Metadata,
     card: CardObject,
     parameterValues?: ParameterValues,
-    update?: QuestionUpdateFn,
+    update?: ?QuestionUpdateFn,
   ) {
     this._metadata = metadata;
     this._card = card;
@@ -158,8 +163,10 @@ export default class Question {
     // TODO: if update returns a new card, create a new Question based on that and return it
     if (update) {
       update(this, ...args);
-    } else {
+    } else if (this._update) {
       this._update(this, ...args);
+    } else {
+      throw new Error("Question update function not provided or bound");
     }
   }
 

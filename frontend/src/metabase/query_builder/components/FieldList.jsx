@@ -14,6 +14,7 @@ import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
 import type { ConcreteField } from "metabase/meta/types/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
+import type { RenderItemWrapper } from "metabase/components/AccordianList.jsx";
 
 // import type { Section } from "metabase/components/AccordianList";
 export type AccordianListItem = {};
@@ -26,6 +27,7 @@ export type AccordianListSection = {
 type Props = {
   className?: string,
   maxHeight?: number,
+  width?: number,
 
   field: ?ConcreteField,
   onFieldChange: (field: ConcreteField) => void,
@@ -40,6 +42,8 @@ type Props = {
   useOriginalDimension?: boolean,
 
   hideSectionHeader?: boolean,
+
+  renderItemWrapper?: RenderItemWrapper,
 };
 
 type State = {

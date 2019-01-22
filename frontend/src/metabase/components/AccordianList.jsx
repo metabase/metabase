@@ -8,6 +8,12 @@ import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
+export type RenderItemWrapper = (
+  item: any,
+  itemIndex: number,
+  children?: any,
+) => React$Element;
+
 export default class AccordianList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -54,6 +60,7 @@ export default class AccordianList extends Component {
     itemIsClickable: PropTypes.func,
     renderItem: PropTypes.func,
     renderSectionIcon: PropTypes.func,
+    renderItemWrapper: PropTypes.func,
     getItemClasses: PropTypes.func,
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,

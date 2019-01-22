@@ -10,7 +10,6 @@ import type {
   ClickActionProps,
   ClickActionPopoverProps,
 } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 const omittedAggregations = ["rows", "cum-sum", "cum-count", "stddev"];
 const getAggregationOptionsForSummarize = query => {
