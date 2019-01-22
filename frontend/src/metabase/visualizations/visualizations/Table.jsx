@@ -275,7 +275,6 @@ export default class Table extends Component {
       const orderedCols = columns.map(
         column => cols.filter(col => col.name === column)[0],
       );
-
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(columnSetting => columnSetting.enabled)
