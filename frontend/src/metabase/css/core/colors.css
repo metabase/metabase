@@ -29,11 +29,11 @@
   --color-border: #d7dbde;
 
   /* saturated colors for sql editor */
-  --color-saturated-brand: #2D86D4;
-  --color-saturated-green: #70A63A;
-  --color-saturated-purple: #885AB1;
-  --color-saturated-red: #ED6E6E;
-  --color-saturated-yellow: #F9CF48;
+  --color-saturated-brand: #2d86d4;
+  --color-saturated-green: #70a63a;
+  --color-saturated-purple: #885ab1;
+  --color-saturated-red: #ed6e6e;
+  --color-saturated-yellow: #f9cf48;
 
   /* night mode colors */
   --night-mode-color: color(var(--color-text-white) alpha(-14%));
