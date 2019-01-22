@@ -14,7 +14,8 @@
             [metabase.models
              [pulse :as pulse]
              [pulse-channel :as pulse-channel]
-             [setting :as setting]]))
+             [setting :as setting]]
+            [metabase.util.i18n :refer [trs]]))
 
 (declare send-pulses!)
 
@@ -43,20 +44,23 @@
 ;; triggers the sending of all pulses which are scheduled to run in the current hour
 (jobs/defjob SendPulses
   [ctx]
-  ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
-  (let [reporting-timezone (setting/get :report-timezone)
-        now                (if (empty? reporting-timezone)
-                             (time/now)
-                             (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
-        curr-hour          (time/hour now)
-                           ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
-                           ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
-        curr-weekday       (->> (dec (time/day-of-week now))
-                                (get pulse-channel/days-of-week)
-                                :id)
-        curr-monthday      (monthday now)
-        curr-monthweek     (monthweek now)]
-    (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek)))
+  (try
+    ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
+    (let [reporting-timezone (setting/get :report-timezone)
+          now                (if (empty? reporting-timezone)
+                               (time/now)
+                               (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
+          curr-hour          (time/hour now)
+          ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
+          ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
+          curr-weekday       (->> (dec (time/day-of-week now))
+                                  (get pulse-channel/days-of-week)
+                                  :id)
+          curr-monthday      (monthday now)
+          curr-monthweek     (monthweek now)]
+      (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek))
+    (catch Throwable e
+      (log/error e (trs "SendPulses task failed")))))
 
 (defn task-init
   "Automatically called during startup; start the job for sending pulses."
@@ -79,7 +83,7 @@
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- log-pulse-exception [pulse-id exception]
-  (log/error "Error sending pulse:" pulse-id exception))
+  (log/error exception (trs "Error sending Pulse {0}" pulse-id)))
 
 (defn- send-pulses!
   "Send any `Pulses` which are scheduled to run in the current day/hour. We use the current time and determine the
@@ -95,6 +99,7 @@
           (pulse-channel/day-of-week? weekday)
           (contains? #{:first :last :mid :other} monthday)
           (contains? #{:first :last :other} monthweek)]}
+   (log/info (trs "Sending scheduled pulses..."))
    (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
      (doseq [pulse-id (keys channels-by-pulse)]
        (try

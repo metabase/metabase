@@ -153,8 +153,8 @@ const Dashboards = createEntity({
         name: "collection_id",
         title: t`Which collection should this go in?`,
         type: "collection",
-        validate: colelctionId =>
-          colelctionId === undefined ? "Collection is required" : null,
+        validate: collectionId =>
+          collectionId === undefined ? "Collection is required" : null,
       },
     ],
   },

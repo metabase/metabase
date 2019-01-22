@@ -331,8 +331,9 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
   (api/check-superuser)
-  (when-let [field-ids (db/select-ids Field :table_id 212)]
-    (db/simple-delete! FieldValues :id [:in field-ids]))
+  (api/check-404 (Table id))
+  (when-let [field-ids (db/select-ids Field :table_id id)]
+    (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"

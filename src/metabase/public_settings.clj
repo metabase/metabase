@@ -108,7 +108,10 @@
   :type    :integer
   :default 1000
   :setter  (fn [new-value]
-             (when (> new-value global-max-caching-kb)
+             (when (and new-value
+                        (> (cond-> new-value
+                             (string? new-value) Integer/parseInt)
+                           global-max-caching-kb))
                (throw (IllegalArgumentException.
                        (str
                         (tru "Failed setting `query-caching-max-kb` to {0}." new-value)

@@ -26,7 +26,7 @@
 
   `metabase` is an instance of `DatabaseMetaData`."
   {:arglists '([driver metadata])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (declare fast-active-tables)
@@ -38,7 +38,7 @@
 (defmulti excluded-schemas
   "Return set of string names of schemas to skip syncing tables from."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod excluded-schemas :sql-jdbc [_] nil)
@@ -48,7 +48,7 @@
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex patterns."
   {:arglists '([driver database-type])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 
@@ -58,7 +58,7 @@
 
   `database-type` and `column-name` will be strings."
   {:arglists '([driver database-type column-name])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod column->special-type :sql-jdbc [_ _ _] nil)

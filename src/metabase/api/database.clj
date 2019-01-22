@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.util.i18n :refer [tru]]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -11,10 +10,10 @@
              [public-settings :as public-settings]
              [sample-data :as sample-data]
              [util :as u]]
-            [metabase.driver.util :as driver.u]
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
@@ -30,6 +29,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -313,7 +313,7 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver.u/can-connect-with-details? engine details :rethrow-exceptions)
+          (driver.u/can-connect-with-details? engine details :throw-exceptions)
           nil
 
           (and host port (u/host-port-up? host port))

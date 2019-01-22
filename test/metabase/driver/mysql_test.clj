@@ -8,7 +8,6 @@
              [sync :as sync]
              [util :as u]]
             [metabase.driver.mysql :as mysql]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.test
@@ -17,6 +16,7 @@
             [metabase.test.data
              [datasets :refer [expect-with-driver]]
              [interface :refer [def-database-definition]]]
+            [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -30,22 +30,9 @@
 
 (expect-with-driver :mysql
   [[1 nil]]
-  ;; TODO - use the `rows` function from `metabse.query-processor-test`. Preferrably after it's moved to some sort of
-  ;; shared test util namespace
   (-> (data/dataset metabase.driver.mysql-test/all-zero-dates
         (data/run-mbql-query exciting-moments-in-history))
-      :data :rows))
-
-
-;; make sure connection details w/ extra params work as expected
-(expect
-  (str "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8"
-       "&characterSetResults=UTF8&useLegacyDatetimeCode=true&useJDBCCompliantTimezoneShift=true"
-       "&useSSL=false&tinyInt1isBit=false")
-  (:subname (sql-jdbc.conn/connection-details->spec :mysql {:host               "localhost"
-                                                            :port               "3306"
-                                                            :dbname             "cool"
-                                                            :additional-options "tinyInt1isBit=false"})))
+      qpt/rows))
 
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
@@ -140,7 +127,7 @@
 ;; This test ensures if our JVM timezone and reporting timezone are Asia/Hong_Kong, we get a correctly formatted date
 (expect-with-driver :mysql
   ["2018-04-18T00:00:00.000+08:00"]
-  (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+  (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))
@@ -163,7 +150,7 @@
 ;; off by a day
 (expect-with-driver :mysql
   ["2018-04-18T00:00:00.000-07:00"]
-  (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+  (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))

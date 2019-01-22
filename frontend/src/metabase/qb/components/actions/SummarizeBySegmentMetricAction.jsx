@@ -12,7 +12,7 @@ import type {
 } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
-const omittedAggregations = ["rows", "cum_sum", "cum_count", "stddev"];
+const omittedAggregations = ["rows", "cum-sum", "cum-count", "stddev"];
 const getAggregationOptionsForSummarize = query => {
   return query
     .table()

@@ -16,9 +16,10 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.util.i18n :refer [tru]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]))
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------

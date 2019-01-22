@@ -202,10 +202,11 @@
                 (cond-> tag-def
                   (:widget-type tag-def) (update :widget-type mbql.u/normalize-token)))])))
 
-(defn- normalize-query-parameter [param]
-  (-> param
-      (update :type mbql.u/normalize-token)
-      (update :target #(normalize-tokens % :ignore-path))))
+(defn- normalize-query-parameter [{:keys [type target], :as param}]
+  (cond-> param
+    ;; some things that get ran thru here, like dashcard param targets, do not have :type
+    type   (update :type mbql.u/normalize-token)
+    target (update :target #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [{native? :native, :as source-query}]
   (normalize-tokens source-query [(if native? :native :query)]))
@@ -214,7 +215,7 @@
   (-> metadata
       (update :base_type    keyword)
       (update :special_type keyword)
-      (update :fingerprint  walk/keywordize-keys )))
+      (update :fingerprint  walk/keywordize-keys)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the

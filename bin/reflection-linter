@@ -5,7 +5,7 @@ printf "\e[1;34mChecking for reflection warnings. This may take a few minutes, s
 warnings=`lein with-profile +ci check-reflection-warnings 2>&1 | grep Reflection | grep metabase | sort | uniq`
 
 if [ ! -z "$warnings" ]; then
-    printf "\e[1;31mYour code has cased introduced some reflection warnings.\e[0m 😞\n"
+    printf "\e[1;31mYour code has introduced some reflection warnings.\e[0m 😞\n"
     echo "$warnings";
     exit -1;
 fi

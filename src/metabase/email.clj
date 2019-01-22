@@ -3,7 +3,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]]
             [postal
              [core :as postal]

@@ -18,30 +18,32 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
-           [org.quartz CronTrigger DisallowConcurrentExecution JobDetail JobKey TriggerKey]))
+           [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   JOB LOGIC                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private job-context->database :- DatabaseInstance
-  "Get the Database referred to in `job-context`. Guaranteed to return a valid Database."
+(s/defn ^:private job-context->database :- (s/maybe DatabaseInstance)
+  "Get the Database referred to in `job-context`. Returns `nil` if Database no longer exists. (Normally, a Database's
+  sync jobs *should* get deleted when the Database itself is deleted, but better to be safe here just in case.)"
   [job-context]
   (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
 
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
-  (let [database (job-context->database job-context)]
+  (when-let [database (job-context->database job-context)]
     (sync-metadata/sync-db-metadata! database)
     ;; only run analysis if this is a "full sync" database
     (when (:is_full_sync database)
       (analyze/analyze-db! database))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
-  (let [database (job-context->database job-context)]
+  (when-let [database (job-context->database job-context)]
     (when (:is_full_sync database)
-      (field-values/update-field-values! (job-context->database job-context)))))
+      (field-values/update-field-values! database))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |

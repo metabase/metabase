@@ -93,9 +93,8 @@
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]
-  (for [{:keys [target], :as mapping} parameter-mappings]
-    (cond-> mapping
-      target (update :target normalize/normalize-tokens :ignore-path))))
+  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
+      []))
 
 (models/add-type! :parameter-mappings
   :in  (comp json-in normalize-parameter-mapping-targets)

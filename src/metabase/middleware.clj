@@ -1,6 +1,6 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+  (:require [cheshire.generate :refer [add-encoder encode-str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -313,9 +313,6 @@
 ;; stringify JDBC clobs
 (add-encoder org.h2.jdbc.JdbcClob               encode-jdbc-clob) ; H2
 (add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
-
-;; Encode BSON undefined like `nil`
-(add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
 (add-encoder (Class/forName "[B") (fn [byte-ar, ^JsonGenerator json-generator]

@@ -16,6 +16,7 @@
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
@@ -60,8 +61,10 @@
   (isa? driver/hierarchy driver ::test-extensions))
 
 (defn add-test-extensions! [driver]
-  (driver/add-parent! driver ::test-extensions)
-  (println "Added test extensions for" driver "💯"))
+  ;; no-op during AOT compilation
+  (when-not *compile-files*
+    (driver/add-parent! driver ::test-extensions)
+    (println "Added test extensions for" driver "💯")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -93,12 +96,22 @@
       (println "doing after-run for" driver))
     (after-run driver)))
 
+
+(defonce ^:private require-lock (Object.))
+
 (defn- require-driver-test-extensions-ns [driver & require-options]
-  (let [expected-ns (symbol (or (namespace driver)
-                                (str "metabase.test.data." (name driver))))]
-    (println (format "Loading driver %s test extensions %s"
-                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-    (apply require expected-ns require-options)))
+  ;; similar to `metabase.driver/require-driver-ns` make sure our context classloader is correct, and that Clojure
+  ;; will use it...
+  (classloader/the-classloader)
+  (binding [*use-context-classloader* true]
+    (let [expected-ns (symbol (or (namespace driver)
+                                  (str "metabase.test.data." (name driver))))]
+      ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
+      ;; in tests) doesn't make Clojure explode
+      (locking require-lock
+        (println (format "Loading driver %s test extensions %s"
+                         (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+        (apply require expected-ns require-options)))))
 
 (defn- load-test-extensions-namespace-if-needed [driver]
   (when-not (has-test-extensions? driver)
@@ -125,14 +138,14 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (let [driver (driver/the-driver driver)]
+  (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
     driver))
 
 (defn dispatch-on-driver-with-test-extensions
-  "Like `metabase.driver/dispatch-on-driver`, but loads test extensions if needed."
+  "Like `metabase.driver/dispatch-on-initialized-driver`, but loads test extensions if needed."
   [driver & _]
-  (driver/dispatch-on-driver (the-driver-with-test-extensions driver)))
+  (driver/dispatch-on-initialized-driver (the-driver-with-test-extensions driver)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -367,7 +380,12 @@
 (def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
 (defn slurp-edn-table-def [dbname]
-  (edn/read-string (slurp (str edn-definitions-dir dbname ".edn"))))
+  ;; disabled for now when AOT compiling tests because this reads the entire file in which results in Method code too
+  ;; large errors
+  ;;
+  ;; The fix would be to delay reading the code until runtime
+  (when-not *compile-files*
+    (edn/read-string (slurp (str edn-definitions-dir dbname ".edn")))))
 
 (defn update-table-def
   "Function useful for modifying a table definition before it's applied. Will invoke `UPDATE-TABLE-DEF-FN` on the vector
