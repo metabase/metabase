@@ -55,6 +55,10 @@
   font-weight: normal;
 }
 
+.Button--round {
+  border-radius: 99px;
+}
+
 .Button--primary {
   color: var(--color-text-white);
   background: var(--color-brand);

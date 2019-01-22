@@ -55,6 +55,8 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 
+type QuestionUpdateFn = (q: Question) => ?Promise<void>;
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
@@ -84,10 +86,21 @@ export default class Question {
     metadata: Metadata,
     card: CardObject,
     parameterValues?: ParameterValues,
+    update?: QuestionUpdateFn,
   ) {
     this._metadata = metadata;
     this._card = card;
     this._parameterValues = parameterValues || {};
+    this._update = update;
+  }
+
+  clone() {
+    return new Question(
+      this._metadata,
+      this._card,
+      this._parameterValues,
+      this._update,
+    );
   }
 
   /**
@@ -132,7 +145,28 @@ export default class Question {
     return this._card;
   }
   setCard(card: CardObject): Question {
-    return new Question(this._metadata, card, this._parameterValues);
+    const q = this.clone();
+    q._card = card;
+    return q;
+  }
+
+  /**
+   * calls the passed in update function (useful for chaining) or bound update function with the question
+   * NOTE: this passes Question instead of card, unlike how Query passes dataset_query
+   */
+  update(update?: QuestionUpdateFn, ...args: any[]) {
+    // TODO: if update returns a new card, create a new Question based on that and return it
+    if (update) {
+      update(this, ...args);
+    } else {
+      this._update(this, ...args);
+    }
+  }
+
+  bindUpdate(update: QuestionUpdateFn) {
+    const q = this.clone();
+    q._update = update;
+    return q;
   }
 
   withoutNameAndId() {
@@ -207,11 +241,23 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  visualizationSettings(): VisualizationSettings {
+  // DEPRECATED: use settings
+  visualizationSettings(...args) {
+    return this.settings(...args);
+  }
+  // DEPRECATED: use setSettings
+  setVisualizationSettings(...args) {
+    return this.setSettings(...args);
+  }
+
+  settings(): VisualizationSettings {
     return this._card && this._card.visualization_settings;
   }
-  setVisualizationSettings(settings: VisualizationSettings) {
+  setSettings(settings: VisualizationSettings) {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
+  }
+  updateSettings(settings: VisualizationSettings) {
+    return this.setVisualizationSettings({ ...this.settings(), ...settings });
   }
 
   isEmpty(): boolean {

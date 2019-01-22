@@ -7,6 +7,8 @@ import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import { memoize } from "metabase-lib/lib/utils";
 
+type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
+
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
@@ -96,9 +98,13 @@ export default class Query {
   }
 
   /**
-   * Helper for updating with functions that expect a DatasetQuery object
+   * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
    */
-  update(fn: (datasetQuery: DatasetQuery) => void) {
-    return fn(this.datasetQuery());
+  update(update?: QueryUpdateFn, ...args: any[]) {
+    if (update) {
+      return update(this.datasetQuery(), ...args);
+    } else {
+      return this.question().update(undefined, ...args);
+    }
   }
 }

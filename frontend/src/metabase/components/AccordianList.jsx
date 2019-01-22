@@ -214,6 +214,14 @@ export default class AccordianList extends Component {
     }
   }
 
+  renderItemWrapper(item, itemIndex, children) {
+    if (this.props.renderItemWrapper) {
+      return this.props.renderItemWrapper(item, itemIndex, children);
+    } else {
+      return children;
+    }
+  }
+
   getItemClasses(item, itemIndex) {
     return (
       this.props.getItemClasses && this.props.getItemClasses(item, itemIndex)
@@ -425,41 +433,45 @@ export default class AccordianList extends Component {
                       />
                     </div>
                   ) : type === "item" ? (
-                    <div
-                      className={cx(
-                        "List-item flex mx1",
-                        {
-                          "List-item--selected": this.itemIsSelected(item),
-                          "List-item--disabled": !this.itemIsClickable(item),
-                          mb1: isLastItem,
-                        },
-                        this.getItemClasses(item, itemIndex),
-                      )}
-                    >
-                      <a
+                    this.renderItemWrapper(
+                      item,
+                      itemIndex,
+                      <div
                         className={cx(
-                          "p1 flex-full flex align-center",
-                          this.itemIsClickable(item)
-                            ? "cursor-pointer"
-                            : "cursor-default",
+                          "List-item flex mx1",
+                          {
+                            "List-item--selected": this.itemIsSelected(item),
+                            "List-item--disabled": !this.itemIsClickable(item),
+                            mb1: isLastItem,
+                          },
+                          this.getItemClasses(item, itemIndex),
                         )}
-                        onClick={
-                          this.itemIsClickable(item) &&
-                          this.onChange.bind(this, item)
-                        }
                       >
-                        <span className="flex align-center">
-                          {this.renderItemIcon(item, itemIndex)}
-                        </span>
-                        <h4 className="List-item-title ml1">{item.name}</h4>
-                      </a>
-                      {this.renderItemExtra(item, itemIndex)}
-                      {showItemArrows && (
-                        <div className="List-item-arrow flex align-center px1">
-                          <Icon name="chevronright" size={8} />
-                        </div>
-                      )}
-                    </div>
+                        <a
+                          className={cx(
+                            "p1 flex-full flex align-center",
+                            this.itemIsClickable(item)
+                              ? "cursor-pointer"
+                              : "cursor-default",
+                          )}
+                          onClick={
+                            this.itemIsClickable(item) &&
+                            this.onChange.bind(this, item)
+                          }
+                        >
+                          <span className="flex align-center">
+                            {this.renderItemIcon(item, itemIndex)}
+                          </span>
+                          <h4 className="List-item-title ml1">{item.name}</h4>
+                        </a>
+                        {this.renderItemExtra(item, itemIndex)}
+                        {showItemArrows && (
+                          <div className="List-item-arrow flex align-center px1">
+                            <Icon name="chevronright" size={8} />
+                          </div>
+                        )}
+                      </div>,
+                    )
                   ) : null}
                 </div>
               )}

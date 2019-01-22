@@ -248,12 +248,14 @@ export default class FieldList extends Component {
       <AccordianList
         className={this.props.className}
         maxHeight={this.props.maxHeight}
+        width={this.props.width}
         sections={this.state.sections}
         onChange={this.onChange}
         itemIsSelected={this.itemIsSelected}
         renderSectionIcon={this.renderSectionIcon}
         renderItemExtra={this.renderItemExtra}
         renderItemIcon={this.renderItemIcon}
+        renderItemWrapper={this.props.renderItemWrapper}
         getItemClasses={this.getItemClasses}
         alwaysExpanded={this.props.alwaysExpanded}
       />
@@ -264,13 +266,14 @@ export default class FieldList extends Component {
 import cx from "classnames";
 
 export const DimensionPicker = ({
+  style,
   className,
   dimension,
   dimensions,
   onChangeDimension,
 }) => {
   return (
-    <ul className="px2 py1">
+    <ul className={cx(className, "px2 py1")} style={style}>
       {dimensions.map((d, index) => (
         <li
           key={index}
