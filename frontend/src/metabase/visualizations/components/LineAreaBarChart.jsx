@@ -27,7 +27,7 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
-const MAX_SERIES = 20;
+const MAX_SERIES = 100;
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
