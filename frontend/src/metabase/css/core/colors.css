@@ -28,8 +28,8 @@
   --color-shadow: rgba(0, 0, 0, 0.08);
   --color-border: #d7dbde;
 
-  /* saturated colors for sql editor */
-  --color-saturated-brand: #2d86d4;
+  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
+  --color-saturated-blue: #2d86d4;
   --color-saturated-green: #70a63a;
   --color-saturated-purple: #885ab1;
   --color-saturated-red: #ed6e6e;

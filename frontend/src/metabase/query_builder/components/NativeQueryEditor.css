@@ -8,7 +8,7 @@
 }
 .NativeQueryEditor .ace_editor .ace_function,
 .NativeQueryEditor .ace_editor .ace_variable {
-  color: var(--color-saturated-brand);
+  color: var(--color-saturated-blue);
 }
 .NativeQueryEditor .ace_editor .ace_constant,
 .NativeQueryEditor .ace_editor .ace_type {
