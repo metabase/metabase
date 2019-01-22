@@ -5,7 +5,7 @@ import React from "react";
 import FieldList from "metabase/query_builder/components/FieldList.jsx";
 
 import type { Breakout } from "metabase/meta/types/Query";
-import type { TableMetadata, FieldOptions } from "metabase/meta/types/Metadata";
+import type { FieldOptions } from "metabase/meta/types/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {

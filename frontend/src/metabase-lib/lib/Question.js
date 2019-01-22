@@ -82,7 +82,7 @@ export default class Question {
   /**
    * Bound update function, if any
    */
-  _update: ?QuestionUpdateFn
+  _update: ?QuestionUpdateFn;
 
   /**
    * Question constructor

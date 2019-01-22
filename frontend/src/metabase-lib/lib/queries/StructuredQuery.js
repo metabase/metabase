@@ -582,7 +582,7 @@ export default class StructuredQuery extends AtomicQuery {
         );
         sortOptions.count++;
       }
-      for (const [index, aggregation] of this.aggregations().entries()) {
+      for (const [index] of this.aggregations().entries()) {
         if (Q_deprecated.canSortByAggregateField(this.query(), index)) {
           sortOptions.dimensions.push(
             new AggregationDimension(null, [index], this._metadata, this),
