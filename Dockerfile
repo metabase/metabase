@@ -71,6 +71,10 @@ RUN mkdir -p bin target/uberjar
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
 
+# create the plugins directory, with writable permissions
+RUN mkdir -p /plugins
+RUN chmod a+rwx /plugins
+
 # expose our default runtime port
 EXPOSE 3000
 
