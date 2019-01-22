@@ -36,7 +36,7 @@
     (try
       (f)
       (catch Throwable e
-        (log/error (trs "Error in Metabot command") e)
+        (log/error e (trs "Error in Metabot command"))
         (post-chat-message! (format-exception e))))
     nil))
 

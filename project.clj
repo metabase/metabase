@@ -24,6 +24,7 @@
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
+   "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -217,6 +218,9 @@
    :include-all-drivers
    [:with-include-drivers-middleware
     {:include-drivers :all}]
+
+   :repl
+   [:include-all-drivers]
 
    :bikeshed
    [:include-all-drivers]
