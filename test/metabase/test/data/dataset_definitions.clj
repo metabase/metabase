@@ -12,9 +12,10 @@
 ;; Times when the Toucan cried
 (di/def-database-definition-edn sad-toucan-incidents)
 
-;; Places, times, and circumstances where Tupac was sighted
+;; Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds
 (di/def-database-definition-edn tupac-sightings)
 
+;; Dataset with nested columns, for testing a MongoDB-style database
 (di/def-database-definition-edn geographical-tips)
 
 ;; A very tiny dataset with a list of places and a booleans
@@ -30,6 +31,9 @@
 ;; As an added "bonus" this dataset has a table with a name in a slash in it, so the driver will need to support that
 ;; correctly in order for this to work!
 (di/def-database-definition-edn daily-bird-counts)
+
+;; A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.
+(di/def-database-definition-edn office-checkins)
 
 (defn- calendar-with-fields ^Calendar [date & fields]
   (let [cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
