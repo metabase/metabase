@@ -38,7 +38,7 @@ const MainPane = ({ databases, show }) => (
                       className="text-brand text-brand-darken-hover no-decoration"
                       onClick={() => show("table", table)}
                     >
-                      {table.display_name}
+                      {table.name}
                     </a>
                   </li>
                 ))}

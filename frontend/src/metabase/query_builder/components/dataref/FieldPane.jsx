@@ -126,8 +126,8 @@ export default class FieldPane extends Component {
 
     const query = question.query();
 
-    let fieldName = field.display_name;
-    let tableName = query.table() ? query.table().display_name : "";
+    let fieldName = field.name;
+    let tableName = query.table() ? query.table().name : "";
 
     let useForCurrentQuestion = [],
       usefulQuestions = [];
@@ -162,7 +162,7 @@ export default class FieldPane extends Component {
       usefulQuestions.push(
         <QueryButton
           icon="number"
-          text={t`Sum of all values of ${fieldName}`}
+          text={t`Sum of all values`}
           onClick={this.setQuerySum}
         />,
       );
@@ -170,7 +170,7 @@ export default class FieldPane extends Component {
     usefulQuestions.push(
       <QueryButton
         icon="table"
-        text={t`All distinct values of ${fieldName}`}
+        text={t`See all distinct values`}
         onClick={this.setQueryDistinct}
       />,
     );

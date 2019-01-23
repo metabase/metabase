@@ -139,7 +139,7 @@ export default class TablePane extends Component {
                 key={item.id}
                 onClick={() => this.props.show(itemType, item)}
               >
-                {item.display_name || item.name}
+                {item.name}
               </ListItem>
             ))}
           </ul>
