@@ -13,7 +13,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]]))
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]]))
 
 (driver/register! :vertica, :parent :sql-jdbc)
 
@@ -97,7 +98,7 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
+         (log/error e (trs "Failed to fetch materialized views for this database")))))
 
 (defmethod driver/describe-database :vertica [driver database]
   (-> ((get-method driver/describe-database :sql-jdbc) driver database)

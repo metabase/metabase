@@ -84,7 +84,7 @@
     (try
       (#'driver/load-driver-namespace-if-needed driver)
       (catch Throwable e
-        (log/error "Error loading namespace:" (.getMessage e))))))
+        (log/error e (trs "Error loading namespace"))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
