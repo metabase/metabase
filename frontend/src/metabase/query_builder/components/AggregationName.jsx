@@ -17,55 +17,75 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 type Props = {
   aggregation: Aggregation,
   query: StructuredQuery,
+  className?: string,
 };
 
-const AggregationName = ({ aggregation, query }: Props) => {
+const AggregationName = ({ aggregation, query, className }: Props) => {
   const tableMetadata = query.tableMetadata();
   const customFields = query.expressions();
   if (!tableMetadata) {
     return null;
   }
   return NamedClause.isNamed(aggregation) ? (
-    <NamedAggregation aggregation={aggregation} />
+    <NamedAggregation aggregation={aggregation} className={className} />
   ) : AggregationClause.isCustom(aggregation) ? (
     <CustomAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
       customFields={customFields}
+      className={className}
     />
   ) : AggregationClause.isMetric(aggregation) ? (
     <MetricAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
+      className={className}
     />
   ) : (
     <StandardAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
       customFields={customFields}
+      className={className}
     />
   );
 };
 
-const NamedAggregation = ({ aggregation }) => (
-  <span>{NamedClause.getName(aggregation)}</span>
+const NamedAggregation = ({ aggregation, className }) => (
+  <span className={className}>{NamedClause.getName(aggregation)}</span>
 );
 
-const CustomAggregation = ({ aggregation, tableMetadata, customFields }) => (
-  <span>{format(aggregation, { tableMetadata, customFields })}</span>
+const CustomAggregation = ({
+  aggregation,
+  tableMetadata,
+  customFields,
+  className,
+}) => (
+  <span className={className}>
+    {format(aggregation, { tableMetadata, customFields })}
+  </span>
 );
 
-const MetricAggregation = ({ aggregation, tableMetadata }) => {
+const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
   const metricId = AggregationClause.getMetric(aggregation);
   const selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
   if (selectedMetric) {
-    return <span>{selectedMetric.name.replace(" of ...", "")}</span>;
+    return (
+      <span className={className}>
+        {selectedMetric.name.replace(" of ...", "")}
+      </span>
+    );
   } else {
-    return <span>{t`Invalid`}</span>;
+    return <span className={className}>{t`Invalid`}</span>;
   }
 };
 
-const StandardAggregation = ({ aggregation, tableMetadata, customFields }) => {
+const StandardAggregation = ({
+  aggregation,
+  tableMetadata,
+  customFields,
+  className,
+}) => {
   const fieldId = AggregationClause.getField(aggregation);
 
   let selectedAggregation = getAggregator(
@@ -79,7 +99,7 @@ const StandardAggregation = ({ aggregation, tableMetadata, customFields }) => {
     })
   ) {
     return (
-      <span>
+      <span className={className}>
         {selectedAggregation.name.replace(" of ...", "")}
         {fieldId && <span className="text-bold"> {t`of`} </span>}
         {fieldId && (

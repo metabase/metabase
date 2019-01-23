@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import BreakoutName from "./BreakoutName.jsx";
-import BreakoutPopover from "./BreakoutPopover.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import Popover from "metabase/components/Popover";
 
-import _ from "underscore";
-import cx from "classnames";
+import Clearable from "./Clearable";
+import BreakoutName from "./BreakoutName";
+import BreakoutPopover from "./BreakoutPopover";
+
+// NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
 export default class BreakoutWidget extends Component {
   constructor(props, context) {
@@ -44,56 +45,43 @@ export default class BreakoutWidget extends Component {
     this.setState({ isOpen: false });
   };
 
-  renderPopover() {
+  render() {
     const {
       breakout,
       query,
-      breakoutOptions,
       enableSubDimensions,
+      className,
+      children,
     } = this.props;
-    if (this.state.isOpen) {
-      return (
-        <Popover
-          id="BreakoutPopover"
-          ref="popover"
-          className="FieldPopover"
-          onClose={this.handleClose}
-        >
-          <BreakoutPopover
-            query={query}
-            breakout={breakout}
-            breakoutOptions={breakoutOptions}
-            onChangeBreakout={this.handleChangeBreakout}
-            enableSubDimensions={enableSubDimensions}
-          />
-        </Popover>
-      );
-    }
-  }
-
-  render() {
-    const { breakout, query, children } = this.props;
 
     const breakoutOptions =
       this.props.breakoutOptions || query.breakoutOptions();
 
-    if (breakout) {
+    const popover = this.state.isOpen && (
+      <Popover id="BreakoutPopover" onClose={this.handleClose}>
+        <BreakoutPopover
+          query={query}
+          breakout={breakout}
+          breakoutOptions={breakoutOptions}
+          onChangeBreakout={this.handleChangeBreakout}
+          enableSubDimensions={enableSubDimensions}
+        />
+      </Popover>
+    );
+
+    const trigger = breakout ? (
+      <Clearable onClear={() => this.handleChangeBreakout(null)}>
+        <BreakoutName query={query} breakout={breakout} className={className} />
+      </Clearable>
+    ) : breakoutOptions && breakoutOptions.count > 0 ? (
+      children
+    ) : null;
+
+    if (trigger) {
       return (
         <div onClick={this.handleOpen}>
-          <BreakoutName
-            className={cx(this.props.className, "QueryOption")}
-            breakout={breakout}
-            query={query}
-            onRemove={() => this.handleChangeBreakout(null)}
-          />
-          {this.renderPopover()}
-        </div>
-      );
-    } else if (children && breakoutOptions && breakoutOptions.count > 0) {
-      return (
-        <div onClick={this.handleOpen}>
-          {children}
-          {this.renderPopover()}
+          {trigger}
+          {popover}
         </div>
       );
     } else {

@@ -46,7 +46,7 @@ export default class AggregationPopover extends Component {
 
   static propTypes = {
     aggregation: PropTypes.array,
-    onCommitAggregation: PropTypes.func.isRequired,
+    onChangeAggregation: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
 
     query: PropTypes.object,
@@ -76,7 +76,7 @@ export default class AggregationPopover extends Component {
   }
 
   commitAggregation(aggregation) {
-    this.props.onCommitAggregation(aggregation);
+    this.props.onChangeAggregation(aggregation);
     this.props.onClose();
   }
 

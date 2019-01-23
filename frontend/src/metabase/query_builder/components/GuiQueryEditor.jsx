@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "c-3po";
-import AggregationWidget_LEGACY from "./AggregationWidget.jsx";
+import AggregationWidget from "./AggregationWidget.jsx";
 import BreakoutWidget from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterWidgetList from "./filters/FilterWidgetList.jsx";
@@ -214,20 +214,27 @@ export default class GuiQueryEditor extends Component {
 
       // Placeholder aggregation for showing the add button
       if (supportMultipleAggregations && !query.isBareRows()) {
-        aggregations.push([]);
+        aggregations.push(null);
       }
 
       let aggregationList = [];
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
+            className="View-section-aggregation QueryOption p1"
             key={"agg" + index}
-            index={index}
             aggregation={aggregation}
             query={query}
-            updateQuery={setDatasetQuery}
-            addButton={this.renderAdd(null)}
-          />,
+            onChangeAggregation={aggregation =>
+              aggregation
+                ? query
+                    .updateAggregation(index, aggregation)
+                    .update(setDatasetQuery)
+                : query.removeAggregation(index).update(setDatasetQuery)
+            }
+          >
+            {this.renderAdd(null)}
+          </AggregationWidget>,
         );
         if (
           aggregations[index + 1] != null &&
@@ -276,7 +283,7 @@ export default class GuiQueryEditor extends Component {
       breakoutList.push(
         <BreakoutWidget
           key={"breakout" + (breakout ? index : "-new")}
-          className="View-section-breakout SelectionModule p1"
+          className="View-section-breakout QueryOption p1"
           breakout={breakout}
           query={query}
           breakoutOptions={query.breakoutOptions(breakout)}
@@ -450,27 +457,3 @@ export default class GuiQueryEditor extends Component {
     );
   }
 }
-
-export const AggregationWidget = ({
-  index,
-  aggregation,
-  query,
-  updateQuery,
-  addButton,
-}: Object) => (
-  <AggregationWidget_LEGACY
-    query={query}
-    aggregation={aggregation}
-    tableMetadata={query.tableMetadata()}
-    customFields={query.expressions()}
-    updateAggregation={aggregation =>
-      query.updateAggregation(index, aggregation).update(updateQuery)
-    }
-    removeAggregation={
-      query.canRemoveAggregation()
-        ? () => query.removeAggregation(index).update(updateQuery)
-        : null
-    }
-    addButton={addButton}
-  />
-);
