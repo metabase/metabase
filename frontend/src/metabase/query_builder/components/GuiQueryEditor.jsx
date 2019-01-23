@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "c-3po";
 import AggregationWidget_LEGACY from "./AggregationWidget.jsx";
-import BreakoutWidget_LEGACY from "./BreakoutWidget.jsx";
+import BreakoutWidget from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterWidgetList from "./filters/FilterWidgetList.jsx";
 import FilterPopover from "./filters/FilterPopover.jsx";
@@ -266,8 +266,8 @@ export default class GuiQueryEditor extends Component {
       breakouts.push(null);
     }
 
-    for (let i = 0; i < breakouts.length; i++) {
-      const breakout = breakouts[i];
+    for (let index = 0; index < breakouts.length; index++) {
+      const breakout = breakouts[index];
 
       if (breakout == null) {
         breakoutList.push(<span key="nullBreakout" className="ml1" />);
@@ -275,19 +275,24 @@ export default class GuiQueryEditor extends Component {
 
       breakoutList.push(
         <BreakoutWidget
-          key={"breakout" + i}
+          key={"breakout" + (breakout ? index : "-new")}
           className="View-section-breakout SelectionModule p1"
-          index={i}
           breakout={breakout}
           query={query}
-          updateQuery={setDatasetQuery}
-          addButton={this.renderAdd(i === 0 ? t`Add a grouping` : null)}
-        />,
+          breakoutOptions={query.breakoutOptions(breakout)}
+          onChangeBreakout={breakout =>
+            breakout
+              ? query.updateBreakout(index, breakout).update(setDatasetQuery)
+              : query.removeBreakout(index).update(setDatasetQuery)
+          }
+        >
+          {this.renderAdd(index === 0 ? t`Add a grouping` : null)}
+        </BreakoutWidget>,
       );
 
-      if (breakouts[i + 1] != null) {
+      if (breakouts[index + 1] != null) {
         breakoutList.push(
-          <span key={"and" + i} className="text-bold">{t`and`}</span>,
+          <span key={"and" + index} className="text-bold">{t`and`}</span>,
         );
       }
     }
@@ -466,25 +471,6 @@ export const AggregationWidget = ({
         ? () => query.removeAggregation(index).update(updateQuery)
         : null
     }
-    addButton={addButton}
-  />
-);
-
-export const BreakoutWidget = ({
-  className,
-  index,
-  breakout,
-  query,
-  updateQuery,
-  addButton,
-}: Object) => (
-  <BreakoutWidget_LEGACY
-    className={className}
-    field={breakout}
-    fieldOptions={query.breakoutOptions(breakout)}
-    customFieldOptions={query.expressions()}
-    tableMetadata={query.tableMetadata()}
-    setField={field => query.updateBreakout(index, field).update(updateQuery)}
     addButton={addButton}
   />
 );

@@ -10,7 +10,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
   breakout?: Breakout,
-  onCommitBreakout: (breakout: Breakout) => void,
+  onChangeBreakout: (breakout: Breakout) => void,
   query: StructuredQuery,
   breakoutOptions?: FieldOptions,
   onClose?: () => void,
@@ -20,7 +20,7 @@ type Props = {
 
 const BreakoutPopover = ({
   breakout,
-  onCommitBreakout,
+  onChangeBreakout,
   query,
   breakoutOptions,
   onClose,
@@ -33,12 +33,12 @@ const BreakoutPopover = ({
     field={breakout}
     fieldOptions={breakoutOptions || query.breakoutOptions()}
     onFieldChange={field => {
-      onCommitBreakout(field);
+      onChangeBreakout(field);
       if (onClose) {
         onClose();
       }
     }}
-    tableMetadata={query.tableMetdata()}
+    tableMetadata={query.tableMetadata()}
     enableSubDimensions
     alwaysExpanded={alwaysExpanded}
   />
