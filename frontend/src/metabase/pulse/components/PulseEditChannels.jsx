@@ -229,7 +229,12 @@ export default class PulseEditChannels extends Component {
           <div className="pt2">
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
-              disabled={!isValid}
+              disabled={
+                !isValid ||
+                /* require at least one email recipient to allow email pulse testing */
+                (channelSpec.type === "email" &&
+                  channel.recipients.length === 0)
+              }
               normalText={
                 channelSpec.type === "email"
                   ? t`Send email now`
