@@ -96,7 +96,6 @@ export default class PeopleListingApp extends Component {
   }
 
   render() {
-    console.log("listing", this.props);
     let { users, groups } = this.props;
     let { showDeactivated } = this.state;
 

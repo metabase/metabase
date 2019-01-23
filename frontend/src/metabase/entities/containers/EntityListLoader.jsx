@@ -121,7 +121,6 @@ export default class EntityListLoader extends React.Component {
   }
 
   componentWillReceiveProps(nextProps: Props) {
-    console.log(nextProps.entityDef, this.props.entityDef);
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
       this.fetchList(nextProps, { reload: nextProps.reload });
