@@ -74,7 +74,7 @@ describe("Question", () => {
 
       const results1 = await question.apiGetResults({ ignoreCache: true });
       expect(results1[0]).toBeDefined();
-      expect(results1[0].data.rows.length).toEqual(10000);
+      expect(results1[0].data.rows.length).toEqual(2000);
 
       question._parameterValues = { [templateTagId]: "5" };
       const results2 = await question.apiGetResults({ ignoreCache: true });
