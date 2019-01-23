@@ -15,7 +15,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]))
+             [ssh :as ssh]])
+  (:import [java.sql ResultSet Types]))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -322,3 +323,7 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
   "ALTER session SET time_zone = %s")
+
+;; instead of returning a CLOB object, return the String. (#9026)
+(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB] [_ _, ^ResultSet resultset, _, ^Integer i]
+  (.getString resultset i))
