@@ -12,7 +12,6 @@
     (metabot.cmd/command "list")))
 
 ;; `metabot/list` shouldn't show archived Cards (#9283)
-;; NOCOMMIT
 (expect
   #"1 most recent cards"
   (tt/with-temp* [Card [_]
