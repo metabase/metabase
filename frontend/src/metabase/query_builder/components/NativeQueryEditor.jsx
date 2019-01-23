@@ -343,10 +343,7 @@ export default class NativeQueryEditor extends Component {
       }
     } else {
       dataSelectors = (
-        <div>
-          <Icon className="Icon text-light pl2" name="database" size={14} />
-          <span className="p2 mr2 text-medium">{database.name}</span>
-        </div>
+        <span className="p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
       );
     }
 
@@ -367,25 +364,27 @@ export default class NativeQueryEditor extends Component {
 
     return (
       <div className="NativeQueryEditor full border-bottom">
-        <div className="flex align-center" style={{ minHeight: 50 }}>
-          {dataSelectors}
-          <Parameters
-            parameters={parameters}
-            query={location.query}
-            setParameterValue={setParameterValue}
-            setParameterIndex={this.setParameterIndex}
-            syncQueryString
-            isEditing
-            isQB
-            commitImmediately
-          />
-          <a
-            className="Query-label no-decoration flex-align-right flex align-center px2"
-            onClick={this.toggleEditor}
-          >
-            <span className="mx2">{toggleEditorText}</span>
-            <Icon name={toggleEditorIcon} size={20} />
-          </a>
+        <div className="wrapper">
+          <div className="flex align-center" style={{ minHeight: 50 }}>
+            {dataSelectors}
+            <Parameters
+              parameters={parameters}
+              query={location.query}
+              setParameterValue={setParameterValue}
+              setParameterIndex={this.setParameterIndex}
+              syncQueryString
+              isEditing
+              isQB
+              commitImmediately
+            />
+            <a
+              className="Query-label no-decoration flex-align-right flex align-center pl2 pr4"
+              onClick={this.toggleEditor}
+            >
+              <span className="mx2">{toggleEditorText}</span>
+              <Icon name={toggleEditorIcon} size={20} />
+            </a>
+          </div>
         </div>
         <ResizableBox
           ref="resizeBox"
