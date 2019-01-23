@@ -168,6 +168,10 @@ export default class QueryHeader extends Component {
     this.refs.cardHistory.toggle();
   };
 
+  toggleEditor = () => {
+    this.props.setEditorOpen(!this.props.isEditorOpen);
+  };
+
   getHeaderButtons() {
     const {
       question,
@@ -200,7 +204,7 @@ export default class QueryHeader extends Component {
             card={this.props.card}
             originalCard={this.props.originalCard}
             tableMetadata={this.props.tableMetadata}
-            // if saving modified question, don't show "add to dashboard" modal
+            // if saving modified question, dont show "add to dashboard" modal
             saveFn={card => this.onSave(card, false)}
             createFn={this.onCreate}
             onClose={() => this.refs.saveModal && this.refs.saveModal.toggle()}
@@ -478,6 +482,31 @@ export default class QueryHeader extends Component {
             ]}
           />
         </div>,
+      ]);
+    }
+
+    // show/hide editor
+    if (question.query() instanceof NativeQuery) {
+      let toggleEditorText, toggleEditorIcon;
+      if (this.props.isEditorOpen) {
+        toggleEditorText = question.query().hasWritePermission()
+          ? t`Hide Editor`
+          : t`Hide Query`;
+        toggleEditorIcon = "contract";
+      } else {
+        toggleEditorText = question.query().hasWritePermission()
+          ? t`Open Editor`
+          : t`Show Query`;
+        toggleEditorIcon = "expand";
+      }
+      buttonSections.push([
+        <a
+          className="Query-label no-decoration flex-align-right flex align-center pl2 pr4"
+          onClick={this.toggleEditor}
+        >
+          <span className="mx2">{toggleEditorText}</span>
+          <Icon name={toggleEditorIcon} size={20} />
+        </a>,
       ]);
     }
 

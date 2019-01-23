@@ -8,6 +8,7 @@ import {
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_EDITOR_OPEN,
   CLOSE_QB_TUTORIAL,
   CLOSE_QB_NEWB_MODAL,
   BEGIN_EDITING,
@@ -69,6 +70,12 @@ export const uiControls = handleActions(
         ...state,
         isShowingTemplateTagsEditor,
         isShowingDataReference: false,
+      }),
+    },
+    [SET_EDITOR_OPEN]: {
+      next: (state, { payload }) => ({
+        ...state,
+        isEditorOpen: payload,
       }),
     },
     [SET_DATASET_QUERY]: {
