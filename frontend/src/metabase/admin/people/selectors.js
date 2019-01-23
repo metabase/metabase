@@ -7,8 +7,7 @@ export const getModal = state => state.admin.people.modal;
 export const getMemberships = state => state.admin.people.memberships;
 
 export const getUsers = createSelector(
-  state => state.entities.users,
-  state => state.memberships,
+  [state => state.entities.users, getMemberships],
   (users, memberships) =>
     users &&
     _.mapObject(users, user => ({

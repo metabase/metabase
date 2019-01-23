@@ -31,7 +31,7 @@ export const MODAL_RESET_PASSWORD_EMAIL = "MODAL_RESET_PASSWORD_EMAIL";
 export const MODAL_USER_ADDED_WITH_INVITE = "MODAL_USER_ADDED_WITH_INVITE";
 export const MODAL_USER_ADDED_WITH_PASSWORD = "MODAL_USER_ADDED_WITH_PASSWORD";
 
-import { getGroups, getSortedUsers } from "../selectors";
+import { getSortedUsers } from "../selectors";
 
 import {
   reactivateUser,
@@ -44,13 +44,10 @@ import {
   deleteMembership,
 } from "../people";
 
-const mapStateToProps = (state, props) => {
-  return {
-    users: getSortedUsers(state, props),
-    user: state.currentUser,
-    groups: getGroups(state, props),
-  };
-};
+const mapStateToProps = (state, props) => ({
+  users: getSortedUsers(state, props),
+  user: state.currentUser,
+});
 
 const mapDispatchToProps = {
   deactivateUser: Users.actions.delete,
