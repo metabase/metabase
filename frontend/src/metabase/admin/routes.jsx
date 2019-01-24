@@ -78,11 +78,16 @@ const getRoutes = (store, IsAdmin) => (
     {/* PEOPLE */}
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
-      <ModalRoute path="new" modal={NewUserModal} />
 
-      <ModalRoute path=":userId/edit" modal={EditUserModal} />
-      <ModalRoute path=":userId/success" modal={UserSuccessModal} />
-      <ModalRoute path=":userId/reset" modal={UserPasswordResetModal} />
+      <Route path="" component={PeopleListingApp}>
+        <ModalRoute path="new" modal={NewUserModal} />
+      </Route>
+
+      <Route path=":userId" component={PeopleListingApp}>
+        <ModalRoute path="edit" modal={EditUserModal} />
+        <ModalRoute path="success" modal={UserSuccessModal} />
+        <ModalRoute path="reset" modal={UserPasswordResetModal} />
+      </Route>
 
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />

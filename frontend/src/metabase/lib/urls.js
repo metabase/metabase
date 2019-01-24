@@ -134,17 +134,17 @@ export function accountSettings() {
 }
 
 export function newUser() {
-  return `admin/people/new`;
+  return `/admin/people/new`;
 }
 
 export function editUser(userId) {
-  return `admin/people/${userId}/edit`;
+  return `/admin/people/${userId}/edit`;
 }
 
 export function resetPassword(userId) {
-  return `admin/people/${userId}/reset`;
+  return `/admin/people/${userId}/reset`;
 }
 
 export function newUserSuccess(userId, pass) {
-  return `admin/people/${userId}/success?p=${pass}`;
+  return `/admin/people/${userId}/success?p=${pass}`;
 }
