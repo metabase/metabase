@@ -30,10 +30,6 @@ const User = createEntity({
     },
   },
   objectActions: {
-    deactivateUser: ({ id }) => {
-      return User.actions.delete({ id });
-    },
-    reactivateUser: () => {},
     passwordResetEmail: async ({ email }) => {
       return await SessionApi.forgot_password({ email });
     },

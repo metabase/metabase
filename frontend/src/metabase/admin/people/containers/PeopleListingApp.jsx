@@ -9,40 +9,21 @@ import moment from "moment";
 
 import * as Urls from "metabase/lib/urls";
 
-import Users from "metabase/entities/users";
+import { getSortedUsers } from "../selectors";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Radio from "metabase/components/Radio";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-
 import EntityMenu from "metabase/components/EntityMenu";
+import Icon from "metabase/components/Icon.jsx";
+import Link from "metabase/components/Link";
+import Radio from "metabase/components/Radio";
+import Tooltip from "metabase/components/Tooltip.jsx";
+import UserAvatar from "metabase/components/UserAvatar.jsx";
+
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
 
-export const MODAL_INVITE_RESENT = "MODAL_INVITE_RESENT";
-export const MODAL_DEACTVIATE_USER = "MODAL_DEACTVIATE_USER";
-export const MODAL_REACTIVATE_USER = "MODAL_REACTIVATE_USER";
-export const MODAL_RESET_PASSWORD = "MODAL_RESET_PASSWORD";
-export const MODAL_RESET_PASSWORD_MANUAL = "MODAL_RESET_PASSWORD_MANUAL";
-export const MODAL_RESET_PASSWORD_EMAIL = "MODAL_RESET_PASSWORD_EMAIL";
-export const MODAL_USER_ADDED_WITH_INVITE = "MODAL_USER_ADDED_WITH_INVITE";
-export const MODAL_USER_ADDED_WITH_PASSWORD = "MODAL_USER_ADDED_WITH_PASSWORD";
-
-import { getSortedUsers } from "../selectors";
-
-import {
-  reactivateUser,
-  resetPasswordManually,
-  resetPasswordViaEmail,
-  resendInvite,
-  loadGroups,
-  loadMemberships,
-  createMembership,
-  deleteMembership,
-} from "../people";
+import { loadMemberships, createMembership, deleteMembership } from "../people";
 
 const mapStateToProps = (state, props) => ({
   users: getSortedUsers(state, props),
@@ -50,34 +31,27 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  deactivateUser: Users.actions.delete,
-  reactivateUser,
-  resetPasswordManually,
-  resetPasswordViaEmail,
-  resendInvite,
-  loadGroups,
   loadMemberships,
   createMembership,
   deleteMembership,
 };
 
 // set outer loadingAndErrorWrapper to false to avoid conflicets. the second loader will handle that
-@entityListLoader({ entityType: "users", loadingAndErrorWrapper: false })
+@entityListLoader({
+  entityType: "users",
+  entityQuery: () => ({ include_deactivated: true }),
+  loadingAndErrorWrapper: false,
+  wrapped: true,
+  reload: true,
+})
 @entityListLoader({ entityType: "groups" })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
-  state = {
-    showDeactivated: false,
-  };
-
+  state = {};
   static propTypes = {
     user: PropTypes.object.isRequired,
     users: PropTypes.array,
     groups: PropTypes.array,
-    deactivateUser: PropTypes.func.isRequired,
-    reactivateUser: PropTypes.func.isRequired,
-    resendInvite: PropTypes.func.isRequired,
-    loadGroups: PropTypes.func.isRequired,
     loadMemberships: PropTypes.func.isRequired,
     createMembership: PropTypes.func.isRequired,
     deleteMembership: PropTypes.func.isRequired,
@@ -186,12 +160,13 @@ export default class PeopleListingApp extends Component {
                         </td>,
                         <td key="actions">
                           <Tooltip tooltip={t`Reactivate this account`}>
-                            <Icon
-                              name="refresh"
-                              className="text-light text-brand-hover cursor-pointer"
-                              size={20}
-                              onClick={() => console.log("reactivate")}
-                            />
+                            <Link to={Urls.reactivateUser(user.id)}>
+                              <Icon
+                                name="refresh"
+                                className="text-light text-brand-hover cursor-pointer"
+                                size={20}
+                              />
+                            </Link>
                           </Tooltip>
                         </td>,
                       ]
@@ -215,19 +190,15 @@ export default class PeopleListingApp extends Component {
                             items={[
                               {
                                 title: t`Edit user`,
-                                icon: null,
                                 link: Urls.editUser(user.id),
                               },
                               {
                                 title: t`Reset password`,
-                                icon: null,
                                 link: Urls.resetPassword(user.id),
                               },
-                              {
+                              !user.is_admin && {
                                 title: t`Deactivate user`,
-                                icon: null,
-                                action: () =>
-                                  this.props.deactivateUser(user.id),
+                                link: Urls.deactivateUser(user.id),
                               },
                             ]}
                           />

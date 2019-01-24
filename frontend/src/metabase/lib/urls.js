@@ -148,3 +148,11 @@ export function resetPassword(userId) {
 export function newUserSuccess(userId, pass) {
   return `/admin/people/${userId}/success?p=${pass}`;
 }
+
+export function deactivateUser(userId) {
+  return `/admin/people/${userId}/deactivate`;
+}
+
+export function reactivateUser(userId) {
+  return `/admin/people/${userId}/reactivate`;
+}
