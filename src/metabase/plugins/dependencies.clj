@@ -25,15 +25,24 @@
              "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
   false)
 
+(defonce ^:private ^{:arglists '([plugin-name message]), :doc "Warn that a plugin cannot be initialized because of
+  required dependencies. Subsequent calls with duplicate warnings are automatically ignored."}
+  warn-about-required-dependencies
+  (let [already-warned (atom #{})]
+    (fn [plugin-name message]
+      (let [k [plugin-name message]]
+        (when-not (contains? @already-warned k)
+          (swap! already-warned conj k)
+          (log/info (u/format-color 'red
+                        (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
+                    message))))))
+
 (defmethod dependency-satisfied? :class
   [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as dep}]
   (try
     (Class/forName classname false (classloader/the-classloader))
     (catch ClassNotFoundException _
-      (log/info (u/format-color 'red
-                    (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
-                (or message
-                    (trs "Class not found: {0}" classname)))
+      (warn-about-required-dependencies plugin-name (or message (trs "Class not found: {0}" classname)))
       false)))
 
 (defmethod dependency-satisfied? :plugin
