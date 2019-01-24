@@ -374,7 +374,13 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-redshift:
-    <<: *defaults
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
     steps:
       - attach_workspace:
           at: /home/circleci/
@@ -383,12 +389,16 @@ jobs:
       - run:
           name: Run backend unit tests (Redshift)
           environment:
+            MB_DB_TYPE: postgres
+            MB_DB_PORT: 5432
+            MB_DB_HOST: localhost
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: circle_test
             DRIVERS: h2,redshift
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
             lein with-profile +ci test
           no_output_timeout: 10m
-
 
   be-tests-presto:
     working_directory: /home/circleci/metabase/metabase/
