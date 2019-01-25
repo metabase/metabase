@@ -1,10 +1,10 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [metabase.query-processor-test :refer :all]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
-
-;;; ------------------------------------------------ "FILTER" CLAUSE -------------------------------------------------
 
 ;;; FILTER -- "AND", ">", ">="
 (expect-with-non-timeseries-dbs
@@ -87,16 +87,20 @@
       rows formatted-venues-rows))
 
 ;;; FILTER -- "BETWEEN" with dates
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[29]]
    :columns     ["count"]
    :cols        [(aggregate-col :count)]
    :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :filter      [:between $date "2015-04-01" "2015-05-01"]})
-       booleanize-native-form
-       (format-rows-by [int])))
+  (do
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    (when (= :snowflake driver/*driver*)
+      (driver/notify-database-updated driver/*driver* (data/id)))
+    (->> (data/run-mbql-query checkins
+           {:aggregation [[:count]]
+            :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
+         booleanize-native-form
+         (format-rows-by [int]))))
 
 ;;; FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
@@ -143,9 +147,7 @@
                             {:aggregation [[:count]]
                              :filter      [:is-null $date]}))]
     ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
-    (or (= result [0])
-        (= result [0M])
-        (nil? result))))
+    (contains? #{[0] [0M] [nil] nil} result)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -153,6 +155,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; -------------------------------------------------- starts-with ---------------------------------------------------
+
 (expect-with-non-timeseries-dbs
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -161,14 +164,14 @@
          :order-by [[:asc $id]]})
       rows formatted-venues-rows))
 
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (-> (data/run-mbql-query venues
         {:filter   [:starts-with $name "CHE"]
          :order-by [[:asc $id]]})
       rows formatted-venues-rows))
 
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
   (-> (data/run-mbql-query venues
@@ -190,14 +193,14 @@
          :order-by [[:asc $id]]})
       rows formatted-venues-rows))
 
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (-> (data/run-mbql-query venues
         {:filter   [:ends-with $name "RESTAURANT"]
          :order-by [[:asc $id]]})
       rows formatted-venues-rows))
 
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
    [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
    [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
@@ -219,7 +222,7 @@
       rows formatted-venues-rows))
 
 ;; case-insensitive
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (-> (data/run-mbql-query venues
         {:filter   [:contains $name "bbq"]
@@ -227,7 +230,7 @@
       rows formatted-venues-rows))
 
 ;; case-insensitive
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :no-case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
@@ -282,8 +285,6 @@
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
 ;;
-;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all
-;; these extra queries?
 
 ;;; =
 (expect-with-non-timeseries-dbs

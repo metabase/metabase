@@ -30,11 +30,13 @@ export default class FieldWidget extends Component {
     isInitiallyOpen: PropTypes.bool,
     tableMetadata: PropTypes.object.isRequired,
     enableSubDimensions: PropTypes.bool,
+    useOriginalDimension: PropTypes.bool,
   };
 
   static defaultProps = {
     color: "brand",
     enableSubDimensions: true,
+    useOriginalDimension: false,
   };
 
   setField(value) {
@@ -60,6 +62,7 @@ export default class FieldWidget extends Component {
             customFieldOptions={this.props.customFieldOptions}
             onFieldChange={this.setField}
             enableSubDimensions={this.props.enableSubDimensions}
+            useOriginalDimension={this.props.useOriginalDimension}
           />
         </Popover>
       );

@@ -1,5 +1,5 @@
 title: "[[this]] per source"
-transient_title: Here's a closer look at your [[this]] per source
+transient_title: Here''s a closer look at your [[this]] per source
 description: Where most of your traffic is coming from.
 applies_to: TransactionTable
 metrics:
@@ -171,7 +171,7 @@ cards:
     height: 8
 - AvgQuantityBySource:
     group: Financial
-    title: Average qunatity per source
+    title: Average quantity per source
     visualization: table
     dimensions: SourceLarge
     metrics: AvgQuantity

@@ -4,24 +4,17 @@
              [codecs :as codecs]
              [hash :as hash]]
             [cheshire.core :as json]
-            [clojure
-             [string :as str]
-             [walk :as walk]]
+            [clojure.string :as str]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to `metabase.mbql.util`
 
 (defn ^:deprecated mbql-query? ;; not really needed anymore since we don't need to normalize tokens
-  "Is the given query an MBQL query?"
+  "Is the given query an MBQL query?
+   DEPRECATED: just look at `:type` directly since it is guaranteed to be normalized?"
   [query]
   (= :query (keyword (:type query))))
-
-(defn datetime-field?
-  "Is FIELD a `DateTime` field?"
-  [{:keys [base-type special-type]}]
-  (or (isa? base-type :type/DateTime)
-      (isa? special-type :type/DateTime)))
 
 (defn query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
@@ -53,28 +46,18 @@
       (str/replace #"_" "-")
       keyword))
 
+;; TODO - rename this to `get-in-mbql-query-recursive` or something like that?
 (defn get-in-query
-  "Similar to `get-in` but will look in either `:query` or recursively in `[:query :source-query]`. Using
-  this function will avoid having to check if there's a nested query vs. top-level query."
+  "Similar to `get-in` but will look in either `:query` or recursively in `[:query :source-query]`. Using this function
+  will avoid having to check if there's a nested query vs. top-level query. Results in deeper levels of nesting are
+  preferred; i.e. if a key is present in both a `:source-query` and the top-level query, the value from the source
+  query will be returned."
   ([m ks]
    (get-in-query m ks nil))
   ([m ks not-found]
    (if-let [source-query (get-in m [:query :source-query])]
      (recur (assoc m :query source-query) ks not-found)
      (get-in m (cons :query ks) not-found))))
-
-(defn assoc-in-query
-  "Similar to `assoc-in but will look in either `:query` or recursively in `[:query :source-query]`. Using
-  this function will avoid having to check if there's a nested query vs. top-level query."
-  [m ks v]
-  (if-let [source-query (get-in m [:query :source-query])]
-    ;; We have a soure-query, we need to recursively `assoc-in` with the source query as the query
-    (assoc-in m
-              [:query :source-query]
-              (-> (assoc m :query source-query)
-                  (assoc-in-query ks v)
-                  :query))
-    (assoc-in m (cons :query ks) v)))
 
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
@@ -106,33 +89,3 @@
     (when (string? source-table)
       (when-let [[_ card-id-str] (re-matches #"^card__(\d+$)" source-table)]
         (Integer/parseInt card-id-str)))))
-
-
-;;; ---------------------------------------- General Tree Manipulation Helpers ---------------------------------------
-
-(defn ^:deprecated postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true
-
-  DEPRECATED: use `mbql.u/replace-clauses` instead, or if that's not sophisticated enough, use a `clojure.walk` fn
-  directly."
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
-(defn ^:deprecated postwalk-collect
-  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
-  results.
-
-  DEPRECATED: Use `mbql.u/clause-instances` instead to find all instances of a clause."
-  [pred collect-fn form]
-  (let [results (atom [])]
-    (postwalk-pred pred
-                   (fn [node]
-                     (when-let [result (collect-fn node)]
-                       (swap! results conj result))
-                     node)
-                   form)
-    @results))

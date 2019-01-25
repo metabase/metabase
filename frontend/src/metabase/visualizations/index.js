@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import Scalar from "./visualizations/Scalar.jsx";
+import SmartScalar from "./visualizations/SmartScalar.jsx";
 import Progress from "./visualizations/Progress.jsx";
 import Table from "./visualizations/Table.jsx";
 import Text from "./visualizations/Text.jsx";
@@ -9,6 +10,7 @@ import BarChart from "./visualizations/BarChart.jsx";
 import RowChart from "./visualizations/RowChart.jsx";
 import PieChart from "./visualizations/PieChart.jsx";
 import AreaChart from "./visualizations/AreaChart.jsx";
+import ComboChart from "./visualizations/ComboChart.jsx";
 import MapViz from "./visualizations/Map.jsx";
 import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel from "./visualizations/Funnel.jsx";
@@ -124,6 +126,7 @@ const extractRemappedColumns = data => {
 };
 
 registerVisualization(Scalar);
+registerVisualization(SmartScalar);
 registerVisualization(Progress);
 registerVisualization(Gauge);
 registerVisualization(Table);
@@ -131,6 +134,7 @@ registerVisualization(Text);
 registerVisualization(LineChart);
 registerVisualization(AreaChart);
 registerVisualization(BarChart);
+registerVisualization(ComboChart);
 registerVisualization(RowChart);
 registerVisualization(ScatterPlot);
 registerVisualization(PieChart);

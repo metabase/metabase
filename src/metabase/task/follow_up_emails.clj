@@ -18,12 +18,13 @@
              [setting :as setting]
              [user :as user :refer [User]]
              [view-log :refer [ViewLog]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (declare send-follow-up-email! send-abandonment-email!)
 
-(def ^:private ^:const follow-up-emails-job-key     "metabase.task.follow-up-emails.job")
-(def ^:private ^:const follow-up-emails-trigger-key "metabase.task.follow-up-emails.trigger")
+(def ^:private follow-up-emails-job-key     "metabase.task.follow-up-emails.job")
+(def ^:private follow-up-emails-trigger-key "metabase.task.follow-up-emails.trigger")
 (defonce ^:private follow-up-emails-job (atom nil))
 (defonce ^:private follow-up-emails-trigger (atom nil))
 
@@ -35,8 +36,8 @@
   :internal? true)
 
 
-(def ^:private ^:const abandonment-emails-job-key     "metabase.task.abandonment-emails.job")
-(def ^:private ^:const abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger")
+(def ^:private abandonment-emails-job-key     "metabase.task.abandonment-emails.job")
+(def ^:private abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger")
 (defonce ^:private abandonment-emails-job (atom nil))
 (defonce ^:private abandonment-emails-trigger (atom nil))
 
@@ -143,7 +144,7 @@
                  (t/before? last-view two-weeks-ago))
         (try
           (messages/send-follow-up-email! (:email admin) "abandon")
-          (catch Throwable t
-            (log/error "Problem sending abandonment email" t))
+          (catch Throwable e
+            (log/error e (trs "Problem sending abandonment email")))
           (finally
             (abandonment-email-sent true)))))))

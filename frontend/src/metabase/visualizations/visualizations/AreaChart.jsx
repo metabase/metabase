@@ -9,7 +9,6 @@ import {
   LINE_SETTINGS,
   STACKABLE_SETTINGS,
   GRAPH_GOAL_SETTINGS,
-  LINE_SETTINGS_2,
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
 } from "../lib/settings/graph";
@@ -25,7 +24,6 @@ export default class AreaChart extends LineAreaBarChart {
     ...LINE_SETTINGS,
     ...STACKABLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
-    ...LINE_SETTINGS_2,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
   };

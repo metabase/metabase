@@ -1,8 +1,10 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
-  (:require [metabase
-             [query-processor-test :refer :all]
+  (:require [expectations :refer [expect]]
+            [metabase
+             [query-processor-test :as qp.test :refer :all]
              [util :as u]]
+            [metabase.models.field :refer [Field]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -10,7 +12,7 @@
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[100]]
    :columns     ["count"]
    :cols        [(aggregate-col :count)]
@@ -22,7 +24,7 @@
 
 
 ;;; ----------------------------------------------- "SUM" AGGREGATION ------------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[203]]
    :columns     ["sum"]
    :cols        [(aggregate-col :sum (venues-col :price))]
@@ -34,7 +36,7 @@
 
 
 ;;; ----------------------------------------------- "AVG" AGGREGATION ------------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[35.5059]]
    :columns     ["avg"]
    :cols        [(aggregate-col :avg (venues-col :latitude))]
@@ -46,10 +48,10 @@
 
 
 ;;; ------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[15]]
    :columns     ["count"]
-   :cols        [(aggregate-col :count)]
+   :cols        [(aggregate-col :count (Field (data/id :checkins :user_id)))]
    :native_form true}
   (->> (data/run-mbql-query checkins
          {:aggregation [[:distinct $user_id]]})
@@ -59,7 +61,7 @@
 
 ;;; ------------------------------------------------- NO AGGREGATION -------------------------------------------------
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
                  [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
                  [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -83,7 +85,7 @@
 
 ;;; ----------------------------------------------- STDDEV AGGREGATION -----------------------------------------------
 
-(qp-expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
+(qp-expect-with-drivers (non-timeseries-drivers-with-feature :standard-deviation-aggregations)
   {:columns     ["stddev"]
    :cols        [(aggregate-col :stddev (venues-col :latitude))]
    :rows        [[3.4]]
@@ -95,7 +97,7 @@
                                  [[(u/round-to-decimals 1 v)]]))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engines (non-timeseries-engines-without-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (data/run-mbql-query venues
@@ -156,14 +158,12 @@
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
 ;;
-;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with
-;; multiple columns with the same name)
-(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
+;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
+;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
+;; so we can use it with Mongo
+(datasets/expect-with-drivers (disj non-timeseries-drivers :mongo)
   [(aggregate-col :count)
-   (assoc (aggregate-col :count)
-     :display_name    "Count 2"
-     :name            "count_2"
-     :preview_display true)]
+   (assoc (aggregate-col :count) :name "count_2")]
   (-> (data/run-mbql-query venues
         {:aggregation [[:count] [:count]]})
       :data :cols))
@@ -172,7 +172,7 @@
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
 ;;; cum_sum w/o breakout should be treated the same as sum
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[120]]
    :columns     ["sum"]
    :cols        [(aggregate-col :sum (users-col :id))]
@@ -184,7 +184,7 @@
 
 
 ;;; Simple cumulative sum where breakout field is same as cum_sum field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[ 1   1]
                  [ 2   3]
                  [ 3   6]
@@ -213,7 +213,7 @@
 
 
 ;;; Cumulative sum w/ a different breakout field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["Broen Olujimi"        14]
                  ["Conchúr Tihomir"      21]
                  ["Dwight Gresham"       34]
@@ -243,7 +243,7 @@
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "sum"]
    :cols        [(breakout-col (venues-col :price))
@@ -257,7 +257,8 @@
          {:aggregation [[:cum-sum $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
@@ -268,7 +269,7 @@
     :special_type :type/Number))
 
 ;;; cum_count w/o breakout should be treated the same as count
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[15]]
    :columns     ["count"]
    :cols        [(cumulative-count-col users-col :id)]
@@ -279,7 +280,7 @@
        (format-rows-by [int])))
 
 ;;; Cumulative count w/ a different breakout field
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["Broen Olujimi"        1]
                  ["Conchúr Tihomir"      2]
                  ["Dwight Gresham"       3]
@@ -308,8 +309,8 @@
        tu/round-fingerprint-cols))
 
 
-;;; Cumulative count w/ a different breakout field that requires grouping
-(qp-expect-with-all-engines
+;; Cumulative count w/ a different breakout field that requires grouping
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "count"]
    :cols        [(breakout-col (venues-col :price))
@@ -323,4 +324,23 @@
          {:aggregation [[:cum-count $id]]
           :breakout    [$price]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
+
+;; Does Field.settings show up for aggregate Fields?
+(expect
+  (assoc (aggregate-col :sum (Field (data/id :venues :price)))
+    :settings {:is_priceless false})
+  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
+    (let [results (data/run-mbql-query venues
+                    {:aggregation [[:sum [:field-id $price]]]})]
+      (or (-> results :data :cols first)
+          results))))
+
+;; Do we properly handle queries that have more than one of the same aggregation? (#5393)
+(expect
+  [[5050 203]]
+  (qp.test/format-rows-by [int int]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:aggregation [[:sum $id] [:sum $price]]}))))

@@ -4,7 +4,7 @@
              [route :as route]]
             [metabase.api
              [activity :as activity]
-             [alert    :as alert]
+             [alert :as alert]
              [automagic-dashboards :as magic]
              [card :as card]
              [collection :as collection]
@@ -30,6 +30,7 @@
              [setup :as setup]
              [slack :as slack]
              [table :as table]
+             [task :as task]
              [tiles :as tiles]
              [user :as user]
              [util :as util]]
@@ -82,6 +83,7 @@
   (context "/setup"                [] setup/routes)
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
+  (context "/task"                 [] (+auth task/routes))
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)

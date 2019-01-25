@@ -458,20 +458,24 @@ exports[`Position should render "Relative" correctly 1`] = `
 
 exports[`ProgressBar should render "Animated" correctly 1`] = `
 <div
-  className="xk xl xm xn"
+  className="ProgressBar__ProgressWrapper-lDFZw gfaDTt"
+  color="#509EE3"
 >
   <div
-    className="xo xp xk xq xr xs xt xu xv x15 x16 xy xz x10 x17 x12 x13 x18"
+    className="ProgressBar__Progress-hndiLL gttMaI"
+    width={35}
   />
 </div>
 `;
 
 exports[`ProgressBar should render "Default" correctly 1`] = `
 <div
-  className="xk xl xm xn"
+  className="ProgressBar__ProgressWrapper-lDFZw gfaDTt"
+  color="#509EE3"
 >
   <div
-    className="xo xp xk xq xr xs xt xu xv xw xx xy xz x10 x11 x12 x13 x14"
+    className="ProgressBar__Progress-hndiLL jCqeMr"
+    width={75}
   />
 </div>
 `;
@@ -1046,9 +1050,15 @@ exports[`Toggle should render "on" correctly 1`] = `
 exports[`TokenField should render "" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
     onMouseDownCapture={[Function]}
-    style={undefined}
+    style={
+      Object {
+        "inputBoxStyles": Object {
+          "maxHeight": 130,
+        },
+      }
+    }
   >
     <li
       className="flex-full mr1 py1 pl1 mt1 bg-white"
@@ -1136,9 +1146,15 @@ exports[`TokenField should render "" correctly 1`] = `
 exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y xj"
+    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
     onMouseDownCapture={[Function]}
-    style={undefined}
+    style={
+      Object {
+        "inputBoxStyles": Object {
+          "maxHeight": 130,
+        },
+      }
+    }
   >
     <li
       className="flex-full mr1 py1 pl1 mt1 bg-white"

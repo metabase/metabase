@@ -41,7 +41,7 @@ You can add multiple filters to your dashboard following the same steps. We just
 
 ### Editing a filter
 
-To edit a filter, enter dashboard editing mode, then click the `Edit` button on the filter you want to change. You an also click `Remove` to get rid of a filter. If you do this by accident, just click `Cancel` in the top-right to exit dashboard editing mode without saving your changes.
+To edit a filter, enter dashboard editing mode, then click the `Edit` button on the filter you want to change. You an also click `Remove` to get rid of a filter. If you do this by accident, just click `Cancel` in the top-right to exit dashboard editing mode without saving your changes. To reorder your filters, just click on the grabber handle on the left side of a filter and drag it where you'd like it to go.
 
 ![Edit or remove a filter](images/dashboard-filters/06-edit-and-remove.png)
 

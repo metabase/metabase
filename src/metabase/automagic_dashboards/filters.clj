@@ -1,18 +1,19 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.models.field :as field :refer [Field]]
-            [metabase.mbql.normalize :as normalize]
+  (:require [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.mbql.util :as mbql.u]))
+            [toucan.db :as db]))
 
 (def ^:private FieldReference
   [(s/one (s/constrained su/KeywordOrString
                          (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
           "head")
-   (s/cond-pre s/Int su/KeywordOrString)])
+   (s/cond-pre s/Int su/KeywordOrString (s/recursive #'FieldReference))])
 
 (def ^:private ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
@@ -31,7 +32,9 @@
 
 (defmethod field-reference->id :fk->
   [[_ _ id]]
-  id)
+  (if (sequential? id)
+    (field-reference->id id)
+    id))
 
 (defmethod field-reference->id :field-literal
   [[_ name _]]
@@ -42,7 +45,9 @@
    form."
   [form]
   (->> form
-       (tree-seq (some-fn sequential? map?) identity)
+       (tree-seq (every-pred (some-fn sequential? map?)
+                             (complement field-reference?))
+                 identity)
        (filter field-reference?)))
 
 (def ^{:arglists '([field])} periodic-datetime?
@@ -203,12 +208,12 @@
   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
   (ie. no `:and`s inside `:or` or `:not`)."
   [filter-clause refinement]
-  (let [in-refinement?  (into #{}
-                              (map collect-field-references)
-                              (flatten-filter-clause refinement))
+  (let [in-refinement?   (into #{}
+                               (map collect-field-references)
+                               (flatten-filter-clause refinement))
         existing-filters (->> filter-clause
-                             flatten-filter-clause
-                             (remove (comp in-refinement? collect-field-references)))]
+                              flatten-filter-clause
+                              (remove (comp in-refinement? collect-field-references)))]
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input

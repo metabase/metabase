@@ -4,6 +4,7 @@ import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "c-3po";
 
 import { withBackground } from "metabase/hoc/Background";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
@@ -20,6 +21,9 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
+
+import TasksApp from "metabase/admin/tasks/containers/TasksApp";
+import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -55,10 +59,10 @@ const getRoutes = (store, IsAdmin) => (
         path="database/:databaseId/:mode/:tableId/settings"
         component={TableSettingsApp}
       />
-      <Route
-        path="database/:databaseId/:mode/:tableId/:fieldId"
-        component={FieldApp}
-      />
+      <Route path="database/:databaseId/:mode/:tableId/:fieldId">
+        <IndexRedirect to="general" />
+        <Route path=":section" component={FieldApp} />
+      </Route>
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
       <Route path="segment/create" component={SegmentApp} />
@@ -72,6 +76,14 @@ const getRoutes = (store, IsAdmin) => (
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />
         <Route path=":groupId" component={GroupDetailApp} />
+      </Route>
+    </Route>
+
+    {/* Troubleshooting */}
+    <Route path="troubleshooting" title={t`Troubleshooting`}>
+      <IndexRedirect to="tasks" />
+      <Route path="tasks" component={TasksApp}>
+        <ModalRoute path=":taskId" modal={TaskModal} />
       </Route>
     </Route>
 

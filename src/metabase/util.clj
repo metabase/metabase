@@ -3,22 +3,41 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
-             [string :as s]]
+             [string :as s]
+             [walk :as walk]]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
+            [medley.core :as m]
             [metabase.config :as config]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]))
+           [java.text Normalizer Normalizer$Form]
+           java.util.concurrent.TimeoutException))
 
-;; This is the very first log message that will get printed.  It's here because this is one of the very first
-;; namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-;; the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
-(log/info (trs "Loading Metabase..."))
+;; This is the very first log message that will get printed.
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+(when-not *compile-files*
+  (log/info (trs "Loading Metabase...")))
+
+(defn format-bytes
+  "Nicely format `num-bytes` as kilobytes/megabytes/etc.
+
+    (format-bytes 1024) ; -> 2.0 KB"
+  [num-bytes]
+  (loop [n num-bytes [suffix & more] ["B" "KB" "MB" "GB"]]
+    (if (and (seq more)
+             (>= n 1024))
+      (recur (/ n 1024.0) more)
+      (format "%.1f %s" n suffix))))
+
+;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
+(when-not *compile-files*
+  (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
@@ -235,10 +254,10 @@
   {:style/indent 2}
   (^String [color x]
    {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color x))
+   (colorize color (str x)))
 
   (^String [color format-string & args]
-   (colorize color (apply format format-string args))))
+   (colorize color (apply format (str format-string) args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -256,7 +275,8 @@
 
 (defprotocol ^:private IFilteredStacktrace
   (filtered-stacktrace [this]
-    "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."))
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Metabase
+    frame filtered out."))
 
 ;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
 ;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
@@ -279,20 +299,32 @@
   IFilteredStacktrace {:filtered-stacktrace (fn [this]
                                               (filtered-stacktrace (thread-get-stack-trace this)))})
 
+(defn- metabase-frame? [frame]
+  (re-find #"metabase" (str frame)))
+
 ;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                              (vec (for [frame this
-                                                         :let  [s (str frame)]
-                                                         :when (re-find #"metabase" s)]
-                                                     (s/replace s #"^metabase\." ""))))})
+  IFilteredStacktrace
+  {:filtered-stacktrace
+   (fn [this]
+     ;; keep all the frames before the last Metabase frame, but then filter out any other non-Metabase frames after
+     ;; that
+     (let [[frames-after-last-mb other-frames]     (split-with (complement metabase-frame?)
+                                                               (map str (seq this)))
+           [last-mb-frame & frames-before-last-mb] (map #(s/replace % #"^metabase\." "")
+                                                        (filter metabase-frame? other-frames))]
+       (concat
+        frames-after-last-mb
+        ;; add a little arrow to the frame so it stands out more
+        (cons (str "--> " last-mb-frame)
+              frames-before-last-mb))))})
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
   [futur timeout-ms]
   (let [result (deref futur timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (Exception. (format "Timed out after %d milliseconds." timeout-ms))))
+      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
     result))
 
 (defmacro with-timeout
@@ -308,7 +340,7 @@
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
 
-(defn drop-first-arg
+(defn ^:deprecated drop-first-arg
   "Returns a new fn that drops its first arg and applies the rest to the original.
    Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
 
@@ -424,16 +456,30 @@
   (when k
     (s/replace (str k) #"^:" "")))
 
-(defn get-id
-  "Return the value of `:id` if OBJECT-OR-ID is a map, or otherwise return OBJECT-OR-ID as-is if it is an integer.
-   This is guaranteed to return an integer ID; it will throw an Exception if it cannot find one.
-   This is provided as a convenience to allow model-layer functions to easily accept either an object or raw ID."
-  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
+(defn id
+  "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
+  Otherwise returns `nil`.
+
+  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID. Use this in
+  cases where the ID/object is allowed to be `nil`. Use `get-id` below in cases where you would also like to guarantee
+  it is non-`nil`."
   ^Integer [object-or-id]
   (cond
     (map? object-or-id)     (recur (:id object-or-id))
-    (integer? object-or-id) object-or-id
-    :else                   (throw (Exception. (str "Not something with an ID: " object-or-id)))))
+    (integer? object-or-id) object-or-id))
+
+;; TODO - now that I think about this, I think this should be called `the-id` instead, because the idea is similar to
+;; `clojure.core/the-ns`
+(defn get-id
+  "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
+  Otherwise, throws an Exception.
+
+  Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID, and to assert
+  that you have a valid ID."
+  ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
+  ^Integer [object-or-id]
+  (or (id object-or-id)
+      (throw (Exception. (str (tru "Not something with an ID: {0}" object-or-id))))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
@@ -477,6 +523,16 @@
   ^Boolean [s]
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+
+(defn decode-base64
+  "Decodes a Base64 string to a UTF-8 string"
+  [input]
+  (new java.lang.String (javax.xml.bind.DatatypeConverter/parseBase64Binary input) "UTF-8"))
+
+(defn encode-base64
+  "Encodes a string to a Base64 string"
+  [^String input]
+  (javax.xml.bind.DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
@@ -554,3 +610,49 @@
   ([java-version-str]
    (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
      (>= (Integer/parseInt java-major-version-str) 9))))
+
+(defn hexadecimal-string?
+  "Returns truthy if `new-value` is a hexadecimal-string"
+  [new-value]
+  (and (string? new-value)
+       (re-matches #"[0-9a-f]{64}" new-value)))
+
+(defn snake-key
+  "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
+  [k]
+  (if (keyword? k)
+    (keyword (snake-key (name k)))
+    (s/replace k #"-" "_")))
+
+(defn recursive-map-keys
+  "Recursively replace the keys in a map with the value of `(f key)`."
+  [f m]
+  (walk/postwalk
+   #(if (map? %)
+      (m/map-keys f %)
+      %)
+   m))
+
+(defn snake-keys
+  "Convert the keys in a map from `lisp-case` to `snake-case`."
+  [m]
+  (recursive-map-keys snake-key m))
+
+(defn one-or-many
+  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
+  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
+  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
+  your convenience.
+
+    (u/one-or-many 1)     ; -> [1]
+    (u/one-or-many [1 2]) ; -> [1 2]"
+  [arg]
+  (if ((some-fn sequential? set?) arg)
+    arg
+    [arg]))
+
+(defmacro varargs
+  "Make a properly-tagged Java interop varargs argument."
+  [klass & [objects]]
+  (vary-meta `(into-array ~klass ~objects)
+             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))

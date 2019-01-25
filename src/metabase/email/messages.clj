@@ -14,15 +14,16 @@
             [metabase.util
              [date :as du]
              [export :as export]
-             [i18n :refer [tru]]
+             [i18n :refer [trs tru]]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File FileOutputStream IOException]
-           java.util.Arrays))
+  (:import [java.io File IOException]))
+
+(alter-meta! #'stencil.core/render-file assoc :style/indent 1)
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
@@ -36,19 +37,21 @@
     {:quotation       (:quote data-quote)
      :quotationAuthor (:author data-quote)}))
 
-(def ^:private ^:const notification-context
+(def ^:private notification-context
   {:emailType  "notification"
    :logoHeader true})
 
-(def ^:private ^:const abandonment-context
-  {:heading      "We’d love your feedback."
-   :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-   :link         "http://www.metabase.com/feedback/inactive"})
+(defn- abandonment-context []
+  {:heading      (str (trs "We’d love your feedback."))
+   :callToAction (str (trs "It looks like Metabase wasn’t quite a match for you.")
+                      " "
+                      (trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
+   :link         "https://www.metabase.com/feedback/inactive"})
 
-(def ^:private ^:const follow-up-context
-  {:heading      "We hope you've been enjoying Metabase."
-   :callToAction "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-   :link         "http://www.metabase.com/feedback/active"})
+(defn- follow-up-context []
+  {:heading      (str (trs "We hope you''ve been enjoying Metabase."))
+   :callToAction (str (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?"))
+   :link         "https://www.metabase.com/feedback/active"})
 
 
 ;;; ### Public Interface
@@ -75,8 +78,9 @@
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
-   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in `mailto` links
-   (e.g., for the new user to email with any questions)."
+
+  The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
+  `mailto` links (e.g., for the new user to email with any questions)."
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
@@ -88,10 +92,9 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-      :subject      (format (if google-auth?
-                              "%s created a Metabase account"
-                              "%s accepted their Metabase invite")
-                            (:common_name new-user))
+      :subject      (str (if google-auth?
+                           (trs "{0} created a Metabase account"     (:common_name new-user))
+                           (trs "{0} accepted their Metabase invite" (:common_name new-user))))
       :recipients   recipients
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
@@ -119,12 +122,13 @@
                         :passwordResetUrl password-reset-url
                         :logoHeader       true})]
     (email/send-message!
-      :subject      "[Metabase] Password Reset Request"
+      :subject      (str (trs "[Metabase] Password Reset Request"))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
 
-;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is determined add appropriate documentation
+;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
+;; determined add appropriate documentation
 
 (defn- model-name->url-fn [model]
   (case model
@@ -157,7 +161,7 @@
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
-      :subject      "[Metabase] Notification"
+      :subject      (str (trs "[Metabase] Notification"))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -166,14 +170,14 @@
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
   {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
-  (let [subject      (if (= "abandon" msg-type)
-                       "[Metabase] Help make Metabase better."
-                       "[Metabase] Tell us how things are going.")
+  (let [subject      (str (if (= "abandon" msg-type)
+                            (trs "[Metabase] Help make Metabase better.")
+                            (trs "[Metabase] Tell us how things are going.")))
         context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
-                              abandonment-context
-                              follow-up-context))
+                              (abandonment-context)
+                              (follow-up-context)))
         message-body (stencil/render-file "metabase/email/follow_up_email" context)]
     (email/send-message!
       :subject      subject

@@ -10,7 +10,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -18,6 +17,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -425,16 +425,17 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1387,
+          "distinct-count": 10001,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-30T07:00:00.000Z",
-            "latest": "2020-04-19T07:00:00.000Z",
+            "earliest": "2016-05-01T01:56:13.352Z",
+            "latest": "2020-04-19T21:07:15.657Z",
           },
         },
       },
-      "fingerprint_version": 3,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 1,
@@ -445,6 +446,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/CreationTimestamp",
       "table_id": 1,
       "target": null,
@@ -515,17 +517,21 @@ Object {
       "display_name": "Discount",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 700,
+          "distinct-count": 701,
+          "nil%": 0.898,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 5.161255547580321,
+            "avg": 5.161255547580326,
             "max": 61.69684269960571,
             "min": 0.17088996672584322,
+            "q1": 2.9786226681458743,
+            "q3": 7.338187788658235,
+            "sd": 3.053663125001991,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 35,
@@ -536,6 +542,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Discount",
       "table_id": 1,
       "target": null,
@@ -574,6 +581,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/PK",
       "table_id": 1,
       "target": null,
@@ -592,16 +600,10 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
-        },
-        "type": Object {
-          "type/Number": Object {
-            "avg": 100.5084,
-            "max": 200,
-            "min": 1,
-          },
+          "nil%": 0,
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": 24,
       "has_field_values": "none",
       "id": 3,
@@ -612,6 +614,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/FK",
       "table_id": 1,
       "target": Object {
@@ -644,6 +647,7 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
+        "settings": null,
         "special_type": "type/PK",
         "table_id": 3,
         "visibility_type": "normal",
@@ -716,16 +720,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 62,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
             "avg": 3.7015,
             "max": 100,
             "min": 0,
+            "q1": 1.755882607764982,
+            "q3": 4.882654507928044,
+            "sd": 4.214258386403798,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 36,
@@ -736,6 +744,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Quantity",
       "table_id": 1,
       "target": null,
@@ -807,16 +816,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 340,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 77.01295465356537,
+            "avg": 77.01295465356547,
             "max": 148.22900526552291,
             "min": 15.691943673970439,
+            "q1": 49.74894519060184,
+            "q3": 105.42965746993103,
+            "sd": 32.53705013056317,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 4,
@@ -827,6 +840,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 1,
       "target": null,
@@ -898,16 +912,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 797,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 3.8722099999999875,
+            "avg": 3.8722100000000004,
             "max": 11.12,
             "min": 0,
+            "q1": 2.273340386603857,
+            "q3": 5.337275338216307,
+            "sd": 2.3206651358900316,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 5,
@@ -918,6 +936,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 1,
       "target": null,
@@ -989,16 +1008,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 10000,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 82.96014815230829,
+            "avg": 82.96014815230805,
             "max": 238.32732001721533,
             "min": 12.061602936923117,
+            "q1": 52.006147617878135,
+            "q3": 109.55803018499738,
+            "sd": 38.35967664847571,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 6,
@@ -1009,6 +1032,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Income",
       "table_id": 1,
       "target": null,
@@ -1027,16 +1051,10 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 929,
-        },
-        "type": Object {
-          "type/Number": Object {
-            "avg": 678.6893,
-            "max": 1322,
-            "min": 1,
-          },
+          "nil%": 0,
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": 13,
       "has_field_values": "none",
       "id": 7,
@@ -1047,6 +1065,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/FK",
       "table_id": 1,
       "target": Object {
@@ -1079,6 +1098,7 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
+        "settings": null,
         "special_type": "type/PK",
         "table_id": 2,
         "visibility_type": "normal",
@@ -1108,7 +1128,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -1116,6 +1135,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -1380,6 +1400,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2490,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1390,7 +1411,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 8,
@@ -1401,6 +1422,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -1563,6 +1585,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2308,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
@@ -1571,7 +1594,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 3,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 9,
@@ -1582,6 +1605,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -1600,6 +1624,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1966,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1610,7 +1635,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 10,
@@ -1621,6 +1646,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/City",
       "table_id": 2,
       "target": null,
@@ -1782,16 +1808,17 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 992,
+          "distinct-count": 2500,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-19T07:00:00.000Z",
-            "latest": "2019-04-19T07:00:00.000Z",
+            "earliest": "2016-04-20T04:35:18.752Z",
+            "latest": "2019-04-19T21:06:27.300Z",
           },
         },
       },
-      "fingerprint_version": 3,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 11,
@@ -1802,6 +1829,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/CreationTimestamp",
       "table_id": 2,
       "target": null,
@@ -1820,6 +1848,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -1830,7 +1859,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 12,
@@ -1841,6 +1870,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Email",
       "table_id": 2,
       "target": null,
@@ -1879,6 +1909,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/PK",
       "table_id": 2,
       "target": null,
@@ -1960,16 +1991,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 39.879346704840046,
+            "avg": 39.87934670484002,
             "max": 70.6355001,
             "min": 25.775827,
+            "q1": 35.302705923023126,
+            "q3": 43.773802584662,
+            "sd": 6.390832341883712,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 14,
@@ -1980,6 +2015,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Latitude",
       "table_id": 2,
       "target": null,
@@ -2061,16 +2097,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2491,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": -95.18741780364007,
+            "avg": -95.18741780363999,
             "max": -67.96735199999999,
             "min": -166.5425726,
+            "q1": -101.58350792373135,
+            "q3": -84.65289348288829,
+            "sd": 15.399698968175663,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 15,
@@ -2081,6 +2121,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Longitude",
       "table_id": 2,
       "target": null,
@@ -2099,6 +2140,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2499,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2109,7 +2151,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 16,
@@ -2120,6 +2162,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Name",
       "table_id": 2,
       "target": null,
@@ -2138,6 +2181,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 2500,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2148,7 +2192,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 17,
@@ -2159,6 +2203,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 2,
       "target": null,
@@ -2177,6 +2222,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2187,7 +2233,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 18,
@@ -2198,6 +2244,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Source",
       "table_id": 2,
       "target": null,
@@ -2216,6 +2263,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 49,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2226,7 +2274,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 19,
@@ -2237,6 +2285,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/State",
       "table_id": 2,
       "target": null,
@@ -2254,7 +2303,8 @@ Object {
       "display_name": "Zip",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 2235,
+          "distinct-count": 2234,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2265,7 +2315,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 20,
@@ -2276,6 +2326,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/ZipCode",
       "table_id": 2,
       "target": null,
@@ -2304,7 +2355,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -2312,6 +2362,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -2576,6 +2627,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 4,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2586,7 +2638,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 21,
@@ -2597,6 +2649,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Category",
       "table_id": 3,
       "target": null,
@@ -2758,16 +2811,17 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 186,
+          "distinct-count": 200,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-26T07:00:00.000Z",
-            "latest": "2019-04-15T07:00:00.000Z",
+            "earliest": "2016-04-27T02:29:55.147Z",
+            "latest": "2019-04-15T20:34:19.931Z",
           },
         },
       },
-      "fingerprint_version": 3,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 22,
@@ -2778,6 +2832,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/CreationTimestamp",
       "table_id": 3,
       "target": null,
@@ -2796,6 +2851,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -2806,7 +2862,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 23,
@@ -2817,6 +2873,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 3,
       "target": null,
@@ -2855,6 +2912,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/PK",
       "table_id": 3,
       "target": null,
@@ -2926,16 +2984,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 170,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
             "avg": 55.74639966792074,
             "max": 98.81933684368194,
             "min": 15.691943673970439,
+            "q1": 37.25154462926434,
+            "q3": 75.45898071609447,
+            "sd": 21.711481557852057,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 25,
@@ -2946,6 +3008,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 3,
       "target": null,
@@ -3017,16 +3080,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 23,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
-            "avg": 3.4715000000000007,
+            "avg": 3.4715,
             "max": 5,
             "min": 0,
+            "q1": 3.5120465053408525,
+            "q3": 4.216124969497314,
+            "sd": 1.3605488657451452,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 26,
@@ -3037,6 +3104,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Score",
       "table_id": 3,
       "target": null,
@@ -3055,6 +3123,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 199,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3065,7 +3134,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 27,
@@ -3076,6 +3145,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Title",
       "table_id": 3,
       "target": null,
@@ -3094,6 +3164,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 200,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3104,7 +3175,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 28,
@@ -3115,6 +3186,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Company",
       "table_id": 3,
       "target": null,
@@ -3143,7 +3215,6 @@ Object {
     "description": null,
     "engine": "h2",
     "features": Array [
-      "native-query-params",
       "basic-aggregations",
       "standard-deviation-aggregations",
       "expression-aggregations",
@@ -3151,6 +3222,7 @@ Object {
       "native-parameters",
       "nested-queries",
       "expressions",
+      "case-sensitivity-string-filter-options",
       "binning",
     ],
     "id": 1,
@@ -3415,17 +3487,18 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1112,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 180.6501798561151,
+            "average-length": 177.41996402877697,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 29,
@@ -3436,6 +3509,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": false,
+      "settings": null,
       "special_type": "type/Description",
       "table_id": 4,
       "target": null,
@@ -3597,16 +3671,17 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 720,
+          "distinct-count": 1112,
+          "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-06-03T07:00:00.000Z",
-            "latest": "2020-04-19T07:00:00.000Z",
+            "earliest": "2016-06-03T07:37:05.818Z",
+            "latest": "2020-04-19T21:15:25.677Z",
           },
         },
       },
-      "fingerprint_version": 3,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "none",
       "id": 30,
@@ -3617,6 +3692,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/CreationTimestamp",
       "table_id": 4,
       "target": null,
@@ -3655,6 +3731,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/PK",
       "table_id": 4,
       "target": null,
@@ -3673,16 +3750,10 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 176,
-        },
-        "type": Object {
-          "type/Number": Object {
-            "avg": 96.88489208633094,
-            "max": 200,
-            "min": 1,
-          },
+          "nil%": 0,
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": 24,
       "has_field_values": "none",
       "id": 32,
@@ -3693,6 +3764,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/FK",
       "table_id": 4,
       "target": Object {
@@ -3725,6 +3797,7 @@ Object {
         "points_of_interest": null,
         "position": 0,
         "preview_display": true,
+        "settings": null,
         "special_type": "type/PK",
         "table_id": 3,
         "visibility_type": "normal",
@@ -3797,16 +3870,20 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 5,
+          "nil%": 0,
         },
         "type": Object {
           "type/Number": Object {
             "avg": 3.987410071942446,
             "max": 5,
             "min": 1,
+            "q1": 3.54744353181696,
+            "q3": 4.764807071650455,
+            "sd": 1.0443899855660577,
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "list",
       "id": 33,
@@ -3817,6 +3894,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": "type/Score",
       "table_id": 4,
       "target": null,
@@ -3835,6 +3913,7 @@ Object {
       "fingerprint": Object {
         "global": Object {
           "distinct-count": 1076,
+          "nil%": 0,
         },
         "type": Object {
           "type/Text": Object {
@@ -3845,7 +3924,7 @@ Object {
           },
         },
       },
-      "fingerprint_version": 2,
+      "fingerprint_version": 4,
       "fk_target_field_id": null,
       "has_field_values": "search",
       "id": 34,
@@ -3856,6 +3935,7 @@ Object {
       "points_of_interest": null,
       "position": 0,
       "preview_display": true,
+      "settings": null,
       "special_type": null,
       "table_id": 4,
       "target": null,

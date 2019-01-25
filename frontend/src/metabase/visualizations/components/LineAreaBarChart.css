@@ -31,7 +31,8 @@
 }
 
 .LineAreaBarChart .dc-chart g.row text.outside {
-  fill: var(--color-text-light);
+  fill: var(--color-text-medium);
+  font-weight: 900;
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
@@ -87,15 +88,6 @@
   opacity: 1 !important;
 }
 
-.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot {
-  r: 3px !important;
-  fill: white;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill-opacity: 1 !important;
-  stroke-opacity: 1 !important;
-}
-
 .LineAreaBarChart .dc-chart circle.bubble {
   fill-opacity: 0.8;
   stroke-width: 1;
@@ -107,16 +99,43 @@
   fill: currentColor;
 }
 
+/* line width = 2px (default) */
+.LineAreaBarChart .dc-chart .line {
+  stroke-width: 2px;
+}
+.LineAreaBarChart .dc-chart .dc-tooltip .dot {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 3px */
+.LineAreaBarChart .dc-chart .line--medium .line {
+  stroke-width: 3px;
+}
+.LineAreaBarChart .dc-chart .line--medium .dc-tooltip .dot {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 4px */
+.LineAreaBarChart .dc-chart .line--heavy .line {
+  stroke-width: 4px;
+}
+.LineAreaBarChart .dc-chart .line--heavy .dc-tooltip .dot {
+  r: 3.5px !important;
+  stroke-width: 3px;
+}
+
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot,
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.selected,
 .LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot:hover,
 .LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot.hover {
-  r: 3px !important;
   fill: white;
   stroke: currentColor;
-  stroke-width: 2;
   fill-opacity: 1 !important;
   stroke-opacity: 1 !important;
 }
+
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.deselected {
   opacity: 0;
 }
@@ -170,4 +189,13 @@
 .LineAreaBarChart .dc-chart .brush .resize path {
   fill: var(--color-bg-light);
   stroke: var(--color-text-medium);
+}
+
+.LineAreaBarChart .dc-chart .goal .line {
+  stroke: var(--color-text-medium);
+  stroke-dasharray: 5, 5;
+}
+
+.LineAreaBarChart .dc-chart .trend .line {
+  stroke-dasharray: 5, 5;
 }

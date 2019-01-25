@@ -8,7 +8,6 @@
             [metabase
              [config :as config]
              [db :as mdb]
-             [driver :as driver]
              [events :as events]
              [metabot :as metabot]
              [middleware :as mb-middleware]
@@ -19,6 +18,7 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
@@ -105,6 +105,7 @@
       locale-negotiator                  ; Binds *locale* for i18n
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
+      mb-middleware/add-content-type     ; Adds a Content-Type header for any response that doesn't already have one
       wrap-gzip))                        ; GZIP response if client can handle it
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
@@ -149,11 +150,9 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (plugins/setup-plugins!)
-  (init-status/set-progress! 0.35)
 
   ;; Load up all of our Database drivers, which are used for app db work
-  (driver/find-and-load-drivers!)
+  (driver.u/find-and-load-all-drivers!)
   (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
@@ -199,24 +198,30 @@
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
 
+(defn- jetty-ssl-config []
+  (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
+                           :keystore       (config/config-str :mb-jetty-ssl-keystore)
+                           :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
+                           :truststore     (config/config-str :mb-jetty-ssl-truststore)
+                           :trust-password (config/config-str :mb-jetty-ssl-truststore-password)}))
+
+(defn- jetty-config []
+  (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
+                                   :host          (config/config-str :mb-jetty-host)
+                                   :max-threads   (config/config-int :mb-jetty-maxthreads)
+                                   :min-threads   (config/config-int :mb-jetty-minthreads)
+                                   :max-queued    (config/config-int :mb-jetty-maxqueued)
+                                   :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+    (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
+    (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
+                                             (merge jetty-ssl-config))))
+
 (defn start-jetty!
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-    (let [jetty-ssl-config (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
-                                                    :keystore       (config/config-str :mb-jetty-ssl-keystore)
-                                                    :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
-                                                    :truststore     (config/config-str :mb-jetty-ssl-truststore)
-                                                    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
-          jetty-config     (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
-                                                            :host          (config/config-str :mb-jetty-host)
-                                                            :max-threads   (config/config-int :mb-jetty-maxthreads)
-                                                            :min-threads   (config/config-int :mb-jetty-minthreads)
-                                                            :max-queued    (config/config-int :mb-jetty-maxqueued)
-                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                             (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
-                             (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
-                                                                      (merge jetty-ssl-config)))]
+    (let [jetty-ssl-config (jetty-ssl-config)
+          jetty-config     (jetty-config)]
       (log/info (trs "Launching Embedded Jetty Webserver with config:")
                 "\n"
                 (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))

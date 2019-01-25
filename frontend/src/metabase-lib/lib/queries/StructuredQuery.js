@@ -738,8 +738,8 @@ export default class StructuredQuery extends AtomicQuery {
       return ["fk->", column.fk_field_id, column.id];
     } else if (column.id != null) {
       return ["field-id", column.id];
-    } else if (column["expression-name"] != null) {
-      return ["expression", column["expression-name"]];
+    } else if (column.expression_name != null) {
+      return ["expression", column.expression_name];
     } else if (column.source === "aggregation") {
       // FIXME: aggregations > 0?
       return ["aggregation", 0];

@@ -6,8 +6,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [toucan.db :as db]))
+             [util :as tu]]))
 
 ;;; ---------------------------------------------- :details-only fields ----------------------------------------------
 
@@ -22,28 +21,26 @@
       set))
 
 (expect-with-non-timeseries-dbs
-  [(set (venues-cols))
-   (set (map (fn [col]
-               (if (= (data/id :venues :price) (u/get-id col))
-                 (assoc col :visibility_type :details-only)
-                 col))
-             (venues-cols)))
-   (set (venues-cols))]
-  [(get-col-names)
-   (do (db/update! Field (data/id :venues :price), :visibility_type :details-only)
-       (get-col-names))
-   (do (db/update! Field (data/id :venues :price), :visibility_type :normal)
-       (get-col-names))])
+  (u/key-by :id (venues-cols))
+  (u/key-by :id (get-col-names)))
+
+(expect-with-non-timeseries-dbs
+  (u/key-by :id (for [col (venues-cols)]
+                  (if (= (data/id :venues :price) (u/get-id col))
+                    (assoc col :visibility_type :details-only)
+                    col)))
+  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:visibility_type :details-only}
+    (u/key-by :id (get-col-names))))
 
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
 ;;; Make sure :sensitive information fields are never returned by the QP
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     (->columns "id" "name" "last_login")
    :cols        [(users-col :id)
                  (users-col :name)
-                 (users-col :last_login)],
+                 (users-col :last_login)]
    :rows        [[ 1 "Plato Yeshua"]
                  [ 2 "Felipinho Asklepios"]
                  [ 3 "Kaneonuskatew Eiran"]

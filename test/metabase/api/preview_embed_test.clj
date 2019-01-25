@@ -378,7 +378,7 @@
             :rows)))))
 
 ;; Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)...
-(datasets/expect-with-engine :postgres
+(datasets/expect-with-driver :postgres
   [[1]]
   (embed-test/with-embedding-enabled-and-new-secret-key
     (tt/with-temp Card [card {:dataset_query {:database (data/id)

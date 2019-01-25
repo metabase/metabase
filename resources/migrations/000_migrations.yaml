@@ -4989,6 +4989,37 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: raw_column_id
 
+# Add database_id column to query_execution
+
+  - changeSet:
+      id: 92
+      author: camsaul
+      comment: 'Added 0.31.0'
+      validCheckSum: 8:a875945f36824a0667c740888c00c37f
+      validCheckSum: 8:83ded48e18fe8f70d6ec09add042124d
+      validCheckSum: 8:1e5bc2d66778316ea640a561862c23b4
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              name: database_id
+              type: integer
+              remarks: 'ID of the database this query was ran against.'
+
+# Start recording the actual query dictionary that's been executed
+
+  - changeSet:
+      id: 93
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: query
+            columns:
+              name: query
+              type: text
+              remarks: 'The actual "query dictionary" for this query.'
+
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
       id: 94
@@ -5060,8 +5091,125 @@ databaseChangeLog:
       id: 95
       author: senior
       comment: 'Added 0.31.0'
+      # Don't add the constraint if there are already duplicates in the database change log! Migrations will fail!
+      # See #8909
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
       changes:
         - addUniqueConstraint:
             columnNames: id, author, filename
             constraintName: idx_databasechangelog_id_author_filename
             tableName: DATABASECHANGELOG
+#
+# ADD Field.settings COLUMN
+#
+  - changeSet:
+      id: 96
+      author: camsaul
+      comment: 'Added 0.31.0'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              name: settings
+              type: text
+              remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+#
+# Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
+#
+  - changeSet:
+      id: 97
+      author: senior
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms: mysql, mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob
+
+#
+# Add unique constraints for (Field name + table_id + parent_id) and for (Table name + schema + db_id) unless for one
+# reason or another those would-be constraints are already violated. This is to fix issue where sometimes the same Field
+# or Table is synced more than once (see #669, #8950, #9048)
+#
+# Note that the SQL standard says unique constraints should not apply to columns with NULL values. Consider the following:
+#
+# INSERT INTO metabase_table (db_id, schema, name) VALUES (1, 'PUBLIC', 'my_table');
+# INSERT INTO metabase_table (db_id, schema, name) VALUES (1, 'PUBLIC', 'my_table'); -- fails: violates UNIQUE constraint
+#
+# INSERT INTO metabase_table (db_id, schema, name) VALUES (1, NULL, 'my_table');
+# INSERT INTO metabase_table (db_id, schema, name) VALUES (1, NULL, 'my_table'); -- succeeds: because schema is NULL constraint does not apply
+#
+# Thus these constraints won't work if the data warehouse DB in question doesn't use schemas (e.g. MySQL or MongoDB). It
+# will work for other data warehouse types.
+#
+# Luckily Postgres (but not H2 or MySQL) supports constraints that only apply to columns matching conditions, so we can
+# add additional constraints to properly handle those cases.
+  - changeSet:
+      id: 98
+      author: camsaul
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: IGNORE
+        - or:
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_table` GROUP BY `db_id`, `schema`, `name` HAVING count(*) > 1) t1
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_TABLE GROUP BY DB_ID, SCHEMA, NAME HAVING count(*) > 1) t1
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            columnNames: db_id, schema, name
+            constraintName: idx_uniq_table_db_id_schema_name
+        # For Postgres, add additional constraint to apply if schema is NULL
+        - sql:
+            dbms: postgresql
+            sql: CREATE UNIQUE INDEX idx_uniq_table_db_id_schema_name_2col ON "metabase_table" ("db_id", "name") WHERE "schema" IS NULL
+
+  - changeSet:
+      id: 99
+      author: camsaul
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: IGNORE
+        - or:
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_field` GROUP BY `table_id`, `parent_id`, `name` HAVING count(*) > 1) t1
+            - and:
+                - dbms:
+                    type: h2,postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_FIELD GROUP BY TABLE_ID, PARENT_ID, NAME HAVING count(*) > 1) t1
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_field
+            columnNames: table_id, parent_id, name
+            constraintName: idx_uniq_field_table_id_parent_id_name
+        # For Postgres, add additional constraint to apply if schema is NULL
+        - sql:
+            dbms: postgresql
+            sql: CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col ON "metabase_field" ("table_id", "name") WHERE "parent_id" IS NULL

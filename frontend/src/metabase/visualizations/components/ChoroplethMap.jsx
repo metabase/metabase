@@ -8,7 +8,7 @@ import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
@@ -22,30 +22,40 @@ import {
 import d3 from "d3";
 import ss from "simple-statistics";
 import _ from "underscore";
-
-// const HEAT_MAP_COLORS = [
-//     "#E1F2FF",
-//     "#67B9FF",
-//     "#2DA0FF",
-//     "#0A93FF",
-//     "#005FB8"
-// ];
-// const HEAT_MAP_ZERO_COLOR = '#CCC';
+import Color from "color";
 
 // TODO COLOR
-const HEAT_MAP_COLORS = [
-  // "#E2F2FF",
-  "#C4E4FF",
-  // "#9ED2FF",
-  "#81C5FF",
-  // "#6BBAFF",
-  "#51AEFF",
-  // "#36A2FF",
-  "#1E96FF",
-  // "#0089FF",
-  "#0061B5",
-];
+const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
+
+export function getColorplethColorScale(
+  color,
+  { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
+) {
+  let lightColor = Color(color)
+    .lightness(lightness)
+    .saturate(saturate);
+
+  let darkColor = Color(color)
+    .darken(darken)
+    .saturate(saturate);
+
+  const scale = d3.scale
+    .linear()
+    .domain([0, 1])
+    .range([lightColor.string(), darkColor.string()]);
+
+  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+
+  if (darkenLast) {
+    colors[colors.length - 1] = Color(color)
+      .darken(darkenLast)
+      .saturate(saturate)
+      .string();
+  }
+
+  return colors;
+}
 
 const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
@@ -64,7 +74,7 @@ export default class ChoroplethMap extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length > 1 && isString(cols[0]);
   }
 
@@ -145,7 +155,7 @@ export default class ChoroplethMap extends Component {
       projection = null;
     }
 
-    const nameProperty = details.region_name;
+    // const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -169,29 +179,17 @@ export default class ChoroplethMap extends Component {
     const getRowKey = row =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+
+    // const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
+
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
-    const heatMapColors = HEAT_MAP_COLORS.slice(
-      0,
-      Math.min(HEAT_MAP_COLORS.length, rows.length),
-    );
+    const formatMetric = value =>
+      formatValue(value, settings.column(cols[metricIndex]));
 
-    const onHoverFeature = hover => {
-      onHoverChange &&
-        onHoverChange(
-          hover && {
-            index: heatMapColors.indexOf(getColor(hover.feature)),
-            event: hover.event,
-            data: {
-              key: getFeatureName(hover.feature),
-              value: getFeatureValue(hover.feature),
-            },
-          },
-        );
-    };
+    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
     const getFeatureClickObject = row => ({
       value: row[metricIndex],
@@ -211,13 +209,25 @@ export default class ChoroplethMap extends Component {
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = _.find(rows, row => getRowKey(row) === featureKey);
-        if (onVisualizationClick && row !== undefined) {
+        const row = rowByFeatureKey.get(getFeatureKey(click.feature));
+        if (row && onVisualizationClick) {
           onVisualizationClick({
             ...getFeatureClickObject(row),
             event: click.event,
           });
+        }
+      });
+    const onHoverFeature =
+      onHoverChange &&
+      (hover => {
+        const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
+        if (row && onHoverChange) {
+          onHoverChange({
+            ...getFeatureClickObject(row),
+            event: hover.event,
+          });
+        } else if (onHoverChange) {
+          onHoverChange(null);
         }
       });
 
@@ -229,6 +239,8 @@ export default class ChoroplethMap extends Component {
       domain.push(getRowValue(row));
     }
 
+    const heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
     let colorScale = d3.scale
@@ -236,13 +248,13 @@ export default class ChoroplethMap extends Component {
       .domain(groups.map(cluster => cluster[0]))
       .range(heatMapColors);
 
-    let legendColors = heatMapColors.slice();
+    let legendColors = heatMapColors;
     let legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
-        ? formatNumber(min) + " +"
-        : formatNumber(min) + " - " + formatNumber(max);
+        ? formatMetric(min) + " +"
+        : formatMetric(min) + " - " + formatMetric(max);
     });
 
     const getColor = feature => {

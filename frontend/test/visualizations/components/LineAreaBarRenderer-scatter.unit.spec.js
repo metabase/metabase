@@ -1,8 +1,11 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
-
-import { NumberColumn, dispatchUIEvent } from "../__support__/visualizations";
+import {
+  NumberColumn,
+  dispatchUIEvent,
+  renderLineAreaBar,
+  getFormattedTooltips,
+} from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
   "graph.x_axis.scale": "linear",
@@ -10,6 +13,8 @@ const DEFAULT_SETTINGS = {
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
   "graph.colors": ["#000000"],
+  series: () => ({ display: "scatter" }),
+  column: () => ({}),
 };
 
 describe("LineAreaBarRenderer-scatter", () => {
@@ -30,11 +35,16 @@ describe("LineAreaBarRenderer-scatter", () => {
     document.body.removeChild(document.getElementById("fixture"));
   });
 
-  it("should render a scatter chart with 2 dimensions", function(done) {
-    lineAreaBarRenderer(element, {
-      chartType: "scatter",
-      series: [
+  it("should render a scatter chart with 2 dimensions", () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(
+      element,
+      [
         {
+          card: {
+            display: "scatter",
+            visualization_settings: DEFAULT_SETTINGS,
+          },
           data: {
             cols: [
               NumberColumn({ display_name: "A", source: "breakout" }),
@@ -44,26 +54,29 @@ describe("LineAreaBarRenderer-scatter", () => {
           },
         },
       ],
-      settings: DEFAULT_SETTINGS,
-      onHoverChange: hover => {
-        expect(hover.data.length).toBe(2);
-        expect(hover.data[0].key).toBe("A");
-        expect(hover.data[0].value).toBe(1);
-        expect(hover.data[1].key).toBe("B");
-        expect(hover.data[1].value).toBe(2);
-
-        done();
+      {
+        onHoverChange,
       },
-    });
+    );
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
+
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "1",
+      "2",
+    ]);
   });
 
-  it("should render a scatter chart with 2 dimensions and 1 metric", function(done) {
-    lineAreaBarRenderer(element, {
-      chartType: "scatter",
-      series: [
+  it("should render a scatter chart with 2 dimensions and 1 metric", () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(
+      element,
+      [
         {
+          card: {
+            display: "scatter",
+            visualization_settings: DEFAULT_SETTINGS,
+          },
           data: {
             cols: [
               NumberColumn({ display_name: "A", source: "breakout" }),
@@ -74,19 +87,17 @@ describe("LineAreaBarRenderer-scatter", () => {
           },
         },
       ],
-      settings: DEFAULT_SETTINGS,
-      onHoverChange: hover => {
-        expect(hover.data.length).toBe(3);
-        expect(hover.data[0].key).toBe("A");
-        expect(hover.data[0].value).toBe(1);
-        expect(hover.data[1].key).toBe("B");
-        expect(hover.data[1].value).toBe(2);
-        expect(hover.data[2].key).toBe("C");
-        expect(hover.data[2].value).toBe(3);
-        done();
+      {
+        onHoverChange,
       },
-    });
+    );
 
     dispatchUIEvent(qsa(".bubble")[0], "mousemove");
+
+    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+      "1",
+      "2",
+      "3",
+    ]);
   });
 });

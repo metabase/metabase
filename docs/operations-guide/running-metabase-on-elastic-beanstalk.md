@@ -68,7 +68,7 @@ For the base configuration settings we want to make the following selections:
 
 This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
 
-If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](https://www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
 
 When your environment type settings look like the above then go ahead and click `Review and launch`.
 
@@ -179,7 +179,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * http://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip
+  * [http://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip](http://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. {{ site.latest_version }})

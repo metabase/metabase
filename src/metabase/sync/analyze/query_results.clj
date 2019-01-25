@@ -3,10 +3,11 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [clojure.string :as str]
-            [metabase.query-processor.interface :as qp.i]
+  (:require [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.analyze.fingerprint
+             [fingerprinters :as f]
+             [insights :as insights]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -16,7 +17,7 @@
 (def ^:private DateTimeUnitKeywordOrString
   "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
   (s/constrained su/KeywordOrString
-                 qp.i/datetime-field-unit?
+                 #(mbql.preds/DatetimeFieldUnit? (keyword %))
                  "Valid field datetime unit keyword or string"))
 
 (def ^:private ResultColumnMetadata
@@ -58,31 +59,28 @@
      {:base_type :type/Text
       :unit      nil})))
 
-(s/defn results->column-metadata :- ResultsMetadata
+;; TODO schema
+(defn results->column-metadata
   "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
   [results]
   (let [result-metadata (for [col (:cols results)]
-                          ;; Rarely certain queries will return columns with no names. For example
-                          ;; `SELECT COUNT(*)` in SQL Server seems to come back with no name.
-                          ;; Since we can't use those as field literals in subsequent queries,
-                          ;; filter them out.
-                          (when-not (str/blank? (:name col))
-                            (-> col
-                                stored-column-metadata->result-column-metadata
-                                (maybe-infer-special-type col))))]
+                          (-> col
+                              stored-column-metadata->result-column-metadata
+                              (maybe-infer-special-type col)))]
     (transduce identity
                (redux/post-complete
-                (apply f/col-wise (for [metadata result-metadata]
-                                    (if (and metadata
-                                             (nil? (:fingerprint metadata)))
-                                      (f/fingerprinter metadata)
-                                      (f/constant-fingerprinter (:fingerprint metadata)))))
-                (fn [fingerprints]
-                  (->> (map (fn [fingerprint metadata]
-                              (if (instance? Throwable fingerprint)
-                                metadata
-                                (some-> metadata (assoc :fingerprint fingerprint))))
-                            fingerprints
-                            result-metadata)
-                       (remove nil?))))
+                (redux/juxt
+                 (apply f/col-wise (for [metadata result-metadata]
+                                     (if-not (:fingerprint metadata)
+                                       (f/fingerprinter metadata)
+                                       (f/constant-fingerprinter (:fingerprint metadata)))))
+                 (insights/insights result-metadata))
+                (fn [[fingerprints insights]]
+                  {:metadata (map (fn [fingerprint metadata]
+                                    (if (instance? Throwable fingerprint)
+                                      metadata
+                                      (assoc metadata :fingerprint fingerprint)))
+                                  fingerprints
+                                  result-metadata)
+                   :insights insights}))
                (:rows results))))

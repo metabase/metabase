@@ -114,6 +114,10 @@
                   (trs "Switching Field to use a search widget instead."))
         (db/update! 'Field (u/get-id field) :has_field_values nil)
         (db/delete! FieldValues :field_id (u/get-id field)))
+
+      (= (:values field-values) values)
+      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
       (do
@@ -122,6 +126,7 @@
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
+
       ;; if FieldValues object doesn't exist create one
       values
       (do
@@ -131,6 +136,7 @@
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)
+
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
       :else
       (do

@@ -35,11 +35,11 @@
              [query :refer [Query]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :as qp.macros]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
-            [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [trs tru]]
+            [metabase.util
+             [date :as date]
+             [i18n :as ui18n :refer [trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -53,17 +53,20 @@
 (defn ->field
   "Return `Field` instance for a given ID or name in the context of root."
   [root id-or-name]
-  (if (->> root :source (instance? (type Table)))
-    (Field id-or-name)
-    (when-let [field (->> root
-                          :source
-                          :result_metadata
-                          (m/find-first (comp #{id-or-name} :name)))]
-      (-> field
-          (update :base_type keyword)
-          (update :special_type keyword)
-          field/map->FieldInstance
-          (classify/run-classifiers {})))))
+  (let [id-or-name (if (sequential? id-or-name)
+                     (filters/field-reference->id id-or-name)
+                     id-or-name)]
+    (if (->> root :source (instance? (type Table)))
+      (Field id-or-name)
+      (when-let [field (->> root
+                            :source
+                            :result_metadata
+                            (m/find-first (comp #{id-or-name} :name)))]
+        (-> field
+            (update :base_type keyword)
+            (update :special_type keyword)
+            field/map->FieldInstance
+            (classify/run-classifiers {}))))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the soruce of a given root object."
@@ -82,7 +85,7 @@
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
   (every-pred (partial mbql.u/is-clause? :metric)
-              (complement qp.macros/ga-metric-or-segment?)))
+              (complement mbql.u/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
   (partial mbql.u/is-clause? :named))
@@ -94,10 +97,10 @@
   "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
   (cond
-    (qp.macros/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
-    (adhoc-metric? metric)                   (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)                   (-> args first Metric :name)
-    :else                                    (second args)))
+    (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
+    (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
+    (saved-metric? metric)                (-> args first Metric :name)
+    :else                                 (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
@@ -121,7 +124,6 @@
      (if (adhoc-metric? metric)
        (tru "{0} of {1}" (metric-name metric) (or (some->> metric
                                                            second
-                                                           filters/field-reference->id
                                                            (->field root)
                                                            :display_name)
                                                   (source-name root)))
@@ -134,8 +136,7 @@
         dimensions   (->> (get-in question [:dataset_query :query :breakout])
                           (mapcat filters/collect-field-references)
                           (map (comp :display_name
-                                     (partial ->field root)
-                                     filters/field-reference->id))
+                                     (partial ->field root)))
                           join-enumeration)]
     (if dimensions
       (tru "{0} by {1}" aggregations dimensions)
@@ -417,9 +418,9 @@
                  (fn [[_ identifier attribute]]
                    (let [entity    (bindings identifier)
                          attribute (some-> attribute qp.util/normalize-token)]
-                     (or (and (ifn? entity) (entity attribute))
-                         (root attribute)
-                         (->reference template-type entity)))))))
+                     (str (or (and (ifn? entity) (entity attribute))
+                              (root attribute)
+                              (->reference template-type entity))))))))
 
 (defn- field-candidates
   [context {:keys [field_type links_to named max_cardinality] :as constraints}]
@@ -564,17 +565,19 @@
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
   [s]
-  (str (str/upper-case (subs s 0 1)) (subs s 1)))
+  (let [s (str s)]
+    (str (str/upper-case (subs s 0 1)) (subs s 1))))
 
 (defn- instantiate-metadata
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (string? form)
-           (let [new-form (fill-templates :string context bindings form)]
-             (if (not= new-form form)
-               (capitalize-first new-form)
-               new-form))
+         (if (ui18n/localized-string? form)
+           (let [s     (str form)
+                 new-s (fill-templates :string context bindings s)]
+             (if (not= new-s s)
+               (capitalize-first new-s)
+               s))
            form))
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
@@ -583,7 +586,7 @@
   [{:keys [base_type engine fingerprint aggregation]}]
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
-      (and (driver/driver-supports? (driver/engine->driver engine) :binning)
+      (and (driver/supports? engine :binning)
            (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
@@ -982,15 +985,15 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (trs "Applying heuristic %s to %s.") (:rule rule) full-name)
-      (log/infof (trs "Dimensions bindings:\n%s")
-                 (->> context
-                      :dimensions
-                      (m/map-vals #(update % :matches (partial map :name)))
-                      u/pprint-to-str))
-      (log/infof (trs "Using definitions:\nMetrics:\n%s\nFilters:\n%s")
-                 (-> context :metrics u/pprint-to-str)
-                 (-> context :filters u/pprint-to-str))
+      (log/infof (str (trs "Applying heuristic {0} to {1}." (:rule rule) full-name)))
+      (log/infof (str (trs "Dimensions bindings:\n{0}"
+                           (->> context
+                                :dimensions
+                                (m/map-vals #(update % :matches (partial map :name)))
+                                u/pprint-to-str))))
+      (log/infof (str (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                           (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                           (-> context :filters u/pprint-to-str))))
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)
@@ -999,7 +1002,7 @@
                                       (format "%s#show=all" (:url root)))
                  :transient_filters (:query-filter context)
                  :param_fields      (->> context :query-filter (filter-referenced-fields root)))))
-    (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
+    (throw (ui18n/ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -1040,7 +1043,6 @@
 (defn- collect-breakout-fields
   [root question]
   (map (comp (partial ->field root)
-             filters/field-reference->id
              first
              filters/collect-field-references)
        (get-in question [:dataset_query :query :breakout])))
@@ -1096,7 +1098,6 @@
   (cond-> (->> field-reference
                filters/collect-field-references
                first
-               filters/field-reference->id
                (->field root))
     (-> field-reference first qp.util/normalize-token (= :datetime-field))
     (assoc :unit (-> field-reference last qp.util/normalize-token))))
@@ -1107,14 +1108,14 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  "minute"
-                                :hour-of-day     "hour"
-                                :day-of-week     "day of week"
-                                :day-of-month    "day of month"
-                                :day-of-year     "day of year"
-                                :week-of-year    "week"
-                                :month-of-year   "month"
-                                :quarter-of-year "quarter"}
+(def ^:private unit-name (comp {:minute-of-hour  (tru "minute")
+                                :hour-of-day     (tru "hour")
+                                :day-of-week     (tru "day of week")
+                                :day-of-month    (tru "day of month")
+                                :day-of-year     (tru "day of year")
+                                :week-of-year    (tru "week")
+                                :month-of-year   (tru "month")
+                                :quarter-of-year (tru "quarter")}
                                qp.util/normalize-token))
 
 (defn- field-name
@@ -1122,7 +1123,7 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (and (filters/periodic-datetime? field) unit) (format "%s of %s" (unit-name unit)))))
+     (and (filters/periodic-datetime? field) unit) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
