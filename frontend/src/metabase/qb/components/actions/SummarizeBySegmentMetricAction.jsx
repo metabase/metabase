@@ -3,14 +3,13 @@
 import React from "react";
 import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
+import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
 import type {
   ClickAction,
   ClickActionProps,
   ClickActionPopoverProps,
 } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 const omittedAggregations = ["rows", "cum-sum", "cum-count", "stddev"];
 const getAggregationOptionsForSummarize = query => {
@@ -26,8 +25,6 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  const tableMetadata: TableMetadata = query.table();
-
   return [
     {
       name: "summarize",
@@ -37,8 +34,6 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <AggregationPopover
           query={query}
-          tableMetadata={tableMetadata}
-          customFields={query.expressions()}
           availableAggregations={getAggregationOptionsForSummarize(query)}
           onCommitAggregation={aggregation => {
             onChangeCardAndRun({

@@ -557,10 +557,10 @@ describe("StructuredQuery unit tests", () => {
     describe("expressionDimensions", () => {
       pending();
     });
-    describe("aggregationDimensions", () => {
+    describe("breakoutDimensions", () => {
       pending();
     });
-    describe("metricDimensions", () => {
+    describe("aggregationDimensions", () => {
       pending();
     });
   });

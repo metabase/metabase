@@ -99,6 +99,7 @@ export default class TableInteractive extends Component {
   columnHasResized: { [key: number]: boolean };
   columnNeedsResize: { [key: number]: boolean };
   _div: HTMLElement;
+  _totalContentWidth: ?number;
 
   header: GridComponent;
   grid: GridComponent;
@@ -123,6 +124,12 @@ export default class TableInteractive extends Component {
 
   static defaultProps = {
     isPivoted: false,
+    renderTableHeaderWrapper: children => (
+      <div className="cellData">{children}</div>
+    ),
+    renderTableCellWrapper: children => (
+      <div className="cellData">{children}</div>
+    ),
   };
 
   componentWillMount() {
@@ -179,6 +186,12 @@ export default class TableInteractive extends Component {
   componentDidUpdate() {
     if (!this.state.contentWidths) {
       this._measure();
+    } else if (this.props.onContentWidthChange) {
+      const total = this.state.columnWidths.reduce((sum, width) => sum + width);
+      if (this._totalContentWidth !== total) {
+        this.props.onContentWidthChange(total, this.state.columnWidths);
+        this._totalContentWidth = total;
+      }
     }
   }
 
@@ -365,8 +378,8 @@ export default class TableInteractive extends Component {
             : undefined
         }
       >
-        <div className="cellData">
-          {columnSettings["show_mini_bar"] ? (
+        {this.props.renderTableCellWrapper(
+          columnSettings["show_mini_bar"] ? (
             <MiniBar
               value={value}
               options={columnSettings}
@@ -381,8 +394,8 @@ export default class TableInteractive extends Component {
               jsx: true,
               rich: true,
             })
-          )}
-        </div>
+          ),
+        )}
       </div>
     );
   };
@@ -447,7 +460,12 @@ export default class TableInteractive extends Component {
   }
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-    const { sort, isPivoted, getColumnTitle } = this.props;
+    const {
+      sort,
+      isPivoted,
+      getColumnTitle,
+      renderTableHeaderWrapper,
+    } = this.props;
     const { cols } = this.props.data;
     const column = cols[columnIndex];
 
@@ -554,7 +572,7 @@ export default class TableInteractive extends Component {
               : undefined
           }
         >
-          <div className="cellData">
+          {renderTableHeaderWrapper(
             <Ellipsified tooltip={columnTitle}>
               {isSortable &&
                 isRightAligned && (
@@ -573,8 +591,10 @@ export default class TableInteractive extends Component {
                     size={8}
                   />
                 )}
-            </Ellipsified>
-          </div>
+            </Ellipsified>,
+            column,
+            columnIndex,
+          )}
           <Draggable
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
@@ -624,6 +644,8 @@ export default class TableInteractive extends Component {
       return <div className={className} />;
     }
 
+    const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
+
     return (
       <ScrollSync>
         {({ onScroll, scrollLeft, scrollTop }) => (
@@ -647,15 +669,15 @@ export default class TableInteractive extends Component {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: HEADER_HEIGHT,
+                height: headerHeight,
                 position: "absolute",
                 overflow: "hidden",
               }}
               className="TableInteractive-header scroll-hide-all"
               width={width || 0}
-              height={HEADER_HEIGHT}
+              height={headerHeight}
               rowCount={1}
-              rowHeight={HEADER_HEIGHT}
+              rowHeight={headerHeight}
               // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
               columnCount={cols.length + 1}
               columnWidth={props =>
@@ -673,7 +695,7 @@ export default class TableInteractive extends Component {
             <Grid
               ref={ref => (this.grid = ref)}
               style={{
-                top: HEADER_HEIGHT,
+                top: headerHeight,
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -681,7 +703,7 @@ export default class TableInteractive extends Component {
               }}
               className=""
               width={width}
-              height={height - HEADER_HEIGHT}
+              height={height - headerHeight}
               columnCount={cols.length}
               columnWidth={this.getColumnWidth}
               rowCount={rows.length}
