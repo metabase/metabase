@@ -1,9 +1,14 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require [clojure.math.numeric-tower :as math]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets :refer [*engine*]]))
+            [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]]
+            [metabase.models.field :refer [Field]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]))
 
 (expect-with-non-timeseries-dbs
   [[1 12 375]
@@ -28,7 +33,7 @@
 ;;; ------------------------------------------- order-by aggregate fields --------------------------------------------
 
 ;;; order-by aggregate ["count"]
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "count"]
    :rows        [[4  6]
@@ -43,11 +48,12 @@
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["sum" field-id]
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "sum"]
    :rows        [[2 2855]
@@ -62,11 +68,12 @@
           :breakout    [$price]
           :order-by    [[:desc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["distinct" field-id]
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:columns     [(data/format-name "price")
                  "count"]
    :rows        [[4  6]
@@ -74,14 +81,15 @@
                  [1 22]
                  [2 59]]
    :cols        [(breakout-col (venues-col :price))
-                 (aggregate-col :count)]
+                 (aggregate-col :count (Field (data/id :venues :id)))]
    :native_form true}
   (->> (data/run-mbql-query venues
          {:aggregation [[:distinct $id]]
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       (format-rows-by [int int])))
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 
 ;;; order-by aggregate ["avg" field-id]
@@ -100,18 +108,20 @@
           :breakout    [$price]
           :order-by    [[:asc [:aggregation 0]]]})
        booleanize-native-form
-       :data (format-rows-by [int int])))
+       data
+       (format-rows-by [int int])
+       tu/round-fingerprint-cols))
 
 ;;; ### order-by aggregate ["stddev" field-id]
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :standard-deviation-aggregations)
   {:columns     [(data/format-name "price")
                  "stddev"]
-   :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
+   :rows        [[3 (if (= :mysql driver/*driver*) 25 26)]
                  [1 24]
                  [2 21]
-                 [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
+                 [4 (if (= :mysql driver/*driver*) 14 15)]]
    :cols        [(breakout-col (venues-col :price))
                  (aggregate-col :stddev (venues-col :category_id))]
    :native_form true}
@@ -120,4 +130,6 @@
           :breakout    [$price]
           :order-by    [[:desc [:aggregation 0]]]})
        booleanize-native-form
-       :data (format-rows-by [int (comp int math/round)])))
+       data
+       (format-rows-by [int (comp int math/round)])
+       tu/round-fingerprint-cols))

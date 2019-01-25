@@ -22,6 +22,7 @@ import {
   cleanCopyCard,
   urlForCardState,
 } from "metabase/lib/card";
+import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
@@ -62,7 +63,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getPersistableDefaultSettings } from "metabase/visualizations/lib/settings";
+import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
@@ -729,13 +730,17 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
-        if (!cardQueryIsEquivalent(previousCard, nextCard)) {
-          // clear the query result so we don't try to display the new visualization before running the new query
-          dispatch(clearQueryResult());
+        const card = getCardAfterVisualizationClick(nextCard, previousCard);
+        const url = Urls.question(null, card);
+        if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
+          open(url);
+        } else {
+          if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+            // clear the query result so we don't try to display the new visualization before running the new query
+            dispatch(clearQueryResult());
+          }
+          dispatch(setCardAndRun(card));
         }
-        dispatch(
-          setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)),
-        );
       }
     };
   },
@@ -1299,7 +1304,7 @@ const getQuestionWithDefaultVisualizationSettings = (question, series) => {
   const oldVizSettings = question.visualizationSettings();
   const newVizSettings = {
     ...oldVizSettings,
-    ...getPersistableDefaultSettings(series),
+    ...getPersistableDefaultSettingsForSeries(series),
   };
 
   // Don't update the question unnecessarily
@@ -1533,6 +1538,9 @@ export const viewPreviousObjectDetail = () => {
     dispatch(runQuestionQuery());
   };
 };
+
+export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
+export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

@@ -2,10 +2,8 @@
   "Middleware for substituting parameters in queries."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
-            [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            [metabase.query-processor
-             [interface :as i]
-             [util :as qputil]]
+            [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.parameters
              [mbql :as mbql-params]
              [sql :as sql-params]]
@@ -14,9 +12,9 @@
 (defn- expand-parameters*
   "Expand any `:parameters` set on the `query-dict` and apply them to the query definition. This function removes
   the `:parameters` attribute from the `query-dict` as part of its execution."
-  [{:keys [parameters], :as query-dict}]
+  [{:keys [parameters], query-type :type, :as query-dict}]
   ;; params in native queries are currently only supported for SQL drivers
-  (if (qputil/mbql-query? query-dict)
+  (if (= query-type :query)
     (mbql-params/expand (dissoc query-dict :parameters) parameters)
     (sql-params/expand query-dict)))
 
@@ -34,7 +32,7 @@
       outer-query
       ;; otherwise replace the native query with the param-substituted version.
       ;; 'Unprepare' the args because making sure args get passed in the right order is too tricky for nested queries
-      ;; TODO - This might not work for all drivers. We should make 'unprepare' a Generic SQL method
+      ;; TODO - This might not work for all drivers. We should make 'unprepare' a SQL driver method
       ;; so different drivers can invoke unprepare/unprepare with the correct args
       (-> outer-query
           (assoc-in [:query :source-query :native] (unprepare/unprepare (cons new-query new-params)))))))

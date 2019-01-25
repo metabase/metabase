@@ -1,0 +1,28 @@
+info:
+  name: Metabase Redshift Driver
+  version: 1.0.0-SNAPSHOT-1.2.18.1036
+  description: Allows Metabase to connect to Redshift databases.
+driver:
+  name: redshift
+  display-name: Amazon Redshift
+  lazy-load: true
+  parent: postgres
+  connection-properties:
+    - merge:
+        - host
+        - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
+    - merge:
+        - port
+        - default: 5439
+    - merge:
+        - dbname
+        - name: db
+          placeholder: toucan_sightings
+    - user
+    - password
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.redshift
+  - step: register-jdbc-driver
+    class: com.amazon.redshift.jdbc.Driver

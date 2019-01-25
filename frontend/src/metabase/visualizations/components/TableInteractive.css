@@ -3,20 +3,13 @@
 }
 
 .TableInteractive {
-  border-radius: var(--table-border-radius);
+  color: #4f575d;
   overflow: hidden;
 }
 
-.TableInteractive-headerCellData {
-  font-weight: 700;
-}
-
-.TableInteractive-headerCellData.TableInteractive-cellWrapper--firstColumn {
-  border-top-left-radius: var(--table-border-radius);
-}
-
-.TableInteractive-headerCellData.TableInteractive-cellWrapper--lastColumn {
-  border-top-right-radius: var(--table-border-radius);
+.TableInteractive-headerCellData .cellData {
+  font-weight: 900;
+  font-size: 10px;
 }
 
 .TableInteractive-headerCellData .Icon {
@@ -39,7 +32,7 @@
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-  padding: 1em 1.25em;
+  padding: 0 0.75em;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -48,13 +41,6 @@
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
   border-bottom: 1px solid color(var(--color-border) alpha(-70%));
-}
-
-.TableInteractive .TableInteractive-cellWrapper--active,
-.TableInteractive:not(.TableInteractive--noHover)
-  .TableInteractive-cellWrapper:hover {
-  border-color: var(--color-brand);
-  color: var(--color-brand);
 }
 
 .TableInteractive .TableInteractive-cellWrapper--active {
@@ -78,6 +64,8 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
+  font-weight: 700;
+  font-size: 12.5px;
 }
 
 /* pivot */
@@ -93,4 +81,32 @@
 .TableInteractive .TableInteractive-cellWrapper.tether-enabled {
   background-color: var(--color-brand);
   color: white !important;
+}
+
+.TableInteractive-cellWrapper:hover {
+  background-color: color(var(--color-brand) alpha(-90%));
+}
+
+.Table-ID .cellData {
+  border: 1px solid color(var(--color-brand) alpha(-86%));
+  background-color: color(var(--color-brand) alpha(-92%));
+  padding: 0.25em 0.65em;
+  border-radius: 99px;
+  min-width: 35px;
+  text-align: center;
+}
+
+.TableInteractive-ID.TableInteractive-cellWrapper:hover,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled {
+  background-color: transparent;
+}
+
+.TableInteractive-ID.TableInteractive-cellWrapper:hover .cellData,
+.TableInteractive-ID.TableInteractive-cellWrapper.tether-enabled .cellData {
+  background-color: var(--color-brand);
+  color: white;
+}
+
+.TableInteractive-headerCellData--sorted {
+  color: var(--color-brand);
 }

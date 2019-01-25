@@ -1,5 +1,5 @@
 title: A look at your [[this]]
-transient_title: "Here's an overview of the people in your [[this]]"
+transient_title: "Here''s an overview of the people in your [[this]]"
 description: An exploration of your users to get you started.
 metrics:
 - Count:
@@ -79,6 +79,14 @@ cards:
       group: Overview
       width: 5
       height: 3
+  - UserbaseGrowth:
+      visualization: smartscalar
+      title: User growth
+      dimensions: JoinDate
+      metrics: Count
+      width: 5
+      height: 3
+      group: Overview
   - NewUsersByMonth:
       visualization: line
       title: New [[this.short-name]] per month

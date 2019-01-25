@@ -55,27 +55,30 @@
   ;; No need to check this if we don't have a data-timezone
   (when (and data-timezone driver)
     (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
-      (if ((resolve 'metabase.driver/driver-supports?) driver :set-timezone)
+      (if ((resolve 'metabase.driver/supports?) driver :set-timezone)
         ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
           (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+                         " "
                          (trs "JVM timezone is {0} and detected database timezone is {1}."
                               (.getID jvm-timezone) (.getID data-timezone))
+                         " "
                          (trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
           (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+                         " "
                          (trs "JVM timezone is {0} and detected database timezone is {1}."
                               (.getID jvm-timezone) (.getID data-timezone)))))))))
 
 (defn call-with-effective-timezone
   "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
   [db f]
-  (let [driver    ((resolve 'metabase.driver/->driver) db)
-        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver/report-timezone-if-supported) driver))]
+  (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
+        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
                     (coerce-to-timezone report-tz-id))
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
@@ -310,7 +313,8 @@
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
 
-(def ^:private ^:const date-trunc-units
+(def ^:const date-trunc-units
+  "Valid date bucketing units"
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]

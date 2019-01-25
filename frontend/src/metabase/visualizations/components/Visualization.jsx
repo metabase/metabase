@@ -17,8 +17,9 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { getSettings } from "metabase/visualizations/lib/settings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { performDefaultAction } from "metabase/visualizations/lib/action";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -79,13 +80,14 @@ type Props = {
   // for click actions
   metadata: Metadata,
   onChangeCardAndRun: OnChangeCardAndRun,
+  dispatch: Function,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
   replacementContent: Element<any>,
 
   // misc
   onUpdateWarnings: (string[]) => void,
-  onOpenChartSettings: () => void,
+  onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
 
   // number of grid cells wide and tall
   gridSize?: { width: number, height: number },
@@ -272,6 +274,15 @@ export default class Visualization extends Component {
       );
     }
 
+    if (
+      performDefaultAction(this.getClickActions(clicked), {
+        dispatch: this.props.dispatch,
+        onChangeCardAndRun: this.handleOnChangeCardAndRun,
+      })
+    ) {
+      return;
+    }
+
     // needs to be delayed so we don't clear it when switching from one drill through to another
     setTimeout(() => {
       this.setState({ clicked });
@@ -347,7 +358,7 @@ export default class Visualization extends Component {
     let settings = this.props.settings || {};
 
     if (!loading && !error) {
-      settings = this.props.settings || getSettings(series);
+      settings = this.props.settings || getComputedSettingsForSeries(series);
       if (!CardVisualization) {
         error = t`Could not find visualization`;
       } else {
@@ -367,7 +378,7 @@ export default class Visualization extends Component {
                 <div className="mt2">
                   <button
                     className="Button Button--primary Button--medium"
-                    onClick={this.props.onOpenChartSettings}
+                    onClick={() => this.props.onOpenChartSettings(e.initial)}
                   >
                     {e.buttonText}
                   </button>
@@ -523,7 +534,7 @@ export default class Visualization extends Component {
             }
           />
         )}
-        <ChartTooltip series={series} hovered={hovered} />
+        <ChartTooltip series={series} hovered={hovered} settings={settings} />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
             clicked={clicked}

@@ -1,5 +1,3 @@
-import { mbqlEq } from "./util";
-
 import type { Field as FieldReference } from "metabase/meta/types/Query";
 import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
@@ -32,37 +30,35 @@ export function isRegularField(field: FieldReference): boolean {
 }
 
 export function isLocalField(field: FieldReference): boolean {
-  return Array.isArray(field) && mbqlEq(field[0], "field-id");
+  return Array.isArray(field) && field[0] === "field-id";
 }
 
 export function isForeignKeyField(field: FieldReference): boolean {
-  return Array.isArray(field) && mbqlEq(field[0], "fk->");
+  return Array.isArray(field) && field[0] === "fk->";
 }
 
 export function isDatetimeField(field: FieldReference): boolean {
-  return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
+  return Array.isArray(field) && field[0] === "datetime-field";
 }
 
 export function isBinningStrategy(field: FieldReference): boolean {
-  return Array.isArray(field) && mbqlEq(field[0], "binning-strategy");
+  return Array.isArray(field) && field[0] === "binning-strategy";
 }
 
 export function isFieldLiteral(field: FieldReference): boolean {
   return (
-    Array.isArray(field) &&
-    field.length === 3 &&
-    mbqlEq(field[0], "field-literal")
+    Array.isArray(field) && field.length === 3 && field[0] === "field-literal"
   );
 }
 
 export function isExpressionField(field: FieldReference): boolean {
   return (
-    Array.isArray(field) && field.length === 2 && mbqlEq(field[0], "expression")
+    Array.isArray(field) && field.length === 2 && field[0] === "expression"
   );
 }
 
 export function isAggregateField(field: FieldReference): boolean {
-  return Array.isArray(field) && mbqlEq(field[0], "aggregation");
+  return Array.isArray(field) && field[0] === "aggregation";
 }
 
 import _ from "underscore";

@@ -1,45 +1,29 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
   (:require [clojure.string :as s]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      helpers))
-  (:import honeysql.format.ToSql))
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]])
+  (:import honeysql.format.ToSql
+           java.util.Locale))
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
 
-;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see
-;; https://github.com/jkk/honeysql/issues/123
-(alter-meta! #'honeysql.helpers/merge-left-join assoc
-             :arglists '([m & clauses])
-             :style/indent 1)
-
+(defn- english-upper-case
+  "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
+  but always converts the string to upper-case characters in the English locale. Using `clojure.string/upper-case` for
+  table names, like we are using below in the `:h2` `honeysql.format` function can cause issues when the user has
+  changed the locale to a language that has different upper-case characters. Turkish is one example, where `i` gets
+  converted to `İ`. This causes the `SETTING` table to become the `SETTİNG` table, which doesn't exist."
+  [^CharSequence s]
+  (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
 (let [quote-fns     @(resolve 'honeysql.format/quote-fns)
       ansi-quote-fn (:ansi quote-fns)]
   (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :h2 (comp s/upper-case ansi-quote-fn))))
-
-
-;; `:crate` quote style that correctly quotes nested column identifiers
-(defn- str-insert
-  "Insert C in string S at index I."
-  [s c i]
-  (str c (subs s 0 i) c (subs s i)))
-
-(defn- crate-column-identifier
-  [^CharSequence s]
-  (let [idx (s/index-of s "[")]
-    (if (nil? idx)
-      (str \" s \")
-      (str-insert s "\"" idx))))
-
-(let [quote-fns @(resolve 'honeysql.format/quote-fns)]
-  (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :crate crate-column-identifier)))
-
+          (assoc quote-fns :h2 (comp english-upper-case ansi-quote-fn))))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
@@ -60,6 +44,12 @@
 (extend-protocol honeysql.format/ToSql
   java.lang.Number
   (to-sql [x] (str x)))
+
+;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
+;; queries. The easiest way around this is to convert them to their decimal representations.
+(extend-protocol honeysql.format/ToSql
+  clojure.lang.Ratio
+  (to-sql [x] (hformat/to-sql (double x))))
 
 ;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
 ;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with

@@ -19,7 +19,6 @@
     "color": "^3.0.0",
     "color-harmony": "^0.3.0",
     "crossfilter": "^1.3.12",
-    "cxs": "^5.0.0",
     "d3": "^3.5.17",
     "d3-scale": "^2.1.0",
     "dc": "^2.0.0",
@@ -38,6 +37,7 @@
     "leaflet.heat": "^0.2.0",
     "lodash.memoize": "^4.1.2",
     "moment": "2.19.3",
+    "mustache": "^2.3.2",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
     "npm": "^5.8.0",
@@ -160,10 +160,11 @@
     "webchauffeur": "^1.2.0",
     "webpack": "^3.8.1",
     "webpack-dev-server": "^2.9.1",
-    "webpack-postcss-tools": "^1.1.2"
+    "webpack-postcss-tools": "^1.1.2",
+    "xhr-mock": "^2.4.1"
   },
   "scripts": {
-    "dev": "concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn build-hot'",
+    "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
     "lint": "yarn lint-eslint && yarn lint-prettier",
     "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
@@ -186,7 +187,7 @@
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
-    "docs": "documentation build -f html -o frontend/docs frontend/src/metabase-lib/lib/**",
+    "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test"

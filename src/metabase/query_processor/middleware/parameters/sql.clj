@@ -7,10 +7,11 @@
             [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
+            [metabase.driver
+             [sql :as sql]
+             [util :as driver.u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.field :as field :refer [Field]]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util
              [date :as du]
@@ -155,6 +156,8 @@
 (s/defn ^:private default-value-for-dimension :- (s/maybe DimensionValue)
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
+  (when (and (:required tag) (not (:default tag)))
+    (throw (Exception. (str (tru "''{0}'' is a required param." (:display-name tag))))))
   (when-let [default (:default tag)]
     {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
@@ -162,7 +165,7 @@
 
 (s/defn ^:private dimension->field-id :- su/IntGreaterThanZero
   [dimension]
-  (:field-id (ql/expand-ql-sexpr dimension)))
+  (second dimension))
 
 (s/defn ^:private dimension-value-for-tag :- (s/maybe Dimension)
   "Return the \"Dimension\" value of a param, if applicable. \"Dimension\" here means what is called a \"Field
@@ -190,10 +193,10 @@
   "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-Dimension
    (non-Field Filter) params. Default values for Dimension (Field Filter) params are handled above in
    `default-value-for-dimension`."
-  [{:keys [default display_name required]} :- TagParam]
+  [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (str (tru "''{0}'' is a required param." display_name)))))))
+        (throw (Exception. (str (tru "''{0}'' is a required param." display-name)))))))
 
 
 ;;; Parsing Values
@@ -355,7 +358,7 @@
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
-  (let [[snippet & args] (hsql/format x, :quoting (sql/quote-style qp.i/*driver*))]
+  (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
@@ -364,9 +367,9 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the PARAM-TYPE."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier (sql/field->identifier qp.i/*driver* field)]
+  (-> (honeysql->replacement-snippet-info (let [identifier (sql.qp/field->identifier driver/*driver* field)]
                                             (if (date-params/date-type? param-type)
-                                              (sql/date qp.i/*driver* :day identifier)
+                                              (sql.qp/date driver/*driver* :day identifier)
                                               identifier)))
       :replacement-snippet))
 
@@ -377,12 +380,12 @@
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
 (defn- create-replacement-snippet [nil-or-obj]
-  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution qp.i/*driver* nil-or-obj)]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* nil-or-obj)]
     {:replacement-snippet     sql-string
      :prepared-statement-args param-values}))
 
 (defn- prepared-ts-subs [operator date-str]
-  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution qp.i/*driver* (du/->Timestamp date-str))]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* (du/->Timestamp date-str))]
     {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
@@ -423,7 +426,7 @@
       (prepared-ts-subs \> start)
 
       :else
-      (let [params (map (comp #(sql/->prepared-substitution qp.i/*driver* %) du/->Timestamp) [start end])]
+      (let [params (map (comp #(sql/->prepared-substitution driver/*driver* %) du/->Timestamp) [start end])]
         {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
          :prepared-statement-args (vec (mapcat :param-values params))})))
 
@@ -565,19 +568,19 @@
   [{sql :query, :as native}, param-key->value :- ParamValues]
   (merge native (parse-template sql param-key->value)))
 
-;; TODO - this can probably be taken out since qp.i/*driver* should always be bound...
+;; TODO - this can probably be taken out since driver/*driver* should always be bound...
 (defn- ensure-driver
   "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
   the query. If there is no driver, use the database to find the right driver or throw."
   [{:keys [driver database] :as query}]
   (or driver
-      (driver/database-id->driver database)
+      (driver.u/database->driver database)
       (throw (IllegalArgumentException. "Could not resolve driver"))))
 
 (defn expand
   "Expand parameters inside a *SQL* QUERY."
   [query]
-  (binding [qp.i/*driver* (ensure-driver query)]
-    (if (driver/driver-supports? qp.i/*driver* :native-query-params)
+  (binding [driver/*driver* (ensure-driver query)]
+    (if (driver/supports? driver/*driver* :native-parameters)
       (update query :native expand-query-params (query->params-map query))
       query)))

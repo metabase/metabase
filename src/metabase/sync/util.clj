@@ -13,6 +13,7 @@
              [driver :as driver]
              [events :as events]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]]
@@ -136,7 +137,7 @@
   {:style/indent 1}
   [database f]
   (fn []
-    (driver/sync-in-context (driver/->driver database) database
+    (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
 
@@ -309,7 +310,7 @@
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
   specific information"
   (merge TimedSyncMetadata
-         {:log-summary-fn (s/maybe (s/=> s/Str StepRunMetadata) #_(s/pred ifn?))}
+         {:log-summary-fn (s/maybe (s/=> s/Str StepRunMetadata))}
          StepSpecificMetadata))
 
 (def StepNameWithMetadata
@@ -338,7 +339,8 @@
   ([step-name sync-fn log-summary-fn]
    {:sync-fn        sync-fn
     :step-name      step-name
-    :log-summary-fn (comp str log-summary-fn)}))
+    :log-summary-fn (when log-summary-fn
+                      (comp str log-summary-fn))}))
 
 (defn- datetime->str [datetime]
   (du/->iso-8601-datetime datetime "UTC"))
@@ -358,38 +360,45 @@
                  :end-time end-time
                  :log-summary-fn log-summary-fn)]))
 
+(s/defn ^:private make-log-sync-summary-str
+  "The logging logic from `log-sync-summary`. Separated for testing purposes as the `log/debug` macro won't invoke
+  this function unless the logging level is at debug (or higher)."
+  [operation :- s/Str
+   database :- i/DatabaseInstance
+   {:keys [start-time end-time steps log-summary-fn]} :- SyncOperationMetadata]
+  (str
+   (apply format
+          (str "\n#################################################################\n"
+               "# %s\n"
+               "# %s\n"
+               "# %s\n"
+               "# %s\n")
+          (map str [(trs "Completed {0} on {1}" operation (:name database))
+                    (trs "Start: {0}" (datetime->str start-time))
+                    (trs "End: {0}" (datetime->str end-time))
+                    (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))
+   (apply str (for [[step-name {:keys [start-time end-time log-summary-fn] :as step-info}] steps]
+                (apply format (str "# ---------------------------------------------------------------\n"
+                                   "# %s\n"
+                                   "# %s\n"
+                                   "# %s\n"
+                                   "# %s\n"
+                                   (when log-summary-fn
+                                       (format "# %s\n" (log-summary-fn step-info))))
+                       (map str [(trs "Completed step ''{0}''" step-name)
+                                 (trs "Start: {0}" (datetime->str start-time))
+                                 (trs "End: {0}" (datetime->str end-time))
+                                 (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))))
+   "#################################################################\n"))
+
 (s/defn ^:private  log-sync-summary
   "Log a sync/analyze summary message with info from each step"
   [operation :- s/Str
    database :- i/DatabaseInstance
-   {:keys [start-time end-time steps log-summary-fn]} :- SyncOperationMetadata]
+   sync-metadata :- SyncOperationMetadata]
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
-  (log/debug
-   (str
-    (apply format
-     (str "\n#################################################################\n"
-          "# %s\n"
-          "# %s\n"
-          "# %s\n"
-          "# %s\n")
-     (map str [(trs "Completed {0} on {1}" operation (:name database))
-               (trs "Start: {0}" (datetime->str start-time))
-               (trs "End: {0}" (datetime->str end-time))
-               (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))
-    (apply str (for [[step-name {:keys [start-time end-time duration log-summary-fn] :as step-info}] steps]
-                 (apply format (str "# ---------------------------------------------------------------\n"
-                              "# %s\n"
-                              "# %s\n"
-                              "# %s\n"
-                              "# %s\n"
-                              (when log-summary-fn
-                                (format "# %s\n" (log-summary-fn step-info))))
-                        (map str [(trs "Completed step ''{0}''" step-name)
-                                  (trs "Start: {0}" (datetime->str start-time))
-                                  (trs "End: {0}" (datetime->str end-time))
-                                  (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))))
-    "#################################################################\n")))
+  (log/debug (make-log-sync-summary-str operation database sync-metadata)))
 
 (def ^:private SyncOperationOrStepRunMetadata
   (s/conditional

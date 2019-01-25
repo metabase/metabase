@@ -9,7 +9,7 @@ import RecipientPicker from "./RecipientPicker.jsx";
 
 import SchedulePicker from "metabase/components/SchedulePicker.jsx";
 import ActionButton from "metabase/components/ActionButton.jsx";
-import Select from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
@@ -17,8 +17,6 @@ import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
-
-import cx from "classnames";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -158,19 +156,24 @@ export default class PulseEditChannels extends Component {
             <span className="h4 text-bold mr1">{field.displayName}</span>
             {field.type === "select" ? (
               <Select
-                className="h4 text-bold bg-white"
+                className="h4 text-bold bg-white inline-block"
                 value={channel.details && channel.details[field.name]}
-                options={field.options}
-                optionNameFn={o => o}
-                optionValueFn={o => o}
+                placeholder={t`Pick a user or channel...`}
+                searchProp="name"
                 // Address #5799 where `details` object is missing for some reason
                 onChange={o =>
                   this.onChannelPropertyChange(index, "details", {
                     ...channel.details,
-                    [field.name]: o,
+                    [field.name]: o.target.value,
                   })
                 }
-              />
+              >
+                {field.options.map(option => (
+                  <Option name={option} value={option}>
+                    {option}
+                  </Option>
+                ))}
+              </Select>
             ) : null}
           </div>
         ))}
@@ -226,7 +229,12 @@ export default class PulseEditChannels extends Component {
           <div className="pt2">
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
-              className={cx("Button", { disabled: !isValid })}
+              disabled={
+                !isValid ||
+                /* require at least one email recipient to allow email pulse testing */
+                (channelSpec.type === "email" &&
+                  channel.recipients.length === 0)
+              }
               normalText={
                 channelSpec.type === "email"
                   ? t`Send email now`

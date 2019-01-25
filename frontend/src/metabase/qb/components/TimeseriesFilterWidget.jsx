@@ -100,9 +100,9 @@ export default class TimeseriesFilterWidget extends Component {
         currentDescription = t`After ${currentDescription}`;
       } else if (currentFilter[0] === "<") {
         currentDescription = t`Before ${currentDescription}`;
-      } else if (currentFilter[0] === "IS_NULL") {
+      } else if (currentFilter[0] === "is-null") {
         currentDescription = t`Is Empty`;
-      } else if (currentFilter[0] === "NOT_NULL") {
+      } else if (currentFilter[0] === "not-null") {
         currentDescription = t`Not Empty`;
       }
     } else {

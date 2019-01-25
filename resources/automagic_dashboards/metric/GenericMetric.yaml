@@ -1,6 +1,6 @@
 title: A look at the [[this]]
-transient_title: Here's a quick look at the [[this]]
-description: How it's distributed across time and other categories.
+transient_title: Here''s a quick look at the [[this]]
+description: How it''s distributed across time and other categories.
 applies_to: GenericTable
 metrics:
 # Placeholder that will get overloaded by reference to the actual metric, so we can
@@ -39,7 +39,7 @@ groups:
       comparison_title: How they compare across time
   - Geographical:
       title: The [[this]] by location
-      comparison_title: How they compare acrosss location
+      comparison_title: How they compare across location
   - Categories:
       title: How this metric is distributed across different categories
       comparison_title: How they compare across different categories
@@ -145,8 +145,8 @@ cards:
       title: "[[this]] per [[GenericCategorySmall]] over time"
       metrics: this
       dimensions:
-        - GenericCategorySmall
         - Timestamp
+        - GenericCategorySmall
       visualization:
         area:
           stackable.stack_type: stacked

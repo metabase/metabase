@@ -1,10 +1,8 @@
 (ns metabase.test.data.dataset-definitions
   "Definitions of various datasets for use in tests with `with-temp-db`."
-  (:require [clojure.tools.reader.edn :as edn]
-            [metabase.test.data.interface :as di]
-            [metabase.util.date :as du])
+  (:require [metabase.test.data.interface :as di])
   (:import java.sql.Time
-           java.util.Calendar))
+           [java.util Calendar TimeZone]))
 
 ;; ## Datasets
 
@@ -14,47 +12,50 @@
 ;; Times when the Toucan cried
 (di/def-database-definition-edn sad-toucan-incidents)
 
-;; Places, times, and circumstances where Tupac was sighted
+;; Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds
 (di/def-database-definition-edn tupac-sightings)
 
+;; Dataset with nested columns, for testing a MongoDB-style database
 (di/def-database-definition-edn geographical-tips)
 
 ;; A very tiny dataset with a list of places and a booleans
 (di/def-database-definition-edn places-cam-likes)
 
 ;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
-;; sender and reciever -- allowing us to test situations where multiple joins for a *single* table should occur.
+;; sender and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.
 (di/def-database-definition-edn avian-singles)
 
+;; A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
+;; expressions to make sure they behave correctly
+;;
+;; As an added "bonus" this dataset has a table with a name in a slash in it, so the driver will need to support that
+;; correctly in order for this to work!
+(di/def-database-definition-edn daily-bird-counts)
+
+;; A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.
+(di/def-database-definition-edn office-checkins)
+
+(defn- calendar-with-fields ^Calendar [date & fields]
+  (let [cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
+                         (.setTime date))
+        blank-calendar (doto (.clone cal-from-date)
+                         .clear)]
+    (doseq [field fields]
+      (.set blank-calendar field (.get cal-from-date field)))
+    blank-calendar))
+
 (defn- date-only
-  "This function emulates a date only field as it would come from the
-  JDBC driver. The hour/minute/second/millisecond fields should be 0s"
+  "This function emulates a date only field as it would come from the JDBC driver. The hour/minute/second/millisecond
+  fields should be 0s"
   [date]
-  (let [orig-cal (doto (Calendar/getInstance)
-                   (.setTime date))]
-    (-> (doto (Calendar/getInstance)
-          (.clear)
-          (.set Calendar/YEAR (.get orig-cal Calendar/YEAR))
-          (.set Calendar/MONTH (.get orig-cal Calendar/MONTH))
-          (.set Calendar/DAY_OF_MONTH (.get orig-cal Calendar/DAY_OF_MONTH)))
-        .getTime)))
+  (.getTime (calendar-with-fields date Calendar/DAY_OF_MONTH Calendar/MONTH Calendar/YEAR)))
 
 (defn- time-only
-  "This function will return a java.sql.Time object. To create a Time
-  object similar to what JDBC would return, the time needs to be
-  relative to epoch. As an example a time of 4:30 would be a Time
-  instance, but it's a subclass of Date, so it looks like
-  1970-01-01T04:30:00.000"
+  "This function will return a java.sql.Time object. To create a Time object similar to what JDBC would return, the time
+  needs to be relative to epoch. As an example a time of 4:30 would be a Time instance, but it's a subclass of Date,
+  so it looks like 1970-01-01T04:30:00.000"
   [date]
-  (let [orig-cal (doto (Calendar/getInstance)
-                   (.setTime date))]
-    (-> (doto (Calendar/getInstance)
-          (.clear)
-          (.set Calendar/HOUR_OF_DAY (.get orig-cal Calendar/HOUR_OF_DAY))
-          (.set Calendar/MINUTE (.get orig-cal Calendar/MINUTE))
-          (.set Calendar/SECOND (.get orig-cal Calendar/SECOND)))
-        .getTimeInMillis
-        Time.)))
+  (Time. (.getTimeInMillis (calendar-with-fields date Calendar/HOUR_OF_DAY Calendar/MINUTE Calendar/SECOND))))
 
 (di/def-database-definition test-data-with-time
   (di/update-table-def "users"
@@ -103,3 +104,19 @@
   in the data-map `M`."
   [m table column]
   (mapv #(get % column) (get m table)))
+
+;; Takes the `test-data` dataset and adds a `created_by` column to the users table that is self referencing
+(di/def-database-definition test-data-self-referencing-user
+  (di/update-table-def "users"
+                       (fn [table-def]
+                         (conj table-def {:field-name "created_by", :base-type :type/Integer, :fk :users}))
+                       (fn [rows]
+                         (mapv (fn [[username last-login password-text] idx]
+                                 [username last-login password-text (if (= 1 idx)
+                                                                      idx
+                                                                      (dec idx))])
+                               rows
+                               (iterate inc 1)))
+                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
+                             :when (= table-name "users")]
+                         orig-def)))

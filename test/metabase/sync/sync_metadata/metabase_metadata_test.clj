@@ -6,6 +6,7 @@
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+            [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan
@@ -30,7 +31,7 @@
     :description "A cinematic adventure."
     :id          true
     :fields      [{:name "filming", :description "If the movie is currently being filmed."}]}]
-  (tt/with-temp* [Database [db {:engine :moviedb}]]
+  (tt/with-temp* [Database [db {:engine ::moviedb/moviedb}]]
     ;; manually add in the movies table
     (let [table (db/insert! Table
                   :db_id  (u/get-id db)

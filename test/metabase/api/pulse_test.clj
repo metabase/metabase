@@ -7,6 +7,7 @@
              [middleware :as middleware]
              [util :as u]]
             [metabase.api.card-test :as card-api-test]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -23,9 +24,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [users :refer :all]]
+            [metabase.test.data.users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -754,8 +753,10 @@
 ;; Check that a rando (e.g. someone without collection write access) isn't allowed to delete a pulse
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp* [Database  [db]
-                  Table     [table {:db_id (u/get-id db)}]
+  (tt/with-temp* [Database  [db    (select-keys (data/db) [:engine :details])]
+                  Table     [table (-> (Table (data/id :venues))
+                                       (dissoc :id)
+                                       (assoc :db_id (u/get-id db)))]
                   Card      [card  {:dataset_query {:database (u/get-id db)
                                                     :type     "query"
                                                     :query    {:source-table (u/get-id table)
@@ -779,7 +780,7 @@
   [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
    (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
   (with-pulses-in-readable-collection [pulse-1 pulse-2]
-    ;; delete anything else in DB just to be sure; this step may not be neccesary any more
+    ;; delete anything else in DB just to be sure; this step may not be necessary any more
     (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
                                      (u/get-id pulse-2)}])
     (for [pulse ((user->client :rasta) :get 200 "pulse")]
@@ -791,7 +792,7 @@
   [(assoc (pulse-details pulse-1) :can_write true)
    (assoc (pulse-details pulse-2) :can_write true)]
   (do
-    ;; delete anything else in DB just to be sure; this step may not be neccesary any more
+    ;; delete anything else in DB just to be sure; this step may not be necessary any more
     (db/delete! Pulse :id [:not-in #{(u/get-id pulse-1)
                                      (u/get-id pulse-2)}])
     ((user->client :crowberto) :get 200 "pulse")))
@@ -855,13 +856,11 @@
   (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (et/with-fake-inbox
-        (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+        (data/dataset sad-toucan-incidents
           (tt/with-temp* [Collection [collection]
-                          Database   [db]
-                          Table      [table {:db_id (u/get-id db)}]
-                          Card       [card  {:dataset_query {:database (u/get-id db)
+                          Card       [card  {:dataset_query {:database (data/id)
                                                              :type     "query"
-                                                             :query    {:source-table (u/get-id table),
+                                                             :query    {:source-table (data/id :incidents)
                                                                         :aggregation  [[:count]]}}}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (card-api-test/with-cards-in-readable-collection [card]
@@ -886,8 +885,10 @@
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
 ;; of the same format that the pulse GET returns
-(tt/expect-with-temp [Card [card-1]
-                      Card [card-2]]
+(tt/expect-with-temp [Card [card-1 {:dataset_query
+                                    {:database (data/id), :type :query, :query {:source-table (data/id :venues)}}}]
+                      Card [card-2 {:dataset_query
+                                    {:database (data/id), :type :query, :query {:source-table (data/id :venues)}}}]]
   {:response {:ok true}
    :emails   (et/email-to :rasta {:subject "Pulse: A Pulse"
                                   :body    {"A Pulse" true}})}
@@ -918,6 +919,7 @@
             {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
              :emails   (et/regex-email-bodies #"A Pulse")}))))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         GET /api/pulse/form_input                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -926,8 +928,8 @@
 (expect
   [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
   (tu/with-temporary-setting-values [slack-token "something"]
-    (with-redefs [metabase.integrations.slack/channels-list (constantly [{:name "foo"}])
-                  metabase.integrations.slack/users-list (constantly [{:name "bar"}])]
+    (with-redefs [slack/channels-list (constantly [{:name "foo"}])
+                  slack/users-list    (constantly [{:name "bar"}])]
       (-> ((user->client :rasta) :get 200 "pulse/form_input")
           (get-in [:channels :slack :fields])))))
 

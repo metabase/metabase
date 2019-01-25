@@ -5,21 +5,51 @@
   (:require [buddy.core.hash :as hash]
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
-            [metabase.query-processor.interface :as i]
+            [clojure.walk :as walk]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
-;; metadata as part of the query context so we can compare for changes
+;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
+;; Card metadata as part of the query context so we can compare for changes
 (defn- record-metadata! [card-id metadata]
   (when metadata
     (db/update! 'Card card-id
       :result_metadata metadata)))
+
+(defn- prepare-for-serialization
+  "Return version of `node` that will hash consistently"
+  [node]
+  (cond
+    ;; Integers get converted to floats by the frontend and will hash differently. Convert all integers to floats so
+    ;; that they hash the same before being sent to the FE and after
+    (integer? node)
+    (double node)
+    ;; Hashmaps are not guaranteed to hash the same values (be stored in the same order) across machines or versions
+    ;; of the JDK. Array maps will be automatically converted ot hashmaps once they are large enough. Convert maps to
+    ;; sorted maps so that we can get a consistent ordering regardless of map implementation and whether or not the FE
+    ;; changes the order of the keys
+    (map? node)
+    (into (sorted-map) node)
+    ;; We probably don't have any sets in our result metadata. If we did, those are hashed and would not have a
+    ;; predictable order. Putting this check/conversion in as it's easy to do and we might have sets in the future.
+    (set? node)
+    (into (sorted-set) node)
+    ;; If it's not one of the above, it's a noop
+    :else
+    node))
+
+(defn- serialize-metadata-for-hashing
+  [metadata]
+  (->> metadata
+       (walk/postwalk prepare-for-serialization)
+       json/generate-string))
 
 (defn- metadata-checksum
   "Simple, checksum of the column results METADATA.
@@ -36,7 +66,11 @@
    becomes impossible to alter the metadata and produce a correct checksum at any rate."
   [metadata]
   (when metadata
-    (encryption/maybe-encrypt (codec/base64-encode (hash/md5 (json/generate-string metadata))))))
+    (-> metadata
+        serialize-metadata-for-hashing
+        hash/md5
+        codec/base64-encode
+        encryption/maybe-encrypt)))
 
 (defn valid-checksum?
   "Is the CHECKSUM the right one for this column METADATA?"
@@ -54,20 +88,25 @@
       (if (-> query :middleware :skip-results-metadata?)
         results
         (try
-          (let [metadata (seq (qr/results->column-metadata results))]
+          (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
             ;; At the very least we can skip the Extra DB call to update this Card's metadata results
             ;; if its DB doesn't support nested queries in the first place
-            (when (and (i/driver-supports? :nested-queries)
+            (when (and driver/*driver*
+                       (driver/supports? driver/*driver* :nested-queries)
                        card-id
                        (not nested?))
               (record-metadata! card-id metadata))
             ;; add the metadata and checksum to the response
-            (assoc results :results_metadata {:checksum (metadata-checksum metadata)
-                                              :columns  metadata}))
+            (assoc results
+              :results_metadata {:checksum (metadata-checksum metadata)
+                                 :columns  metadata}
+              :insights insights))
           ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
           ;; rather than failing the entire query
           (catch Throwable e
             (log/error (tru "Error recording results metadata for query:")
-                       (.getMessage e) "\n"
+                       "\n"
+                       (class e) (.getMessage e)
+                       "\n"
                        (u/pprint-to-str (u/filtered-stacktrace e)))
             results))))))

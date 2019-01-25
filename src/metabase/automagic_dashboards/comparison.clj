@@ -9,12 +9,10 @@
                            encode-base64-json metric-name source-name]]
              [filters :as filters]
              [populate :as populate]]
-            [metabase.mbql
-             [normalize :as normalize]
-             [util :as mbql.u]]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
@@ -43,14 +41,22 @@
 (def ^:private ^{:arglists '([card])} display-type
   (comp qp.util/normalize-token :display))
 
+(defn- add-filter-clauses
+  "Add `new-filter-clauses` to a query. There is actually an `mbql.u/add-filter-clause` function we should be using
+  instead, but that validates its input and output, and the queries that come in here aren't always valid (for
+  example, missing `:database`). If we can, it would be nice to use that instead of reinventing the wheel here."
+  [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
+  (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
+        new-filter-clause (when (seq clauses)
+                            (normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
+    (cond-> query
+      (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
+
 (defn- inject-filter
   "Inject filter clause into card."
   [{:keys [query-filter cell-query] :as root} card]
   (-> card
-      (update :dataset_query #(reduce mbql.u/add-filter-clause
-                                      %
-                                      (map (partial normalize/normalize-fragment [:query :filter])
-                                           [query-filter cell-query])))
+      (update :dataset_query #(add-filter-clauses % [query-filter cell-query]))
       (update :series (partial map (partial inject-filter root)))))
 
 (defn- multiseries?

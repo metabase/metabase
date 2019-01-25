@@ -46,7 +46,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .addFilter(["IS_NULL", ["field-id", 1]])
+      .addFilter(["is-null", ["field-id", 1]])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
@@ -55,7 +55,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Not Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .addFilter(["NOT_NULL", ["field-id", 1]])
+      .addFilter(["not-null", ["field-id", 1]])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));

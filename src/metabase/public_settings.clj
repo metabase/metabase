@@ -1,8 +1,9 @@
 (ns metabase.public-settings
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [metabase
              [config :as config]
              [types :as types]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
@@ -47,8 +48,8 @@
   (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
-                                             (cond->> (s/replace new-value #"/$" "")
-                                               (not (s/starts-with? new-value "http")) (str "http://"))))))
+                                             (cond->> (str/replace new-value #"/$" "")
+                                               (not (str/starts-with? new-value "http")) (str "http://"))))))
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
@@ -92,13 +93,30 @@
   :type    :boolean
   :default false)
 
+(def ^:private ^:const global-max-caching-kb
+  "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
+  MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
+  memory and will not truly be streaming. This is a global max in order to prevent our users from setting the caching
+  value so high it becomes a performance issue. The value below represents 200MB"
+  (* 200 1024))
+
 (defsetting query-caching-max-kb
   (tru "The maximum size of the cache, per saved question, in kilobytes:")
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
   :type    :integer
-  :default 1000)
+  :default 1000
+  :setter  (fn [new-value]
+             (when (and new-value
+                        (> (cond-> new-value
+                             (string? new-value) Integer/parseInt)
+                           global-max-caching-kb))
+               (throw (IllegalArgumentException.
+                       (str
+                        (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
+                        (tru "Values greater than {1} are not allowed." global-max-caching-kb)))))
+             (setting/set-integer! :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
   (tru "The absolute maximum time to keep any cached query results, in seconds.")
@@ -125,6 +143,16 @@
   (tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
   :type :double
   :default 10.0)
+
+(defsetting custom-formatting
+  (tru "Object keyed by type, containing formatting settings")
+  :type    :json
+  :default {})
+
+(defsetting enable-xrays
+  (tru "Allow users to explore data using X-rays")
+  :type    :boolean
+  :default true)
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
@@ -154,16 +182,20 @@
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
+   :custom_formatting     (setting/get :custom-formatting)
+   :email_configured      (do (require 'metabase.email)
+                              ((resolve 'metabase.email/email-configured?)))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
-   :engines               ((resolve 'metabase.driver/available-drivers))
+   :enable_xrays          (enable-xrays)
+   :engines               (driver.u/available-drivers-info)
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
+   :ldap_configured       (do (require 'metabase.integrations.ldap)
+                              ((resolve 'metabase.integrations.ldap/ldap-configured?)))
    :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
    :metastore_url         metastore/store-url
@@ -171,7 +203,9 @@
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
-   :setup_token           ((resolve 'metabase.setup/token-value))
+   :setup_token           (do
+                            (require 'metabase.setup)
+                            ((resolve 'metabase.setup/token-value)))
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))

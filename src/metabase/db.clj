@@ -10,16 +10,16 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [connection-pool :as connection-pool]
+             [spec :as dbspec]]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.ComboPooledDataSource
-           java.io.StringWriter
-           java.util.Properties
+  (:import java.io.StringWriter
+           [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
-           liquibase.Liquibase
            liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor))
 
@@ -46,24 +46,37 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
+(def ^:private jdbc-connection-regex
+  #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
+
 (defn- parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
   return a broken-out map."
   [uri]
-  (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
-    (merge {:type     (case (keyword protocol)
-                        :postgres   :postgres
-                        :postgresql :postgres
-                        :mysql      :mysql)
-            :user     user
-            :password pass
-            :host     host
-            :port     port
-            :dbname   db}
-           (some-> query
-                   codec/form-decode
-                   walk/keywordize-keys))))
+  (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
+    (u/prog1 (merge {:type     (case (keyword protocol)
+                                 :postgres   :postgres
+                                 :postgresql :postgres
+                                 :mysql      :mysql)
+                     :user     user
+                     :password pass
+                     :host     host
+                     :port     port
+                     :dbname   db}
+                    (some-> query
+                            codec/form-decode
+                            walk/keywordize-keys))
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
+      ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
+      ;; for more details.
+      (when (and (= (:type <>) :postgres)
+                 (= (:ssl <>) "true")
+                 (not (:sslmode <>)))
+        (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
+                  (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+                  (trs "If Metabase fails to launch, please add it and try again.")
+                  (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
 (def ^:private connection-string-details
   (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
@@ -126,8 +139,10 @@
 
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
-  filter out blank / comment lines. Even though this is not neccesary for H2 or Postgres go ahead and do it anyway
-  because it keeps the code simple and doesn't make a significant performance difference."
+  filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
+  because it keeps the code simple and doesn't make a significant performance difference.
+
+  As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -137,14 +152,17 @@
 (defn- has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
-  It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
-  `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous and
-  a waste of time when we won't be using them."
+  It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
+  skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
+  using them.
+
+  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
+  `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
 (defn- migration-lock-exists?
-  "Is a migration lock in place for LIQUIBASE?"
+  "Is a migration lock in place for `liquibase`?"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
@@ -163,12 +181,7 @@
          (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn- migrate-up-if-needed!
-  "Run any unrun `liquibase` migrations, if needed.
-
-  This creates SQL for the migrations to be performed, then executes each DDL statement. Running `.update` directly
-  doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at the end
-  of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do
-  the trick."
+  "Run any unrun `liquibase` migrations, if needed."
   [conn, ^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
@@ -179,8 +192,8 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (doseq [line (migrations-lines liquibase)]
-          (jdbc/execute! conn [line])))
+        (let [^Contexts contexts nil]
+          (.update liquibase contexts)))
       (log/info
        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
@@ -188,7 +201,8 @@
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
   1.  This doesn't check to make sure the DB locks are cleared
-  2.  Any DDL statements that fail are ignored
+  2.  This generates a sequence of individual DDL statements with `migrations-lines` and runs them each in turn
+  3.  Any DDL statements that fail are ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295.
@@ -211,7 +225,8 @@
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
   "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
   otherwise it adds 2 seconds to startup time."
-  (partial deref (future (DatabaseFactory/getInstance))))
+  (when-not *compile-files*
+    (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."
@@ -313,31 +328,17 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private application-db-connection-pool-properties
+  "c3p0 connection pool properties for the application DB. See
+  https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
+  {"minPoolSize"     1
+   "initialPoolSize" 1
+   "maxPoolSize"     15})
+
 (defn connection-pool
   "Create a C3P0 connection pool for the given database `spec`."
-  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
-    :or   {minimum-pool-size           3
-           idle-connection-test-period 0
-           excess-timeout              (* 30 60)}
-    :as   spec}]
-  {:datasource (doto (ComboPooledDataSource.)
-                 (.setDriverClass                  classname)
-                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                 (.setMaxIdleTimeExcessConnections excess-timeout)
-                 (.setMaxIdleTime                  (* 3 60 60))
-                 (.setInitialPoolSize              3)
-                 (.setMinPoolSize                  minimum-pool-size)
-                 (.setMaxPoolSize                  15)
-                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
-                 (.setTestConnectionOnCheckin      false)
-                 (.setTestConnectionOnCheckout     false)
-                 (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (Properties.)
-                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname
-                                                                                :naming :delimiters :alias-delimiter
-                                                                                :excess-timeout :minimum-pool-size
-                                                                                :idle-connection-test-period)]
-                                                       (.setProperty <> (name k) (str v))))))})
+  [spec]
+  (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
@@ -381,13 +382,13 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
-  ([engine details]
-   {:pre [(keyword? engine) (map? details)]}
-   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
+  ([driver details]
+   {:pre [(keyword? driver) (map? details)]}
+   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver)
-             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
-     (format "Unable to connect to Metabase %s DB." (name engine)))
+             (require 'metabase.driver.util)
+             ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
+     (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 
 
@@ -409,7 +410,7 @@
                    sql
                    "\n\n"
                    "Once your database is updated try running the application again.\n"))
-    (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (throw (Exception. "Database requires manual upgrade."))))
 
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -430,7 +431,10 @@
     ;; first place, and launch normally.
     (u/auto-retry 1
       (migrate! db-details :up))
-    (print-migrations-and-quit! db-details))
+    ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
+    ;; to start normally
+    (when (has-unrun-migrations? (conn->liquibase))
+      (print-migrations-and-quit! db-details)))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!

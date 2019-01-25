@@ -1,25 +1,28 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET PUT POST]]
+            [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [related :as related]
              [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field with-normal-values]]
-             [field-values :refer [FieldValues] :as fv]
+             [database :as database]
+             [field :refer [Field]]
+             [field-values :as fv :refer [FieldValues]]
              [interface :as mi]
              [table :as table :refer [Table]]]
-            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
-            [metabase.util.i18n :refer [trs tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -165,13 +168,12 @@
   (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
-  (and driver (contains? (driver/features driver) :binning)))
+  (and driver (driver/supports? driver :binning)))
 
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/DateTime)
-           (isa? special_type :type/DateTime))
+  [{:keys [base_type], :as field}]
+  (and (mbql.u/datetime-field? field)
        (not (isa? base_type :type/Time))))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
@@ -216,7 +218,7 @@
   "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
   [table include_sensitive_fields]
   (api/read-check table)
-  (let [driver (driver/database-id->driver (:db_id table))]
+  (let [driver (driver.u/database->driver (:db_id table))]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -243,7 +245,7 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver/database-id->driver database-id) %)]
+  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)]
     (for [col metadata]
       (-> col
           (update :base_type keyword)
@@ -290,7 +292,7 @@
     (-> card
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver/database-id->driver database_id))
+        (assoc-dimension-options (driver.u/database->driver database_id))
         remove-nested-pk-fk-special-types)))
 
 (api/defendpoint GET "/card__:id/fks"
@@ -329,8 +331,9 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
   (api/check-superuser)
-  (when-let [field-ids (db/select-ids Field :table_id 212)]
-    (db/simple-delete! FieldValues :id [:in field-ids]))
+  (api/check-404 (Table id))
+  (when-let [field-ids (db/select-ids Field :table_id id)]
+    (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"

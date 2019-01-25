@@ -4,6 +4,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 import { t } from "c-3po";
 import { connect } from "react-redux";
+import cx from "classnames";
 
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
@@ -105,7 +106,11 @@ class AutomaticDashboardApp extends React.Component {
     const hasSidebar = related && Object.keys(related).length > 0;
 
     return (
-      <div className="relative">
+      <div
+        className={cx("relative AutomaticDashboard", {
+          "AutomaticDashboard--withSidebar": hasSidebar,
+        })}
+      >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           <div className="bg-white border-bottom py2">
             <div className="wrapper flex align-center">

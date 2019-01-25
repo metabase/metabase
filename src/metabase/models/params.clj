@@ -1,37 +1,32 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.mbql.util :as mbql.u])
-  (:import metabase.query_processor.interface.FieldPlaceholder))
+             [hydrate :refer [hydrate]]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn field-form->id
+(s/defn field-form->id :- su/IntGreaterThanZero
   "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references. Also handles unwrapped integers.
 
-     (field-form->id [:field-id 100])  ; -> 100"
+      (field-form->id [:field-id 100])  ; -> 100"
   [field-form]
-  (cond
-    (mbql.u/is-clause? :field-id field-form)
-    (second field-form)
-
-    (mbql.u/is-clause? :fk-> field-form)
-    (last field-form)
-
-    (integer? field-form)
+  (if (integer? field-form)
     field-form
-
-    :else
-    (throw (IllegalArgumentException. (str "Don't know what to do with: " field-form)))))
+    ;; TODO - what are we supposed to do if `field-form` is a field literal?
+    (mbql.u/field-clause->id-or-literal field-form)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -44,7 +39,7 @@
     [:field-id field-id-or-form]
 
     :else
-    (throw (IllegalArgumentException. (str "Don't know how to wrap:" field-id-or-form)))))
+    (throw (IllegalArgumentException. (str (trs "Don't know how to wrap:") " " field-id-or-form)))))
 
 (defn- field-ids->param-field-values
   "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
@@ -65,11 +60,15 @@
   "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
-  (when (ql/is-clause? :dimension target)
+  (when (mbql.u/is-clause? :dimension target)
     (let [[_ dimension] target]
-      (field-form->id (if (ql/is-clause? :template-tag dimension)
-                        (template-tag->field-form dimension dashcard)
-                        dimension)))))
+      (try
+        (field-form->id
+         (if (mbql.u/is-clause? :template-tag dimension)
+           (template-tag->field-form dimension dashcard)
+           dimension))
+        (catch Throwable e
+          (log/error e (tru "Could not find matching Field ID for target:") target))))))
 
 
 (defn- pk-fields
@@ -145,7 +144,7 @@
 
 (defn- param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
-  Dashboard. These only contain the minimal amount of information neccesary needed to power public or embedded
+  Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids]
   (when (seq field-ids)

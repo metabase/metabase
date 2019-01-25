@@ -287,7 +287,7 @@ export class FieldValuesWidget extends Component {
               value={value}
               column={field}
               {...formatOptions}
-              round={false}
+              maximumFractionDigits={20}
               compact={false}
               autoLoad={true}
             />
@@ -296,7 +296,7 @@ export class FieldValuesWidget extends Component {
             <RemappedValue
               value={option[0]}
               column={field}
-              round={false}
+              maximumFractionDigits={20}
               autoLoad={false}
               {...formatOptions}
             />

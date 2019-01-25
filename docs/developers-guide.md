@@ -1,11 +1,10 @@
 **This guide will teach you:**
 
-*  [How to compile your own copy of Metabase](#build-metabase)
-*  [How to set up a development environment](#development-environment)
-*  [How to run the Metabase Server](#development-server-quick-start)
-*  [How to contribute back to the Metabase project](#contributing)
-*  [How to add support in Metabase for other languages](#internationalization)
-
+* [How to compile your own copy of Metabase](#build-metabase)
+* [How to set up a development environment](#development-environment)
+* [How to run the Metabase Server](#development-server-quick-start)
+* [How to contribute back to the Metabase project](#contributing)
+* [How to add support in Metabase for other languages](#internationalization)
 
 # Contributing
 
@@ -23,18 +22,18 @@ If you have problems with your development environment, make sure that you are n
 
 # Install Prerequisites
 
-These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
+These are the set of tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
 
 1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 2. [Node.js (http://nodejs.org/)](http://nodejs.org/)
 3. [Yarn package manager for Node.js](https://yarnpkg.com/)
-3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
+4. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 # Build Metabase
 
-The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM.  There is a script which will execute all steps in the process and output the final artifact for you.
+The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM. There is a script which will execute all steps in the process and output the final artifact for you.
 
     ./bin/build
 
@@ -43,7 +42,6 @@ After running the build script simply look in `target/uberjar` for the output .j
 ## Building `Metabase.app`
 
 See [this guide](developers-guide-osx.md).
-
 
 # Development Environment
 
@@ -78,13 +76,14 @@ Start the frontend build process with
     yarn run build-hot
 
 ## Frontend development
+
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
-- webpack
-- babel
-- cssnext
+* webpack
+* babel
+* cssnext
 
-Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under *scripts*.
+Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under _scripts_.
 
 To build the frontend client without watching for changes, you can use:
 
@@ -117,11 +116,13 @@ yarn run test
 which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
 
 ### Jest integration tests
+
 Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
 
 Integration tests use an enforced file naming convention `<test-suite-name>.integ.js` to separate them from unit tests.
 
 Useful commands:
+
 ```bash
 lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
 yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
@@ -185,11 +186,9 @@ describe("Query builder", () => {
         // to click links that lead to other router paths.
     });
 })
-
 ```
 
 You can also skim through [`__support__/integrated_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/integrated_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
-
 
 ### Jest unit tests
 
@@ -203,6 +202,7 @@ yarn run test-unit-watch # Watch for file changes
 ```
 
 ### Karma browser tests
+
 If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
 
 ```
@@ -211,12 +211,51 @@ yarn run test-karma-watch # Watch for file changes
 ```
 
 ## Backend development
-Leiningen and your REPL are the main development tools for the backend.  There are some directions below on how to setup your REPL for easier development.
+
+Leiningen and your REPL are the main development tools for the backend. There are some directions below on how to setup your REPL for easier development.
 
 And of course your Jetty development server is available via
 
+    lein run
+
+To automatically load backend namespaces when files are changed, you can instead run with
+
     lein ring server
 
+`lein ring server` takes significantly longer to launch than `lein run`, so if you aren't working on backend code we'd recommend sticking to launching with `lein run`.
+
+### Building drivers
+
+Most of the drivers Metabase uses to connect to external data warehouse databases are separate Leiningen projects under the `modules/` subdirectory. When running Metabase via `lein`, you'll
+need to build these drivers in order to have access to them. You can build drivers as follows:
+
+```
+# Build the 'mongo' driver
+./bin/build-driver.sh mongo
+```
+
+(or)
+
+```
+# Build all drivers
+./bin/build-drivers.sh
+```
+
+The first time you build a driver, it will be a bit slow, because Metabase needs to build the core project a couple of times so the driver can use it as a dependency; you can take comfort in the
+fact that you won't need to build the driver again after that. Alternatively, running Metabase 1.0+ from the uberjar will unpack all of the pre-built drivers into your plugins directory; you can
+do this instead if you already have a Metabase uberjar (just make sure `plugins` is in the root directory of the Metabase source, i.e. the same directory as `project.clj`).
+
+### Including driver source paths for development or other Leiningen tasks
+
+For development when running various Leiningen tasks you can add the `include-all-drivers` profile to merge the drivers' dependencies and source paths into the Metabase
+project:
+
+```
+# Install dependencies
+lein with-profiles +include-all-drivers deps
+```
+
+This profile is added by default when running `lein repl`, tests, and linters.
 
 #### Unit Tests / Linting
 
@@ -228,19 +267,15 @@ or a specific test with
 
     lein test metabase.api.session-test
 
-By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `ENGINES`:
+By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `DRIVERS`:
 
-    ENGINES=h2,postgres,mysql,mongo lein test
+    DRIVERS=h2,postgres,mysql,mongo lein test
 
-At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, `oracle`, `vertica`, and `redshift`. Some of these engines require additional parameters
-when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
-
-Due to some issues with the way we've structured our test setup code, you currently always need to include `h2` in the `ENGINES` list. Thus to test something like `bigquery` you should specify `ENGINES=h2,bigquery`. Fortunately the H2 tests are fast so this should not make a noticeable difference.
+Some drivers require additional environment variables when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
 ##### Run the linters:
 
-    lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter
-
+    lein eastwood && lein bikeshed && lein docstring-checker && lein check-namespace-decls && ./bin/reflection-linter
 
 #### Developing with Emacs
 
@@ -265,14 +300,18 @@ Start up an instant cheatsheet for the project + dependencies by running
     lein instant-cheatsheet
 
 ## Internationalization
+
 We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n.
-### The general workflow for developers is:
+
+### Adding new strings:
+
+If you need to add new strings (try to be judicious about adding copy) do the following:
 
 1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
 
 ```javascript
 const someString = t`Hello ${name}!`;
-const someJSX = <div>{ jt`Hello ${name}` }</div>
+const someJSX = <div>{jt`Hello ${name}`}</div>;
 ```
 
 and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
@@ -281,23 +320,12 @@ and in the backend using `trs` and related macros (see more details in https://g
 (trs "Hello {0}!" name)
 ```
 
-2. When you have added/edited tagged strings in the code, run `./bin/i18n/update-translations` to update the base `locales/metabase.pot` template and each existing `locales/LOCALE.po`
+### Translation errors or missing strings
 
-### The workflow for translators in starting a new translation, or editing an existing one:
-
-1. You should run `./bin/i18n/update-translations` first to ensure the latest strings have been extracted.
-2. If you're starting a new translation or didn't run update-translations then run `./bin/i18n/update-translation LOCALE`
-3. Edit ./locales/LOCALE.po
-4. `Run ./bin/i18n/build-translation-resources`
-5. Restart or rebuild Metabase, Test, repeat 2 and 3
-6. Commit changes to ./locales/LOCALE.po and ./resources/frontend_client/app/locales/LOCALE.json
-
-
-To try it out, change your browser's language (e.x. chrome://settings/?search=language) to one of the locales to see it working. Run metabase with the `JAVA_TOOL_OPTIONS=-Duser.language=LOCALE` environment variable set to set the locale on the backend, e.x. for pulses and emails (eventually we'll also add a setting in the app)
-
+If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
 Copyright © 2017 Metabase, Inc
 
-Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.
+Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.

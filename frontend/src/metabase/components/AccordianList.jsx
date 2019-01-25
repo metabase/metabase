@@ -325,12 +325,18 @@ export default class AccordianList extends Component {
       ),
     );
 
+    const defaultListStyle = {
+      // HACK - Ensure the component can scroll
+      // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
+      overflowY: "scroll",
+    };
+
     return (
       <List
         id={id}
         ref={list => (this._list = list)}
         className={this.props.className}
-        style={style}
+        style={{ ...defaultListStyle, ...(style || {}) }}
         width={width}
         height={height}
         rowCount={rows.length}

@@ -19,8 +19,9 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [expect-with-engine]]
+             [datasets :refer [expect-with-driver]]
              [users :refer :all]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -36,7 +37,9 @@
      :common_name  $}))
 
 (defn format-response [m]
-  (into {} (for [[k v] (m/dissoc-in m [:data :results_metadata])]
+  (into {} (for [[k v] (-> m
+                           (m/dissoc-in [:data :results_metadata])
+                           (m/dissoc-in [:data :insights]))]
              (cond
                (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)
@@ -50,10 +53,13 @@
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
   [ ;; API call response
-   {:data                   {:rows    [[1000]]
-                             :columns ["count"]
-                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                        :description nil, :target nil, :extra_info {}, :source "aggregation", :remapped_from nil, :remapped_to nil}]
+   {:data                   {:rows        [[1000]]
+                             :columns     ["count"]
+                             :cols        [{:base_type    "type/Integer"
+                                            :special_type "type/Number"
+                                            :name         "count"
+                                            :display_name "count"
+                                            :source       "aggregation"}]
                              :native_form true}
     :row_count              1
     :status                 "completed"
@@ -65,7 +71,8 @@
                                 (assoc :constraints qp/default-query-constraints))
     :started_at             true
     :running_time           true
-    :average_execution_time nil}
+    :average_execution_time nil
+    :database_id            (id)}
    ;; QueryExecution record in the DB
    {:hash         true
     :row_count    1
@@ -78,6 +85,7 @@
     :dashboard_id nil
     :error        nil
     :id           true
+    :database_id  (id)
     :started_at   true
     :running_time true}]
   (let [result ((user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
@@ -88,7 +96,7 @@
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
-  [;; API call response
+  [ ;; API call response
    {:data         {:rows    []
                    :columns []
                    :cols    []}
@@ -100,6 +108,7 @@
                    :type        "native"
                    :native      {:query "foobar"}
                    :constraints qp/default-query-constraints}
+    :database_id  (id)
     :started_at   true
     :running_time true}
    ;; QueryExecution entry in the DB
@@ -109,6 +118,7 @@
     :row_count    0
     :context      :ad-hoc
     :error        true
+    :database_id  (id)
     :started_at   true
     :running_time true
     :executor_id  (user->id :rasta)
@@ -121,10 +131,11 @@
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
                                                       (boolean (re-find #"Syntax error in SQL statement" error-message)))))
-        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                                        :type     "native"
-                                                                        :native   {:query "foobar"}})]
-    [(check-error-message (format-response result))
+        result              (tu.log/suppress-output
+                              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                          :type     "native"
+                                                                          :native   {:query "foobar"}}))]
+    [(check-error-message (dissoc (format-response result) :stacktrace))
      (check-error-message (format-response (most-recent-query-execution)))]))
 
 
@@ -181,7 +192,7 @@
       (take 5 (parse-and-sort-csv result)))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
-(expect-with-engine :sqlite
+(expect-with-driver :sqlite
   [["1" "2014-04-07" "5" "12"]
    ["2" "2014-09-18" "1" "31"]
    ["3" "2014-09-15" "8" "56"]

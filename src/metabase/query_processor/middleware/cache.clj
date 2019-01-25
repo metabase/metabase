@@ -89,26 +89,8 @@
   (boolean (and (public-settings/enable-query-caching)
                 cache-ttl)))
 
-(defn- results-are-below-max-byte-threshold?
-  "Measure the size of the `:rows` in QUERY-RESULTS and see whether they're smaller than `query-caching-max-kb`
-   *before* compression."
-  ^Boolean [{{rows :rows} :data}]
-  (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
-    ;; We don't want to serialize the entire result set since that could explode if the query is one that returns a
-    ;; huge number of rows. (We also want to keep `:rows` lazy.)
-    ;; So we'll serialize one row at a time, and keep a running total of bytes; if we pass the `query-caching-max-kb`
-    ;; threshold, we'll fail right away.
-    (loop [total-bytes 0, [row & more] rows]
-      (cond
-        (> total-bytes max-bytes) false
-        (not row)                 true
-        :else                     (recur (+ total-bytes (count (str row)))
-                                         more)))))
-
 (defn- save-results-if-successful! [query-hash results]
-  (when (and (= (:status results) :completed)
-             (or (results-are-below-max-byte-threshold? results)
-                 (log/info "Results are too large to cache." (u/emoji "😫"))))
+  (when (= (:status results) :completed)
     (save-results! query-hash results)))
 
 (defn- run-query-and-save-results-if-successful! [query-hash qp query]
@@ -127,7 +109,6 @@
     (or (cached-results query-hash cache-ttl)
         (run-query-and-save-results-if-successful! query-hash qp query))))
 
-
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
   In order for a query to be eligible for caching:
@@ -141,11 +122,13 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  ;; choose the caching backend if needed
-  (when-not @backend-instance
-    (set-backend!))
-  ;; ok, now do the normal middleware thing
   (fn [query]
     (if-not (is-cacheable? query)
       (qp query)
-      (run-query-with-cache qp query))))
+      ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
+      ;; it when the files get compiled, because that would give it the wrong version of the
+      ;; `IQueryProcessorCacheBackend` protocol
+      (do
+        (when-not @backend-instance
+          (set-backend!))
+        (run-query-with-cache qp query)))))

@@ -53,12 +53,17 @@ export function fieldRefForColumn(column: Column): ?ConcreteField {
     } else {
       return ["field-id", column.id];
     }
-  } else if (column["expression-name"] != null) {
-    return ["expression", column["expression-name"]];
+  } else if (column.expression_name != null) {
+    return ["expression", column.expression_name];
   } else {
     return null;
   }
 }
+
+export const keyForColumn = (column: Column): string => {
+  const ref = fieldRefForColumn(column);
+  return JSON.stringify(ref ? ["ref", ref] : ["name", column.name]);
+};
 
 /**
  * Finds the column object from the dataset results for the given `table.columns` column setting

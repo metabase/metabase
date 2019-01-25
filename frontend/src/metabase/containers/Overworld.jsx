@@ -34,6 +34,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 const PAGE_PADDING = [1, 2, 4];
 
 import { createSelector } from "reselect";
+import { getXraysEnabled } from "metabase/selectors/settings";
 
 // use reselect select to avoid re-render if list doesn't change
 const getParitionedCollections = createSelector(
@@ -68,10 +69,11 @@ const getParitionedCollections = createSelector(
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
   ...getParitionedCollections(state, props),
   user: getUser(state, props),
+  xraysEnabled: getXraysEnabled(state),
 }))
 class Overworld extends React.Component {
   render() {
-    const { user } = this.props;
+    const { user, xraysEnabled } = this.props;
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
@@ -88,7 +90,7 @@ class Overworld extends React.Component {
               d => d.model === "dashboard" && d.collection_position != null,
             );
 
-            if (!pinnedDashboards.length > 0) {
+            if (xraysEnabled && !pinnedDashboards.length > 0) {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
@@ -122,7 +124,7 @@ class Overworld extends React.Component {
               );
             }
 
-            if (items.length === 0) {
+            if (pinnedDashboards.length === 0) {
               return null;
             }
 

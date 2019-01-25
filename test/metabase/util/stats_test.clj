@@ -1,14 +1,14 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
-            [metabase.models [query-execution :refer [QueryExecution]]
-             [pulse :refer [Pulse]]
-             [pulse-channel :refer [PulseChannel]]
+            [metabase.models
              [card :refer [Card]]
-             [pulse-card :refer [PulseCard]]]
-            [metabase.test.util :as tu]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [query-execution :refer [QueryExecution]]]
+            [metabase.util :as u]
             [metabase.util.stats :as stats-util :refer :all]
             [toucan.db :as db]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 #_(expect "0" (#'stats-util/bin-micro-number 0))
@@ -104,7 +104,7 @@
 ;;  alert_condition character varying(254), -- Condition (i.e. "rows" or "goal") used as a guard for alerts
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
-(defn- x []
+(expect
   {:pulses {:pulses               3
             :with_table_cards     2
             :pulse_types          {"slack" 1, "email" 2}

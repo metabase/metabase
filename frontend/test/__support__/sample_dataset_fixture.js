@@ -23,6 +23,7 @@ export const ORDERS_TOTAL_FIELD_ID = 6;
 export const MAIN_METRIC_ID = 1;
 
 export const PRODUCT_CATEGORY_FIELD_ID = 21;
+export const PRODUCT_CREATED_AT_FIELD_ID = 22;
 export const PRODUCT_PK_FIELD_ID = 24;
 export const PRODUCT_TILE_FIELD_ID = 27;
 
@@ -500,6 +501,38 @@ export const state = {
         base_type: "type/Float",
         points_of_interest: null,
         values: [],
+        default_dimension_option: {
+          mbql: ["binning-strategy", null, "default"],
+          name: "Auto bin",
+          type: "type/Number",
+        },
+        dimension_options: [
+          {
+            mbql: ["binning-strategy", null, "default"],
+            name: "Auto bin",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 10],
+            name: "10 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 50],
+            name: "50 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: ["binning-strategy", null, "num-bins", 100],
+            name: "100 bins",
+            type: "type/Number",
+          },
+          {
+            mbql: null,
+            name: "Don't bin",
+            type: "type/Number",
+          },
+        ],
       },
       "7": {
         description:

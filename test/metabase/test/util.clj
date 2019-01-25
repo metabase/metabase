@@ -1,20 +1,17 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
-            [clojure.string :as s]
             [clj-time.core :as time]
+            [clojure
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [expectations :refer :all]
             [metabase
              [driver :as driver]
              [task :as task]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -35,20 +32,13 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.test.data :as data]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :refer [*driver*]]]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import com.mchange.v2.c3p0.PooledDataSource
-           java.util.TimeZone
-           org.apache.log4j.Logger
-           org.joda.time.DateTimeZone
+  (:import org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
-
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -410,33 +400,49 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map fields]
+(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
                                                      num
-                                                     (u/round-to-decimals 3 num)))))
+                                                     (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
 (defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 4 decimal places"
+  "Rounds the numerical fields of a fingerprint to 2 decimal places"
   [field]
   (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields [:min :max :avg])
-      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields [:percent-json :percent-url :percent-email :average-length])))
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
+      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols [query-results]
-  (let [maybe-data-cols (if (contains? query-results :data)
-                          [:data :cols]
-                          [:cols])]
-    (update-in query-results maybe-data-cols #(map round-fingerprint %))))
+(defn round-fingerprint-cols
+  ([query-results]
+   (if (map? query-results)
+     (let [maybe-data-cols (if (contains? query-results :data)
+                             [:data :cols]
+                             [:cols])]
+       (round-fingerprint-cols maybe-data-cols query-results))
+     (map round-fingerprint query-results)))
+  ([k query-results]
+   (update-in query-results k #(map round-fingerprint %))))
+
+(defn postwalk-pred
+  "Transform `form` by applying `f` to each node where `pred` returns true"
+  [pred f form]
+  (walk/postwalk (fn [node]
+                   (if (pred node)
+                     (f node)
+                     node))
+                 form))
 
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (qputil/postwalk-pred double?
-                        #(u/round-to-decimals decimal-place %)
-                        data))
+  (postwalk-pred double?
+                 #(u/round-to-decimals decimal-place %)
+                 data))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -496,60 +502,21 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn clear-connection-pool
-  "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
-  the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
-  timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
-  connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
-  [db]
-  (when-let [^PooledDataSource conn-pool (:datasource (sql/db->pooled-connection-spec db))]
-    (.softResetAllUsers conn-pool)))
-
 (defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with `metabase.test.data.datasets/*driver*` bound,
-  such as via `metabase.test.data.datasets/with-engine`"
+  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
   []
-  (assert (bound? #'*driver*))
+  (assert driver/*driver*)
   (let [db (data/db)]
-    (clear-connection-pool db)
+    ;; clear the connection pool for SQL JDBC drivers. It's possible that a previous test ran and set the session's
+    ;; timezone to something, then returned the session to the pool. Sometimes that connection's session can remain
+    ;; intact and subsequent queries will continue in that timezone. That causes problems for tests that we can
+    ;; determine the database's timezone.
+    (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
-      (-> (driver/current-db-time *driver* db)
+      (-> (driver/current-db-time driver/*driver* db)
           .getChronology
           .getZone
           .getID))))
-
-(defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
-  it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'metabase.driver.generic-sql/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
-  [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
 
 (defmulti ^:private do-model-cleanup! class)
 
@@ -646,3 +613,30 @@
   admin has removed them."
   [& body]
   `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+
+
+(defn doall-recursive
+  "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
+  Useful for tests when you need the entire object to be realized in the body of a `binding`, `with-redefs`, or
+  `with-temp` form."
+  [x]
+  (cond
+    (map? x)
+    (into {} (for [[k v] (doall x)]
+               [k (doall-recursive v)]))
+
+    (sequential? x)
+    (mapv doall-recursive (doall x))
+
+    :else
+    x))
+
+(defmacro exception-and-message
+  "Invokes `body`, catches the exception and returns a map with the exception class, message and data"
+  [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       {:ex-class (class e#)
+        :msg      (.getMessage e#)
+        :data     (ex-data e#)})))

@@ -2,10 +2,10 @@
   "Public API for sending Pulses."
   (:require [clojure.tools.logging :as log]
             [metabase
-             [driver :as driver]
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.models
@@ -29,16 +29,16 @@
   "Execute the query for a single card with CARD-ID. OPTIONS are passed along to `dataset-query`."
   [card-id & {:as options}]
   {:pre [(integer? card-id)]}
-  (when-let [card (Card :id card-id, :archived false)]
-    (let [{:keys [creator_id dataset_query]} card]
-      (try
+  (try
+    (when-let [card (Card :id card-id, :archived false)]
+      (let [{:keys [creator_id dataset_query]} card]
         {:card   card
          :result (qp/process-query-and-save-with-max! dataset_query (merge {:executed-by creator_id,
                                                                             :context     :pulse,
                                                                             :card-id     card-id}
-                                                                           options))}
-        (catch Throwable t
-          (log/warn (format "Error running card query (%n)" card-id) t))))))
+                                                                           options))}))
+    (catch Throwable t
+      (log/warn t (trs "Error running query for Card {0}" card-id)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -48,7 +48,7 @@
   "Returns the timezone for the given `CARD`. Either the report
   timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (let [^String timezone-str (or (some-> card database-id driver/database-id->driver driver/report-timezone-if-supported)
+  (let [^String timezone-str (or (some-> card database-id driver.u/database->driver driver.u/report-timezone-if-supported)
                                  (System/getProperty "user.timezone"))]
     (TimeZone/getTimeZone timezone-str)))
 
@@ -230,7 +230,7 @@
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids
-            :let [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
+            :let       [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
         (create-notification pulse results channel)))))
 
 (defn send-pulse!

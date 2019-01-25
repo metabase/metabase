@@ -1,6 +1,6 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
-   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
+  There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require [metabase
              [query-processor-test :refer [first-row format-rows-by rows]]
              [util :as u]]
@@ -19,7 +19,6 @@
 ;;; "bare rows" query, limit
 (expect-with-timeseries-dbs
   {:columns ["id"
-             "timestamp"
              "count"
              "user_last_login"
              "user_name"
@@ -27,16 +26,16 @@
              "venue_latitude"
              "venue_longitude"
              "venue_name"
-             "venue_price"]
-   :rows [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-          ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+             "venue_price"
+             "timestamp"]
+   :rows [["931", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1", "2013-01-03T08:00:00.000Z"]
+          ["285", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2", "2013-01-10T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
           {:limit 2})))
 
 ;;; "bare rows" query, limit, order-by timestamp desc
 (expect-with-timeseries-dbs
   {:columns ["id"
-             "timestamp"
              "count"
              "user_last_login"
              "user_name"
@@ -44,9 +43,10 @@
              "venue_latitude"
              "venue_longitude"
              "venue_name"
-             "venue_price"]
-   :rows    [["693", "2015-12-29T08:00:00.000Z", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2"]
-             ["570", "2015-12-26T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3"]]}
+             "venue_price"
+             "timestamp"]
+   :rows    [["693", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2", "2015-12-29T08:00:00.000Z"]
+             ["570", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3", "2015-12-26T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
           {:order-by [[:desc $timestamp]]
            :limit    2})))
@@ -54,7 +54,6 @@
 ;;; "bare rows" query, limit, order-by timestamp asc
 (expect-with-timeseries-dbs
   {:columns ["id"
-             "timestamp"
              "count"
              "user_last_login"
              "user_name"
@@ -62,9 +61,10 @@
              "venue_latitude"
              "venue_longitude"
              "venue_name"
-             "venue_price"]
-   :rows    [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-             ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+             "venue_price"
+             "timestamp"]
+   :rows    [["931", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1", "2013-01-03T08:00:00.000Z"]
+             ["285", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2", "2013-01-10T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
           {:order-by [[:asc $timestamp]]
            :limit    2})))
@@ -77,7 +77,7 @@
    :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
              ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
-          {:fields [$venue_name $venue_category_name]
+          {:fields [$venue_name $venue_category_name $timestamp]
            :limit  2})))
 
 ;;; fields clause, order by timestamp asc
@@ -86,7 +86,7 @@
    :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
              ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
-          {:fields   [$venue_name $venue_category_name]
+          {:fields   [$venue_name $venue_category_name $timestamp]
            :order-by [[:asc $timestamp]]
            :limit    2})))
 
@@ -96,7 +96,7 @@
    :rows    [["Señor Fish"       "Mexican" "2015-12-29T08:00:00.000Z"]
              ["Empress of China" "Chinese" "2015-12-26T08:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
-          {:fields   [$venue_name $venue_category_name]
+          {:fields   [$venue_name $venue_category_name $timestamp]
            :order-by [[:desc $timestamp]]
            :limit    2})))
 
@@ -301,7 +301,7 @@
              ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00.000Z"]
              ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
-          {:fields [$user_name $venue_name $venue_category_name]
+          {:fields [$user_name $venue_name $venue_category_name $timestamp]
            :filter [:= $user_name "Plato Yeshua"]
            :limit  5})))
 
@@ -318,7 +318,7 @@
   {:columns ["user_name" "venue_name" "timestamp"]
    :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00.000Z"]]}
   (data (data/run-mbql-query checkins
-          {:fields [$user_name $venue_name]
+          {:fields [$user_name $venue_name $timestamp]
            :filter [:and
                     [:= $venue_category_name "Bar"]
                     [:= $user_name "Plato Yeshua"]]})))
@@ -632,11 +632,11 @@
 ;; https://github.com/metabase/metabase/issues/5969.
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-01T00:00:00.000Z" 8]
-             ["2013-02-01T00:00:00.000Z" 11]
-             ["2013-03-01T00:00:00.000Z" 21]
-             ["2013-04-01T00:00:00.000Z" 26]
-             ["2013-05-01T00:00:00.000Z" 23]]}
+   :rows    [["2013-01-01" 8]
+             ["2013-02-01" 11]
+             ["2013-03-01" 21]
+             ["2013-04-01" 26]
+             ["2013-05-01" 23]]}
   (-> (data/run-mbql-query checkins
         {:aggregation [[:count]]
          :breakout    [[:datetime-field $timestamp :month]]})
@@ -889,3 +889,25 @@
   (rows (data/run-mbql-query checkins
           {:aggregation [[:max $venue_latitude]]
            :breakout    [$venue_price]})))
+
+;; Do we properly handle queries that have more than one of the same aggregation? (#4166)
+(expect-with-timeseries-dbs
+  [[35643 1992]]
+  (format-rows-by [int int]
+    (rows
+      (data/run-mbql-query checkins
+        {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]}))))
+
+;; Make sure sorting by aggregations works correctly for Timeseries queries (#9185)
+(expect-with-timeseries-dbs
+  [["Steakhouse" 3.6]
+   ["Chinese"    3.0]
+   ["Wine Bar"   3.0]
+   ["Japanese"   2.7]]
+  (format-rows-by [str (partial u/round-to-decimals 1)]
+    (rows
+      (data/run-mbql-query checkins
+        {:aggregation  [[:avg $venue_price]]
+         :breakout     [[:field-id $venue_category_name]]
+         :order-by     [[:desc [:aggregation 0]]]
+         :limit        4}))))
