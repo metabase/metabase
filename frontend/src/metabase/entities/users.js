@@ -1,6 +1,7 @@
 /* @flow */
 
 import { createEntity } from "metabase/lib/entities";
+import { t } from "c-3po";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
@@ -37,9 +38,25 @@ const User = createEntity({
 
   form: {
     fields: [
-      { name: "first_name", placeholder: "Johnny" },
-      { name: "last_name", placeholder: "Appleseed" },
-      { name: "email", placeholder: "youlooknicetoday@email.com" },
+      {
+        name: "first_name",
+        placeholder: "Johnny",
+        validate: name =>
+          (!name && t`First name is required`) ||
+          (name.length > 100 && t`Must be 100 characters or less`),
+      },
+      {
+        name: "last_name",
+        placeholder: "Appleseed",
+        validate: name =>
+          (!name && t`Last name is required`) ||
+          (name.length > 100 && t`Must be 100 characters or less`),
+      },
+      {
+        name: "email",
+        placeholder: "youlooknicetoday@email.com",
+        validate: email => !email && t`Email is required`,
+      },
     ],
   },
 });

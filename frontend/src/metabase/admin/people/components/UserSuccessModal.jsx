@@ -4,6 +4,7 @@ import { t, jt } from "c-3po";
 
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
+import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
@@ -40,6 +41,7 @@ const UserSuccessModal = ({ onClose, object, location }) => (
     ) : (
       <EmailSuccess user={object} />
     )}
+    <Button primary onClick={() => onClose()}>{t`Done`}</Button>
   </ModalContent>
 );
 

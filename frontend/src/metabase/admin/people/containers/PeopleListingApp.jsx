@@ -48,6 +48,7 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
   state = {};
+
   static propTypes = {
     user: PropTypes.object.isRequired,
     users: PropTypes.array,
@@ -60,9 +61,9 @@ export default class PeopleListingApp extends Component {
 
   async componentDidMount() {
     try {
-      await Promise.all([this.props.loadMemberships()]);
+      await this.props.loadMemberships();
     } catch (error) {
-      console.error(error);
+      this.setState({ error });
     }
   }
 
