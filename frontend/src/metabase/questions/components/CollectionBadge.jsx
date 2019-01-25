@@ -24,10 +24,10 @@ class CollectionBadge extends React.Component {
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
         <Flex align="center">
-          <Icon name={object.getIcon()} mr={1} size={11} />
-          <h6 className="text-uppercase" style={{ fontWeight: 900 }}>
+          <Icon name={object.getIcon()} mr={1} />
+          <h5 className="text-uppercase" style={{ fontWeight: 900 }}>
             {object.name}
-          </h6>
+          </h5>
         </Flex>
       </Link>
     );

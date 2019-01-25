@@ -17,7 +17,6 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal.jsx";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import Button from "metabase/components/Button.jsx"
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal.jsx";
 
@@ -305,7 +304,6 @@ export default class QueryHeader extends Component {
     }
 
     // parameters
-    /*
     if (
       question.query() instanceof NativeQuery &&
       database &&
@@ -327,7 +325,6 @@ export default class QueryHeader extends Component {
         </Tooltip>,
       ]);
     }
-    */
 
     // add to dashboard
     if (!isNew && !isEditing) {
@@ -407,33 +404,30 @@ export default class QueryHeader extends Component {
     }
 
     // query mode toggle
-    if (!(question.query() instanceof NativeQuery)) {
-      buttonSections.push([
-        <QueryModeButton
-          key="queryModeToggle"
-          mode={this.props.card.dataset_query.type}
-          allowNativeToQuery={isNew && !isDirty}
-          allowQueryToNative={
-            tableMetadata
-              ? // if a table is selected, only enable if user has native write permissions for THAT database
-                tableMetadata.db &&
-                tableMetadata.db.native_permissions === "write"
-              : // if no table is selected, only enable if user has native write permissions for ANY database
-                _.any(databases, db => db.native_permissions === "write")
-          }
-          nativeForm={
-            this.props.result &&
-            this.props.result.data &&
-            this.props.result.data.native_form
-          }
-          onSetMode={this.props.setQueryModeFn}
-          tableMetadata={tableMetadata}
-        />,
-      ]);
-    }
+    buttonSections.push([
+      <QueryModeButton
+        key="queryModeToggle"
+        mode={this.props.card.dataset_query.type}
+        allowNativeToQuery={isNew && !isDirty}
+        allowQueryToNative={
+          tableMetadata
+            ? // if a table is selected, only enable if user has native write permissions for THAT database
+              tableMetadata.db &&
+              tableMetadata.db.native_permissions === "write"
+            : // if no table is selected, only enable if user has native write permissions for ANY database
+              _.any(databases, db => db.native_permissions === "write")
+        }
+        nativeForm={
+          this.props.result &&
+          this.props.result.data &&
+          this.props.result.data.native_form
+        }
+        onSetMode={this.props.setQueryModeFn}
+        tableMetadata={tableMetadata}
+      />,
+    ]);
 
     // data reference button
-    /***
     let dataReferenceButtonClasses = cx("transition-color", {
       "text-brand": this.props.isShowingDataReference,
       "text-brand-hover": !this.state.isShowingDataReference,
@@ -449,9 +443,7 @@ export default class QueryHeader extends Component {
         </a>
       </Tooltip>,
     ]);
-    ***/
 
-    // alerts
     if (
       !isEditing &&
       card &&
@@ -508,13 +500,13 @@ export default class QueryHeader extends Component {
         toggleEditorIcon = "expand";
       }
       buttonSections.push([
-        <Button
-          icon={toggleEditorIcon}
-          className="Query-label no-decoration flex-align-right flex align-center"
+        <a
+          className="Query-label no-decoration flex-align-right flex align-center pl2 pr4"
           onClick={this.toggleEditor}
         >
-          {toggleEditorText}
-        </Button>,
+          <span className="mx2">{toggleEditorText}</span>
+          <Icon name={toggleEditorIcon} size={20} />
+        </a>,
       ]);
     }
 

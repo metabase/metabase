@@ -27,8 +27,6 @@ import { t } from "c-3po";
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
-import Tooltip from "metabase/components/Tooltip.jsx";
-
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -308,7 +306,7 @@ export default class NativeQueryEditor extends Component {
             key="db_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
-            <Icon className="Icon text-medium pl2" name="database" size={12} />
+            <Icon className="Icon text-medium pl2" name="database" size={14} />
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -348,74 +346,41 @@ export default class NativeQueryEditor extends Component {
     }
 
     let editorClasses;
-    let dividerClasses;
     if (this.props.isEditorOpen) {
       editorClasses = "";
-      dividerClasses = ""
     } else {
       editorClasses = "hide";
-      dividerClasses = "border-top";
     }
 
     return (
-      <div className="full">
-        <Parameters
-          parameters={parameters}
-          query={location.query}
-          setParameterValue={setParameterValue}
-          setParameterIndex={this.setParameterIndex}
-          syncQueryString
-          isEditing
-          isQB
-          commitImmediately
-          className="wrapper ml2 pb1"
-        />
-        <div className={"full " + dividerClasses}></div>
-        <div className={"NativeQueryEditor full border-top border-bottom " + editorClasses} >
-          <div className="wrapper bg-light">
-            <div className="flex align-center" style={{ minHeight: 50 }}>
-              {dataSelectors}
-              <div className="flex-align-right flex align-center mr2">
-                <Tooltip
-                  key="parameterEdititor"
-                  tooltip={t`Variables`}
-                >
-                  <a>
-                    <Icon
-                      name="variable"
-                      size={16}
-                      onClick={this.props.toggleTemplateTagsEditor}
-                    />
-                  </a>
-                </Tooltip>
-
-                <Tooltip key="dataReference" tooltip={t`Learn about your data`}>
-                  <a>
-                    <Icon
-                      name="reference"
-                      size={16}
-                      onClick={this.onToggleDataReference}
-                      className="ml2"
-                    />
-                  </a>
-                </Tooltip>
-              </div>
-            </div>
+      <div className="NativeQueryEditor full border-bottom">
+        <div className="wrapper">
+          <div className="flex align-center" style={{ minHeight: 50 }}>
+            {dataSelectors}
+            <Parameters
+              parameters={parameters}
+              query={location.query}
+              setParameterValue={setParameterValue}
+              setParameterIndex={this.setParameterIndex}
+              syncQueryString
+              isEditing
+              isQB
+              commitImmediately
+            />
           </div>
-
-          <ResizableBox
-            ref="resizeBox"
-            className={"border-top " + editorClasses}
-            height={this.state.initialHeight}
-            minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-            axis="y"
-            onResizeStop={(e, data) => {
-              this._editor.resize();
-            }}
-          >
-            <div id="id_sql" ref="editor" />
-          </ResizableBox>
         </div>
+        <ResizableBox
+          ref="resizeBox"
+          className={"border-top " + editorClasses}
+          height={this.state.initialHeight}
+          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
+          axis="y"
+          onResizeStop={(e, data) => {
+            this._editor.resize();
+          }}
+        >
+          <div id="id_sql" ref="editor" />
+        </ResizableBox>
       </div>
     );
   }
