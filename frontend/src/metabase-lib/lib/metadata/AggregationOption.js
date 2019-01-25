@@ -8,8 +8,6 @@ import type { Field } from "metabase/meta/types/Field";
 export default class AggregationOption extends Base {
   name: string;
   short: string;
-  // TODO: Now just a plain object; wrap to a Field wrapper class
-  fields: Field[];
   validFieldsFilters: [(fields: Field[]) => Field[]];
 
   /**
@@ -17,12 +15,5 @@ export default class AggregationOption extends Base {
    */
   hasFields(): boolean {
     return this.validFieldsFilters.length > 0;
-  }
-
-  toAggregation(): AggregationWrapper {
-    return new AggregationWrapper(
-      null,
-      [this.short].concat(this.fields.map(field => null)),
-    );
   }
 }
