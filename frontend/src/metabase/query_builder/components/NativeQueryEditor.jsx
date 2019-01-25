@@ -35,8 +35,8 @@ import Parameters from "metabase/parameters/components/Parameters";
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
-const MIN_HEIGHT_LINES = 12;
-const MAX_AUTO_SIZE_LINES = 20;
+const MIN_HEIGHT_LINES = 3;
+const MAX_AUTO_SIZE_LINES = 12;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
@@ -315,7 +315,7 @@ export default class NativeQueryEditor extends Component {
         );
       } else if (database) {
         dataSelectors.push(
-          <span key="db" className="p1 text-bold text-grey">
+          <span key="db" className="p2 text-bold text-grey">
             {database.name}
           </span>,
         );
@@ -343,19 +343,29 @@ export default class NativeQueryEditor extends Component {
       }
     } else {
       dataSelectors = (
-        <span className="p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
+        <div
+          key="db_selector"
+          className="GuiBuilder-section GuiBuilder-data flex align-center"
+        >
+          <Icon className="Icon text-light pl2 pr1" name="database" size={14} />
+            <span key="db" className="p1 mr2 text-bold text-medium flex align-center">
+              {database.name}
+            </span>
+        </div>
       );
     }
 
-    let editorClasses, toggleEditorText, toggleEditorIcon;
+    let editorClasses, editorHeaderClasses, toggleEditorText, toggleEditorIcon;
     if (this.state.showEditor) {
-      editorClasses = "";
+      editorClasses = "border-bottom";
+      editorHeaderClasses = "border-top bg-medium";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
         : t`Hide Query`;
       toggleEditorIcon = "contract";
     } else {
       editorClasses = "hide";
+      editorHeaderClasses = "bg-white";
       toggleEditorText = query.hasWritePermission()
         ? t`Open Editor`
         : t`Show Query`;
@@ -363,9 +373,9 @@ export default class NativeQueryEditor extends Component {
     }
 
     return (
-      <div className="NativeQueryEditor full border-bottom">
-        <div className="wrapper">
-          <div className="flex align-center" style={{ minHeight: 50 }}>
+      <div className="NativeQueryEditor full">
+        <div className={editorHeaderClasses}>
+          <div className="mx4 rounded pl1 bg-medium flex align-center" style={{ minHeight: 40 }}>
             {dataSelectors}
             <Parameters
               parameters={parameters}
@@ -386,6 +396,7 @@ export default class NativeQueryEditor extends Component {
             </a>
           </div>
         </div>
+
         <ResizableBox
           ref="resizeBox"
           className={"border-top " + editorClasses}
