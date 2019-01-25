@@ -46,6 +46,9 @@ const withTransientSettingState = ComposedComponent =>
           {...this.props}
           settings={this.state.settings}
           onChange={settings => this.setState({ settings })}
+          onDone={settings =>
+            this.props.onChange(settings || this.state.settings)
+          }
         />
       );
     }
@@ -84,7 +87,7 @@ class ChartSettings extends Component {
   };
 
   handleDone = () => {
-    this.props.onChange(this._getSettings());
+    this.props.onDone(this._getSettings());
     this.props.onClose();
   };
 
