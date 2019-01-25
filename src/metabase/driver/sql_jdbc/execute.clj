@@ -9,6 +9,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
+             [interface :as qp.i]
              [store :as qp.store]
              [util :as qputil]]
             [metabase.util
@@ -267,7 +268,7 @@
   [driver {settings :settings, query :native, :as outer-query}]
   (let [query (assoc query
                 :remark   (qputil/query->remark outer-query)
-                :max-rows (mbql.u/query->max-rows-limit outer-query))]
+                :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))]
