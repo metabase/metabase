@@ -348,9 +348,12 @@ export default class NativeQueryEditor extends Component {
           className="GuiBuilder-section GuiBuilder-data flex align-center"
         >
           <Icon className="Icon text-light pl2 pr1" name="database" size={14} />
-            <span key="db" className="p1 mr2 text-bold text-medium flex align-center">
-              {database.name}
-            </span>
+          <span
+            key="db"
+            className="p1 mr2 text-bold text-medium flex align-center"
+          >
+            {database.name}
+          </span>
         </div>
       );
     }
@@ -358,7 +361,7 @@ export default class NativeQueryEditor extends Component {
     let editorClasses, editorHeaderClasses, toggleEditorText, toggleEditorIcon;
     if (this.state.showEditor) {
       editorClasses = "border-bottom";
-      editorHeaderClasses = "border-top bg-medium";
+      editorHeaderClasses = "border-top bg-light";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
         : t`Hide Query`;
@@ -375,7 +378,10 @@ export default class NativeQueryEditor extends Component {
     return (
       <div className="NativeQueryEditor full">
         <div className={editorHeaderClasses}>
-          <div className="mx4 rounded pl1 bg-medium flex align-center" style={{ minHeight: 40 }}>
+          <div
+            className="mx4 rounded pl1 bg-light flex align-center"
+            style={{ minHeight: 50 }}
+          >
             {dataSelectors}
             <Parameters
               parameters={parameters}
