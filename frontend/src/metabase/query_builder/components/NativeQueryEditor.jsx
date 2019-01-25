@@ -379,7 +379,7 @@ export default class NativeQueryEditor extends Component {
       <div className="NativeQueryEditor full">
         <div className={editorHeaderClasses}>
           <div
-            className="mx4 rounded pl1 bg-light flex align-center"
+            className="pl1 bg-light flex align-center"
             style={{ minHeight: 50 }}
           >
             {dataSelectors}

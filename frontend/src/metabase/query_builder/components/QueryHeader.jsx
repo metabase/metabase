@@ -468,7 +468,7 @@ export default class QueryHeader extends Component {
       };
 
       buttonSections.push([
-        <div className="mr1" style={{ marginLeft: "-15px" }}>
+        <div>
           <EntityMenu
             triggerIcon="burger"
             items={[
@@ -511,7 +511,7 @@ export default class QueryHeader extends Component {
 
   render() {
     return (
-      <div className="relative px2 sm-px0">
+      <div className="relative px2">
         <HeaderBar
           isEditing={this.props.isEditing}
           name={this.props.isNew ? t`New question` : this.props.card.name}

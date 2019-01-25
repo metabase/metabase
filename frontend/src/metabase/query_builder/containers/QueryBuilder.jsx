@@ -274,10 +274,7 @@ class LegacyQueryBuilder extends Component {
             className="flex z1"
             style={{ transition: "opacity 0.25s ease-in-out" }}
           >
-            <QueryVisualization
-              {...this.props}
-              className="full wrapper mb2 z1"
-            />
+            <QueryVisualization {...this.props} className="full px2 mb2 z1" />
           </div>
 
           {ModeFooter && (

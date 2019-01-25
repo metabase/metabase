@@ -15,7 +15,7 @@ export default class Header extends Component {
     editingTitle: "",
     editingSubtitle: "",
     editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
+    headerClassName: "py1 lg-py2 xl-py3",
   };
 
   constructor(props, context) {
