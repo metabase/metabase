@@ -402,9 +402,6 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
   isShowingTemplateTagsEditor,
 });
 
-export const SET_EDITOR_OPEN = "metabase/qb/SET_EDITOR_OPEN";
-export const setEditorOpen = createAction(SET_EDITOR_OPEN);
-
 export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
   MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");

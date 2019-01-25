@@ -45,7 +45,6 @@ import {
   getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
-  getIsEditorOpen,
   getMode,
   getQuery,
   getQuestion,
@@ -119,7 +118,6 @@ const mapStateToProps = (state, props) => {
     isRunning: state.qb.uiControls.isRunning,
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
-    isEditorOpen: getIsEditorOpen(state),
 
     loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),

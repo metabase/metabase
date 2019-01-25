@@ -28,7 +28,6 @@ export const getIsShowingTutorial = state =>
   getUiControls(state).isShowingTutorial;
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
-export const getIsEditorOpen = state => getUiControls(state).isEditorOpen;
 
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;

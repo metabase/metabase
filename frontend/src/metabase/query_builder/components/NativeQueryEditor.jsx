@@ -72,6 +72,7 @@ type Props = {
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
 };
 type State = {
+  showEditor: boolean,
   initialHeight: number,
 };
 
@@ -91,6 +92,7 @@ export default class NativeQueryEditor extends Component {
     );
 
     this.state = {
+      showEditor: !props.question || !props.question.isSaved(),
       initialHeight: getEditorLineHeight(lines),
     };
 
@@ -107,10 +109,6 @@ export default class NativeQueryEditor extends Component {
   componentDidMount() {
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
-
-    this.props.setEditorOpen(
-      !this.props.question || !this.props.question.isSaved(),
-    );
   }
 
   componentDidUpdate() {
@@ -241,7 +239,7 @@ export default class NativeQueryEditor extends Component {
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     const newHeight = getEditorLineHeight(doc.getLength());
     if (
-      this.props.isEditorOpen &&
+      this.state.showEditor &&
       newHeight > element.offsetHeight &&
       newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES)
     ) {
@@ -263,7 +261,7 @@ export default class NativeQueryEditor extends Component {
   }
 
   toggleEditor = () => {
-    this.props.setEditorOpen(!this.props.isEditorOpen);
+    this.setState({ showEditor: !this.state.showEditor });
   };
 
   /// Change the Database we're currently editing a query for.
@@ -295,7 +293,7 @@ export default class NativeQueryEditor extends Component {
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
-    if (this.props.isEditorOpen && databases.length > 0) {
+    if (this.state.showEditor && databases.length > 0) {
       // we only render a db selector if there are actually multiple to choose from
       if (
         databases.length > 1 &&
@@ -343,13 +341,25 @@ export default class NativeQueryEditor extends Component {
           </div>,
         );
       }
+    } else {
+      dataSelectors = (
+        <span className="p2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
+      );
     }
 
-    let editorClasses;
-    if (this.props.isEditorOpen) {
+    let editorClasses, toggleEditorText, toggleEditorIcon;
+    if (this.state.showEditor) {
       editorClasses = "";
+      toggleEditorText = query.hasWritePermission()
+        ? t`Hide Editor`
+        : t`Hide Query`;
+      toggleEditorIcon = "contract";
     } else {
       editorClasses = "hide";
+      toggleEditorText = query.hasWritePermission()
+        ? t`Open Editor`
+        : t`Show Query`;
+      toggleEditorIcon = "expand";
     }
 
     return (
@@ -367,6 +377,13 @@ export default class NativeQueryEditor extends Component {
               isQB
               commitImmediately
             />
+            <a
+              className="Query-label no-decoration flex-align-right flex align-center pl2 pr4"
+              onClick={this.toggleEditor}
+            >
+              <span className="mx2">{toggleEditorText}</span>
+              <Icon name={toggleEditorIcon} size={20} />
+            </a>
           </div>
         </div>
         <ResizableBox
