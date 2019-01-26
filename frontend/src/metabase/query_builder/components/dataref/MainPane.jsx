@@ -3,39 +3,39 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t, ngettext, msgid } from "c-3po";
 import { isQueryable } from "metabase/lib/table";
+import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
 const MainPane = ({ databases, show }) => (
   <div>
-    <h1>{t`Data Reference`}</h1>
-    <p>
-      {t`Learn more about your data structure to ask more useful questions`}.
-    </p>
+    <h2>{t`Data Reference`}</h2>
+    <p>{t`Information about your tables and columns`}.</p>
     <ul>
       {databases &&
         databases
           .filter(db => db.tables && db.tables.length > 0)
           .map(database => (
-            <li key={database.id}>
-              <div className="my2">
-                <h2 className="inline-block">{database.name}</h2>
-                <span className="ml1">
-                  {(n => ngettext(msgid`${n} table`, `${n} tables`, n))(
-                    database.tables.length,
-                  )}
-                </span>
-              </div>
-              <ul>
+            <li className="pt2" key={database.id}>
+              <span className="flex align-center my2">
+                <Icon name="database" className="text-light pr1" size={14} />
+                <h3>{database.name}</h3>
+              </span>
+              <h4 className="text-medium border-bottom pb1">
+                {(n => ngettext(msgid`${n} table`, `${n} tables`, n))(
+                  database.tables.length,
+                )}
+              </h4>
+              <ul className="mt1">
                 {database.tables.filter(isQueryable).map((table, index) => (
                   <li
                     key={table.id}
-                    className={cx("p1", {
-                      "border-bottom": index !== database.tables.length - 1,
+                    className={cx("py1", {
+                      "": index !== database.tables.length - 1,
                     })}
                   >
                     <a
-                      className="text-brand text-brand-darken-hover no-decoration"
+                      className="text-brand no-decoration"
                       onClick={() => show("table", table)}
                     >
                       {table.name}

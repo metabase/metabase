@@ -155,7 +155,7 @@ export default class TablePane extends Component {
 
       return (
         <div>
-          <h1>{table.display_name}</h1>
+          <h2>{table.name}</h2>
           {description}
           {queryButton}
           {table.metrics &&
@@ -180,7 +180,7 @@ export default class TablePane extends Component {
                 )}
               />
             )}
-          <div className="Button-group Button-group--brand text-uppercase">
+          <div className="my2 Button-group Button-group--brand text-uppercase">
             {tabs}
           </div>
           {pane}
@@ -219,10 +219,7 @@ ExpandableItemList.propTypes = {
 
 const ListItem = ({ onClick, children }) => (
   <li className="py1 border-row-divider">
-    <a
-      className="text-brand text-brand-darken-hover no-decoration"
-      onClick={onClick}
-    >
+    <a className="text-brand no-decoration" onClick={onClick}>
       {children}
     </a>
   </li>

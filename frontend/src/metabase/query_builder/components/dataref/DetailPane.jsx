@@ -3,6 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
+import Icon from "metabase/components/Icon.jsx";
 
 const DetailPane = ({
   name,
@@ -12,9 +13,12 @@ const DetailPane = ({
   extra,
 }) => (
   <div>
-    <h1>{name}</h1>
+    <span className="flex align-center my2">
+      <Icon name="field" className="text-light pr1" size={18} />
+      <h2>{name}</h2>
+    </span>
     <p className={cx({ "text-medium": !description })}>
-      {description || t`No description set.`}
+      {description || t`No description`}
     </p>
     {useForCurrentQuestion && useForCurrentQuestion.length > 0 ? (
       <div className="py1">

@@ -78,19 +78,19 @@ export default class DataReference extends Component {
     let backButton;
     if (this.state.stack.length > 0) {
       backButton = (
-        <a
-          className="flex align-center mb2 text-default text-brand-hover no-decoration"
-          onClick={this.back}
-        >
-          <Icon name="chevronleft" size={18} />
-          <span className="text-uppercase">{t`Back`}</span>
+        <a className="flex align-center mb2 no-decoration" onClick={this.back}>
+          <Icon name="chevronleft" className="text-light pr1" />
+          <h5
+            className="text-medium text-brand-hover text-uppercase "
+            style={{ fontWeight: 900 }}
+          >{t`Back`}</h5>
         </a>
       );
     }
 
     let closeButton = (
       <a
-        className="flex-align-right text-default text-brand-hover no-decoration"
+        className="flex-align-right text-medium text-brand-hover no-decoration"
         onClick={this.close}
       >
         <Icon name="close" size={18} />
