@@ -22,38 +22,41 @@ import { updateSettings } from "metabase/visualizations/lib/settings";
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
 
+const withTransientSettingState = ComposedComponent =>
+  class extends React.Component {
+    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
+      ComposedComponent.name}]`;
+
+    constructor(props) {
+      super(props);
+      this.state = {
+        settings: props.settings,
+      };
+    }
+
+    componentWillReceiveProps(nextProps) {
+      if (this.props.settings !== nextProps.settings) {
+        this.setState({ settings: nextProps.settings });
+      }
+    }
+
+    render() {
+      return (
+        <ComposedComponent
+          {...this.props}
+          settings={this.state.settings}
+          onChange={settings => this.setState({ settings })}
+        />
+      );
+    }
+  };
+
 class ChartSettings extends Component {
   constructor(props) {
     super(props);
     this.state = {
       currentSection: (props.initial && props.initial.section) || null,
       currentWidget: (props.initial && props.initial.widget) || null,
-      ...this._getState(
-        props.series,
-        props.series[0].card.visualization_settings,
-      ),
-    };
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (this.props.series !== nextProps.series) {
-      this.setState(this._getState(nextProps.series, this.state.settings));
-    }
-  }
-
-  _getState(series, settings) {
-    const rawSeries = assocIn(
-      series,
-      [0, "card", "visualization_settings"],
-      settings,
-    );
-    const { series: transformedSeries } = getVisualizationTransformed(
-      extractRemappings(rawSeries),
-    );
-    return {
-      settings,
-      rawSeries,
-      transformedSeries,
     };
   }
 
@@ -73,16 +76,15 @@ class ChartSettings extends Component {
 
   handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState(this._getState(this.props.series, {}));
+    this.props.onChange({});
   };
 
   handleChangeSettings = changedSettings => {
-    const newSettings = updateSettings(this.state.settings, changedSettings);
-    this.setState(this._getState(this.props.series, newSettings));
+    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
   handleDone = () => {
-    this.props.onChange(this.state.settings);
+    this.props.onChange(this._getSettings());
     this.props.onClose();
   };
 
@@ -90,9 +92,27 @@ class ChartSettings extends Component {
     this.props.onClose();
   };
 
+  _getSettings() {
+    return (
+      this.props.settings || this.props.series[0].card.visualization_settings
+    );
+  }
+
   render() {
-    const { isDashboard, question, addField } = this.props;
-    const { rawSeries, transformedSeries, currentWidget } = this.state;
+    const { isDashboard, question, addField, series, children } = this.props;
+    const { currentWidget } = this.state;
+
+    const settings = this._getSettings();
+
+    const rawSeries = assocIn(
+      series,
+      [0, "card", "visualization_settings"],
+      settings,
+    );
+
+    const { series: transformedSeries } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
 
     const widgetsById = {};
 
@@ -146,30 +166,51 @@ class ChartSettings extends Component {
       onEndShowWidget: this.handleEndShowWidget,
     };
 
+    const sectionPicker = (
+      <Radio
+        value={currentSection}
+        onChange={this.handleShowSection}
+        options={sectionNames}
+        optionNameFn={v => v}
+        optionValueFn={v => v}
+        underlined
+      />
+    );
+
+    const widgetList = widgets.map(widget => (
+      <ChartSettingsWidget
+        key={`${widget.id}`}
+        {...widget}
+        {...extraWidgetProps}
+      />
+    ));
+
+    const onReset = !_.isEqual(settings, {}) ? this.handleResetSettings : null;
+
+    // custom render prop layout:
+    if (children) {
+      return children({
+        sectionNames,
+        sectionPicker,
+        widgetList,
+        onDone: this.handleDone,
+        onCancel: this.handleCancel,
+        onReset: onReset,
+      });
+    }
+
+    // default layout with visualization
     return (
       <div className="flex flex-column spread">
         {sectionNames.length > 1 && (
           <div className="border-bottom flex flex-no-shrink pl4">
-            <Radio
-              value={currentSection}
-              onChange={this.handleShowSection}
-              options={sectionNames}
-              optionNameFn={v => v}
-              optionValueFn={v => v}
-              underlined
-            />
+            {sectionPicker}
           </div>
         )}
         <div className="full-height relative">
           <div className="Grid spread">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-              {widgets.map(widget => (
-                <ChartSettingsWidget
-                  key={`${widget.id}`}
-                  {...widget}
-                  {...extraWidgetProps}
-                />
-              ))}
+              {widgetList}
             </div>
             <div className="Grid-cell flex flex-column pt2">
               <div className="mx4 flex flex-column">
@@ -195,11 +236,7 @@ class ChartSettings extends Component {
               <ChartSettingsFooter
                 onDone={this.handleDone}
                 onCancel={this.handleCancel}
-                onReset={
-                  !_.isEqual(this.state.settings, {})
-                    ? this.handleResetSettings
-                    : null
-                }
+                onReset={onReset}
               />
             </div>
           </div>
@@ -238,3 +275,5 @@ const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
 );
 
 export default ChartSettings;
+
+export const ChartSettingsWithState = withTransientSettingState(ChartSettings);

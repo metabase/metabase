@@ -2,7 +2,7 @@
 
 import React from "react";
 import { jt } from "c-3po";
-import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
+import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type { Field } from "metabase/meta/types/Field";
@@ -24,9 +24,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
   if (!(query instanceof StructuredQuery)) {
     return [];
   }
-
-  // $FlowFixMe
-  const tableMetadata: TableMetadata = query.table();
 
   // Click target types: metric value
   if (
@@ -61,8 +58,8 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <BreakoutPopover
-          tableMetadata={tableMetadata}
-          fieldOptions={breakoutOptions}
+          query={query}
+          breakoutOptions={breakoutOptions}
           onCommitBreakout={breakout => {
             const nextCard = question.pivot([breakout], dimensions).card();
 
@@ -71,6 +68,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
             }
           }}
           onClose={onClose}
+          alwaysExpanded
         />
       ),
     },
