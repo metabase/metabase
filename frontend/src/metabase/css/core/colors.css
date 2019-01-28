@@ -241,6 +241,11 @@
   background-color: var(--color-bg-dark);
 }
 
+.bg-black,
+.bg-black-hover:hover {
+  background-color: var(--color-bg-black);
+}
+
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white,
 :local(.text-white),

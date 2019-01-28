@@ -37,7 +37,7 @@ export default class ChartNestedSettingSeries extends React.Component {
           return (
             <div
               key={key}
-              className="pl4 pr2 pb2 mb2 border-bottom align-self-stretch"
+              className="px4 pb2 mb2 border-bottom align-self-stretch"
             >
               <div className="flex align-center">
                 <ColorPicker

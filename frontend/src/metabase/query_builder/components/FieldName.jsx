@@ -37,6 +37,10 @@ export default class FieldName extends Component {
   render() {
     let { field, tableMetadata, query, className } = this.props;
 
+    if (!tableMetadata && query) {
+      tableMetadata = query.tableMetadata();
+    }
+
     let parts = [];
 
     if (field) {

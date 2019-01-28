@@ -392,6 +392,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         series.length > 1 && card.name,
         // show column name if there are multiple metrics or sigle series
         (metricColumnIndexes.length > 1 || series.length === 1) &&
+          col &&
           getFriendlyName(col),
       ]
         .filter(n => n)
@@ -403,7 +404,7 @@ function transformSingleSeries(s, series, seriesIndex) {
           name: name,
           _transformed: true,
           _seriesIndex: seriesIndex,
-          _seriesKey: seriesIndex === 0 ? getFriendlyName(col) : name,
+          _seriesKey: seriesIndex === 0 && col ? getFriendlyName(col) : name,
         },
         data: {
           rows: rows.map((row, rowIndex) => {

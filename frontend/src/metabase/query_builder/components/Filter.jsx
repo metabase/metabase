@@ -13,7 +13,7 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t } from "c-3po";
 
-import type { Filter as FilterType } from "metabase/meta/types/Query";
+import type { Filter as FilterT } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
@@ -24,7 +24,7 @@ export type FilterRenderer = ({
 }) => React$Element<any>;
 
 type Props = {
-  filter: FilterType,
+  filter: FilterT,
   metadata: Metadata,
   maxDisplayValues?: number,
   children?: FilterRenderer,

@@ -185,7 +185,7 @@ describe("The Reference Section", () => {
 
       // the granularity/subdimension should be applied correctly to the breakout
       expect(qbQuery.breakouts()).toEqual([
-        ["datetime-field", ["field-id", 1], "day"],
+        ["datetime-field", ["field-id", 1], "month"], // depends on the date range
       ]);
     });
 
