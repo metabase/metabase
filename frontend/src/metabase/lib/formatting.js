@@ -9,7 +9,6 @@ import ReactMarkdown from "react-markdown";
 import { ngettext, msgid } from "c-3po";
 
 import Mustache from "mustache";
-import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 
