@@ -101,6 +101,7 @@
   (-> f
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
+      annotate/result-rows-maps->vectors
       ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals

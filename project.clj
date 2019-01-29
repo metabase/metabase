@@ -113,7 +113,7 @@
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [expectations "2.2.0-beta2"]
-   [toucan "1.10.1" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0-SNAPSHOT" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
 
   :main ^:skip-aot metabase.core
 
