@@ -9,33 +9,36 @@ import cx from "classnames";
 
 const MainPane = ({ databases, show }) => (
   <div>
-    <h2>{t`Data Reference`}</h2>
-    <p>{t`Information about your tables and columns`}.</p>
+    <div className="ml1">
+      <h2>{t`Data Reference`}</h2>
+      <p>{t`Information about your tables and columns`}.</p>
+    </div>
     <ul>
       {databases &&
         databases
           .filter(db => db.tables && db.tables.length > 0)
           .map(database => (
-            <li className="pt2" key={database.id}>
-              <span className="flex align-center my2">
-                <Icon name="database" className="text-light pr1" size={14} />
-                <h3>{database.name}</h3>
-              </span>
-              <h4 className="text-medium border-bottom pb1">
-                {(n => ngettext(msgid`${n} table`, `${n} tables`, n))(
-                  database.tables.length,
-                )}
-              </h4>
-              <ul className="mt1">
+            <li className="pt1" key={database.id}>
+              <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
+                <div className="flex align-center">
+                  <Icon name="database" className="text-medium pr1" size={14} />
+                  <h3>{database.name}</h3>
+                </div>
+                <div className="flex align-center">
+                  <Icon name="table2" className="text-light pr1" size={12} />
+                  <span className="text-medium">{database.tables.length}</span>
+                </div>
+              </div>
+              <ul>
                 {database.tables.filter(isQueryable).map((table, index) => (
                   <li
                     key={table.id}
-                    className={cx("py1", {
+                    className={cx("", {
                       "": index !== database.tables.length - 1,
                     })}
                   >
                     <a
-                      className="text-brand no-decoration"
+                      className="flex-full flex p1 text-brand no-decoration bg-medium-hover"
                       onClick={() => show("table", table)}
                     >
                       {table.name}
