@@ -214,18 +214,20 @@
                                    :max-idle-time (config/config-int :mb-jetty-maxidletime)})
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
     (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
-                                             (merge jetty-ssl-config))))
+                                             (merge (jetty-ssl-config)))))
+
+(defn- log-config [jetty-config]
+  (log/info (trs "Launching Embedded Jetty Webserver with config:")
+            "\n"
+            (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
+                                                        jetty-config)))))
 
 (defn start-jetty!
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-    (let [jetty-ssl-config (jetty-ssl-config)
-          jetty-config     (jetty-config)]
-      (log/info (trs "Launching Embedded Jetty Webserver with config:")
-                "\n"
-                (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
-                                                            jetty-config))))
+    (let [jetty-config (jetty-config)]
+      (log-config jetty-config)
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
       (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
