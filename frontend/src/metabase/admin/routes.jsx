@@ -7,8 +7,8 @@ import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import NewUserModal from "metabase/admin/people/containers/NewUserModal";
-import UserSuccessModal from "metabase/admin/people/components/UserSuccessModal";
-import UserPasswordResetModal from "metabase/admin/people/components/UserPasswordResetModal";
+import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 
 // Settings
