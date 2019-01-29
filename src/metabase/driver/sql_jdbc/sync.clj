@@ -149,7 +149,7 @@
    (for [{database-type :type_name
           column-name   :column_name
           remarks       :remarks} (jdbc/metadata-result
-          (.getColumns metadata db-name-or-nil schema table-name nil))]
+                                   (.getColumns metadata db-name-or-nil schema table-name nil))]
      (merge
       {:name          column-name
        :database-type database-type
