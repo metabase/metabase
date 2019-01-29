@@ -118,11 +118,13 @@ export function publicDashboard(uuid) {
 }
 
 export function embedCard(token, type = null) {
-  return `/embed/question/${token}` + (type ? `.${type}` : ``);
+  const siteUrl = MetabaseSettings.get("site_url");
+  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function embedDashboard(token) {
-  return `/embed/dashboard/${token}`;
+  const siteUrl = MetabaseSettings.get("site_url");
+  return `${siteUrl}/embed/dashboard/${token}`;
 }
 
 export function userCollection(userCollectionId) {
