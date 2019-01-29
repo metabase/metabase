@@ -14,7 +14,7 @@ const DetailPane = ({
 }) => (
   <div>
     <span className="flex align-center my2">
-      <Icon name="field" className="text-light pr1" size={18} />
+      <Icon name="field" className="text-medium pr1" size={20} />
       <h2>{name}</h2>
     </span>
     <p className={cx({ "text-medium": !description })}>

@@ -38,7 +38,7 @@ const MainPane = ({ databases, show }) => (
                     })}
                   >
                     <a
-                      className="flex-full flex p1 text-brand no-decoration bg-medium-hover"
+                      className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
                       onClick={() => show("table", table)}
                     >
                       {table.name}

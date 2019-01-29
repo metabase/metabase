@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import cx from "classnames";
+import Icon from "metabase/components/Icon.jsx";
 
 // components
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -115,18 +116,21 @@ export default class TablePane extends Component {
                 ),
               )
               .map((fk, index) => (
-                <ListItem
-                  key={fk.id}
-                  onClick={() => this.props.show("field", fk.origin)}
-                >
-                  {fk.origin.table.display_name}
-                  {fkCountsByTable[fk.origin.table.id] > 1 ? (
-                    <span className="text-medium text-light h5">
-                      {" "}
-                      via {fk.origin.display_name}
-                    </span>
-                  ) : null}
-                </ListItem>
+                <li>
+                  <a
+                    key={fk.id}
+                    onClick={() => this.props.show("field", fk.origin)}
+                    className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                  >
+                    {fk.origin.table.display_name}
+                    {fkCountsByTable[fk.origin.table.id] > 1 ? (
+                      <span className="text-medium text-light h5">
+                        {" "}
+                        via {fk.origin.display_name}
+                      </span>
+                    ) : null}
+                  </a>
+                </li>
               ))}
           </ul>
         );
@@ -135,12 +139,15 @@ export default class TablePane extends Component {
         pane = (
           <ul>
             {table[this.state.pane].map((item, index) => (
-              <ListItem
-                key={item.id}
-                onClick={() => this.props.show(itemType, item)}
-              >
-                {item.name}
-              </ListItem>
+              <li>
+                <a
+                  key={item.id}
+                  onClick={() => this.props.show(itemType, item)}
+                  className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                >
+                  {item.name}
+                </a>
+              </li>
             ))}
           </ul>
         );
@@ -155,7 +162,10 @@ export default class TablePane extends Component {
 
       return (
         <div>
-          <h2>{table.name}</h2>
+          <div className="flex align-center">
+            <Icon name="table2" className="text-medium pr1" size={16} />
+            <h2>{table.name}</h2>
+          </div>
           {description}
           {queryButton}
           {table.metrics &&
