@@ -1,8 +1,9 @@
-# Running Metabase on Debian as a service with nginx
+# Running Metabase on Debian as a systemd service with nginx
 
-For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On Debian-based systems, this means registering Metabase as a service that can be started/stopped/uninstalled.
+For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On Debian-based systems, this means registering Metabase as a systemd service that can be started/stopped/uninstalled.
 
-**Note:** This is just a *bare-bones recipe* to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
+
+**Note:** This is just a *bare-bones configuration* to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
 
 #### Assumptions
 
@@ -15,105 +16,43 @@ The core assumption in this guide:
 
 ### Create a Metabase Service
 
-Every service needs a script that tells `systemd` how to manage it, and what capabilities it supports. Services are typically registered at `etc/init.d/<service-name>`. So, a Metabase service should live at `/etc/init.d/metabase`.
+Every service needs a script that tells `systemd` how to manage it, and what capabilities it supports. Services are typically registered at `etc/systemd/system/<service-name>` with a `.service` extension. So, a Metabase service should live at `/etc/systemd/system/metabase.service`.
 
 #### The Metabase service file
 
-Create the `/etc/init.d/metabase` service file and open it in your editor:
+Create the `/etc/systemd/system/metabase.service` service file and open it in your editor:
 
-    $ sudo touch /etc/init.d/metabase
-    $ sudo <your-editor> /etc/init.d/metabase
+    $ sudo touch /etc/systemd/system/metabase.service
+    $ sudo <your-editor> /etc/systemd/system/metabase.service
 
-In `/etc/init.d/metabase`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. The Metabase script below has extra comments to help you know what everything is for.
+In `/etc/systemd/system/metabase.service`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. The Metabase script below has extra comments to help you know what everything is for.
 
+```
+    [Unit]
+    Description=Metabase server
+    After=syslog.target
+    After=network.target
 
-    #!/bin/sh
-    # /etc/init.d/metabase
-    ### BEGIN INIT INFO
-    # Provides:          Metabase
-    # Required-Start:    $local_fs $network $named $time $syslog
-    # Required-Stop:     $local_fs $network $named $time $syslog
-    # Default-Start:     2 3 4 5
-    # Default-Stop:      0 1 6
-    # Description:       Metabase analytics and intelligence platform
-    ### END INIT INFO
+    [Service]
+    WorkingDirectory=<location-of-folder-containing-metabase-jar>
+    ExecStart=/usr/bin/java -jar <location-of-metabase.jar>
+    EnvironmentFile=<location-of-configuration-file>
+    User=<run-as-user>
+    Type=simple
+    StandardOutput=syslog
+    StandardError=syslog
+    SyslogIdentifier=metabase
+    SuccessExitStatus=143
+    TimeoutStopSec=120
+    Restart=always
 
-    # where is the Metabase jar located?
-    METABASE=</your/path/to/>metabase.jar
-
-    # where will our environment variables be stored?
-    METABASE_CONFIG=/etc/default/metabase
-
-    # which (unprivileged) user should we run Metabase as?
-    RUNAS=<your_deploy_user>
-
-    # where should we store the pid/log files?
-    PIDFILE=/var/run/metabase.pid
-    LOGFILE=/var/log/metabase.log
-
-    start() {
-      # ensure we only run 1 Metabase instance
-      if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE"); then
-        echo 'Metabase already running' >&2
-        return 1
-      fi
-      echo 'Starting Metabase...' >&2
-      # execute the Metabase jar and send output to our log
-      local CMD="nohup java -jar \"$METABASE\" &> \"$LOGFILE\" & echo \$!"
-      # load Metabase config before we start so our env vars are available
-      . "$METABASE_CONFIG"
-      # run our Metabase cmd as unprivileged user
-      su -c "$CMD" $RUNAS > "$PIDFILE"
-      echo 'Metabase started.' >&2
-    }
-
-    stop() {
-      # ensure Metabase is running
-      if [ ! -f "$PIDFILE" ] || ! kill -0 $(cat "$PIDFILE"); then
-        echo 'Metabase not running' >&2
-        return 1
-      fi
-      echo 'Stopping Metabase ...' >&2
-      # send Metabase TERM signal
-      kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
-      echo 'Metabase stopped.' >&2
-    }
-
-    uninstall() {
-      echo -n "Are you really sure you want to uninstall Metabase? That cannot be undone. [yes|No] "
-      local SURE
-      read SURE
-      if [ "$SURE" = "yes" ]; then
-        stop
-        rm -f "$PIDFILE"
-        rm -f "$METABASE_CONFIG"
-        # keep logfile around
-        echo "Notice: log file is not be removed: '$LOGFILE'" >&2
-        update-rc.d -f metabase remove
-        rm -fv "$0"
-      fi
-    }
-
-    case "$1" in
-      start)
-        start
-        ;;
-      stop)
-        stop
-        ;;
-      uninstall)
-        uninstall
-        ;;
-      restart)
-        stop
-        start
-        ;;
-      *)
-        echo "Usage: $0 {start|stop|restart|uninstall}"
-    esac
-
+    [Install]
+    WantedBy=multi-user.target
+```
 
 ### Environment Variables for Metabase
+
+Notice above the `systemd` configuration file references an `EnvironmentFile` variable. This is used to set metabase environment variables.
 
 Environment variables provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
 
@@ -126,20 +65,18 @@ Create your `/etc/default/metabase` environment config file and open it in your 
 
 In `/etc/default/metabase`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. Some Metabase configs have available options, some of which are shown below, separated by `|` symbols:
 
-
-    #!/bin/sh
     # /etc/default/metabase
-    export MB_PASSWORD_COMPLEXITY=<weak|normal|strong>
-    export MB_PASSWORD_LENGTH=<10>
-    export MB_JETTY_HOST=<0.0.0.0>
-    export MB_JETTY_PORT=<12345>
-    export MB_DB_TYPE=<postgres|mysql|h2>
-    export MB_DB_DBNAME=<your_metabase_db_name>
-    export MB_DB_PORT=<5432>
-    export MB_DB_USER=<your_metabase_db_user>
-    export MB_DB_PASS=<ssshhhh>
-    export MB_DB_HOST=<localhost>
-    export MB_EMOJI_IN_LOGS=<true|false>
+    MB_PASSWORD_COMPLEXITY=<weak|normal|strong>
+    MB_PASSWORD_LENGTH=<10>
+    MB_JETTY_HOST=<0.0.0.0>
+    MB_JETTY_PORT=<12345>
+    MB_DB_TYPE=<postgres|mysql|h2>
+    MB_DB_DBNAME=<your_metabase_db_name>
+    MB_DB_PORT=<5432>
+    MB_DB_USER=<your_metabase_db_user>
+    MB_DB_PASS=<ssshhhh>
+    MB_DB_HOST=<localhost>
+    MB_EMOJI_IN_LOGS=<true|false>
     # any other env vars you want available to Metabase
 
 ### Final Steps
@@ -169,25 +106,26 @@ Getting into too much detail about configuring `nginx` is well outside the scope
 
 #### Register your Metabase service
 
-Now, it's time to register our Metabase service with `systemd` so it will start up at system boot. We'll also ensure our log file is created and owned by the unprivileged user our service runs the `metabase.jar` as.
+Now, it's time to register our Metabase service with `systemd` so it will start up at system boot. Note that logging is automatically managed for you through the systemd journal.
 
-    # ensure our metabase script is executable
-    $ sudo chmod +x /etc/init.d/metabase
+    # reload systemd daemon to ensure it is aware of our new service
+    $ sudo systemctl daemon-reload
 
-    # create the log file we declared in /etc/init.d/metabase
-    $ sudo touch /var/log/metabase.log
-
-    # ensure unprivileged deploy user owns log (or it won't be able to write)
-    $ sudo chown <your_deploy_user>:<your_deploy_user> /var/log/metabase.log
-
-    # add to default services
-    $ sudo update-rc.d metabase defaults
+    # tell systemd to start metabase on boot
+    $ sudo systemctl enable metabase.service
+    
+    # start metabase right now
+    $ sudo systemctl start metabase.service
 
 #### That's it!
 
 Now, whenever you need to start, stop, or restart Metabase, all you need to do is:
 
-    $ sudo service metabase start
-    $ sudo service metabase stop
-    $ sudo service metabase restart
+    $ sudo systemctl start metabase.service
+    $ sudo systemctl stop metabase.service
+    $ sudo systemctl restart metabase.service
 
+To view metabase logs, use the journalctl command:
+    
+    # view the most recent 1000 log entries for the metabase service
+    $ journalctl -u metabase.service -n 1000
