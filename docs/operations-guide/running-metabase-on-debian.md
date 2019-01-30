@@ -14,6 +14,25 @@ The core assumption in this guide:
 * You will use environment variables to configure your Metabase instance
 * You have `sudo` access on your server
 
+### Create an Unprivileged User
+
+For security we want to have metabase run as an unprivileged user. We will call the user simply `metabase`. Further we will already generate files we need later for logging and configuration of metabase and apply the correct security settings for our unprivileged user.
+    
+    # Create a metabase group
+    $ sudo groupadd -r metabase
+    
+    # Create a user called metabase and assign it to the metabase group
+    $ sudo useradd -r -s /bin/false -g metabase metabase
+    
+    # Give this user access to the metabase working directory
+    $ sudo chown -R metabase:metabase <location-of-folder-containing-metabase-jar>
+    
+    # Create the metabase log file
+    $ sudo touch /var/log/metabase.log
+    
+    # Give the metabase user full access to write to log
+    $ sudo chown metabase:metabase /var/log/metabase.log
+
 ### Create a Metabase Service
 
 Every service needs a script that tells `systemd` how to manage it, and what capabilities it supports. Services are typically registered at `etc/systemd/system/<service-name>` with a `.service` extension. So, a Metabase service should live at `/etc/systemd/system/metabase.service`.
@@ -25,7 +44,7 @@ Create the `/etc/systemd/system/metabase.service` service file and open it in yo
     $ sudo touch /etc/systemd/system/metabase.service
     $ sudo <your-editor> /etc/systemd/system/metabase.service
 
-In `/etc/systemd/system/metabase.service`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. The Metabase script below has extra comments to help you know what everything is for.
+In `/etc/systemd/system/metabase.service`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system.
 
 ```
     [Unit]
@@ -50,6 +69,22 @@ In `/etc/systemd/system/metabase.service`, replace configurable items (they look
     WantedBy=multi-user.target
 ```
 
+### Create Syslog Config
+
+Next we need to create a syslog configuration file so that systemd knows where to route our log entries. The convention is write logs to `/var/log/<service-name>.log`. In our case, this will be `/var/log/metabase.log`
+
+    $ sudo touch /etc/rsyslog.d/metabase.conf
+    $ sudo <your-editor> /etc/rsyslog.d/metabase.conf
+    
+Paste the following in the file you just opened:
+
+    if $programname == 'metabase' then /var/log/metabase.log
+    & stop
+
+Don't forget to restart the `rsyslog` service for the new configuration to take effect:
+
+    sudo systemctl restart rsyslog.service
+
 ### Environment Variables for Metabase
 
 Notice above the `systemd` configuration file references an `EnvironmentFile` variable. This is used to set metabase environment variables.
@@ -60,7 +95,13 @@ Environment variables provide a good way to customize and configure your Metabas
 
 Create your `/etc/default/metabase` environment config file and open it in your editor:
 
+    # Create our configuration file
     $ sudo touch /etc/default/metabase
+    
+    # Set access permissions on the metabase configuration file
+    $ sudo chmod 640 /etc/default/metabase
+    
+    # Open the file for editing (try nano if unsure)
     $ sudo <your-editor> /etc/default/metabase
 
 In `/etc/default/metabase`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. Some Metabase configs have available options, some of which are shown below, separated by `|` symbols:
@@ -128,4 +169,4 @@ Now, whenever you need to start, stop, or restart Metabase, all you need to do i
 To view metabase logs, use the journalctl command:
     
     # view the most recent 1000 log entries for the metabase service
-    $ journalctl -u metabase.service -n 1000
+    $ tail-n 1000 /var/log/metabase.log
