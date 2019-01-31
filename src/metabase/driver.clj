@@ -447,7 +447,8 @@
              [clojure.lang.IPersistentVector :type/Array]
              [org.bson.types.ObjectId        :type/MongoBSONID]
              [org.postgresql.util.PGobject   :type/*]
-             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
+             [nil                            :type/*] ; all-NULL columns in DBs like Mongo w/o explicit types
+             [org.bson.types.Decimal128      :type/Decimal]]) ; Decimal128 support added, sum, avg math exp are now working on frontend for Decimal128 data type ( Mongo )
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
