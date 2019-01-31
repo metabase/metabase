@@ -2,6 +2,9 @@ import React from "react";
 import { Box } from "grid-styled";
 import { t, jt } from "c-3po";
 
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
+
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Link from "metabase/components/Link";
@@ -43,8 +46,12 @@ const UserSuccessModal = ({ onClose, object, location }) => (
   </ModalContent>
 );
 
+const mapDispatchToProps = {
+  onClose: () => push("/admin/people"),
+};
+
 export default entityObjectLoader({
   entityType: "users",
   entityId: (state, props) => props.params.userId,
   wrapped: true,
-})(UserSuccessModal);
+})(connect(null, mapDispatchToProps)(UserSuccessModal));
