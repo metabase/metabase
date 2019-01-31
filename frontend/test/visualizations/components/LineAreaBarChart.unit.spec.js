@@ -1,4 +1,4 @@
-// TODO: To be replaced by an integrated test which doesn't require hardcoding the card objects
+// TODO: To be replaced by an e2e test which doesn't require hardcoding the card objects
 
 // HACK: Needed because of conflicts caused by circular dependencies
 import "metabase/visualizations/components/Visualization";

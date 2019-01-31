@@ -6,8 +6,10 @@
   },
   "testPathIgnorePatterns": [
     "<rootDir>/frontend/test/legacy-karma",
-    "<rootDir>/frontend/test/legacy-selenium",
-    "e2e.spec.js"
+    "<rootDir>/frontend/test/legacy-selenium"
+  ],
+  "testMatch": [
+    "**/?(*.)e2e.spec.js?(x)"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",
@@ -22,8 +24,5 @@
     "ga": {},
     "document": {}
   },
-  "coverageDirectory": "./",
-  "coverageReporters": ["text", "json-summary"],
-  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
-  "coveragePathIgnorePatterns": ["/node_modules/", "/frontend/src/metabase/visualizations/lib/errors.js"]
+  "testURL": "http://localhost"
 }

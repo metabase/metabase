@@ -1,4 +1,4 @@
-import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
+import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e_tests
 
 import {
   NumberColumn,

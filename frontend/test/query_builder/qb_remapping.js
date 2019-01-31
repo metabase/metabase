@@ -1,7 +1,7 @@
 import {
   useSharedAdminLogin,
   createTestStore,
-} from "__support__/integrated_tests";
+} from "__support__/e2e_tests";
 import { click, clickButton } from "__support__/enzyme_utils";
 
 import React from "react";
