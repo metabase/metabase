@@ -1,6 +1,6 @@
 /* @flow */
 
-import { drillDownForDimensions } from "metabase/qb/lib/actions";
+import { drillDownForDimensions } from "metabase/modes/lib/actions";
 
 import type {
   ClickAction,

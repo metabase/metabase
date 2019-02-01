@@ -1,6 +1,6 @@
 /* @flow */
 
-import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
+import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
 import {
   getAggregator,
   isCompatibleAggregatorForField,

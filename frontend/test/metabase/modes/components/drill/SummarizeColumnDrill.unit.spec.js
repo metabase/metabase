@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import SummarizeColumnDrill from "metabase/qb/components/drill/SummarizeColumnDrill";
+import SummarizeColumnDrill from "metabase/modes/components/drill/SummarizeColumnDrill";
 
 import {
   question,

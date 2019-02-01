@@ -6,7 +6,7 @@ import {
   MAIN_METRIC_ID,
 } from "__support__/sample_dataset_fixture";
 
-import CommonMetricsAction from "metabase/qb/components/actions/CommonMetricsAction";
+import CommonMetricsAction from "metabase/modes/components/actions/CommonMetricsAction";
 
 import { assocIn } from "icepick";
 

@@ -3,8 +3,8 @@
 import React from "react";
 
 // import TimeseriesGroupingWidget
-//     from "metabase/qb/components/TimeseriesGroupingWidget";
-import TimeseriesFilterWidget from "metabase/qb/components/TimeseriesFilterWidget";
+//     from "metabase/modes/components/TimeseriesGroupingWidget";
+import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
@@ -21,7 +21,7 @@ import type {
   DatasetQuery,
 } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
-import TimeseriesGroupingWidget from "metabase/qb/components/TimeseriesGroupingWidget";
+import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 type Props = {
   lastRunCard: CardObject,

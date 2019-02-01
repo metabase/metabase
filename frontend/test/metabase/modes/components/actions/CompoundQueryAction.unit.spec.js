@@ -1,6 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import CompoundQueryAction from "metabase/qb/components/actions/CompoundQueryAction";
+import CompoundQueryAction from "metabase/modes/components/actions/CompoundQueryAction";
 
 import Question from "metabase-lib/lib/Question";
 

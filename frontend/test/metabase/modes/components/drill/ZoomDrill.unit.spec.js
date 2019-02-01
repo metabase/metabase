@@ -10,7 +10,7 @@ import {
 
 import { chain } from "icepick";
 
-import ZoomDrill from "metabase/qb/components/drill/ZoomDrill";
+import ZoomDrill from "metabase/modes/components/drill/ZoomDrill";
 
 describe("ZoomDrill", () => {
   it("should not be valid for top level actions", () => {

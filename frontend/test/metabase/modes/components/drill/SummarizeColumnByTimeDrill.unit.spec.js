@@ -9,7 +9,7 @@ import {
   ORDERS_CREATED_DATE_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
-import SummarizeColumnByTimeDrill from "metabase/qb/components/drill/SummarizeColumnByTimeDrill";
+import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
 
 describe("SummarizeColumnByTimeDrill", () => {
   it("should not be valid for top level actions", () => {

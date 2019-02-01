@@ -11,7 +11,7 @@ import {
 import { assocIn, chain } from "icepick";
 import moment from "moment";
 
-import UnderlyingRecordsDrill from "metabase/qb/components/drill/UnderlyingRecordsDrill";
+import UnderlyingRecordsDrill from "metabase/modes/components/drill/UnderlyingRecordsDrill";
 
 function getActionPropsForTimeseriesClick(unit, value) {
   return {

@@ -7,7 +7,7 @@ import {
 } from "__support__/sample_dataset_fixture";
 import { click } from "__support__/enzyme_utils";
 import Question from "metabase-lib/lib/Question";
-import SummarizeBySegmentMetricAction from "metabase/qb/components/actions/SummarizeBySegmentMetricAction";
+import SummarizeBySegmentMetricAction from "metabase/modes/components/actions/SummarizeBySegmentMetricAction";
 import { mount } from "enzyme";
 
 const question = Question.create({

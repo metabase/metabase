@@ -1,6 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import ObjectDetailDrill from "metabase/qb/components/drill/ObjectDetailDrill";
+import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 
 import {
   question,

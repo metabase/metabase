@@ -3,7 +3,7 @@
 import React from "react";
 import { t } from "c-3po";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
+import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
 import {
   isDate,
   getAggregator,

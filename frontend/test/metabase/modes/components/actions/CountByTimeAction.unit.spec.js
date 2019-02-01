@@ -7,7 +7,7 @@ import {
   ORDERS_CREATED_DATE_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
-import CountByTimeAction from "metabase/qb/components/actions/CountByTimeAction";
+import CountByTimeAction from "metabase/modes/components/actions/CountByTimeAction";
 
 describe("CountByTimeAction", () => {
   it("should not be valid if the table has no metrics", () => {

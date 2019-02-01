@@ -1,6 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import { drillFilter } from "metabase/qb/lib/actions";
+import { drillFilter } from "metabase/modes/lib/actions";
 
 describe("actions", () => {
   describe("drillFilter", () => {

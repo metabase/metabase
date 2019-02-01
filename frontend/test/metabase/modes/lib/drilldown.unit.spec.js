@@ -9,7 +9,7 @@ import {
   PEOPLE_STATE_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
-import { drillDownForDimensions } from "metabase/qb/lib/drilldown";
+import { drillDownForDimensions } from "metabase/modes/lib/drilldown";
 
 const col = (fieldId, extra = {}) => ({
   ...metadata.fields[fieldId],
