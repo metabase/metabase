@@ -1,5 +1,5 @@
 :root {
-  --default-font-family: "Lato";
+  --default-font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --default-font-size: 0.875em;
   --default-font-color: var(--color-text-dark);
   --default-bg-color: var(--color-bg-light);
@@ -20,7 +20,7 @@ body {
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
-  background-color: var(--color-bg-light);
+  background-color: var(--color-white);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

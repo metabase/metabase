@@ -2,7 +2,7 @@
 
 exports[`DashCard should render with no special classNames 1`] = `
 <div
-  className="Card bordered rounded flex flex-column hover-parent hover--visibility"
+  className="Card bordered rounded-top flex flex-column hover-parent hover--visibility"
   style={null}
 />
 `;
