@@ -287,15 +287,15 @@
   max-width: 1024px;
 }
 /*Custom*/
-.DashCard .Card > .flex-full > .p1.flex-no-shrink{
+.DashCard .Card > .flex-full > .p1.flex-no-shrink {
   background-color: var(--color-bg-gray);
   border-bottom: 1px solid var(--color-chrt-border);
   padding: 16px 32px;
 }
-.DashCard .Card > .flex-full > .p1.flex-no-shrink .mx1{
+.DashCard .Card > .flex-full > .p1.flex-no-shrink .mx1 {
   margin: 0;
 }
-.DashCard .Card > .flex-full > .p1.flex-no-shrink .mr1{
+.DashCard .Card > .flex-full > .p1.flex-no-shrink .mr1 {
   color: var(--color-chrt-color);
   font-weight: 700;
   font-size: 16px;
