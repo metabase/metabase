@@ -9,7 +9,7 @@
     "<rootDir>/frontend/test/legacy-selenium"
   ],
   "testMatch": [
-    "<rootDir>/frontend/test/**/*.unit.spec.js?(x)"
+    "<rootDir>/frontend/test/**/*.integ.spec.js?(x)"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",

@@ -9,7 +9,7 @@
     "<rootDir>/frontend/test/legacy-selenium"
   ],
   "testMatch": [
-    "**/?(*.)e2e.spec.js?(x)"
+    "<rootDir>/frontend/test/**/*.e2e.spec.js?(x)"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",
