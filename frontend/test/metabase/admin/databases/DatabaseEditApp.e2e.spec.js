@@ -1,7 +1,4 @@
-import {
-  useSharedAdminLogin,
-  createTestStore,
-} from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
 
 import React from "react";
 import { mount } from "enzyme";

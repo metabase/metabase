@@ -1,8 +1,5 @@
 // Converted from a Selenium E2E test
-import {
-  createTestStore,
-  useSharedAdminLogin,
-} from "__support__/e2e_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/e2e_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { mount } from "enzyme";
 import {

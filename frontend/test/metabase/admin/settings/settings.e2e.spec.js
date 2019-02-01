@@ -1,8 +1,5 @@
 // Converted from an old Selenium E2E test
-import {
-  useSharedAdminLogin,
-  createTestStore,
-} from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
 import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import {

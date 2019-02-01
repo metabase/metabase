@@ -1,7 +1,4 @@
-import {
-  useSharedAdminLogin,
-  createTestStore,
-} from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { delay } from "metabase/lib/promise";
 
