@@ -1363,7 +1363,7 @@ msgstr "Anmeldung über Google"
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:13
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "Ermöglicht es bestehenden Benutzerkonten, sich, neben ihren Metabase Benutzernamen udn Passwort, mit einem Google-Konto anzumelden, ihrer E-Mail-Adresse entspricht."
+msgstr "Ermöglicht es bestehenden Benutzerkonten, sich, neben ihren Metabase Benutzernamen und Passwort, mit einem Google-Konto anzumelden, ihrer E-Mail-Adresse entspricht."
 
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:17
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:29
