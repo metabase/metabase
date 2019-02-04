@@ -24,7 +24,7 @@ import {
   distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
-} from "metabase/qb/lib/actions";
+} from "metabase/modes/lib/actions";
 
 import _ from "underscore";
 import { chain, assoc } from "icepick";

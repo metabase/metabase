@@ -534,6 +534,18 @@ jobs:
           command: yarn run test-unit
           no_output_timeout: 5m
 
+  fe-tests-integration:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run frontend integration tests
+          command: yarn run test-integration
+          no_output_timeout: 5m
+
   build-uberjar:
     <<: *defaults
     steps:
@@ -556,7 +568,7 @@ jobs:
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
-  fe-tests-integrated:
+  fe-tests-e2e:
     <<: *defaults
     steps:
       - attach_workspace:
@@ -570,8 +582,8 @@ jobs:
           name: Generate version file
           command: ./bin/build version
       - run:
-          name: Run frontend integrated tests
-          command: yarn run test-integrated-no-build
+          name: Run frontend e2e tests
+          command: yarn run test-e2e-no-build
           no_output_timeout: 5m
 
 
@@ -680,10 +692,13 @@ workflows:
       - fe-tests-unit:
           requires:
             - fe-deps
+      - fe-tests-integration:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
-      - fe-tests-integrated:
+      - fe-tests-e2e:
           requires:
             - build-uberjar
             - fe-deps
@@ -716,7 +731,8 @@ workflows:
             - fe-linter-flow
             - fe-tests-karma
             - fe-tests-unit
-            - fe-tests-integrated
+            - fe-tests-integration
+            - fe-tests-e2e
           filters:
             branches:
               only: master
