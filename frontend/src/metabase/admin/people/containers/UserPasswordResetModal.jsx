@@ -28,7 +28,7 @@ const UserPasswordResetModal = ({
     <Flex>
       <Button
         ml="auto"
-        onClick={() => onPasswordReset(object)}
+        onClick={() => onPasswordReset(object) && goBack()}
         danger
       >{t`Reset password`}</Button>
     </Flex>

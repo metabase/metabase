@@ -10,6 +10,7 @@ import NewUserModal from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
@@ -78,12 +79,17 @@ const getRoutes = (store, IsAdmin) => (
     {/* PEOPLE */}
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
-      <ModalRoute path="new" modal={NewUserModal} />
 
-      <Route path=":userId">
+      <Route path="" component={PeopleListingApp}>
+        <ModalRoute path="new" modal={NewUserModal} />
+      </Route>
+
+      <Route path=":userId" component={PeopleListingApp}>
         <ModalRoute path="edit" modal={EditUserModal} />
         <ModalRoute path="success" modal={UserSuccessModal} />
         <ModalRoute path="reset" modal={UserPasswordResetModal} />
+        <ModalRoute path="deactivate" modal={UserActivationModal} />
+        <ModalRoute path="reactivate" modal={UserActivationModal} />
       </Route>
 
       <Route path="groups" title={t`Groups`}>

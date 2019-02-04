@@ -7,6 +7,7 @@ import UserForm from "metabase/admin/people/containers/UserForm";
 
 const NewUserModal = ({ onClose, goBack, push }) => (
   <UserForm
+    user={{}}
     onClose={goBack}
     onSaved={({ id, password }) => push(Urls.newUserSuccess(id, password))}
   />

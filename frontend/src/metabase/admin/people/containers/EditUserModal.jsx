@@ -15,7 +15,6 @@ import UserForm from "metabase/admin/people/containers/UserForm";
 class EditUserModal extends React.Component {
   render() {
     const { object, goBack } = this.props;
-    window.u = Users;
     return <UserForm user={object} onClose={goBack} onSaved={goBack} />;
   }
 }

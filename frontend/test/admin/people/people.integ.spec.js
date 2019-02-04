@@ -2,14 +2,14 @@
 import {
   createTestStore,
   useSharedAdminLogin,
+  BROWSER_HISTORY_PUSH,
+  BROWSER_HISTORY_POP,
 } from "__support__/integrated_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,
-  LOAD_GROUPS,
   LOAD_MEMBERSHIPS,
-  SHOW_MODAL,
   UPDATE_USER,
 } from "metabase/admin/people/people";
 import ModalContent from "metabase/components/ModalContent";
@@ -20,7 +20,8 @@ import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
 
-import EntityMenu from "metabase/components/EntityMenu";
+import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
+import EntityMenuItem from "metabase/components/EntityMenuItem";
 
 describe("admin/people", () => {
   let createdUserId = null;
@@ -34,45 +35,52 @@ describe("admin/people", () => {
       const store = await createTestStore();
       store.pushPath("/admin/people");
       const app = mount(store.getAppContainer());
-      // TODO - replace fetch users with whatever the entity equivelant is
-      await store.waitForActions([LOAD_GROUPS, LOAD_MEMBERSHIPS]);
+
+      await store.waitForActions([
+        "metabase/entities/users/FETCH_LIST",
+        "metabase/entities/groups/FETCH_LIST",
+        LOAD_MEMBERSHIPS,
+      ]);
 
       const email =
         "testy" + Math.round(Math.random() * 10000) + "@metabase.com";
       const firstName = "Testy";
       const lastName = "McTestFace";
 
-      click(app.find('button[children="Add someone"]'));
-      await store.waitForActions([SHOW_MODAL]);
-      await delay(1000);
+      clickButton(app.find(".Button.Button--primary"));
+      await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const addUserModal = app.find(ModalContent);
-      const addButton = addUserModal
-        .find('div[children="Add"]')
-        .closest(Button);
+      const addButton = addUserModal.find(Button);
       expect(addButton.props().disabled).toBe(true);
 
-      setInputValue(addUserModal.find("input[name='firstName']"), firstName);
-      setInputValue(addUserModal.find("input[name='lastName']"), lastName);
+      setInputValue(addUserModal.find("input[name='first_name']"), firstName);
+      setInputValue(addUserModal.find("input[name='last_name']"), lastName);
       setInputValue(addUserModal.find("input[name='email']"), email);
 
       expect(addButton.props().disabled).toBe(false);
       clickButton(addButton);
 
-      // TODO - replace CREATE_USER with equivelant
-      // await store.waitForActions([CREATE_USER]);
-      // unsure why a small delay is required here
+      await store.waitForActions([
+        "metabase/entities/users/CREATE",
+        BROWSER_HISTORY_PUSH,
+      ]);
+
       await delay(100);
 
       // it should be a pretty safe assumption in test environment that the user that was just created has the biggest ID
       const userIds = Object.keys(getUsers(store.getState()));
       createdUserId = Math.max.apply(null, userIds.map(key => parseInt(key)));
 
-      click(addUserModal.find('a[children="Show"]'));
-      const password = addUserModal.find("input").prop("value");
+      const userCreatedModal = app.find(ModalContent);
+
+      click(userCreatedModal.find('a[children="Show"]'));
+      const password = userCreatedModal.find("input").prop("value");
 
       // "Done" button
-      click(addUserModal.find(".Button.Button--primary"));
+      click(userCreatedModal.find(".Button.Button--primary"));
+
+      await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const usersTable = app.find(".ContentTable");
       const userRow = usersTable.find(`td[children="${email}"]`).closest("tr");
@@ -98,30 +106,33 @@ describe("admin/people", () => {
       );
       await store.waitForActions([CREATE_MEMBERSHIP]);
 
-      // edit user details
-      click(userRow.find(EntityMenu));
-      click(app.find(".TestPopover").find('li[children="Edit Details"]'));
+      click(userRow.find(EntityMenuTrigger));
+      click(app.find(EntityMenuItem).find('span[children="Edit user"]'));
+
+      await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const editDetailsModal = app.find(ModalContent);
 
       const saveButton = editDetailsModal
-        .find('div[children="Save changes"]')
+        .find('div[children="Update"]')
         .closest(Button);
-      expect(saveButton.props().disabled).toBe(true);
 
       setInputValue(
-        editDetailsModal.find("input[name='firstName']"),
+        editDetailsModal.find("input[name='first_name']"),
         firstName + "x",
       );
       setInputValue(
-        editDetailsModal.find("input[name='lastName']"),
+        editDetailsModal.find("input[name='last_name']"),
         lastName + "x",
       );
       setInputValue(editDetailsModal.find("input[name='email']"), email + "x");
       expect(saveButton.props().disabled).toBe(false);
 
-      await clickButton(saveButton);
-      await store.waitForActions([UPDATE_USER]);
+      clickButton(saveButton);
+      await store.waitForActions([
+        "metabase/entities/users/UPDATE",
+        BROWSER_HISTORY_POP,
+      ]);
 
       const updatedUserRow = usersTable
         .find(`td[children="${email}x"]`)
@@ -135,14 +146,19 @@ describe("admin/people", () => {
           .text(),
       ).toBe(`${firstName}x ${lastName}x`);
 
-      click(userRow.find(EntityMenu));
-      click(app.find(".TestPopover").find('li[children="Reset Password"]'));
+      click(userRow.find(EntityMenuTrigger));
+      click(app.find(EntityMenuItem).find('span[children="Reset password"]'));
+
+      await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const resetPasswordModal = app.find(ModalContent);
       const resetButton = resetPasswordModal
-        .find('div[children="Reset"]')
+        .find('div[children="Reset password"]')
         .closest(Button);
       click(resetButton);
+
+
+      // this assumes no email configured
       click(resetPasswordModal.find('a[children="Show"]'));
       const newPassword = resetPasswordModal.find("input").prop("value");
 
