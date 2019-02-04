@@ -7,6 +7,7 @@
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
+            [flatland.ordered.map :as ordered-map]
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
             [metabase.mbql
              [schema :as mbql.s]
@@ -279,7 +280,7 @@
                                         [(->lvalue field) (->initial-rvalue field)])]
         (-> pipeline-ctx
             (assoc  :projections (doall (map (comp keyword first) projection+initial-rvalue)))
-            (update :query conj {$project (into {} projection+initial-rvalue)}))))))
+            (update :query conj {$project (into (ordered-map/ordered-map) projection+initial-rvalue)}))))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -389,23 +390,31 @@
     ;; like to group by
     (when (seq breakout-fields)
       {$project (merge {"_id"      "$_id"
-                        "___group" (into {} (for [field breakout-fields]
-                                              {(->lvalue field) (->rvalue field)}))}
-                       (into {} (for [ag    aggregations
-                                      :let  [[_ ag-field] (unwrap-named-ag ag)]
-                                      :when ag-field]
-                                  {(->lvalue ag-field) (->rvalue ag-field)})))})
+                        "___group" (into
+                                    (ordered-map/ordered-map)
+                                    (for [field breakout-fields]
+                                      [(->lvalue field) (->rvalue field)]))}
+                       (into
+                        (ordered-map/ordered-map)
+                        (for [ag    aggregations
+                              :let  [[_ ag-field] (unwrap-named-ag ag)]
+                              :when ag-field]
+                          [(->lvalue ag-field) (->rvalue ag-field)])))})
     ;; Now project onto the __group and the aggregation rvalue
     {$group (merge
              {"_id" (when (seq breakout-fields)
                       "$___group")}
-             (into {} (for [ag aggregations]
-                        [(annotate/aggregation-name ag) (aggregation->rvalue ag)])))}
+             (into
+              (ordered-map/ordered-map)
+              (for [ag aggregations]
+                [(annotate/aggregation-name ag) (aggregation->rvalue ag)])))}
     ;; Sort by _id (___group)
     {$sort {"_id" 1}}
     ;; now project back to the fields we expect
     {$project (merge {"_id" false}
-                     (into {} projected-fields))}]))
+                     (into
+                      (ordered-map/ordered-map)
+                      projected-fields))}]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
@@ -428,10 +437,12 @@
 
 (s/defn ^:private order-by->$sort :- $SortStage
   [order-by :- [mbql.s/OrderBy]]
-  {$sort (into {} (for [[direction field] order-by]
-                    [(->lvalue field) (case direction
-                                        :asc   1
-                                        :desc -1)]))})
+  {$sort (into
+          (ordered-map/ordered-map)
+          (for [[direction field] order-by]
+            [(->lvalue field) (case direction
+                                :asc   1
+                                :desc -1)]))})
 
 (defn- handle-order-by [{:keys [order-by]} pipeline-ctx]
   (cond-> pipeline-ctx
@@ -442,12 +453,14 @@
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
     pipeline-ctx
-    (let [new-projections (doall (map #(vector (->lvalue %) (->rvalue %)) fields))]
+    (let [new-projections (for [field fields]
+                            [(->lvalue field) (->rvalue field)])]
       (-> pipeline-ctx
           (assoc :projections (map (comp keyword first) new-projections))
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
-          (update :query conj {$project (merge {"_id" false}
-                                               (into {} new-projections))})))))
+          (update :query conj {$project (into
+                                         (ordered-map/ordered-map "_id" false)
+                                         new-projections)})))))
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
 
@@ -490,13 +503,15 @@
 
 (s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
   [original-keys :- Projections]
-  (into {} (for [k original-keys
-                 :let [k-str     (name k)
-                       unescaped (-> k-str
-                                     (str/replace #"___" ".")
-                                     (str/replace #"~~~(.+)$" ""))]
-                 :when (not (= k-str unescaped))]
-             [k (keyword unescaped)])))
+  (into
+   (ordered-map/ordered-map)
+   (for [k original-keys
+         :let [k-str     (name k)
+               unescaped (-> k-str
+                             (str/replace #"___" ".")
+                             (str/replace #"~~~(.+)$" ""))]
+         :when (not (= k-str unescaped))]
+     [k (keyword unescaped)])))
 
 (defn- unescape-names
   "Restore the original, unescaped nested Field names in the keys of RESULTS.
@@ -518,11 +533,13 @@
    This can't be done within the Mongo aggregation framework itself."
   [results]
   (for [row results]
-    (into {} (for [[k v] row]
-               {k (if (and (map? v)
-                           (contains? v :___date))
-                    (du/->Timestamp (:___date v) (TimeZone/getDefault))
-                    v)}))))
+    (into
+     (ordered-map/ordered-map)
+     (for [[k v] row]
+       [k (if (and (map? v)
+                   (contains? v :___date))
+            (du/->Timestamp (:___date v) (TimeZone/getDefault))
+            v)]))))
 
 
 ;;; --------------------------------- Handling ISODate(...) and ObjectId(...) forms ----------------------------------
@@ -649,15 +666,14 @@
         ;; those columns.
         columns    (if-not mbql?
                      (keys (first results))
-                     (map (fn [proj]
-                            (if (contains? rename-map proj)
-                              (get rename-map proj)
-                              proj))
-                          projections))]
+                     (for [proj projections]
+                       (if (contains? rename-map proj)
+                         (get rename-map proj)
+                         proj)))]
     ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken. Check to make
     ;; sure that didn't happen.
     (when mbql?
       (check-columns columns results))
-    {:columns (map name columns)
-     :rows    (for [row results]
-                (mapv row columns))}))
+    ;; The `annotate/result-rows-maps->vectors` middleware will handle converting result rows from maps to vectors in
+    ;; the correct sort order
+    {:rows results}))

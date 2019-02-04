@@ -4,10 +4,11 @@
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.config :as config]))
+            [metabase.util.i18n :refer [tru]]))
 
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token (tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))

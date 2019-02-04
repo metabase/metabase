@@ -8,8 +8,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 

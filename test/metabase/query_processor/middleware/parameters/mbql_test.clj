@@ -8,10 +8,7 @@
              [util :as u]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.driver :as driver]
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.date :as du]))
 

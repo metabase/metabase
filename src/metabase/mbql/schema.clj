@@ -558,7 +558,11 @@
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
     (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
-    (s/optional-key :page)         {:page  su/IntGreaterThanOrEqualToZero
+    ;; page = page num, starting with 1. items = number of items per page.
+    ;; e.g.
+    ;; {:page 1, :items 10} = items 1-10
+    ;; {:page 2, :items 10} = items 11-20
+    (s/optional-key :page)         {:page  su/IntGreaterThanZero
                                     :items su/IntGreaterThanZero}
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
@@ -597,13 +601,21 @@
   "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
   because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
   override these values."
-  {;; maximum number of results to allow for a query with aggregations
-   (s/optional-key :max-results)           su/IntGreaterThanOrEqualToZero
-   ;; maximum number of results to allow for a query with no aggregations
-   (s/optional-key :max-results-bare-rows) su/IntGreaterThanOrEqualToZero
-   ;; other Constraints might be used somewhere, but I don't know about them. Add them if you come across them for
-   ;; documentation purposes
-   s/Keyword                               s/Any})
+  (s/constrained
+   { ;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
+    ;; applies to all queries
+    (s/optional-key :max-results)           su/IntGreaterThanOrEqualToZero
+    ;; maximum number of results to allow for a query with no aggregations.
+    ;; If set, this should be LOWER than `:max-results`
+    (s/optional-key :max-results-bare-rows) su/IntGreaterThanOrEqualToZero
+    ;; other Constraints might be used somewhere, but I don't know about them. Add them if you come across them for
+    ;; documentation purposes
+    s/Keyword                               s/Any}
+   (fn [{:keys [max-results max-results-bare-rows]}]
+     (if-not (core/and max-results max-results-bare-rows)
+       true
+       (core/>= max-results max-results-bare-rows)))
+   "max-results-bare-rows must be less or equal to than max-results"))
 
 (def ^:private MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
@@ -644,6 +656,8 @@
           :question
           :xlsx-download))
 
+;; TODO - this schema is somewhat misleading because if you use a function like `qp/process-query-and-save-with-max!`
+;; some of these keys (e.g. `:context`) are in fact required
 (def Info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
   was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
@@ -683,6 +697,7 @@
   `Card.dataset_query`."
   (s/constrained
    ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
+   ;; Something like `metabase.mbql.constants`
    {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
     :type                             (s/enum :query :native)

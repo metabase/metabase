@@ -1,13 +1,11 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
   (:require [expectations :refer :all]
-            [metabase.api.common :as api]
             [metabase.models
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [table :refer [Table]]
-             [user :as user]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
             [metabase.test.data.users :as users]
             [metabase.util :as u]

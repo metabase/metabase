@@ -18,6 +18,10 @@ COPY ./metabase.jar /app/
 # add our run script to the image
 COPY ./run_metabase.sh /app/
 
+# create the plugins directory, with writable permissions
+RUN mkdir -p /plugins
+RUN chmod a+rwx /plugins
+
 # expose our default runtime port
 EXPOSE 3000
 

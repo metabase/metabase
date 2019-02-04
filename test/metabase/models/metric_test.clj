@@ -5,7 +5,7 @@
              [metric :as metric :refer :all]
              [table :refer [Table]]]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer [user->id fetch-user]]
+            [metabase.test.data.users :refer [fetch-user user->id]]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 

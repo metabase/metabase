@@ -6,10 +6,10 @@
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
+            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.models.field :refer [Field]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -47,8 +47,9 @@
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
   [x]
   (or
-   ;; do not autobucket Fields in a filter clause that either:
-   (when (mbql.preds/Filter? x)
+   ;; do not autobucket Fields in a non-compound filter clause that either:
+   (when (and (mbql.preds/Filter? x)
+              (not (mbql.u/is-clause? #{:and :or :not} x)))
      (or
       ;; *  is not and equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
       ;;    `NOT NULL`

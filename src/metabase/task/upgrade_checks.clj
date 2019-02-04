@@ -10,7 +10,8 @@
             [metabase
              [config :as config]
              [public-settings :as public-settings]
-             [task :as task]]))
+             [task :as task]]
+            [metabase.util.i18n :refer [trs]]))
 
 (def ^:private ^:const job-key     "metabase.task.upgrade-checks.job")
 (def ^:private ^:const trigger-key "metabase.task.upgrade-checks.trigger")
@@ -29,13 +30,13 @@
 (jobs/defjob CheckForNewVersions
   [ctx]
   (when (public-settings/check-for-updates)
-    (log/debug "Checking for new Metabase version info.")
+    (log/debug (trs "Checking for new Metabase version info."))
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (when-let [version-info (get-version-info)]
         (public-settings/version-info version-info))
       (catch Throwable e
-        (log/error "Error fetching version info: " e)))))
+        (log/error e (trs "Error fetching version info: "))))))
 
 (defn task-init
   "Job initialization"

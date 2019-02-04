@@ -11,8 +11,10 @@
   (:require [clojure.core.async :as async]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            (metabase [config :as config]
-                      [util :as u])))
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.util.i18n :refer [trs]]))
 
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
@@ -31,7 +33,7 @@
       (require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-        (log/info "Starting events listener:" (u/format-color 'blue ns-symb) (u/emoji "👂"))
+        (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
         (init-fn)))))
 
 (defn initialize-events!
@@ -91,7 +93,7 @@
     (try
       (handler-fn (async/<! channel))
       (catch Throwable e
-        (log/error "Unexpected error listening on events" e)))
+        (log/error e (trs "Unexpected error listening on events"))))
     (recur)))
 
 

@@ -8,10 +8,12 @@
             [metabase
              [public-settings :as public-settings]
              [task :as task]]
-            [metabase.util.stats :as stats]))
+            [metabase.util
+             [i18n :refer [trs]]
+             [stats :as stats]]))
 
-(def ^:private ^:const job-key     "metabase.task.anonymous-stats.job")
-(def ^:private ^:const trigger-key "metabase.task.anonymous-stats.trigger")
+(def ^:private job-key     "metabase.task.anonymous-stats.job")
+(def ^:private trigger-key "metabase.task.anonymous-stats.trigger")
 
 (defonce ^:private job     (atom nil))
 (defonce ^:private trigger (atom nil))
@@ -20,12 +22,12 @@
 (jobs/defjob SendAnonymousUsageStats
   [ctx]
   (when (public-settings/anon-tracking-enabled)
-    (log/debug "Sending anonymous usage stats.")
+    (log/debug (trs "Sending anonymous usage stats."))
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (stats/phone-home-stats!)
       (catch Throwable e
-        (log/error "Error sending anonymous usage stats: " e)))))
+        (log/error e (trs "Error sending anonymous usage stats: "))))))
 
 (defn task-init
   "Job initialization"
