@@ -1,0 +1,11 @@
+{
+  "name": "selenium",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "chromedriver": "^2.45.0",
+    "selenium-side-runner": "^3.5.3",
+    "selenium-webdriver": "^4.0.0-alpha.1"
+  }
+}

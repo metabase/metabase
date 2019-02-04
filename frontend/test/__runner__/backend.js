@@ -45,27 +45,38 @@ export const BackendResource = createSharedResource("BackendResource", {
       if (server.dbKey !== server.dbFile) {
         await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
       }
-      server.process = spawn(
-        "java",
-        [
-          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-          "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
-          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
-          "-jar",
-          "target/uberjar/metabase.jar",
-        ],
-        {
+      const javaOpts = [
+        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+        "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
+        "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
+        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+        "-Duser.timezone=US/Pacific",
+      ];
+      const env = {
+        ...process.env,
+        MB_DB_TYPE: "h2",
+        MB_DB_FILE: server.dbFile,
+        MB_JETTY_PORT: server.port,
+      };
+      if (process.env["DEV"]) {
+        server.process = spawn("lein", ["run"], {
           env: {
-            MB_DB_TYPE: "h2",
-            MB_DB_FILE: server.dbFile,
-            MB_JETTY_PORT: server.port,
+            ...env,
+            JAVA_OPTS: javaOpts.join(" "),
           },
           stdio: "inherit",
-        },
-      );
+        });
+      } else {
+        server.process = spawn(
+          "java",
+          [...javaOpts, "-jar", "target/uberjar/metabase.jar"],
+          {
+            env: env,
+            stdio: "inherit",
+          },
+        );
+      }
     }
     if (!await isReady(server.host)) {
       process.stdout.write(
