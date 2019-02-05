@@ -41,7 +41,7 @@ const getRoutes = (store, IsAdmin) => (
     title={t`Admin`}
     component={withBackground("bg-white")(IsAdmin)}
   >
-    <IndexRedirect to="/admin/settings" />
+    <IndexRedirect to="settings" />
 
     <Route path="databases" title={t`Databases`}>
       <IndexRoute component={DatabaseListApp} />
@@ -103,7 +103,7 @@ const getRoutes = (store, IsAdmin) => (
 
     {/* SETTINGS */}
     <Route path="settings" title={t`Settings`}>
-      <IndexRedirect to="/admin/settings/setup" />
+      <IndexRedirect to="setup" />
       {/* <IndexRoute component={SettingsEditorApp} /> */}
       <Route path=":section/:authType" component={SettingsEditorApp} />
       <Route path=":section" component={SettingsEditorApp} />
