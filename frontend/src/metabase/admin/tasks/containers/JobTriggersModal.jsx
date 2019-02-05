@@ -50,6 +50,11 @@ const renderTriggersTable = triggers => {
 
 @connect(null, { fetchJobInfo, goBack })
 export default class JobTriggersModal extends React.Component {
+  state = {
+    triggers: null,
+    error: null,
+  };
+
   async componentDidMount() {
     try {
       const { jobKey } = this.props.params;
@@ -64,13 +69,13 @@ export default class JobTriggersModal extends React.Component {
   }
 
   render() {
-    const { jobKey, goBack } = this.props.params;
-    const { triggers, error } = this.state || {};
+    const { params: { jobKey }, goBack } = this.props;
+    const { triggers, error } = this.state;
 
     return (
       <ModalContent title={t`Triggers for ${jobKey}`} onClose={goBack}>
         <LoadingAndErrorWrapper loading={!triggers} error={error}>
-          <Box p={3}>{renderTriggersTable(triggers)}</Box>
+          {() => renderTriggersTable(triggers)}
         </LoadingAndErrorWrapper>
       </ModalContent>
     );
