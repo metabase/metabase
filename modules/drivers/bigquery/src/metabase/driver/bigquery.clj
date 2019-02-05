@@ -372,8 +372,7 @@
 ;; parameters (`?` symbols)
 (defmethod sql.qp/->honeysql [:bigquery String]
   [_ s]
-  ;; TODO - what happens if `s` contains single-quotes? Shouldn't we be escaping them somehow?
-  (hx/literal s))
+  (hx/literal (str/replace s "'" "\\'")))
 
 (defmethod sql.qp/->honeysql [:bigquery Boolean]
   [_ bool]
