@@ -20,7 +20,7 @@ describe("AdminPinMessage", () => {
   it("should not show the message if the admin has dismissed it", () => {
     localStorage.setItem(PIN_MESSAGE_STORAGE_KEY, "true");
     const wrapper = shallow(<AdminPinMessage />);
-    expect(wrapper.getNode(0)).toBe(null);
+    expect(wrapper.getElement(0)).toBe(null);
   });
 
   it("should set the proper local storage key if the dismiss icon is clicked", () => {
@@ -33,6 +33,6 @@ describe("AdminPinMessage", () => {
       PIN_MESSAGE_STORAGE_KEY,
       "true",
     );
-    expect(wrapper.getNode(0)).toBe(null);
+    expect(wrapper.getElement(0)).toBe(null);
   });
 });

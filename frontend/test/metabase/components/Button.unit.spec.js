@@ -22,6 +22,6 @@ describe("Button", () => {
   it("should render a primary button given the primary prop", () => {
     const button = render(<Button primary>Clickity click</Button>);
 
-    expect(button.find("button.Button--primary").length).toEqual(1);
+    expect(button.hasClass("Button--primary")).toBe(true);
   });
 });
