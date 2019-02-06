@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ModalContent from "metabase/components/ModalContent";
-import { Box } from "grid-styled";
 
 import { fetchJobInfo } from "../jobInfo";
 
