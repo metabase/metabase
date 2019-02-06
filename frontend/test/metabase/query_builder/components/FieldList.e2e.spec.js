@@ -121,6 +121,6 @@ describe("FieldList", () => {
         .last()
         .text(),
       // eslint-disable-next-line no-irregular-whitespace
-    ).toMatch(/Created AtPast 300 Days/);
+    ).toMatch(/Created AtPrevious 300 Days/);
   });
 });

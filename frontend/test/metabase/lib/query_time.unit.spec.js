@@ -98,7 +98,7 @@ describe("query_time", () => {
           -30,
           "day",
         ]),
-      ).toEqual(["Past 30 Days"]);
+      ).toEqual(["Previous 30 Days"]);
       expect(
         generateTimeFilterValuesDescriptions([
           "time-interval",
@@ -106,7 +106,7 @@ describe("query_time", () => {
           1,
           "month",
         ]),
-      ).toEqual(["Next 1 Month"]);
+      ).toEqual(["Next Month"]);
       expect(
         generateTimeFilterValuesDescriptions([
           "time-interval",
@@ -130,7 +130,7 @@ describe("query_time", () => {
           -1,
           "month",
         ]),
-      ).toEqual(["Past 1 Month"]);
+      ).toEqual(["Previous Month"]);
       expect(
         generateTimeFilterValuesDescriptions([
           "time-interval",
@@ -138,7 +138,7 @@ describe("query_time", () => {
           -2,
           "month",
         ]),
-      ).toEqual(["Past 2 Months"]);
+      ).toEqual(["Previous 2 Months"]);
     });
     it("should format 'time-interval' short names correctly", () => {
       expect(

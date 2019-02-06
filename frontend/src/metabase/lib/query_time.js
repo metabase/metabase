@@ -132,11 +132,11 @@ export function generateTimeIntervalDescription(n, unit) {
       return [t`Next ${formatBucketing(unit)}`];
     case "last":
     case -1:
-      return [t`Last ${formatBucketing(unit)}`];
+      return [t`Previous ${formatBucketing(unit)}`];
   }
 
   if (n < 0) {
-    return [t`Past ${-n} ${formatBucketing(unit, -n)}`];
+    return [t`Previous ${-n} ${formatBucketing(unit, -n)}`];
   } else if (n > 0) {
     return [t`Next ${n} ${formatBucketing(unit, n)}`];
   } else {
