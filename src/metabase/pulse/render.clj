@@ -235,19 +235,19 @@
     (case unit
       :day     (date->interval-name parsed-timestamp
                                     (t/date-midnight (year) (month) (day))
-                                    (t/days 1) "Today" "Yesterday")
+                                    (t/days 1) (tru "Today") (tru "Yesterday"))
       :week    (date->interval-name parsed-timestamp
                                     (start-of-this-week)
-                                    (t/weeks 1) "This week" "Last week")
+                                    (t/weeks 1) (tru "This week") (tru "Last week"))
       :month   (date->interval-name parsed-timestamp
                                     (t/date-midnight (year) (month))
-                                    (t/months 1) "This month" "Last month")
+                                    (t/months 1) (tru "This month") (tru "Last month"))
       :quarter (date->interval-name parsed-timestamp
                                     (start-of-this-quarter)
-                                    (t/months 3) "This quarter" "Last quarter")
+                                    (t/months 3) (tru "This quarter") (tru "Last quarter"))
       :year    (date->interval-name (t/date-midnight parsed-timestamp)
                                     (t/date-midnight (year))
-                                    (t/years 1) "This year" "Last year")
+                                    (t/years 1) (tru "This year") (tru "Last year"))
       nil)))
 
 (defn- format-timestamp-pair

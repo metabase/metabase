@@ -513,7 +513,7 @@ export class DatetimeFieldDimension extends FieldDimension {
   }
 
   subTriggerDisplayName(): string {
-    return "by " + formatBucketing(this._args[0]).toLowerCase();
+    return t`by ${formatBucketing(this._args[0]).toLowerCase()}`;
   }
 
   render() {

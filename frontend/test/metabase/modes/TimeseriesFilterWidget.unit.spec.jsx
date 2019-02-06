@@ -34,14 +34,14 @@ describe("TimeseriesFilterWidget", () => {
     const widget = mount(getTimeseriesFilterWidget(questionWithoutFilter));
     expect(widget.find(".AdminSelect-content").text()).toBe("All Time");
   });
-  it("should display 'Past 30 Days' text if that filter is selected", () => {
+  it("should display 'Previous 30 Days' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
       .addFilter(["time-interval", ["field-id", 1], -30, "day"])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
-    expect(widget.find(".AdminSelect-content").text()).toBe("Past 30 Days");
+    expect(widget.find(".AdminSelect-content").text()).toBe("Previous 30 Days");
   });
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
