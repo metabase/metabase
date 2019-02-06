@@ -1,7 +1,7 @@
 (ns metabase.sync-database.sync-dynamic-test
   "Tests for databases with a so-called 'dynamic' schema, i.e. one that is not hard-coded somewhere.
    A Mongo database is an example of such a DB. "
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [sync :as sync]
              [util :as u]]
@@ -47,7 +47,7 @@
 
 
 ;; TODO - At some point these tests should be moved into a `sync-metadata-test` or `sync-metadata.fields-test`
-;; namespace
+;; namespace. Actually I think they might belong in `metabase.sync.sync-metadata.fields.sync-instances-test`
 
 ;; make sure nested fields get resynced correctly if their parent field didn't change
 (expect

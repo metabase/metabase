@@ -28,6 +28,7 @@
              [dataset-definitions :as defs]
              [datasets :as datasets]
              [interface :as tx]]
+            [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du])
   (:import org.joda.time.DateTime))
 
@@ -184,7 +185,7 @@
     :else
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz)))
 
-  (tu/with-jvm-tz pacific-tz
+  (tu.tz/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :default eastern-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -470,7 +471,7 @@
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9]))
 
-  (tu/with-jvm-tz pacific-tz
+  (tu.tz/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :day pacific-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -659,7 +660,7 @@
     (results-by-week date-formatter-without-time
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7]))
-  (tu/with-jvm-tz pacific-tz
+  (tu.tz/with-jvm-tz pacific-tz
     (sad-toucan-incidents-with-bucketing :week pacific-tz)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -911,6 +912,29 @@
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:= [:field-id $timestamp] (du/format-date "yyyy-MM-dd" (du/date-trunc :day))]})))))
+
+;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically created
+;; checkins DBs so we can run it against Snowflake and BigQuery as well.
+(expect-with-non-timeseries-dbs
+  [[1]]
+  (format-rows-by [int]
+    (rows
+      (data/dataset office-checkins
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:= [:field-id $timestamp] "2019-01-16"]})))))
+
+;; Check that automatic bucketing still happens when using compound filter clauses (#9127)
+(expect-with-non-timeseries-dbs
+  [[1]]
+  (format-rows-by [int]
+    (rows
+      (data/dataset office-checkins
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:and
+                         [:= [:field-id $timestamp] "2019-01-16"]
+                         [:= [:field-id $id] 6]]})))))
 
 ;; if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches
 (expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}

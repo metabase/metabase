@@ -72,7 +72,7 @@
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e
-      (log/error "Failed to authenticate with username:" username "and password:" password ":" (.getMessage e)))))
+      (println "Failed to authenticate with username:" username "and password:" password ":" (.getMessage e)))))
 
 
 ;;; client
@@ -97,7 +97,7 @@
                       (json/parse-string body keyword)
                       (catch Throwable _
                         body))]
-        (log/error (u/pprint-to-str 'red body))
+        (println (u/pprint-to-str 'red body))
         (throw (ex-info message {:status-code actual-status-code}))))))
 
 (def ^:private method->request-fn

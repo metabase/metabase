@@ -1,22 +1,13 @@
 (ns metabase.middleware-test
   (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [GET]]
             [expectations :refer :all]
-            [metabase
-             [config :as config]
-             [middleware :as middleware :refer :all :as mid]
-             [routes :as routes]
-             [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
+            [metabase.middleware :as mid :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data.users :refer :all]
             [metabase.util.date :as du]
             [ring.mock.request :as mock]
-            [ring.util.response :as resp]
-            [toucan.db :as db]
-            [clojure.string :as string]))
+            [toucan.db :as db]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 

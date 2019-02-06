@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require [expectations :refer :all]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [metabase.util.date :as du]))
+            [metabase.util.date :as du]
+            [toucan.db :as db]))
 
 (defn- wrap-value-literals {:style/indent 0} [inner-query]
   (qp.test-util/with-everything-store
@@ -55,6 +57,25 @@
     (wrap-value-literals
       {:source-table (data/id :checkins)
        :filter       [:= [:datetime-field [:field-id $date] :month] "2018-10-01"]})))
+
+;; make sure datetime literal strings should also get wrapped in `absolute-datetime` clauses if they are being
+;; compared against a type/DateTime `field-literal`
+(expect
+  (data/$ids checkins
+    {:source-query {:source-table $$table}
+     :filter       [:=
+                    [:datetime-field
+                     [:field-literal (db/select-one-field :name Field :id $date) :type/DateTime]
+                     :month]
+                    [:absolute-datetime (du/->Timestamp "2018-10-01" "UTC") :month]]})
+  (data/$ids checkins
+    (wrap-value-literals
+      {:source-query {:source-table $$table}
+       :filter       [:=
+                      [:datetime-field
+                       [:field-literal (db/select-one-field :name Field :id $date) :type/DateTime]
+                       :month]
+                      "2018-10-01"]})))
 
 ;; even if the Field in question is not wrapped in a datetime-field clause, we should still auto-bucket the value, but
 ;; we should give it a `:default` unit

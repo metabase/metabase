@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-database
-  (:require [metabase.util :as u]
+  (:require [metabase.models.database :as database :refer [Database]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.models.database :as database :refer [Database]]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 

@@ -4,8 +4,9 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.util :as u]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]

@@ -101,6 +101,7 @@
   (-> f
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
+      annotate/result-rows-maps->vectors
       ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
@@ -366,11 +367,24 @@
   {:max-results           max-results
    :max-results-bare-rows max-results-bare-rows})
 
+(defn- add-default-constraints
+  "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."
+  [m]
+  (merge
+   default-query-constraints
+   ;; `:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
+   ;; `:max-results-bare-rows` use the same value for both. Otherwise the default bare rows value could end up being
+   ;; higher than the custom `:max-rows` value, causing an error
+   (when-let [max-results (:max-results m)]
+     {:max-results-bare-rows max-results})
+   m))
+
 (s/defn process-query-and-save-with-max!
-  "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint"
+  "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
+  function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (process-query-and-save-execution! (assoc query :constraints default-query-constraints) options))
+  (process-query-and-save-execution! (update query :constraints add-default-constraints) options))
 
 (s/defn process-query-without-save!
   "Invokes `process-query` with info needed for the included remark."

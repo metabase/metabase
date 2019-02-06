@@ -14,6 +14,7 @@
              [permissions-group :as perm-group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
+            [metabase.test.data.datasets :as datasets]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.password :as upass]
@@ -21,7 +22,10 @@
             [toucan.util.test :as tt]))
 
 ;; add-legacy-sql-directive-to-bigquery-sql-cards
-(expect
+;;
+;; only run this test when we're running tests for BigQuery because when a Database gets deleted it calls
+;; `driver/notify-database-updated` which attempts to load the BQ driver
+(datasets/expect-with-driver :bigquery
   {"Card that should get directive"
    {:database true
     :type     :native
@@ -50,7 +54,7 @@
 
 ;; if for some reason we have a BigQuery native query that does not actually have any SQL, ignore it rather than
 ;; barfing (#8924) (No idea how this was possible, but clearly it was)
-(expect
+(datasets/expect-with-driver :bigquery
   {:database true, :type :native, :native {:query 1000}}
   (tt/with-temp* [Database [database {:engine "bigquery"}]
                   Card     [card     {:database_id   (u/get-id database)

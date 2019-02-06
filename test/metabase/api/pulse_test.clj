@@ -7,6 +7,7 @@
              [middleware :as middleware]
              [util :as u]]
             [metabase.api.card-test :as card-api-test]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -927,8 +928,8 @@
 (expect
   [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
   (tu/with-temporary-setting-values [slack-token "something"]
-    (with-redefs [metabase.integrations.slack/channels-list (constantly [{:name "foo"}])
-                  metabase.integrations.slack/users-list (constantly [{:name "bar"}])]
+    (with-redefs [slack/channels-list (constantly [{:name "foo"}])
+                  slack/users-list    (constantly [{:name "bar"}])]
       (-> ((user->client :rasta) :get 200 "pulse/form_input")
           (get-in [:channels :slack :fields])))))
 

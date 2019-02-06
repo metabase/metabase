@@ -53,7 +53,6 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "--add-modules=java.xml.bind", // Tell Java 9 we want to use java.xml stuff
           "-Duser.timezone=US/Pacific",
           "-jar",
           "target/uberjar/metabase.jar",

@@ -3,12 +3,12 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [PUT]]
-            [metabase.api.common :refer :all]
+            [metabase.api.common :as api]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
 
-(def ^:private ^:const mb-settings->ldap-details
+(def ^:private mb-settings->ldap-details
   {:ldap-enabled             :enabled
    :ldap-host                :host
    :ldap-port                :port
@@ -85,11 +85,11 @@
         #"(?s).*"
         {:message message}))))
 
-(defendpoint PUT "/settings"
+(api/defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (check-superuser)
+  (api/check-superuser)
   (let [ldap-settings (select-keys settings (keys mb-settings->ldap-details))
         ldap-details  (-> (set/rename-keys ldap-settings mb-settings->ldap-details)
                           (assoc :port
@@ -108,4 +108,4 @@
        :body   (humanize-error-messages results)})))
 
 
-(define-routes)
+(api/define-routes)

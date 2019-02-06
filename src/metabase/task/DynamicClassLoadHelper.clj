@@ -1,11 +1,11 @@
 (ns metabase.task.DynamicClassLoadHelper
   "This is needed to get the JDBC backend for Quartz working, or something like that. See
   http://clojurequartz.info/articles/durable_quartz_stores.html for details."
-  (:require [clojure.string :as str])
   (:gen-class
    :extends clojure.lang.DynamicClassLoader
    :exposes-methods {loadClass superLoadClass}
-   :implements [org.quartz.spi.ClassLoadHelper]))
+   :implements [org.quartz.spi.ClassLoadHelper])
+  (:require [clojure.string :as str]))
 
 ;; docstrings are copies of the ones for the corresponding methods of the ClassLoadHelper interface
 

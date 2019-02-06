@@ -19,7 +19,8 @@
 (def ^:private venues-table     (delay (Table (id :venues))))
 (def ^:private users-name-field (delay (Field (id :users :name))))
 
-(defonce sql-jdbc-drivers
+(defonce ^{:doc "Set of drivers descending from `:sql-jdbc`, for test purposes (i.e. `expect-with-drivers`)"}
+  sql-jdbc-drivers
   (delay
    (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
      (set
@@ -115,6 +116,6 @@
                       :user           "postgres"
                       :tunnel-user    "example"}]
          (tu.log/suppress-output
-           (driver.u/can-connect-with-details? engine details :rethrow-exceptions)))
+           (driver.u/can-connect-with-details? engine details :throw-exceptions)))
        (catch Exception e
          (.getMessage e))))

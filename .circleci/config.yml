@@ -58,7 +58,7 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run: lein deps
+      - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
@@ -72,7 +72,21 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests
+          name: Run backend unit tests with Java 8
+          command: lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-java-11:
+    <<: *defaults
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.8.1
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests with Java 11
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
@@ -100,6 +114,18 @@ jobs:
           command: lein with-profile +ci docstring-checker
           no_output_timeout: 5m
 
+  be-linter-namespace-decls:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run namespace decl checker
+          command: lein with-profile +ci check-namespace-decls
+          no_output_timeout: 5m
+
   be-linter-bikeshed:
     <<: *defaults
     steps:
@@ -108,7 +134,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run Bikeshed linter
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
@@ -120,7 +146,7 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run dockstring-checker
+          name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
@@ -188,12 +214,6 @@ jobs:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download SparkSQL deps JAR
-          command: wget --output-document=plugins/spark-deps.jar https://s3.amazonaws.com/sparksql-deps/metabase-sparksql-deps-1.2.1.spark2-standalone.jar
       - run:
           name: Wait for SparkSQL to be ready
           command: >
@@ -306,6 +326,22 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-googleanalytics:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Google Analytics)
+          environment:
+            DRIVERS: h2,googleanalytics
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
   be-tests-sqlite:
     <<: *defaults
     steps:
@@ -369,7 +405,7 @@ jobs:
       - run:
           name: Wait for Presto to be ready
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
             while ! nc -z localhost 8080; do sleep 0.1; done
           no_output_timeout: 5m
       - run:
@@ -498,6 +534,18 @@ jobs:
           command: yarn run test-unit
           no_output_timeout: 5m
 
+  fe-tests-integration:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-fe-deps-cache
+      - run:
+          name: Run frontend integration tests
+          command: yarn run test-integration
+          no_output_timeout: 5m
+
   build-uberjar:
     <<: *defaults
     steps:
@@ -520,7 +568,7 @@ jobs:
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
-  fe-tests-integrated:
+  fe-tests-e2e:
     <<: *defaults
     steps:
       - attach_workspace:
@@ -534,8 +582,8 @@ jobs:
           name: Generate version file
           command: ./bin/build version
       - run:
-          name: Run frontend integrated tests
-          command: yarn run test-integrated-no-build
+          name: Run frontend e2e tests
+          command: yarn run test-e2e-no-build
           no_output_timeout: 5m
 
 
@@ -566,10 +614,16 @@ workflows:
       - be-tests:
           requires:
             - be-deps
+      - be-tests-java-11:
+          requires:
+            - be-deps
       - be-linter-eastwood:
           requires:
             - be-deps
       - be-linter-docstring-checker:
+          requires:
+            - be-deps
+      - be-linter-namespace-decls:
           requires:
             - be-deps
       - be-linter-bikeshed:
@@ -594,6 +648,9 @@ workflows:
           requires:
             - be-tests
       - be-tests-bigquery:
+          requires:
+            - be-tests
+      - be-tests-googleanalytics:
           requires:
             - be-tests
       - be-tests-sqlite:
@@ -635,10 +692,13 @@ workflows:
       - fe-tests-unit:
           requires:
             - fe-deps
+      - fe-tests-integration:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
-      - fe-tests-integrated:
+      - fe-tests-e2e:
           requires:
             - build-uberjar
             - fe-deps
@@ -646,8 +706,10 @@ workflows:
           requires:
             - be-linter-eastwood
             - be-linter-docstring-checker
+            - be-linter-namespace-decls
             - be-linter-bikeshed
             - be-linter-reflection-warnings
+
             - be-tests
             - be-tests-mysql
             - be-tests-postgres
@@ -655,6 +717,7 @@ workflows:
             - be-tests-mongo
             - be-tests-sqlserver
             - be-tests-bigquery
+            - be-tests-googleanalytics
             - be-tests-sqlite
             - be-tests-presto
             - be-tests-oracle
@@ -662,12 +725,14 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
             - fe-linter-eslint
             - fe-linter-prettier
             - fe-linter-flow
             - fe-tests-karma
             - fe-tests-unit
-            - fe-tests-integrated
+            - fe-tests-integration
+            - fe-tests-e2e
           filters:
             branches:
               only: master

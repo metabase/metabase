@@ -610,3 +610,100 @@
      [:avg [:field-id 1]]
      [:named [:sum [:field-id 1]] "sum_2"]
      [:min [:field-id 1]]]))
+
+;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
+
+;; should return `:limit` if set
+(expect
+  10
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1, :limit 10}}))
+
+;; should return `:page` items if set
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1, :page {:page 1, :items 5}}}))
+
+;; if `:max-results` is set return that
+(expect
+  15
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1}, :constraints {:max-results 15}}))
+
+;; if `:max-results-bare-rows` is set AND query has no aggregations, return that
+(expect
+  10
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1}, :constraints {:max-results 5, :max-results-bare-rows 10}}))
+
+(expect
+  10
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :native
+    :native      {:query "SELECT * FROM my_table"}
+    :constraints {:max-results 5, :max-results-bare-rows 10}}))
+
+;; if `:max-results-bare-rows` is set but query has aggregations, return `:max-results` instead
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1, :aggregation [[:count]]}
+    :constraints {:max-results 5, :max-results-bare-rows 10}}))
+
+;; if both `:limit` and `:page` are set (not sure makes sense), return the smaller of the two
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1, :limit 10, :page {:page 1, :items 5}}}))
+
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database 1, :type :query, :query {:source-table 1, :limit 5, :page {:page 1, :items 10}}}))
+
+;; if both `:limit` and `:constraints` are set, prefer the smaller of the two
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1, :limit 5}
+    :constraints {:max-results 10}}))
+
+(expect
+  10
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1, :limit 15}
+    :constraints {:max-results 10}}))
+
+;; since this query doesn't have an aggregation we should be using `max-results-bare-rows`
+(expect
+  5
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1, :limit 10}
+    :constraints {:max-results 15, :max-results-bare-rows 5}}))
+
+;; add an aggregation, and `:max-results` is used instead; since `:limit` is lower, return that
+(expect
+  10
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1, :limit 10, :aggregation [[:count]]}
+    :constraints {:max-results 15, :max-results-bare-rows 5}}))
+
+;; if nothing is set return `nil`
+(expect
+  nil
+  (mbql.u/query->max-rows-limit
+   {:database    1
+    :type        :query
+    :query       {:source-table 1}}))

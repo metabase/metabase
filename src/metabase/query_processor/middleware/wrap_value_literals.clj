@@ -1,4 +1,6 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
+  "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
+  information; parses datetime string literals when appropriate."
   (:require [metabase.driver :as driver]
             [metabase.mbql
              [predicates :as mbql.preds]

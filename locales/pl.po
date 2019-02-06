@@ -11318,3 +11318,4 @@ msgstr ""
 #: resources/automagic_dashboards/table/example/indepth.yaml
 msgid "In-depth example"
 msgstr ""
+

@@ -4,11 +4,13 @@
             [clojure.string :as str]
             [medley.core :as m]
             [metabase.util :as u]
-            [metabase.util.password :as password]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [schema.macros :as s.macros]
-            [schema.utils :as s.utils]))
+            [metabase.util
+             [i18n :refer [tru]]
+             [password :as password]]
+            [schema
+             [core :as s]
+             [macros :as s.macros]
+             [utils :as s.utils]]))
 
 ;; always validate all schemas in s/defn function declarations. See
 ;; https://github.com/plumatic/schema#schemas-in-practice for details.

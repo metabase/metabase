@@ -572,11 +572,12 @@
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (string? form)
-           (let [new-form (fill-templates :string context bindings form)]
-             (if (not= new-form form)
-               (capitalize-first new-form)
-               new-form))
+         (if (ui18n/localized-string? form)
+           (let [s     (str form)
+                 new-s (fill-templates :string context bindings s)]
+             (if (not= new-s s)
+               (capitalize-first new-s)
+               s))
            form))
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
