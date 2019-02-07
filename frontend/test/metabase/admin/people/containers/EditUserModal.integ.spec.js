@@ -20,14 +20,12 @@ describe("EditUserModal", () => {
     const { wrapper, store } = mountWithStore(
       <EditUserModal params={{ userId: 42 }} />,
     );
-    await store.waitForAction("metabase/requests/SET_REQUEST_STATE");
 
-    expect(wrapper.find("input").map(i => i.props().value)).toEqual([
+    const inputs = await wrapper.async.find("input");
+    expect(inputs.map(i => i.props().value)).toEqual([
       "Testy",
       "McTestFace",
       "test@metabase.com",
     ]);
-
-    expect(wrapper.find(".Icon-close").exists()).toBe(true);
   });
 });
