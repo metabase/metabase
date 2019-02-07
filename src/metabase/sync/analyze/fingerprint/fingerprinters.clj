@@ -166,7 +166,7 @@
   java.util.Date         (->date [this] this)
   DateTime               (->date [this] (t.coerce/to-date this))
   Long                   (->date [^Long this] (java.util.Date. this))
-  Integer                (->date [^Integer this] (java.util.Date. this)))
+  Integer                (->date [^Integer this] (java.util.Date. (long this))))
 
 (deffingerprinter :type/DateTime
   ((map ->date)
