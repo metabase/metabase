@@ -7,7 +7,10 @@ import reducers from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 import { delay } from "metabase/lib/promise";
 
-import { MockResponse } from "xhr-mock";
+// misc export aliases
+export { delay } from "metabase/lib/promise";
+
+import { MockResponse, MockRequest } from "xhr-mock";
 
 // helper for JSON responses, also defaults to 200 status code
 MockResponse.prototype.json = function(object) {
@@ -15,23 +18,28 @@ MockResponse.prototype.json = function(object) {
     .header("Content-Type", "application/json")
     .body(JSON.stringify(object));
 };
+MockRequest.prototype.json = function() {
+  return JSON.parse(this.body());
+};
 
 export function getTestStore(reducers) {
-  const dispatchSpy = jest.fn(() => ({}));
-  const reducerSpy = (state, action) => dispatchSpy(action);
+  const actions = [];
+  const reducerSpy = (state, action) => actions.push(action);
 
   const store = getStore({ ...reducers, reducerSpy });
 
+  store.getActions = () => actions;
   store.waitForAction = function(type) {
     return new Promise(resolve => {
-      let existingCallsCount = dispatchSpy.mock.calls.length;
+      let existingActionsCount = actions.length;
       const unsubscribe = store.subscribe(() => {
-        const newCalls = dispatchSpy.mock.calls.slice(existingCallsCount);
-        if (newCalls.find(call => call[0].type === type)) {
+        const newActions = actions.slice(existingActionsCount);
+        const action = newActions.find(action => action.type === type);
+        if (action) {
           unsubscribe();
-          resolve();
+          resolve(action);
         } else {
-          existingCallsCount = dispatchSpy.mock.calls.length;
+          existingActionsCount = actions.length;
         }
       });
     });
@@ -85,4 +93,26 @@ function enhanceEnzymeWrapper(wrapper) {
       }),
   };
   return wrapper;
+}
+
+export function fillFormInputs(inputs, values) {
+  for (const input of inputs) {
+    const name = input.props.name;
+    if (name in values) {
+      input.props.onChange(values[name]);
+    }
+  }
+}
+
+export function submitForm(wrapper) {
+  wrapper
+    .find("form")
+    .first()
+    .props()
+    .onSubmit();
+}
+
+export async function fillAndSubmitForm(wrapper, values) {
+  fillFormInputs(await wrapper.async.find("input"), values);
+  submitForm(wrapper);
 }
