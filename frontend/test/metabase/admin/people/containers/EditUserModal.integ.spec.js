@@ -3,7 +3,7 @@ import mock from "xhr-mock";
 import {
   mountWithStore,
   fillAndSubmitForm,
-  delay,
+  getFormValues,
 } from "__support__/integration_tests";
 
 import EditUserModal from "metabase/admin/people/containers/EditUserModal";
@@ -19,7 +19,7 @@ describe("EditUserModal", () => {
   afterEach(() => mock.teardown());
 
   it("should load the user", async () => {
-    expect.assertions(2);
+    expect.assertions(3);
 
     mock.get("/api/user/42", (req, res) => res.json({ id: 42, ...MOCK_USER }));
     mock.put("/api/user/42", (req, res) => {
@@ -31,15 +31,15 @@ describe("EditUserModal", () => {
       <EditUserModal params={{ userId: 42 }} />,
     );
 
-    const inputs = await wrapper.async.find("input");
-    expect(inputs.map(i => i.props().value)).toEqual([
-      "Testy",
-      "McTestFace",
-      "test@metabase.com",
-    ]);
+    expect(await getFormValues(wrapper)).toEqual(MOCK_USER);
 
     await fillAndSubmitForm(wrapper, { first_name: "Bob" });
 
     await store.waitForAction("metabase/entities/users/UPDATE");
+
+    expect(await getFormValues(wrapper)).toEqual({
+      ...MOCK_USER,
+      first_name: "Bob",
+    });
   });
 });

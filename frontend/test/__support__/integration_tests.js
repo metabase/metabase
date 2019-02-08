@@ -95,7 +95,17 @@ function enhanceEnzymeWrapper(wrapper) {
   return wrapper;
 }
 
-export function fillFormInputs(inputs, values) {
+export async function getFormValues(wrapper) {
+  const values = {};
+  const inputs = await wrapper.async.find("input");
+  for (const input of inputs) {
+    values[input.props.name] = input.props.value;
+  }
+  return values;
+}
+
+export async function fillFormValues(wrapper, values) {
+  const inputs = await wrapper.async.find("input");
   for (const input of inputs) {
     const name = input.props.name;
     if (name in values) {
@@ -113,6 +123,6 @@ export function submitForm(wrapper) {
 }
 
 export async function fillAndSubmitForm(wrapper, values) {
-  fillFormInputs(await wrapper.async.find("input"), values);
+  await fillFormValues(wrapper, values);
   submitForm(wrapper);
 }
