@@ -53,15 +53,14 @@
    (.offer acc x)
    acc))
 
-(defmulti
-  ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
-    :arglists '([field])}
-  fingerprinter (fn [{:keys [base_type special_type unit] :as field}]
-                  [(cond
-                     (du/date-extract-units unit)  :type/Integer
-                     (field/unix-timestamp? field) :type/DateTime
-                     :else                         base_type)
-                   (or special_type :type/*)]))
+(defmulti fingerprinter
+  "Return a fingerprinter transducer for a given field based on the field's type."
+   (fn [{:keys [base_type special_type unit] :as field}]
+     [(cond
+        (du/date-extract-units unit)  :type/Integer
+        (field/unix-timestamp? field) :type/DateTime
+        :else                         base_type)
+      (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
