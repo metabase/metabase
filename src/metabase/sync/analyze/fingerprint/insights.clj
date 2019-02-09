@@ -161,7 +161,10 @@
 (defn- infer-unit
   [from to]
   (when (and from to)
-    (some (partial about= (- to from)) (vals unit->duration))))
+    (some (fn [[unit duration]]
+            (when (about= (- to from) duration)
+              unit))
+          unit->duration)))
 
 (defn- month-of-quarter
   [dt]
@@ -218,7 +221,7 @@
                    :last-change      (when show-change?
                                        (change y-current y-previous))
                    :projected-change (when show-change?
-                                       (change (/ y-current (%complete x-current unit)) y-previous))
+                                       (change (/ y-current (%complete unit x-current)) y-previous))
                    :slope            slope
                    :offset           offset
                    :best-fit         best-fit
