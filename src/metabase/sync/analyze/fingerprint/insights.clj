@@ -171,9 +171,9 @@
   [unit dt]
   (let [dt (t.coerce/from-long (day->ms dt))]
     (case unit
-      :minute  (/ (t/seconds dt) 60)
-      :hour    (/ (t/minutes dt) 60)
-      :day     (/ (t/hours dt) 24)
+      :minute  (/ (min (t/seconds dt) 1) 60)
+      :hour    (/ (min (t/minutes dt) 1) 60)
+      :day     (/ (min (t/hours dt) 1) 24)
       :week    (/ (t/day-of-week dt) 7)
       :month   (/ (t/day dt) (t/number-of-days-in-the-month dt))
       :quarter (/ (month-of-quarter dt) 3)
@@ -218,7 +218,7 @@
                    :last-change      (when show-change?
                                        (change y-current y-previous))
                    :projected-change (when show-change?
-                                       (change (/ y-current (%complete x-current)) y-previous))
+                                       (change (/ y-current (%complete x-current unit)) y-previous))
                    :slope            slope
                    :offset           offset
                    :best-fit         best-fit
