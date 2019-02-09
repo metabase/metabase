@@ -218,7 +218,7 @@
                    :last-change      (when show-change?
                                        (change y-current y-previous))
                    :projected-change (when show-change?
-                                       (/ (change y-current y-previous) (%complete x-current)))
+                                       (change (/ y-current (%complete x-current)) y-previous))
                    :slope            slope
                    :offset           offset
                    :best-fit         best-fit
