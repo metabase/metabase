@@ -135,7 +135,7 @@
        (empty? others)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
-(def ^Long ^:const ms-in-a-day (* 1000 60 60 24))
+(def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
 
 (defn- ms->day
   [dt]
