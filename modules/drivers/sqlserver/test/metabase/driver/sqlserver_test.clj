@@ -1,19 +1,22 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [expectations :refer [expect]]
+            [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu :refer [obj->json->obj]]]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :refer [def-database-definition]]]))
+             [interface :as tx :refer [def-database-definition]]]))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -142,3 +145,22 @@
                                    :order-by     [[:asc $id]]
                                    :limit        5}
                     :limit        3}}))))
+
+;; Make sure datetime bucketing functions work properly with languages that format dates like yyyy-dd-MM instead of
+;; yyyy-MM-dd (i.e. not American English) (#9057)
+(datasets/expect-with-driver :sqlserver
+  [{:my-date #inst "2019-02-01T00:00:00.000-00:00"}]
+  ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal QP
+  ;; pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things are
+  ;; working we need to add to in from of the query we're trying to check
+  (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/connection-details->spec :sqlserver
+                                      (tx/dbdef->connection-details :sqlserver :db {:database-name "test-data"}))]
+    (try
+      (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
+      (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #inst "2019-02-08T00:00:00Z"])
+      (jdbc/query t-conn (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                                          :from   [:temp]}
+                                              :quoting :ansi, :allow-dashed-names? true)]
+                           (cons (str "SET LANGUAGE Italian; " sql) args)))
+      ;; rollback transaction so `temp` table gets discarded
+      (finally (.rollback (jdbc/get-connection t-conn))))))
