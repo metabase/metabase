@@ -125,7 +125,7 @@
 ;;; |                                                    MIGRATE!                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "liquibase.yaml")
+(def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
@@ -450,11 +450,12 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (verify-db-connection db-details)
-  (run-schema-migrations! auto-migrate db-details)
-  (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!)
-  (reset! setup-db-has-been-called? true))
+  (u/with-us-locale
+    (verify-db-connection db-details)
+    (run-schema-migrations! auto-migrate db-details)
+    (create-connection-pool! (jdbc-details db-details))
+    (run-data-migrations!)
+    (reset! setup-db-has-been-called? true)))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
