@@ -68,6 +68,9 @@
 
 ;; Clean up any leftover DBs that weren't destroyed by the last test run (eg, if it failed for some reason). This is
 ;; important because we're limited to a quota of 30 DBs on RDS.
+;;
+;; This doesn't kill databases with active connections (i.e. CI instances testing against them) -- `DROP DATABASE`
+;; will fail if the DB has open connections
 (defmethod tx/before-run :sqlserver [_]
   (let [connection-spec (sql-jdbc.conn/connection-details->spec :sqlserver
                           (tx/dbdef->connection-details :sqlserver :server nil))
@@ -80,6 +83,7 @@
       (doseq [db leftover-dbs]
         (u/ignore-exceptions
           (printf "Deleting leftover SQL Server DB '%s'...\n" db)
-          ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
+          ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might
+          ;; be using it
           (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
           (println "[ok]"))))))
