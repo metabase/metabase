@@ -39,7 +39,7 @@
   (some-> inst (.getTime) (#'i/ms->day)))
 
 (defn- valid-period?
-  ([from to] (valid-period? from to (#'i/infer-period (inst->day from) (inst->day to))))
+  ([from to] (valid-period? from to (#'i/infer-unit (inst->day from) (inst->day to))))
   ([from to period]
    (boolean (#'i/valid-period? (inst->day from) (inst->day to) period))))
 
