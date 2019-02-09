@@ -25,6 +25,7 @@ type Props = {
 
   isFullscreen?: boolean,
   isNightMode?: boolean,
+  hideParameters?: ?string, // comma separated list of slugs
   isEditing?: boolean,
   isQB?: boolean,
   vertical?: boolean,
@@ -122,6 +123,7 @@ export default class Parameters extends Component {
       isEditing,
       isFullscreen,
       isNightMode,
+      hideParameters,
       isQB,
       setParameterName,
       setParameterValue,
@@ -131,6 +133,8 @@ export default class Parameters extends Component {
       vertical,
       commitImmediately,
     } = this.props;
+
+    const hiddenParameters = new Set((hideParameters || "").split(","));
 
     const parameters = this._parametersWithValues();
 
@@ -156,40 +160,42 @@ export default class Parameters extends Component {
         distance={9}
         onSortEnd={this.handleSortEnd}
       >
-        {parameters.map((parameter, index) => (
-          <ParameterWidget
-            key={parameter.id}
-            index={index}
-            className={cx("relative hover-parent hover--visibility", {
-              mb2: vertical,
-            })}
-            isEditing={isEditing}
-            isFullscreen={isFullscreen}
-            isNightMode={isNightMode}
-            parameter={parameter}
-            parameters={parameters}
-            editingParameter={editingParameter}
-            setEditingParameter={setEditingParameter}
-            setName={
-              setParameterName && (name => setParameterName(parameter.id, name))
-            }
-            setValue={
-              setParameterValue &&
-              (value => setParameterValue(parameter.id, value))
-            }
-            setDefaultValue={
-              setParameterDefaultValue &&
-              (value => setParameterDefaultValue(parameter.id, value))
-            }
-            remove={removeParameter && (() => removeParameter(parameter.id))}
-            commitImmediately={commitImmediately}
-          >
-            {/* show drag handle if editing and setParameterIndex provided */}
-            {isEditing && setParameterIndex ? (
-              <SortableParameterHandle />
-            ) : null}
-          </ParameterWidget>
-        ))}
+        {parameters
+          .filter(p => !hiddenParameters.has(p.slug))
+          .map((parameter, index) => (
+            <ParameterWidget
+              key={parameter.id}
+              className={cx("relative hover-parent hover--visibility", {
+                mb2: vertical,
+              })}
+              isEditing={isEditing}
+              isFullscreen={isFullscreen}
+              isNightMode={isNightMode}
+              parameter={parameter}
+              parameters={parameters}
+              editingParameter={editingParameter}
+              setEditingParameter={setEditingParameter}
+              setName={
+                setParameterName &&
+                (name => setParameterName(parameter.id, name))
+              }
+              setValue={
+                setParameterValue &&
+                (value => setParameterValue(parameter.id, value))
+              }
+              setDefaultValue={
+                setParameterDefaultValue &&
+                (value => setParameterDefaultValue(parameter.id, value))
+              }
+              remove={removeParameter && (() => removeParameter(parameter.id))}
+              commitImmediately={commitImmediately}
+            >
+              {/* show drag handle if editing and setParameterIndex provided */}
+              {isEditing && setParameterIndex ? (
+                <SortableParameterHandle />
+              ) : null}
+            </ParameterWidget>
+          ))}
       </ParameterWidgetList>
     );
   }
