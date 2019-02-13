@@ -38,7 +38,7 @@ const BreakoutPopover = ({
         onClose();
       }
     }}
-    tableMetadata={query.tableMetdata()}
+    tableMetadata={query.tableMetadata()}
     enableSubDimensions
     alwaysExpanded={alwaysExpanded}
   />
