@@ -154,10 +154,7 @@
      [lein-bikeshed "0.4.1"]                                          ; Linting
      [lein-check-namespace-decls "1.0.1"]                             ; lints namespace declarations
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
-     [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
-     ;; TODO - should this be moved to the new RING profile?
-     [lein-ring "0.12.5"                                              ; start the HTTP server with 'lein ring server'
-      :exclusions [org.clojure/clojure]]]
+     [lein-expectations "0.0.8"]]                                     ; run unit tests with 'lein expectations'
 
     :env      {:mb-run-mode "dev"}
     :jvm-opts ["-Dlogfile.path=target/log"]
@@ -183,7 +180,9 @@
    [:exclude-tests {}]
 
    :ring
-   [:exclude-tests {}]
+   [:exclude-tests
+    {:dependencies
+     [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]}]       ; start the HTTP server with 'lein ring server'
 
    :with-include-drivers-middleware
    {:plugins
