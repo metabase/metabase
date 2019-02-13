@@ -62,7 +62,7 @@ will let you see the logs as they are printed.
 
 If the container is being killed before it finished starting it could be a health check timeout in the orchestration service used to start the container, such as Docker Cloud, or Elastic Beanstalk.
 
-If the container is not being killed from the outside, and is failing to start anyway, this problem is probably not specific to Docker. If you are using a Metabase-supplied image, you should [open a GitHub issue](github.com/metabase/metabase/issues/new).
+If the container is not being killed from the outside, and is failing to start anyway, this problem is probably not specific to Docker. If you are using a Metabase-supplied image, you should [open a GitHub issue](https://github.com/metabase/metabase/issues/new).
 
 
 ### Not connecting to a remote application database
