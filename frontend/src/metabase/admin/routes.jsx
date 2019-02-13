@@ -80,6 +80,12 @@ const getRoutes = (store, IsAdmin) => (
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
 
+      {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
+      <Route path="groups" title={t`Groups`}>
+        <IndexRoute component={GroupsListingApp} />
+        <Route path=":groupId" component={GroupDetailApp} />
+      </Route>
+
       <Route path="" component={PeopleListingApp}>
         <ModalRoute path="new" modal={NewUserModal} />
       </Route>
@@ -90,11 +96,6 @@ const getRoutes = (store, IsAdmin) => (
         <ModalRoute path="reset" modal={UserPasswordResetModal} />
         <ModalRoute path="deactivate" modal={UserActivationModal} />
         <ModalRoute path="reactivate" modal={UserActivationModal} />
-      </Route>
-
-      <Route path="groups" title={t`Groups`}>
-        <IndexRoute component={GroupsListingApp} />
-        <Route path=":groupId" component={GroupDetailApp} />
       </Route>
     </Route>
 
