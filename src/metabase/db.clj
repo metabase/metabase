@@ -30,21 +30,22 @@
 (def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
-  (delay (if (config/config-bool :mb-db-in-memory)
-           ;; In-memory (i.e. test) DB
-           "mem:metabase;DB_CLOSE_DELAY=-1"
-           ;; File-based DB
-           (let [db-file-name (config/config-str :mb-db-file)
-                 db-file      (io/file db-file-name)
-                 ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
-                 ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
-                 ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
-                 options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;"]
-             (apply str "file:" (if (.isAbsolute db-file)
-                                  ;; when an absolute path is given for the db file then don't mess with it
-                                  [db-file-name options]
-                                  ;; if we don't have an absolute path then make sure we start from "user.dir"
-                                  [(System/getProperty "user.dir") "/" db-file-name options]))))))
+  (delay
+   (if (config/config-bool :mb-db-in-memory)
+     ;; In-memory (i.e. test) DB
+     "mem:metabase;DB_CLOSE_DELAY=-1"
+     ;; File-based DB
+     (let [db-file-name (config/config-str :mb-db-file)
+           ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
+           ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
+           ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
+           ;;
+           ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+           options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+       ;; H2 wants file path to always be absolute
+       (str "file:"
+            (.getAbsolutePath (io/file db-file-name))
+             options)))))
 
 (def ^:private jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
