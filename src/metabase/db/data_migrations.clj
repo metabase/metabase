@@ -1,4 +1,4 @@
-(ns metabase.db.migrations
+(ns metabase.db.data-migrations
   "Clojure-land data migration definitions and fns for running them.
   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
@@ -12,9 +12,9 @@
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.db.util :as mdb.u]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -264,7 +264,7 @@
 ;; their behavior doesn't suddenly change.
 (defmigration ^{:author "camsaul", :added "0.29.0"} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :special_type     (mdb/isa :type/Category)
+                           :special_type     (mdb.u/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
 

@@ -11,6 +11,7 @@
              [util :as u]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.db.util :as mdb.u]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
@@ -71,7 +72,7 @@
   "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
   [session-id]
   (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-    (mdb/join [Session :user_id] [User :id])
+    (mdb.u/join [Session :user_id] [User :id])
     (db/qualify User :is_active) true
     (db/qualify Session :id) session-id))
 

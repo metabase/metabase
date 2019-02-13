@@ -1,7 +1,5 @@
 (ns metabase.models.table
-  (:require [metabase
-             [db :as mdb]
-             [util :as u]]
+  (:require [metabase.db.util :as mdb.u]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -11,6 +9,7 @@
              [metric :refer [Metric retrieve-metrics]]
              [permissions :as perms :refer [Permissions]]
              [segment :refer [retrieve-segments Segment]]]
+            [metabase.util :as u]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -99,7 +98,7 @@
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
-    :special_type    (mdb/isa :type/PK)
+    :special_type    (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 

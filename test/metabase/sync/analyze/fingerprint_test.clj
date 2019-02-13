@@ -1,10 +1,9 @@
 (ns metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require [expectations :refer :all]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.db
+             [metadata-queries :as metadata-queries]
+             [util :as mdb.u]]
             [metabase.models
              [field :as field :refer [Field]]
              [table :refer [Table]]]
@@ -12,6 +11,7 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
+            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -37,7 +37,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not (mdb/isa :special_type :type/PK)]
+     [:not (mdb.u/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -52,7 +52,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not (mdb/isa :special_type :type/PK)]
+     [:not (mdb.u/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -74,7 +74,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not (mdb/isa :special_type :type/PK)]
+     [:not (mdb.u/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or
@@ -96,7 +96,7 @@
    [:and
     [:= :active true]
     [:or
-     [:not (mdb/isa :special_type :type/PK)]
+     [:not (mdb.u/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not= :visibility_type "retired"]
     [:or

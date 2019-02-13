@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.resolve-joined-tables
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
-  (:require [metabase
-             [db :as mdb]
-             [driver :as driver]]
+  (:require [metabase.db.util :as mdb.u]
+            [metabase.driver :as driver]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -49,7 +48,7 @@
                  :where     [:and
                              [:in :source-fk.id (set fk-field-ids)]
                              [:=  :source-fk.table_id source-table-id]
-                             (mdb/isa :source-fk.special_type :type/FK)]}))))
+                             (mdb.u/isa :source-fk.special_type :type/FK)]}))))
 
 
 ;;; -------------------------------- Fetching join Tables & adding them to the Store  --------------------------------

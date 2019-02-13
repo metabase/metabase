@@ -4,7 +4,6 @@
             [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase
-             [db :as mdb]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api
@@ -13,6 +12,7 @@
              [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [field :as field-api]]
+            [metabase.db.util :as mdb.u]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
@@ -301,8 +301,8 @@
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb/isa :type/PK))]
-         (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb/isa :type/Name))))))
+       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :special_type (mdb.u/isa :type/PK))]
+         (db/exists? Field :id search-field-id, :table_id table-id, :special_type (mdb.u/isa :type/Name))))))
 
 
 (defn- check-field-is-referenced-by-dashboard

@@ -1,14 +1,13 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [metabase.db.util :as mdb.u]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -19,14 +18,14 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; this is a fn because we don't want to call mdb/isa before type hierarchy is loaded!
+;; this is a fn because we don't want to call mdb.u/isa before type hierarchy is loaded!
 (defn- default-sort-rules []
   [ ;; sort first by position,
    [:position :asc]
    ;; or if that's the same, sort PKs first, followed by names, followed by everything else
    [(hsql/call :case
-      (mdb/isa :special_type :type/PK)   0
-      (mdb/isa :special_type :type/Name) 1
+      (mdb.u/isa :special_type :type/PK)   0
+      (mdb.u/isa :special_type :type/Name) 1
       :else                              2)
     :asc]
    ;; finally, sort by name (case-insensitive)

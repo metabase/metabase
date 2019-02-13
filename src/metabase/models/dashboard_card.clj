@@ -1,9 +1,9 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
             [metabase
-             [db :as mdb]
              [events :as events]
              [util :as u]]
+            [metabase.db.util :as mdb.u]
             [metabase.models
              [card :refer [Card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -68,7 +68,7 @@
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-    (mdb/join [Card :id] [DashboardCardSeries :card_id])
+    (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
     (db/qualify DashboardCardSeries :dashboardcard_id) id
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
