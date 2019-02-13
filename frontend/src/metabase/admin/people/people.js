@@ -5,7 +5,6 @@ import {
 } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { isMetaBotGroup } from "metabase/lib/groups";
 
 import { PermissionsApi } from "metabase/services";
 
@@ -14,22 +13,11 @@ import { assoc, dissoc } from "icepick";
 
 import Users from "metabase/entities/users";
 
-export const LOAD_GROUPS = "metabase/admin/people/LOAD_GROUPS";
 export const LOAD_MEMBERSHIPS = "metabase/admin/people/LOAD_MEMBERSHIPS";
-export const LOAD_GROUP_DETAILS = "metabase/admin/people/LOAD_GROUP_DETAILS";
-
 export const CREATE_MEMBERSHIP = "metabase/admin/people/CREATE_MEMBERSHIP";
 export const DELETE_MEMBERSHIP = "metabase/admin/people/DELETE_MEMBERSHIP";
 
 // action creators
-
-export const loadGroups = createAction(LOAD_GROUPS, () =>
-  PermissionsApi.groups(),
-);
-
-export const loadGroupDetails = createAction(LOAD_GROUP_DETAILS, id =>
-  PermissionsApi.groupDetails({ id: id }),
-);
 
 export const loadMemberships = createAction(LOAD_MEMBERSHIPS, async () =>
   // flatten the map of user id => memberships
@@ -66,16 +54,6 @@ export const deleteMembership = createAction(
   },
 );
 
-const groups = handleActions(
-  {
-    [LOAD_GROUPS]: {
-      next: (state, { payload }) =>
-        payload && payload.filter(group => !isMetaBotGroup(group)),
-    },
-  },
-  null,
-);
-
 const memberships = handleActions(
   {
     [LOAD_MEMBERSHIPS]: {
@@ -90,13 +68,6 @@ const memberships = handleActions(
     },
   },
   {},
-);
-
-const group = handleActions(
-  {
-    [LOAD_GROUP_DETAILS]: { next: (state, { payload }) => payload },
-  },
-  null,
 );
 
 const temporaryPasswords = handleActions(
@@ -118,8 +89,6 @@ const temporaryPasswords = handleActions(
 );
 
 export default combineReducers({
-  temporaryPasswords,
-  groups,
-  group,
   memberships,
+  temporaryPasswords,
 });
