@@ -112,7 +112,7 @@
    [org.eclipse.jetty/jetty-server "9.4.14.v20181114"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.11.0-SNAPSHOT" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
 
   :main ^:skip-aot metabase.core
 
@@ -154,10 +154,7 @@
      [lein-bikeshed "0.4.1"]                                          ; Linting
      [lein-check-namespace-decls "1.0.1"]                             ; lints namespace declarations
      [lein-environ "1.1.0"]                                           ; easy access to environment variables
-     [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
-     ;; TODO - should this be moved to the new RING profile?
-     [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
-      :exclusions [org.clojure/clojure]]]
+     [lein-expectations "0.0.8"]]                                     ; run unit tests with 'lein expectations'
 
     :env      {:mb-run-mode "dev"}
     :jvm-opts ["-Dlogfile.path=target/log"]
@@ -183,11 +180,13 @@
    [:exclude-tests {}]
 
    :ring
-   [:exclude-tests {}]
+   [:exclude-tests
+    {:dependencies
+     [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]}]       ; start the HTTP server with 'lein ring server'
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.4"]]
+    [[metabase/lein-include-drivers "1.0.5"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}

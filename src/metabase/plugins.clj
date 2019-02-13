@@ -10,14 +10,11 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
-  (:import java.io.File
-           [java.nio.file Files Path]))
+  (:import [java.nio.file Files Path]))
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
-      (str (System/getProperty "user.dir")
-           File/separator
-           "plugins")))
+      (.getAbsolutePath (io/file "plugins"))))
 
 ;; logic for determining plugins dir -- see below
 (defonce ^:private plugins-dir*
