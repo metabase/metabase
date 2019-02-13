@@ -27,6 +27,15 @@ export type RenderProps = {
   reload: () => void,
 };
 
+// props that shouldn't be passed to children in order to properly stack
+const CONSUMED_PROPS = [
+  "entityType",
+  "entityQuery",
+  // "reload", // Masked by `reload` function. Should we rename that?
+  "wrapped",
+  "loadingAndErrorWrapper",
+];
+
 const getEntityQuery = (state, props) =>
   typeof props.entityQuery === "function"
     ? props.entityQuery(state, props)
@@ -143,10 +152,10 @@ export default class EntityListLoader extends React.Component {
 
     // $FlowFixMe: loading and error missing
     return children({
-      ...props,
+      ..._.omit(props, ...CONSUMED_PROPS),
       list,
       // alias the entities name:
-      [entityDef.name]: list,
+      [entityDef.nameMany]: list,
       reload: this.reload,
     });
   };
@@ -179,6 +188,11 @@ export const entityListLoader = (ellProps: Props) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
       <EntityListLoader {...props} {...ellProps}>
-        {childProps => <ComposedComponent {...props} {...childProps} />}
+        {childProps => (
+          <ComposedComponent
+            {..._.omit(props, ...CONSUMED_PROPS)}
+            {...childProps}
+          />
+        )}
       </EntityListLoader>
     );

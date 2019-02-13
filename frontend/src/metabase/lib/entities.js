@@ -11,6 +11,7 @@ import { setRequestState } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import { singularize } from "metabase/lib/formatting";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
@@ -157,6 +158,13 @@ export type Entity = {
 export function createEntity(def: EntityDefinition): Entity {
   // $FlowFixMe
   const entity: Entity = { ...def };
+
+  if (!entity.nameOne) {
+    entity.nameOne = singularize(entity.name);
+  }
+  if (!entity.nameMany) {
+    entity.nameMany = entity.name;
+  }
 
   // defaults
   if (!entity.schema) {
@@ -528,7 +536,7 @@ export function createEntity(def: EntityDefinition): Entity {
       return state;
     }
     if (type === FETCH_LIST_ACTION) {
-      if (payload.result) {
+      if (payload && payload.result) {
         return {
           ...state,
           [getIdForQuery(payload.entityQuery)]: payload.result,
@@ -629,6 +637,9 @@ export function createEntity(def: EntityDefinition): Entity {
       console.warn("trackAction threw an error:", e);
     }
   }
+
+  // add container components and HOCs
+  require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
 }
