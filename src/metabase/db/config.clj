@@ -2,6 +2,7 @@
   "Logic for getting connection information about the application DB from configuration sources such as env vars."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase
              [config :as config]
              [util :as u]]
@@ -105,7 +106,7 @@
   "Takes our own MB details map and formats them properly for connection details for JDBC."
   ([]
    (jdbc-details @db-connection-details))
-  ([db-details]
+  (^:deprecated [db-details]
    {:pre [(map? db-details)]}
    ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
    (case (:type db-details)
