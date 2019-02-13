@@ -165,6 +165,7 @@ export default class Smart extends React.Component {
         <Box className="SmartWrapper">
           {!lastChange || !previousValue ? (
             <Box
+              className="text-centered"
               color={colors["text-medium"]}
             >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
           ) : (
