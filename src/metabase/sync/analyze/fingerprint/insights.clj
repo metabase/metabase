@@ -187,6 +187,27 @@
   (when (and from to unit)
     (about= (- to from) (unit->duration unit))))
 
+(defn- about=
+  [a b]
+  (< 0.9 (/ a b) 1.1))
+
+(def ^:private unit->duration
+  {:minute  (/ 1 24 60)
+   :hour    (/ 24)
+   :day     1
+   :week    7
+   :month   30.5
+   :quarter (* 30.4 3)
+   :year    365.1})
+
+(defn- valid-period?
+  [from to unit]
+  (when (and from to)
+    (let [delta (- to from)]
+      (if unit
+        (about= delta (unit->duration unit))
+        (some (partial about= delta) (vals unit->duration))))))
+
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)

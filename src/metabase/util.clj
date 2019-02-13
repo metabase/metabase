@@ -16,7 +16,8 @@
             [ring.util.codec :as codec])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           java.util.concurrent.TimeoutException))
+           java.util.concurrent.TimeoutException
+           java.util.Locale))
 
 ;; This is the very first log message that will get printed.
 ;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
@@ -652,7 +653,56 @@
     [arg]))
 
 (defmacro varargs
-  "Make a properly-tagged Java interop varargs argument."
+  "Make a properly-tagged Java interop varargs argument.
+
+    (u/varargs String)
+    (u/varargs String [\"A\" \"B\"])"
+  {:style/indent 1}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
+
+(def ^:private do-with-us-locale-lock (Object.))
+
+(defn do-with-us-locale
+  "Implementation for `with-us-locale` macro; see below."
+  [f]
+  ;; Since I'm 99% sure default Locale isn't thread-local we better put a lock in place here so we don't end up with
+  ;; the following race condition:
+  ;;
+  ;; Thread 1 ....*.............................*........................*...........*
+  ;;              ^getDefault() -> Turkish      ^setDefault(US)          ^(f)        ^setDefault(Turkish)
+  ;; Thread 2 ....................................*....................*................*......*
+  ;;                                              ^getDefault() -> US  ^setDefault(US)  ^(f)   ^setDefault(US)
+  (locking do-with-us-locale-lock
+    (let [original-locale (Locale/getDefault)]
+      (try
+        (Locale/setDefault Locale/US)
+        (f)
+        (finally
+          (Locale/setDefault original-locale))))))
+
+(defmacro with-us-locale
+  "Execute `body` with the default system locale temporarily set to `locale`. Why would you want to do this? Tons of
+  code relies on `String/toUpperCase` which converts a string to uppercase based on the default locale. Normally, this
+  does what you'd expect, but when the default locale is Turkish, all hell breaks loose:
+
+    ;; Locale is Turkish / -Duser.language=tr
+    (.toUpperCase \"filename\") ;; -> \"FİLENAME\"
+
+  Rather than submit PRs to every library in the world to use `(.toUpperCase <str> Locale/US)`, it's simpler just to
+  temporarily bind the default Locale to something predicatable (i.e. US English) when doing something important that
+  tends to break like running Liquibase migrations.)
+
+  Note that because `Locale/setDefault` and `Locale/getDefault` aren't thread-local (as far as I know) I've had to put
+  a lock in place to prevent race conditions where threads simulataneously attempt to fetch and change the default
+  Locale. Thus this macro should be used sparingly, and only in places that are already single-threaded (such as the
+  launch code that runs Liquibase).
+
+  DO NOT use this macro in API endpoints or other places that are multithreaded or performance will be negatively
+  impacted. (You shouldn't have a good reason for using this there anyway. Rewrite your code to pass `Locale/US` when
+  you call `.toUpperCase` or `str/upper-case`. Only use this macro if the calls in question are part of a 3rd-party
+  library.)"
+  {:style/indent 0}
+  [& body]
+  `(do-with-us-locale (fn [] ~@body)))
