@@ -10,8 +10,8 @@ import { capitalize, singularize } from "metabase/lib/formatting";
 export function addEntityContainers(entity) {
   const ObjectName = capitalize(entity.nameOne || singularize(entity.name));
 
-  // Entity.loader higher-order component
-  entity.loader = ({ id, ...props } = {}) =>
+  // Entity.load higher-order component
+  entity.load = ({ id, ...props } = {}) =>
     entityObjectLoader({ entityType: entity.name, entityId: id, ...props });
 
   // Entity.Loader component
@@ -20,8 +20,8 @@ export function addEntityContainers(entity) {
   );
   entity.Loader.displayName = `${ObjectName}Loader`;
 
-  // Entity.listLoader higher-order component
-  entity.listLoader = ({ query, ...props } = {}) =>
+  // Entity.loadList higher-order component
+  entity.loadList = ({ query, ...props } = {}) =>
     entityListLoader({ entityType: entity.name, entityQuery: query, ...props });
 
   // Entity.ListLoader component

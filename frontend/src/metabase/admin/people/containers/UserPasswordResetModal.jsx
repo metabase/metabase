@@ -68,7 +68,7 @@ export default compose(
       onClose: goBack,
     },
   ),
-  User.loader({
+  User.load({
     id: (state, props) => props.params.userId,
     wrapped: true,
   }),

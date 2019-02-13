@@ -2,11 +2,12 @@ import React from "react";
 import { Box } from "grid-styled";
 import { t, jt } from "c-3po";
 
+import { compose } from "redux";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import User from "metabase/entities/users";
 import { getUserTemporaryPassword } from "../selectors";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
@@ -55,18 +56,19 @@ const UserSuccessModal = ({ onClose, user, temporaryPassword, location }) => (
   </ModalContent>
 );
 
-const mapStateToProps = (state, props) => ({
-  temporaryPassword: getUserTemporaryPassword(state, {
-    userId: props.params.userId,
+export default compose(
+  User.load({
+    id: (state, props) => props.params.userId,
+    wrapped: true,
   }),
-});
-
-const mapDispatchToProps = {
-  onClose: () => push("/admin/people"),
-};
-
-export default entityObjectLoader({
-  entityType: "users",
-  entityId: (state, props) => props.params.userId,
-  wrapped: true,
-})(connect(mapStateToProps, mapDispatchToProps)(UserSuccessModal));
+  connect(
+    (state, props) => ({
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+    }),
+    {
+      onClose: () => push("/admin/people"),
+    },
+  ),
+)(UserSuccessModal);

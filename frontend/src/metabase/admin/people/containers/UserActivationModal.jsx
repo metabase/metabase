@@ -11,7 +11,7 @@ import Text from "metabase/components/Text";
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp
-@User.listLoader({
+@User.loadList({
   query: { include_deactivated: true },
   wrapped: true,
 })

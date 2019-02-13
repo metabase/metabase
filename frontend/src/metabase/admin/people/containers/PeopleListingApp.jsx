@@ -20,32 +20,35 @@ import UserAvatar from "metabase/components/UserAvatar.jsx";
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
 
 import { loadMemberships, createMembership, deleteMembership } from "../people";
-import { getSortedUsersWithMemberships } from "../selectors";
+import {
+  getSortedUsersWithMemberships,
+  getGroupsWithoutMetabot,
+} from "../selectors";
 import { getUser } from "metabase/selectors/user";
 
 import User from "metabase/entities/users";
 import Group from "metabase/entities/groups";
 
-const mapStateToProps = (state, props) => ({
-  users: getSortedUsersWithMemberships(state, props),
-  user: getUser(state),
-});
-
-const mapDispatchToProps = {
-  loadMemberships,
-  createMembership,
-  deleteMembership,
-};
-
 // set outer loadingAndErrorWrapper to false to avoid conflicets. the second loader will handle that
-@User.listLoader({
+@User.loadList({
   query: { include_deactivated: true },
   loadingAndErrorWrapper: false,
   wrapped: true,
   reload: true,
 })
-@Group.listLoader()
-@connect(mapStateToProps, mapDispatchToProps)
+@Group.loadList()
+@connect(
+  (state, props) => ({
+    user: getUser(state),
+    users: getSortedUsersWithMemberships(state, props),
+    groups: getGroupsWithoutMetabot(state, props),
+  }),
+  {
+    loadMemberships,
+    createMembership,
+    deleteMembership,
+  },
+)
 export default class PeopleListingApp extends Component {
   state = {};
 

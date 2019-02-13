@@ -15,6 +15,6 @@ const EditUserModal = ({ user, onClose, ...props }) => (
 );
 
 export default compose(
-  User.loader({ id: (state, props) => props.params.userId }),
+  User.load({ id: (state, props) => props.params.userId }),
   connect(null, { onClose: goBack }),
 )(EditUserModal);

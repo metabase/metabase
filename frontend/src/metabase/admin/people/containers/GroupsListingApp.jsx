@@ -5,7 +5,7 @@ import Group from "metabase/entities/groups";
 import GroupsListing from "../components/GroupsListing.jsx";
 import { getGroupsWithoutMetabot } from "../selectors";
 
-@Group.listLoader()
+@Group.loadList()
 @connect((state, props) => ({
   groups: getGroupsWithoutMetabot(state, props),
 }))
