@@ -2,11 +2,9 @@
   (:require [clojure.core.memoize :as memoize]
             [expectations :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [metabase.db.config :as db.config]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
-            [metabase.test.util :refer :all]
+            [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
              [encryption-test :as encryption-test]
@@ -382,7 +380,7 @@
   updating our locally cached value.."
   []
   (db/update-where! Setting {:key settings-last-updated-key}
-    :value (hsql/raw (case (mdb/db-type)
+    :value (hsql/raw (case (db.config/db-type)
                        ;; make it one second in the future so we don't end up getting an exact match when we try to test
                        ;; to see if things update below
                        :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"

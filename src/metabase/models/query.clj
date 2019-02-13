@@ -1,10 +1,9 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [cheshire.core :as json]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [metabase.db.config :as db.config]
             [metabase.mbql.normalize :as normalize]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan
              [db :as db]
@@ -31,7 +30,7 @@
    MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned`.
    so we have to use `integer`. Yay SQL dialect differences :D"
   []
-  (if (= (mdb/db-type) :mysql)
+  (if (= (db.config/db-type) :mysql)
     :unsigned
     :integer))
 

@@ -39,9 +39,9 @@
             [environ.core :as env]
             [honeysql.core :as hsql]
             [metabase
-             [db :as mdb]
              [events :as events]
              [util :as u]]
+            [metabase.db.config :as db.config]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
@@ -134,7 +134,7 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (mdb/db-type) :mysql) :char :text)
+  (let [current-timestamp-as-string-honeysql (hx/cast (if (= (db.config/db-type) :mysql) :char :text)
                                                       (hsql/raw "current_timestamp"))]
     ;; attempt to UPDATE the existing row. If no row exists, `update-where!` will return false...
     (or (db/update-where! Setting {:key settings-last-updated-key} :value current-timestamp-as-string-honeysql)

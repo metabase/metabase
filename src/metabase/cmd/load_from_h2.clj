@@ -19,9 +19,10 @@
             [medley.core :as m]
             [metabase
              [config :as config]
-             [db :as mdb]
              [util :as u]]
-            [metabase.db.migrations :refer [DataMigrations]]
+            [metabase.db
+             [config :as db.config]
+             [data-migrations :refer [DataMigrations]]]
             [metabase.models
              [activity :refer [Activity]]
              [card :refer [Card]]
@@ -170,13 +171,13 @@
 
 (defn- disable-db-constraints! [target-db-conn]
   (println (u/format-color 'blue "Temporarily disabling DB constraints..."))
-  ((case (mdb/db-type)
+  ((case (db.config/db-type)
       :postgres disable-db-constraints:postgres!
       :mysql    disable-db-constraints:mysql!) target-db-conn)
   (println-ok))
 
 (defn- reënable-db-constraints-if-needed! [target-db-conn]
-  (when (= (mdb/db-type) :mysql)
+  (when (= (db.config/db-type) :mysql)
     (println (u/format-color 'blue "Reënabling DB constraints..."))
     (reënable-db-constraints:mysql! target-db-conn)
     (println-ok)))
@@ -191,7 +192,7 @@
 (defn- set-postgres-sequence-values-if-needed!
   "When loading data into a Postgres DB, update the sequence nextvals."
   []
-  (when (= (mdb/db-type) :postgres)
+  (when (= (db.config/db-type) :postgres)
     (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
       (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
       (doseq [e     entities

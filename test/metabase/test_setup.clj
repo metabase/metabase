@@ -14,6 +14,7 @@
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.db.config :as db.config]
             [metabase.models.setting :as setting]
             [metabase.plugins.initialize :as plugins.init]
             [metabase.test.data.env :as tx.env]
@@ -101,7 +102,7 @@
   ;; on a BG thread
   (let [start-jetty! (future (core/start-jetty!))]
     (try
-      (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
+      (log/info (format "Setting up %s test DB and running migrations..." (name (db.config/db-type))))
       (mdb/setup-db! :auto-migrate true)
 
       (plugins/load-plugins!)
