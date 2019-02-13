@@ -1,18 +1,38 @@
 /* @flow */
 
-import { createEntity } from "metabase/lib/entities";
 import { t } from "c-3po";
+import { assocIn } from "icepick";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
-import { SessionApi } from "metabase/services";
+import { createEntity } from "metabase/lib/entities";
 
-const User = createEntity({
+import { UserApi, SessionApi } from "metabase/services";
+
+const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
+const REACTIVATE = "metabase/entities/users/REACTIVATE";
+const PASSWORD_RESET_EMAIL = "metabase/entities/users/PASSWORD_RESET_EMAIL";
+const PASSWORD_RESET_MANUAL = "metabase/entities/users/RESET_PASSWORD_MANUAL";
+const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
+
+const Users = createEntity({
   name: "users",
+  nameOne: "user",
+
   path: "/api/user",
 
   objectSelectors: {
     getName: user => `${user.first_name} ${user.last_name}`,
+  },
+
+  actionTypes: {
+    DEACTIVATE,
+    REACTIVATE,
+    PASSWORD_RESET_EMAIL,
+    PASSWORD_RESET_MANUAL,
+    RESEND_INVITE
   },
 
   actionDecorators: {
@@ -30,10 +50,49 @@ const User = createEntity({
       },
     },
   },
+
   objectActions: {
-    passwordResetEmail: async ({ email }) => {
-      return await SessionApi.forgot_password({ email });
+    resentInvite: async ({ id }) => {
+      MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
+      await UserApi.send_invite({ id });
+      return { type: RESEND_INVITE };
     },
+    passwordResetEmail: async ({ email }) => {
+      MetabaseAnalytics.trackEvent(
+        "People Admin",
+        "Trigger User Password Reset",
+      );
+      await SessionApi.forgot_password({ email });
+      return { type: PASSWORD_RESET_EMAIL };
+    },
+    passwordResetManual: async ({ id }, password = MetabaseUtils.generatePassword()) => {
+      MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
+      await UserApi.update_password({ id, password });
+      return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };
+    },
+    deactivate: async ({ id }) => {
+      MetabaseAnalytics.trackEvent("People Admin", "User Removed");
+      // TODO: move these APIs from services to this file
+      await UserApi.delete({ userId: id });
+      return { type: DEACTIVATE, payload: { id } };
+    },
+    reactivate: async ({ id }) => {
+      MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
+      // TODO: move these APIs from services to this file
+      const user = await UserApi.reactivate({ userId: id });
+      return { type: REACTIVATE, payload: user };
+    },
+  },
+
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === DEACTIVATE && !error) {
+      return assocIn(state, [payload.id, "is_active"], false);
+    } else if (type === REACTIVATE && !error) {
+      return assocIn(state, [payload.id, "is_active"], true);
+    } else if (type === PASSWORD_RESET_MANUAL && !error) {
+      return assocIn(state, [payload.id, "password"], payload.password);
+    }
+    return state;
   },
 
   form: {
@@ -61,4 +120,4 @@ const User = createEntity({
   },
 });
 
-export default User;
+export default Users;

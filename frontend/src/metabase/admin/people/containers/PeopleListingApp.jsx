@@ -9,8 +9,6 @@ import moment from "moment";
 
 import * as Urls from "metabase/lib/urls";
 
-import { getSortedUsers } from "../selectors";
-
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon.jsx";
@@ -19,15 +17,18 @@ import Radio from "metabase/components/Radio";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-
 import UserGroupSelect from "../components/UserGroupSelect.jsx";
 
 import { loadMemberships, createMembership, deleteMembership } from "../people";
+import { getSortedUsersWithMemberships } from "../selectors";
+import { getUser } from "metabase/selectors/user";
+
+import User from "metabase/entities/users";
+import Group from "metabase/entities/groups";
 
 const mapStateToProps = (state, props) => ({
-  users: getSortedUsers(state, props),
-  user: state.currentUser,
+  users: getSortedUsersWithMemberships(state, props),
+  user: getUser(state),
 });
 
 const mapDispatchToProps = {
@@ -37,14 +38,13 @@ const mapDispatchToProps = {
 };
 
 // set outer loadingAndErrorWrapper to false to avoid conflicets. the second loader will handle that
-@entityListLoader({
-  entityType: "users",
-  entityQuery: () => ({ include_deactivated: true }),
+@User.listLoader({
+  query: { include_deactivated: true },
   loadingAndErrorWrapper: false,
   wrapped: true,
   reload: true,
 })
-@entityListLoader({ entityType: "groups" })
+@Group.listLoader()
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PeopleListingApp extends Component {
   state = {};
@@ -68,8 +68,11 @@ export default class PeopleListingApp extends Component {
   }
 
   render() {
-    let { users, groups } = this.props;
+    let { user, users, groups } = this.props;
     let { showDeactivated } = this.state;
+
+    const isAdmin = u => u.is_superuser;
+    const isCurrentUser = u => user && user.id === u.id;
 
     // TODO - this should be done in connect
     users = _.values(users).sort((a, b) => b.date_joined - a.date_joined);
@@ -197,10 +200,11 @@ export default class PeopleListingApp extends Component {
                                 title: t`Reset password`,
                                 link: Urls.resetPassword(user.id),
                               },
-                              !user.is_admin && {
-                                title: t`Deactivate user`,
-                                link: Urls.deactivateUser(user.id),
-                              },
+                              !isAdmin(user) &&
+                                !isCurrentUser(user) && {
+                                  title: t`Deactivate user`,
+                                  link: Urls.deactivateUser(user.id),
+                                },
                             ]}
                           />
                         </td>,

@@ -5,6 +5,7 @@ import { t, jt } from "c-3po";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import { getUserTemporaryPassword } from "../selectors";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Button from "metabase/components/Button";
@@ -12,18 +13,21 @@ import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 
-const EmailSuccess = () => <Box />;
+const EmailSuccess = ({ user }) => (
+  <Box>{jt`We’ve sent an invite to ${(
+    <strong>{user.email}</strong>
+  )} with instructions to set their password.`}</Box>
+);
 
-const PasswordSuccess = ({ user, password }) => (
+const PasswordSuccess = ({ user, temporaryPassword }) => (
   <Box>
     <Box pb={4}>
       {jt`We couldn’t send them an email invitation, so make sure to tell them to log in using ${(
-        <span className="text-bold">{user.email}</span>
-      )}
-                    and this password we’ve generated for them:`}
+        <strong>{user.email}</strong>
+      )} and this password we’ve generated for them:`}
     </Box>
 
-    <PasswordReveal password={password} />
+    <PasswordReveal password={temporaryPassword} />
     <Box
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
       className="pt4 text-centered"
@@ -37,16 +41,25 @@ const PasswordSuccess = ({ user, password }) => (
   </Box>
 );
 
-const UserSuccessModal = ({ onClose, object, location }) => (
-  <ModalContent title={t`Added ${object.getName()}`} onClose={onClose}>
-    {location.query && location.query.p ? (
-      <PasswordSuccess user={object} password={location.query.p} />
+const UserSuccessModal = ({ onClose, user, temporaryPassword, location }) => (
+  <ModalContent
+    title={t`${user.getName()} has been added`}
+    footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
+    onClose={onClose}
+  >
+    {temporaryPassword ? (
+      <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
     ) : (
-      <EmailSuccess user={object} />
+      <EmailSuccess user={user} />
     )}
-    <Button primary onClick={() => onClose()}>{t`Done`}</Button>
   </ModalContent>
 );
+
+const mapStateToProps = (state, props) => ({
+  temporaryPassword: getUserTemporaryPassword(state, {
+    userId: props.params.userId,
+  }),
+});
 
 const mapDispatchToProps = {
   onClose: () => push("/admin/people"),
@@ -56,4 +69,4 @@ export default entityObjectLoader({
   entityType: "users",
   entityId: (state, props) => props.params.userId,
   wrapped: true,
-})(connect(null, mapDispatchToProps)(UserSuccessModal));
+})(connect(mapStateToProps, mapDispatchToProps)(UserSuccessModal));

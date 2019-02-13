@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import { getGroup, getGroups, getUsers } from "../selectors";
+import { getGroup, getGroups, getUsersWithMemberships } from "../selectors";
 import { loadGroups, loadGroupDetails } from "../people";
 
 import GroupDetail from "../components/GroupDetail.jsx";
@@ -10,7 +10,7 @@ function mapStateToProps(state, props) {
   return {
     group: getGroup(state, props),
     groups: getGroups(state, props),
-    users: getUsers(state, props),
+    users: getUsersWithMemberships(state, props),
   };
 }
 

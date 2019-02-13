@@ -15,7 +15,7 @@ import {
 import ModalContent from "metabase/components/ModalContent";
 import { delay } from "metabase/lib/promise";
 import Button from "metabase/components/Button";
-import { getUsers } from "metabase/admin/people/selectors";
+import { getUsersWithMemberships } from "metabase/admin/people/selectors";
 import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
@@ -69,7 +69,7 @@ describe("admin/people", () => {
       await delay(100);
 
       // it should be a pretty safe assumption in test environment that the user that was just created has the biggest ID
-      const userIds = Object.keys(getUsers(store.getState()));
+      const userIds = Object.keys(getUsersWithMemberships(store.getState()));
       createdUserId = Math.max.apply(null, userIds.map(key => parseInt(key)));
 
       const userCreatedModal = app.find(ModalContent);

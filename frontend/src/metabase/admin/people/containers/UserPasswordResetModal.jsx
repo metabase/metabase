@@ -1,52 +1,75 @@
 import React from "react";
+import { compose } from "redux";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "c-3po";
 import { Flex } from "grid-styled";
 
-import Users from "metabase/entities/users";
+import User from "metabase/entities/users";
+import { getUserTemporaryPassword } from "../selectors";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
+import PasswordReveal from "metabase/components/PasswordReveal";
 
 const UserPasswordResetModal = ({
+  user,
   emailConfigured,
-  goBack,
-  object,
-  onPasswordReset,
-}) => (
-  <ModalContent
-    title={t`Reset ${object.getName()}'s password?`}
-    onClose={goBack}
-  >
-    <p>{t`Are you sure you want to do this?`}</p>
+  temporaryPassword,
+  onClose,
+}) =>
+  temporaryPassword ? (
+    <ModalContent
+      title={t`${user.first_name}'s password has been reset`}
+      footer={<Button primary onClick={onClose}>{t`Done`}</Button>}
+      onClose={onClose}
+    >
+      <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
-    <Flex>
-      <Button
-        ml="auto"
-        onClick={() => onPasswordReset(object) && goBack()}
-        danger
-      >{t`Reset password`}</Button>
-    </Flex>
-  </ModalContent>
-);
+      <PasswordReveal password={temporaryPassword} />
+    </ModalContent>
+  ) : (
+    <ModalContent
+      title={t`Reset ${user.getName()}'s password?`}
+      onClose={onClose}
+    >
+      <p>{t`Are you sure you want to do this?`}</p>
 
-export default connect(
-  (state, props) => ({
-    emailConfigured: MetabaseSettings.isEmailConfigured(),
-  }),
-  {
-    goBack,
-    onPasswordReset: Users.actions.passwordResetEmail,
-  },
-)(
-  entityObjectLoader({
-    entityType: "users",
-    entityId: (state, props) => props.params.userId,
+      <Flex>
+        <Button
+          ml="auto"
+          onClick={async () => {
+            if (emailConfigured) {
+              await user.passwordResetEmail();
+              onClose();
+            } else {
+              await user.passwordResetManual();
+            }
+          }}
+          danger
+        >
+          {t`Reset password`}
+        </Button>
+      </Flex>
+    </ModalContent>
+  );
+
+export default compose(
+  connect(
+    (state, props) => ({
+      emailConfigured: MetabaseSettings.isEmailConfigured(),
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+    }),
+    {
+      onClose: goBack,
+    },
+  ),
+  User.loader({
+    id: (state, props) => props.params.userId,
     wrapped: true,
-  })(UserPasswordResetModal),
-);
+  }),
+)(UserPasswordResetModal);

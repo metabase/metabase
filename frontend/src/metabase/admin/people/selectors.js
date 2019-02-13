@@ -3,10 +3,9 @@ import _ from "underscore";
 
 export const getGroups = state => state.admin.people.groups;
 export const getGroup = state => state.admin.people.group;
-export const getModal = state => state.admin.people.modal;
 export const getMemberships = state => state.admin.people.memberships;
 
-export const getUsers = createSelector(
+export const getUsersWithMemberships = createSelector(
   [state => state.entities.users, getMemberships],
   (users, memberships) =>
     users &&
@@ -28,8 +27,8 @@ export const getUsers = createSelector(
 const compareNames = (a, b) =>
   a.localeCompare(b, undefined, { sensitivty: "base" });
 
-export const getSortedUsers = createSelector(
-  [getUsers],
+export const getSortedUsersWithMemberships = createSelector(
+  [getUsersWithMemberships],
   users =>
     users &&
     _.values(users).sort(
@@ -38,3 +37,6 @@ export const getSortedUsers = createSelector(
         compareNames(a.first_name, b.first_name),
     ),
 );
+
+export const getUserTemporaryPassword = (state, props) =>
+  state.admin.people.temporaryPasswords[props.userId];

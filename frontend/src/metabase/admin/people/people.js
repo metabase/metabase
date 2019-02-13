@@ -1,28 +1,19 @@
 import {
   createAction,
-  createThunkAction,
   handleActions,
   combineReducers,
-  momentifyTimestamps,
 } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isMetaBotGroup } from "metabase/lib/groups";
 
-import { SessionApi, UserApi, PermissionsApi } from "metabase/services";
+import { PermissionsApi } from "metabase/services";
 
 import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
-export const DEACTIVATE_USER = "metabase/admin/people/DEACTIVATE_USER";
-export const REACTIVATE_USER = "metabase/admin/people/REACTIVATE_USER";
-export const RESEND_INVITE = "metabase/admin/people/RESEND_INVITE";
-export const RESET_PASSWORD_EMAIL =
-  "metabase/admin/people/RESET_PASSWORD_EMAIL";
-export const RESET_PASSWORD_MANUAL =
-  "metabase/admin/people/RESET_PASSWORD_MANUAL";
-export const SHOW_MODAL = "metabase/admin/people/SHOW_MODAL";
-export const UPDATE_USER = "metabase/admin/people/UPDATE_USER";
+import Users from "metabase/entities/users";
+
 export const LOAD_GROUPS = "metabase/admin/people/LOAD_GROUPS";
 export const LOAD_MEMBERSHIPS = "metabase/admin/people/LOAD_MEMBERSHIPS";
 export const LOAD_GROUP_DETAILS = "metabase/admin/people/LOAD_GROUP_DETAILS";
@@ -31,8 +22,6 @@ export const CREATE_MEMBERSHIP = "metabase/admin/people/CREATE_MEMBERSHIP";
 export const DELETE_MEMBERSHIP = "metabase/admin/people/DELETE_MEMBERSHIP";
 
 // action creators
-
-export const showModal = createAction(SHOW_MODAL);
 
 export const loadGroups = createAction(LOAD_GROUPS, () =>
   PermissionsApi.groups(),
@@ -77,85 +66,6 @@ export const deleteMembership = createAction(
   },
 );
 
-export const deactivateUser = createThunkAction(
-  DEACTIVATE_USER,
-  user => async () => {
-    await UserApi.delete({
-      userId: user.id,
-    });
-
-    MetabaseAnalytics.trackEvent("People Admin", "User Removed");
-
-    // NOTE: DELETE doesn't return the object, so just fake it:
-    return { ...user, is_active: false };
-  },
-);
-
-export const reactivateUser = createThunkAction(
-  REACTIVATE_USER,
-  user => async () => {
-    const newUser = await UserApi.reactivate({
-      userId: user.id,
-    });
-
-    MetabaseAnalytics.trackEvent("People Admin", "User Reactivated");
-
-    return newUser;
-  },
-);
-
-export const resendInvite = createThunkAction(
-  RESEND_INVITE,
-  user => async () => {
-    MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
-    return await UserApi.send_invite({ id: user.id });
-  },
-);
-
-export const resetPasswordManually = createThunkAction(
-  RESET_PASSWORD_MANUAL,
-  (user, password) => async () => {
-    MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
-    return await UserApi.update_password({ id: user.id, password: password });
-  },
-);
-
-export const resetPasswordViaEmail = createThunkAction(
-  RESET_PASSWORD_EMAIL,
-  user => async () => {
-    MetabaseAnalytics.trackEvent("People Admin", "Trigger User Password Reset");
-    return await SessionApi.forgot_password({ email: user.email });
-  },
-);
-
-const modal = handleActions(
-  {
-    [SHOW_MODAL]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-const TIMESTAMP_KEYS = [
-  "date_joined",
-  "last_login",
-  "updated_at",
-  "created_at",
-];
-
-const users = handleActions(
-  {
-    [DEACTIVATE_USER]: {
-      next: (state, { payload: user }) =>
-        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
-    },
-    [REACTIVATE_USER]: {
-      next: (state, { payload: user }) =>
-        assoc(state, user.id, momentifyTimestamps(user, TIMESTAMP_KEYS)),
-    },
-  },
-  null,
-);
-
 const groups = handleActions(
   {
     [LOAD_GROUPS]: {
@@ -189,9 +99,26 @@ const group = handleActions(
   null,
 );
 
+const temporaryPasswords = handleActions(
+  {
+    [Users.actionTypes.CREATE]: {
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: payload.password,
+      }),
+    },
+    [Users.actionTypes.PASSWORD_RESET_MANUAL]: {
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: payload.password,
+      }),
+    },
+  },
+  {},
+);
+
 export default combineReducers({
-  modal,
-  users,
+  temporaryPasswords,
   groups,
   group,
   memberships,
