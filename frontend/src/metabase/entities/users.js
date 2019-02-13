@@ -32,7 +32,7 @@ const Users = createEntity({
     REACTIVATE,
     PASSWORD_RESET_EMAIL,
     PASSWORD_RESET_MANUAL,
-    RESEND_INVITE
+    RESEND_INVITE,
   },
 
   actionDecorators: {
@@ -65,7 +65,10 @@ const Users = createEntity({
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
-    passwordResetManual: async ({ id }, password = MetabaseUtils.generatePassword()) => {
+    passwordResetManual: async (
+      { id },
+      password = MetabaseUtils.generatePassword(),
+    ) => {
       MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
       await UserApi.update_password({ id, password });
       return { type: PASSWORD_RESET_MANUAL, payload: { id, password } };

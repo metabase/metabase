@@ -112,8 +112,8 @@
   (api/check-superuser)
   (let [group-id->members (group-id->num-members)]
     (for [group (ordered-groups)]
-      (assoc group :members (or (group-id->members (u/get-id group))
-                                0)))))
+      (assoc group :member_count (or (group-id->members (u/get-id group))
+                                     0)))))
 
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."

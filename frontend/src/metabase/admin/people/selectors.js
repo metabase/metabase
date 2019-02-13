@@ -1,8 +1,6 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-export const getGroups = state => state.admin.people.groups;
-export const getGroup = state => state.admin.people.group;
 export const getMemberships = state => state.admin.people.memberships;
 
 export const getUsersWithMemberships = createSelector(
