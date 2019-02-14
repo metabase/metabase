@@ -8,6 +8,7 @@
              [math :as math]]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.util.date :as du]
             [redux.core :as redux]))
 
 (defn- last-n
@@ -141,10 +142,6 @@
   [dt]
   (/ dt ms-in-a-day))
 
-(defn- day->ms
-  [dt]
-  (long (* dt ms-in-a-day)))
-
 (defn- about=
   [a b]
   (< 0.9 (/ a b) 1.1))
@@ -172,15 +169,14 @@
 
 (defn- %complete
   [unit dt]
-  (let [dt (t.coerce/from-long (day->ms dt))]
-    (case unit
-      :minute  (/ (min (t/seconds dt) 1) 60)
-      :hour    (/ (min (t/minutes dt) 1) 60)
-      :day     (/ (min (t/hours dt) 1) 24)
-      :week    (/ (t/day-of-week dt) 7)
-      :month   (/ (t/day dt) (t/number-of-days-in-the-month dt))
-      :quarter (/ (month-of-quarter dt) 3)
-      :year    (/ (t/week-number-of-year dt) 52))))
+  (case unit
+    :minute  (/ (min (t/seconds dt) 1) 60)
+    :hour    (/ (min (t/minutes dt) 1) 60)
+    :day     (/ (min (t/hours dt) 1) 24)
+    :week    (/ (t/day-of-week dt) 7)
+    :month   (/ (t/day dt) (t/number-of-days-in-the-month dt))
+    :quarter (/ (month-of-quarter dt) 3)
+    :year    (/ (t/week-number-of-year dt) 52)))
 
 (defn- valid-period?
   [from to unit]
@@ -220,8 +216,12 @@
                                        y-previous)
                    :last-change      (when show-change?
                                        (change y-current y-previous))
-                   :projected-change (when show-change?
-                                       (change (/ y-current (%complete unit x-current)) y-previous))
+                   :projected-change (when (and show-change?
+                                                (-> (du/date-trunc :month (t/now) (.getID du/*data-timezone*))
+                                                    t.coerce/to-long
+                                                    ms->day
+                                                    (= x-current)))
+                                       (change (/ y-current (%complete unit (t/now))) y-previous))
                    :slope            slope
                    :offset           offset
                    :best-fit         best-fit
