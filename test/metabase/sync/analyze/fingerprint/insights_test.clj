@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.coerce :as t.coerce]
+            [expectations :refer :all]
             [metabase.sync.analyze.fingerprint.insights :as i :refer :all]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
@@ -80,13 +81,13 @@
 
 (expect
   4/7
-  (#'i/%complete :week (inst->day #inst "2015-01-01")))
+  (#'i/%complete :week (t.coerce/from-date #inst "2015-01-01")))
 (expect
   1/31
-  (#'i/%complete :month (inst->day #inst "2015-01-01")))
+  (#'i/%complete :month (t.coerce/from-date #inst "2015-01-01")))
 (expect
   1/3
-  (#'i/%complete :quarter (inst->day #inst "2015-01-01")))
+  (#'i/%complete :quarter (t.coerce/from-date #inst "2015-01-01")))
 (expect
   1/52
-  (#'i/%complete :year (inst->day #inst "2015-01-01")))
+  (#'i/%complete :year (t.coerce/from-date #inst "2015-01-01")))

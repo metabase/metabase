@@ -209,7 +209,9 @@
                             (stats/simple-linear-regression xfn yfn)
                             (best-fit xfn yfn)))
               (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                (let [unit         (or (:unit datetime) (infer-unit x-previous x-current))
+                (let [unit         (if (contains? #{:default nil} (:unit datetime))
+                                     (infer-unit x-previous x-current)
+                                     (:unit datetime))
                       show-change? (valid-period? x-previous x-current unit)]
                   {:last-value       y-current
                    :previous-value   (when show-change?
@@ -217,10 +219,12 @@
                    :last-change      (when show-change?
                                        (change y-current y-previous))
                    :projected-change (when (and show-change?
-                                                (-> (du/date-trunc :month (t/now) (.getID du/*data-timezone*))
-                                                    t.coerce/to-long
-                                                    ms->day
-                                                    (= x-current)))
+                                                (some->> du/*data-timezone*
+                                                         (.getID)
+                                                         (du/date-trunc :month (t/now))
+                                                         t.coerce/to-long
+                                                         ms->day
+                                                         (= x-current)))
                                        (change (/ y-current (%complete unit (t/now))) y-previous))
                    :slope            slope
                    :offset           offset
