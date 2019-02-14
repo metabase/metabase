@@ -153,7 +153,7 @@ class DefaultLanding extends React.Component {
       await Promise.all(
         this.state.selectedItems.map(item => item.setCollection(collection)),
       );
-      this.setState({ selectedItems: null, selectedAction: null });
+      this.handleCloseModal();
     } finally {
       this.handleBulkActionSuccess();
     }
@@ -164,6 +164,10 @@ class DefaultLanding extends React.Component {
     // Fixes an issue where things were staying selected when moving between
     // different collection pages
     this.props.onSelectNone();
+  };
+
+  handleCloseModal = () => {
+    this.setState({ selectedItems: null, selectedAction: null });
   };
 
   render() {
@@ -499,14 +503,12 @@ class DefaultLanding extends React.Component {
         </Box>
         {!_.isEmpty(selectedItems) &&
           selectedAction == "copy" && (
-            <Modal>
+            <Modal onClose={this.handleCloseModal}>
               <CollectionCopyEntityModal
                 entityObject={selectedItems[0]}
-                onClose={() =>
-                  this.setState({ selectedItems: null, selectedAction: null })
-                }
+                onClose={this.handleCloseModal}
                 onSaved={newEntityObject => {
-                  this.setState({ selectedItems: null, selectedAction: null });
+                  this.handleCloseModal();
                   this.handleBulkActionSuccess();
                 }}
               />
@@ -514,16 +516,14 @@ class DefaultLanding extends React.Component {
           )}
         {!_.isEmpty(selectedItems) &&
           selectedAction == "move" && (
-            <Modal>
+            <Modal onClose={this.handleCloseModal}>
               <CollectionMoveModal
                 title={
                   selectedItems.length > 1
                     ? t`Move ${selectedItems.length} items?`
                     : t`Move "${selectedItems[0].getName()}"?`
                 }
-                onClose={() =>
-                  this.setState({ selectedItems: null, selectedAction: null })
-                }
+                onClose={this.handleCloseModal}
                 onMove={this.handleBulkMove}
               />
             </Modal>
