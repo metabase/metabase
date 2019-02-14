@@ -62,7 +62,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
           breakoutOptions={breakoutOptions}
           onCommitBreakout={breakout => {
             const nextCard = question.pivot([breakout], dimensions).card();
-
             if (nextCard) {
               onChangeCardAndRun({ nextCard });
             }

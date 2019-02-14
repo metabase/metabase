@@ -26,22 +26,29 @@ const BreakoutPopover = ({
   onClose,
   maxHeight,
   alwaysExpanded,
-}: Props) => (
-  <FieldList
-    className="text-green"
-    maxHeight={maxHeight}
-    field={breakout}
-    fieldOptions={breakoutOptions || query.breakoutOptions()}
-    onFieldChange={field => {
-      onCommitBreakout(field);
-      if (onClose) {
-        onClose();
-      }
-    }}
-    tableMetadata={query.tableMetdata()}
-    enableSubDimensions
-    alwaysExpanded={alwaysExpanded}
-  />
-);
+}: Props) => {
+  const table = query.table();
+  // FieldList requires table
+  if (!table) {
+    return null;
+  }
+  return (
+    <FieldList
+      className="text-green"
+      maxHeight={maxHeight}
+      field={breakout}
+      fieldOptions={breakoutOptions || query.breakoutOptions()}
+      onFieldChange={field => {
+        onCommitBreakout(field);
+        if (onClose) {
+          onClose();
+        }
+      }}
+      table={table}
+      enableSubDimensions
+      alwaysExpanded={alwaysExpanded}
+    />
+  );
+};
 
 export default BreakoutPopover;
