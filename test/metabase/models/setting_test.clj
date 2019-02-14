@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [metabase.db.config :as db.config]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
@@ -131,7 +132,7 @@
 ;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (do-with-temporary-setting-value setting db-value
+  (tu/do-with-temporary-setting-value setting db-value
     (fn []
       (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
@@ -218,7 +219,7 @@
 ;; Validate setting description with i18n string
 (expect
   ["TEST SETTING - WITH I18N"]
-  (let [zz (i18n/string-as-locale "zz")]
+  (let [^java.util.Locale zz (i18n/string-as-locale "zz")]
     (i18n/with-user-locale zz
       (doall
        (for [{:keys [key description]} (setting/all)
