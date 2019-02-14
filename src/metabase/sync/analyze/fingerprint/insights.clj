@@ -170,9 +170,9 @@
 (defn- %complete
   [unit dt]
   (case unit
-    :minute  (/ (min (t/seconds dt) 1) 60)
-    :hour    (/ (min (t/minutes dt) 1) 60)
-    :day     (/ (min (t/hours dt) 1) 24)
+    :minute  (/ (max (t/seconds dt) 1) 60)
+    :hour    (/ (max (t/minutes dt) 1) 60)
+    :day     (/ (max (t/hours dt) 1) 24)
     :week    (/ (t/day-of-week dt) 7)
     :month   (/ (t/day dt) (t/number-of-days-in-the-month dt))
     :quarter (/ (month-of-quarter dt) 3)
