@@ -28,7 +28,9 @@
   (mdb/migrate! (keyword direction)))
 
 (defn ^:command load-from-h2
-  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
+  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
+  `h2-connection-string`, if specified, should look like `file:/absoulte/path/to/metabase.db` (do not include `.mv.db`
+  or `.h2.db` suffix)."
   ([]
    (load-from-h2 nil))
   ([h2-connection-string]

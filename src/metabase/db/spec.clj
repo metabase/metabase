@@ -25,7 +25,7 @@
    {:classname                     "org.postgresql.Driver"
     :subprotocol                   "postgresql"
     :subname                       (make-subname host port db)
-    ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
+    ;; This is done to prevent conflicts with redshift driver registering itself to handle postgres://
     :OpenSourceSubProtocolOverride true}
    (dissoc opts :host :port :db)))
 

@@ -103,9 +103,11 @@
 
 
 (defn- h2-details [h2-connection-string-or-nil]
-  (let [h2-filename (or h2-connection-string-or-nil @db.config/db-file)]
-    (db.config/jdbc-spec {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
-
+  (merge
+   (db.config/jdbc-spec :env-vars :h2)
+   (when h2-connection-string-or-nil
+     {:db h2-connection-string-or-nil})
+   {:IFEXISTS true}))
 
 (defn- insert-entity! [target-db-conn entity objs]
   (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name entity))) ; TODO - I don't think the print+flush is working as intended :/

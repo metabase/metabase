@@ -3,10 +3,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [schema.core :as s]
             [metabase.db.config :as db.config]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s])
   (:import java.io.StringWriter
            [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
@@ -190,14 +190,14 @@
 
 (defmethod migrate! :up [db-type jdbc-spec _]
   (jdbc/with-db-transaction [t-conn jdbc-spec]
+    ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes until it hears
+    ;; otherwise
+    (jdbc/db-set-rollback-only! t-conn)
     (with-liquibase [liquibase db-type t-conn]
       (migrate-up-if-needed! liquibase))))
 
 (defmethod migrate! :force [db-type jdbc-spec _]
   (jdbc/with-db-connection [conn jdbc-spec]
-    ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes until it hears
-    ;; otherwise
-    (jdbc/db-set-rollback-only! conn)
     (with-liquibase [liquibase db-type jdbc-spec]
       (force-migrate-up-if-needed! conn liquibase))))
 
