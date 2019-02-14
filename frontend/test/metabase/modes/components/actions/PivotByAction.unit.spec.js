@@ -2,12 +2,7 @@
 
 import React from "react";
 
-import {
-  question,
-  questionNoFields,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-} from "__support__/sample_dataset_fixture";
+import { question } from "__support__/sample_dataset_fixture";
 
 import { mount } from "enzyme";
 import { click } from "__support__/enzyme_utils";
