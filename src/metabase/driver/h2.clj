@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase
-             [db :as mdb]
              [driver :as driver]
              [util :as u]]
             [metabase.db.spec :as dbspec]
@@ -17,6 +16,15 @@
              [i18n :refer [tru]]]))
 
 (driver/register! :h2, :parent :sql-jdbc)
+
+(def ^:dynamic *allow-potentailly-unsafe-connections*
+  "Whether to allow connections to H2 databases that do not already exist. By default, this is disallowed, for security
+  purposes -- someone could potentially open a new H2 DB connection and have potentially unsafe access to H2 functions
+  that allow access to files on the local system.
+
+  This is primarily used for test purposes."
+  false)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -231,13 +239,15 @@
   "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
   (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
-                                                          "ACCESS_MODE_DATA" "r"}))))
+    (file+options->connection-string file (merge options
+                                                 {:IFEXISTS         true
+                                                  :ACCESS_MODE_DATA "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2 [_ details]
-  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
-               details
-               (update details :db connection-string-set-safe-options))))
+  (dbspec/h2
+   (if *allow-potentailly-unsafe-connections*
+     details
+     (update details :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2 [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))

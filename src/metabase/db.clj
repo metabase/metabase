@@ -52,24 +52,6 @@
   ^Boolean []
   @setup-db-has-been-called?)
 
-(def ^:dynamic *allow-potentailly-unsafe-connections*
-  "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists,
-  etc.  At the same time, we'd like to be able to use driver functionality like `can-connect-with-details?` to check
-  whether we can connect to the Metabase database, in which case we'd like to allow connections to databases that
-  don't exist.
-
-  So we need some way to distinguish the Metabase database from other databases. We could add a key to the details
-  map specifying that it's the Metabase DB, but what if some shady user added that key to another database?
-
-  We could check if a database details map matched `db-connection-details` above, but what if a shady user went
-  Meta-Metabase and added the Metabase DB to Metabase itself? Then when they used it they'd have potentially unsafe
-  access.
-
-  So this is where dynamic variables come to the rescue. We'll make this one `true` when we use `can-connect?` for the
-  Metabase DB, in which case we'll allow connection to non-existent H2 (etc.) files, and leave it `false` happily and
-  forever after, making all other connnections \"safe\"."
-  false)
-
 (def ^:private connection-timeout-ms
   "Maximum number of seconds to wait to connect to application database before assuming connection is unsuccessful."
   (* 15 1000))

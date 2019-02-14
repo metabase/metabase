@@ -1,11 +1,11 @@
 (ns metabase.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in the `metabase.models.field-values` namespace."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
-             [db :as mdb]
              [sync :as sync]
              [util :as u]]
+            [metabase.driver.h2 :as h2]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -105,7 +105,7 @@
           (repeat 2 {:values [-2 -1 0 1 2 3] :human_readable_values ["-2" "-1" "0" "a" "b" "c"]})
           [{:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}])
 
-  (binding [mdb/*allow-potentailly-unsafe-connections* true]
+  (binding [h2/*allow-potentailly-unsafe-connections* true]
     ;; Create a temp warehouse database that can have it's field values change
     (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}]
       (jdbc/execute! conn ["drop table foo if exists"])

@@ -1,7 +1,7 @@
 (ns metabase.driver.h2-test
-  (:require [expectations :refer :all]
+  (:require [clojure.java.io :as io]
+            [expectations :refer :all]
             [metabase
-             [db :as mdb]
              [driver :as driver]
              [query-processor :as qp]]
             [metabase.driver.h2 :as h2]
@@ -30,7 +30,7 @@
 
 ;; Make sure we *cannot* connect to a non-existent database
 (expect :exception-thrown
-  (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
+  (try (driver/can-connect? :h2 {:db (.getAbsolutePath (io/file "toucan_sightings"))})
        (catch org.h2.jdbc.JdbcSQLException e
          (and (re-matches #"Database .+ not found .+" (.getMessage e))
               :exception-thrown))))
@@ -38,8 +38,8 @@
 ;; Check that we can connect to a non-existent Database when we enable potentailly unsafe connections (e.g. to the
 ;; Metabase database)
 (expect true
-  (binding [mdb/*allow-potentailly-unsafe-connections* true]
-    (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))
+  (binding [h2/*allow-potentailly-unsafe-connections* true]
+    (driver/can-connect? :h2 {:db (.getAbsolutePath (io/file "pigeon_sightings"))})))
 
 (expect-with-driver :h2
   "UTC"
