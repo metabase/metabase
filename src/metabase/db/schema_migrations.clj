@@ -1,7 +1,9 @@
 (ns metabase.db.schema-migrations
+  "Logic for running schema migrations, using Liquibase to do most of the heavy lifting."
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [schema.core :as s]
             [metabase.db.config :as db.config]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
@@ -31,8 +33,8 @@
 
   As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
-  (for [line  (s/split-lines (migrations-sql liquibase))
-        :when (not (or (s/blank? line)
+  (for [line  (str/split-lines (migrations-sql liquibase))
+        :when (not (or (str/blank? line)
                        (re-find #"^--" line)))]
     line))
 
@@ -69,7 +71,7 @@
 
 (defn- migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
-  [conn, ^Liquibase liquibase]
+  [^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
     (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
@@ -84,7 +86,7 @@
       (log/info
        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
-(defn- force-migrate-up-if-needed!
+(s/defn ^:private force-migrate-up-if-needed!
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
   1.  This doesn't check to make sure the DB locks are cleared
@@ -97,28 +99,30 @@
   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
   do anything futher until you clear the error state by doing something like calling `.rollback`.)"
-  [conn, ^Liquibase liquibase]
+  [conn :- db.config/JDBCSpec, liquibase :- Liquibase]
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
     (doseq [line (migrations-lines liquibase)]
       (log/info line)
-      (jdbc/with-db-transaction [nested-transaction-connection conn]
-        (try (jdbc/execute! nested-transaction-connection [line])
-             (log/info (u/format-color 'green "[SUCCESS]"))
-             (catch Throwable e
-               (.rollback (jdbc/get-connection nested-transaction-connection))
-               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
+      ;; run each DDL statement in a transaction. That way if it fails we can roll it back and proceed so the entire
+      ;; connection doesn't get put in a bad state. `clojure.java.jdbc/with-db-transaction` does not nest DB
+      ;; transactions, so it's important that `conn` above isn't already a transaction connection
+      (jdbc/with-db-transaction [t-conn conn]
+        (try
+          (jdbc/execute! t-conn [line])
+          (log/info (u/format-color 'green "[SUCCESS]"))
+          (catch Throwable e
+            (.rollback (jdbc/get-connection t-conn))
+            (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
-(defn conn->liquibase
-  "Get a `Liquibase` object from JDBC CONN."
-  (^Liquibase []
-   (conn->liquibase (db.config/jdbc-details)))
-  (^Liquibase [conn]
-   (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
-         ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
-     (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
+(s/defn jdbc-spec->liquibase :- Liquibase
+  "Get a `Liquibase` object from JDBC connection spec or connection."
+  [jdbc-spec :- db.config/JDBCSpec]
+  (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection jdbc-spec))
+        ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
+    (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)))
 
-(defn consolidate-liquibase-changesets
+(s/defn ^:private consolidate-liquibase-changesets
   "Consolidate all previous DB migrations so they come from single file.
 
   Previously migrations where stored in many small files which added seconds per file to the startup time because
@@ -126,16 +130,16 @@
   reflect that these migrations where moved to a single file.
 
   see https://github.com/metabase/metabase/issues/3715"
-  [conn]
-  (let [liquibases-table-name (if (#{:h2 :mysql} (db.config/db-type))
-                                "DATABASECHANGELOG"
-                                "databasechangelog")
-        fresh-install? (jdbc/with-db-metadata [meta (db.config/jdbc-details)] ;; don't migrate on fresh install
-                         (empty? (jdbc/metadata-query
-                                  (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
-        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
+  [db-type :- db.config/DBType, jdbc-spec :- db.config/JDBCSpec]
+  (let [changelog-table-name (if (#{:h2 :mysql} db-type)
+                               "DATABASECHANGELOG"
+                               "databasechangelog")
+        fresh-install?       (jdbc/with-db-metadata [meta jdbc-spec] ;; don't migrate on fresh install
+                               (empty? (jdbc/metadata-query
+                                        (.getTables meta nil nil changelog-table-name (into-array String ["TABLE"])))))
+        query                (format "UPDATE %s SET FILENAME = ?" changelog-table-name)]
     (when-not fresh-install?
-      (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
+      (jdbc/execute! jdbc-spec [query "migrations/000_migrations.yaml"]))))
 
 (defn- release-lock-if-needed!
   "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
@@ -147,7 +151,27 @@
       (catch Exception e
         (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
 
-(defn migrate!
+(defn- do-with-liquibase [db-type jdbc-spec f]
+  (log/info (trs "Setting up Liquibase..."))
+  (let [liquibase (jdbc-spec->liquibase jdbc-spec)]
+    (consolidate-liquibase-changesets db-type jdbc-spec)
+    (log/info (trs "Liquibase is ready."))
+    (try
+      (f liquibase)
+      (catch Throwable e
+        ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+        ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+        (release-lock-if-needed! liquibase)
+        (throw e)))))
+
+(defmacro ^:private with-liquibase {:style/indent 1} [[liquibase-binding db-type jdbc-spec] & body]
+  `(do-with-liquibase
+    ~db-type
+    ~jdbc-spec
+    (fn [~(vary-meta liquibase-binding assoc :tag `Liquibase)]
+      ~@body)))
+
+(defmulti migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
   migrate up`):
 
@@ -160,42 +184,31 @@
                         available just in case).
 
   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
-  `metabase.db.data-migrations/run-all!`. (`setup-db!`, below, calls both this function and `run-all!`)."
-  [db-details direction]
-  (jdbc/with-db-transaction [conn (db.config/jdbc-details db-details)]
-    ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
+  `metabase.db.data-migrations/run-all!`. (`metabase.db/setup-db!` calls both this function and `run-all!`)."
+  {:arglists '([db-type jdbc-spec direction])}
+  (fn [_ _ direction] direction))
+
+(defmethod migrate! :up [db-type jdbc-spec _]
+  (jdbc/with-db-transaction [t-conn jdbc-spec]
+    (with-liquibase [liquibase db-type t-conn]
+      (migrate-up-if-needed! liquibase))))
+
+(defmethod migrate! :force [db-type jdbc-spec _]
+  (jdbc/with-db-connection [conn jdbc-spec]
+    ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes until it hears
+    ;; otherwise
     (jdbc/db-set-rollback-only! conn)
-    ;; Disable auto-commit. This should already be off but set it just to be safe
-    (.setAutoCommit (jdbc/get-connection conn) false)
-    ;; Set up liquibase and let it do its thing
-    (log/info (trs "Setting up Liquibase..."))
-    (let [liquibase (conn->liquibase conn)]
-      (try
-        (consolidate-liquibase-changesets conn)
-        (log/info (trs "Liquibase is ready."))
-        (case direction
-          :up            (migrate-up-if-needed! conn liquibase)
-          :force         (force-migrate-up-if-needed! conn liquibase)
-          :down-one      (.rollback liquibase 1 "")
-          :print         (println (migrations-sql liquibase))
-          :release-locks (.forceReleaseLocks liquibase))
-        ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
-        (jdbc/db-unset-rollback-only! conn)
-        :done
-        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
-        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
-        ;; clear the lock in that case, so handle that case separately
-        (catch LockException e
-          ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
-          ;; better safe than sorry
-          (.rollback (jdbc/get-connection conn))
-          (throw e))
-        ;; If for any reason any part of the migrations fail then rollback all changes
-        (catch Throwable e
-          ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so
-          ;; better safe than sorry
-          (.rollback (jdbc/get-connection conn))
-          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
-          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
-          (release-lock-if-needed! liquibase)
-          (throw e))))))
+    (with-liquibase [liquibase db-type jdbc-spec]
+      (force-migrate-up-if-needed! conn liquibase))))
+
+(defmethod migrate! :down-one [db-type jdbc-spec _]
+  (with-liquibase [liquibase db-type jdbc-spec]
+    (.rollback liquibase 1 "")))
+
+(defmethod migrate! :print [db-type jdbc-spec _]
+  (with-liquibase [liquibase db-type jdbc-spec]
+    (println (migrations-sql liquibase))))
+
+(defmethod migrate! :release-locks [db-type jdbc-spec _]
+  (with-liquibase [liquibase db-type jdbc-spec]
+    (.forceReleaseLocks liquibase)))

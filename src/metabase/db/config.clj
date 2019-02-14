@@ -8,7 +8,24 @@
              [util :as u]]
             [metabase.db.spec :as db.spec]
             [metabase.util.i18n :refer [trs]]
-            [ring.util.codec :as codec]))
+            [schema.core :as s]
+            [ring.util.codec :as codec])
+  (:import java.net.URI))
+
+(def DBType
+  "Schema for a valid application type for Metabase (the value of `MB_DB_TYPE`, `h2` by default)."
+  (s/enum :h2 :postgres :mysql))
+
+(def JDBCSpec
+  "Schema for a `clojure.java.jdbc` DB connection spec as used by `metabase.db.*` namespaces. (This schema is a subset
+  of what is actually accepted -- see `jdbc/get-connection` -- but represents the different types we create and use
+  for the application DB.)"
+  (s/cond-pre
+   URI
+   (s/constrained
+    {s/Keyword s/Any}
+    #(some #{:connection-uri :connection :subprotocol :datasource}
+           (keys %)))))
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
@@ -64,12 +81,13 @@
          (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
 (def ^:private connection-string-details
-  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
-           (parse-connection-string uri))))
+  (delay
+   (when-let [uri (config/config-str :mb-db-connection-uri)]
+     (parse-connection-string uri))))
 
-(defn db-type
+(s/defn db-type :- DBType
   "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
-  ^clojure.lang.Keyword []
+  []
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
@@ -77,7 +95,7 @@
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself).
 
-  DEPRECATED -- We should use `jdbc-details` instead."
+  DEPRECATED -- We should use `jdbc-spec` instead."
   (delay
    (when (= (db-type) :h2)
      (log/warn
@@ -102,10 +120,10 @@
                     :user     (config/config-str :mb-db-user)
                     :password (config/config-str :mb-db-pass)}))))
 
-(defn jdbc-details
+(s/defn jdbc-spec :- JDBCSpec
   "Takes our own MB details map and formats them properly for connection details for JDBC."
   ([]
-   (jdbc-details @db-connection-details))
+   (jdbc-spec @db-connection-details))
   (^:deprecated [db-details]
    {:pre [(map? db-details)]}
    ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`

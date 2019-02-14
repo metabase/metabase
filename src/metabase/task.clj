@@ -96,7 +96,7 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)"
   []
-  (let [{:keys [classname user password subname subprotocol type]} (db.config/jdbc-details)]
+  (let [{:keys [classname user password subname subprotocol type]} (db.config/jdbc-spec)]
     ;; If we're using a Postgres application DB the driverDelegateClass has to be the Postgres-specific one rather
     ;; than the Standard JDBC one we define in `quartz.properties`
     (when (= type :postgres)

@@ -103,7 +103,7 @@
   (let [start-jetty! (future (core/start-jetty!))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (db.config/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db! :auto-migrate? true)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)

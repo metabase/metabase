@@ -104,7 +104,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (or h2-connection-string-or-nil @db.config/db-file)]
-    (db.config/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+    (db.config/jdbc-spec {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
 (defn- insert-entity! [target-db-conn entity objs]
@@ -194,7 +194,7 @@
   "When loading data into a Postgres DB, update the sequence nextvals."
   []
   (when (= (db.config/db-type) :postgres)
-    (jdbc/with-db-transaction [target-db-conn (db.config/jdbc-details)]
+    (jdbc/with-db-transaction [target-db-conn (db.config/jdbc-spec)]
       (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
       (doseq [e     entities
               :when (not (contains? entities-without-autoinc-ids e))
@@ -215,10 +215,10 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [h2-connection-string-or-nil]
   (mdb/setup-db!)
-  (jdbc/with-db-transaction [target-db-conn (db.config/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (db.config/jdbc-spec)]
     (jdbc/db-set-rollback-only! target-db-conn)
     (disable-db-constraints! target-db-conn)
     (load-data! target-db-conn h2-connection-string-or-nil)
-    (reënable-db-constraints-if-needed! (db.config/jdbc-details))
+    (reënable-db-constraints-if-needed! (db.config/jdbc-spec))
     (jdbc/db-unset-rollback-only! target-db-conn))
   (set-postgres-sequence-values-if-needed!))
