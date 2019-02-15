@@ -16,6 +16,7 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [store :as qp.store]
@@ -114,15 +115,17 @@
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-query :sparksql
   [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
-                  (assoc :query (if (seq (:params query))
-                                  (hive-like/unprepare (cons (:query query) (:params query)))
-                                  (:query query)))
+  (let [query (-> (assoc query
+                    :remark (qputil/query->remark outer-query)
+                    :query  (if (seq (:params query))
+                              (hive-like/unprepare (cons (:query query) (:params query)))
+                              (:query query))
+                    :max-rows (mbql.u/query->max-rows-limit outer-query))
                   (dissoc :params))]
     (sql-jdbc.execute/do-with-try-catch
-     (fn []
-       (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
-         (hive-like/run-query-without-timezone driver settings db-connection query))))))
+      (fn []
+        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
+          (hive-like/run-query-without-timezone driver settings db-connection query))))))
 
 (defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)
 (defmethod driver/supports? [:sparksql :binning]                         [_ _] true)

@@ -6,6 +6,7 @@ driver:
   - name: hive-like
     lazy-load: true
     abstract: true
+    parent: sql-jdbc
   - name: sparksql
     display-name: Spark SQL
     lazy-load: true

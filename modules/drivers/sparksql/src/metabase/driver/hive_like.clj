@@ -14,7 +14,7 @@
              [table :refer [Table]]]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db])
-  (:import java.util.Date))
+  (:import java.sql.PreparedStatement java.util.Date))
 
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
@@ -110,12 +110,17 @@
 
 (defn- run-query
   "Run the query itself."
-  [{sql :query, params :params, remark :remark} connection]
-  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
-        statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
-    {:rows    (or rows [])
-     :columns (map u/keyword->qualified-name columns)}))
+  [{sql :query, :keys [params remark max-rows]} connection]
+  (let [sql     (str "-- " remark "\n" (hx/unescape-dots sql))
+        options {:identifiers identity
+                 :as-arrays?  true
+                 :max-rows    max-rows}]
+    (with-open [connection (jdbc/get-connection connection)]
+      (with-open [^PreparedStatement statement (jdbc/prepare-statement connection sql options)]
+        (let [statement        (into [statement] params)
+              [columns & rows] (jdbc/query connection statement options)]
+          {:rows    (or rows [])
+           :columns (map u/keyword->qualified-name columns)})))))
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"

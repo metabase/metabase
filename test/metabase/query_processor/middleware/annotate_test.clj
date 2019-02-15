@@ -1,12 +1,16 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+            [flatland.ordered.map :as ordered-map]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             add-native-column-info                                             |
@@ -258,3 +262,116 @@
                        :limit        10})}))
       :cols
       second))
+
+;; If a driver returns result rows as a sequence of maps, does the `result-rows-maps->vectors` convert them to a
+;; sequence of vectors in the correct order?
+(expect
+  {:rows    [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+   :columns ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]}
+  (qp.test-util/with-everything-store
+    (driver/with-driver :h2
+      (let [results {:rows [{:CATEGORY_ID 4
+                             :ID          1
+                             :LATITUDE    10.0646
+                             :LONGITUDE   -165.374
+                             :NAME        "Red Medicine"
+                             :PRICE       3}]}]
+        ((annotate/result-rows-maps->vectors (constantly results))
+         {:database (data/id)
+          :type     :query
+          :query    (data/$ids [venues {:wrap-field-ids? true}]
+                      {:source-table $$table
+                       :fields       [$id $name $category_id $latitude $longitude $price]
+                       :limit        1})})))))
+
+;; if a driver would have returned result rows as a sequence of maps, but query returned no results, middleware should
+;; still add `:columns` info
+(expect
+  {:rows    []
+   :columns ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]}
+  (qp.test-util/with-everything-store
+    (driver/with-driver :h2
+      (let [results {:rows []}]
+        ((annotate/result-rows-maps->vectors (constantly results))
+         {:database (data/id)
+          :type     :query
+          :query    (data/$ids [venues {:wrap-field-ids? true}]
+                      {:source-table $$table
+                       :fields       [$id $name $category_id $latitude $longitude $price]
+                       :limit        1})})))))
+
+;; `result-rows-maps->vectors` should preserve sort order of columns in the first result row for native queries
+;; (hopefully the driver is using Flatland `ordered-map` as suggested)
+(expect
+  {:rows    [[1 10.0646 -165.374 "Red Medicine" 3]]
+   :columns ["ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]}
+  (qp.test-util/with-everything-store
+    (driver/with-driver :h2
+      (let [results {:rows [(ordered-map/ordered-map
+                             :ID          1
+                             :LATITUDE    10.0646
+                             :LONGITUDE   -165.374
+                             :NAME        "Red Medicine"
+                             :PRICE       3)]}]
+        ((annotate/result-rows-maps->vectors (constantly results))
+         {:database (data/id)
+          :type     :native})))))
+
+;; Does `result-rows-maps->vectors` handle multiple aggregations of the same type? Should assume column keys are
+;; deduplicated using the MBQL lib logic
+(expect
+  {:rows    [[2 409 20]
+             [3  56  4]]
+   :columns ["CATEGORY_ID" "sum" "sum_2"]}
+  (qp.test-util/with-everything-store
+    (driver/with-driver :h2
+      (let [results {:rows [{:CATEGORY_ID 2
+                             :sum         409
+                             :sum_2       20}
+                            {:CATEGORY_ID 3
+                             :sum         56
+                             :sum_2       4}]}]
+        ((annotate/result-rows-maps->vectors (constantly results))
+         {:database (data/id)
+          :type     :query
+          :query    (data/$ids [venues {:wrap-field-ids? true}]
+                      {:source-table $$table
+                       :aggregation  [[:sum $id]
+                                      [:sum $price]]
+                       :breakout     [$category_id]
+                       :limit        2})})))))
+
+;; For fields with parents we should return them with a combined name including parent's name
+(tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
+                      Field [child  {:name "child",  :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+  {:description     nil
+   :table_id        (data/id :venues)
+   :special_type    nil
+   :name            "parent.child"
+   :settings        nil
+   :parent_id       (u/get-id parent)
+   :id              (u/get-id child)
+   :visibility_type :normal
+   :display_name    "Child"
+   :fingerprint     nil
+   :base_type       :type/Text}
+  (qp.test-util/with-everything-store
+    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+
+;; nested-nested fields should include grandparent name (etc)
+(tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
+                      Field [parent      {:name "parent",      :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
+                      Field [child       {:name "child",       :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+  {:description     nil
+   :table_id        (data/id :venues)
+   :special_type    nil
+   :name            "grandparent.parent.child"
+   :settings        nil
+   :parent_id       (u/get-id parent)
+   :id              (u/get-id child)
+   :visibility_type :normal
+   :display_name    "Child"
+   :fingerprint     nil
+   :base_type       :type/Text}
+  (qp.test-util/with-everything-store
+    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))

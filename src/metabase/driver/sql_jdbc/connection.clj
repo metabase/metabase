@@ -86,10 +86,18 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn details->connection-spec-for-testing-connection
+  "Return an appropriate JDBC connection spec to test whether a set of connection details is valid (i.e., implementing
+  `can-connect?`)."
+  [driver details]
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details)]
+    (connection-details->spec driver details-with-tunnel)))
+
 (defn can-connect?
   "Default implementation of `driver/can-connect?` for SQL JDBC drivers. Checks whether we can perform a simple `SELECT
   1` query."
   [driver details]
-  (let [details-with-tunnel (ssh/include-ssh-tunnel details)
-        connection          (connection-details->spec driver details-with-tunnel)]
-    (= 1 (first (vals (first (jdbc/query connection ["SELECT 1"])))))))
+  (let [spec        (details->connection-spec-for-testing-connection driver details)
+        [first-row] (jdbc/query spec ["SELECT 1"])
+        [result]    (vals first-row)]
+    (= 1 result)))

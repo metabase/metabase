@@ -12,7 +12,6 @@
              [driver :as driver]
              [task :as task]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -38,9 +37,7 @@
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import java.util.TimeZone
-           org.apache.log4j.Logger
-           org.joda.time.DateTimeZone
+  (:import org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
@@ -468,9 +465,10 @@
 (defn do-with-temp-scheduler [f]
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
-      (try (f)
-           (finally
-             (qs/shutdown temp-scheduler))))))
+      (try
+        (f)
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
   "Execute BODY with a temporary scheduler in place.
@@ -520,39 +518,6 @@
           .getChronology
           .getZone
           .getID))))
-
-(defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
-  it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'sql-jdbc.conn/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
-  [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
 
 (defmulti ^:private do-model-cleanup! class)
 

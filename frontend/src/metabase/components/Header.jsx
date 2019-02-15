@@ -30,7 +30,7 @@ export default class Header extends Component {
     this.updateHeaderHeight();
   }
 
-  componentWillUpdate() {
+  componentDidUpdate() {
     const modalIsOpen = !!this.props.headerModalMessage;
     if (modalIsOpen) {
       this.updateHeaderHeight();

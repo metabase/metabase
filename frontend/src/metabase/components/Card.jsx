@@ -1,10 +1,11 @@
 import styled from "styled-components";
-import { space } from "styled-system";
+import { space, width } from "styled-system";
 import colors, { alpha } from "metabase/lib/colors";
 
 const Card = styled.div`
+  ${width}
   ${space} background-color: ${props =>
-      props.dark ? colors["text-dark"] : "white"};
+  props.dark ? colors["text-dark"] : "white"};
   border: 1px solid
     ${props => (props.dark ? "transparent" : colors["bg-medium"])};
   ${props => props.dark && `color: white`};

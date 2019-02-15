@@ -4,7 +4,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
-import fitViewport from "metabase/hoc/FitViewPort";
 
 import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
 
@@ -67,7 +66,6 @@ type DashboardAppState = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ dashboard }) => dashboard && dashboard.name)
-@fitViewport
 export default class DashboardApp extends Component {
   state: DashboardAppState = {
     addCardOnLoad: null,
@@ -82,7 +80,7 @@ export default class DashboardApp extends Component {
 
   render() {
     return (
-      <div className={this.props.fitClassNames}>
+      <div>
         <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
         {/* For rendering modal urls */}
         {this.props.children}
