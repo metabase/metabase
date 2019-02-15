@@ -41,9 +41,13 @@ export const rangeForValue = (
 /**
  * Returns a MBQL field reference (ConcreteField) for a given result dataset column
  * @param  {Column} column Dataset result column
+ * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?ConcreteField} MBQL field reference
  */
-export function fieldRefForColumn(column: Column): ?ConcreteField {
+export function fieldRefForColumn(
+  column: Column,
+  columns?: Column[],
+): ?ConcreteField {
   if (column.id != null) {
     if (Array.isArray(column.id)) {
       // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
@@ -55,9 +59,16 @@ export function fieldRefForColumn(column: Column): ?ConcreteField {
     }
   } else if (column.expression_name != null) {
     return ["expression", column.expression_name];
-  } else {
-    return null;
+  } else if (column.source === "aggregation" && columns) {
+    // HACK: find the aggregation index, preferably this would be included on the column
+    const aggIndex = columns
+      .filter(c => c.source === "aggregation")
+      .indexOf(column);
+    if (aggIndex >= 0) {
+      return ["aggregation", aggIndex];
+    }
   }
+  return null;
 }
 
 export const keyForColumn = (column: Column): string => {
