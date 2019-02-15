@@ -794,6 +794,7 @@ export default class StructuredQuery extends AtomicQuery {
         nameCounts.set(name, count);
         return `${name}_${count}`;
       } else {
+        nameCounts.set(name, 1);
         return name;
       }
     });
