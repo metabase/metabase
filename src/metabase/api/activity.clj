@@ -13,8 +13,8 @@
              [hydrate :refer [hydrate]]]))
 
 (defn- dashcard-activity? [activity]
-  (contains? #{:dashboard-add-cards :dashboard-remove-cards}
-             (:topic activity)))
+  (#{:dashboard-add-cards :dashboard-remove-cards}
+   (:topic activity)))
 
 (defn- activities->referenced-objects
   "Get a map of model name to a set of referenced IDs in these ACTIVITIES.
