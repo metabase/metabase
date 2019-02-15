@@ -304,7 +304,7 @@ export default class NativeQueryEditor extends Component {
             key="db_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
-            <Icon className="Icon text-medium pl2" name="database" size={14} />
+            <Icon className="Icon text-light pl2" name="database" size={14} />
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -343,32 +343,21 @@ export default class NativeQueryEditor extends Component {
       }
     } else {
       dataSelectors = (
-        <div
-          key="db_selector"
-          className="GuiBuilder-section GuiBuilder-data flex align-center"
-        >
-          <Icon className="Icon text-light pl2 pr1" name="database" size={14} />
-          <span
-            key="db"
-            className="p1 mr2 text-bold text-medium flex align-center"
-          >
-            {database.name}
-          </span>
-        </div>
+        <span className="pl1 pr3 py2 text-medium">{t`This question is written in ${query.nativeQueryLanguage()}.`}</span>
       );
     }
 
     let editorClasses, editorHeaderClasses, toggleEditorText, toggleEditorIcon;
     if (this.state.showEditor) {
-      editorClasses = "border-bottom";
-      editorHeaderClasses = "border-top bg-light";
+      editorClasses = "border-bottom border-medium";
+      editorHeaderClasses = "border-top border-medium bg-light";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
         : t`Hide Query`;
       toggleEditorIcon = "contract";
     } else {
       editorClasses = "hide";
-      editorHeaderClasses = "bg-white";
+      editorHeaderClasses = "border-top border-transparent bg-white";
       toggleEditorText = query.hasWritePermission()
         ? t`Open Editor`
         : t`Show Query`;
@@ -405,7 +394,7 @@ export default class NativeQueryEditor extends Component {
 
         <ResizableBox
           ref="resizeBox"
-          className={"border-top " + editorClasses}
+          className={"border-top border-medium " + editorClasses}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"

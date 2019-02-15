@@ -57,6 +57,9 @@
 .border-light {
   border-color: color(var(--color-border) alpha(-80%)) !important;
 }
+.border-medium {
+  border-color: color(var(--color-border) alpha(-50%)) !important;
+}
 
 .border-dark,
 .border-dark-hover:hover {
