@@ -97,8 +97,8 @@
       :details      $})]
   ;; clear any other activities from the DB just in case; not sure this step is needed any more
   (do (db/delete! Activity :id [:not-in #{(:id activity1)
-                                                  (:id activity2)
-                                                  (:id activity3)}])
+                                          (:id activity2)
+                                          (:id activity3)}])
       (for [activity ((user->client :crowberto) :get 200 "activity")]
         (dissoc activity :timestamp))))
 
@@ -211,3 +211,17 @@
                                          {:model "card",      :model_id 0}
                                          {:model "dashboard", :model_id 0, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id}
                                                                                                                                  {:card_id 0}]}}]))
+
+;; Only admins should get to see user-joined activities
+(defn- user-can-see-user-joined-activity? [user]
+  ;; clear out all existing Activity entries
+  (db/delete! Activity)
+  (-> (tt/with-temp Activity [activity {:topic     "user-joined"
+                                        :details   {}
+                                        :timestamp (du/->Timestamp #inst "2019-02-15T11:55:00.000Z")}]
+        ((user->client user) :get 200 "activity"))
+      seq
+      boolean))
+
+(expect true  (user-can-see-user-joined-activity? :crowberto))
+(expect false (user-can-see-user-joined-activity? :rasta))

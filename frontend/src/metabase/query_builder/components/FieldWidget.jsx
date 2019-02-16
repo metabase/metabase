@@ -56,7 +56,7 @@ export default class FieldWidget extends Component {
         <Popover ref="popover" className="FieldPopover" onClose={this.toggle}>
           <FieldList
             className={"text-" + this.props.color}
-            tableMetadata={this.props.tableMetadata}
+            table={this.props.tableMetadata}
             field={this.props.field}
             fieldOptions={this.props.fieldOptions}
             customFieldOptions={this.props.customFieldOptions}
