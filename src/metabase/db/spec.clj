@@ -5,13 +5,12 @@
 
 (defn h2
   "Create a Clojure JDBC database specification for a H2 database."
-  [{:keys [db]
-    :or   {db "h2.db"}
-    :as   opts}]
-  (merge {:classname   "org.h2.Driver"
-          :subprotocol "h2"
-          :subname     db}
-         (dissoc opts :db)))
+  [{:keys [db], :as opts}]
+  (merge
+   {:classname   "org.h2.Driver"
+    :subprotocol "h2"
+    :subname     db}
+   (dissoc opts :db)))
 
 (defn- make-subname [host port db]
   (str "//" host ":" port "/" db))
@@ -19,7 +18,7 @@
 (defn postgres
   "Create a Clojure JDBC database specification for a Postgres database."
   [{:keys [host port db]
-    :or   {host "localhost", port 5432, db ""}
+    :or   {host "localhost", port 5432}
     :as   opts}]
   (merge
    {:classname                     "org.postgresql.Driver"
@@ -32,7 +31,7 @@
 (defn mysql
   "Create a Clojure JDBC database specification for a MySQL or MariaDB database."
   [{:keys [host port db]
-    :or   {host "localhost", port 3306, db ""}
+    :or   {host "localhost", port 3306}
     :as   opts}]
   (merge
    {:classname   "org.mariadb.jdbc.Driver"

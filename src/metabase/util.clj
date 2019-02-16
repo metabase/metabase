@@ -317,15 +317,16 @@
        (concat
         frames-after-last-mb
         ;; add a little arrow to the frame so it stands out more
-        (cons (str "--> " last-mb-frame)
-              frames-before-last-mb))))})
+        (cons
+         (some->> last-mb-frame (str "--> "))
+         frames-before-last-mb))))})
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
   [futur timeout-ms]
   (let [result (deref futur timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
+      (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
     result))
 
 (defmacro with-timeout

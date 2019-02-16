@@ -224,30 +224,16 @@
     :YEAR                        :type/Integer
     (keyword "DOUBLE PRECISION") :type/Float} database-type))
 
-
-;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
-;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
-;; replace that and make the connection read-only.
-
-(defn- file+options->connection-string
-  "Implode the results of `connection-string->file+options` back into a connection string."
-  [file options]
-  (apply str file (for [[k v] options]
-                    (str ";" k "=" v))))
-
-(defn- connection-string-set-safe-options
-  "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
-  [connection-string]
-  (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options
-                                                 {:IFEXISTS         true
-                                                  :ACCESS_MODE_DATA "r"}))))
+(def ^:private safe-options
+  "Metabase Security Settings™ to add to H2 connection properties (try to keep shady users from writing nasty SQL)."
+  {:IFEXISTS         true
+   :ACCESS_MODE_DATA "r"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2 [_ details]
   (dbspec/h2
    (if *allow-potentailly-unsafe-connections*
      details
-     (update details :db connection-string-set-safe-options))))
+     (merge details safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2 [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
