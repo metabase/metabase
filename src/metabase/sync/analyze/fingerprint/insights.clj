@@ -1,6 +1,9 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [kixi.stats
+  (:require [clj-time
+              [coerce :as t.coerce]
+              [core :as t]]
+            [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
