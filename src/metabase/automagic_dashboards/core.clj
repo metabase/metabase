@@ -1230,6 +1230,7 @@
                                         :group-by [:table_id]
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
+          ;; Table comprised entierly of join keys
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
@@ -1269,7 +1270,7 @@
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
-          (remove (comp (some-fn :link-table? :list-like? (comp zero? :num-fields)) :stats))
+          (remove (comp (some-fn :link-table? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
@@ -1279,7 +1280,10 @@
                    {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
                     :score       (+ (math/sq (:specificity rule))
-                                    (math/log (-> table :stats :num-fields)))
+                                    (math/log (-> table :stats :num-fields))
+                                    (if (-> table :stats :list-like?)
+                                      -10
+                                      0))
                     :description (:description dashboard)
                     :table       table
                     :rule        (:rule rule)})))
