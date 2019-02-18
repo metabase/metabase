@@ -3,6 +3,7 @@
   (:require [kixi.stats
              [core :as stats]
              [math :as math]]
+            [medley.core :as m]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [redux.core :as redux]))
@@ -127,8 +128,14 @@
 
 (defn- timeseries?
   [{:keys [numbers datetimes others]}]
-  (and (pos? (count numbers))
+  (and (not-empty numbers)
        (= (count datetimes) 1)
+       (empty? others)))
+
+(defn- number-vs-number?
+  [{:keys [numbers datetimes others]}]
+  (and (>= (count numbers) 2)
+       (empty? datetimes)
        (empty? others)))
 
 (def ^:private ms->day
@@ -193,6 +200,23 @@
                    :best-fit       best-fit
                    :col            (:name number-col)})))))))
 
+(defn- number-vs-number-insight
+  [{[x & ys] :numbers}]
+  (let [xfn first]
+    (apply redux/juxt
+           (for [y ys]
+             (redux/post-complete
+              (let [yfn #(nth % (:position y))]
+                (redux/juxt (stats/simple-linear-regression xfn yfn)
+                            (best-fit xfn yfn)
+                            (stats/correlation xfn yfn)))
+              (fn [[[offset slope] best-fit correlation]]
+                {:slope       slope
+                 :offset      offset
+                 :best-fit    best-fit
+                 :correlation correlation
+                 :col         (:name y)}))))))
+
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
    this is the only way to recover the information they were once datetimes."
@@ -216,7 +240,9 @@
                                         (field/unix-timestamp? field)                :datetimes
                                         (isa? base_type :type/Number)                :numbers
                                         (isa? base_type :type/DateTime)              :datetimes
-                                        :else                                        :others))))]
+                                        :else                                        :others)))
+                          (m/map-vals (partial sort-by :position)))]
     (cond
-      (timeseries? cols-by-type) (timeseries-insight cols-by-type)
-      :else                      (f/constant-fingerprinter nil))))
+      (timeseries? cols-by-type)       (timeseries-insight cols-by-type)
+      (number-vs-number? cols-by-type) (number-vs-number-insight cols-by-type)
+      :else                            (f/constant-fingerprinter nil))))
