@@ -48,7 +48,9 @@
 ;; and comparing values of `settings-last-updated`. Because the Setting table itself only stores text values, we'll
 ;; need to cast it between TEXT and TIMESTAMP SQL types as needed.
 
-(def ^String settings-last-updated-key "settings-last-updated")
+(def ^String settings-last-updated-key
+  "Internal key used to store the last updated timestamp for Settings."
+  "settings-last-updated")
 
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."

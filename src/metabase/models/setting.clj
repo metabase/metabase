@@ -532,7 +532,7 @@
      :env_name       (env-var-name setting)
      :description    (str description)
      :default        (if set-via-env-var?
-                       (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
+                       (str (tru "Using value of env var {0}" (str \$ (env-var-name setting))))
                        default)}))
 
 (defn all
