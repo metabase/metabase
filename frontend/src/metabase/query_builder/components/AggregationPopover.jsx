@@ -348,7 +348,7 @@ export default class AggregationPopover extends Component {
           <FieldList
             className={"text-green"}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
-            tableMetadata={tableMetadata}
+            table={tableMetadata}
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
             customFieldOptions={customFields}

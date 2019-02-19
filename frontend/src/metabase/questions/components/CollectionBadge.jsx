@@ -13,14 +13,19 @@ import cx from "classnames";
   entityType: "collections",
   entityId: (state, props) => props.collectionId || "root",
   wrapped: true,
+  loadingAndErrorWrapper: false,
+  properties: ["name"],
 })
 class CollectionBadge extends React.Component {
   render() {
-    const { analyticsContext, object } = this.props;
+    const { analyticsContext, object, className } = this.props;
+    if (!object) {
+      return null;
+    }
     return (
       <Link
         to={Urls.collection(object.id)}
-        className={cx("inline-block link")}
+        className={cx(className, "block link")}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
         <Flex align="center">

@@ -280,7 +280,7 @@ export default class FieldRemapping extends React.Component {
                 dimensions: [],
                 fks: this.getForeignKeys(),
               }}
-              tableMetadata={table}
+              table={table}
               onFieldChange={this.onForeignKeyFieldChange}
               hideSectionHeader
             />
