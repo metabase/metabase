@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { t, ngettext, msgid } from "c-3po";
+import { t } from "c-3po";
 import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon.jsx";
 
