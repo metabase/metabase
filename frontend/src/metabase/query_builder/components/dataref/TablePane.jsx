@@ -103,6 +103,12 @@ export default class TablePane extends Component {
 
       let pane;
       let description;
+      const descriptionClasses = cx({ "text-medium": !table.description });
+      description = (
+        <p className={descriptionClasses}>
+          {table.description || t`No description set.`}
+        </p>
+      );
       if (this.state.pane === "connections") {
         const fkCountsByTable = foreignKeyCountsByOriginTable(
           this.state.tableForeignKeys,
@@ -150,13 +156,6 @@ export default class TablePane extends Component {
               </li>
             ))}
           </ul>
-        );
-      } else {
-        const descriptionClasses = cx({ "text-medium": !table.description });
-        description = (
-          <p className={descriptionClasses}>
-            {table.description || t`No description set.`}
-          </p>
         );
       }
 

@@ -548,7 +548,7 @@
   z-index: 0;
   right: 0;
   opacity: 1;
-  transition: all .5s;
+  transition: all 0.5s;
 }
 
 .DataReference-container {
