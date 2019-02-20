@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
 import MainPane from "./MainPane.jsx";
+import DatabasePane from "./DatabasePane.jsx";
 import TablePane from "./TablePane.jsx";
 import FieldPane from "./FieldPane.jsx";
 import SegmentPane from "./SegmentPane.jsx";
@@ -15,8 +16,20 @@ export default class DataReference extends Component {
   constructor(props, context) {
     super(props, context);
 
+    const { query } = props;
+
+    const stack = [];
+    const database = query && query.database();
+    if (database) {
+      stack.push({ type: "database", item: database });
+    }
+    const table = query && query.table();
+    if (table) {
+      stack.push({ type: "table", item: table });
+    }
+
     this.state = {
-      stack: [],
+      stack: stack,
       tables: {},
       fields: {},
     };
@@ -56,7 +69,11 @@ export default class DataReference extends Component {
       content = <MainPane {...this.props} show={this.show} />;
     } else {
       let page = this.state.stack[this.state.stack.length - 1];
-      if (page.type === "table") {
+      if (page.type === "database") {
+        content = (
+          <DatabasePane {...this.props} show={this.show} database={page.item} />
+        );
+      } else if (page.type === "table") {
         content = (
           <TablePane {...this.props} show={this.show} table={page.item} />
         );
