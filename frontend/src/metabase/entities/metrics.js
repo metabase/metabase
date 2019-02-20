@@ -12,6 +12,6 @@ export default createEntity({
     getName: segment => segment && segment.name,
     getUrl: segment => null,
     getColor: () => colors["text-medium"],
-    getIcon: question => "metric",
+    getIcon: question => "sum",
   },
 });
