@@ -6,7 +6,6 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 
 // components
-import QueryButton from "metabase/components/QueryButton.jsx";
 import Expandable from "metabase/components/Expandable.jsx";
 
 // lib
@@ -70,18 +69,6 @@ export default class TablePane extends Component {
   render() {
     const { table, error } = this.state;
     if (table) {
-      let queryButton;
-      if (table.rows != null) {
-        let text = t`See the raw data for ${table.display_name}`;
-        queryButton = (
-          <QueryButton
-            className="border-bottom border-top mb3"
-            icon="table"
-            text={text}
-            onClick={this.setQueryAllRows}
-          />
-        );
-      }
       let panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
@@ -105,7 +92,7 @@ export default class TablePane extends Component {
       let description;
       const descriptionClasses = cx({ "text-medium": !table.description });
       description = (
-        <p className={descriptionClasses}>
+        <p className={"text-spaced " + descriptionClasses}>
           {table.description || t`No description set.`}
         </p>
       );
@@ -161,36 +148,15 @@ export default class TablePane extends Component {
 
       return (
         <div>
-          <div className="flex align-center">
-            <Icon name="table2" className="text-medium pr1" size={16} />
-            <h2>{table.name}</h2>
-          </div>
-          {description}
-          {queryButton}
-          {table.metrics &&
-            table.metrics.length > 0 && (
-              <ExpandableItemList
-                name="Metrics"
-                type="metrics"
-                show={this.props.show.bind(null, "metric")}
-                items={table.metrics.filter(
-                  metric => metric.archived === false,
-                )}
-              />
-            )}
-          {table.segments &&
-            table.segments.length > 0 && (
-              <ExpandableItemList
-                name="Segments"
-                type="segments"
-                show={this.props.show.bind(null, "segment")}
-                items={table.segments.filter(
-                  segment => segment.archived === false,
-                )}
-              />
-            )}
-          <div className="my2 Button-group Button-group--brand text-uppercase">
-            {tabs}
+          <div className="ml1">
+            <div className="flex align-center">
+              <Icon name="table2" className="text-medium pr1" size={16} />
+              <h3>{table.name}</h3>
+            </div>
+            {description}
+            <div className="my2 Button-group Button-group--brand text-uppercase">
+              {tabs}
+            </div>
           </div>
           {pane}
         </div>
