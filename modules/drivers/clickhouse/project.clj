@@ -2,7 +2,7 @@
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[ru.yandex.clickhouse/clickhouse-jdbc "0.1.48"
+  [[ru.yandex.clickhouse/clickhouse-jdbc "0.1.50"
     :exclusions [com.fasterxml.jackson.core/jackson-core
                  org.slf4j/slf4j-api]]]
 
