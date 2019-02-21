@@ -43,3 +43,8 @@ The `--mode` flag lets you specify what to do when encountering a duplicate dash
 The `--on-error` flag allows you to specify whether the load process should keep going or stop when there's an error. The default is `continue`.
 
 Both of these flags are optional.
+
+---
+
+## That's it!
+Still need help? Feel free to reach out to us at the support email address you were provided.
