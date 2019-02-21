@@ -12,6 +12,7 @@
             [metabase.metabot.slack :as metabot.slack]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection]
              [interface :as mi]
              [permissions :refer [Permissions]]
              [permissions-group :as perms-group]]
@@ -23,9 +24,19 @@
 ;;; ----------------------------------------------------- Perms ------------------------------------------------------
 
 (defn- metabot-permissions
-  "Return the set of permissions granted to the MetaBot."
+  "Return the set of permissions granted to the MetaBot.
+
+  MetaBot can only interact with Cards, and Cards are always in a collection; thus any non-collection perms are legacy
+  and irrelevant."
   []
-  (db/select-field :object Permissions, :group_id (u/get-id (perms-group/metabot))))
+  (db/select-field :object Permissions
+    :group_id (u/get-id (perms-group/metabot))
+    :object   [:like "/collection/%"]))
+
+(defn- metabot-visible-collection-ids
+  "Set of visible collection IDs, including `nil` if the MetaBot can see the Root Collection."
+  []
+  (collection/permissions-set->visible-collection-ids (metabot-permissions)))
 
 (defn- do-with-metabot-permissions [f]
   (binding [*current-user-permissions-set* (delay (metabot-permissions))]
@@ -54,7 +65,7 @@
     User: metabot show 100
 
     [In Metabase]
-    (command \"show\" \"100\") ; -> [some results]
+    (command \"show\" 100) ; -> [some results]
 
     [In Slack]
     MetaBot: [some results]
@@ -64,6 +75,7 @@
 
   The results are normally immediately posted directly to Slack; some commands also post additional messages
   asynchronously, such as `show`."
+  {:arglists '([command & args])}
   (fn [command & _]
     (keyword (str/lower-case command))))
 
@@ -87,7 +99,7 @@
 
 ;;; ------------------------------------------------------ list ------------------------------------------------------
 
-(defn- format-cards
+(defn- formar-cards-list
   "Format a sequence of Cards as a nice multiline list for use in responses."
   [cards]
   (apply str (interpose "\n" (for [{id :id, card-name :name} cards]
@@ -95,24 +107,46 @@
 
 (defn- list-cards []
   (filter-metabot-readable
-   (db/select [Card :id :name :dataset_query :collection_id]
-     :archived false
-     {:order-by [[:id :desc]]
-      :limit    20})))
+   (let [collection-ids                  (metabot-visible-collection-ids)
+         root-collection-perms?          (contains? collection-ids nil)
+         other-visible-collection-ids    (filter some? collection-ids)
+
+         root-collection-filter-clause   (when root-collection-perms?
+                                           [:= :collection_id nil])
+         other-collections-filter-clause (when (seq other-visible-collection-ids)
+                                           [:in :collection_id other-visible-collection-ids])]
+     (db/select [Card :id :name :dataset_query :collection_id]
+       {:order-by [[:id :desc]]
+        :limit    20
+        :where    [:and
+                   [:= :archived false]
+                   (collection/visible-collection-ids->honeysql-filter-clause
+                    (metabot-visible-collection-ids))]}))))
 
 (defmethod command :list [& _]
   (let [cards (list-cards)]
-    (str (tru "Here''s your {0} most recent cards:\n{1}" (count cards) (format-cards cards)))))
+    (str (tru "Here''s your {0} most recent cards:" (count cards))
+         "\n"
+          (formar-cards-list cards))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------
 
+(defn- cards-with-name [card-name]
+  (db/select [Card :id :name]
+    :%lower.name [:like (str \% (str/lower-case card-name) \%)]
+    :archived false))
+
 (defn- card-with-name [card-name]
-  (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
-           (when (> (count <>) 1)
-             (throw (Exception.
-                     (str (tru "Could you be a little more specific? I found these cards with names that matched:\n{0}"
-                               (format-cards <>)))))))))
+  (let [[first-card & more, :as cards] (cards-with-name card-name)]
+    (when (seq more)
+      (throw
+       (Exception.
+        (str
+         (tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
+         "\n"
+         (formar-cards-list cards)))))
+    first-card))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
@@ -133,7 +167,7 @@
   ([_ card-id-or-name]
    (let [{card-id :id} (id-or-name->card card-id-or-name)]
      (when-not card-id
-       (throw (Exception. (str (tru "Not Found")))))
+       (throw (Exception. (str (tru "Card {0} not found." card-id-or-name)))))
      (with-metabot-permissions
        (read-check Card card-id))
      (metabot.slack/async

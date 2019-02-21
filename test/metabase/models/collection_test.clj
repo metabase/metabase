@@ -487,6 +487,19 @@
      "/db/2/native/"
      "/collection/9/read/"}))
 
+;; for the Root Collection we should return `"root"`
+(expect
+  #{8 9 "root"}
+  (collection/permissions-set->visible-collection-ids
+   #{"/collection/8/"
+     "/collection/9/read/"
+     "/collection/root/"}))
+
+(expect
+  #{"root"}
+  (collection/permissions-set->visible-collection-ids
+   #{"/collection/root/read/"}))
+
 ;; Can we calculate `effective-location-path`?
 (expect "/10/20/"    (collection/effective-location-path "/10/20/30/" #{10 20}))
 (expect "/10/30/"    (collection/effective-location-path "/10/20/30/" #{10 30}))
