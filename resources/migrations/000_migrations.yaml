@@ -5230,3 +5230,31 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: CREATE UNIQUE INDEX idx_uniq_field_table_id_parent_id_name_2col ON "metabase_field" ("table_id", "name") WHERE "parent_id" IS NULL
+
+#
+# Migration 84 was written slightly incorrectly and did not correctly migrate the values of is_active -> archived for
+# METRICS. If you look at the migration you will notice the raw SQL part is a `sql` map with 2 `sql` keys. The first key
+# is ignored, and that statement was never ran.
+#
+# To fix this we will migrate any metrics that haven't been updated since that migration ran and fix their archived
+# status
+  - changeSet:
+      id: 100
+      author: camsaul
+      comment: 'Added 0.32.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: RUN
+        - tableExists:
+            tableName: databasechangelog
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metric
+              SET archived = NOT archived
+              WHERE EXISTS (
+                SELECT *
+                FROM databasechangelog dbcl
+                WHERE dbcl.id = '84'
+                  AND metric.updated_at < dbcl.dateexecuted
+              )
