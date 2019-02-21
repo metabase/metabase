@@ -913,6 +913,29 @@
           {:aggregation [[:count]]
            :filter      [:= [:field-id $timestamp] (du/format-date "yyyy-MM-dd" (du/date-trunc :day))]})))))
 
+;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically created
+;; checkins DBs so we can run it against Snowflake and BigQuery as well.
+(expect-with-non-timeseries-dbs
+  [[1]]
+  (format-rows-by [int]
+    (rows
+      (data/dataset office-checkins
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:= [:field-id $timestamp] "2019-01-16"]})))))
+
+;; Check that automatic bucketing still happens when using compound filter clauses (#9127)
+(expect-with-non-timeseries-dbs
+  [[1]]
+  (format-rows-by [int]
+    (rows
+      (data/dataset office-checkins
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:and
+                         [:= [:field-id $timestamp] "2019-01-16"]
+                         [:= [:field-id $id] 6]]})))))
+
 ;; if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches
 (expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   ;; Mongo returns empty row for count = 0. We should fix that

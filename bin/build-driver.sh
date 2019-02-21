@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
 project_root=`pwd`
 
@@ -21,10 +21,20 @@ checksum_file="$driver_project_dir/target/checksum.txt"
 
 ######################################## CALCULATING CHECKSUMS ########################################
 
+md5_command=''
+if [ `command -v md5` ]; then
+    md5_command=md5
+elif [ `command -v md5sum` ]; then
+    md5_command=md5sum
+else
+    echo "Don't know what command to use to calculate md5sums."
+    exit -2
+fi
+
 # Calculate a checksum of all the driver source files. If we've already built the driver and the checksum is the same
 # there's no need to build the driver a second time
 calculate_checksum() {
-    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | cat | md5sum
+    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | cat | $md5_command
 }
 
 # Check whether the saved checksum for the driver sources from the last build is the same as the current one. If so,
@@ -127,7 +137,7 @@ build_driver_uberjar() {
 
     if [ ! -f "$target_jar" ]; then
         echo "Error: could not find $target_jar. Build failed."
-        exit -1
+        return -1
     fi
 }
 
@@ -150,25 +160,47 @@ save_checksum() {
     echo "$checksum" > "$checksum_file"
 }
 
+copy_target_to_dest() {
+    # ok, finally, copy finished JAR to the resources dir
+    echo "Copying $target_jar -> $dest_location"
+    cp "$target_jar" "$dest_location"
+}
+
 # Runs all the steps needed to build the driver.
 build_driver() {
-    delete_old_drivers
-    install_metabase_core
-    build_metabase_uberjar
-    build_parents
-    build_driver_uberjar
-    strip_and_compress
-    save_checksum
+    delete_old_drivers &&
+        install_metabase_core &&
+        build_metabase_uberjar &&
+        build_parents &&
+        build_driver_uberjar &&
+        strip_and_compress &&
+        save_checksum &&
+        copy_target_to_dest
 }
 
 ######################################## PUTTING IT ALL TOGETHER ########################################
 
+clean_local_repo() {
+    echo "Deleting existing installed metabase-core and driver dependencies..."
+    rm -rf ~/.m2/repository/metabase-core
+    rm -rf ~/.m2/repository/metabase/*-driver
+}
+
+retry_clean_build() {
+    echo "Building without cleaning failed. Retrying clean build..."
+    clean_local_repo
+    build_driver
+}
+
 mkdir -p resources/modules
 
-if [ ! "$(checksum_is_same)" ]; then
-    build_driver
+# run only a specific step with ./bin/build-driver.sh <driver> <step>
+if [ $# -eq 2 ]; then
+    $2
+# Build driver if checksum has changed
+elif [ ! "$(checksum_is_same)" ]; then
+    build_driver || retry_clean_build
+# Either way, always copy the target uberjar to the dest location
+else
+    copy_target_to_dest
 fi
-
-# ok, finally, copy finished JAR to the resources dir
-echo "Copying $target_jar -> $dest_location"
-cp "$target_jar" "$dest_location"

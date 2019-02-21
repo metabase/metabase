@@ -24,6 +24,7 @@
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
+   "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -96,7 +97,7 @@
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
-   [org.liquibase/liquibase-core "3.6.2"                              ; migration management (Java lib)
+   [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.3.0"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
@@ -111,34 +112,31 @@
    [org.eclipse.jetty/jetty-server "9.4.14.v20181114"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [expectations "2.2.0-beta2"]
-   [toucan "1.10.1" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
 
   :main ^:skip-aot metabase.core
 
   ;; TODO - WHAT DOES THIS DO?
-  :manifest {"Liquibase-Package"
-             #= (eval
-                 (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-                      "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-                      "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-                      "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
-
-  :target-path "target/%s"
+  :manifest
+  {"Liquibase-Package"
+   #=(eval
+      (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+           "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+           "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+           "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
    "-Xverify:none"                                                    ; disable bytecode verification when running in dev so it starts slightly faster
    "-Djava.awt.headless=true"]                                        ; prevent Java icon from randomly popping up in dock when running `lein ring server`
 
-  :javac-options ["-target" "1.8", "-source" "1.8"]
-  :uberjar-name "metabase.jar"
+  :target-path "target/%s"
 
-  :ring
-  {:handler      metabase.core/app
-   :init         metabase.core/init!
-   :destroy      metabase.core/destroy
-   :reload-paths ["src"]}
+  :javac-options
+  ["-target" "1.8", "-source" "1.8"]
+
+  :uberjar-name
+  "metabase.jar"
 
   :profiles
   {:dev
@@ -148,16 +146,7 @@
      [ring/ring-mock "0.3.2"]]
 
     :plugins
-    [[docstring-checker "1.0.3"]                                      ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-     [jonase/eastwood "0.3.1"
-      :exclusions [org.clojure/clojure]]                              ; Linting
-     [lein-bikeshed "0.4.1"]                                          ; Linting
-     [lein-check-namespace-decls "1.0.1"]                             ; lints namespace declarations
-     [lein-environ "1.1.0"]                                           ; easy access to environment variables
-     [lein-expectations "0.0.8"]                                      ; run unit tests with 'lein expectations'
-     ;; TODO - should this be moved to the new RING profile?
-     [lein-ring "0.12.3"                                              ; start the HTTP server with 'lein ring server'
-      :exclusions [org.clojure/clojure]]]
+    [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
 
     :env      {:mb-run-mode "dev"}
     :jvm-opts ["-Dlogfile.path=target/log"]
@@ -182,19 +171,32 @@
    :run
    [:exclude-tests {}]
 
+   ;; start the HTTP server with 'lein ring server'
    :ring
-   [:exclude-tests {}]
+   [:exclude-tests
+    {:plugins
+     [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
+
+     :ring
+     {:handler      metabase.core/app
+      :init         metabase.core/init!
+      :destroy      metabase.core/destroy
+      :reload-paths ["src"]}}]
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.4"]]
+    [[metabase/lein-include-drivers "1.0.5"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
 
    :expectations
    [:with-include-drivers-middleware
-    {:injections
+    {:plugins
+     [[lein-expectations "0.0.8"
+       :exclusions [expectations]]]
+
+     :injections
      [(require 'metabase.test-setup                                   ; for test setup stuff
                'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
@@ -218,20 +220,31 @@
    [:with-include-drivers-middleware
     {:include-drivers :all}]
 
-   :bikeshed
+   :repl
    [:include-all-drivers]
+
+   :bikeshed
+   [:include-all-drivers
+    {:plugins [[lein-bikeshed "0.4.1"]]}]
 
    :eastwood
    [:include-all-drivers
-    {:eastwood
+    {:plugins
+     [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
+
+     :eastwood
      {:exclude-namespaces [:test-paths]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            :unused-namespaces
-                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled (yet)
+                           ;; These linters are pretty useful but give a few false positives and can't be selectively
+                           ;; disabled (yet)
+                           ;;
                            ;; For example see https://github.com/jonase/eastwood/issues/193
-                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issue above
-                           ;; and re-enable them if we can get them to work
+                           ;
+                           ;; It's still useful to re-enable them and run them every once in a while because they catch
+                           ;; a lot of actual errors too. Keep an eye on the issue above and re-enable them if we can
+                           ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
       ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
@@ -242,16 +255,21 @@
    [:include-all-drivers
     {:global-vars {*warn-on-reflection* true}}]
 
+   ;; Check that all public vars have docstrings. Run with 'lein docstring-checker'
    :docstring-checker
    [:include-all-drivers
-    {:docstring-checker
+    {:plugins
+     [[docstring-checker "1.0.3"]]
+
+     :docstring-checker
      {:include [#"^metabase"]
       :exclude [#"test"
                 #"^metabase\.http-client$"]}}]
 
    :check-namespace-decls
    [:include-all-drivers
-    {:source-paths          ["test"]
+    {:plugins               [[lein-check-namespace-decls "1.0.2"]]
+     :source-paths          ["test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`

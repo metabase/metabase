@@ -74,9 +74,18 @@
   align-items: flex-end;
 }
 
+.align-stretch {
+  align-items: stretch;
+}
+
 .align-self-end,
 :local(.align-self-end) {
   align-self: flex-end;
+}
+
+.align-self-start,
+:local(.align-self-start) {
+  align-self: flex-start;
 }
 
 .align-self-center {
@@ -139,6 +148,10 @@
 
 .flex-column {
   flex-direction: column;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
 }
 
 @media screen and (--breakpoint-min-sm) {

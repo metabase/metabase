@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-set -e
+set -eo pipefail
 
 # If ran as `./bin/build-drivers.sh clean` then uninstall metabase-core from the local Maven repo and delete
 if [ "$1" == clean ]; then
@@ -22,4 +22,9 @@ fi
 for driver in `ls modules/drivers/ | sed 's|/$||'`; do # strip trailing slashes if `ls` is set to include them
     echo "Build: $driver"
     ./bin/build-driver.sh "$driver"
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to build driver $driver."
+        exit -1
+    fi
 done

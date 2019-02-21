@@ -7,7 +7,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
+             [interface :as qp.i]
              [store :as qp.store]
              [util :as qputil]]
             [metabase.util
@@ -178,15 +180,15 @@
 
 (defn- run-query
   "Run the query itself."
-  [driver {sql :query, params :params, remark :remark}, ^TimeZone timezone, connection]
+  [driver {sql :query, :keys [params remark max-rows]}, ^TimeZone timezone, connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
-        statement        (into [sql] params)
         [columns & rows] (cancelable-run-query
                           connection sql params
                           {:identifiers    identity
                            :as-arrays?     true
                            :read-columns   (read-columns driver (some-> timezone Calendar/getInstance))
-                           :set-parameters (set-parameters-with-timezone timezone)})]
+                           :set-parameters (set-parameters-with-timezone timezone)
+                           :max-rows       max-rows})]
     {:rows    (or rows [])
      :columns (map u/keyword->qualified-name columns)}))
 
@@ -264,7 +266,9 @@
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {settings :settings, query :native, :as outer-query}]
-  (let [query (assoc query :remark (qputil/query->remark outer-query))]
+  (let [query (assoc query
+                :remark   (qputil/query->remark outer-query)
+                :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))]

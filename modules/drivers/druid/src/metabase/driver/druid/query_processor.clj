@@ -8,6 +8,7 @@
             [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [flatland.ordered.map :as ordered-map]
             [metabase.driver.druid.js :as js]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
@@ -17,7 +18,8 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]])
+             [i18n :as ui18n :refer [tru]]]
+            [schema.core :as s])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
@@ -52,7 +54,13 @@
 
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
-(defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
+(defmulti ^:private
+  ->rvalue
+  "Convert something to an 'rvalue`, i.e. a value that could be used in the right-hand side of an assignment expression.
+
+    (let [x 100] ...) ; x is the lvalue; 100 is the rvalue"
+  {:arglists '([x])}
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod ->rvalue nil [_]
   nil)
@@ -96,8 +104,10 @@
   (->rvalue value))
 
 
-(defmulti ^:private ^{:doc "Is this field clause a `:dimension` or `:metric`?"}
+(defmulti ^:private
   dimension-or-metric?
+  "Is this field clause a `:dimension` or `:metric`?"
+  {:arglists '([field-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod dimension-or-metric? :field-id [[_ field-id]]
@@ -130,9 +140,9 @@
 
 ;;; ---------------------------------------------- handle-source-table -----------------------------------------------
 
-(defn- handle-source-table [_ {source-table-id :source-table} query-context]
+(defn- handle-source-table [_ {source-table-id :source-table} updated-query]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
-    (assoc-in query-context [:query :dataSource] source-table-name)))
+    (assoc-in updated-query [:query :dataSource] source-table-name)))
 
 
 ;;; ----------------------------------------------- handle-aggregation -----------------------------------------------
@@ -289,15 +299,15 @@
       [:min      _] [[(or output-name-kwd :min)] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
       [:max      _] [[(or output-name-kwd :max)] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(defn- handle-aggregation [query-type ag-clause query-context]
+(defn- handle-aggregation [query-type ag-clause updated-query]
   (let [output-name        (annotate/aggregation-name ag-clause)
         [ag-type ag-field] (mbql.u/match-one ag-clause
                              [:named ag _] (recur ag)
                              [_ _]         &match)]
     (if-not (isa? query-type ::ag-query)
-      query-context
+      updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field)]
-        (-> query-context
+        (-> updated-query
             (update :projections #(vec (concat % projections)))
             (update :query #(merge-with concat % ag-clauses)))))))
 
@@ -356,21 +366,21 @@
     (second x)
     x))
 
-(defn- handle-expression-aggregation [query-type [operator & args, :as expression] query-context]
+(defn- handle-expression-aggregation [query-type [operator & args, :as expression] updated-query]
   ;; filter out constants from the args list
   (let [expression    (add-expression-aggregation-output-names expression)
         ;; The QP will automatically add a generated name to the expression, if it's there, unwrap it before looking
         ;; for the aggregation
         ags           (expression->actual-ags (unwrap-name expression))
-        query-context (handle-aggregations query-type {:aggregation ags} query-context)
+        updated-query (handle-aggregations query-type {:aggregation ags} updated-query)
         post-agg      (expression-post-aggregation expression)]
-    (-> query-context
+    (-> updated-query
         (update :projections conj (keyword (:name post-agg)))
         (update :query #(merge-with concat % {:postAggregations [post-agg]})))))
 
-(defn- handle-aggregations [query-type {aggregations :aggregation} query-context]
+(defn- handle-aggregations [query-type {aggregations :aggregation} updated-query]
   (let [aggregations (mbql.u/pre-alias-and-uniquify-aggregations annotate/aggregation-name aggregations)]
-    (loop [[ag & more] aggregations, query query-context]
+    (loop [[ag & more] aggregations, query updated-query]
       (cond
         (and (mbql.u/is-clause? :named ag)
              (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
@@ -388,8 +398,10 @@
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
 
-(defmulti ^:private ^{:doc "Format `Field` for use in a `:dimension` or `:dimensions` clause."}
+(defmulti ^:private
   ->dimension-rvalue
+  "Format `Field` for use in a `:dimension` or `:dimensions` clause."
+  {:arglists '([field-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defn- extract:timeFormat
@@ -466,7 +478,7 @@
         (when (= :week unit)
           {:origin "1970-01-04T00:00:00Z"})))
 
-(def ^:private ^:const units-that-need-post-processing-int-parsing
+(def ^:private units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as
   `:day-of-month`. There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction
   functions with `:cascade`, but we're still supporting 0.8.x. Instead, we will perform the conversions in
@@ -499,13 +511,16 @@
    :extractionFn (unit->extraction-fn unit)})
 
 
-(defmulti ^:private handle-breakout query-type-dispatch-fn)
+(defmulti ^:private handle-breakout
+  {:arglists '([query-type original-query updated-query])}
+  query-type-dispatch-fn)
 
-(defmethod handle-breakout ::query [_ _ query-context] ; only topN , grouped-timeseries & groupBy handle breakouts
-  query-context)
+;; only topN , grouped-timeseries & groupBy handle breakouts
+(defmethod handle-breakout ::query [_ _ updated-query]
+  updated-query)
 
-(defmethod handle-breakout ::grouped-timeseries [_ {[breakout-field] :breakout} query-context]
-  (assoc-in query-context [:query :granularity] (unit->granularity (:unit breakout-field))))
+(defmethod handle-breakout ::grouped-timeseries [_ {[breakout-field] :breakout} updated-query]
+  (assoc-in updated-query [:query :granularity] (unit->granularity (:unit breakout-field))))
 
 (defn- field-clause->name [field-clause]
   (when field-clause
@@ -514,24 +529,24 @@
         (:name (qp.store/field id))
         id))))
 
-(defmethod handle-breakout ::topN [_ {[breakout-field] :breakout} query-context]
+(defmethod handle-breakout ::topN [_ {[breakout-field] :breakout} updated-query]
   (let [dim-rvalue (->dimension-rvalue breakout-field)]
-    (-> query-context
+    (-> updated-query
         (update :projections conj (keyword (if (and (map? dim-rvalue)
                                                     (contains? dim-rvalue :outputName))
                                              (:outputName dim-rvalue)
                                              (field-clause->name breakout-field))))
         (assoc-in [:query :dimension] dim-rvalue))))
 
-(defmethod handle-breakout ::groupBy [_ {breakout-fields :breakout} query-context]
-  (-> query-context
-      (update :projections into (map (fn [breakout-field]
-                                       (let [dim-rvalue (->dimension-rvalue breakout-field)]
-                                         (keyword (if (and (map? dim-rvalue)
-                                                           (contains? dim-rvalue :outputName))
-                                                    (:outputName dim-rvalue)
-                                                    (field-clause->name breakout-field)))))
-                                     breakout-fields))
+(defmethod handle-breakout ::groupBy [_ {breakout-fields :breakout} updated-query]
+  (-> updated-query
+      (update :projections into (for [breakout-field breakout-fields]
+                                  (let [dim-rvalue (->dimension-rvalue breakout-field)]
+                                    (keyword
+                                     (if (and (map? dim-rvalue)
+                                              (contains? dim-rvalue :outputName))
+                                       (:outputName dim-rvalue)
+                                       (field-clause->name breakout-field))))))
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
 
 
@@ -608,6 +623,7 @@
                 (->rvalue field))))))))
 
 (defmulti ^:private parse-filter
+  {:arglists '([filter-clause])}
   ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
   ;; if it is.
   (fn [[clause-name & args, :as filter-clause]]
@@ -722,43 +738,45 @@
           :not (log/warn (u/format-color 'red (tru "WARNING: Don't know how to negate: {0}" clause))))))))
 
 
-(defn- handle-filter [_ {filter-clause :filter} query-context]
+(defn- handle-filter [_ {filter-clause :filter} updated-query]
   (if-not filter-clause
-    query-context
+    updated-query
     (let [filter    (parse-filter    filter-clause)
           intervals (parse-filter-clause:intervals filter-clause)]
-      (cond-> query-context
+      (cond-> updated-query
         (seq filter)    (assoc-in [:query :filter] filter)
         (seq intervals) (assoc-in [:query :intervals] intervals)))))
 
 
 ;;; ------------------------------------------------ handle-order-by -------------------------------------------------
 
-(defmulti ^:private handle-order-by query-type-dispatch-fn)
+(defmulti ^:private handle-order-by
+  {:arglists '([query-type original-query updated-query])}
+  query-type-dispatch-fn)
 
-(defmethod handle-order-by ::query [_ _ query-context]
+(defmethod handle-order-by ::query [_ _ updated-query]
   (log/warn
    (u/format-color 'red
        (tru "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
-  query-context)
+  updated-query)
 
 
 (defmethod handle-order-by ::topN
   [_
    {[[ag-type]] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by}
-   query-context]
+   updated-query]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
         ag-field          (if (= ag-type :distinct) :distinct___count ag-type)]
-    (assoc-in query-context [:query :metric] (match [sort-by-breakout? direction]
+    (assoc-in updated-query [:query :metric] (match [sort-by-breakout? direction]
                                                [true  :asc]  {:type :alphaNumeric}
                                                [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
                                                [false :asc]  {:type :inverted, :metric ag-field}
                                                [false :desc] ag-field))))
 
-(defmethod handle-order-by ::groupBy [_ {:keys [order-by]} query-context]
-  (assoc-in query-context [:query :limitSpec :columns] (vec (for [[direction field] order-by]
+(defmethod handle-order-by ::groupBy [_ {:keys [order-by]} updated-query]
+  (assoc-in updated-query [:query :limitSpec :columns] (vec (for [[direction field] order-by]
                                                               {:dimension (->rvalue field)
                                                                :direction (case direction
                                                                             :desc :descending
@@ -772,40 +790,42 @@
         (mbql.u/datetime-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
-(defn- handle-order-by-timestamp [field direction query-context]
-  (assoc-in query-context [:query :descending] (and (datetime-field? field)
+(defn- handle-order-by-timestamp [field direction updated-query]
+  (assoc-in updated-query [:query :descending] (and (datetime-field? field)
                                                     (= direction :desc))))
 
-(defmethod handle-order-by ::grouped-timeseries [_ {[[direction field]] :order-by} query-context]
-  (handle-order-by-timestamp field direction query-context))
+(defmethod handle-order-by ::grouped-timeseries [_ {[[direction field]] :order-by} updated-query]
+  (handle-order-by-timestamp field direction updated-query))
 
-(defmethod handle-order-by ::select [_ {[[direction field]] :order-by} query-context]
-  (handle-order-by-timestamp field direction query-context))
+(defmethod handle-order-by ::select [_ {[[direction field]] :order-by} updated-query]
+  (handle-order-by-timestamp field direction updated-query))
 
 
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
 
-(defmulti ^:private handle-fields query-type-dispatch-fn)
+(defmulti ^:private handle-fields
+  {:arglists '([query-type original-query updated-query])}
+  query-type-dispatch-fn)
 
-(defmethod handle-fields ::query [_ {fields :fields} query-context]
+(defmethod handle-fields ::query [_ {fields :fields} updated-query]
   (when fields
     (log/warn
      (u/format-color 'red
          ;; TODO - this is not really true, is it
          (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
-  query-context)
+  updated-query)
 
-(defmethod handle-fields ::select [_ {fields :fields} query-context]
+(defmethod handle-fields ::select [_ {fields :fields} updated-query]
   (if-not (seq fields)
-    query-context
-    (loop [dimensions [], metrics [], projections (:projections query-context), [field & more] fields]
+    updated-query
+    (loop [dimensions [], metrics [], projections (:projections updated-query), [field & more] fields]
       (cond
         ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
         ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
         ;; column instead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
         ;; of the results so the User will never see it.
         (not field)
-        (-> query-context
+        (-> updated-query
             (assoc :projections (conj projections :timestamp))
             (assoc-in [:query :dimensions] (or (seq dimensions) [:___dummy]))
             (assoc-in [:query :metrics]    (or (seq metrics)    [:___dummy])))
@@ -825,29 +845,31 @@
 
 ;;; -------------------------------------------------- handle-limit --------------------------------------------------
 
-(defmulti ^:private handle-limit query-type-dispatch-fn)
+(defmulti ^:private handle-limit
+  {:arglists '([query-type original-query updated-query])}
+  query-type-dispatch-fn)
 
-(defmethod handle-limit ::select [_ {limit :limit} query-context]
+(defmethod handle-limit ::select [_ {limit :limit} updated-query]
   (if-not limit
-    query-context
-    (assoc-in query-context [:query :pagingSpec :threshold] limit)))
+    updated-query
+    (assoc-in updated-query [:query :pagingSpec :threshold] limit)))
 
-(defmethod handle-limit ::timeseries [_ {limit :limit} query-context]
+(defmethod handle-limit ::timeseries [_ {limit :limit} updated-query]
   (when limit
     (log/warn
      (u/format-color 'red
          (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
-  query-context)
+  updated-query)
 
-(defmethod handle-limit ::topN [_ {limit :limit} query-context]
+(defmethod handle-limit ::topN [_ {limit :limit} updated-query]
   (if-not limit
-    query-context
-    (assoc-in query-context [:query :threshold] limit)))
+    updated-query
+    (assoc-in updated-query [:query :threshold] limit)))
 
-(defmethod handle-limit ::groupBy [_ {limit :limit} query-context]
+(defmethod handle-limit ::groupBy [_ {limit :limit} updated-query]
   (if-not limit
-    query-context
-    (-> query-context
+    updated-query
+    (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))
 
@@ -856,15 +878,19 @@
 
 ;; TODO - no real way to implement this DB side, probably have to do Clojure-side w/ `take`/`drop`
 
-(defmulti ^:private handle-page query-type-dispatch-fn)
+(defmulti ^:private handle-page
+  {:arglists '([query-type original-query updated-query])}
+  query-type-dispatch-fn)
 
-(defmethod handle-page ::query [_ {page-clause :page} query-context]
+(defmethod handle-page ::query [_ {page-clause :page} updated-query]
   (when page-clause
     (log/warn (u/format-color 'red "WARNING: 'page' is not yet implemented.")))
-  query-context)
+  updated-query)
 
 
-;;; ## Build + Log + Process Query
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Build + Log + Process Query                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const timeseries-units
   #{:minute :hour :day :week :month :quarter :year})
@@ -888,11 +914,11 @@
       [:many  _        _] ::groupBy)))
 
 
-(defn- build-druid-query [query]
-  {:pre [(map? query)]}
-  (let [query-type (druid-query-type query)]
-    (reduce (fn [query-context f]
-              (f query-type query query-context))
+(defn- build-druid-query [original-query]
+  {:pre [(map? original-query)]}
+  (let [query-type (druid-query-type original-query)]
+    (reduce (fn [updated-query f]
+              (f query-type original-query updated-query))
             {:projections [], :query (query-type->default-query query-type), :query-type query-type, :mbql? true}
             [handle-source-table
              handle-breakout
@@ -906,7 +932,10 @@
 
 ;;; ------------------------------------------------ post-processing -------------------------------------------------
 
-(defmulti ^:private post-process query-type-dispatch-fn)
+(defmulti ^:private post-process
+  "Do appropriate post-processing on the results of a query based on the `query-type`."
+  {:arglists '([query-type projections timezone-and-middleware-settings results])}
+  query-type-dispatch-fn)
 
 (defn- post-process-map [projections results]
   {:projections projections
@@ -925,15 +954,15 @@
 
 (defmethod post-process ::select  [_ projections {:keys [timezone middleware]} results]
   (let [target-formater (and timezone (tformat/with-zone druid-ts-format timezone))
-        update-ts-fn (cond
-                       (not (:format-rows? middleware true))
-                       #(update % :timestamp parse-timestamp)
+        update-ts-fn    (cond
+                          (not (:format-rows? middleware true))
+                          #(update % :timestamp parse-timestamp)
 
-                       target-formater
-                       #(update % :timestamp reformat-timestamp target-formater)
+                          target-formater
+                          #(update % :timestamp reformat-timestamp target-formater)
 
-                       :else
-                       identity)]
+                          :else
+                          identity)]
     (->> results
          first
          :result
@@ -967,18 +996,11 @@
                       (for [event results]
                         (conj {:timestamp (ts-getter event)} (:result event))))))
 
-(defn post-process-native
-  "Post-process the results of a *native* Druid query. The appropriate ns-qualified query type keyword (e.g. `::select`,
-  used for mutlimethod dispatch) is inferred from the query itself."
-  [{:keys [queryType], :as query} results]
-  {:pre [queryType]}
-  (post-process (keyword "metabase.driver.druid.query-processor" (name queryType))
-                results))
-
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
   [columns]
   (vec (remove #(re-find #"^___" (name %)) columns)))
+
 
 ;;; ------------------------------------------------- MBQL Processor -------------------------------------------------
 
@@ -986,28 +1008,31 @@
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
   [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (let [mbql-query (assoc (:query query)
-                     :settings (:settings query))]
-    (binding [*query* mbql-query]
-      (build-druid-query mbql-query))))
+  (let [query (assoc (:query query)
+                :settings (:settings query))]
+    (binding [*query* query]
+      (build-druid-query query))))
 
 
-(defn- columns->getter-fns
-  "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single
+(s/defn ^:private columns->getter-fns :- {s/Keyword (s/cond-pre s/Keyword (s/pred fn?))}
+  "Given a sequence of `columns` keywords, return a map of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for
   `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
   since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
   cardinality and HLL)."
-  [columns]
-  (vec (for [k columns]
-         (case k
-            :distinct___count (comp math/round k)
-            :timestamp___int  (comp (fn [^String s]
-                                      (when (seq s)
-                                        (Integer/parseInt s)))
-                                    k)
-            k))))
+  [columns :- [s/Keyword]]
+  (into
+   (ordered-map/ordered-map)
+   (for [k columns]
+     [k
+      (case k
+        :distinct___count (comp math/round k)
+        :timestamp___int  (comp (fn [^String s]
+                                  (when (seq s)
+                                    (Integer/parseInt s)))
+                                k)
+        k)])))
 
 (defn- utc?
   "There are several timezone ids that mean UTC. This will create a TimeZone object from `TIMEZONE` and check to see if
@@ -1030,31 +1055,39 @@
    {database-id                                  :database
     {:keys [query query-type mbql? projections]} :native
     middleware                                   :middleware
-    :as                                          query-context}]
+    :as                                          mbql-query}]
   {:pre [query]}
-  (let [details       (:details (qp.store/database))
-        query         (if (string? query)
-                        (json/parse-string query keyword)
-                        query)
-        query-type    (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
-        post-proc-map (->> query
-                           (do-query details)
-                           (post-process query-type projections
-                                         {:timezone   (resolve-timezone query-context)
-                                          :middleware middleware}))
-        columns       (if mbql?
-                        (->> post-proc-map
-                             :projections
-                             remove-bonus-keys
-                             vec)
-                        (-> post-proc-map :results first keys))
-        getters       (columns->getter-fns columns)]
-    ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our
-    ;; behind-the-scenes conversion and apply any other post-processing on the value such as parsing some units to int
-    ;; and rounding up approximate cardinality values.
-    {:columns (->> columns
-                   (replace {:timestamp___int :timestamp :distinct___count :count})
-                   (map u/keyword->qualified-name))
-     :rows    (for [row (:results post-proc-map)]
-                (for [getter getters]
-                  (getter row)))}))
+  (let [details        (:details (qp.store/database))
+        query          (if (string? query)
+                         (json/parse-string query keyword)
+                         query)
+        query-type     (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+        post-proc-map  (->> query
+                            (do-query details)
+                            (post-process query-type projections
+                                          {:timezone   (resolve-timezone mbql-query)
+                                           :middleware middleware}))
+        columns        (if mbql?
+                         (->> post-proc-map
+                              :projections
+                              remove-bonus-keys
+                              vec)
+                         (-> post-proc-map :results first keys))
+        column->getter (columns->getter-fns columns)]
+    ;; Leave `:rows` as a sequence of maps and the `annotate` middleware will take care of converting them to vectors
+    ;; in the correct column order
+    {:rows
+     (for [row (:results post-proc-map)]
+       ;; use ordered-map to preseve the column ordering because for native queries results are returned in whatever
+       ;; order the keys come out when calling `keys`
+       (into
+        (ordered-map/ordered-map)
+        (for [[column getter] column->getter]
+          ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
+          ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
+          ;; units to int and rounding up approximate cardinality values.
+          [(case column
+             :timestamp___int  :timestamp
+             :distinct___count :count
+             column)
+           (getter row)])))}))

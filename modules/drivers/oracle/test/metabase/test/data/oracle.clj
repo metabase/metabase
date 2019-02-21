@@ -25,6 +25,7 @@
 (defonce ^:private session-schema-number (rand-int 200))
 (defonce ^:private session-schema        (str "CAM_" session-schema-number))
 (defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
+;; Session password is only used when creating session user, not anywhere else
 
 (def ^:private connection-details
   (delay
@@ -111,11 +112,22 @@
           :when  (re-find #"^CAM_" schema)]
     (execute! "DROP USER %s CASCADE" schema)))
 
-(defmethod tx/before-run :oracle [_]
+(defn create-user!
+  ;; default to using session-password for all users created this session
+  ([username]
+   (create-user! username session-password))
+  ([username password]
+   (execute! "CREATE USER %s IDENTIFIED BY %s DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS"
+             username
+             password)))
+
+(defn drop-user! [username]
   (u/ignore-exceptions
-    (execute! "DROP USER %s CASCADE" session-schema))
-  (execute! "CREATE USER %s IDENTIFIED BY %s DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS"
-            session-schema session-password))
+   (execute! "DROP USER %s CASCADE" username)))
+
+(defmethod tx/before-run :oracle [_]
+  (drop-user! session-schema)
+  (create-user! session-schema))
 
 (defmethod tx/after-run :oracle [_]
-  (execute! "DROP USER %s CASCADE" session-schema))
+  (drop-user! session-schema))

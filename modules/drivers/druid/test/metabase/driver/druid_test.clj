@@ -35,9 +35,9 @@
    ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
   (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                 [(Field (data/id :checkins :id))
-                                  (Field (data/id :checkins :venue_name))
-                                  (Field (data/id :checkins :timestamp))])
+         [(Field (data/id :checkins :id))
+          (Field (data/id :checkins :venue_name))
+          (Field (data/id :checkins :timestamp))])
        (sort-by first)
        (take 5)))
 
@@ -50,9 +50,9 @@
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                   [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))
-                                    (Field (data/id :checkins :timestamp))])
+           [(Field (data/id :checkins :id))
+            (Field (data/id :checkins :venue_name))
+            (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -65,9 +65,9 @@
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
   (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                   [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))
-                                    (Field (data/id :checkins :timestamp))])
+           [(Field (data/id :checkins :id))
+            (Field (data/id :checkins :venue_name))
+            (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -357,4 +357,49 @@
        (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
                      druid/DELETE   (fn [url] (deliver called-cancel? true))]
          (data/run-mbql-query checkins
-           {:aggregation [[:count]]}))))))
+                              {:aggregation [[:count]]}))))))
+
+;; Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order
+;; (#9294)
+(datasets/expect-with-driver :druid
+  {:columns ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :cols    ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :rows    [["931"
+              "2013-01-03T08:00:00.000Z"
+              1
+              "2014-01-01T08:30:00.000Z"
+              "Simcha Yan"
+              "Thai"
+              "34.094"
+              "-118.344"
+              "Kinaree Thai Bistro"
+              "1"]]}
+  (tqpt/with-flattened-dbdef
+    (let [results (qp/process-query
+                    {:database (data/id)
+                     :type     :query
+                     :query    {:source-table  (data/id :checkins)
+                                :limit         1}})]
+      (assert (= (:status results) :completed)
+        (u/pprint-to-str 'red results))
+      {:columns (-> results :data :columns)
+       :cols    (->> results :data :cols (map :name))
+       :rows    (-> results :data :rows)})))
