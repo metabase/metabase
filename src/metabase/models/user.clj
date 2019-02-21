@@ -135,6 +135,19 @@
           :pre-delete     pre-delete
           :types          (constantly {:login_attributes :json-no-keywordization})}))
 
+(defn ^{:hydrate :group_ids} group-ids
+  "Fetch set of IDs of PermissionsGroup a User belongs to."
+  [user-or-id]
+  (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id)))
+
+(defn ^{:batched-hydrate :group_ids} add-group-ids
+  "Efficiently add PermissionsGroup `group_ids` to a collection of `users`."
+  [users]
+  (let [user-id->memberships (when (seq users)
+                               (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
+                                                    :user_id [:in (set (map u/get-id users))])))]
+    (for [user users]
+      (assoc user :group_ids (map :group_id (user-id->memberships (u/get-id user)))))))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 

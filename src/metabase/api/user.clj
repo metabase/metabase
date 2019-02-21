@@ -41,7 +41,7 @@
                 (hh/merge-where (when-not include_deactivated
                                   [:= :is_active true]))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
-    api/*is-superuser?* (hydrate :personal_collection_id)))
+    api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 
 (defn- fetch-user [& query-criteria]
   (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
@@ -79,14 +79,15 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id)))
+      (hydrate :personal_collection_id :group_ids)))
 
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (api/check-404 (fetch-user :id id, :is_active true)))
+  (-> (api/check-404 (fetch-user :id id, :is_active true))
+      (hydrate :group_ids)))
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
