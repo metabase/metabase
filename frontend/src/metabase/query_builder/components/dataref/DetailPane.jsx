@@ -6,7 +6,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 import Card from "metabase/components/Card.jsx";
 
-const DetailPane = ({ name, description, extra }) => (
+const DetailPane = ({ name, description, extra, values }) => (
   <div className="ml1">
     <div className="flex align-center">
       <Icon name="field" className="text-medium pr1" size={16} />
@@ -16,21 +16,25 @@ const DetailPane = ({ name, description, extra }) => (
       {description || t`No description`}
     </p>
     {extra}
-    <h5 className="text-uppercase mt4 mb2">Sample values</h5>
-    <Card>
-      <ul className="pt1">
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1 mb1 border-bottom">Sample value</li>
-        <li className="px1 pb1">Sample value</li>
-      </ul>
-    </Card>
+    {values &&
+      values.length > 0 && (
+        <div>
+          <h5 className="text-uppercase mt4 mb2">Sample values</h5>
+          <Card>
+            <ul>
+              {values.map((value, i) => (
+                <li
+                  className={cx("p1", {
+                    "border-bottom": i < values.length - 1,
+                  })}
+                >
+                  {value[0]}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      )}
   </div>
 );
 
@@ -39,6 +43,7 @@ DetailPane.propTypes = {
   description: PropTypes.string,
   error: PropTypes.string,
   extra: PropTypes.element,
+  values: PropTypes.array,
 };
 
 export default DetailPane;
