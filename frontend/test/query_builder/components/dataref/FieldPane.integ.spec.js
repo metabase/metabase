@@ -11,7 +11,6 @@ import {
   INITIALIZE_QB,
   TOGGLE_DATA_REFERENCE,
 } from "metabase/query_builder/actions";
-import { delay } from "metabase/lib/promise";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
