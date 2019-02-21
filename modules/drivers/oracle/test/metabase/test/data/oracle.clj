@@ -46,6 +46,10 @@
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/Integer]    [_ _] "INTEGER")
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/Text]       [_ _] "VARCHAR2(4000)")
 
+;; If someone tries to run Time column tests with Oracle give them a heads up that Oracle does not support it
+(defmethod sql.tx/field-base-type->sql-type [:oracle :type/Time] [_ _]
+  (throw (UnsupportedOperationException. "Oracle does not have a TIME data type.")))
+
 (defmethod sql.tx/drop-table-if-exists-sql :oracle [_ {:keys [database-name]} {:keys [table-name]}]
   (format "BEGIN
              EXECUTE IMMEDIATE 'DROP TABLE \"%s\".\"%s\" CASCADE CONSTRAINTS'⅋

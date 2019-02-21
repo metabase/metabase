@@ -413,9 +413,9 @@
                               " \"public\".\"birds\".\"status\" AS \"status\","
                               " \"public\".\"birds\".\"type\" AS \"type\" "
                               "FROM \"public\".\"birds\" "
-                              "WHERE \"public\".\"birds\".\"type\" = CAST(? AS \"bird type\") "
+                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
                               "LIMIT 10")
-                 :params ["toucan"]}}
+                 :params nil}}
   (do-with-enums-db
     (fn [db]
       (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
