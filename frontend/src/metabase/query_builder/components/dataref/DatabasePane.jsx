@@ -4,8 +4,6 @@ import PropTypes from "prop-types";
 import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon.jsx";
 
-import cx from "classnames";
-
 const DatabasePane = ({ database, show, ...props }) => (
   <div>
     <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
@@ -23,9 +21,6 @@ const DatabasePane = ({ database, show, ...props }) => (
       {database.tables.filter(isQueryable).map((table, index) => (
         <li
           key={table.id}
-          className={cx("", {
-            "": index !== database.tables.length - 1,
-          })}
         >
           <a
             className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
@@ -41,7 +36,7 @@ const DatabasePane = ({ database, show, ...props }) => (
 
 DatabasePane.propTypes = {
   show: PropTypes.func.isRequired,
-  database: PropTypes.string,
+  database: PropTypes.object.isRequired,
 };
 
 export default DatabasePane;

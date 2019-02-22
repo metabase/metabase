@@ -12,7 +12,7 @@ const DetailPane = ({ name, description, extra, values }) => (
       <Icon name="field" className="text-medium pr1" size={16} />
       <h3>{name}</h3>
     </div>
-    <p className={"text-spaced " + cx({ "text-medium": !description })}>
+    <p className={cx("text-spaced", { "text-medium": !description })}>
       {description || t`No description`}
     </p>
     {extra}
