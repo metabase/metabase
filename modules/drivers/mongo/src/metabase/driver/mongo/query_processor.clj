@@ -347,21 +347,25 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregation->rvalue [[aggregation-type field]]
+(defn- aggregation->rvalue [[aggregation-type arg]]
   {:pre [(keyword? aggregation-type)]}
-  (if-not field
+  (if-not arg
     (case aggregation-type
       :count {$sum 1})
     (case aggregation-type
-      :named    (recur field)
-      :avg      {$avg (->rvalue field)}
-      :count    {$sum {$cond {:if   (->rvalue field)
+      :named    (recur arg)
+      :avg      {$avg (->rvalue arg)}
+      :count    {$sum {$cond {:if   (->rvalue arg)
                               :then 1
                               :else 0}}}
-      :distinct {$addToSet (->rvalue field)}
-      :sum      {$sum (->rvalue field)}
-      :min      {$min (->rvalue field)}
-      :max      {$max (->rvalue field)})))
+      :distinct {$addToSet (->rvalue arg)}
+      :sum      {$sum (->rvalue arg)}
+      :min      {$min (->rvalue arg)}
+      :max      {$max (->rvalue arg)}
+      :share    {$divide [{$sum {$cond {:if   (parse-filter arg)
+                                        :then 1
+                                        :else 0}}}
+                          {$sum 1}]})))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)
