@@ -1469,6 +1469,8 @@ databaseChangeLog:
         - 7:3b90e2fe0ac8e617a1f30ef95d39319b
         - 8:431360d062cb82d8b27960b3a0abb98c
         - 8:9f03a236be31f54e8e5c894fe5fc7f00
+        - 8:2e03a495932b4a9aebb9d58a6ad87ca9
+        - 8:532075ff1717d4a16bb9f27c606db46b
       changes:
         - createTable:
             tableName: revision
