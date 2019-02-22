@@ -237,7 +237,13 @@ export function createEntity(def: EntityDefinition): Entity {
       entityObject => async (dispatch, getState) => {
         trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
-        entityObject = runActionDecorator("create", "pre", entityObject, dispatch, getState);
+        entityObject = runActionDecorator(
+          "create",
+          "pre",
+          entityObject,
+          dispatch,
+          getState,
+        );
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -245,7 +251,14 @@ export function createEntity(def: EntityDefinition): Entity {
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
-          return runActionDecorator("create", "post", result, entityObject, dispatch, getState);
+          return runActionDecorator(
+            "create",
+            "post",
+            result,
+            entityObject,
+            dispatch,
+            getState,
+          );
         } catch (error) {
           console.error(`${CREATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
@@ -293,7 +306,13 @@ export function createEntity(def: EntityDefinition): Entity {
         if (updatedObject) {
           entityObject = { id: entityObject.id, ...updatedObject };
         }
-        entityObject = runActionDecorator("update", "pre", entityObject, dispatch, getState);
+        entityObject = runActionDecorator(
+          "update",
+          "pre",
+          entityObject,
+          dispatch,
+          getState,
+        );
         const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -327,7 +346,14 @@ export function createEntity(def: EntityDefinition): Entity {
               dispatch(addUndo(notify));
             }
           }
-          return runActionDecorator("update", "post", result, entityObject, dispatch, getState);
+          return runActionDecorator(
+            "update",
+            "post",
+            result,
+            entityObject,
+            dispatch,
+            getState,
+          );
         } catch (error) {
           console.error(`${UPDATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));

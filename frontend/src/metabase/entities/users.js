@@ -11,7 +11,7 @@ import { createEntity } from "metabase/lib/entities";
 
 import { UserApi, SessionApi } from "metabase/services";
 
-import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget"
+import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
 const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 const REACTIVATE = "metabase/entities/users/REACTIVATE";
@@ -26,7 +26,7 @@ const Users = createEntity({
   path: "/api/user",
 
   objectSelectors: {
-    getName: user => `${user.first_name} ${user.last_name}`,
+    getName: user => user.common_name || `${user.first_name} ${user.last_name}`,
   },
 
   actionTypes: {
@@ -57,8 +57,8 @@ const Users = createEntity({
         // TODO: only do this if group_ids changes
         dispatch(require("metabase/admin/people/people").loadMemberships());
         return result;
-      }
-    }
+      },
+    },
   },
 
   objectActions: {
@@ -132,8 +132,8 @@ const Users = createEntity({
       {
         name: "group_ids",
         title: "Groups",
-        type: FormGroupsWidget
-      }
+        type: FormGroupsWidget,
+      },
     ],
   },
 });
