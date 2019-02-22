@@ -66,6 +66,7 @@ const TIMEOUT = 1000;
 
 async function eventually(fn, timeout = TIMEOUT) {
   const start = Date.now();
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       return fn();

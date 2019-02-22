@@ -1,12 +1,7 @@
 import React from "react";
 import mock from "xhr-mock";
-import {
-  mountWithStore,
-  fillAndSubmitForm,
-  getFormValues,
-} from "__support__/integration_tests";
+import { mountWithStore } from "__support__/integration_tests";
 import { click, clickButton } from "__support__/enzyme_utils";
-import { delay } from "metabase/lib/promise";
 
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
 
@@ -40,7 +35,7 @@ describe("UserPasswordResetModal", () => {
         return res.json({ id: 42, ...MOCK_USER });
       });
 
-      const { wrapper, store } = mountWithStore(
+      const { wrapper } = mountWithStore(
         <UserPasswordResetModal params={{ userId: 42 }} />,
       );
 

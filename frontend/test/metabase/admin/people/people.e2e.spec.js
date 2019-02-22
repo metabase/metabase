@@ -10,7 +10,6 @@ import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,
   LOAD_MEMBERSHIPS,
-  UPDATE_USER,
 } from "metabase/admin/people/people";
 import ModalContent from "metabase/components/ModalContent";
 import { delay } from "metabase/lib/promise";

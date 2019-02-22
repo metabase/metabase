@@ -1,12 +1,7 @@
 import React from "react";
 import mock from "xhr-mock";
-import {
-  mountWithStore,
-  fillAndSubmitForm,
-  getFormValues,
-} from "__support__/integration_tests";
-import { click, clickButton } from "__support__/enzyme_utils";
-import { delay } from "metabase/lib/promise";
+import { mountWithStore } from "__support__/integration_tests";
+import { clickButton } from "__support__/enzyme_utils";
 
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
@@ -34,7 +29,7 @@ describe("UserActivationModal", () => {
       });
 
       const onClose = jest.fn();
-      const { wrapper, store } = mountWithStore(
+      const { wrapper } = mountWithStore(
         <UserActivationModal params={{ userId: 42 }} onClose={onClose} />,
       );
 
@@ -57,7 +52,7 @@ describe("UserActivationModal", () => {
       });
 
       const onClose = jest.fn();
-      const { wrapper, store } = mountWithStore(
+      const { wrapper } = mountWithStore(
         <UserActivationModal params={{ userId: 42 }} onClose={onClose} />,
       );
 
