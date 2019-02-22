@@ -21,8 +21,12 @@
 ;; Nullable is kind of experimental, only required for one test
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
+
+;; If someone tries to run Time column tests with ClickHouse give them a heads up that
+;; ClickHouse does not support it
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _]
+  (throw (UnsupportedOperationException. "ClickHouse does not have a TIME data type.")))
 
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
     (merge

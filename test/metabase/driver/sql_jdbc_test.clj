@@ -221,8 +221,8 @@
   (process-spliced-count-query :checkins [:= $date "2014-03-05"]))
 
 ;; test splicing a `Timestamp` -- is resulting query correct ?
-;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-(datasets/expect-with-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
+;; Oracle, Redshift, SparkSQL, and ClickHouse don't have 'Time' types
+(datasets/expect-with-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql :clickhouse)
   [[2]]
   (data/dataset test-data-with-time
     (process-spliced-count-query :users [:= $last_login_time (Time. 9 30 0)])))

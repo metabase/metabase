@@ -16,11 +16,13 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]]
             [schema.core :as sc])
-  (:import java.sql.DatabaseMetaData))
+  (:import [java.sql DatabaseMetaData Time]
+           java.util.Date))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
@@ -160,6 +162,11 @@
 
 (defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
   (hsql/call :toDateTime expr))
+
+(defmethod unprepare/unprepare-value [:clickhouse Date] [_ value]
+  (format "parseDateTimeBestEffort('%s')" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:clickhouse Date] [:sql Time])
 
 ;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
 ;; server, so we override the default formatter
