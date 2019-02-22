@@ -51,6 +51,14 @@ const Users = createEntity({
         return { ...user, id: result };
       },
     },
+    update: {
+      post: (result, user, dispatch) => {
+        // HACK: reload memberships when updating a user
+        // TODO: only do this if group_ids changes
+        dispatch(require("metabase/admin/people/people").loadMemberships());
+        return result;
+      }
+    }
   },
 
   objectActions: {

@@ -219,9 +219,17 @@ export function createEntity(def: EntityDefinition): Entity {
   };
 
   entity.actionDecorators = {
-    create: {},
     ...(entity.actionDecorators || {}),
   };
+
+  function runActionDecorator(action, type, object, ...extra) {
+    const decorator = getIn(entity, ["actionDecorators", action, type]);
+    if (decorator) {
+      return decorator(object, ...extra);
+    } else {
+      return object;
+    }
+  }
 
   entity.objectActions = {
     create: createThunkAction(
@@ -229,10 +237,7 @@ export function createEntity(def: EntityDefinition): Entity {
       entityObject => async (dispatch, getState) => {
         trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
-        const { pre, post } = entity.actionDecorators.create;
-        if (pre) {
-          entityObject = pre(entityObject);
-        }
+        entityObject = runActionDecorator("create", "pre", entityObject, dispatch, getState);
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -240,10 +245,7 @@ export function createEntity(def: EntityDefinition): Entity {
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
-          if (post) {
-            return post(result, entityObject);
-          }
-          return result;
+          return runActionDecorator("create", "post", result, entityObject, dispatch, getState);
         } catch (error) {
           console.error(`${CREATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
@@ -291,6 +293,7 @@ export function createEntity(def: EntityDefinition): Entity {
         if (updatedObject) {
           entityObject = { id: entityObject.id, ...updatedObject };
         }
+        entityObject = runActionDecorator("update", "pre", entityObject, dispatch, getState);
         const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -324,7 +327,7 @@ export function createEntity(def: EntityDefinition): Entity {
               dispatch(addUndo(notify));
             }
           }
-          return result;
+          return runActionDecorator("update", "post", result, entityObject, dispatch, getState);
         } catch (error) {
           console.error(`${UPDATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
