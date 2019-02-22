@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
 import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon.jsx";
 
@@ -42,6 +41,7 @@ const DatabasePane = ({ database, show, ...props }) => (
 
 DatabasePane.propTypes = {
   show: PropTypes.func.isRequired,
+  database: PropTypes.string
 };
 
 export default DatabasePane;
