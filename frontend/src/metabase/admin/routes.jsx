@@ -22,8 +22,11 @@ import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx"
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
+import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
+import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
+import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -80,10 +83,21 @@ const getRoutes = (store, IsAdmin) => (
     </Route>
 
     {/* Troubleshooting */}
-    <Route path="troubleshooting" title={t`Troubleshooting`}>
+    <Route
+      path="troubleshooting"
+      title={t`Troubleshooting`}
+      component={TroubleshootingApp}
+    >
       <IndexRedirect to="tasks" />
       <Route path="tasks" component={TasksApp}>
         <ModalRoute path=":taskId" modal={TaskModal} />
+      </Route>
+      <Route path="jobs" component={JobInfoApp}>
+        <ModalRoute
+          path=":jobKey"
+          modal={JobTriggersModal}
+          modalProps={{ wide: true }}
+        />
       </Route>
     </Route>
 

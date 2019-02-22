@@ -15,9 +15,6 @@
 (def ^:private ^:const job-key     "metabase.task.upgrade-checks.job")
 (def ^:private ^:const trigger-key "metabase.task.upgrade-checks.trigger")
 
-(defonce ^:private job     (atom nil))
-(defonce ^:private trigger (atom nil))
-
 (defn- get-version-info []
   (let [version-info-url      (config/config-str :mb-version-info-url)
         {:keys [status body]} (http/get version-info-url {:content-type "application/json"})]
@@ -37,19 +34,14 @@
       (catch Throwable e
         (log/error "Error fetching version info: " e)))))
 
-(defn task-init
-  "Job initialization"
-  []
-  ;; build our job
-  (reset! job (jobs/build
-               (jobs/of-type CheckForNewVersions)
-               (jobs/with-identity (jobs/key job-key))))
-  ;; build our trigger
-  (reset! trigger (triggers/build
-                   (triggers/with-identity (triggers/key trigger-key))
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                     ;; run twice a day
-                     (cron/cron-schedule "0 15 6,18 * * ? *"))))
-  ;; submit ourselves to the scheduler
-  (task/schedule-task! @job @trigger))
+(defmethod task/init! ::CheckForNewVersions [_]
+  (let [job     (jobs/build
+                 (jobs/of-type CheckForNewVersions)
+                 (jobs/with-identity (jobs/key job-key)))
+        trigger (triggers/build
+                 (triggers/with-identity (triggers/key trigger-key))
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                   ;; run twice a day
+                   (cron/cron-schedule "0 15 6,18 * * ? *")))]
+    (task/schedule-task! job trigger)))
