@@ -1,5 +1,6 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.data :as data]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -236,6 +237,18 @@
   {:pre [(string? reset-token)]}
   (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
+(defn set-user-permissions-groups!
+  "Set the user's group memberships to equal the supplied group IDs."
+  [user-or-id new-groups-or-ids]
+  (let [old-group-ids      (group-ids user-or-id)
+        new-group-ids      (set (map u/get-id new-groups-or-ids))
+        [to-remove to-add] (data/diff old-group-ids new-group-ids)]
+    (prn (str "old:" old-group-ids " new:" new-group-ids " remove:" to-remove " add:" to-add))
+    (when (seq to-remove)
+      (db/delete! PermissionsGroupMembership :user_id (u/get-id user-or-id), :group_id [:in to-remove]))
+    (when (seq to-add)
+      (db/insert-many! PermissionsGroupMembership (for [group-id to-add]
+                                                    {:user_id (u/get-id user-or-id), :group_id group-id})))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

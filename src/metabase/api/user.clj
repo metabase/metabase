@@ -60,20 +60,29 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/get-id existing-user)))
 
+(defn maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
+  (when (some? new-groups-or-ids)
+    (when-not (= (user/group-ids user-or-id)
+                 (set (map u/get-id new-groups-or-ids)))
+      (api/check-superuser)
+      (user/set-user-permissions-groups! user-or-id new-groups-or-ids))))
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email password login_attributes] :as body} :body}]
+  [:as {{:keys [first_name last_name email password group_ids login_attributes] :as body} :body}]
   {first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email
+   group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
   (api/check-superuser)
   (api/checkp (not (db/exists? User :email email))
     "email" (tru "Email address already in use."))
   (let [new-user-id (u/get-id (user/invite-user! (select-keys body [:first_name :last_name :email :password :login_attributes])
                                                  @api/*current-user*))]
-    (fetch-user :id new-user-id)))
+    (maybe-set-user-permissions-groups! new-user-id group_ids)
+    (-> (fetch-user :id new-user-id)
+        (hydrate :group_ids))))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
@@ -104,10 +113,11 @@
 
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
-  [id :as {{:keys [email first_name last_name is_superuser login_attributes] :as body} :body}]
+  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes] :as body} :body}]
   {email            (s/maybe su/Email)
    first_name       (s/maybe su/NonBlankString)
    last_name        (s/maybe su/NonBlankString)
+   group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
@@ -125,7 +135,9 @@
          :non-nil (set (concat [:first_name :last_name :email]
                                (when api/*is-superuser?*
                                  [:is_superuser])))))))
-  (fetch-user :id id))
+  (maybe-set-user-permissions-groups! id group_ids)
+  (-> (fetch-user :id id)
+      (hydrate :group_ids)))
 
 (api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
