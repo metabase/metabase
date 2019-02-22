@@ -7,6 +7,7 @@
              [helpers :as h]]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
@@ -27,6 +28,10 @@
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Float]      [_ _] "DOUBLE")
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Integer]    [_ _] "INTEGER")
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Text]       [_ _] "STRING")
+
+;; If someone tries to run Time column tests with SparkSQL give them a heads up that SparkSQL does not support it
+(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]
+  (throw (UnsupportedOperationException. "SparkSQL does not have a TIME data type.")))
 
 (defmethod tx/format-name :sparksql [_ s]
   (s/replace s #"-" "_"))
@@ -61,11 +66,12 @@
                         (sql.qp/->honeysql driver value)))
         hsql-form   (-> (h/insert-into (prepare-key table-name))
                         (h/values values))
-        sql+args    (hive-like/unprepare
+        sql+args    (unprepare/unprepare
+                     driver
                      (hx/unescape-dots (binding [hformat/*subquery?* false]
                                          (hsql/format hsql-form
-                                                      :quoting             (sql.qp/quote-style driver)
-                                                      :allow-dashed-names? false))))]
+                                           :quoting             (sql.qp/quote-style driver)
+                                           :allow-dashed-names? false))))]
     (with-open [conn (jdbc/get-connection spec)]
       (try
         (.setAutoCommit conn false)

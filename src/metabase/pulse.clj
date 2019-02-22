@@ -105,6 +105,7 @@
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (Exception. (str (tru "Unable to compare results to goal for alert.")
+                              " "
                               (tru "Question ID is ''{0}'' with visualization settings ''{1}''"
                                    (get-in results [:card :id])
                                    (pr-str (get-in results [:card :visualization_settings])))))))
