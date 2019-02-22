@@ -306,7 +306,7 @@
     [:rows & _]
     nil
 
-    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is an just canonicalize the ag it names
+    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is and just canonicalize the ag it names
     [:named ag ag-name]
     [:named (canonicalize-aggregation-subclause ag) ag-name]
 
