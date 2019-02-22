@@ -41,7 +41,7 @@ const DatabasePane = ({ database, show, ...props }) => (
 
 DatabasePane.propTypes = {
   show: PropTypes.func.isRequired,
-  database: PropTypes.string
+  database: PropTypes.string,
 };
 
 export default DatabasePane;
