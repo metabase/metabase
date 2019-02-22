@@ -42,6 +42,10 @@ export type Reducer = (state: any, action: Action) => any;
 
 type EntityDefinition = {
   name: EntityName,
+
+  nameOne?: string,
+  nameMany?: string,
+
   schema?: schema.Entity,
   path?: string,
   api?: { [method: string]: APIMethod },
@@ -85,6 +89,10 @@ type Result = any; // FIXME
 
 export type Entity = {
   name: EntityName,
+
+  nameOne: string,
+  nameMany: string,
+
   path?: string,
   api: {
     list: APIMethod,

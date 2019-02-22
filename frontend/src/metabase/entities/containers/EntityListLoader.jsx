@@ -28,7 +28,7 @@ export type RenderProps = {
 };
 
 // props that shouldn't be passed to children in order to properly stack
-const CONSUMED_PROPS = [
+const CONSUMED_PROPS: string[] = [
   "entityType",
   "entityQuery",
   // "reload", // Masked by `reload` function. Should we rename that?
@@ -176,9 +176,6 @@ export default class EntityListLoader extends React.Component {
 
   reload = () => {
     this.fetchList(this.props, { reload: true });
-    if (this.props.realod) {
-      this.props.reload();
-    }
   };
 }
 

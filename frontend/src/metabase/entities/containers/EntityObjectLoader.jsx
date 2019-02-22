@@ -42,7 +42,7 @@ export type RenderProps = {
 };
 
 // props that shouldn't be passed to children in order to properly stack
-const CONSUMED_PROPS = [
+const CONSUMED_PROPS: string[] = [
   "entityType",
   "entityId",
   // "reload", // Masked by `reload` function. Should we rename that?
@@ -117,7 +117,7 @@ export default class EntityObjectLoader extends React.Component {
 
     // $FlowFixMe: missing loading/error
     return children({
-      ..._.omit(props, CONSUMED_PROPS),
+      ..._.omit(props, ...CONSUMED_PROPS),
       object,
       // alias the entities name:
       [entityDef.nameOne]: object,
@@ -161,7 +161,7 @@ export const entityObjectLoader = (eolProps: Props) =>
       <EntityObjectLoader {...props} {...eolProps}>
         {childProps => (
           <ComposedComponent
-            {..._.omit(props, CONSUMED_PROPS)}
+            {..._.omit(props, ...CONSUMED_PROPS)}
             {...childProps}
           />
         )}

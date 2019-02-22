@@ -62,6 +62,7 @@ export default class PeopleListingApp extends Component {
     children: PropTypes.object,
   };
 
+  // $FlowFixMe: expects return type void, not Promise<void>
   async componentDidMount() {
     try {
       await this.props.loadMemberships();
