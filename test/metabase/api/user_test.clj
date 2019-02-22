@@ -55,8 +55,9 @@
     user-defaults
     {:email                  "crowberto@metabase.com"
      :first_name             "Crowberto"
-     :is_superuser           true
      :last_name              "Corv"
+     :is_superuser           true
+     :group_ids              [1, 2]
      :personal_collection_id true
      :common_name            "Crowberto Corv"})
    (merge
@@ -64,6 +65,7 @@
     {:email                  "lucky@metabase.com"
      :first_name             "Lucky"
      :last_name              "Pigeon"
+     :group_ids              [1]
      :personal_collection_id true
      :common_name            "Lucky Pigeon"})
    (merge
@@ -71,6 +73,7 @@
     {:email                  "rasta@metabase.com"
      :first_name             "Rasta"
      :last_name              "Toucan"
+     :group_ids              [1]
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
   (do
@@ -90,16 +93,18 @@
     user-defaults
     {:email                  "trashbird@metabase.com"
      :first_name             "Trash"
-     :is_active              false
      :last_name              "Bird"
+     :is_active              false
+     :group_ids              [1]
      :personal_collection_id true
      :common_name            "Trash Bird"})
    (merge
     user-defaults
     {:email                  "crowberto@metabase.com"
      :first_name             "Crowberto"
-     :is_superuser           true
      :last_name              "Corv"
+     :is_superuser           true
+     :group_ids              [1 2]
      :personal_collection_id true
      :common_name            "Crowberto Corv"})
    (merge
@@ -107,6 +112,7 @@
     {:email                  "lucky@metabase.com"
      :first_name             "Lucky"
      :last_name              "Pigeon"
+     :group_ids              [1]
      :personal_collection_id true
      :common_name            "Lucky Pigeon"})
    (merge
@@ -114,6 +120,7 @@
     {:email                  "rasta@metabase.com"
      :first_name             "Rasta"
      :last_name              "Toucan"
+     :group_ids              [1]
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
   (do
@@ -135,6 +142,7 @@
              :first_name       user-name
              :last_name        user-name
              :common_name      (str user-name " " user-name)
+             :group_ids        [1]
              :login_attributes {:test "value"}}))
     (et/with-fake-inbox
       (try
@@ -212,6 +220,7 @@
           :first_name             "Rasta"
           :last_name              "Toucan"
           :common_name            "Rasta Toucan"
+          :group_ids              [1]
           :personal_collection_id true})
   (do
     ;; Make sure personal Collections have been created so this endpoint won't randomly return `false` for
@@ -228,7 +237,8 @@
          {:email       "rasta@metabase.com"
           :first_name  "Rasta"
           :last_name   "Toucan"
-          :common_name "Rasta Toucan"})
+          :common_name "Rasta Toucan"
+          :group_ids   [1]})
   (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 (str "user/" (test-users/user->id :rasta)))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
@@ -241,7 +251,8 @@
          {:email       "rasta@metabase.com"
           :first_name  "Rasta"
           :last_name   "Toucan"
-          :common_name "Rasta Toucan"})
+          :common_name "Rasta Toucan"
+          :group_ids   [1]})
   (tu/boolean-ids-and-timestamps ((test-users/user->client :crowberto) :get 200 (str "user/" (test-users/user->id :rasta)))))
 
 ;; We should get a 404 when trying to access a disabled account
@@ -258,8 +269,9 @@
               {:common_name  "Cam Eron"
                :email        "cam.eron@metabase.com"
                :first_name   "Cam"
+               :last_name    "Eron"
                :is_superuser true
-               :last_name    "Eron"})
+               :group_ids    [1 2]})
    :after    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}}
   (tt/with-temp User [{user-id :id} {:first_name   "Cam"
                                      :last_name    "Era"
@@ -284,7 +296,8 @@
     :first_name       "Test"
     :login_attributes {:test "value"}
     :common_name      "Test User"
-    :last_name        "User"})
+    :last_name        "User"
+    :group_ids        [1 2]})
   (tt/with-temp User [{user-id :id} {:first_name   "Test"
                                      :last_name    "User"
                                      :email        "testuser@metabase.com"
