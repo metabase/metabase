@@ -19,9 +19,7 @@ const DatabasePane = ({ database, show, ...props }) => (
 
     <ul>
       {database.tables.filter(isQueryable).map((table, index) => (
-        <li
-          key={table.id}
-        >
+        <li key={table.id}>
           <a
             className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
             onClick={() => show("table", table)}
