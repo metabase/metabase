@@ -11,6 +11,8 @@ import { createEntity } from "metabase/lib/entities";
 
 import { UserApi, SessionApi } from "metabase/services";
 
+import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget"
+
 const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 const REACTIVATE = "metabase/entities/users/REACTIVATE";
 const PASSWORD_RESET_EMAIL = "metabase/entities/users/PASSWORD_RESET_EMAIL";
@@ -119,6 +121,11 @@ const Users = createEntity({
         placeholder: "youlooknicetoday@email.com",
         validate: email => !email && t`Email is required`,
       },
+      {
+        name: "group_ids",
+        title: "Groups",
+        type: FormGroupsWidget
+      }
     ],
   },
 });
