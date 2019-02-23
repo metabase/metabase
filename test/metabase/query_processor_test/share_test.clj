@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.share-test
   (:require [metabase.models.segment :refer [Segment]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
