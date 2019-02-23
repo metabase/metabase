@@ -65,12 +65,12 @@
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-      {:title      card-name
+      {:title                  card-name
        :attachment-bytes-thunk (fn [] (render/render-pulse-card-to-png (defaulted-timezone card) card result))
-       :title_link (urls/card-url card-id)
-       :attachment-name "image.png"
-       :channel-id channel-id
-       :fallback   card-name})))
+       :title_link             (urls/card-url card-id)
+       :attachment-name        "image.png"
+       :channel-id             channel-id
+       :fallback               card-name})))
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
@@ -161,8 +161,8 @@
 (defmethod create-notification [:pulse :slack]
   [pulse results {{channel-id :channel} :details :as channel}]
   (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Slack" (:id pulse) (:name pulse)))
-  {:channel-id channel-id
-   :message (str "Pulse: " (:name pulse))
+  {:channel-id  channel-id
+   :message     (str "Pulse: " (:name pulse))
    :attachments (create-slack-attachment-data results)})
 
 (defmethod create-notification [:alert :email]

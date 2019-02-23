@@ -317,7 +317,7 @@
        (concat
         frames-after-last-mb
         ;; add a little arrow to the frame so it stands out more
-        (cons (str "--> " last-mb-frame)
+        (cons (some->> last-mb-frame (str "--> "))
               frames-before-last-mb))))})
 
 (defn deref-with-timeout
