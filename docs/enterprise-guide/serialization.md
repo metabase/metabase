@@ -5,7 +5,9 @@ Metabase's serialization feature allows you to create a snapshot, called a dump,
 This lets you do things like create a set of dashboards in one Metabase instance and then easily copy those dashboards to a number of other Metabase instances that you've set up for your customers. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s).
 
 ### What gets dumped and loaded
+
 **Currently a dump consists of the following Metabase artifacts:**
+
 * Collections
 * Dashboards
 * Saved questions
@@ -15,20 +17,24 @@ This lets you do things like create a set of dashboards in one Metabase instance
 * Public sharing settings for questions and dashboards
 
 **It also contains a number of system settings:**
+
 * Admin Panel settings, except for permissions
 * Database connection settings
 * Data Model settings
 
 **The dump does _not_ contain:**
+
 * Permission settings
 * User accounts or settings
 * Alerts on saved questions
 * Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
 
 ### Before creating or loading a dump
+
 If your instance is currently running, you will need to stop it first before creating or loading a dump, unless your Metabase application database supports concurrent reads. The default application database type, H2, does not.
 
 ### Creating a data dump
+
 To create a dump of a Metabase instance, use the following command in your terminal:
 
 `java -jar metabase.jar dump [dump_name] --user [example@example.com]`
@@ -36,6 +42,7 @@ To create a dump of a Metabase instance, use the following command in your termi
 The optional `--user` flag is used to specify a default administrator account for cases when this dump is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the data dump. If this flag isn't specified, it's assumed that the instance into which you're loading already has an admin user.
 
 ### Loading a dump
+
 To load a dump into another instance of Metabase, use the following command, where `[my_dump]` is the path to the dump you want to load:
 
 `java -jar metabase.jar load [my_dump] --mode [skip/update] --on-error [continue/abort]`
@@ -49,4 +56,5 @@ Both of these flags are optional.
 ---
 
 ## That's it!
+
 Still need help? Feel free to reach out to us at the support email address you were provided.
