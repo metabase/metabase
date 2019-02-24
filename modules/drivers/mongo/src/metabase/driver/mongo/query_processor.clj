@@ -362,10 +362,9 @@
       :sum      {$sum (->rvalue arg)}
       :min      {$min (->rvalue arg)}
       :max      {$max (->rvalue arg)}
-      :share    {$divide [{$sum {$cond {:if   (parse-filter arg)
-                                        :then 1
-                                        :else 0}}}
-                          {$sum 1}]})))
+      :count-if {$sum {$cond {:if   (parse-filter arg)
+                              :then 1
+                              :else 0}}})))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)
@@ -385,40 +384,57 @@
                                        {$size "$count"} ; HACK
                                        true)])))
 
+(defmulti ^:private expand-aggregation first)
+
+(defmethod expand-aggregation :share
+  [[_ pred :as ag]]
+  (let [count-if-name (str (gensym "count-if"))
+        count-name    (str (gensym "count-"))]
+    [[[count-if-name (aggregation->rvalue [:count-if pred])]
+      [count-name (aggregation->rvalue [:count])]]
+     [[(annotate/aggregation-name ag) {$divide [(str "$" count-if-name) (str "$" count-name)]}]]]))
+
+(defmethod expand-aggregation :default
+  [ag]
+  [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
+
+(defn- group-and-post-aggregations
+  [id aggregations]
+  (let [group-ags (mapcat (comp first expand-aggregation) aggregations)
+        post-ags  (mapcat (comp second expand-aggregation) aggregations)]
+    [{$group (merge {"_id" id}
+                    (into (ordered-map/ordered-map) group-ags))}
+     (when (not-empty post-ags)
+       {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
+
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
-  (remove
-   nil?
-   [ ;; create a totally sweet made-up column called `___group` to store the fields we'd
+  (mapcat
+   (partial remove nil?)
+   [;; create a totally sweet made-up column called `___group` to store the fields we'd
     ;; like to group by
     (when (seq breakout-fields)
-      {$project (merge {"_id"      "$_id"
-                        "___group" (into
-                                    (ordered-map/ordered-map)
-                                    (for [field breakout-fields]
-                                      [(->lvalue field) (->rvalue field)]))}
-                       (into
-                        (ordered-map/ordered-map)
-                        (for [ag    aggregations
-                              :let  [[_ ag-field] (unwrap-named-ag ag)]
-                              :when ag-field]
-                          [(->lvalue ag-field) (->rvalue ag-field)])))})
+      [{$project (merge {"_id"      "$_id"
+                         "___group" (into
+                                     (ordered-map/ordered-map)
+                                     (for [field breakout-fields]
+                                       [(->lvalue field) (->rvalue field)]))}
+                        (into
+                         (ordered-map/ordered-map)
+                         (for [ag    aggregations
+                               :let  [[_ ag-field] (unwrap-named-ag ag)]
+                               :when ag-field]
+                           [(->lvalue ag-field) (->rvalue ag-field)])))}])
     ;; Now project onto the __group and the aggregation rvalue
-    {$group (merge
-             {"_id" (when (seq breakout-fields)
-                      "$___group")}
-             (into
-              (ordered-map/ordered-map)
-              (for [ag aggregations]
-                [(annotate/aggregation-name ag) (aggregation->rvalue ag)])))}
-    ;; Sort by _id (___group)
-    {$sort {"_id" 1}}
-    ;; now project back to the fields we expect
-    {$project (merge {"_id" false}
-                     (into
-                      (ordered-map/ordered-map)
-                      projected-fields))}]))
+    (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
+    [;; Sort by _id (___group)
+     {$sort {"_id" 1}}
+     ;; now project back to the fields we expect
+     {$project (merge {"_id" false}
+                      (into
+                       (ordered-map/ordered-map)
+                       projected-fields))}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
