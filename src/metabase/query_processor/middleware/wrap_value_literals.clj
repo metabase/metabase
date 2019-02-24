@@ -87,7 +87,7 @@
   [{:keys [source-query], :as inner-query}]
   (let [inner-query (cond-> inner-query
                       source-query (update :source-query wrap-value-literals-in-mbql-query))]
-    (mbql.u/replace-in inner-query [:filter]
+    (mbql.u/replace inner-query
       [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
       [clause field (add-type-info x (type-info field))]
 

@@ -157,7 +157,7 @@
          (str/join (str " " (name operator) " ")
                    (map expression-ag-arg->name args)))
 
-    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
+    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` which
     ;; is called `:count` (WHY?)
     [:distinct _]
     "count"
