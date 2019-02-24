@@ -48,12 +48,13 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage {(s/eq $project) {su/NonBlankString s/Any}})
-(def ^:private $SortStage    {(s/eq $sort)    {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage   {(s/eq $match)   {(s/constrained su/NonBlankString (partial not= $not)) s/Any}})
-(def ^:private $GroupStage   {(s/eq $group)   {su/NonBlankString s/Any}})
-(def ^:private $LimitStage   {(s/eq $limit)   su/IntGreaterThanZero})
-(def ^:private $SkipStage    {(s/eq $skip)    su/IntGreaterThanZero})
+(def ^:private $ProjectStage   {(s/eq $project)     {su/NonBlankString s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)        {su/NonBlankString (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)       {(s/constrained su/NonBlankString (partial not= $not)) s/Any}})
+(def ^:private $GroupStage     {(s/eq $group)       {su/NonBlankString s/Any}})
+(def ^:private $AddFieldsStage {(s/eq "$addFields") {su/NonBlankString s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)       su/IntGreaterThanZero})
+(def ^:private $SkipStage      {(s/eq $skip)        su/IntGreaterThanZero})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
@@ -62,12 +63,13 @@
   (s/both
    (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
-    (is-stage? $project) $ProjectStage
-    (is-stage? $sort)    $SortStage
-    (is-stage? $group)   $GroupStage
-    (is-stage? $match)   $MatchStage
-    (is-stage? $limit)   $LimitStage
-    (is-stage? $skip)    $SkipStage)))
+    (is-stage? $project)     $ProjectStage
+    (is-stage? $sort)        $SortStage
+    (is-stage? $group)       $GroupStage
+    (is-stage? "$addFields") $AddFieldsStage
+    (is-stage? $match)       $MatchStage
+    (is-stage? $limit)       $LimitStage
+    (is-stage? $skip)        $SkipStage)))
 
 (def ^:private Pipeline [Stage])
 
@@ -304,12 +306,12 @@
 (defmethod parse-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod parse-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(defmethod parse-filter :=  [[_ field value]] {(->lvalue field) {"$eq" (->rvalue value)}})
-(defmethod parse-filter :!= [[_ field value]] {(->lvalue field) {$ne   (->rvalue value)}})
-(defmethod parse-filter :<  [[_ field value]] {(->lvalue field) {$lt   (->rvalue value)}})
-(defmethod parse-filter :>  [[_ field value]] {(->lvalue field) {$gt   (->rvalue value)}})
-(defmethod parse-filter :<= [[_ field value]] {(->lvalue field) {$lte  (->rvalue value)}})
-(defmethod parse-filter :>= [[_ field value]] {(->lvalue field) {$gte  (->rvalue value)}})
+(defmethod parse-filter :=  [[_ field value]] {(->lvalue field) {$eq  (->rvalue value)}})
+(defmethod parse-filter :!= [[_ field value]] {(->lvalue field) {$ne  (->rvalue value)}})
+(defmethod parse-filter :<  [[_ field value]] {(->lvalue field) {$lt  (->rvalue value)}})
+(defmethod parse-filter :>  [[_ field value]] {(->lvalue field) {$gt  (->rvalue value)}})
+(defmethod parse-filter :<= [[_ field value]] {(->lvalue field) {$lte (->rvalue value)}})
+(defmethod parse-filter :>= [[_ field value]] {(->lvalue field) {$gte (->rvalue value)}})
 
 (defmethod parse-filter :and [[_ & args]] {$and (mapv parse-filter args)})
 (defmethod parse-filter :or  [[_ & args]] {$or (mapv parse-filter args)})
@@ -338,11 +340,51 @@
 (defmethod parse-filter :not [[_ subclause]]
   (parse-filter (negate subclause)))
 
-
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
     (update pipeline-ctx :query conj {$match (parse-filter filter-clause)})))
+
+(defmulti ^:private parse-cond first)
+
+(defmethod parse-cond :between [[_ field min-val max-val]]
+  (parse-cond [:and [:>= field min-val] [:< field max-val]]))
+
+(defn- indexOfCP
+  [source needle case-sensitive?]
+  (let [source (if case-sensitive?
+                 (->rvalue source)
+                 {$toLower (->rvalue source)})
+        needle (if case-sensitive?
+                 (->rvalue needle)
+                 {$toLower (->rvalue needle)})]
+    {"$indexOfCP" [source needle]}))
+
+(defmethod parse-cond :contains    [[_ field value opts]] {$ne [(indexOfCP field value (get opts :case-sensitive true)) -1]})
+(defmethod parse-cond :starts-with [[_ field value opts]] {$eq [(indexOfCP field value (get opts :case-sensitive true)) 0]})
+(defmethod parse-cond :ends-with   [[_ field value opts]]
+  (let [strcmp (fn [a b]
+                 (if (get opts :case-sensitive true)
+                   {$eq [a b]}
+                   {$eq [{$strcasecmp [a b]} 0]}))]
+    (strcmp {"$substrCP" [(->rvalue field)
+                          {$subtract [{"$strLenCP" (->rvalue field)}
+                                      {"$strLenCP" (->rvalue value)}]}
+                          {"$strLenCP" (->rvalue value)}]}
+            (->rvalue value))))
+
+(defmethod parse-cond :=  [[_ field value]] {$eq [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :!= [[_ field value]] {$ne [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :<  [[_ field value]] {$lt [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :>  [[_ field value]] {$gt [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :<= [[_ field value]] {$lte [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :>= [[_ field value]] {$gte [(->rvalue field) (->rvalue value)]})
+
+(defmethod parse-cond :and [[_ & args]] {$and (mapv parse-cond args)})
+(defmethod parse-cond :or  [[_ & args]] {$or (mapv parse-cond args)})
+
+(defmethod parse-cond :not [[_ subclause]]
+  (parse-cond (negate subclause)))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
@@ -362,7 +404,7 @@
       :sum      {$sum (->rvalue arg)}
       :min      {$min (->rvalue arg)}
       :max      {$max (->rvalue arg)}
-      :count-if {$sum {$cond {:if   (parse-filter arg)
+      :count-if {$sum {$cond {:if   (parse-cond arg)
                               :then 1
                               :else 0}}})))
 
@@ -384,24 +426,32 @@
                                        {$size "$count"} ; HACK
                                        true)])))
 
-(defmulti ^:private expand-aggregation first)
+(defmulti ^:private expand-aggregation (fn [[ag-type arg]]
+                                         (if (= ag-type :named)
+                                           (recur arg)
+                                           ag-type)))
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-if-name (str (gensym "count-if"))
-        count-name    (str (gensym "count-"))]
+  (let [count-if-name (name (gensym "count-if"))
+        count-name    (name (gensym "count-"))
+        pred          (if (= (first pred) :share)
+                        (second pred)
+                        pred)]
     [[[count-if-name (aggregation->rvalue [:count-if pred])]
       [count-name (aggregation->rvalue [:count])]]
      [[(annotate/aggregation-name ag) {$divide [(str "$" count-if-name) (str "$" count-name)]}]]]))
 
 (defmethod expand-aggregation :default
   [ag]
+  (println ag)
   [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
 
 (defn- group-and-post-aggregations
   [id aggregations]
-  (let [group-ags (mapcat (comp first expand-aggregation) aggregations)
-        post-ags  (mapcat (comp second expand-aggregation) aggregations)]
+  (let [expanded-ags (map expand-aggregation aggregations)
+        group-ags    (mapcat first expanded-ags)
+        post-ags     (mapcat second expanded-ags)]
     [{$group (merge {"_id" id}
                     (into (ordered-map/ordered-map) group-ags))}
      (when (not-empty post-ags)
