@@ -444,10 +444,14 @@
 
 (defmethod expand-aggregation :default
   [ag]
-  (println ag)
   [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
 
 (defn- group-and-post-aggregations
+  "Mongo is picky (and somewhat stupid) which top-level aggregations it alows with groups. Eg. even
+   though [:/ [:coun-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
+   more complex aggregations are split in two: the reductions are done in `$group` stage after which
+   we do postprocessing in `$addFields` stage to arrive at the final result. The intermitent results
+   accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
   (let [expanded-ags (map expand-aggregation aggregations)
         group-ags    (mapcat first expanded-ags)

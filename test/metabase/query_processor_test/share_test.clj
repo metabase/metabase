@@ -3,13 +3,25 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
             [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [toucan.util.test :as tt]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   0.94
   (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 4]]]}
+       (data/run-mbql-query venues)
+       rows
+       ffirst
+       double))
+
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+  0.17
+  (->> {:aggregation [[:share [:and [:< [:field-id (data/id :venues :price)] 4]
+                               [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
+                                [:ends-with [:field-id (data/id :venues :name)] "t"]]]]]}
        (data/run-mbql-query venues)
        rows
        ffirst
@@ -24,14 +36,15 @@
        ffirst))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  [[2 0M]
-   [3 0M]
-   [4 0.5M]
-   [5 0.14285714285714285714285714M]]
+  [[2 0.0]
+   [3 0.0]
+   [4 0.5]
+   [5 0.14]]
   (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 2]]]
         :breakout    [[:field-id (data/id :venues :category_id)]]
         :limit       4}
        (data/run-mbql-query venues)
+       (tu/round-all-decimals 2)
        rows))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
