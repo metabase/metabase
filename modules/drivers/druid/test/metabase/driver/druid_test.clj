@@ -196,7 +196,7 @@
 
 ;; share
 (expect-with-driver :druid
-  [[0.94]]
+  [[0.951]]
   (druid-query-returning-rows
     {:aggregation [[:share [:< $venue_price 4]]]}))
 
