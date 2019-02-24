@@ -145,12 +145,217 @@
     (assoc-in updated-query [:query :dataSource] source-table-name)))
 
 
-;;; ----------------------------------------------- handle-aggregation -----------------------------------------------
-
-(declare filter:not filter:nil?)
+;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
 
 (def ^:private ^{:arglists '([clause])} field?
   (partial mbql.u/is-clause? #{:field-id :datetime-field}))
+
+(defn- filter:and
+  [filters]
+  {:type   :and
+   :fields filters})
+
+(defn- filter:not
+  [filtr]
+  {:pre [filtr]}
+  (if (= (:type filtr) :not)     ; it looks like "two nots don't make an identity" with druid
+    (:field filtr)
+    {:type :not, :field filtr}))
+
+(defn- filter:=
+  [field value]
+  {:type      :selector
+   :dimension (->rvalue field)
+   :value     (->rvalue value)})
+
+(defn- filter:nil?
+  [clause-or-field]
+  (if (mbql.u/is-clause? #{:+ :- :/ :*} clause-or-field)
+    (filter:and (for [arg   (rest clause-or-field)
+                      :when (field? arg)]
+                  (filter:nil? arg)))
+    (filter:= clause-or-field (case (dimension-or-metric? clause-or-field)
+                                :dimension nil
+                                :metric    0))))
+(metabase.query-processor/process-query {:database 6
+                                         :table_id 11
+                                         :type :query
+                                         :query {:source-table 11
+                                                 :aggregation [:share [:> [:field-id 65] 2]]}})
+(defn- filter:like
+  "Build a `like` filter clause, which is almost just like a SQL `LIKE` clause."
+  [field pattern case-sensitive?]
+  {:type         :like
+   :dimension    (->rvalue field)
+   ;; tell Druid to use backslash as an escape character
+   :escape       "\\"
+   ;; if this is a case-insensitive search we'll lower-case the search pattern and add an extraction function to
+   ;; lower-case the dimension values we're matching against
+   :pattern      (cond-> pattern
+                   (not case-sensitive?) str/lower-case)
+   :extractionFn (when-not case-sensitive?
+                   {:type :lower})})
+
+(defn- escape-like-filter-pattern
+  "Escape `%`, `_`, and backslash symbols that aren't meant to have special meaning in `like` filters
+  patterns. Backslashes wouldn't normally have a special meaning, but we specify backslash as our escape character in
+  the `filter:like` function above, so they need to be escaped as well."
+  [s]
+  (str/replace s #"([%_\\])" "\\\\$1"))
+
+(defn- filter:bound
+  "Numeric `bound` filter, for finding values of `field` that are less than some value-or-field, greater than some value-or-field, or
+  both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to change this."
+  [field & {:keys [lower upper inclusive?]
+            :or   {inclusive? true}}]
+  {:type        :bound
+   :ordering    :numeric
+   :dimension   (->rvalue field)
+   :lower       (num (->rvalue lower))
+   :upper       (num (->rvalue upper))
+   :lowerStrict (not inclusive?)
+   :upperStrict (not inclusive?)})
+
+(defn- filter-fields-are-dimensions? [fields]
+  (reduce
+   #(and %1 %2)
+   true
+   (for [field fields]
+     (or
+      (not= (dimension-or-metric? field) :metric)
+      (log/warn
+       (u/format-color 'red
+           (tru "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
+                (->rvalue field))))))))
+
+(defmulti ^:private parse-filter
+  {:arglists '([filter-clause])}
+  ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
+  ;; if it is.
+  (fn [[clause-name & args, :as filter-clause]]
+    (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
+      (when (and
+             ;; make sure all Field args are dimensions
+             (filter-fields-are-dimensions? fields)
+             ;; and make sure none of the Fields are datetime Fields
+             ;; We'll handle :timestamp separately. It needs to go in :intervals instead
+             (not-any? (partial mbql.u/is-clause? :datetime-field) fields))
+        clause-name))))
+
+(defmethod parse-filter nil [_] nil)
+
+(defmethod parse-filter :between [[_ field min-val max-val]]
+  (filter:bound field, :lower min-val, :upper max-val))
+
+(defmethod parse-filter :contains [[_ field string-or-field options]]
+  {:type      :search
+   :dimension (->rvalue field)
+   :query     {:type          :contains
+               :value         (->rvalue string-or-field)
+               :caseSensitive (get options :case-sensitive true)}})
+
+(defmethod parse-filter :starts-with [[_ field string-or-field options]]
+  (filter:like field
+               (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
+               (get options :case-sensitive true)))
+
+(defmethod parse-filter :ends-with [[_ field string-or-field options]]
+  (filter:like field
+               (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
+               (get options :case-sensitive true)))
+
+(defmethod parse-filter := [[_ field value-or-field]]
+  (filter:= field value-or-field))
+
+(defmethod parse-filter :!= [[_ field value-or-field]]
+  (filter:not (filter:= field value-or-field)))
+
+(defmethod parse-filter :< [[_ field value-or-field]]
+  (filter:bound field, :upper value-or-field, :inclusive? false))
+
+(defmethod parse-filter :> [[_ field value-or-field]]
+  (filter:bound field, :lower value-or-field, :inclusive? false))
+
+(defmethod parse-filter :<= [[_ field value-or-field]]
+  (filter:bound field, :upper value-or-field))
+
+(defmethod parse-filter :>= [[_ field value-or-field]]
+  (filter:bound field, :lower value-or-field))
+
+(defmethod parse-filter :and [[_ & args]]
+  {:type :and, :fields (filterv identity (map parse-filter args))})
+
+(defmethod parse-filter :or [[_ & args]]
+  {:type :or, :fields (filterv identity (map parse-filter args))})
+
+(defmethod parse-filter :not [[_ subclause]]
+  (when-let [subclause (parse-filter subclause)]
+    (filter:not subclause)))
+
+
+(defn- make-intervals
+  "Make a value for the `:intervals` in a Druid query.
+
+     ;; Return results in 2012 or 2015
+     (make-intervals 2012 2013 2015 2016) -> [\"2012/2013\" \"2015/2016\"]"
+  [interval-min interval-max & more]
+  (vec (concat [(str (or (->rvalue interval-min) -5000) "/" (or (->rvalue interval-max) 5000))]
+               (when (seq more)
+                 (apply make-intervals more)))))
+
+(defn- parse-filter-subclause:intervals [[filter-type field value maybe-max-value]]
+  (when (mbql.u/is-clause? :datetime-field field)
+    (case filter-type
+      ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
+      :between (make-intervals value (mbql.u/add-datetime-units maybe-max-value 1))
+      ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
+      :=       (make-intervals value (mbql.u/add-datetime-units value 1))
+      ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
+      :!=      (make-intervals nil value, (mbql.u/add-datetime-units value 1) nil)
+      ;; >  "2015-12-11" -> ["2015-12-12/5000"]
+      :>       (make-intervals (mbql.u/add-datetime-units value 1) nil)
+      ;; >= "2015-12-11" -> ["2015-12-11/5000"]
+      :>=      (make-intervals value nil)
+      ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
+      :<       (make-intervals nil value)
+      ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
+      :<=      (make-intervals nil (mbql.u/add-datetime-units value 1)))))
+
+(defn- parse-filter-clause:intervals [[compound-type & subclauses, :as clause]]
+  (if-not (#{:and :or :not} compound-type)
+    (parse-filter-subclause:intervals clause)
+    (let [subclauses (filterv identity (mapcat parse-filter-clause:intervals subclauses))]
+      (when (seq subclauses)
+        (case compound-type
+          ;; A date can't be in more than one interval, so ANDing them together doesn't really make sense. In this
+          ;; situation, just ignore all intervals after the first
+          :and (do (when (> (count subclauses) 1)
+                     (log/warn
+                      (u/format-color 'red
+                          (str
+                           (tru "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense.")
+                           "\n"
+                           (tru "Ignoring these intervals: {0}" (rest subclauses))) )))
+                   [(first subclauses)])
+          ;; Ok to specify multiple intervals for OR
+          :or  subclauses
+          ;; We should never get to this point since the all non-string negations should get automatically rewritten
+          ;; by the query expander.
+          :not (log/warn (u/format-color 'red (tru "WARNING: Don't know how to negate: {0}" clause))))))))
+
+
+(defn- handle-filter [_ {filter-clause :filter} updated-query]
+  (if-not filter-clause
+    updated-query
+    (let [filter    (parse-filter    filter-clause)
+          intervals (parse-filter-clause:intervals filter-clause)]
+      (cond-> updated-query
+        (seq filter)    (assoc-in [:query :filter] filter)
+        (seq intervals) (assoc-in [:query :intervals] intervals)))))
+
+
+;;; ----------------------------------------------- handle-aggregation -----------------------------------------------
+
 
 (defn- expression->field-names [[_ & args]]
   {:post [(every? (some-fn keyword? string?) %)]}
@@ -272,6 +477,10 @@
   ([field output-name] (ag:filtered (filter:not (filter:nil? field))
                                     (ag:count output-name))))
 
+(defn- ag:countWhere
+  ([pred output-name] (ag:filtered (parse-filter pred)
+                                   (ag:count output-name))))
+
 (defn- create-aggregation-clause [output-name ag-type ag-field]
   (let [output-name-kwd (keyword output-name)]
     (match [ag-type ag-field]
@@ -293,6 +502,18 @@
                                             :fn     :/
                                             :fields [{:type :fieldAccess, :fieldName sum-name}
                                                      {:type :fieldAccess, :fieldName count-name}]}]}])
+
+      [:share    _] (let [total-count-name (name (gensym "___total_count_"))
+                          true-count-name  (name (gensym "___true_count_"))]
+                      [[(keyword total-count-name) (keyword true-count-name) (or output-name-kwd :share)]
+                       {:aggregations     [(ag:count total-count-name)
+                                           (ag:countWhere ag-field true-count-name)]
+                        :postAggregations [{:type   :arithmetic
+                                            :name   (or output-name :share)
+                                            :fn     :/
+                                            :fields [{:type :fieldAccess, :fieldName true-count-name}
+                                                     {:type :fieldAccess, :fieldName total-count-name}]}]}])
+
       [:distinct _] [[(or output-name-kwd :distinct___count)]
                      {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
       [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or (name output-name) :sum))]}]
@@ -548,204 +769,6 @@
                                        (:outputName dim-rvalue)
                                        (field-clause->name breakout-field))))))
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
-
-
-;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
-
-(defn- filter:and [filters]
-  {:type   :and
-   :fields filters})
-
-(defn- filter:not [filtr]
-  {:pre [filtr]}
-  (if (= (:type filtr) :not)     ; it looks like "two nots don't make an identity" with druid
-    (:field filtr)
-    {:type :not, :field filtr}))
-
-(defn- filter:= [field value]
-  {:type      :selector
-   :dimension (->rvalue field)
-   :value     (->rvalue value)})
-
-(defn- filter:nil? [clause-or-field]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} clause-or-field)
-    (filter:and (for [arg   (rest clause-or-field)
-                      :when (field? arg)]
-                  (filter:nil? arg)))
-    (filter:= clause-or-field (case (dimension-or-metric? clause-or-field)
-                                :dimension nil
-                                :metric    0))))
-
-(defn- filter:like
-  "Build a `like` filter clause, which is almost just like a SQL `LIKE` clause."
-  [field pattern case-sensitive?]
-  {:type         :like
-   :dimension    (->rvalue field)
-   ;; tell Druid to use backslash as an escape character
-   :escape       "\\"
-   ;; if this is a case-insensitive search we'll lower-case the search pattern and add an extraction function to
-   ;; lower-case the dimension values we're matching against
-   :pattern      (cond-> pattern
-                   (not case-sensitive?) str/lower-case)
-   :extractionFn (when-not case-sensitive?
-                   {:type :lower})})
-
-(defn- escape-like-filter-pattern
-  "Escape `%`, `_`, and backslash symbols that aren't meant to have special meaning in `like` filters
-  patterns. Backslashes wouldn't normally have a special meaning, but we specify backslash as our escape character in
-  the `filter:like` function above, so they need to be escaped as well."
-  [s]
-  (str/replace s #"([%_\\])" "\\\\$1"))
-
-(defn- filter:bound
-  "Numeric `bound` filter, for finding values of `field` that are less than some value-or-field, greater than some value-or-field, or
-  both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to change this."
-  [field & {:keys [lower upper inclusive?]
-            :or   {inclusive? true}}]
-  {:type        :bound
-   :ordering    :numeric
-   :dimension   (->rvalue field)
-   :lower       (num (->rvalue lower))
-   :upper       (num (->rvalue upper))
-   :lowerStrict (not inclusive?)
-   :upperStrict (not inclusive?)})
-
-(defn- filter-fields-are-dimensions? [fields]
-  (reduce
-   #(and %1 %2)
-   true
-   (for [field fields]
-     (or
-      (not= (dimension-or-metric? field) :metric)
-      (log/warn
-       (u/format-color 'red
-           (tru "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-                (->rvalue field))))))))
-
-(defmulti ^:private parse-filter
-  {:arglists '([filter-clause])}
-  ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
-  ;; if it is.
-  (fn [[clause-name & args, :as filter-clause]]
-    (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
-      (when (and
-             ;; make sure all Field args are dimensions
-             (filter-fields-are-dimensions? fields)
-             ;; and make sure none of the Fields are datetime Fields
-             ;; We'll handle :timestamp separately. It needs to go in :intervals instead
-             (not-any? (partial mbql.u/is-clause? :datetime-field) fields))
-        clause-name))))
-
-(defmethod parse-filter nil [_] nil)
-
-(defmethod parse-filter :between [[_ field min-val max-val]]
-  (filter:bound field, :lower min-val, :upper max-val))
-
-(defmethod parse-filter :contains [[_ field string-or-field options]]
-  {:type      :search
-   :dimension (->rvalue field)
-   :query     {:type          :contains
-               :value         (->rvalue string-or-field)
-               :caseSensitive (get options :case-sensitive true)}})
-
-(defmethod parse-filter :starts-with [[_ field string-or-field options]]
-  (filter:like field
-               (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
-               (get options :case-sensitive true)))
-
-(defmethod parse-filter :ends-with [[_ field string-or-field options]]
-  (filter:like field
-               (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
-               (get options :case-sensitive true)))
-
-(defmethod parse-filter := [[_ field value-or-field]]
-  (filter:= field value-or-field))
-
-(defmethod parse-filter :!= [[_ field value-or-field]]
-  (filter:not (filter:= field value-or-field)))
-
-(defmethod parse-filter :< [[_ field value-or-field]]
-  (filter:bound field, :upper value-or-field, :inclusive? false))
-
-(defmethod parse-filter :> [[_ field value-or-field]]
-  (filter:bound field, :lower value-or-field, :inclusive? false))
-
-(defmethod parse-filter :<= [[_ field value-or-field]]
-  (filter:bound field, :upper value-or-field))
-
-(defmethod parse-filter :>= [[_ field value-or-field]]
-  (filter:bound field, :lower value-or-field))
-
-(defmethod parse-filter :and [[_ & args]]
-  {:type :and, :fields (filterv identity (map parse-filter args))})
-
-(defmethod parse-filter :or [[_ & args]]
-  {:type :or, :fields (filterv identity (map parse-filter args))})
-
-(defmethod parse-filter :not [[_ subclause]]
-  (when-let [subclause (parse-filter subclause)]
-    (filter:not subclause)))
-
-
-(defn- make-intervals
-  "Make a value for the `:intervals` in a Druid query.
-
-     ;; Return results in 2012 or 2015
-     (make-intervals 2012 2013 2015 2016) -> [\"2012/2013\" \"2015/2016\"]"
-  [interval-min interval-max & more]
-  (vec (concat [(str (or (->rvalue interval-min) -5000) "/" (or (->rvalue interval-max) 5000))]
-               (when (seq more)
-                 (apply make-intervals more)))))
-
-(defn- parse-filter-subclause:intervals [[filter-type field value maybe-max-value]]
-  (when (mbql.u/is-clause? :datetime-field field)
-    (case filter-type
-      ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
-      :between (make-intervals value (mbql.u/add-datetime-units maybe-max-value 1))
-      ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
-      :=       (make-intervals value (mbql.u/add-datetime-units value 1))
-      ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
-      :!=      (make-intervals nil value, (mbql.u/add-datetime-units value 1) nil)
-      ;; >  "2015-12-11" -> ["2015-12-12/5000"]
-      :>       (make-intervals (mbql.u/add-datetime-units value 1) nil)
-      ;; >= "2015-12-11" -> ["2015-12-11/5000"]
-      :>=      (make-intervals value nil)
-      ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
-      :<       (make-intervals nil value)
-      ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
-      :<=      (make-intervals nil (mbql.u/add-datetime-units value 1)))))
-
-(defn- parse-filter-clause:intervals [[compound-type & subclauses, :as clause]]
-  (if-not (#{:and :or :not} compound-type)
-    (parse-filter-subclause:intervals clause)
-    (let [subclauses (filterv identity (mapcat parse-filter-clause:intervals subclauses))]
-      (when (seq subclauses)
-        (case compound-type
-          ;; A date can't be in more than one interval, so ANDing them together doesn't really make sense. In this
-          ;; situation, just ignore all intervals after the first
-          :and (do (when (> (count subclauses) 1)
-                     (log/warn
-                      (u/format-color 'red
-                          (str
-                           (tru "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense.")
-                           "\n"
-                           (tru "Ignoring these intervals: {0}" (rest subclauses))) )))
-                   [(first subclauses)])
-          ;; Ok to specify multiple intervals for OR
-          :or  subclauses
-          ;; We should never get to this point since the all non-string negations should get automatically rewritten
-          ;; by the query expander.
-          :not (log/warn (u/format-color 'red (tru "WARNING: Don't know how to negate: {0}" clause))))))))
-
-
-(defn- handle-filter [_ {filter-clause :filter} updated-query]
-  (if-not filter-clause
-    updated-query
-    (let [filter    (parse-filter    filter-clause)
-          intervals (parse-filter-clause:intervals filter-clause)]
-      (cond-> updated-query
-        (seq filter)    (assoc-in [:query :filter] filter)
-        (seq intervals) (assoc-in [:query :intervals] intervals)))))
 
 
 ;;; ------------------------------------------------ handle-order-by -------------------------------------------------

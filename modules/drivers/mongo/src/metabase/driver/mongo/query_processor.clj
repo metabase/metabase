@@ -395,18 +395,18 @@
     (case aggregation-type
       :count {$sum 1})
     (case aggregation-type
-      :named    (recur arg)
-      :avg      {$avg (->rvalue arg)}
-      :count    {$sum {$cond {:if   (->rvalue arg)
-                              :then 1
-                              :else 0}}}
-      :distinct {$addToSet (->rvalue arg)}
-      :sum      {$sum (->rvalue arg)}
-      :min      {$min (->rvalue arg)}
-      :max      {$max (->rvalue arg)}
-      :count-if {$sum {$cond {:if   (parse-cond arg)
-                              :then 1
-                              :else 0}}})))
+      :named       (recur arg)
+      :avg         {$avg (->rvalue arg)}
+      :count       {$sum {$cond {:if   (->rvalue arg)
+                                 :then 1
+                                 :else 0}}}
+      :distinct    {$addToSet (->rvalue arg)}
+      :sum         {$sum (->rvalue arg)}
+      :min         {$min (->rvalue arg)}
+      :max         {$max (->rvalue arg)}
+      :count-where {$sum {$cond {:if   (parse-cond arg)
+                                 :then 1
+                                 :else 0}}})))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)
@@ -433,14 +433,14 @@
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-if-name (name (gensym "count-if"))
+  (let [count-where-name (name (gensym "count-where"))
         count-name    (name (gensym "count-"))
         pred          (if (= (first pred) :share)
                         (second pred)
                         pred)]
-    [[[count-if-name (aggregation->rvalue [:count-if pred])]
+    [[[count-where-name (aggregation->rvalue [:count-where pred])]
       [count-name (aggregation->rvalue [:count])]]
-     [[(annotate/aggregation-name ag) {$divide [(str "$" count-if-name) (str "$" count-name)]}]]]))
+     [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
 
 (defmethod expand-aggregation :default
   [ag]
