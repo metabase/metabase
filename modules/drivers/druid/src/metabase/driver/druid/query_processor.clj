@@ -177,11 +177,7 @@
     (filter:= clause-or-field (case (dimension-or-metric? clause-or-field)
                                 :dimension nil
                                 :metric    0))))
-(metabase.query-processor/process-query {:database 6
-                                         :table_id 11
-                                         :type :query
-                                         :query {:source-table 11
-                                                 :aggregation [:share [:> [:field-id 65] 2]]}})
+
 (defn- filter:like
   "Build a `like` filter clause, which is almost just like a SQL `LIKE` clause."
   [field pattern case-sensitive?]
