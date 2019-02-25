@@ -15,8 +15,10 @@ import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget"
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
-export const PASSWORD_RESET_EMAIL = "metabase/entities/users/PASSWORD_RESET_EMAIL";
-export const PASSWORD_RESET_MANUAL = "metabase/entities/users/RESET_PASSWORD_MANUAL";
+export const PASSWORD_RESET_EMAIL =
+  "metabase/entities/users/PASSWORD_RESET_EMAIL";
+export const PASSWORD_RESET_MANUAL =
+  "metabase/entities/users/RESET_PASSWORD_MANUAL";
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
 const Users = createEntity({

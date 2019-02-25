@@ -20,7 +20,7 @@ import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
 
 import User, { PASSWORD_RESET_MANUAL } from "metabase/entities/users";
-import Group from "metabase/entities/users";
+import Group from "metabase/entities/groups";
 
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
