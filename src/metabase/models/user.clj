@@ -1,7 +1,8 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
-            [clojure.data :as data]
-            [clojure.string :as str]
+            [clojure
+             [data :as data]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]

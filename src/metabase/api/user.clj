@@ -60,7 +60,7 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/get-id existing-user)))
 
-(defn maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
+(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (some? new-groups-or-ids)
     (when-not (= (user/group-ids user-or-id)
                  (set (map u/get-id new-groups-or-ids)))
