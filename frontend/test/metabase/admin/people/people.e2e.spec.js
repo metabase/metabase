@@ -19,6 +19,9 @@ import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
 import { UserApi } from "metabase/services";
 
+import User, { PASSWORD_RESET_MANUAL } from "metabase/entities/users";
+import Group from "metabase/entities/users";
+
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 
@@ -36,8 +39,8 @@ describe("admin/people", () => {
       const app = mount(store.getAppContainer());
 
       await store.waitForActions([
-        "metabase/entities/users/FETCH_LIST",
-        "metabase/entities/groups/FETCH_LIST",
+        User.actionTypes.FETCH_LIST,
+        Group.actionTypes.FETCH_LIST,
         LOAD_MEMBERSHIPS,
       ]);
 
@@ -151,10 +154,9 @@ describe("admin/people", () => {
       await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const resetPasswordModal = app.find(ModalContent);
-      const resetButton = resetPasswordModal
-        .find('div[children="Reset password"]')
-        .closest(Button);
-      click(resetButton);
+      clickButton(resetPasswordModal.find(".Button.Button--danger"));
+
+      await store.waitForActions([PASSWORD_RESET_MANUAL]);
 
       // this assumes no email configured
       click(resetPasswordModal.find('a[children="Show"]'));

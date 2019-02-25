@@ -243,7 +243,6 @@
   (let [old-group-ids      (group-ids user-or-id)
         new-group-ids      (set (map u/get-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
-    (prn (str "old:" old-group-ids " new:" new-group-ids " remove:" to-remove " add:" to-add))
     (when (seq to-remove)
       (db/delete! PermissionsGroupMembership :user_id (u/get-id user-or-id), :group_id [:in to-remove]))
     (when (seq to-add)

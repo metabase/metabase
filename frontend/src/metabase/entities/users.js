@@ -13,11 +13,11 @@ import { UserApi, SessionApi } from "metabase/services";
 
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
-const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
-const REACTIVATE = "metabase/entities/users/REACTIVATE";
-const PASSWORD_RESET_EMAIL = "metabase/entities/users/PASSWORD_RESET_EMAIL";
-const PASSWORD_RESET_MANUAL = "metabase/entities/users/RESET_PASSWORD_MANUAL";
-const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
+export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
+export const REACTIVATE = "metabase/entities/users/REACTIVATE";
+export const PASSWORD_RESET_EMAIL = "metabase/entities/users/PASSWORD_RESET_EMAIL";
+export const PASSWORD_RESET_MANUAL = "metabase/entities/users/RESET_PASSWORD_MANUAL";
+export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
 const Users = createEntity({
   name: "users",

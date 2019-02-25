@@ -2,17 +2,54 @@ import React from "react";
 import { Box } from "grid-styled";
 import { t, jt } from "c-3po";
 
-import { compose } from "redux";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import User from "metabase/entities/users";
+import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+
+@User.load({
+  id: (state, props) => props.params.userId,
+  wrapped: true,
+})
+@connect(
+  (state, props) => ({
+    temporaryPassword: getUserTemporaryPassword(state, {
+      userId: props.params.userId,
+    }),
+  }),
+  {
+    onClose: () => push("/admin/people"),
+    clearTemporaryPassword,
+  },
+)
+export default class UserSuccessModal extends React.Component {
+  componentWillUnmount() {
+    this.props.clearTemporaryPassword(this.props.params.userId);
+  }
+  render() {
+    const { onClose, user, temporaryPassword } = this.props;
+    return (
+      <ModalContent
+        title={t`${user.getName()} has been added`}
+        footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
+        onClose={onClose}
+      >
+        {temporaryPassword ? (
+          <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
+        ) : (
+          <EmailSuccess user={user} />
+        )}
+      </ModalContent>
+    );
+  }
+}
 
 const EmailSuccess = ({ user }) => (
   <Box>{jt`We’ve sent an invite to ${(
@@ -41,34 +78,3 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     </Box>
   </Box>
 );
-
-const UserSuccessModal = ({ onClose, user, temporaryPassword, location }) => (
-  <ModalContent
-    title={t`${user.getName()} has been added`}
-    footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
-    onClose={onClose}
-  >
-    {temporaryPassword ? (
-      <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
-    ) : (
-      <EmailSuccess user={user} />
-    )}
-  </ModalContent>
-);
-
-export default compose(
-  User.load({
-    id: (state, props) => props.params.userId,
-    wrapped: true,
-  }),
-  connect(
-    (state, props) => ({
-      temporaryPassword: getUserTemporaryPassword(state, {
-        userId: props.params.userId,
-      }),
-    }),
-    {
-      onClose: () => push("/admin/people"),
-    },
-  ),
-)(UserSuccessModal);
