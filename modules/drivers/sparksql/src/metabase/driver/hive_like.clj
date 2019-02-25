@@ -1,5 +1,6 @@
 (ns metabase.driver.hive-like
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
@@ -12,9 +13,11 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import java.sql.PreparedStatement java.util.Date))
+  (:import [java.sql PreparedStatement Time] java.util.Date))
 
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
@@ -127,15 +130,14 @@
   [_ _ connection query]
   (run-query query connection))
 
-(defmethod hformat/fn-handler "hive-like-from-unixtime" [_ datetime-literal]
+(defmethod unprepare/unprepare-value [:hive-like Date] [_ value]
   (hformat/to-sql
    (hsql/call :from_unixtime
      (hsql/call :unix_timestamp
-       datetime-literal
+       (hx/literal (du/date->iso-8601 value))
        (hx/literal "yyyy-MM-dd\\\\'T\\\\'HH:mm:ss.SSS\\\\'Z\\\\'")))))
 
-(defn unprepare
-  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement.
-   Deals with iso-8601-fn in a Hive compatible way"
-  [sql-and-args]
-  (unprepare/unprepare sql-and-args :iso-8601-fn :hive-like-from-unixtime))
+(prefer-method unprepare/unprepare-value [:sql Time] [:hive-like Date])
+
+(defmethod unprepare/unprepare-value [:hive-like String] [_ value]
+  (str \' (str/replace value "'" "\\\\'") \'))

@@ -28,6 +28,7 @@ import {
   ParameterOptionItem,
   ParameterOptionsSection,
 } from "metabase/dashboard/components/ParametersPopover";
+import ParameterWidget from "metabase/parameters/components/ParameterWidget";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import { PredefinedRelativeDatePicker } from "metabase/parameters/components/widgets/DateRelativeWidget";
 import HeaderModal from "metabase/components/HeaderModal";
@@ -118,6 +119,14 @@ describe("Dashboard", () => {
   describe("dashboard page", () => {
     let dashboardId = null;
 
+    const checkDashboardWasCreated = () => {
+      if (!dashboardId) {
+        throw new Error(
+          "Test fails because previous tests failed to create a dashboard",
+        );
+      }
+    };
+
     it("lets you change title and description", async () => {
       const name = "Customer Feedback Analysis";
       const description =
@@ -152,11 +161,7 @@ describe("Dashboard", () => {
     });
 
     it("lets you add a filter", async () => {
-      if (!dashboardId) {
-        throw new Error(
-          "Test fails because previous tests failed to create a dashboard",
-        );
-      }
+      checkDashboardWasCreated();
 
       const store = await createTestStore();
       store.pushPath(Urls.dashboard(dashboardId));
@@ -195,14 +200,36 @@ describe("Dashboard", () => {
 
       // Wait until the header modal exit animation is finished
       await store.waitForActions([SET_EDITING_PARAMETER_ID]);
+
+      // save
+      clickButton(app.find(".Button.Button--small.Button--primary"));
+      await store.waitForActions([FETCH_DASHBOARD]);
+    });
+
+    it("shows previously added parameter", async () => {
+      checkDashboardWasCreated();
+
+      const store = await createTestStore();
+      const dashboardUrl = Urls.dashboard(dashboardId);
+      store.pushPath(dashboardUrl);
+      const app = mount(store.getAppContainer());
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(ParameterWidget)).toHaveLength(1);
+    });
+
+    it("hides parameters named in 'hide_parameters' option", async () => {
+      checkDashboardWasCreated();
+
+      const store = await createTestStore();
+      const dashboardUrl = Urls.dashboard(dashboardId);
+      store.pushPath(dashboardUrl + "#hide_parameters=relative_date");
+      const app = mount(store.getAppContainer());
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(ParameterWidget)).toHaveLength(0);
     });
 
     it("lets you open and close the revisions screen", async () => {
-      if (!dashboardId) {
-        throw new Error(
-          "Test fails because previous tests failed to create a dashboard",
-        );
-      }
+      checkDashboardWasCreated();
 
       const store = await createTestStore();
       const dashboardUrl = Urls.dashboard(dashboardId);
@@ -226,6 +253,8 @@ describe("Dashboard", () => {
     });
 
     it("lets you go directly to the revisions screen via url", async () => {
+      checkDashboardWasCreated();
+
       const store = await createTestStore();
       const dashboardUrl = Urls.dashboard(dashboardId);
       store.pushPath(dashboardUrl + `/history`);

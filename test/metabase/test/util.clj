@@ -465,9 +465,10 @@
 (defn do-with-temp-scheduler [f]
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
-      (try (f)
-           (finally
-             (qs/shutdown temp-scheduler))))))
+      (try
+        (f)
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
   "Execute BODY with a temporary scheduler in place.

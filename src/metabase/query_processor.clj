@@ -6,6 +6,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [query :as query]
@@ -43,6 +44,7 @@
              [resolve-joined-tables :as resolve-joined-tables]
              [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
+             [splice-params-in-response :as splice-params-in-response]
              [store :as store]
              [validate :as validate]
              [wrap-value-literals :as wrap-value-literals]]
@@ -131,6 +133,7 @@
       ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
       driver-specific/process-query-in-context
       add-settings/add-settings
+      splice-params-in-response/splice-params-in-response
       ;; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲
       ;; All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
       ;; TODO - I think we should do this much earlier
@@ -196,14 +199,31 @@
       (m/dissoc-in [:middleware :disable-mbql->native?])))
 
 (defn query->native
-  "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)"
+  "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
+  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
+
+  (Currently, this function is mostly used by tests and in the REPL; `mbql-to-native/mbql->native` middleware handles
+  simliar functionality for queries that are actually executed.)"
   {:style/indent 0}
   [query]
   (let [results (preprocess query)]
     (or (get results :native)
         (throw (ex-info (str (tru "No native form returned."))
                  (or results {}))))))
+
+(defn query->native-with-spliced-params
+  "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
+  itself as literals. This is used to power features such as 'Convert this Question to SQL'.
+
+  (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
+  simliar functionality for queries that are actually executed.)"
+  {:style/indent 0}
+  [query]
+  ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
+  ;; ID is the virtual DB identifier
+  (let [driver (driver.u/database->driver (:database (query->preprocessed query)))]
+    (driver/splice-parameters-into-native-query driver
+      (query->native query))))
 
 (def ^:private default-pipeline (qp-pipeline execute-query))
 

@@ -32,7 +32,7 @@ import Filter from "metabase/query_builder/components/Filter";
 
 const getFieldList = (query, fieldOptions, segmentOptions) => (
   <FieldList
-    tableMetadata={query.tableMetadata()}
+    table={query.table()}
     fieldOptions={fieldOptions}
     segmentOptions={segmentOptions}
     customFieldOptions={query.expressions()}
@@ -121,6 +121,6 @@ describe("FieldList", () => {
         .last()
         .text(),
       // eslint-disable-next-line no-irregular-whitespace
-    ).toMatch(/Created AtPast 300 Days/);
+    ).toMatch(/Created AtPrevious 300 Days/);
   });
 });

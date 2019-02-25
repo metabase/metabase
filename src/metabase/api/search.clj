@@ -10,7 +10,6 @@
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
-             [interface :as mi]
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
@@ -115,15 +114,12 @@
 
 (s/defn ^:private add-collection-criteria
   "Update the query to only include collections the user has access to"
-  [query-map column-kwd {:keys [visible-collections]} :- SearchContext]
-  (if (= :all visible-collections)
-    query-map
-    (let [in-clause [:in column-kwd visible-collections]]
-      ;; This is validated in the API call, just double checking here
-      (assert (seq visible-collections))
-      (h/merge-where query-map (if (mi/can-read? coll/root-collection)
-                                 [:or [:= column-kwd nil] in-clause]
-                                 in-clause) ))))
+  [query-map, column-kwd :- s/Keyword, {:keys [visible-collections]} :- SearchContext]
+  (h/merge-where
+   query-map
+   (coll/visible-collection-ids->honeysql-filter-clause
+    column-kwd
+    visible-collections)))
 
 (defn- make-honeysql-search-query
   "Create a HoneySQL query map to search for `entity`, suitable for the UNION ALL used in search."
@@ -206,8 +202,8 @@
 (defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
   [q archived]
-  {q             (s/maybe su/NonBlankString)
-   archived      (s/maybe su/BooleanString)}
+  {q        (s/maybe su/NonBlankString)
+   archived (s/maybe su/BooleanString)}
   (let [{:keys [visible-collections] :as search-ctx} (make-search-context q archived)]
     ;; Throw if the user doesn't have access to any collections
     (check-403 (or (= :all visible-collections)

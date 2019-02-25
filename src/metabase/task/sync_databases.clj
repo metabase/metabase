@@ -14,7 +14,9 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
-            [metabase.util.cron :as cron-util]
+            [metabase.util
+             [cron :as cron-util]
+             [i18n :refer [trs]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
@@ -184,10 +186,10 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
-(defn task-init
-  "Automatically called during startup; start the jobs for syncing/analyzing and updating FieldValues for all
-  Databases."
-  []
+(defmethod task/init! ::SyncDatabases [_]
   (job-init)
   (doseq [database (db/select Database)]
-    (schedule-tasks-for-db! database)))
+    (try
+      (schedule-tasks-for-db! database)
+      (catch Throwable e
+        (log/error e (trs "Failed to scheduler tasks for Database {0}" (:id database)))))))

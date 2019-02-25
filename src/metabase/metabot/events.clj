@@ -6,7 +6,6 @@
              [edn :as edn]
              [string :as str]]
             [clojure.tools.logging :as log]
-            [metabase.integrations.slack :as slack]
             [metabase.metabot
              [command :as metabot.cmd]
              [slack :as metabot.slack]]
@@ -44,7 +43,7 @@
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
       (when (seq response)
-        (slack/post-chat-message! (:channel message) response)))))
+        (metabot.slack/post-chat-message! response)))))
 
 (defn- handle-slack-message [message]
   (respond-to-message! message (eval-command-str (message->command-str message))))
@@ -63,11 +62,11 @@
 (defn handle-slack-event
   "Handle a Slack `event`; if the event is a message that starts with `metabot`, parse the message, execute the
   appropriate command, and reply with the results."
-  [start-time event]
+  [start-time-ms event]
   (when-let [event (json/parse-string event keyword)]
     ;; Only respond to events where a *human* sends a message that have happened *after* the MetaBot launches
     (when (and (human-message? event)
-               (> (event-timestamp-ms event) start-time))
+               (> (event-timestamp-ms event) start-time-ms))
       (metabot.slack/with-channel-id (:channel event)
         (metabot.slack/async
           (handle-slack-message event))))))

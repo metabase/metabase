@@ -1,7 +1,7 @@
 (ns leiningen.include-drivers
   (:require [clojure.string :as str]
             [leiningen.core.project :as p])
-  (import java.io.File))
+  (:import java.io.File))
 
 (defn- file-exists? [^String filename]
   (.exists (File. filename)))
