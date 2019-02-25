@@ -134,6 +134,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
+  ;; TODO - rewrite this to use a schema
   {:pre [(models/model? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
