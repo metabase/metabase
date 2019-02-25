@@ -5,9 +5,7 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -55,7 +53,7 @@
 (defn datetime?
   "Is `field` a datetime?"
   [field]
-  (and (not ((disj du/date-extract-units :year) (:unit field)))
+  (and (not ((disj metabase.util.date/date-extract-units :year) (:unit field)))
        (or (isa? (:base_type field) :type/DateTime)
            (field/unix-timestamp? field))))
 
