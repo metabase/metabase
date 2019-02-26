@@ -456,8 +456,8 @@
   (let [expanded-ags (map expand-aggregation aggregations)
         group-ags    (mapcat first expanded-ags)
         post-ags     (mapcat second expanded-ags)]
-    [{$group (merge {"_id" id}
-                    (into (ordered-map/ordered-map) group-ags))}
+    [{$group (merge (into (ordered-map/ordered-map) group-ags)
+                    {"_id" id})}
      (when (not-empty post-ags)
        {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
 
@@ -469,26 +469,26 @@
    [;; create a totally sweet made-up column called `___group` to store the fields we'd
     ;; like to group by
     (when (seq breakout-fields)
-      [{$project (merge {"_id"      "$_id"
-                         "___group" (into
-                                     (ordered-map/ordered-map)
-                                     (for [field breakout-fields]
-                                       [(->lvalue field) (->rvalue field)]))}
-                        (into
+      [{$project (merge (into
                          (ordered-map/ordered-map)
                          (for [ag    aggregations
                                :let  [[_ ag-field] (unwrap-named-ag ag)]
                                :when ag-field]
-                           [(->lvalue ag-field) (->rvalue ag-field)])))}])
+                           [(->lvalue ag-field) (->rvalue ag-field)]))
+                        {"_id"      "$_id"
+                         "___group" (into
+                                     (ordered-map/ordered-map)
+                                     (for [field breakout-fields]
+                                       [(->lvalue field) (->rvalue field)]))})}])
     ;; Now project onto the __group and the aggregation rvalue
     (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
     [;; Sort by _id (___group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
-     {$project (merge {"_id" false}
-                      (into
+     {$project (merge (into
                        (ordered-map/ordered-map)
-                       projected-fields))}]]))
+                       projected-fields)
+                      {"_id" false})}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
