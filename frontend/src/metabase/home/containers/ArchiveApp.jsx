@@ -12,7 +12,7 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -23,9 +23,8 @@ const mapStateToProps = (state, props) => ({
 
 const ROW_HEIGHT = 68;
 
-@entityListLoader({
-  entityType: "search",
-  entityQuery: { archived: true },
+@Search.loadList({
+  query: { archived: true },
   reload: true,
   wrapped: true,
 })

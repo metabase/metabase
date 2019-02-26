@@ -4,14 +4,13 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import * as Urls from "metabase/lib/urls";
+import Collection from "metabase/entities/collections";
 
 import cx from "classnames";
 
-@entityObjectLoader({
-  entityType: "collections",
-  entityId: (state, props) => props.collectionId || "root",
+@Collection.load({
+  id: (state, props) => props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
   properties: ["name"],

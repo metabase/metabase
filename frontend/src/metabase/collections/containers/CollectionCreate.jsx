@@ -3,10 +3,10 @@ import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
 import CollectionForm from "metabase/containers/CollectionForm";
-import Collections from "metabase/entities/collections";
+import Collection from "metabase/entities/collections";
 
 const mapStateToProps = (state, props) => ({
-  initialCollectionId: Collections.selectors.getInitialCollectionId(
+  initialCollectionId: Collection.selectors.getInitialCollectionId(
     state,
     props,
   ),

@@ -9,6 +9,9 @@ import { dissoc } from "icepick";
 
 import withToast from "metabase/hoc/Toast";
 
+import Collection from "metabase/entities/collections";
+import Search from "metabase/entities/search";
+
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 
@@ -33,7 +36,6 @@ import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { entityTypeForObject } from "metabase/schema";
 
 import CollectionList from "metabase/components/CollectionList";
@@ -93,11 +95,8 @@ const EMPTY_STATES = {
   card: <QuestionEmptyState />,
 };
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-
-@entityListLoader({
-  entityType: "search",
-  entityQuery: (state, props) => ({ collection: props.collectionId }),
+@Search.loadList({
+  query: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
 @connect((state, props) => {
@@ -648,9 +647,8 @@ const SelectionControls = ({
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
-@entityObjectLoader({
-  entityType: "collections",
-  entityId: (state, props) => props.params.collectionId,
+@Collection.load({
+  id: (state, props) => props.params.collectionId,
   reload: true,
 })
 class CollectionLanding extends React.Component {
