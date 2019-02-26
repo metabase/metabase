@@ -53,7 +53,7 @@
 
 (defn- post-insert [{:keys [group_id user_id], :as membership}]
   (u/prog1 membership
-    ;; If we're adding a user to the admin group, set athe `:is_superuser` flag for the user to whom membership was
+    ;; If we're adding a user to the admin group, set the `:is_superuser` flag for the user to whom membership was
     ;; granted
     (when (= group_id (:id (group/admin)))
       (db/update! 'User user_id

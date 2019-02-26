@@ -303,15 +303,20 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (let [original-column->value (db/select-one (vec (cons model (keys column->temp-value)))
-                                 :id (u/get-id object-or-id))]
+  ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
+  ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
+  (let [[original-column->value] (db/query {:select (keys column->temp-value)
+                                            :from   [model]
+                                            :where  [:= :id (u/get-id object-or-id)]})]
     (try
       (db/update! model (u/get-id object-or-id)
         column->temp-value)
       (f)
       (finally
-        (db/update! model (u/get-id object-or-id)
-          original-column->value)))))
+        (db/execute!
+         {:update model
+          :set    original-column->value
+          :where  [:= :id (u/get-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the

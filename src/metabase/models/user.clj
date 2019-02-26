@@ -196,7 +196,7 @@
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
 
-(s/defn invite-user!
+(s/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
   [new-user :- NewUser, invitor :- Invitor]
   ;; create the new user

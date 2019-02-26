@@ -82,12 +82,12 @@
                  :let             [address (if (= address new-user-email-address)
                                              "<New User>"
                                              address)]]
-             {address (for [{subject :subject} emails]
-                        (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))})))
+             [address (for [{subject :subject} emails]
+                        (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
 
 
 (defn- invite-user-accept-and-check-inboxes!
-  "Create user by passing INVITE-USER-ARGS to `invite-user!` or `create-new-google-auth-user!`,
+  "Create user by passing INVITE-USER-ARGS to `create-and-invite-user!` or `create-new-google-auth-user!`,
   and return a map of addresses emails were sent to to the email subjects."
   [& {:keys [google-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
@@ -103,7 +103,7 @@
         (try
           (if google-auth?
             (user/create-new-google-auth-user! (dissoc new-user :password))
-            (user/invite-user!                 new-user invitor))
+            (user/create-and-invite-user!                 new-user invitor))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)
@@ -116,18 +116,14 @@
 
 ;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
 (expect
-  {"<New User>"             ["You're invited to join Metabase's Metabase"]}
-  (do
-    (test-users/delete-temp-users!)
-    (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false)))
+  {"<New User>" ["You're invited to join Metabase's Metabase"]}
+  (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))
 
 ;; admin should get an email when a new user joins...
 (expect
   {"<New User>"             ["You're invited to join Metabase's Metabase"]
    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-  (do
-    (test-users/delete-temp-users!)
-    (invite-user-accept-and-check-inboxes! :invitor default-invitor)))
+  (invite-user-accept-and-check-inboxes! :invitor default-invitor))
 
 ;; ...including the site admin if it is set...
 (expect
@@ -135,26 +131,21 @@
    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
    "cam@metabase.com"       ["<New User> accepted their Metabase invite"]}
   (tu/with-temporary-setting-values [admin-email "cam@metabase.com"]
-    (test-users/delete-temp-users!)
     (invite-user-accept-and-check-inboxes! :invitor default-invitor)))
 
 ;; ... but if that admin is inactive they shouldn't get an email
 (expect
   {"<New User>"             ["You're invited to join Metabase's Metabase"]
    "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-  (do
-    (test-users/delete-temp-users!)
-    (tt/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
-      (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false)))))
+  (tt/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
+    (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))))
 
 ;; for google auth, all admins should get an email...
 (expect
   {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
-  (do
-    (test-users/delete-temp-users!)
-    (tt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-      (invite-user-accept-and-check-inboxes! :google-auth? true))))
+  (tt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+    (invite-user-accept-and-check-inboxes! :google-auth? true)))
 
 ;; ...including the site admin if it is set...
 (expect
@@ -162,17 +153,14 @@
    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
    "cam@metabase.com"              ["<New User> created a Metabase account"]}
   (tu/with-temporary-setting-values [admin-email "cam@metabase.com"]
-    (test-users/delete-temp-users!)
     (tt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
       (invite-user-accept-and-check-inboxes! :google-auth? true))))
 
 ;; ...unless they are inactive
 (expect
   {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
-  (do
-    (test-users/delete-temp-users!)
-    (tt/with-temp User [_ {:is_superuser true, :is_active false}]
-      (invite-user-accept-and-check-inboxes! :google-auth? true))))
+  (tt/with-temp User [_ {:is_superuser true, :is_active false}]
+    (invite-user-accept-and-check-inboxes! :google-auth? true)))
 
 ;; LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user password, it gets
 ;; swapped with something random
@@ -199,7 +187,7 @@
 ;;; |                                            New Group IDs Functions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- group-names [groups-or-ids]
+(defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
     (db/select-field :name PermissionsGroup :id [:in (map u/get-id groups-or-ids)])))
 
@@ -294,10 +282,10 @@
   nil
   (user/add-group-ids []))
 
-(defn- user-group-names [user]
-  (group-names (user/group-ids (if (keyword? user)
-                                 (test-users/fetch-user user)
-                                 user))))
+(defn user-group-names [user-or-id-or-kw]
+  (group-names (user/group-ids (if (keyword? user-or-id-or-kw)
+                                 (test-users/fetch-user user-or-id-or-kw)
+                                 user-or-id-or-kw))))
 
 ;; check that we can use `set-permissions-groups!` to add a User to new groups
 (expect

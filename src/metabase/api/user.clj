@@ -16,14 +16,38 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.models.permissions-group :as group]))
 
 (defn- check-self-or-superuser
   "Check that USER-ID is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
   [user-id]
   {:pre [(integer? user-id)]}
-  (api/check-403 (or (= user-id api/*current-user-id*)
-                     (:is_superuser @api/*current-user*))))
+  (api/check-403
+   (or
+    (= user-id api/*current-user-id*)
+    api/*is-superuser?*)))
+
+(defn- fetch-user [& query-criteria]
+  (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
+
+(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids & [is-superuser?]]
+  ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
+  ;; agrees with is_superuser -- don't want to have ambiguous behavior
+  (when (and (some? is-superuser?)
+             new-groups-or-ids)
+    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/get-id (group/admin))))
+      "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
+  (when (some? new-groups-or-ids)
+    (when-not (= (user/group-ids user-or-id)
+                 (set (map u/get-id new-groups-or-ids)))
+      (api/check-superuser)
+      (user/set-permissions-groups! user-or-id new-groups-or-ids))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
@@ -43,29 +67,23 @@
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 
-(defn- fetch-user [& query-criteria]
-  (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
+(api/defendpoint GET "/current"
+  "Fetch the current `User`."
+  []
+  (-> (api/check-404 @api/*current-user*)
+      (hydrate :personal_collection_id :group_ids)))
 
-(defn- reactivate-user! [existing-user]
-  (db/update! User (u/get-id existing-user)
-    :is_active     true
-    :is_superuser  false
-    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see Issue #3323)
-    :google_auth   (boolean (and (:google_auth existing-user)
-                                 ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (session-api/google-auth-client-id)))
-    :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (ldap/ldap-configured?))))
-  ;; now return the existing user whether they were originally active or not
-  (fetch-user :id (u/get-id existing-user)))
+(api/defendpoint GET "/:id"
+  "Fetch a `User`. You must be fetching yourself *or* be a superuser."
+  [id]
+  (check-self-or-superuser id)
+  (-> (api/check-404 (fetch-user :id id, :is_active true))
+      (hydrate :group_ids)))
 
-(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
-  (when (some? new-groups-or-ids)
-    (when-not (= (user/group-ids user-or-id)
-                 (set (map u/get-id new-groups-or-ids)))
-      (api/check-superuser)
-      (user/set-permissions-groups! user-or-id new-groups-or-ids))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Creating a new User -- POST /api/user                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
@@ -78,25 +96,19 @@
   (api/check-superuser)
   (api/checkp (not (db/exists? User :email email))
     "email" (tru "Email address already in use."))
-  (let [new-user-id (u/get-id (user/invite-user! (select-keys body [:first_name :last_name :email :password :login_attributes])
-                                                 @api/*current-user*))]
-    (maybe-set-user-permissions-groups! new-user-id group_ids)
-    (-> (fetch-user :id new-user-id)
-        (hydrate :group_ids))))
-
-(api/defendpoint GET "/current"
-  "Fetch the current `User`."
-  []
-  (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids)))
+  (db/transaction
+    (let [new-user-id (u/get-id (user/create-and-invite-user!
+                                 (u/select-keys-when body
+                                   :non-nil [:first_name :last_name :email :password :login_attributes])
+                                 @api/*current-user*))]
+      (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (-> (fetch-user :id new-user-id)
+          (hydrate :group_ids)))))
 
 
-(api/defendpoint GET "/:id"
-  "Fetch a `User`. You must be fetching yourself *or* be a superuser."
-  [id]
-  (check-self-or-superuser id)
-  (-> (api/check-404 (fetch-user :id id, :is_active true))
-      (hydrate :group_ids)))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Updating a User -- PUT /api/user/:id                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
@@ -118,6 +130,7 @@
    first_name       (s/maybe su/NonBlankString)
    last_name        (s/maybe su/NonBlankString)
    group_ids        (s/maybe [su/IntGreaterThanZero])
+   is_superuser     (s/maybe s/Bool)
    login_attributes (s/maybe user/LoginAttributes)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
@@ -126,7 +139,8 @@
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
-      "email" (tru "Email address already associated to another user."))
+      "email" (tru "Email address already associated to another user.")))
+  (db/transaction
     (api/check-500
      (db/update! User id
        (u/select-keys-when body
@@ -134,10 +148,29 @@
                     #{:login_attributes})
          :non-nil (set (concat [:first_name :last_name :email]
                                (when api/*is-superuser?*
-                                 [:is_superuser])))))))
-  (maybe-set-user-permissions-groups! id group_ids)
+                                 [:is_superuser]))))))
+    (maybe-set-user-permissions-groups! id group_ids is_superuser))
   (-> (fetch-user :id id)
       (hydrate :group_ids)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- reactivate-user! [existing-user]
+  (db/update! User (u/get-id existing-user)
+    :is_active     true
+    :is_superuser  false
+    ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+    ;; (see Issue #3323)
+    :google_auth   (boolean (and (:google_auth existing-user)
+                                 ;; if google-auth-client-id is set it means Google Auth is enabled
+                                 (session-api/google-auth-client-id)))
+    :ldap_auth     (boolean (and (:ldap_auth existing-user)
+                                 (ldap/ldap-configured?))))
+  ;; now return the existing user whether they were originally active or not
+  (fetch-user :id (u/get-id existing-user)))
 
 (api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
@@ -150,6 +183,10 @@
       [400 {:message (tru "Not able to reactivate an active user")}])
     (reactivate-user! user)))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (api/defendpoint PUT "/:id/password"
   "Update a user's password."
@@ -168,6 +205,21 @@
   (fetch-user :id id))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(api/defendpoint DELETE "/:id"
+  "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
+  [id]
+  (api/check-superuser)
+  (api/check-500 (db/update! User id, :is_active false))
+  {:success true})
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 (api/defendpoint PUT "/:id/qbnewb"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
@@ -175,7 +227,6 @@
   (check-self-or-superuser id)
   (api/check-500 (db/update! User id, :is_qbnewb false))
   {:success true})
-
 
 (api/defendpoint POST "/:id/send_invite"
   "Resend the user invite email for a given user."
@@ -186,14 +237,6 @@
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
       (email/send-new-user-email! user @api/*current-user* join-url))))
-
-
-(api/defendpoint DELETE "/:id"
-  "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [id]
-  (api/check-superuser)
-  (api/check-500 (db/update! User id, :is_active false))
-  {:success true})
 
 
 (api/define-routes)
