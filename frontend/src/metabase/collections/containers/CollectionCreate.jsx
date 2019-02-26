@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
-import CollectionForm from "metabase/containers/CollectionForm";
 import Collection from "metabase/entities/collections";
 
 const mapStateToProps = (state, props) => ({
@@ -21,7 +20,7 @@ export default class CollectionCreate extends Component {
   render() {
     const { initialCollectionId, goBack } = this.props;
     return (
-      <CollectionForm
+      <Collection.ModalForm
         collection={{
           parent_id: initialCollectionId,
         }}

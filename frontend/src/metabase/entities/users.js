@@ -47,8 +47,8 @@ const Users = createEntity({
         if (!MetabaseSettings.isEmailConfigured()) {
           newUser = {
             ...newUser,
-            password: MetabaseUtils.generatePassword()
-          }
+            password: MetabaseUtils.generatePassword(),
+          };
         }
         return newUser;
       },
@@ -57,7 +57,7 @@ const Users = createEntity({
         id: result.result,
         password: user.password,
         ...result,
-      })
+      }),
     },
     update: {
       post: (result, user, dispatch) => {
