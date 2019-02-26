@@ -17,15 +17,15 @@
   (set ((test-users/user->client :crowberto) :get 200 "permissions/group")))
 
 (expect
-  #{{:id (u/get-id (group/all-users)), :name "All Users",      :members 3}
-    {:id (u/get-id (group/admin)),     :name "Administrators", :members 1}}
+  #{{:id (u/get-id (group/all-users)), :name "All Users",      :member_count 3}
+    {:id (u/get-id (group/admin)),     :name "Administrators", :member_count 1}}
   (fetch-groups))
 
 ;; The endpoint should however return empty groups!
 (tt/expect-with-temp [PermissionsGroup [group]]
-  #{{:id (u/get-id (group/all-users)), :name "All Users",      :members 3}
-    {:id (u/get-id (group/admin)),     :name "Administrators", :members 1}
-    (assoc (into {} group) :members 0)}
+  #{{:id (u/get-id (group/all-users)), :name "All Users",      :member_count 3}
+    {:id (u/get-id (group/admin)),     :name "Administrators", :member_count 1}
+    (assoc (into {} group) :member_count 0)}
   (fetch-groups))
 
 
