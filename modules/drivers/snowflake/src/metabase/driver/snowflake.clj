@@ -17,15 +17,18 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]]
             [toucan.db :as db])
   (:import java.sql.Time
+           java.util.Date
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
@@ -209,3 +212,8 @@
            (catch SnowflakeSQLException e
              (log/error e (tru "Snowflake Database does not exist."))
              false)))))
+
+(defmethod unprepare/unprepare-value [:snowflake Date] [_ value]
+  (format "timestamp '%s'" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:snowflake Date])

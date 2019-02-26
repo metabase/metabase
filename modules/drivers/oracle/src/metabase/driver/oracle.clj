@@ -13,10 +13,13 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import [java.sql ResultSet Types]))
+  (:import [java.sql ResultSet Types]
+           java.util.Date))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -327,3 +330,6 @@
 ;; instead of returning a CLOB object, return the String. (#9026)
 (defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB] [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getString resultset i))
+
+(defmethod unprepare/unprepare-value [:oracle Date] [_ value]
+  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd hh:mm:ss.SSS ZZ" value)))

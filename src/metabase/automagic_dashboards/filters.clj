@@ -50,16 +50,10 @@
                  identity)
        (filter field-reference?)))
 
-(def ^{:arglists '([field])} periodic-datetime?
-  "Is `field` a periodic datetime (eg. day of month)?"
-  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
-          :month-of-year :quarter-of-year}
-        :unit))
-
 (defn datetime?
   "Is `field` a datetime?"
   [field]
-  (and (not (periodic-datetime? field))
+  (and (not ((disj metabase.util.date/date-extract-units :year) (:unit field)))
        (or (isa? (:base_type field) :type/DateTime)
            (field/unix-timestamp? field))))
 
@@ -75,6 +69,23 @@
     (isa? special_type :type/CreationTimestamp)         inc
     (#{:type/State :type/Country} special_type)         inc))
 
+(defn- interleave-all
+  [& colls]
+  (lazy-seq
+   (when-not (empty? colls)
+     (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
+
+(defn- sort-by-interestingness
+  [fields]
+  (->> fields
+       (map #(assoc % :interestingness (interestingness %)))
+       (sort-by interestingness >)
+       (partition-by :interestingness)
+       (mapcat (fn [fields]
+                 (->> fields
+                      (group-by (juxt :base_type :special_type))
+                      vals
+                      (apply interleave-all))))))
 
 (defn interesting-fields
   "Pick out interesting fields and sort them by interestingness."
@@ -83,7 +94,7 @@
        (filter (fn [{:keys [special_type] :as field}]
                  (or (datetime? field)
                      (isa? special_type :type/Category))))
-       (sort-by interestingness >)))
+       sort-by-interestingness))
 
 (defn- candidates-for-filtering
   [fieldset cards]
@@ -160,7 +171,7 @@
                   field/with-targets)]
      (->> dimensions
           remove-unqualified
-          (sort-by interestingness >)
+          sort-by-interestingness
           (take max-filters)
           (reduce
            (fn [dashboard candidate]

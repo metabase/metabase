@@ -294,6 +294,20 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 10m
 
+  yaml-linter:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Install yamllint
+          command: npm install yaml-lint
+          no_output_timeout: 2m
+      - run:
+          name: Lint YAML files
+          command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
+          no_output_timeout: 2m
+
   be-tests-sqlserver:
     <<: *defaults
     steps:
@@ -674,6 +688,9 @@ workflows:
       - be-tests-snowflake:
           requires:
             - be-tests
+      - yaml-linter:
+          requires:
+            - checkout
       - fe-deps:
           requires:
             - checkout
@@ -725,6 +742,8 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
+            - yaml-linter
 
             - fe-linter-eslint
             - fe-linter-prettier
