@@ -45,7 +45,9 @@
         :limit       4}
        (data/run-mbql-query venues)
        (tu/round-all-decimals 2)
-       rows))
+       rows
+       (map (fn [[k v]]
+              [(int k) v]))))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   1.47
