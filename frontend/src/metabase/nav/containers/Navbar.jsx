@@ -263,7 +263,7 @@ export default class Navbar extends Component {
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3"
+        className="Nav relative bg-brand text-white z3 flex-no-shrink"
         align="center"
         py={1}
         pr={2}
