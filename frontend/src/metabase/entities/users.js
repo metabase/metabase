@@ -45,13 +45,19 @@ const Users = createEntity({
       pre: user => {
         let newUser = user;
         if (!MetabaseSettings.isEmailConfigured()) {
-          newUser.password = MetabaseUtils.generatePassword();
+          newUser = {
+            ...newUser,
+            password: MetabaseUtils.generatePassword()
+          }
         }
         return newUser;
       },
-      post: ({ result }, user) => {
-        return { ...user, id: result };
-      },
+      post: (result, user) => ({
+        // HACK: include user ID and password for temporaryPasswords reducer
+        id: result.result,
+        password: user.password,
+        ...result,
+      })
     },
     update: {
       post: (result, user, dispatch) => {

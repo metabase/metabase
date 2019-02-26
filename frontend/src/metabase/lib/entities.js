@@ -46,6 +46,9 @@ type EntityDefinition = {
   nameOne?: string,
   nameMany?: string,
 
+  displayNameOne?: string,
+  displayNameMany?: string,
+
   schema?: schema.Entity,
   path?: string,
   api?: { [method: string]: APIMethod },
@@ -92,6 +95,9 @@ export type Entity = {
 
   nameOne: string,
   nameMany: string,
+
+  displayNameOne: string,
+  displayNameMany: string,
 
   path?: string,
   api: {
@@ -174,6 +180,13 @@ export function createEntity(def: EntityDefinition): Entity {
     entity.nameMany = entity.name;
   }
 
+  if (!entity.displayNameOne) {
+    entity.displayNameOne = entity.nameOne;
+  }
+  if (!entity.displayNameMany) {
+    entity.displayNameMany = entity.nameMany;
+  }
+
   // defaults
   if (!entity.schema) {
     entity.schema = new schema.Entity(entity.name);
@@ -254,15 +267,21 @@ export function createEntity(def: EntityDefinition): Entity {
         );
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const result = normalize(
-            await entity.api.create(getWritableProperties(entityObject)),
-            entity.schema,
+          const object = await entity.api.create(
+            getWritableProperties(entityObject),
           );
+          const result = normalize(object, entity.schema);
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           return runActionDecorator(
             "create",
             "post",
-            result,
+            {
+              // include raw object (and alias under nameOne) for convienence
+              object,
+              [entity.nameOne]: object,
+              // include normalizr properties "entities" and "result"
+              ...result,
+            },
             entityObject,
             dispatch,
             getState,
@@ -324,10 +343,10 @@ export function createEntity(def: EntityDefinition): Entity {
         const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const result = normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
-            entity.schema,
+          const object = await entity.api.update(
+            getWritableProperties(entityObject),
           );
+          const result = normalize(object, entity.schema);
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           if (notify) {
             if (notify.undo) {
@@ -357,7 +376,13 @@ export function createEntity(def: EntityDefinition): Entity {
           return runActionDecorator(
             "update",
             "post",
-            result,
+            {
+              // include raw object (and alias under nameOne) for convienence
+              object,
+              [entity.nameOne]: object,
+              // include normalizr properties "entities" and "result"
+              ...result,
+            },
             entityObject,
             dispatch,
             getState,

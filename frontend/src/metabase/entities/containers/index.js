@@ -41,4 +41,10 @@ export function addEntityContainers(entity) {
     <EntityForm entityType={entity.name} entityObject={user} {...props} />
   );
   entity.Form.displayName = `${ObjectName}Form`;
+
+  // Entity.ModalForm component
+  entity.ModalForm = ({ user, ...props }) => (
+    <EntityForm modal entityType={entity.name} entityObject={user} {...props} />
+  );
+  entity.ModalForm.displayName = `${ObjectName}ModalForm`;
 }
