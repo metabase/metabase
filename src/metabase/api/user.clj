@@ -65,7 +65,7 @@
     (when-not (= (user/group-ids user-or-id)
                  (set (map u/get-id new-groups-or-ids)))
       (api/check-superuser)
-      (user/set-user-permissions-groups! user-or-id new-groups-or-ids))))
+      (user/set-permissions-groups! user-or-id new-groups-or-ids))))
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
@@ -159,7 +159,7 @@
   (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
-    (when-not (:is_superuser @api/*current-user*)
+    (when-not api/*is-superuser?*
       (api/checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
         "old_password"
         (tru "Invalid password"))))

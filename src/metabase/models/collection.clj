@@ -794,10 +794,11 @@
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
-(def ^:dynamic *allow-deleting-personal-collections*
-  "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
-  deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
-  archived; thus this code is used solely by our test suite, by things such as the `with-temp` macros.)"
+(defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
+  in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
+  deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
+  macros.)"}
+  *allow-deleting-personal-collections*
   false)
 
 (defn- pre-delete [collection]

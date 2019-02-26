@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.models
              [collection-test :as collection-test]
+             [permissions-group :as group]
              [user :refer [User]]]
             [metabase.test
              [data :refer :all]
@@ -49,6 +50,10 @@
     ;; Now do the request
     ((test-users/user->client :rasta) :get 200 "user")))
 
+(defn- group-ids->sets [users]
+  (for [user users]
+    (update user :group_ids set)))
+
 ;; Check that admins can get a list of active Users. Should include additional admin Fields
 (expect
   [(merge
@@ -57,7 +62,8 @@
      :first_name             "Crowberto"
      :last_name              "Corv"
      :is_superuser           true
-     :group_ids              [1, 2]
+     :group_ids              #{(u/get-id (group/all-users))
+                               (u/get-id (group/admin))}
      :personal_collection_id true
      :common_name            "Crowberto Corv"})
    (merge
@@ -65,7 +71,7 @@
     {:email                  "lucky@metabase.com"
      :first_name             "Lucky"
      :last_name              "Pigeon"
-     :group_ids              [1]
+     :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Lucky Pigeon"})
    (merge
@@ -73,13 +79,14 @@
     {:email                  "rasta@metabase.com"
      :first_name             "Rasta"
      :last_name              "Toucan"
-     :group_ids              [1]
+     :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
   (do
     (test-users/delete-temp-users!)
     (collection-test/force-create-personal-collections!)
     (-> ((test-users/user->client :crowberto) :get 200 "user")
+        group-ids->sets
         tu/boolean-ids-and-timestamps)))
 
 ;; Non-admins should *not* be allowed to pass in include_deactivated
@@ -95,7 +102,7 @@
      :first_name             "Trash"
      :last_name              "Bird"
      :is_active              false
-     :group_ids              [1]
+     :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Trash Bird"})
    (merge
@@ -104,7 +111,8 @@
      :first_name             "Crowberto"
      :last_name              "Corv"
      :is_superuser           true
-     :group_ids              [1 2]
+     :group_ids              #{(u/get-id (group/all-users))
+                               (u/get-id (group/admin))}
      :personal_collection_id true
      :common_name            "Crowberto Corv"})
    (merge
@@ -112,7 +120,7 @@
     {:email                  "lucky@metabase.com"
      :first_name             "Lucky"
      :last_name              "Pigeon"
-     :group_ids              [1]
+     :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Lucky Pigeon"})
    (merge
@@ -120,13 +128,14 @@
     {:email                  "rasta@metabase.com"
      :first_name             "Rasta"
      :last_name              "Toucan"
-     :group_ids              [1]
+     :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
   (do
     (test-users/delete-temp-users!)
     (collection-test/force-create-personal-collections!)
     (-> ((test-users/user->client :crowberto) :get 200 "user", :include_deactivated true)
+        group-ids->sets
         tu/boolean-ids-and-timestamps)))
 
 
@@ -142,7 +151,7 @@
              :first_name       user-name
              :last_name        user-name
              :common_name      (str user-name " " user-name)
-             :group_ids        [1]
+             :group_ids        [(u/get-id (group/all-users))]
              :login_attributes {:test "value"}}))
     (et/with-fake-inbox
       (try
@@ -215,13 +224,14 @@
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect
-  (merge user-defaults
-         {:email                  "rasta@metabase.com"
-          :first_name             "Rasta"
-          :last_name              "Toucan"
-          :common_name            "Rasta Toucan"
-          :group_ids              [1]
-          :personal_collection_id true})
+  (merge
+   user-defaults
+   {:email                  "rasta@metabase.com"
+    :first_name             "Rasta"
+    :last_name              "Toucan"
+    :common_name            "Rasta Toucan"
+    :group_ids              [(u/get-id (group/all-users))]
+    :personal_collection_id true})
   (do
     ;; Make sure personal Collections have been created so this endpoint won't randomly return `false` for
     ;; personal_collection_id
@@ -233,12 +243,13 @@
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
 (expect
-  (merge user-defaults
-         {:email       "rasta@metabase.com"
-          :first_name  "Rasta"
-          :last_name   "Toucan"
-          :common_name "Rasta Toucan"
-          :group_ids   [1]})
+  (merge
+   user-defaults
+   {:email       "rasta@metabase.com"
+    :first_name  "Rasta"
+    :last_name   "Toucan"
+    :common_name "Rasta Toucan"
+    :group_ids   [(u/get-id (group/all-users))]})
   (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 (str "user/" (test-users/user->id :rasta)))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
@@ -247,12 +258,13 @@
 
 ;; A superuser should be allowed to fetch another users data
 (expect
-  (merge user-defaults
-         {:email       "rasta@metabase.com"
-          :first_name  "Rasta"
-          :last_name   "Toucan"
-          :common_name "Rasta Toucan"
-          :group_ids   [1]})
+  (merge
+   user-defaults
+   {:email       "rasta@metabase.com"
+    :first_name  "Rasta"
+    :last_name   "Toucan"
+    :common_name "Rasta Toucan"
+    :group_ids   [(u/get-id (group/all-users))]})
   (tu/boolean-ids-and-timestamps ((test-users/user->client :crowberto) :get 200 (str "user/" (test-users/user->id :rasta)))))
 
 ;; We should get a 404 when trying to access a disabled account
@@ -271,20 +283,22 @@
                :first_name   "Cam"
                :last_name    "Eron"
                :is_superuser true
-               :group_ids    [1 2]})
+               :group_ids    #{(u/get-id (group/all-users))
+                               (u/get-id (group/admin))}})
    :after    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}}
   (tt/with-temp User [{user-id :id} {:first_name   "Cam"
                                      :last_name    "Era"
                                      :email        "cam.era@metabase.com"
                                      :is_superuser true}]
-    (let [user (fn [] (into {} (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
-                                       :common_name)))]
+    (let [user (fn [] (into {} (-> (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
+                                   (dissoc :common_name))))]
       (array-map
        :before   (user)
-       :response (tu/boolean-ids-and-timestamps
-                  ((test-users/user->client :crowberto) :put 200 (str "user/" user-id)
-                   {:last_name "Eron"
-                    :email     "cam.eron@metabase.com"}))
+       :response (-> ((test-users/user->client :crowberto) :put 200 (str "user/" user-id)
+                      {:last_name "Eron"
+                       :email     "cam.eron@metabase.com"})
+                     (update :group_ids set)
+                     tu/boolean-ids-and-timestamps)
        :after    (user)))))
 
 ;; Test that we can update login attributes after a user has been created
@@ -297,14 +311,17 @@
     :login_attributes {:test "value"}
     :common_name      "Test User"
     :last_name        "User"
-    :group_ids        [1 2]})
+    :group_ids        #{(u/get-id (group/all-users))
+                        (u/get-id (group/admin))}})
   (tt/with-temp User [{user-id :id} {:first_name   "Test"
                                      :last_name    "User"
                                      :email        "testuser@metabase.com"
                                      :is_superuser true}]
-    (tu/boolean-ids-and-timestamps
+    (->
      ((test-users/user->client :crowberto) :put 200 (str "user/" user-id) {:email            "testuser@metabase.com"
-                                                                           :login_attributes {:test "value"}}))))
+                                                                           :login_attributes {:test "value"}})
+     (update :group_ids set)
+     tu/boolean-ids-and-timestamps)))
 
 ;; ## PUT /api/user/:id
 ;; Test that updating a user's email to an existing inactive user's email fails
