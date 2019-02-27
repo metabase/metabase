@@ -18,6 +18,9 @@ const Collections = createEntity({
   path: "/api/collection",
   schema: CollectionSchema,
 
+  displayNameOne: t`collection`,
+  displayNameMany: t`collections`,
+
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
       Collections.actions.update(

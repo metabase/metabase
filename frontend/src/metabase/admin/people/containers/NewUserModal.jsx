@@ -7,12 +7,13 @@ import * as Urls from "metabase/lib/urls";
 
 import User from "metabase/entities/users";
 
-import ModalContent from "metabase/components/ModalContent";
-
 const NewUserModal = ({ onClose, onSaved, ...props }) => (
-  <ModalContent title={t`New user`} onClose={onClose}>
-    <User.Form {...props} onSaved={onSaved} />
-  </ModalContent>
+  <User.ModalForm
+    {...props}
+    title={t`New user`}
+    onClose={onClose}
+    onSaved={onSaved}
+  />
 );
 
 export default connect(null, {

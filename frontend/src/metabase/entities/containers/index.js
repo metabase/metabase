@@ -5,10 +5,13 @@ import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 import EntityName from "./EntityName";
 import EntityForm from "./EntityForm";
 
-import { capitalize, singularize } from "metabase/lib/formatting";
+import inflection from "inflection";
 
 export function addEntityContainers(entity) {
-  const ObjectName = capitalize(entity.nameOne || singularize(entity.name));
+  // NOTE: need to use inflection directly here due to circular dependency
+  const ObjectName = inflection.capitalize(
+    entity.nameOne || inflection.singularize(entity.name),
+  );
 
   // Entity.load higher-order component
   entity.load = ({ id, ...props } = {}) =>
@@ -41,4 +44,10 @@ export function addEntityContainers(entity) {
     <EntityForm entityType={entity.name} entityObject={user} {...props} />
   );
   entity.Form.displayName = `${ObjectName}Form`;
+
+  // Entity.ModalForm component
+  entity.ModalForm = ({ user, ...props }) => (
+    <EntityForm modal entityType={entity.name} entityObject={user} {...props} />
+  );
+  entity.ModalForm.displayName = `${ObjectName}ModalForm`;
 }

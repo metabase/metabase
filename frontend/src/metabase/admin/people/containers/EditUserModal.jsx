@@ -6,12 +6,14 @@ import { t } from "c-3po";
 
 import User from "metabase/entities/users";
 
-import ModalContent from "metabase/components/ModalContent";
-
 const EditUserModal = ({ user, onClose, ...props }) => (
-  <ModalContent title={t`Edit user`} onClose={onClose}>
-    <User.Form user={user} {...props} onSaved={onClose} />
-  </ModalContent>
+  <User.ModalForm
+    {...props}
+    title={t`Edit user`}
+    user={user}
+    onSaved={onClose}
+    onClose={onClose}
+  />
 );
 
 export default compose(

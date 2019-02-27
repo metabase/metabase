@@ -28,7 +28,7 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
 import { getPath, getContext, getUser } from "../selectors";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
@@ -147,8 +147,7 @@ class SearchBar extends React.Component {
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
-@entityListLoader({
-  entityType: "databases",
+@Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
