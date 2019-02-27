@@ -1,0 +1,29 @@
+info:
+  name: Metabase FirebirdSQL Driver
+  version: 1.0.0-SNAPSHOT-0.0.1
+  description: Allows Metabase to connect to FirebirdSQL databases
+driver:
+  name: firebird
+  display-name: FirebirdSQL
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 3050
+    - merge:
+        - dbname
+        - name: db
+          placeholder: BirdsOfTheWorld
+    - user
+    - password
+    - merge:
+        - additional-options
+        - placeholder: "blobBufferSize=2048"
+  connection-properties-include-tunnel-config: false
+init:
+  - step: load-namespace
+    namespace: metabase.driver.firebird
+  - step: register-jdbc-driver
+    class: org.firebirdsql.jdbc.FBDriver

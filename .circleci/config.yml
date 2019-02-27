@@ -458,6 +458,28 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-firebird:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: jacobalberty/firebird:3.0.4
+        environment:
+          TZ: UTC
+          ISC_PASSWORD: masterkey
+          FIREBIRD_DATABASE: metabase-testing
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Firebird)
+          environment:
+            DRIVERS: h2,firebird
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh firebird ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -688,6 +710,9 @@ workflows:
       - be-tests-snowflake:
           requires:
             - be-tests
+      - be-tests-firebird:
+          requires:
+            - be-tests
       - yaml-linter:
           requires:
             - checkout
@@ -742,6 +767,7 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+            - be-tests-firebird
 
             - yaml-linter
 

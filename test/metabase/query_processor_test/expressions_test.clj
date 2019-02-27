@@ -115,7 +115,7 @@
              :order-by    [[:asc [:field-id $date]]]
              :limit       10})
           rows
-          (format-rows-by [(partial u/round-to-decimals 2)]))))
+          (format-rows-by [(partial u/round-to-decimals 0)]))))
 
 ;; hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the raw values being
 ;; used to calculate the formulas below, so we can tell at a glance if they're right without referring to the EDN def)
@@ -126,13 +126,13 @@
 ;; do expressions automatically handle division by zero? Should return `nil` in the results for places where that was
 ;; attempted
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
+  [[nil] [nil] [10.0] [13.0] [20.0] [20.0] [nil] [nil] [9.0] [7.0]]
   (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]
                            [:!= $count nil]))
 
 ;; do expressions handle division by `nil`? Should return `nil` in the results for places where that was attempted
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  [[nil] [10.0] [12.5] [20.0] [20.0] [nil] [9.09] [7.14] [12.5] [7.14]]
+  [[nil] [10.0] [13.0] [20.0] [20.0] [nil] [9.0] [7.0] [13.0] [7.0]]
   (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]
                            [:or
                             [:= $count nil]
@@ -140,12 +140,12 @@
 
 ;; can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+  [[nil] [nil] [nil] [10.0] [13.0] [20.0] [20.0] [nil] [nil] [nil]]
   (calculate-bird-scarcity [:/ 100.0 [:field-id $count]]))
 
 ;; ok, what if we use multiple args to divide, and more than one is zero?
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
+  [[nil] [nil] [nil] [1.0] [2.0] [4.0] [4.0] [nil] [nil] [nil]]
   (calculate-bird-scarcity [:/ 100.0 [:field-id $count] [:field-id $count]]))
 
 ;; are nulls/zeroes still handled appropriately when nested inside other expressions?
@@ -156,7 +156,7 @@
 ;; if a zero is present in the NUMERATOR we should return ZERO and not NULL
 ;; (`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
- [[nil] [0.0] [0.0] [1.0] [0.8] [0.5] [0.5] [nil] [0.0] [0.0]]
+ [[nil] [0.0] [0.0] [1.0] [1.0] [1.0] [1.0] [nil] [0.0] [0.0]]
  (calculate-bird-scarcity [:/ [:field-id $count] 10]))
 
 ;; can addition handle nulls & zeroes?

@@ -663,6 +663,9 @@
                                       :oracle
                                       "SELECT cast({{date}} as date) from dual"
 
+                                      :firebird
+                                      "SELECT cast({{date}} as date) from RDB$DATABASE"
+
                                       "SELECT cast({{date}} as date)")
                      :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
         :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))

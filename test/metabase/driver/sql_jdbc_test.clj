@@ -216,13 +216,17 @@
   (process-spliced-count-query :venues [:is-null $price]))
 
 ;; test splicing a `Date` -- is resulting query correct ?
-(datasets/expect-with-drivers @sql-jdbc-drivers
+;; TODO: Does not work for firebird because the test uses an invalid syntax for getting the
+;; timestamp
+(datasets/expect-with-drivers (disj @sql-jdbc-drivers :firebird)
   [[3]]
   (process-spliced-count-query :checkins [:= $date "2014-03-05"]))
 
 ;; test splicing a `Timestamp` -- is resulting query correct ?
 ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-(datasets/expect-with-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
+;; TODO: Does not work for firebird because the test uses an invalid syntax for getting the
+;; timestamp
+(datasets/expect-with-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql :firebird)
   [[2]]
   (data/dataset test-data-with-time
     (process-spliced-count-query :users [:= $last_login_time (Time. 9 30 0)])))

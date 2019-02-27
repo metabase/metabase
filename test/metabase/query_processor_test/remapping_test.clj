@@ -147,9 +147,9 @@
 ;; `created_by` column which references the PK column in that same table. This tests that remapping table aliases are
 ;; handled correctly
 ;;
-;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
+;; Having a self-referencing FK is currently broken with the Firebird, Redshift and Oracle backends. The issue related to fix
 ;; this is https://github.com/metabase/metabase/issues/8510
-(datasets/expect-with-drivers (disj (non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
+(datasets/expect-with-drivers (disj (non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica :firebird)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
   (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
     (data/with-data

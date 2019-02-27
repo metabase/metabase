@@ -170,7 +170,7 @@
 ;;
 ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
 ;; timezone
-(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo}
+(expect-with-non-timeseries-dbs-except #{:h2 :sqlserver :redshift :sparksql :mongo :firebird}
   (cond
     (= :sqlite driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) result-date-formatter-without-tz)
@@ -456,6 +456,11 @@
                     date-formatter-without-time
                     [6 10 4 9 9 8 8 9 7 9])
 
+    (= :firebird driver/*driver*)
+    (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
+                    (result-date-formatter pacific-tz)
+                    [6 10 4 9 9 8 8 9 7 9])
+
     (tz-shifted-engine-bug? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
@@ -646,6 +651,11 @@
                      date-formatter-without-time
                      [46 47 40 60 7])
 
+    (= :firebird driver/*driver*)
+    (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
+                     (result-date-formatter pacific-tz)
+                     [46 47 40 60 7])
+
     (tz-shifted-engine-bug? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
@@ -675,7 +685,7 @@
     (= :snowflake driver/*driver*)
     [[22 46] [23 47] [24 40] [25 60] [26 7]]
 
-    (#{:sqlserver :sqlite :oracle :sparksql} driver/*driver*)
+    (#{:firebird :sqlserver :sqlite :oracle :sparksql} driver/*driver*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (and (supports-report-timezone? driver/*driver*)
