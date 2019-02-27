@@ -8,14 +8,14 @@
              [util :as u]]
             [metabase.models
              [collection-test :as collection-test]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
              [permissions-group :as group :refer [PermissionsGroup]]
-             [user :refer [User]]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [user :refer [User]]
+             [user-test :as user-test]]
             [metabase.test
              [data :refer :all]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
-            [metabase.models.user-test :as user-test]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

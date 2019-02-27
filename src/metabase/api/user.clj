@@ -8,7 +8,9 @@
              [session :as session-api]]
             [metabase.email.messages :as email]
             [metabase.integrations.ldap :as ldap]
-            [metabase.models.user :as user :refer [User]]
+            [metabase.models
+             [permissions-group :as group]
+             [user :as user :refer [User]]]
             [metabase.util :as u]
             [metabase.util
              [i18n :refer [tru]]
@@ -16,8 +18,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.models.permissions-group :as group]))
+             [hydrate :refer [hydrate]]]))
 
 (defn- check-self-or-superuser
   "Check that USER-ID is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."

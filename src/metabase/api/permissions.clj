@@ -108,7 +108,8 @@
                  [:not= :id (u/get-id (group/metabot))])
      :order-by [:%lower.name]}))
 
-(defn- add-member-counts
+(defn add-member-counts
+  "Efficiently add `:member_count` to PermissionGroups."
   {:batched-hydrate :member_count}
   [groups]
   (let [group-id->num-members (group-id->num-members)]
