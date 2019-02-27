@@ -112,7 +112,9 @@ const BulkActionControls = ({ selected, reload }) => (
       medium
       onClick={async () => {
         try {
-          await Promise.all(selected.map(item => item.setArchived(false)));
+          await Promise.all(
+            selected.map(item => item.setArchived && item.setArchived(false)),
+          );
         } finally {
           reload();
         }
@@ -123,7 +125,7 @@ const BulkActionControls = ({ selected, reload }) => (
       medium
       onClick={async () => {
         try {
-          await Promise.all(selected.map(item => item.delete(false)));
+          await Promise.all(selected.map(item => item.delete && item.delete()));
         } finally {
           reload();
         }

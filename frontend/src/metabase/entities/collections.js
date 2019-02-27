@@ -34,6 +34,7 @@ const Collections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
