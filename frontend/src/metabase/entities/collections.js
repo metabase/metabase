@@ -35,6 +35,10 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
   },
 
   selectors: {

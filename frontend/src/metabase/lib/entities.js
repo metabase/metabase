@@ -660,26 +660,30 @@ export function createEntity(def: EntityDefinition): Entity {
     }
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
-      // $FlowFixMe
-      EntityWrapper.prototype[methodName] = function(...args) {
+      if (method) {
         // $FlowFixMe
-        return method(this, ...args);
-      };
+        EntityWrapper.prototype[methodName] = function(...args) {
+          // $FlowFixMe
+          return method(this, ...args);
+        };
+      }
     }
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
-      // $FlowFixMe
-      EntityWrapper.prototype[methodName] = function(...args) {
-        if (this._dispatch) {
-          // if dispatch was provided to the constructor go ahead and dispatch
-          // $FlowFixMe
-          return this._dispatch(method(this, ...args));
-        } else {
-          // otherwise just return the action
-          // $FlowFixMe
-          return method(this, ...args);
-        }
-      };
+      if (method) {
+        // $FlowFixMe
+        EntityWrapper.prototype[methodName] = function(...args) {
+          if (this._dispatch) {
+            // if dispatch was provided to the constructor go ahead and dispatch
+            // $FlowFixMe
+            return this._dispatch(method(this, ...args));
+          } else {
+            // otherwise just return the action
+            // $FlowFixMe
+            return method(this, ...args);
+          }
+        };
+      }
     }
 
     entity.wrapEntity = (object, dispatch = null) =>

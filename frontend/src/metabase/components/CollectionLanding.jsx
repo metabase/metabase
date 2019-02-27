@@ -31,7 +31,7 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-
+import PageHeading from "metabase/components/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
@@ -236,7 +236,7 @@ class DefaultLanding extends React.Component {
                 />
               </Box>
               <Flex align="center">
-                <h1 style={{ fontWeight: 900 }}>{collection.name}</h1>
+                <PageHeading>{collection.name}</PageHeading>
                 {collection.description && (
                   <Tooltip tooltip={collection.description}>
                     <Icon
