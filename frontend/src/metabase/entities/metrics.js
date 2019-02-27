@@ -19,6 +19,9 @@ const Metrics = createEntity({
         },
         opts,
       ),
+
+    // NOTE: DELETE not currently implemented
+    delete: null,
   },
 
   objectSelectors: {

@@ -72,14 +72,14 @@ export default class ArchiveApp extends Component {
                           }
                         : null
                     }
-                  onDelete={
-                    item.delete
-                      ? async () => {
-                          await item.delete();
-                          reload();
-                        }
-                      : null
-                  }
+                    onDelete={
+                      item.delete
+                        ? async () => {
+                            await item.delete();
+                            reload();
+                          }
+                        : null
+                    }
                     selected={selection.has(item)}
                     onToggleSelected={() => onToggleSelected(item)}
                     showSelect={selected.length > 0}
