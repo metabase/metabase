@@ -134,3 +134,27 @@ export function userCollection(userCollectionId) {
 export function accountSettings() {
   return `/user/edit_current`;
 }
+
+export function newUser() {
+  return `/admin/people/new`;
+}
+
+export function editUser(userId) {
+  return `/admin/people/${userId}/edit`;
+}
+
+export function resetPassword(userId) {
+  return `/admin/people/${userId}/reset`;
+}
+
+export function newUserSuccess(userId) {
+  return `/admin/people/${userId}/success`;
+}
+
+export function deactivateUser(userId) {
+  return `/admin/people/${userId}/deactivate`;
+}
+
+export function reactivateUser(userId) {
+  return `/admin/people/${userId}/reactivate`;
+}

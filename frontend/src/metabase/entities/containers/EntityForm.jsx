@@ -24,10 +24,7 @@ export default class EntityForm extends React.Component {
         onSubmit={values =>
           values.id != null ? update(values) : create(values)
         }
-        onSubmitSuccess={action =>
-          // maybe eventually pass the whole object instead of just the id?
-          onSaved && onSaved({ id: action.payload.result })
-        }
+        onSubmitSuccess={action => onSaved && onSaved(action.payload)}
       />
     );
   }

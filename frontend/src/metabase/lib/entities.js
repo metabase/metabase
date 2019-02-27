@@ -11,6 +11,7 @@ import { setRequestState } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import { singularize } from "metabase/lib/formatting";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
@@ -41,6 +42,10 @@ export type Reducer = (state: any, action: Action) => any;
 
 type EntityDefinition = {
   name: EntityName,
+
+  nameOne?: string,
+  nameMany?: string,
+
   schema?: schema.Entity,
   path?: string,
   api?: { [method: string]: APIMethod },
@@ -84,6 +89,10 @@ type Result = any; // FIXME
 
 export type Entity = {
   name: EntityName,
+
+  nameOne: string,
+  nameMany: string,
+
   path?: string,
   api: {
     list: APIMethod,
@@ -101,6 +110,12 @@ export type Entity = {
     UPDATE: ActionType,
     DELETE: ActionType,
     FETCH_LIST: ActionType,
+  },
+  actionDecorators: {
+    create: {
+      pre: Function,
+      post: Function,
+    },
   },
   actions: {
     [name: string]: ActionCreator,
@@ -151,6 +166,13 @@ export type Entity = {
 export function createEntity(def: EntityDefinition): Entity {
   // $FlowFixMe
   const entity: Entity = { ...def };
+
+  if (!entity.nameOne) {
+    entity.nameOne = singularize(entity.name);
+  }
+  if (!entity.nameMany) {
+    entity.nameMany = entity.name;
+  }
 
   // defaults
   if (!entity.schema) {
@@ -204,12 +226,32 @@ export function createEntity(def: EntityDefinition): Entity {
     ...(entity.actionTypes || {}),
   };
 
+  entity.actionDecorators = {
+    ...(entity.actionDecorators || {}),
+  };
+
+  function runActionDecorator(action, type, object, ...extra) {
+    const decorator = getIn(entity, ["actionDecorators", action, type]);
+    if (decorator) {
+      return decorator(object, ...extra);
+    } else {
+      return object;
+    }
+  }
+
   entity.objectActions = {
     create: createThunkAction(
       CREATE_ACTION,
       entityObject => async (dispatch, getState) => {
         trackAction("create", entityObject, getState);
         const statePath = ["entities", entity.name, "create"];
+        entityObject = runActionDecorator(
+          "create",
+          "pre",
+          entityObject,
+          dispatch,
+          getState,
+        );
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
           const result = normalize(
@@ -217,7 +259,14 @@ export function createEntity(def: EntityDefinition): Entity {
             entity.schema,
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
-          return result;
+          return runActionDecorator(
+            "create",
+            "post",
+            result,
+            entityObject,
+            dispatch,
+            getState,
+          );
         } catch (error) {
           console.error(`${CREATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
@@ -265,6 +314,13 @@ export function createEntity(def: EntityDefinition): Entity {
         if (updatedObject) {
           entityObject = { id: entityObject.id, ...updatedObject };
         }
+        entityObject = runActionDecorator(
+          "update",
+          "pre",
+          entityObject,
+          dispatch,
+          getState,
+        );
         const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
@@ -298,7 +354,14 @@ export function createEntity(def: EntityDefinition): Entity {
               dispatch(addUndo(notify));
             }
           }
-          return result;
+          return runActionDecorator(
+            "update",
+            "post",
+            result,
+            entityObject,
+            dispatch,
+            getState,
+          );
         } catch (error) {
           console.error(`${UPDATE_ACTION} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
@@ -510,7 +573,7 @@ export function createEntity(def: EntityDefinition): Entity {
       return state;
     }
     if (type === FETCH_LIST_ACTION) {
-      if (payload.result) {
+      if (payload && payload.result) {
         return {
           ...state,
           [getIdForQuery(payload.entityQuery)]: payload.result,
@@ -611,6 +674,9 @@ export function createEntity(def: EntityDefinition): Entity {
       console.warn("trackAction threw an error:", e);
     }
   }
+
+  // add container components and HOCs
+  require("metabase/entities/containers").addEntityContainers(entity);
 
   return entity;
 }
