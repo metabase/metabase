@@ -21,7 +21,7 @@ export function addEntityContainers(entity) {
   entity.Loader = ({ id, ...props }) => (
     <EntityObjectLoader entityType={entity.name} entityId={id} {...props} />
   );
-  entity.Loader.displayName = `${ObjectName}Loader`;
+  entity.Loader.displayName = `${ObjectName}.Loader`;
 
   // Entity.loadList higher-order component
   entity.loadList = ({ query, ...props } = {}) =>
@@ -31,13 +31,13 @@ export function addEntityContainers(entity) {
   entity.ListLoader = ({ query, ...props }) => (
     <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
   );
-  entity.ListLoader.displayName = `${ObjectName}ListLoader`;
+  entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
 
   // Entity.Name component
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
-  entity.Name.displayName = `${ObjectName}Name`;
+  entity.Name.displayName = `${ObjectName}.Name`;
 
   // Entity.Form component
   entity.Form = ({ object, ...props }) => (
@@ -47,7 +47,7 @@ export function addEntityContainers(entity) {
       {...props}
     />
   );
-  entity.Form.displayName = `${ObjectName}Form`;
+  entity.Form.displayName = `${ObjectName}.Form`;
 
   // Entity.ModalForm component
   entity.ModalForm = ({ object, ...props }) => (
@@ -58,5 +58,5 @@ export function addEntityContainers(entity) {
       {...props}
     />
   );
-  entity.ModalForm.displayName = `${ObjectName}ModalForm`;
+  entity.ModalForm.displayName = `${ObjectName}.ModalForm`;
 }
