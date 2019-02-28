@@ -24,7 +24,7 @@ describe("ProfileLink", () => {
         const admin = { is_superuser: true };
         const wrapper = shallow(<ProfileLink user={admin} context={""} />);
 
-        expect(wrapper.instance().generateOptionsForUser().length).toBe(6);
+        expect(wrapper.instance().generateOptionsForUser().length).toBe(5);
       });
     });
   });

@@ -33,6 +33,7 @@ import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
+import Logs from "metabase/admin/tasks/containers/Logs";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -119,6 +120,7 @@ const getRoutes = (store, IsAdmin) => (
           modalProps={{ wide: true }}
         />
       </Route>
+      <Route path="logs" component={Logs} />
     </Route>
 
     {/* SETTINGS */}

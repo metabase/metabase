@@ -1,5 +1,5 @@
 import React from "react";
-import Logs from "metabase/components/Logs";
+import Logs from "metabase/admin/tasks/containers/Logs";
 import { mount } from "enzyme";
 
 import { UtilApi } from "metabase/services";
