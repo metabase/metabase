@@ -233,14 +233,14 @@ jobs:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:3.2
+      - image: circleci/mongo:3.4
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests (MongoDB 3.2)
+          name: Run backend unit tests (MongoDB 3.4)
           environment:
             DRIVERS: h2,mongo
           command: >
