@@ -1,7 +1,7 @@
 (ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -124,3 +124,44 @@
             {:database (data/id)
              :type     :query
              :query    {:source-table (u/get-id table)}}))))))
+
+(defn- num-open-cursors
+  "Get the number of open cursors for current User"
+  []
+  (let [{:keys [details]}   (driver/with-driver :oracle (data/db))
+        spec                (sql-jdbc.conn/connection-details->spec :oracle details)
+        [{:keys [cursors]}] (jdbc/query
+                             spec
+                             [(str
+                               "SELECT sum(a.value) AS cursors "
+                               "FROM v$sesstat a, v$statname b, v$session s "
+                               "WHERE a.statistic# = b.statistic# "
+                               "  AND s.sid=a.sid "
+                               "  AND lower(s.username) = lower(?) "
+                               "  AND b.name = 'opened cursors current'")
+                              (:user details)])]
+    (some-> cursors int)))
+
+;; make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets
+;; See issues #4389, #6028, and #6467
+(expect-with-driver :oracle
+  "Number of open cursors has stabilized. No leak in sync process."
+  (let [num-tries 30]
+    (loop [last-num-cursors (num-open-cursors), remaining-tries num-tries]
+      ;; actually to really saturate this connection pool it's even better to run 20 sync processes at the same time
+      ;; and then see if things stabilize
+      (dorun
+       (pmap
+        (fn [_] (driver/describe-database :oracle (data/db)))
+        (range 20)))
+      (let [new-open-cursors (num-open-cursors)]
+        (cond
+          (<= new-open-cursors last-num-cursors)
+          "Number of open cursors has stabilized. No leak in sync process."
+
+          (pos? remaining-tries)
+          (recur new-open-cursors (dec remaining-tries))
+
+          :else
+          (format "Number of open cursors has not stabilized after %d tries. Number of open cursors: %d"
+                  num-tries new-open-cursors))))))

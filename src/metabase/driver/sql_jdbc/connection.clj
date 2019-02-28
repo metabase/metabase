@@ -28,10 +28,6 @@
 ;;; |                                           Creating Connection Pools                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
-  database-id->connection-pool
-  (atom {}))
-
 (def ^:private data-warehouse-connection-pool-properties
   "c3p0 connection pool properties for connected data warehouse DBs. See
   https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
@@ -44,7 +40,7 @@
    ;; prevent overly large pools by condensing them when connections are idle for 15m+
    "maxIdleTimeExcessConnections" (* 15 60)})
 
-(defn- create-connection-pool
+(defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details], :as database}]
   {:pre [(map? database)]}
@@ -54,32 +50,58 @@
     (assoc (connection-pool/connection-pool-spec spec data-warehouse-connection-pool-properties)
       :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
+(defn- destroy-pool! [database-id pool-spec]
+  (log/debug (u/format-color 'red (tru "Closing old connection pool for database {0} ..." database-id)))
+  (connection-pool/destroy-connection-pool! (:datasource pool-spec))
+  (when-let [ssh-tunnel (:ssh-tunnel pool-spec)]
+    (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
+
+(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
+  database-id->connection-pool
+  (atom {}))
+
+(defn- set-pool!
+  "Atomically update the current connection pool for Database with `database-id`. Use this function instead of modifying
+  `database-id->connection-pool` directly because it properly closes down old pools in a thread-safe way, ensuring no
+  more than one pool is ever open for a single database."
+  [database-id pool-spec-or-nil]
+  (let [[old-id->pool] (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)]
+    ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
+    (when-let [old-pool-spec (get old-id->pool database-id)]
+      (when-not (identical? old-pool-spec pool-spec-or-nil)
+        (destroy-pool! database-id old-pool-spec))))
+  nil)
+
 (defn notify-database-updated
   "Default implementation of `driver/notify-database-updated` for JDBC SQL drivers. We are being informed that a
   DATABASE has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
   connection details have changed."
   [_ database]
-  (when-let [pool (get @database-id->connection-pool (u/get-id database))]
-    (log/debug (u/format-color 'red (tru "Closing connection pool for database {0} ..." (u/get-id database))))
-    ;; remove the cached reference to the pool so we don't try to use it anymore
-    (swap! database-id->connection-pool dissoc (u/get-id database))
-    ;; now actively shut down the pool so that any open connections are closed
-    (connection-pool/destroy-connection-pool! (:datasource pool))
-    (when-let [ssh-tunnel (:ssh-tunnel pool)]
-      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
+  (set-pool! (u/get-id database) nil))
+
+(def ^:private db->pooled-spec-lock (Object.))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
   [database-or-id]
-  (if (contains? @database-id->connection-pool (u/get-id database-or-id))
-    ;; we have an existing pool for this database, so use it
-    (get @database-id->connection-pool (u/get-id database-or-id))
-    ;; create a new pool and add it to our cache, then return it
-    (let [db (if (map? database-or-id) database-or-id (db/select-one [Database :id :engine :details]
-                                                        :id database-or-id))]
-      (u/prog1 (create-connection-pool db)
-        (swap! database-id->connection-pool assoc (u/get-id database-or-id) <>)))))
+  (or
+   ;; we have an existing pool for this database, so use it
+   (get @database-id->connection-pool (u/get-id database-or-id))
+   ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
+   ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
+   ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
+   ;; one thread will be creating a pool at a given instant.
+   (locking db->pooled-spec-lock
+     (or
+      ;; check if another thread created the pool while we were waiting to acquire the lock
+      (get @database-id->connection-pool (u/get-id database-or-id))
+      ;; create a new pool and add it to our cache, then return it
+      (let [db (if (map? database-or-id)
+                 database-or-id
+                 (db/select-one [Database :id :engine :details] :id database-or-id))]
+        (u/prog1 (create-pool! db)
+          (set-pool! (u/get-id database-or-id) <>)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
