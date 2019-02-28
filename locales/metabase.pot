@@ -7072,7 +7072,7 @@ msgid "(This is a bit long for a dashboard)"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:491
-msgid "This is usually pretty fast but seems to be taking awhile right now."
+msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr ""
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx:36
