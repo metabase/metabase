@@ -1,5 +1,6 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.set :as set]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [metabase.driver :as driver]
             [metabase.models.table :refer [Table]]
             [metabase.test
@@ -53,3 +54,13 @@
 (expect-with-driver :snowflake
   Exception
   (driver/describe-database :snowflake (update (data/db) :details set/rename-keys {:db :xyz})))
+
+;; Make sure that can-connect? returns false for Snowflake databases that don't exist (#9041)
+(expect-with-driver :snowflake
+  {:normal      true
+   :random-name false}
+  (let [can-connect? (fn [& [additional-details]]
+                       (driver/can-connect? :snowflake (merge (:details (data/db))
+                                                              additional-details)))]
+    {:normal      (can-connect?)
+     :random-name (can-connect? {:db (tu/random-name)})}))

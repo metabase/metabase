@@ -5,7 +5,7 @@
             [metabase.test.mock.util :as mock-util]))
 
 
-(def ^:private ^:const toucanery-tables
+(def toucanery-tables
   {"transactions" {:name   "transactions"
                    :schema nil
                    :fields #{{:name          "id"

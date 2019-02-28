@@ -26,6 +26,9 @@ const Dashboards = createEntity({
   name: "dashboards",
   path: "/api/dashboard",
 
+  displayNameOne: t`dashboard`,
+  displayNameMany: t`dashboards`,
+
   api: {
     favorite: POST("/api/dashboard/:id/favorite"),
     unfavorite: DELETE("/api/dashboard/:id/favorite"),

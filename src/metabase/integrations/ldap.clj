@@ -39,7 +39,8 @@
   (tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
 
 (defsetting ldap-password
-  (tru "The password to bind with for the lookup user."))
+  (tru "The password to bind with for the lookup user.")
+  :sensitive? true)
 
 (defsetting ldap-user-base
   (tru "Search base for users. (Will be searched recursively)"))

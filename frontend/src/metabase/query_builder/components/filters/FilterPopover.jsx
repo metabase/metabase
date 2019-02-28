@@ -319,7 +319,7 @@ export default class FilterPopover extends Component {
             field={fieldRef}
             fieldOptions={query.filterFieldOptions(filter)}
             segmentOptions={query.filterSegmentOptions(filter)}
-            tableMetadata={query.table()}
+            table={query.table()}
             onFieldChange={this.setField}
             onFilterChange={this.commitFilter}
           />

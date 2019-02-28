@@ -53,15 +53,14 @@
    (.offer acc x)
    acc))
 
-(defmulti
-  ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
-    :arglists '([field])}
-  fingerprinter (fn [{:keys [base_type special_type unit] :as field}]
-                  [(cond
-                     (du/date-extract-units unit)  :type/Integer
-                     (field/unix-timestamp? field) :type/DateTime
-                     :else                         base_type)
-                   (or special_type :type/*)]))
+(defmulti fingerprinter
+  "Return a fingerprinter transducer for a given field based on the field's type."
+   (fn [{:keys [base_type special_type unit] :as field}]
+     [(cond
+        (du/date-extract-units unit)  :type/Integer
+        (field/unix-timestamp? field) :type/DateTime
+        :else                         base_type)
+      (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -165,7 +164,8 @@
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this)
   DateTime               (->date [this] (t.coerce/to-date this))
-  Long                   (->date [^Long this] (java.util.Date. this)))
+  Long                   (->date [^Long this] (java.util.Date. this))
+  Integer                (->date [^Integer this] (java.util.Date. (long this))))
 
 (deffingerprinter :type/DateTime
   ((map ->date)

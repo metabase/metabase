@@ -10,9 +10,13 @@
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Time))
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
+  (:import java.sql.Time
+           java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -91,21 +95,23 @@
 (defn- date-add [unit & exprs]
   (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
 
-;; See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details on the functions we're using.
+;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
+;; details on the functions we're using.
 
-(defmethod sql.qp/date [:sqlserver :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:sqlserver :minute]          [_ _ expr] (hx/cast :smalldatetime expr))
-(defmethod sql.qp/date [:sqlserver :minute-of-hour]  [_ _ expr] (date-part :minute expr))
-(defmethod sql.qp/date [:sqlserver :hour]            [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr)))
-(defmethod sql.qp/date [:sqlserver :hour-of-day]     [_ _ expr] (date-part :hour expr))
-(defmethod sql.qp/date [:sqlserver :day-of-week]     [_ _ expr] (date-part :weekday expr))
-(defmethod sql.qp/date [:sqlserver :day-of-month]    [_ _ expr] (date-part :day expr))
-(defmethod sql.qp/date [:sqlserver :day-of-year]     [_ _ expr] (date-part :dayofyear expr))
-(defmethod sql.qp/date [:sqlserver :week-of-year]    [_ _ expr] (date-part :iso_week expr))
-(defmethod sql.qp/date [:sqlserver :month]           [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-01" expr)))
-(defmethod sql.qp/date [:sqlserver :month-of-year]   [_ _ expr] (date-part :month expr))
-(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr] (date-part :quarter expr))
-(defmethod sql.qp/date [:sqlserver :year]            [_ _ expr] (date-part :year expr))
+(defmethod sql.qp/date [:sqlserver :default] [_ _ expr]
+  expr)
+
+(defmethod sql.qp/date [:sqlserver :minute] [_ _ expr]
+  (hx/cast :smalldatetime expr))
+
+(defmethod sql.qp/date [:sqlserver :minute-of-hour] [_ _ expr]
+  (date-part :minute expr))
+
+(defmethod sql.qp/date [:sqlserver :hour] [_ _ expr]
+  (hsql/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
+
+(defmethod sql.qp/date [:sqlserver :hour-of-day] [_ _ expr]
+  (date-part :hour expr))
 
 ;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
 ;; other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the
@@ -116,6 +122,15 @@
 (defmethod sql.qp/date [:sqlserver :day] [_ _ expr]
   (hx/->datetime (hx/->date expr)))
 
+(defmethod sql.qp/date [:sqlserver :day-of-week] [_ _ expr]
+  (date-part :weekday expr))
+
+(defmethod sql.qp/date [:sqlserver :day-of-month] [_ _ expr]
+  (date-part :day expr))
+
+(defmethod sql.qp/date [:sqlserver :day-of-year] [_ _ expr]
+  (date-part :dayofyear expr))
+
 ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
 ;; The equivalent SQL looks like:
 ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
@@ -125,16 +140,32 @@
              (hx/- 1 (date-part :weekday expr))
              (hx/->date expr))))
 
+(defmethod sql.qp/date [:sqlserver :week-of-year] [_ _ expr]
+  (date-part :iso_week expr))
+
+(defmethod sql.qp/date [:sqlserver :month] [_ _ expr]
+  (hsql/call :datefromparts (hx/year expr) (hx/month expr) 1))
+
+(defmethod sql.qp/date [:sqlserver :month-of-year] [_ _ expr]
+  (date-part :month expr))
+
 ;; Format date as yyyy-01-01 then add the appropriate number of quarter
 ;; Equivalent SQL:
 ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
 (defmethod sql.qp/date [:sqlserver :quarter] [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
-            (hx/format "yyyy-01-01" expr)))
+            (hsql/call :datefromparts (hx/year expr) 1 1)))
+
+(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr]
+  (date-part :quarter expr))
+
+(defmethod sql.qp/date [:sqlserver :year] [_ _ expr]
+  (date-part :year expr))
+
 
 (defmethod driver/date-interval :sqlserver [_ unit amount]
-  (date-add unit amount :%getutcdate))
+  (date-add unit amount :%getdate))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds] [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
@@ -196,3 +227,8 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver [_]
   #{"sys" "INFORMATION_SCHEMA"})
+
+(defmethod unprepare/unprepare-value [:sqlserver Date] [_ value]
+  (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])

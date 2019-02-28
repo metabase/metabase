@@ -44,7 +44,7 @@ export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
 export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
 
 export class Api extends EventEmitter {
-  basename: "";
+  basename = "";
 
   GET: APICreator;
   POST: APICreator;

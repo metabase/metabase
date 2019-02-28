@@ -18,6 +18,9 @@ const Collections = createEntity({
   path: "/api/collection",
   schema: CollectionSchema,
 
+  displayNameOne: t`collection`,
+  displayNameMany: t`collections`,
+
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
       Collections.actions.update(
@@ -32,6 +35,10 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
   },
 
   selectors: {

@@ -170,7 +170,6 @@ export default class Map extends Component {
     }),
     ...dimensionSetting("map.dimension", {
       title: t`Region field`,
-      widget: "select",
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {

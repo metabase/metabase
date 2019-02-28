@@ -30,7 +30,7 @@ ADD project.clj .
 RUN lein deps
 
 # frontend dependencies
-ADD yarn.lock package.json ./
+ADD yarn.lock package.json .yarnrc ./
 RUN yarn
 
 # add the rest of the source
@@ -70,6 +70,10 @@ COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib
 RUN mkdir -p bin target/uberjar
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
+
+# create the plugins directory, with writable permissions
+RUN mkdir -p /plugins
+RUN chmod a+rwx /plugins
 
 # expose our default runtime port
 EXPOSE 3000

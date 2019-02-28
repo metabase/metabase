@@ -101,7 +101,7 @@ export const getDatabaseFields = createSelector(
   (databaseId, databaseFields) => databaseFields[databaseId],
 );
 
-import { getMode as getMode_ } from "metabase/qb/lib/modes";
+import { getMode as getMode_ } from "metabase/modes/lib/modes";
 import { getAlerts } from "metabase/alert/selectors";
 import {
   extractRemappings,
