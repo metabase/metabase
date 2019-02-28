@@ -31,6 +31,10 @@ const Metrics = createEntity({
     getColor: () => colors["text-medium"],
     getIcon: question => "sum",
   },
+
+  form: {
+    fields: [{ name: "name" }, { name: "description", type: "text" }],
+  },
 });
 
 export default Metrics;
