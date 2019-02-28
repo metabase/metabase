@@ -184,6 +184,12 @@
   [driver [_ field]]
   (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :/]
+  [driver args]
+  (let [args (for [arg args]
+               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
+    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
 
@@ -242,10 +248,13 @@
               driver metadata (get-in db-or-id-or-spec [:details :db]))}))
 
 (defmethod driver.common/current-db-time-date-formatters :clickhouse [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
+  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm.ss"))
 
 (defmethod driver.common/current-db-time-native-query :clickhouse [_]
-  "SELECT NOW()")
+  "SELECT formatDateTime(NOW(), '%F %R.%S')")
+
+(defmethod driver/current-db-time :clickhouse [& args]
+  (apply driver.common/current-db-time args))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
