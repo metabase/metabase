@@ -147,16 +147,20 @@
 ;;; |                                                Running Queries                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - this is pretty similar to what `jdbc/with-db-connection` does, but not exactly the same. See if we can
+;; switch to using that instead?
+(defn- do-with-ensured-connection [db f]
+  (if-let [conn (jdbc/db-find-connection db)]
+    (f conn)
+    (with-open [conn (jdbc/get-connection db)]
+      (f conn))))
+
 (defmacro ^:private with-ensured-connection
   "In many of the clojure.java.jdbc functions, it checks to see if there's already a connection open before opening a
   new one. This macro checks to see if one is open, or will open a new one. Will bind the connection to `conn-sym`."
   {:style/indent 1}
-  [[conn-sym db] & body]
-  `(let [db# ~db]
-     (if-let [~conn-sym (jdbc/db-find-connection db#)]
-       (do ~@body)
-       (with-open [~conn-sym (jdbc/get-connection db#)]
-         ~@body))))
+  [[conn-binding db] & body]
+  `(do-with-ensured-connection ~db (fn [~conn-binding] ~@body)))
 
 (defn- cancelable-run-query
   "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
@@ -206,10 +210,11 @@
   and rethrowing the exception as an Exception with a nicely formatted error message."
   {:style/indent 0}
   [f]
-  (try (f)
-       (catch SQLException e
-         (log/error (jdbc/print-sql-exception-chain e))
-         (throw (Exception. (exception->nice-error-message e))))))
+  (try
+    (f)
+    (catch SQLException e
+      (log/error (jdbc/print-sql-exception-chain e))
+      (throw (Exception. (exception->nice-error-message e) e)))))
 
 (defn- do-with-auto-commit-disabled
   "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the
@@ -222,8 +227,9 @@
   (.setAutoCommit (jdbc/get-connection conn) false)
   ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the
   ;; timezone. Is there some way we can have our cake and eat it too?
-  (try (f)
-       (finally (.rollback (jdbc/get-connection conn)))))
+  (try
+    (f)
+    (finally (.rollback (jdbc/get-connection conn)))))
 
 (defn- do-in-transaction [connection f]
   (jdbc/with-db-transaction [transaction-connection connection]
