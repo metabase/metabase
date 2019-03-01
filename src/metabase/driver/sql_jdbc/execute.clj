@@ -168,6 +168,8 @@
   (with-ensured-connection [conn db]
     ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
     (with-open [^PreparedStatement stmt (jdbc/prepare-statement conn sql opts)]
+      ;; specifiy that we'd like this statement to close once its dependent result sets are closed
+      (.closeOnCompletion stmt)
       ;; Need to run the query in another thread so that this thread can cancel it if need be
       (try
         (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
