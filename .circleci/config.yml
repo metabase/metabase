@@ -599,6 +599,8 @@ jobs:
           name: Run frontend e2e tests
           command: yarn run test-e2e-no-build
           no_output_timeout: 5m
+          environment:
+            DISABLE_LOGGING: true
 
 
 ########################################################################################################################
