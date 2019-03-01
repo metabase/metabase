@@ -151,22 +151,9 @@ describe("StructuredQuery unit tests", () => {
         expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
       });
       it("should return an actual count aggregation after trying to add it", () => {
-        expect(query.addAggregation(["count"]).aggregations()[0]).toEqual([
+        expect(query.addAggregation(["count"]).aggregations()[0][0]).toEqual(
           "count",
-        ]);
-      });
-    });
-    describe("aggregationsWrapped", () => {
-      it("should return an empty list for an empty query", () => {
-        expect(query.aggregationsWrapped().length).toBe(0);
-      });
-      it("should return a list with Aggregation after adding an aggregation", () => {
-        expect(
-          query
-            .addAggregation(["count"])
-            .aggregationsWrapped()[0]
-            .isValid(),
-        ).toBe(true);
+        );
       });
     });
 
