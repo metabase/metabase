@@ -30,7 +30,7 @@ import type {
 import type {
   TableMetadata,
   DimensionOptions,
-  AggregationOption
+  AggregationOption,
 } from "metabase/meta/types/Metadata";
 
 import Dimension, {

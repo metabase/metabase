@@ -50,7 +50,7 @@ export default class Dimension {
   /**
    * Dimension constructor
    */
-  constructor(parent: ?Dimension, args: any[], metadata?: Metadata): Dimension {
+  constructor(parent: ?Dimension, args: any[], metadata?: Metadata) {
     this._parent = parent;
     this._args = args;
     this._metadata = metadata || (parent && parent._metadata);
@@ -328,6 +328,10 @@ export default class Dimension {
    */
   render(): ?React$Element<any> {
     return this._parent ? this._parent.render() : [this.displayName()];
+  }
+
+  mbql() {
+    throw new Error("Abstract method `mbql` not implemented");
   }
 }
 
