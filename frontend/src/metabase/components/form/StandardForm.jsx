@@ -52,6 +52,7 @@ const StandardForm = ({
     </div>
     <div className={cx("flex", { "Form-offset": !newForm })}>
       <div className="ml-auto flex align-center">
+        {error && <FormMessage message={error} formError />}
         {onClose && (
           <Button
             type="button"
@@ -76,7 +77,6 @@ const StandardForm = ({
             {t`Reset`}
           </Button>
         )}
-        {error && <FormMessage message={error} formError />}
       </div>
     </div>
   </form>
