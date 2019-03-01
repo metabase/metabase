@@ -1,9 +1,7 @@
 import React from "react";
 import { shallow } from "enzyme";
 
-import GuiQueryEditor, {
-  BreakoutWidget,
-} from "metabase/query_builder/components/GuiQueryEditor";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import Question from "metabase-lib/lib/Question";
 import {
   DATABASE_ID,
@@ -40,7 +38,7 @@ describe("GuiQueryEditor", () => {
     const component = shallow(getGuiQueryEditor(query));
 
     // The add button is a BreakoutWidget React component
-    expect(component.find(BreakoutWidget).length).toBe(1);
+    expect(component.find("BreakoutWidget").length).toBe(1);
   });
   it("should allow adding more than one breakout", () => {
     const query: StructuredQuery = Question.create({
@@ -55,6 +53,6 @@ describe("GuiQueryEditor", () => {
     const component = shallow(getGuiQueryEditor(query));
 
     // Both the first breakout and the add button which both are the same BreakoutWidget React component
-    expect(component.find(BreakoutWidget).length).toBe(2);
+    expect(component.find("BreakoutWidget").length).toBe(2);
   });
 });
