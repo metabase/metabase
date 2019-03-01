@@ -80,7 +80,7 @@
   [driver]
   (not (isa? hierarchy driver ::concrete)))
 
-(defn- driver->expected-namespace [driver]
+(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
