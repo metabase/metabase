@@ -80,7 +80,7 @@
   [driver]
   (not (isa? hierarchy driver ::concrete)))
 
-(defn- driver->expected-namespace [driver]
+(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
@@ -123,7 +123,7 @@
           (when-not (registered? driver)
             (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
 
-(defn the-driver
+(s/defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
   throwing an Exception if it fails or is invalid. Returns keyword.
 
@@ -140,7 +140,7 @@
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
-  [driver]
+  [driver :- (s/cond-pre s/Str s/Keyword)]
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed driver)
     driver))

@@ -4,6 +4,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { reduxForm, getValues } from "redux-form";
+import { getIn } from "icepick";
 
 import StandardForm from "metabase/components/form/StandardForm";
 
@@ -154,9 +155,12 @@ function makeFormMethod(
     const values =
       getValue(originalMethod, object) || getValue(defaultValues, object);
     for (const field of form.fields(object)) {
-      const value = getValue(field[methodName], object && object[field.name]);
+      const value = getValue(
+        field[methodName],
+        object && getValueAtPath(object, field.name),
+      );
       if (value !== undefined) {
-        values[field.name] = value;
+        setValueAtPath(values, field.name, value);
       }
     }
     return values;
@@ -182,4 +186,22 @@ function makeForm(formDef: FormDef): Form {
   // for normalizeing the object before submitting, or normalizeing individual values
   makeFormMethod(form, "normalize", object => object);
   return form;
+}
+
+function getObjectPath(path) {
+  return typeof path === "string" ? path.split(".") : path;
+}
+
+function getValueAtPath(object, path) {
+  return getIn(object, getObjectPath(path));
+}
+function setValueAtPath(object, path, value) {
+  path = getObjectPath(path);
+  for (let i = 0; i < path.length; i++) {
+    if (i === path.length - 1) {
+      object[path[i]] = value;
+    } else {
+      object = object[path[i]] = object[path[i]] || {};
+    }
+  }
 }

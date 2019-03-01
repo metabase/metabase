@@ -305,7 +305,8 @@
   [model object-or-id column->temp-value f]
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [[original-column->value] (db/query {:select (keys column->temp-value)
+  (let [model                    (db/resolve-model model)
+        [original-column->value] (db/query {:select (keys column->temp-value)
                                             :from   [model]
                                             :where  [:= :id (u/get-id object-or-id)]})]
     (try

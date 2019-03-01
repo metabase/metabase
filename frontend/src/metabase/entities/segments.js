@@ -33,6 +33,10 @@ const Segments = createEntity({
     getColor: () => colors["text-medium"],
     getIcon: question => "segment",
   },
+
+  form: {
+    fields: [{ name: "name" }, { name: "description", type: "text" }],
+  },
 });
 
 export default Segments;

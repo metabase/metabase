@@ -18,7 +18,10 @@
 (expect
   #{{:id (u/get-id (group/all-users)), :name "All Users",      :member_count 3}
     {:id (u/get-id (group/admin)),     :name "Administrators", :member_count 1}}
-  (fetch-groups))
+  ;; make sure test users are created first, otherwise we're possibly going to have some WEIRD results
+  (do
+    (test-users/create-users-if-needed!)
+    (fetch-groups)))
 
 ;; The endpoint should however return empty groups!
 (tt/expect-with-temp [PermissionsGroup [group]]
@@ -34,9 +37,11 @@
   #{{:first_name "Crowberto", :last_name "Corv",   :email "crowberto@metabase.com", :user_id (test-users/user->id :crowberto), :membership_id true}
     {:first_name "Lucky",     :last_name "Pigeon", :email "lucky@metabase.com",     :user_id (test-users/user->id :lucky),     :membership_id true}
     {:first_name "Rasta",     :last_name "Toucan", :email "rasta@metabase.com",     :user_id (test-users/user->id :rasta),     :membership_id true}}
-  (set
-   (for [member (:members ((test-users/user->client :crowberto) :get 200 (str "permissions/group/" (u/get-id (group/all-users)))))]
-     (update member :membership_id some?))))
+  (do
+    (test-users/create-users-if-needed!)
+    (set
+     (for [member (:members ((test-users/user->client :crowberto) :get 200 (str "permissions/group/" (u/get-id (group/all-users)))))]
+       (update member :membership_id some?)))))
 
 
 ;; make sure we can update the perms graph from the API
@@ -46,6 +51,7 @@
   (data/id :users)      :none
   (data/id :venues)     :all}
  (tt/with-temp PermissionsGroup [group]
+   (test-users/create-users-if-needed!)
    ((test-users/user->client :crowberto) :put 200 "permissions/graph"
     (assoc-in (perms/graph)
               [:groups (u/get-id group) (data/id) :schemas]
