@@ -77,7 +77,9 @@ export default class AggregationPopover extends Component {
 
   commitAggregation(aggregation) {
     this.props.onChangeAggregation(aggregation);
-    this.props.onClose();
+    if (this.props.onClose) {
+      this.props.onClose();
+    }
   }
 
   onPickAggregation(agg) {

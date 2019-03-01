@@ -174,9 +174,9 @@ describe("admin/datamodel", () => {
         UPDATE_PREVIEW_SUMMARY,
       ]);
 
-      click(app.find("#Query-section-aggregation"));
+      click(app.find("AggregationWidget"));
       click(
-        app.find("#AggregationPopover").find('h4[children="Count of rows"]'),
+        app.find("AggregationPopover").find('h4[children="Count of rows"]'),
       );
 
       setInputValue(app.find("input[name='name']"), "User count");
