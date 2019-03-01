@@ -38,8 +38,8 @@ export type FieldMetadata = Field & {
   table: TableMetadata,
   target: FieldMetadata,
 
-  operators: Operator[],
-  operators_lookup: { [key: OperatorName]: Operator },
+  operators: FilterOperator[],
+  operators_lookup: { [key: FilterOperatorName]: FilterOperator },
 };
 
 export type SegmentMetadata = Segment & {
@@ -55,19 +55,19 @@ export type FieldValue = {
   key: string,
 };
 
-export type OperatorName = string;
+export type FilterOperatorName = string;
 
-export type Operator = {
-  name: OperatorName,
+export type FilterOperator = {
+  name: FilterOperatorName,
   verboseName: string,
   moreVerboseName: string,
-  fields: OperatorField[],
+  fields: FilterOperatorField[],
   multi: boolean,
   placeholders?: string[],
   validArgumentsFilters: ValidArgumentsFilter[],
 };
 
-export type OperatorField = {
+export type FilterOperatorField = {
   type: string,
   values: FieldValue[],
 };

@@ -30,6 +30,7 @@ import type {
 import type {
   TableMetadata,
   DimensionOptions,
+  AggregationOption
 } from "metabase/meta/types/Metadata";
 
 import Dimension, {
@@ -44,13 +45,14 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase/meta/types/Table";
-import AtomicQuery from "./AtomicQuery";
-import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
+
 import Utils from "metabase/lib/utils";
 
-import AggregationWrapper from "./structured/AggregationWrapper";
-import BreakoutWrapper from "./structured/BreakoutWrapper";
-import FilterWrapper from "./structured/FilterWrapper";
+import AtomicQuery from "./AtomicQuery";
+
+import AggregationWrapper from "./structured/Aggregation";
+import BreakoutWrapper from "./structured/Breakout";
+import FilterWrapper from "./structured/Filter";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -273,11 +275,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOptions(): AggregationOption[] {
-    // TODO Should `aggregation_options` be wrapped already in selectors/metadata.js?
-    const optionObjects = this.table() && this.table().aggregations();
-    return optionObjects
-      ? optionObjects.map(agg => new AggregationOption(agg))
-      : [];
+    return this.table() && this.table().aggregations();
   }
 
   /**

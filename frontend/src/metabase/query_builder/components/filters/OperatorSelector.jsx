@@ -6,12 +6,15 @@ import Select, { Option } from "metabase/components/Select";
 
 import cx from "classnames";
 
-import type { Operator, OperatorName } from "metabase/meta/types/Metadata";
+import type {
+  FilterOperator,
+  FilterOperatorName,
+} from "metabase/meta/types/Metadata";
 
 type Props = {
   operator: string,
-  operators: Operator[],
-  onOperatorChange: (name: OperatorName) => void,
+  operators: FilterOperator[],
+  onOperatorChange: (name: FilterOperatorName) => void,
   className?: string,
 };
 

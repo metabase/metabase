@@ -31,7 +31,7 @@ import type {
   FieldFilter,
   ConcreteField,
 } from "metabase/meta/types/Query";
-import type { Operator } from "metabase/meta/types/Metadata";
+import type { FilterOperator } from "metabase/meta/types/Metadata";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -210,7 +210,7 @@ export default class FilterPopover extends Component {
   };
 
   renderPicker(filter: FieldFilter, field: Field) {
-    let operator: ?Operator = field.operators_lookup[filter[0]];
+    let operator: ?FilterOperator = field.operators_lookup[filter[0]];
     let fieldWidgets =
       operator &&
       operator.fields.map((operatorField, index) => {
