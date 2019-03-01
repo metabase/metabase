@@ -12,21 +12,11 @@ import {
   MAIN_METRIC_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,
+  makeDatasetQuery,
 } from "__support__/sample_dataset_fixture";
 
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-function makeDatasetQuery(query) {
-  return {
-    type: "query",
-    database: DATABASE_ID,
-    query: {
-      "source-table": ORDERS_TABLE_ID,
-      ...query,
-    },
-  };
-}
 
 function makeQuery(query) {
   return new StructuredQuery(question, makeDatasetQuery(query));

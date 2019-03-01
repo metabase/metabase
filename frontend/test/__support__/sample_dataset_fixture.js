@@ -1511,6 +1511,17 @@ const NoFieldsMetadata = getMetadata(
 );
 export const questionNoFields = new Question(NoFieldsMetadata, card);
 
+export function makeDatasetQuery(query = {}) {
+  return {
+    type: "query",
+    database: DATABASE_ID,
+    query: {
+      "source-table": ORDERS_TABLE_ID,
+      ...query,
+    },
+  };
+}
+
 export const orders_past_300_days_segment = {
   id: null,
   name: "Past 300 days",

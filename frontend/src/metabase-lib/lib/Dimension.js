@@ -267,6 +267,14 @@ export default class Dimension {
   }
 
   /**
+   * Returns a new filter MBQL
+   */
+  filter(op, ...args) {
+    const operatorName = typeof op === "string" ? op : op.name;
+    return [operatorName, this.mbql(), ...args];
+  }
+
+  /**
    * Valid filter operators on this dimension
    */
   aggregations() {

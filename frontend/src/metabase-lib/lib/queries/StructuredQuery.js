@@ -45,9 +45,12 @@ import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase/meta/types/Table";
 import AtomicQuery from "./AtomicQuery";
-import AggregationWrapper from "./Aggregation";
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 import Utils from "metabase/lib/utils";
+
+import AggregationWrapper from "./structured/AggregationWrapper";
+import BreakoutWrapper from "./structured/BreakoutWrapper";
+import FilterWrapper from "./structured/FilterWrapper";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -261,15 +264,9 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns an array of MBQL @type {Aggregation}s.
    */
   aggregations(): Aggregation[] {
-    return Q.getAggregations(this.query());
-  }
-
-  /**
-   * @returns an array of aggregation wrapper objects
-   * TODO Atte Keinänen 6/11/17: Make the wrapper objects the standard format for aggregations
-   */
-  aggregationsWrapped(): AggregationWrapper[] {
-    return this.aggregations().map(agg => new AggregationWrapper(this, agg));
+    return Q.getAggregations(this.query()).map(
+      (aggregation, index) => new AggregationWrapper(aggregation, index, this),
+    );
   }
 
   /**
@@ -417,7 +414,9 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Breakout}s.
    */
   breakouts(): Breakout[] {
-    return Q.getBreakouts(this.query());
+    return Q.getBreakouts(this.query()).map(
+      (breakout, index) => new BreakoutWrapper(breakout, index, this),
+    );
   }
 
   /**
@@ -485,7 +484,9 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Filter}s.
    */
   filters(): Filter[] {
-    return Q.getFilters(this.query());
+    return Q.getFilters(this.query()).map(
+      (filter, index) => new FilterWrapper(filter, index, this),
+    );
   }
 
   /**
