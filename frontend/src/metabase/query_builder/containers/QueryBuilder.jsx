@@ -199,8 +199,10 @@ export default class QueryBuilder extends Component {
     // NOCOMMIT
     window.question = nextProps.question;
     window.query = nextProps.query;
-    nextProps.question._update = question =>
-      nextProps.setCardAndRun(question.card());
+    if (nextProps.question) {
+      nextProps.question._update = question =>
+        nextProps.setCardAndRun(question.card());
+    }
   }
 
   componentDidUpdate() {
