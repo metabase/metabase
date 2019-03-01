@@ -69,7 +69,9 @@ describe("MetricPane", () => {
     const queryDefinition = queryBuilder
       .find(DataReference)
       .find(QueryDefinition);
-    expect(queryDefinition.text()).toMatch(/Number of distinct valuesofVendor/);
+    expect(queryDefinition.text()).toMatch(
+      /Number of distinct values of Vendor/,
+    );
   });
 
   it("lets you see the vendor count", async () => {

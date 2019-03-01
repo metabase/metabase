@@ -92,10 +92,7 @@ export default class MetricPane extends Component {
           metadata && (
             <div>
               <p className="text-bold">{t`Metric Definition`}</p>
-              <QueryDefinition
-                object={metric}
-                tableMetadata={metadata.tables[metric.table_id]}
-              />
+              <QueryDefinition object={metric} metadata={metadata} />
             </div>
           )
         }

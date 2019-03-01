@@ -146,10 +146,7 @@ export default class SegmentPane extends Component {
           metadata && (
             <div>
               <p className="text-bold">{t`Segment Definition`}</p>
-              <QueryDefinition
-                object={segment}
-                tableMetadata={metadata.tables[segment.table_id]}
-              />
+              <QueryDefinition object={segment} metadata={metadata} />
             </div>
           )
         }
