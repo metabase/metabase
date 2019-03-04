@@ -121,13 +121,26 @@ export function computeSplit(extents, left = [], right = []) {
   }
 }
 
-const FRIENDLY_NAME_MAP = {
+const AGGREGATION_NAME_MAP = {
   avg: t`Average`,
   count: t`Count`,
   sum: t`Sum`,
   distinct: t`Distinct`,
   stddev: t`Standard Deviation`,
 };
+const AGGREGATION_NAME_REGEX = new RegExp(
+  `^(${Object.keys(AGGREGATION_NAME_MAP).join("|")})(_\\d+)?$`,
+);
+
+export function getFriendlyName(column) {
+  if (AGGREGATION_NAME_REGEX.test(column.name)) {
+    const friendly = AGGREGATION_NAME_MAP[column.display_name.toLowerCase()];
+    if (friendly) {
+      return friendly;
+    }
+  }
+  return column.display_name;
+}
 
 export function getXValues(datas) {
   let xValues = _.chain(datas)
@@ -157,21 +170,6 @@ export function getXValues(datas) {
     xValues = _.sortBy(xValues, x => x);
   }
   return xValues;
-}
-
-export function getFriendlyName(column) {
-  if (column.display_name && column.display_name !== column.name) {
-    return column.display_name;
-  } else {
-    // NOTE Atte Keinänen 8/7/17:
-    // Values `display_name` and `name` are same for breakout columns so check FRIENDLY_NAME_MAP
-    // before returning either `display_name` or `name`
-    return (
-      FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] ||
-      column.display_name ||
-      column.name
-    );
-  }
 }
 
 export function isSameSeries(seriesA, seriesB) {
