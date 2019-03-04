@@ -357,8 +357,18 @@
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
+(defmacro ^:private with-h2-db-timezone
+  "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
+  involving a database, but does need to parse dates"
+  [& body]
+  `(du/with-effective-timezone {:engine   :h2
+                                :timezone "UTC"
+                                :name     "mock_db"
+                                :id       1}
+    ~@body))
+
 (defn- expand* [query]
-  (qpt/with-h2-db-timezone
+  (with-h2-db-timezone
     (-> (sql/expand (assoc (normalize/normalize query) :driver :h2))
         :native
         (select-keys [:query :params :template-tags]))))

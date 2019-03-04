@@ -1,9 +1,11 @@
 /* @flow weak */
 
-import { createEntity } from "metabase/lib/entities";
-import { fetchData, createThunkAction } from "metabase/lib/redux";
 import { normalize } from "normalizr";
 import _ from "underscore";
+
+import { createEntity } from "metabase/lib/entities";
+import { fetchData, createThunkAction } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
@@ -16,6 +18,9 @@ const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
+
+  nameOne: "database",
+  nameMany: "databases",
 
   // ACTION CREATORS
   objectActions: {
@@ -46,28 +51,58 @@ const Databases = createEntity({
   // FORM
   form: {
     fields: (values = {}) => [
-      { name: "name" },
-      { name: "engine", type: "select", options: ENGINE_OPTIONS },
-      ...(FIELDS_BY_ENGINE[values.engine] || []),
+      {
+        name: "engine",
+        type: "select",
+        options: ENGINE_OPTIONS,
+        placeholder: `Select a database`,
+        initial: "postgres",
+      },
+      {
+        name: "name",
+        placeholder: `How would you like to refer to this database?`,
+        validate: value => (!value ? `required` : null),
+      },
+      ...(getFieldsForEngine(values.engine, values) || []),
     ],
   },
 });
 
 export default Databases;
 
-// TODO: use the info returned by the backend
-const FIELDS_BY_ENGINE = {
-  h2: [{ name: "details.db" }],
-  postgres: [
-    { name: "details.host" },
-    { name: "details.port" },
-    { name: "details.dbname" },
-    { name: "details.user" },
-    { name: "details.password", type: "password" },
-  ],
-};
+function getFieldsForEngine(engine, values) {
+  const info = (MetabaseSettings.get("engines") || {})[engine];
+  if (info) {
+    const fields = [];
+    for (const field of info["details-fields"]) {
+      if (
+        field.name.startsWith("tunnel-") &&
+        field.name !== "tunnel-enabled" &&
+        (!values.details || !values.details["tunnel-enabled"])
+      ) {
+        continue;
+      }
+      fields.push({
+        name: "details." + field.name,
+        title: field["display-name"],
+        type: field.type,
+        placeholder: field.placeholder || field.default,
+        validate: value => (field.required && !value ? `required` : null),
+        normalize: value =>
+          value == "" || value == null
+            ? "default" in field ? field.default : null
+            : value,
+      });
+    }
+    return fields;
+  } else {
+    return [];
+  }
+}
 
-const ENGINE_OPTIONS = Object.keys(FIELDS_BY_ENGINE).map(key => ({
-  name: key,
-  value: key,
+const ENGINE_OPTIONS = Object.entries(
+  MetabaseSettings.get("engines") || {},
+).map(([engine, info]) => ({
+  name: info["driver-name"],
+  value: engine,
 }));

@@ -317,7 +317,7 @@
        (concat
         frames-after-last-mb
         ;; add a little arrow to the frame so it stands out more
-        (cons (str "--> " last-mb-frame)
+        (cons (some->> last-mb-frame (str "--> "))
               frames-before-last-mb))))})
 
 (defn deref-with-timeout
@@ -568,7 +568,8 @@
        :non-nil #{:d :e :f})
      ;; -> {:a 100, :b nil, :d 200}"
   {:style/indent 1}
-  [m & {:keys [present non-nil]}]
+  [m & {:keys [present non-nil], :as options}]
+  {:pre [(every? #{:present :non-nil} (keys options))]}
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
 

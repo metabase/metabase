@@ -319,7 +319,7 @@
 ;;; ------------------- /candidates -------------------
 
 (expect
-  3
+  4
   (with-rasta
     (->> (Database (data/id)) candidate-tables first :tables count)))
 

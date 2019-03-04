@@ -30,7 +30,7 @@ ADD project.clj .
 RUN lein deps
 
 # frontend dependencies
-ADD yarn.lock package.json ./
+ADD yarn.lock package.json .yarnrc ./
 RUN yarn
 
 # add the rest of the source

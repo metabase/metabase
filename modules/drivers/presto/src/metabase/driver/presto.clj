@@ -247,14 +247,19 @@
   [_ [_ value]]
   (hx/cast :time (time->str value (driver/report-timezone))))
 
-(defmethod driver/execute-query :presto [_ {database-id                  :database
-                                            :keys                        [settings]
-                                            {sql :query, params :params} :native
-                                            query-type                   :type
-                                            :as                          outer-query}]
+(defmethod unprepare/unprepare-value [:presto Date] [_ value]
+  (unprepare/unprepare-date-with-iso-8601-fn :from_iso8601_timestamp value))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:presto Date])
+
+(defmethod driver/execute-query :presto [driver {database-id                  :database
+                                                 :keys                        [settings]
+                                                 {sql :query, params :params} :native
+                                                 query-type                   :type
+                                                 :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
-                                    (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
+                                    (unprepare/unprepare driver (cons sql params)))
         details                (merge (:details (qp.store/database))
                                       settings)
         {:keys [columns rows]} (execute-presto-query! details sql)

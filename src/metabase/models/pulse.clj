@@ -69,14 +69,18 @@
 
 (u/strict-extend (class Pulse)
   models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:pulse])
-          :properties     (constantly {:timestamped? true})
-          :pre-delete     pre-delete})
+  (merge
+   models/IModelDefaults
+   {:hydration-keys (constantly [:pulse])
+    :properties     (constantly {:timestamped? true})
+    :pre-delete     pre-delete})
   i/IObjectPermissions
-  {:can-read?         (partial i/current-user-has-full-permissions? :read)
-   :can-write?        (partial i/current-user-has-full-permissions? :write)
-   :perms-objects-set perms-objects-set})
+  (merge
+   i/IObjectPermissionsDefaults
+   {:can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-write?        (partial i/current-user-has-full-permissions? :write)
+    :perms-objects-set perms-objects-set}))
+
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 

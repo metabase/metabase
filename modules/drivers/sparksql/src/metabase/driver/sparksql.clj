@@ -16,6 +16,7 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
@@ -118,7 +119,7 @@
   (let [query (-> (assoc query
                     :remark (qputil/query->remark outer-query)
                     :query  (if (seq (:params query))
-                              (hive-like/unprepare (cons (:query query) (:params query)))
+                              (unprepare/unprepare driver (cons (:query query) (:params query)))
                               (:query query))
                     :max-rows (mbql.u/query->max-rows-limit outer-query))
                   (dissoc :params))]

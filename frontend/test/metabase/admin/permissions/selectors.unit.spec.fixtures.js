@@ -86,4 +86,16 @@ export const normalizedMetadata = {
   },
   revisions: {},
   databasesList: [2, 3],
+
+  groups: {
+    "1": {
+      id: 1,
+      name: "Group starting with full access",
+    },
+    "2": {
+      id: 2,
+      name: "Group starting with no access at all",
+    },
+  },
+  groups_list: [1, 2],
 };

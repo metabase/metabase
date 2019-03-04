@@ -10,9 +10,13 @@
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Time))
+            [metabase.util
+             [date :as du]
+             [honeysql-extensions :as hx]])
+  (:import java.sql.Time
+           java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
@@ -223,3 +227,8 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver [_]
   #{"sys" "INFORMATION_SCHEMA"})
+
+(defmethod unprepare/unprepare-value [:sqlserver Date] [_ value]
+  (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])

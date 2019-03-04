@@ -80,7 +80,7 @@
   [driver]
   (not (isa? hierarchy driver ::concrete)))
 
-(defn- driver->expected-namespace [driver]
+(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
@@ -123,7 +123,7 @@
           (when-not (registered? driver)
             (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
 
-(defn the-driver
+(s/defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
   throwing an Exception if it fails or is invalid. Returns keyword.
 
@@ -140,7 +140,7 @@
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
-  [driver]
+  [driver :- (s/cond-pre s/Str s/Keyword)]
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed driver)
     driver))
@@ -583,9 +583,39 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query])}
+  {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+
+(defmulti splice-parameters-into-native-query
+  "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = ?\", :params [\"Reggae\"]}
+
+  splice the parameters in to the native query as literals so it can be executed by the user, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = 'Reggae'\"}
+
+  This is used to power features such as 'Convert this Question to SQL' in the Query Builder. Normally when executing
+  the query we'd like to leave the statement as a prepared one and pass parameters that way instead of splicing them
+  in as literals so as to avoid SQL injection vulnerabilities. Thus the results of this method are not normally
+  executed by the Query Processor when processing an MBQL query. However when people convert a
+  question to SQL they can see what they will be executing and edit the query as needed.
+
+  Input to this function follows the same shape as output of `mbql->native` -- that is, it will be a so-called 'inner'
+  native query, with `:query` and `:params` keys, as in the example code above; output should be of the same format.
+  This method might be called even if no splicing needs to take place, e.g. if `:params` is empty; implementations
+  should be sure to handle this situation correctly.
+
+  For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
+  default implementation is an identity function."
+  {:arglists '([driver query]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod splice-parameters-into-native-query ::driver [_ query]
+  query)
 
 
 (defmulti notify-database-updated

@@ -368,6 +368,16 @@
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
+(defn create-check
+  "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
+
+  This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
+  not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
+  hardcoded into this -- this should be considered an antipattern and be refactored out going forward."
+  {:added "0.32.0", :style/indent 2}
+  [entity m]
+  (check-403 (mi/can-create? entity m)))
+
 ;;; --------------------------------------------------- STREAMING ----------------------------------------------------
 
 (def ^:private ^:const streaming-response-keep-alive-interval-ms

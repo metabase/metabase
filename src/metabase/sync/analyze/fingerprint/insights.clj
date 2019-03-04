@@ -1,6 +1,9 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [kixi.stats
+  (:require [clj-time
+              [coerce :as t.coerce]
+              [core :as t]]
+            [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
@@ -171,7 +174,7 @@
                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
                      ;; at this stage in the pipeline the value is still an int, so we can use it
                      ;; directly.
-                     (comp (stats/somef ms->day) #(nth % x-position)))]
+                     #(some-> % (nth x-position) t/date-time t.coerce/to-long ms->day))]
     (apply redux/juxt
            (for [number-col numbers]
              (redux/post-complete

@@ -3,6 +3,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
+import _ from "underscore";
 
 import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -39,6 +40,16 @@ export type RenderProps = {
   error: ?any,
   remove: () => Promise<void>,
 };
+
+// props that shouldn't be passed to children in order to properly stack
+const CONSUMED_PROPS: string[] = [
+  "entityType",
+  "entityId",
+  // "reload", // Masked by `reload` function. Should we rename that?
+  "wrapped",
+  "properties",
+  "loadingAndErrorWrapper",
+];
 
 @entityType()
 @connect((state, { entityDef, entityId, ...props }) => {
@@ -106,8 +117,10 @@ export default class EntityObjectLoader extends React.Component {
 
     // $FlowFixMe: missing loading/error
     return children({
-      ...props,
-      object: object,
+      ..._.omit(props, ...CONSUMED_PROPS),
+      object,
+      // alias the entities name:
+      [entityDef.nameOne]: object,
       reload: this.reload,
       remove: this.remove,
     });
@@ -146,6 +159,11 @@ export const entityObjectLoader = (eolProps: Props) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
       <EntityObjectLoader {...props} {...eolProps}>
-        {childProps => <ComposedComponent {...props} {...childProps} />}
+        {childProps => (
+          <ComposedComponent
+            {..._.omit(props, ...CONSUMED_PROPS)}
+            {...childProps}
+          />
+        )}
       </EntityObjectLoader>
     );

@@ -90,4 +90,6 @@ const Button = sys(
   "color",
 );
 
+Button.displayName = "Button";
+
 export default Button;

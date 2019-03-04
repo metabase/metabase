@@ -228,11 +228,12 @@ export default class GridLayout extends Component {
     }
   }
 
+  // generate one row of the grid, it will repeat because it's a background image
   getGridBackground() {
-    let { margin, cols } = this.props;
-    let cellSize = this.getCellSize();
-    return (
-      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
+    const { margin, cols } = this.props;
+    const cellSize = this.getCellSize();
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
         cols}' height='${cellSize.height}'>` +
       _(cols)
         .times(
@@ -246,8 +247,8 @@ export default class GridLayout extends Component {
             )}' height='${cellSize.height - margin - 3}'/>`,
         )
         .join("") +
-      `</svg>")`
-    );
+      `</svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
   }
 
   render() {
