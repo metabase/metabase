@@ -514,8 +514,8 @@
             sql (cond->> (str (if (seq params)
                                 (unprepare/unprepare driver (cons sql params))
                                 sql))
-                        (get-in database [:details :add-comment]) (str remark))])
-      (process-native* database sql))))
+                        (get-in database [:details :add-comment]) (str remark))]
+          (process-native* database sql)))))
 
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
 
