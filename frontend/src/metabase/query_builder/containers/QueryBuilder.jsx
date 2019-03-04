@@ -196,9 +196,6 @@ export default class QueryBuilder extends Component {
       this.props.initializeQB(nextProps.location, nextProps.params);
     }
 
-    // NOCOMMIT
-    window.question = nextProps.question;
-    window.query = nextProps.query;
     if (nextProps.question) {
       nextProps.question._update = question =>
         nextProps.setCardAndRun(question.card());

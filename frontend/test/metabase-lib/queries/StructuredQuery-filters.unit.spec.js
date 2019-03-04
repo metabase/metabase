@@ -54,7 +54,7 @@ describe("StructuredQuery FilterWrapper", () => {
       expect(f.isOperator("=")).toBe(true);
       expect(f.isOperator(f.operatorOptions()[0])).toBe(true);
     });
-    it("should return false for differe operators", () => {
+    it("should return false for different operators", () => {
       const f = q.filters()[0];
       expect(f.isOperator("!=")).toBe(false);
       expect(f.isOperator(f.operatorOptions()[1])).toBe(false);
@@ -68,7 +68,7 @@ describe("StructuredQuery FilterWrapper", () => {
         f.isDimension(Dimension.parseMBQL(["field-id", ORDERS_TOTAL_FIELD_ID])),
       ).toBe(true);
     });
-    it("should return false for differe dimensions", () => {
+    it("should return false for different dimensions", () => {
       const f = q.filters()[0];
       expect(f.isDimension(["field-id", PRODUCT_TILE_FIELD_ID])).toBe(false);
       expect(
