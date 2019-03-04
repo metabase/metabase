@@ -544,7 +544,11 @@ describe("StructuredQuery unit tests", () => {
 
   describe("FIELD REFERENCE METHODS", () => {
     describe("fieldReferenceForColumn", () => {
-      pending();
+      it('should return `["field-id", 1]` for a normal column', () => {
+        expect(
+          query.fieldReferenceForColumn({ id: ORDERS_TOTAL_FIELD_ID }),
+        ).toEqual(["field-id", ORDERS_TOTAL_FIELD_ID]);
+      });
     });
 
     describe("parseFieldReference", () => {
