@@ -68,7 +68,7 @@ describe("StructuredQuery FilterWrapper", () => {
         f.isDimension(Dimension.parseMBQL(["field-id", ORDERS_TOTAL_FIELD_ID])),
       ).toBe(true);
     });
-    it("should return false for differe dimensions", () => {
+    it("should return false for different dimensions", () => {
       const f = q.filters()[0];
       expect(f.isDimension(["field-id", PRODUCT_TILE_FIELD_ID])).toBe(false);
       expect(
