@@ -9,7 +9,7 @@ const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
-// are able to avoid circular dependency errors in integrated tests
+// are able to avoid circular dependency errors in e2e tests
 export function columnsAreValid(colNames, data, filter = () => true) {
   if (typeof colNames === "string") {
     colNames = [colNames];

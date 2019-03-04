@@ -147,6 +147,7 @@
     "DATETIME"  :type/DateTime
     "TIMESTAMP" :type/DateTime
     "TIME"      :type/Time
+    "NUMERIC"   :type/Decimal
     :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -217,6 +218,7 @@
   {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
    "FLOAT"     (constantly #(Double/parseDouble %))
    "INTEGER"   (constantly #(Long/parseLong %))
+   "NUMERIC"   (constantly #(bigdec %))
    "RECORD"    (constantly identity)
    "STRING"    (constantly identity)
    "DATE"      parse-timestamp-str
@@ -504,12 +506,12 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defmethod driver/execute-query :bigquery [_ {{sql :query, params :params, :keys [table-name mbql?]} :native
-                                              :as                                                    outer-query}]
+(defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
+                                                   :as                                                    outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
+                                                                     (unprepare/unprepare driver (cons sql params))
                                                                      sql))]
         (process-native* database sql)))))
 

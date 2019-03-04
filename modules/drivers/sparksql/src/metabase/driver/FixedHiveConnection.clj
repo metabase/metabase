@@ -1,11 +1,10 @@
 (ns metabase.driver.FixedHiveConnection
-  (:import [org.apache.hive.jdbc HiveConnection]
-           [java.sql ResultSet SQLException]
-           java.util.Properties)
   (:gen-class
    :extends org.apache.hive.jdbc.HiveConnection
    :init init
-   :constructors {[String java.util.Properties] [String java.util.Properties]}))
+   :constructors {[String java.util.Properties] [String java.util.Properties]})
+  (:import [java.sql ResultSet SQLException]
+           org.apache.hive.jdbc.HiveConnection))
 
 (defn -init
   "Initializes the connection"

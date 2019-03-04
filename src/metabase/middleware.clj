@@ -1,6 +1,6 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+  (:require [cheshire.generate :refer [add-encoder encode-str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]

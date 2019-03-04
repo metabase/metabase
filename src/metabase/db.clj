@@ -30,21 +30,22 @@
 (def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
-  (delay (if (config/config-bool :mb-db-in-memory)
-           ;; In-memory (i.e. test) DB
-           "mem:metabase;DB_CLOSE_DELAY=-1"
-           ;; File-based DB
-           (let [db-file-name (config/config-str :mb-db-file)
-                 db-file      (io/file db-file-name)
-                 ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
-                 ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
-                 ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
-                 options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;"]
-             (apply str "file:" (if (.isAbsolute db-file)
-                                  ;; when an absolute path is given for the db file then don't mess with it
-                                  [db-file-name options]
-                                  ;; if we don't have an absolute path then make sure we start from "user.dir"
-                                  [(System/getProperty "user.dir") "/" db-file-name options]))))))
+  (delay
+   (if (config/config-bool :mb-db-in-memory)
+     ;; In-memory (i.e. test) DB
+     "mem:metabase;DB_CLOSE_DELAY=-1"
+     ;; File-based DB
+     (let [db-file-name (config/config-str :mb-db-file)
+           ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
+           ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
+           ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
+           ;;
+           ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+           options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+       ;; H2 wants file path to always be absolute
+       (str "file:"
+            (.getAbsolutePath (io/file db-file-name))
+             options)))))
 
 (def ^:private jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
@@ -88,25 +89,34 @@
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
-(def db-connection-details
+(def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
-  (delay (or @connection-string-details
-             (case (db-type)
-               :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
-                          :db       @db-file}
-               :mysql    {:type     :mysql
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}
-               :postgres {:type     :postgres
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}))))
+  (delay
+   (when (= (db-type) :h2)
+     (log/warn
+      (u/format-color 'red
+          (str
+           (trs "WARNING: Using Metabase with an H2 application database is not recomended for production deployments.")
+           (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
+           (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
+           (trs "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information.")))))
+   (or @connection-string-details
+       (case (db-type)
+         :h2       {:type     :h2 ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
+                    :db       @db-file}
+         :mysql    {:type     :mysql
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}
+         :postgres {:type     :postgres
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for JDBC."
@@ -125,7 +135,7 @@
 ;;; |                                                    MIGRATE!                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "liquibase.yaml")
+(def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
@@ -410,7 +420,7 @@
                    sql
                    "\n\n"
                    "Once your database is updated try running the application again.\n"))
-    (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (throw (Exception. "Database requires manual upgrade."))))
 
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -431,7 +441,10 @@
     ;; first place, and launch normally.
     (u/auto-retry 1
       (migrate! db-details :up))
-    (print-migrations-and-quit! db-details))
+    ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
+    ;; to start normally
+    (when (has-unrun-migrations? (conn->liquibase))
+      (print-migrations-and-quit! db-details)))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!
@@ -447,11 +460,12 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (verify-db-connection db-details)
-  (run-schema-migrations! auto-migrate db-details)
-  (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!)
-  (reset! setup-db-has-been-called? true))
+  (u/with-us-locale
+    (verify-db-connection db-details)
+    (run-schema-migrations! auto-migrate db-details)
+    (create-connection-pool! (jdbc-details db-details))
+    (run-data-migrations!)
+    (reset! setup-db-has-been-called? true)))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

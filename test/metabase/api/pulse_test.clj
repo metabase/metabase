@@ -7,6 +7,7 @@
              [middleware :as middleware]
              [util :as u]]
             [metabase.api.card-test :as card-api-test]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -46,19 +47,13 @@
                         :created_at]))
 
 (defn- pulse-details [pulse]
-  (tu/match-$ pulse
-    {:id                  $
-     :name                $
-     :created_at          $
-     :updated_at          $
-     :creator_id          $
-     :creator             (user-details (db/select-one 'User :id (:creator_id pulse)))
-     :cards               (map pulse-card-details (:cards pulse))
-     :channels            (map pulse-channel-details (:channels pulse))
-     :collection_id       $
-     :collection_position $
-     :archived            $
-     :skip_if_empty       $}))
+  (merge
+   (select-keys
+    pulse
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty])
+   {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
+    :cards    (map pulse-card-details (:cards pulse))
+    :channels (map pulse-channel-details (:channels pulse))}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -927,8 +922,8 @@
 (expect
   [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
   (tu/with-temporary-setting-values [slack-token "something"]
-    (with-redefs [metabase.integrations.slack/channels-list (constantly [{:name "foo"}])
-                  metabase.integrations.slack/users-list (constantly [{:name "bar"}])]
+    (with-redefs [slack/channels-list (constantly [{:name "foo"}])
+                  slack/users-list    (constantly [{:name "bar"}])]
       (-> ((user->client :rasta) :get 200 "pulse/form_input")
           (get-in [:channels :slack :fields])))))
 

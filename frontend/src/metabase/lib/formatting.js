@@ -33,7 +33,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -717,7 +717,7 @@ export function stripId(name: string) {
 }
 
 export function slugify(name: string) {
-  return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  return name && name.toLowerCase().replace(/[^a-z\u0400-\u04ff0-9_]/g, "_");
 }
 
 export function assignUserColors(

@@ -4,10 +4,6 @@
   :dependencies
   [[com.google.apis/google-api-services-bigquery "v2-rev20181202-1.27.0"]]
 
-  :jvm-opts
-  ["-XX:+IgnoreUnrecognizedVMOptions"
-   "--add-modules=java.xml.bind"]
-
   :profiles
   {:provided
    {:dependencies

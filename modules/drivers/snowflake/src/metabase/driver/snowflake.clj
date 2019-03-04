@@ -4,6 +4,7 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -16,15 +17,19 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]]
             [toucan.db :as db])
-  (:import java.sql.Time))
+  (:import java.sql.Time
+           java.util.Date
+           net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
 
@@ -196,3 +201,19 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake [_]
   #{"INFORMATION_SCHEMA"})
+
+(defmethod driver/can-connect? :snowflake [driver {:keys [db], :as details}]
+  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
+             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
+         (try
+           (jdbc/query spec sql)
+           true
+           (catch SnowflakeSQLException e
+             (log/error e (tru "Snowflake Database does not exist."))
+             false)))))
+
+(defmethod unprepare/unprepare-value [:snowflake Date] [_ value]
+  (format "timestamp '%s'" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:snowflake Date])

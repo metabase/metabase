@@ -29,16 +29,16 @@
   "Execute the query for a single card with CARD-ID. OPTIONS are passed along to `dataset-query`."
   [card-id & {:as options}]
   {:pre [(integer? card-id)]}
-  (when-let [card (Card :id card-id, :archived false)]
-    (let [{:keys [creator_id dataset_query]} card]
-      (try
+  (try
+    (when-let [card (Card :id card-id, :archived false)]
+      (let [{:keys [creator_id dataset_query]} card]
         {:card   card
          :result (qp/process-query-and-save-with-max! dataset_query (merge {:executed-by creator_id,
                                                                             :context     :pulse,
                                                                             :card-id     card-id}
-                                                                           options))}
-        (catch Throwable t
-          (log/warn (format "Error running card query (%n)" card-id) t))))))
+                                                                           options))}))
+    (catch Throwable t
+      (log/warn t (trs "Error running query for Card {0}" card-id)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -65,12 +65,12 @@
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-      {:title      card-name
+      {:title                  card-name
        :attachment-bytes-thunk (fn [] (render/render-pulse-card-to-png (defaulted-timezone card) card result))
-       :title_link (urls/card-url card-id)
-       :attachment-name "image.png"
-       :channel-id channel-id
-       :fallback   card-name})))
+       :title_link             (urls/card-url card-id)
+       :attachment-name        "image.png"
+       :channel-id             channel-id
+       :fallback               card-name})))
 
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
@@ -105,6 +105,7 @@
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (Exception. (str (tru "Unable to compare results to goal for alert.")
+                              " "
                               (tru "Question ID is ''{0}'' with visualization settings ''{1}''"
                                    (get-in results [:card :id])
                                    (pr-str (get-in results [:card :visualization_settings])))))))
@@ -160,8 +161,8 @@
 (defmethod create-notification [:pulse :slack]
   [pulse results {{channel-id :channel} :details :as channel}]
   (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Slack" (:id pulse) (:name pulse)))
-  {:channel-id channel-id
-   :message (str "Pulse: " (:name pulse))
+  {:channel-id  channel-id
+   :message     (str "Pulse: " (:name pulse))
    :attachments (create-slack-attachment-data results)})
 
 (defmethod create-notification [:alert :email]
@@ -230,7 +231,7 @@
         (db/delete! Pulse :id (:id pulse)))
 
       (for [channel-id channel-ids
-            :let [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
+            :let       [channel (some #(when (= channel-id (:id %)) %) (:channels pulse))]]
         (create-notification pulse results channel)))))
 
 (defn send-pulse!

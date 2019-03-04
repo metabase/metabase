@@ -230,27 +230,78 @@
 ;; breadcrumbing in the frontend.
 
 (def VisibleCollections
-  "Includes the possible values for visible collections, either `:all` or a set of ids"
-  (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero}))
+  "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
+  represent the root collection."
+  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZero)}))
 
 (s/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
   permissions set allows you to view. For those with *root* permissions (e.g., an admin), this function will return
-  `:all`, signifying that you are allowed to view all Collections.
+  `:all`, signifying that you are allowed to view all Collections. For *Root Collection* permissions, the response
+  will include \"root\".
 
-    (permissions-set->visible-collection-ids #{\"/collection/10/\"}) ; -> #{10}
-    (permissions-set->visible-collection-ids #{\"/\"})               ; -> :all"
+    (permissions-set->visible-collection-ids #{\"/collection/10/\"})   ; -> #{10}
+    (permissions-set->visible-collection-ids #{\"/\"})                 ; -> :all
+    (permissions-set->visible-collection-ids #{\"/collection/root/\"}) ; -> #{\"root\"}
+
+  You probably don't want to consume the results of this function directly -- most of the time, the reason you are
+  calling this function in the first place is because you want add a `FILTER` clause to an application DB query (e.g.
+  to only fetch Cards that belong to Collections visible to the current User). Use
+  `visible-collection-ids->honeysql-filter-clause` to generate a filter clause that handles all possible outputs of
+  this function correctly.
+
+  !!! IMPORTANT NOTE !!!
+
+  Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
+  SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
+  `collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
   [permissions-set :- #{perms/UserPath}]
   (if (contains? permissions-set "/")
     :all
-    (set (for [path  permissions-set
-               :let  [[_ id-str] (re-matches #"/collection/(\d+)/(read/)?" path)]
-               :when id-str]
-           (Integer/parseInt id-str)))))
+    (set
+     (for [path  permissions-set
+           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
+           :when id-str]
+       (cond-> id-str
+         (not= id-str "root") Integer/parseInt)))))
+
+
+(s/defn visible-collection-ids->honeysql-filter-clause
+  "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
+  returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
+  function, including `:all` and `nil` Collection IDs (for the Root Collection).
+
+  Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
+
+    (db/select Card
+      {:where (collection/visible-collection-ids->honeysql-filter-clause
+               (collection/permissions-set->visible-collection-ids
+                @*current-user-permissions-set*))})"
+  ([collection-ids :- VisibleCollections]
+   (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
+
+  ([collection-id-field :- s/Keyword, collection-ids :- VisibleCollections]
+   (if (= collection-ids :all)
+     true
+     (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
+           non-root-clause                    (when (seq non-root-ids)
+                                                [:in collection-id-field non-root-ids])
+           root-clause                        (when (seq root-id)
+                                                [:= collection-id-field nil])]
+       (cond
+         (and root-clause non-root-clause)
+         [:or root-clause non-root-clause]
+
+         (or root-clause non-root-clause)
+         (or root-clause non-root-clause)
+
+         :else
+         false)))))
+
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
   "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `permissions-set->visibile-collection-ids` above), calculate the 'effective' location path (excluding IDs of
+  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
   Collections for which we do not have read perms) we should show to the User.
 
   When called with a single argument, `collection`, this is used as a hydration function to hydrate
@@ -262,7 +313,7 @@
      (effective-location-path (:location collection)
                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
-  ([real-location-path :- LocationPath, allowed-collection-ids :- (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero})]
+  ([real-location-path :- LocationPath, allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
      real-location-path
      (apply location-path (for [id    (location-path->ids real-location-path)
@@ -743,10 +794,11 @@
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
-(def ^:dynamic *allow-deleting-personal-collections*
-  "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
-  deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
-  archived; thus this code is used solely by our test suite, by things such as the `with-temp` macros.)"
+(defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
+  in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
+  deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
+  macros.)"}
+  *allow-deleting-personal-collections*
   false)
 
 (defn- pre-delete [collection]

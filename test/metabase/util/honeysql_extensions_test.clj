@@ -1,7 +1,8 @@
 (ns metabase.util.honeysql-extensions-test
   (:require [expectations :refer :all]
-            [honeysql.format :as hformat]
-            [metabase.util.honeysql-extensions :as hsql-ext])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]])
   (:import java.util.Locale))
 
 ;; Basic format test not including a specific quoting option
@@ -35,3 +36,9 @@
   ["\"SETTING\""]
   (with-locale "tr"
    (hformat/format :setting :quoting :h2)))
+
+;; test ToSql behavior for Ratios (#9246). Should convert to a double rather than leaving it as a division operation.
+;; The double itself should get converted to a numeric literal
+(expect
+  ["SELECT 0.1 AS one_tenth"]
+  (hsql/format {:select [[(/ 1 10) :one_tenth]]}))

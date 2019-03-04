@@ -3,7 +3,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]]
             [postal
              [core :as postal]
@@ -12,13 +12,25 @@
   (:import javax.mail.Session))
 
 ;;; CONFIG
-;; TODO - smtp-port should be switched to type :integer
 
-(defsetting email-from-address  (tru "Email address you want to use as the sender of Metabase.") :default "notifications@metabase.com")
-(defsetting email-smtp-host     (tru "The address of the SMTP server that handles your emails."))
-(defsetting email-smtp-username (tru "SMTP username."))
-(defsetting email-smtp-password (tru "SMTP password."))
-(defsetting email-smtp-port     (tru "The port your SMTP server uses for outgoing emails."))
+(defsetting email-from-address
+  (tru "Email address you want to use as the sender of Metabase.")
+  :default "notifications@metabase.com")
+
+(defsetting email-smtp-host
+  (tru "The address of the SMTP server that handles your emails."))
+
+(defsetting email-smtp-username
+  (tru "SMTP username."))
+
+(defsetting email-smtp-password
+  (tru "SMTP password.")
+  :sensitive? true)
+
+;; TODO - smtp-port should be switched to type :integer
+(defsetting email-smtp-port
+  (tru "The port your SMTP server uses for outgoing emails."))
+
 (defsetting email-smtp-security
   (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
   :default (tru "none")

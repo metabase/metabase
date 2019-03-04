@@ -2,11 +2,7 @@
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[net.snowflake/snowflake-jdbc "3.6.20"]]
-
-  :jvm-opts
-  ["-XX:+IgnoreUnrecognizedVMOptions"
-   "--add-modules=java.xml.bind"]
+  [[net.snowflake/snowflake-jdbc "3.6.21"]]
 
   :profiles
   {:provided

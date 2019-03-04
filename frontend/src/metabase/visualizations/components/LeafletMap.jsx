@@ -11,7 +11,7 @@ import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateLatLonFilter } from "metabase/qb/lib/actions";
+import { updateLatLonFilter } from "metabase/modes/lib/actions";
 
 export default class LeafletMap extends Component {
   componentDidMount() {

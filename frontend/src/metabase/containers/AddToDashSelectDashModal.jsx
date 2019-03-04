@@ -7,13 +7,17 @@ import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent.jsx";
-import DashboardForm from "metabase/containers/DashboardForm.jsx";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Dashboard, DashboardId } from "metabase/meta/types/Dashboard";
+import type {
+  Dashboard as DashboardType,
+  DashboardId,
+} from "metabase/meta/types/Dashboard";
 import type { Card } from "metabase/meta/types/Card";
+
+import Dashboard from "metabase/entities/dashboards";
 
 export default class AddToDashSelectDashModal extends Component {
   state = {
@@ -25,7 +29,7 @@ export default class AddToDashSelectDashModal extends Component {
     onClose: () => void,
     onChangeLocation: string => void,
     // via connect:
-    createDashboard: Dashboard => any,
+    createDashboard: DashboardType => any,
   };
 
   addToDashboard = (dashboardId: DashboardId) => {
@@ -38,7 +42,7 @@ export default class AddToDashSelectDashModal extends Component {
   render() {
     if (this.state.shouldCreateDashboard) {
       return (
-        <DashboardForm
+        <Dashboard.ModalForm
           dashboard={{ collection_id: this.props.card.collection_id }}
           onSaved={dashboard => this.addToDashboard(dashboard.id)}
           onClose={() => this.setState({ shouldCreateDashboard: false })}

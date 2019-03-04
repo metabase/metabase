@@ -19,34 +19,53 @@
   (fn [_ _ dep] (dependency-type dep)))
 
 (defmethod dependency-satisfied? :default [_ {{plugin-name :name} :info} dep]
-  (log/error (u/format-color 'red
-                 (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
-             (trs "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:")
-             "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
+  (log/error
+   (u/format-color 'red
+       (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
+   (trs "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:")
+   "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
   false)
+
+(defonce ^:private already-logged (atom #{}))
+
+(defn log-once
+  "Log a message a single time, such as warning that a plugin cannot be initialized because of required dependencies.
+  Subsequent calls with duplicate messages are automatically ignored."
+  {:style/indent 1}
+  ([message]
+   (log-once nil message))
+
+  ([plugin-name-or-nil message]
+   (let [k [plugin-name-or-nil message]]
+     (when-not (contains? @already-logged k)
+       (swap! already-logged conj k)
+       (log/info message)))))
+
+(defn- warn-about-required-dependencies [plugin-name message]
+  (log-once plugin-name
+    (str (u/format-color 'red (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
+         " "
+         message)))
 
 (defmethod dependency-satisfied? :class
   [_ {{plugin-name :name} :info} {^String classname :class, message :message, :as dep}]
   (try
     (Class/forName classname false (classloader/the-classloader))
     (catch ClassNotFoundException _
-      (log/info (u/format-color 'red
-                    (trs "Metabase cannot initialize plugin {0} due to required dependencies." plugin-name))
-                (or message
-                    (trs "Class not found: {0}" classname)))
+      (warn-about-required-dependencies plugin-name (or message (trs "Class not found: {0}" classname)))
       false)))
 
 (defmethod dependency-satisfied? :plugin
   [initialized-plugin-names {{plugin-name :name} :info, :as info} {dep-plugin-name :plugin}]
-  (log/info (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
+  (log-once plugin-name (trs "Plugin ''{0}'' depends on plugin ''{1}''" plugin-name dep-plugin-name))
   ((set initialized-plugin-names) dep-plugin-name))
 
 (defn- all-dependencies-satisfied?*
   [initialized-plugin-names {:keys [dependencies], {plugin-name :name} :info, :as info}]
   (let [dep-satisfied? (fn [dep]
                          (u/prog1 (dependency-satisfied? initialized-plugin-names info dep)
-                           (log/debug
-                            (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))]
+                           (log-once plugin-name
+                             (trs "{0} dependency {1} satisfied? {2}" plugin-name (dissoc dep :message) (boolean <>)))))]
     (every? dep-satisfied? dependencies)))
 
 (defn all-dependencies-satisfied?
@@ -60,8 +79,8 @@
 
    (do
      (swap! plugins-with-unsatisfied-deps conj info)
-     (log/debug (u/format-color 'yellow
-                    (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
+     (log-once (u/format-color 'yellow
+                   (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
      false)))
 
 

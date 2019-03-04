@@ -32,7 +32,8 @@
   (datasets/when-testing-driver :bigquery
     (reduce (fn [acc env-var]
               (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
-            {} [:project-id :client-id :client-secret :access-token :refresh-token])))
+            {}
+            [:project-id :client-id :client-secret :access-token :refresh-token])))
 
 (def ^:private ^:const ^String project-id (:project-id details))
 
@@ -136,7 +137,7 @@
    :type/Date           :TIMESTAMP
    :type/DateTime       :TIMESTAMP
    :type/DateTimeWithTZ :TIMESTAMP
-   :type/Decimal        :FLOAT
+   :type/Decimal        :NUMERIC
    :type/Dictionary     :RECORD
    :type/Float          :FLOAT
    :type/Integer        :INTEGER

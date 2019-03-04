@@ -25,6 +25,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
+             [i18n :refer [trs]]
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
@@ -139,8 +140,8 @@
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
-                      (log/error e (str "Error cancelling query with id " id))))
-                  (log/warn "Client connection closed, no query-id found, can't cancel query"))
+                      (log/error e (trs "Error cancelling query with ID {0}" id))))
+                  (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
                 ;; Propogate the error so that any finalizers can still run
                 (throw e)))))))))
 
@@ -246,14 +247,19 @@
   [_ [_ value]]
   (hx/cast :time (time->str value (driver/report-timezone))))
 
-(defmethod driver/execute-query :presto [_ {database-id                  :database
-                                            :keys                        [settings]
-                                            {sql :query, params :params} :native
-                                            query-type                   :type
-                                            :as                          outer-query}]
+(defmethod unprepare/unprepare-value [:presto Date] [_ value]
+  (unprepare/unprepare-date-with-iso-8601-fn :from_iso8601_timestamp value))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:presto Date])
+
+(defmethod driver/execute-query :presto [driver {database-id                  :database
+                                                 :keys                        [settings]
+                                                 {sql :query, params :params} :native
+                                                 query-type                   :type
+                                                 :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
-                                    (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn :from_iso8601_timestamp))
+                                    (unprepare/unprepare driver (cons sql params)))
         details                (merge (:details (qp.store/database))
                                       settings)
         {:keys [columns rows]} (execute-presto-query! details sql)

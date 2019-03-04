@@ -11,10 +11,14 @@
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]))
+             [i18n :refer [tru]]])
+  (:import java.sql.Time
+           java.util.Date))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -146,6 +150,12 @@
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)
                                                   2))))
+
+
+(defmethod unprepare/unprepare-value [:h2 Date] [_ value]
+  (format "timestamp '%s'" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:h2 Date])
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

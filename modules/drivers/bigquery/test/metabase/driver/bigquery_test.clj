@@ -18,6 +18,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :refer [expect-with-driver]]
+            [metabase.test.util.timezone :as tu.tz]
             [toucan.util.test :as tt]))
 
 ;; Test native queries
@@ -159,9 +160,9 @@
        "ORDER BY `name` ASC")
   ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks that and
   ;; make it return `true` so this test proceeds as expected
-  (with-redefs [driver/supports?                (constantly true)]
-    (tu/with-temp-vals-in-db 'Field (data/id :venues :category_id) {:fk_target_field_id (data/id :categories :id)
-                                                                    :special_type       "type/FK"}
+  (with-redefs [driver/supports? (constantly true)]
+    (tu/with-temp-vals-in-db Field (data/id :venues :category_id) {:fk_target_field_id (data/id :categories :id)
+                                                                   :special_type       "type/FK"}
       (let [results (qp/process-query
                      {:database (data/id)
                       :type     "query"
@@ -200,7 +201,7 @@
 ;; compared
 (expect-with-driver :bigquery
   "2018-08-31T00:00:00.000-05:00"
-  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+   (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
                                   :details (assoc (:details (Database (data/id)))
                                              :use-jvm-timezone true)}]]
@@ -209,7 +210,7 @@
 ;; Similar to the above test, but covers a positive offset
 (expect-with-driver :bigquery
   "2018-08-31T00:00:00.000+07:00"
-  (tu/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
+  (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
     (tt/with-temp* [Database [db {:engine :bigquery
                                   :details (assoc (:details (Database (data/id)))
                                              :use-jvm-timezone true)}]]

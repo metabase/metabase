@@ -69,5 +69,6 @@ There are a few ways alerts can be stopped:
 
 ---
 
-## That’s it!
+## That's it!
+
 If you still have questions about using alerts, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!

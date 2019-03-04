@@ -5,9 +5,9 @@
              [format :as tf]]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
-            [schema.core :as s]
+            [metabase.models.params :as params]
             [metabase.util.schema :as su]
-            [metabase.models.params :as params])
+            [schema.core :as s])
   (:import [org.joda.time DateTime DateTimeConstants]))
 
 (s/defn date-type?

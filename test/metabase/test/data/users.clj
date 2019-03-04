@@ -155,14 +155,6 @@
   (create-users-if-needed! username)
   (partial client-fn username))
 
-
-(defn ^:deprecated delete-temp-users!
-  "Delete all users besides the 4 persistent test users.
-  This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to
-  remove this. (TODO)"
-  []
-  (db/delete! User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
-
 (defn do-with-test-user
   "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
   [user-kwd f]

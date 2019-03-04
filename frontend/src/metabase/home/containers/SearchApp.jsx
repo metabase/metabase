@@ -6,7 +6,7 @@ import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
 
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
@@ -37,11 +37,7 @@ export default class SearchApp extends React.Component {
               icon: "all",
             })}
           />
-          <EntityListLoader
-            entityType="search"
-            entityQuery={location.query}
-            wrapped
-          >
+          <Search.ListLoader query={location.query} wrapped>
             {({ list }) => {
               if (list.length === 0) {
                 return (
@@ -162,7 +158,7 @@ export default class SearchApp extends React.Component {
                 </Box>
               );
             }}
-          </EntityListLoader>
+          </Search.ListLoader>
         </Box>
       </Box>
     );
