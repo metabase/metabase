@@ -4,6 +4,7 @@ import { t, ngettext, msgid } from "c-3po";
 import Icon from "metabase/components/Icon";
 
 import { stripId } from "metabase/lib/formatting";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import Query_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
@@ -626,8 +627,10 @@ export class AggregationDimension extends Dimension {
   }
 
   displayName(): string {
-    const aggregation = this.aggregation();
-    return aggregation ? aggregation[0] : "[Unknown]";
+    const name = this.columnName();
+    return name
+      ? getFriendlyName({ name: name, display_name: name })
+      : `[${t`Unknown`}]`;
   }
 
   fieldDimension() {
