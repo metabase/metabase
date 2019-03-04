@@ -510,10 +510,12 @@
                                                    :as                                                    outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
-      (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare driver (cons sql params))
-                                                                     sql))]
-        (process-native* database sql)))))
+      (let [comment (str "-- " (qputil/query->remark outer-query) "\n")
+            sql (cond->> (str (if (seq params)
+                                (unprepare/unprepare driver (cons sql params))
+                                sql))
+                        (get-in database [:details :add-comment]) (str comment)))]
+        (process-native* database sql))))
 
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
 

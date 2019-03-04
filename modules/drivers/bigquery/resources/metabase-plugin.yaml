@@ -36,6 +36,11 @@ driver:
       display-name: Use JVM Time Zone
       default: false
       type: boolean
+    - name: add-comment
+      display-name: Add SQL comment from queries
+      default: true
+      type: boolean
+      required: true
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery
