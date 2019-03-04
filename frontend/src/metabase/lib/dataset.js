@@ -9,11 +9,11 @@ import type {
   DatasetData,
 } from "metabase/meta/types/Dataset";
 import type { Card } from "metabase/meta/types/Card";
-import type { ConcreteField } from "metabase/meta/types/Query";
+import type { Field as FieldReference } from "metabase/meta/types/Query";
 
 type ColumnSetting = {
   name: ColumnName,
-  fieldRef?: ConcreteField,
+  fieldRef?: FieldReference,
   enabled: boolean,
 };
 
@@ -39,15 +39,15 @@ export const rangeForValue = (
 };
 
 /**
- * Returns a MBQL field reference (ConcreteField) for a given result dataset column
+ * Returns a MBQL field reference (FieldReference) for a given result dataset column
  * @param  {Column} column Dataset result column
  * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
- * @return {?ConcreteField} MBQL field reference
+ * @return {?FieldReference} MBQL field reference
  */
 export function fieldRefForColumn(
   column: Column,
   columns?: Column[],
-): ?ConcreteField {
+): ?FieldReference {
   if (column.id != null) {
     if (Array.isArray(column.id)) {
       // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
@@ -137,7 +137,10 @@ export function syncQueryFields(card: Card, cols: Column[]): void {
   }
 }
 
-export function getExistingFields(card: Card, cols: Column[]): ConcreteField[] {
+export function getExistingFields(
+  card: Card,
+  cols: Column[],
+): FieldReference[] {
   const query = card.dataset_query.query;
   if (query.fields && query.fields > 0) {
     return query.fields;

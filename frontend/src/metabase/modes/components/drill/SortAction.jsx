@@ -1,6 +1,5 @@
 /* @flow */
 
-import Query from "metabase/lib/query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
