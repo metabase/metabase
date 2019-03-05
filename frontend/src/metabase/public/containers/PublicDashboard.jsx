@@ -81,6 +81,7 @@ type Props = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @DashboardControls
+// NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {
   props: Props;
 
@@ -110,6 +111,10 @@ export default class PublicDashboard extends Component {
       console.error(error);
       setErrorPage(error);
     }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelFetchDashboardCardData();
   }
 
   componentWillReceiveProps(nextProps: Props) {

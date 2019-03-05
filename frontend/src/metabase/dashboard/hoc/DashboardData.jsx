@@ -91,6 +91,10 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.load(this.props);
       }
 
+      componentWillUnmount() {
+        this.props.cancelFetchDashboardCardData();
+      }
+
       componentWillReceiveProps(nextProps: Props) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);

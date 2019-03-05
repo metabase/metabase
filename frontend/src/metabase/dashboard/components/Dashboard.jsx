@@ -123,6 +123,7 @@ type State = {
   error: ?ApiError,
 };
 
+// NOTE: move DashboardControls HoC to container
 @DashboardControls
 export default class Dashboard extends Component {
   props: Props;
@@ -159,6 +160,7 @@ export default class Dashboard extends Component {
     isEditable: true,
   };
 
+  // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
   }
@@ -172,6 +174,10 @@ export default class Dashboard extends Component {
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelFetchDashboardCardData();
   }
 
   async loadDashboard(dashboardId: DashboardId) {
