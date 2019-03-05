@@ -96,10 +96,6 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  const dataOffset =
-    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
@@ -136,6 +132,17 @@ export function applyChartTimeseriesXAxis(
         (dimensionColumn = { ...dimensionColumn, unit: "month" }),
           (tickInterval = { interval: "month", count: 1 });
       }
+    }
+
+    // get the data's timezone offset from the first non-null row.
+    let dataOffset = 0;
+    let firstNonNullRow = firstSeries.data.rows[0][0];
+    if (!firstNonNullRow && firstSeries.data.rows[1]) {
+      firstNonNullRow = firstSeries.data.rows[1][0];
+    }
+    if (firstNonNullRow) {
+      dataOffset =
+        parseTimestamp(firstNonNullRow, dimensionColumn.unit).utcOffset() / 60;
     }
 
     chart.xAxis().tickFormat(timestamp => {
