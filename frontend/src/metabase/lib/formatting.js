@@ -261,7 +261,7 @@ function formatNumberCompact(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 

@@ -35,6 +35,12 @@ describe("formatting", () => {
         expect(formatNumber(0.01, { compact: true })).toEqual("~ 0");
         expect(formatNumber(-0.01, { compact: true })).toEqual("~ 0");
       });
+      it("should round up and down", () => {
+        expect(formatNumber(1.01, { compact: true })).toEqual("1");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("-1");
+        expect(formatNumber(1.9, { compact: true })).toEqual("2");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("-2");
+      });
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
