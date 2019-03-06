@@ -17,6 +17,15 @@
        ffirst
        double))
 
+;; Test normalization
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+  0.94
+  (->> {:aggregation [["share" ["<" ["field-id" (data/id :venues :price)] 4]]]}
+       (data/run-mbql-query venues)
+       rows
+       ffirst
+       double))
+
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   0.17
   (->> {:aggregation [[:share [:and [:< [:field-id (data/id :venues :price)] 4]
