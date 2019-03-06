@@ -166,6 +166,9 @@ export type Entity = {
   writableProperties?: string[],
   getAnalyticsMetadata?: () => any,
 
+  normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
+  normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
+
   HACK_getObjectFromAction: (action: Action) => any,
 };
 
@@ -252,6 +255,23 @@ export function createEntity(def: EntityDefinition): Entity {
     }
   }
 
+  // normalize helpers
+  entity.normalize = (object, schema = entity.schema) => ({
+    // include raw `object` (and alias under nameOne) for convienence
+    object,
+    [entity.nameOne]: object,
+    // include standard normalizr properties, `result` and `entities`
+    ...normalize(object, schema),
+  });
+
+  entity.normalizeList = (list, schema = entity.schema) => ({
+    // include raw `list` (and alias under nameMany) for convienence
+    list,
+    [entity.nameMany]: list,
+    // include standard normalizr properties, `result` and `entities`
+    ...normalize(list, [schema]),
+  });
+
   entity.objectActions = {
     create: createThunkAction(
       CREATE_ACTION,
@@ -267,21 +287,14 @@ export function createEntity(def: EntityDefinition): Entity {
         );
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const object = await entity.api.create(
-            getWritableProperties(entityObject),
+          const result = entity.normalize(
+            await entity.api.create(getWritableProperties(entityObject)),
           );
-          const result = normalize(object, entity.schema);
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           return runActionDecorator(
             "create",
             "post",
-            {
-              // include raw object (and alias under nameOne) for convienence
-              object,
-              [entity.nameOne]: object,
-              // include normalizr properties "entities" and "result"
-              ...result,
-            },
+            result,
             entityObject,
             dispatch,
             getState,
@@ -308,10 +321,7 @@ export function createEntity(def: EntityDefinition): Entity {
           requestStatePath: getObjectStatePath(entityObject.id),
           existingStatePath: getObjectStatePath(entityObject.id),
           getData: async () =>
-            normalize(
-              await entity.api.get({ id: entityObject.id }),
-              entity.schema,
-            ),
+            entity.normalize(await entity.api.get({ id: entityObject.id })),
         }),
     ),
 
@@ -343,10 +353,9 @@ export function createEntity(def: EntityDefinition): Entity {
         const statePath = [...getObjectStatePath(entityObject.id), "update"];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const object = await entity.api.update(
-            getWritableProperties(entityObject),
+          const result = entity.normalize(
+            await entity.api.update(getWritableProperties(entityObject)),
           );
-          const result = normalize(object, entity.schema);
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           if (notify) {
             if (notify.undo) {
@@ -376,13 +385,7 @@ export function createEntity(def: EntityDefinition): Entity {
           return runActionDecorator(
             "update",
             "post",
-            {
-              // include raw object (and alias under nameOne) for convienence
-              object,
-              [entity.nameOne]: object,
-              // include normalizr properties "entities" and "result"
-              ...result,
-            },
+            result,
             entityObject,
             dispatch,
             getState,
@@ -441,7 +444,7 @@ export function createEntity(def: EntityDefinition): Entity {
             if (fetched.data) {
               results = fetched.data;
             }
-            const { result, entities } = normalize(results, [entity.schema]);
+            const { result, entities } = entity.normalizeList(results);
             return {
               result,
               entities,

@@ -2,7 +2,6 @@
 
 import { createThunkAction } from "metabase/lib/redux";
 import { setRequestState } from "metabase/redux/requests";
-import { normalize } from "normalizr";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -100,9 +99,11 @@ const Dashboards = createEntity({
         ];
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const result = normalize(
-            await Dashboards.api.copy({ id: entityObject.id, ...overrides }),
-            Dashboards.schema,
+          const result = Dashboards.normalize(
+            await Dashboards.api.copy({
+              id: entityObject.id,
+              ...overrides,
+            }),
           );
           dispatch(setRequestState({ statePath, state: "LOADED" }));
           if (notify) {
