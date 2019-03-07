@@ -230,12 +230,12 @@ export function withRequestState(getRequestStatePath) {
     // thunk creator:
     (...args) =>
       // thunk:
-      (dispatch, getState) => {
+      async (dispatch, getState) => {
         const statePath = getRequestStatePath(...args);
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
 
-          const result = thunkCreator(...args)(dispatch, getState);
+          const result = await thunkCreator(...args)(dispatch, getState);
 
           // Dispatch `setRequestState` after clearing the call stack because
           // we want to the actual data to be updated before we notify
@@ -258,17 +258,17 @@ export function withRequestState(getRequestStatePath) {
  * Also tracks request state using withRequestState
  */
 export function withCachedDataAndRequestState(
-  getExistingDataPath,
+  getExistingStatePath,
   getRequestStatePath,
 ) {
   return compose(
-    withCachedData(getExistingDataPath, getRequestStatePath),
+    withCachedData(getExistingStatePath, getRequestStatePath),
     withRequestState(getRequestStatePath),
   );
 }
 
 // NOTE: this should be used together with withRequestState, probably via withCachedDataAndRequestState
-function withCachedData(getExistingDataPath, getRequestStatePath) {
+function withCachedData(getExistingStatePath, getRequestStatePath) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
@@ -278,28 +278,29 @@ function withCachedData(getExistingDataPath, getRequestStatePath) {
         const options = args[args.length - 1] || {};
         const { reload, properties } = options;
 
-        const existinDataPath = getExistingDataPath(...args);
+        const existingStatePath = getExistingStatePath(...args);
         const requestStatePath = [
           "requests",
           "states",
           ...getRequestStatePath(...args),
         ];
-        const existingData = getIn(getState(), existinDataPath);
+        const existingData = getIn(getState(), existingStatePath);
         const requestState = getIn(getState(), requestStatePath);
 
         // return existing data if
         if (
-          // we have existing data
-          existingData &&
           // we don't want to reload
           !reload &&
           // and either
           // we have a list of properties that all exist on the object
           ((properties &&
+            existingData &&
             _.all(properties, p => existingData[p] !== undefined)) ||
             // or we have a an non-error request state
             (requestState && !requestState.error))
         ) {
+          // TODO: if requestState is LOADING can we wait for the other reques
+          // to complete and return that result instead?
           return existingData;
         } else {
           return thunkCreator(...args)(dispatch, getState);
