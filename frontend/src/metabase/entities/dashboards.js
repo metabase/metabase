@@ -1,8 +1,8 @@
 /* @flow */
 
 import {
-  createThunkAction,
   compose,
+  withAction,
   withAnalytics,
   withRequestState,
 } from "metabase/lib/redux";
@@ -75,35 +75,33 @@ const Dashboards = createEntity({
     },
 
     // TODO move into more common area as copy is implemented for more entities
-    copy: createThunkAction(
-      COPY_ACTION,
-      compose(
-        // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
-        withRequestState(dashboard => [
-          "entities",
-          "dashboard",
-          dashboard.id,
-          "copy",
-        ]),
-        withAnalytics("entities", "dashboad", "copy"),
-      )(
-        (entityObject, overrides, { notify } = {}) => async (
-          dispatch,
-          getState,
-        ) => {
-          const result = Dashboards.normalize(
-            await Dashboards.api.copy({
-              id: entityObject.id,
-              ...overrides,
-            }),
-          );
-          if (notify) {
-            dispatch(addUndo(notify));
-          }
-          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-          return result;
-        },
-      ),
+    copy: compose(
+      withAction(COPY_ACTION),
+      // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
+      withRequestState(dashboard => [
+        "entities",
+        "dashboard",
+        dashboard.id,
+        "copy",
+      ]),
+      withAnalytics("entities", "dashboard", "copy"),
+    )(
+      (entityObject, overrides, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
+        const result = Dashboards.normalize(
+          await Dashboards.api.copy({
+            id: entityObject.id,
+            ...overrides,
+          }),
+        );
+        if (notify) {
+          dispatch(addUndo(notify));
+        }
+        dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+        return result;
+      },
     ),
   },
 

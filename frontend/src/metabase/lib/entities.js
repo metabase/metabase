@@ -2,10 +2,10 @@
 
 import {
   combineReducers,
-  createThunkAction,
   fetchData,
   handleEntities,
   compose,
+  withAction,
   withAnalytics,
   withRequestState,
 } from "metabase/lib/redux";
@@ -263,133 +263,127 @@ export function createEntity(def: EntityDefinition): Entity {
   // thunk decorators:
 
   // same as withRequestState, but with automatic prefix
-  entity.withRequestState = function(getSubStatePath) {
+  function withEntityRequestState(getSubStatePath) {
     return withRequestState((...args) => [
       "entities",
       entity.name,
       ...getSubStatePath(...args),
     ]);
-  };
+  }
 
   // same as withRequestState, but with category/label
-  entity.withAnalytics = function(action) {
+  function withEntityAnalytics(action) {
     return withAnalytics(
       "entities",
       entity.name,
       action,
       entity.getAnalyticsMetadata,
     );
-  };
+  }
 
-  function getActionDecorators(action) {
-    return [entity.actionDecorators[action]].filter(d => d);
+  function withEntityActionDecorators(action) {
+    return entity.actionDecorators[action] || (_ => _);
   }
 
   entity.objectActions = {
-    fetch: createThunkAction(
-      FETCH_ACTION,
-      compose(...getActionDecorators("fetch"))(
-        (entityObject, { reload = false, properties = null } = {}) => (
+    fetch: compose(
+      withAction(FETCH_ACTION),
+      withEntityActionDecorators("fetch"),
+    )(
+      (entityObject, { reload = false, properties = null } = {}) => (
+        dispatch,
+        getState,
+      ) =>
+        fetchData({
           dispatch,
           getState,
-        ) =>
-          fetchData({
-            dispatch,
-            getState,
-            reload,
-            properties,
-            requestStatePath: getObjectStatePath(entityObject.id),
-            existingStatePath: getObjectStatePath(entityObject.id),
-            getData: async () =>
-              entity.normalize(await entity.api.get({ id: entityObject.id })),
-          }),
-      ),
+          reload,
+          properties,
+          requestStatePath: getObjectStatePath(entityObject.id),
+          existingStatePath: getObjectStatePath(entityObject.id),
+          getData: async () =>
+            entity.normalize(await entity.api.get({ id: entityObject.id })),
+        }),
     ),
 
-    create: createThunkAction(
-      CREATE_ACTION,
-      compose(
-        entity.withAnalytics("create"),
-        entity.withRequestState(() => ["create"]),
-        ...getActionDecorators("create"),
-      )(entityObject => async (dispatch, getState) => {
-        return entity.normalize(
-          await entity.api.create(getWritableProperties(entityObject)),
+    create: compose(
+      withAction(CREATE_ACTION),
+      withEntityAnalytics("create"),
+      withEntityRequestState(() => ["create"]),
+      withEntityActionDecorators("create"),
+    )(entityObject => async (dispatch, getState) => {
+      return entity.normalize(
+        await entity.api.create(getWritableProperties(entityObject)),
+      );
+    }),
+
+    update: compose(
+      withAction(UPDATE_ACTION),
+      withEntityAnalytics("update"),
+      withEntityRequestState(object => [object.id, "update"]),
+      withEntityActionDecorators("update"),
+    )(
+      (entityObject, updatedObject = null, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
+        // save the original object for undo
+        const originalObject = entity.selectors.getObject(getState(), {
+          entityId: entityObject.id,
+        });
+        // If a second object is provided just take the id from the first and
+        // update it with all the properties in the second
+        // NOTE: this is so that the object.update(updatedObject) method on
+        // the default entity wrapper class works correctly
+        if (updatedObject) {
+          entityObject = { id: entityObject.id, ...updatedObject };
+        }
+
+        const result = entity.normalize(
+          await entity.api.update(getWritableProperties(entityObject)),
         );
-      }),
-    ),
 
-    update: createThunkAction(
-      UPDATE_ACTION,
-      compose(
-        entity.withAnalytics("update"),
-        entity.withRequestState(object => [object.id, "update"]),
-        ...getActionDecorators("update"),
-      )(
-        (entityObject, updatedObject = null, { notify } = {}) => async (
-          dispatch,
-          getState,
-        ) => {
-          // save the original object for undo
-          const originalObject = entity.selectors.getObject(getState(), {
-            entityId: entityObject.id,
-          });
-          // If a second object is provided just take the id from the first and
-          // update it with all the properties in the second
-          // NOTE: this is so that the object.update(updatedObject) method on
-          // the default entity wrapper class works correctly
-          if (updatedObject) {
-            entityObject = { id: entityObject.id, ...updatedObject };
+        if (notify) {
+          if (notify.undo) {
+            // pick only the attributes that were updated
+            // $FlowFixMe
+            const undoObject = _.pick(
+              originalObject,
+              ...Object.keys(updatedObject || {}),
+            );
+            dispatch(
+              addUndo({
+                actions: [
+                  entity.objectActions.update(
+                    entityObject,
+                    undoObject,
+                    // don't show an undo for the undo
+                    { notify: false },
+                  ),
+                ],
+                ...notify,
+              }),
+            );
+          } else {
+            dispatch(addUndo(notify));
           }
-
-          const result = entity.normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
-          );
-
-          if (notify) {
-            if (notify.undo) {
-              // pick only the attributes that were updated
-              // $FlowFixMe
-              const undoObject = _.pick(
-                originalObject,
-                ...Object.keys(updatedObject || {}),
-              );
-              dispatch(
-                addUndo({
-                  actions: [
-                    entity.objectActions.update(
-                      entityObject,
-                      undoObject,
-                      // don't show an undo for the undo
-                      { notify: false },
-                    ),
-                  ],
-                  ...notify,
-                }),
-              );
-            } else {
-              dispatch(addUndo(notify));
-            }
-          }
-          return result;
-        },
-      ),
+        }
+        return result;
+      },
     ),
 
-    delete: createThunkAction(
-      DELETE_ACTION,
-      compose(
-        entity.withAnalytics("delete"),
-        entity.withRequestState(object => [object.id, "delete"]),
-        ...getActionDecorators("delete"),
-      )(entityObject => async (dispatch, getState) => {
-        await entity.api.delete({ id: entityObject.id });
-        return {
-          entities: { [entity.name]: { [entityObject.id]: null } },
-          result: entityObject.id,
-        };
-      }),
-    ),
+    delete: compose(
+      withAction(DELETE_ACTION),
+      withEntityAnalytics("delete"),
+      withEntityRequestState(object => [object.id, "delete"]),
+      withEntityActionDecorators("delete"),
+    )(entityObject => async (dispatch, getState) => {
+      await entity.api.delete({ id: entityObject.id });
+      return {
+        entities: { [entity.name]: { [entityObject.id]: null } },
+        result: entityObject.id,
+      };
+    }),
 
     // user defined object actions should override defaults
     ...(def.objectActions || {}),
@@ -397,29 +391,28 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // ACTION CREATORS
   entity.actions = {
-    fetchList: createThunkAction(
-      FETCH_LIST_ACTION,
-      compose(...getActionDecorators("fetchList"))(
-        (entityQuery = null, { reload = false } = {}) => (dispatch, getState) =>
-          fetchData({
-            dispatch,
-            getState,
-            reload,
-            requestStatePath: getListStatePath(entityQuery),
-            existingStatePath: getListStatePath(entityQuery),
-            getData: async () => {
-              const fetched = await entity.api.list(entityQuery || {});
-              // for now at least paginated endpoints have a 'data' property that
-              // contains the actual entries, if that is on the response we should
-              // use that as the 'results'
-              const results = fetched.data ? fetched.data : fetched;
-              return {
-                ...entity.normalizeList(results),
-                entityQuery,
-              };
-            },
-          }),
-      ),
+    fetchList: compose(
+      withAction(FETCH_LIST_ACTION),
+      withEntityActionDecorators("fetchList"),
+    )((entityQuery = null, { reload = false } = {}) => (dispatch, getState) =>
+      fetchData({
+        dispatch,
+        getState,
+        reload,
+        requestStatePath: getListStatePath(entityQuery),
+        existingStatePath: getListStatePath(entityQuery),
+        getData: async () => {
+          const fetched = await entity.api.list(entityQuery || {});
+          // for now at least paginated endpoints have a 'data' property that
+          // contains the actual entries, if that is on the response we should
+          // use that as the 'results'
+          const results = fetched.data ? fetched.data : fetched;
+          return {
+            ...entity.normalizeList(results),
+            entityQuery,
+          };
+        },
+      }),
     ),
 
     // user defined actions should override defaults

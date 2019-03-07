@@ -13,24 +13,8 @@ import memoize from "lodash.memoize";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
-export function createThunkAction(actionType, actionThunkCreator) {
-  function fn(...actionArgs) {
-    let thunk = actionThunkCreator(...actionArgs);
-    return async function(dispatch, getState) {
-      try {
-        let payload = await thunk(dispatch, getState);
-        let dispatchValue = { type: actionType, payload };
-        dispatch(dispatchValue);
-
-        return dispatchValue;
-      } catch (error) {
-        dispatch({ type: actionType, payload: error, error: true });
-        throw error;
-      }
-    };
-  }
-  fn.toString = () => actionType;
-  return fn;
+export function createThunkAction(actionType, thunkCreator) {
+  return withAction(actionType)(thunkCreator);
 }
 
 // turns string timestamps into moment objects
@@ -202,6 +186,32 @@ export const createMemoizedSelector = createSelectorCreator(
 );
 
 // THUNK DECORATORS
+
+export function withAction(actionType) {
+  return creator => {
+    function newCreator(...actionArgs) {
+      const payloadOrThunk = creator(...actionArgs);
+      if (typeof payloadOrThunk === "function") {
+        return async (dispatch, getState) => {
+          try {
+            let payload = await payloadOrThunk(dispatch, getState);
+            let dispatchValue = { type: actionType, payload: payload };
+            dispatch(dispatchValue);
+
+            return dispatchValue;
+          } catch (error) {
+            dispatch({ type: actionType, payload: error, error: true });
+            throw error;
+          }
+        };
+      } else {
+        return { type: actionType, payload: payloadOrThunk };
+      }
+    }
+    newCreator.toString = () => actionType;
+    return newCreator;
+  };
+}
 
 export function withRequestState(getStatePath) {
   // thunk decorator:
