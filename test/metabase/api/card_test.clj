@@ -7,10 +7,10 @@
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api.card :as card-api]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -161,8 +161,8 @@
        3 (card-returned? :database db        card-2)))))
 
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "card"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "card"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
 ;; Make sure `model_id` is required when `f` is :database

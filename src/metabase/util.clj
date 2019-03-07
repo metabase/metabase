@@ -325,7 +325,8 @@
   [futur timeout-ms]
   (let [result (deref futur timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
+      (future-cancel futur)
+      (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
     result))
 
 (defmacro with-timeout

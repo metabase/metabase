@@ -1,11 +1,11 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [collection-test :as collection-test]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -38,8 +38,8 @@
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "user"))
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "user"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "user/current"))
 
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users

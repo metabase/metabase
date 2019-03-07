@@ -8,9 +8,10 @@
             [clojure.tools.logging :as log]
             [expectations :refer :all]
             [metabase
-             [core :as core]
              [db :as mdb]
+             [handler :as handler]
              [plugins :as plugins]
+             [server :as server]
              [task :as task]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
@@ -99,7 +100,7 @@
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
   ;; on a BG thread
-  (let [start-jetty! (future (core/start-jetty!))]
+  (let [start-web-server! (future (server/start-web-server! handler/app))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
@@ -118,14 +119,15 @@
         (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (vec (.getStackTrace e)))))
         (System/exit -1)))
 
-    @start-jetty!))
+    @start-web-server!))
 
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (core/stop-jetty!))
+  (server/stop-web-server!)
+  (shutdown-agents))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test

@@ -178,7 +178,7 @@
      [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
      :ring
-     {:handler      metabase.core/app
+     {:handler      metabase.handler/app
       :init         metabase.core/init!
       :destroy      metabase.core/destroy
       :reload-paths ["src"]}}]
