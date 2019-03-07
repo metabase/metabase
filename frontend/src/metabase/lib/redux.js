@@ -5,7 +5,7 @@ import { getIn } from "icepick";
 import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 // convienence
-export { combineReducers } from "redux";
+export { combineReducers, compose } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
 import { createSelectorCreator } from "reselect";
@@ -200,3 +200,53 @@ export const createMemoizedSelector = createSelectorCreator(
   memoize,
   (...args) => JSON.stringify(args),
 );
+
+// THUNK DECORATORS
+
+export function withRequestState(getStatePath) {
+  // thunk decorator:
+  return thunkCreator =>
+    // thunk creator:
+    (...args) =>
+      // thunk:
+      (dispatch, getState) => {
+        const statePath = getStatePath(...args);
+        try {
+          dispatch(setRequestState({ statePath, state: "LOADING" }));
+          const result = thunkCreator(...args)(dispatch, getState);
+          dispatch(setRequestState({ statePath, state: "LOADED" }));
+          return result;
+        } catch (error) {
+          console.error(`Request ${statePath.join(",")} failed:`, error);
+          dispatch(setRequestState({ statePath, error }));
+          throw error;
+        }
+      };
+}
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+
+export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
+  // thunk decorator:
+  return thunkCreator =>
+    // thunk creator:
+    (...args) =>
+      // thunk:
+      (dispatch, getState) => {
+        function get(valueOrFn, extra = {}) {
+          if (typeof valueOrFn === "function") {
+            return valueOrFn(args, { ...extra }, getState);
+          }
+        }
+        try {
+          const category = get(categoryOrFn);
+          const action = get(actionOrFn, { category });
+          const label = get(labelOrFn, { category, action });
+          const value = get(valueOrFn, { category, action, label });
+          MetabaseAnalytics.trackEvent(category, action, label, value);
+        } catch (error) {
+          console.warn("withAnalytics threw an error:", error);
+        }
+        return thunkCreator(...args)(dispatch, getState);
+      };
+}
