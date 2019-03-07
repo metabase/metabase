@@ -2,12 +2,12 @@
 
 import {
   combineReducers,
-  fetchData,
   handleEntities,
   compose,
   withAction,
   withAnalytics,
   withRequestState,
+  withCachedDataAndRequestState,
 } from "metabase/lib/redux";
 
 import { addUndo } from "metabase/redux/undo";
@@ -288,22 +288,13 @@ export function createEntity(def: EntityDefinition): Entity {
   entity.objectActions = {
     fetch: compose(
       withAction(FETCH_ACTION),
+      withCachedDataAndRequestState(
+        ({ id }) => [...getObjectStatePath(id)],
+        ({ id }) => [...getObjectStatePath(id), "fetch"],
+      ),
       withEntityActionDecorators("fetch"),
-    )(
-      (entityObject, { reload = false, properties = null } = {}) => (
-        dispatch,
-        getState,
-      ) =>
-        fetchData({
-          dispatch,
-          getState,
-          reload,
-          properties,
-          requestStatePath: getObjectStatePath(entityObject.id),
-          existingStatePath: getObjectStatePath(entityObject.id),
-          getData: async () =>
-            entity.normalize(await entity.api.get({ id: entityObject.id })),
-        }),
+    )(entityObject => async (dispatch, getState) =>
+      entity.normalize(await entity.api.get({ id: entityObject.id })),
     ),
 
     create: compose(
@@ -393,27 +384,21 @@ export function createEntity(def: EntityDefinition): Entity {
   entity.actions = {
     fetchList: compose(
       withAction(FETCH_LIST_ACTION),
-      withEntityActionDecorators("fetchList"),
-    )((entityQuery = null, { reload = false } = {}) => (dispatch, getState) =>
-      fetchData({
-        dispatch,
-        getState,
-        reload,
-        requestStatePath: getListStatePath(entityQuery),
-        existingStatePath: getListStatePath(entityQuery),
-        getData: async () => {
-          const fetched = await entity.api.list(entityQuery || {});
-          // for now at least paginated endpoints have a 'data' property that
-          // contains the actual entries, if that is on the response we should
-          // use that as the 'results'
-          const results = fetched.data ? fetched.data : fetched;
-          return {
-            ...entity.normalizeList(results),
-            entityQuery,
-          };
-        },
-      }),
-    ),
+      withCachedDataAndRequestState(
+        entityQuery => [...getListStatePath(entityQuery)],
+        entityQuery => [...getListStatePath(entityQuery), "fetch"],
+      ),
+    )((entityQuery = null) => async (dispatch, getState) => {
+      const fetched = await entity.api.list(entityQuery || {});
+      // for now at least paginated endpoints have a 'data' property that
+      // contains the actual entries, if that is on the response we should
+      // use that as the 'results'
+      const results = fetched.data ? fetched.data : fetched;
+      return {
+        ...entity.normalizeList(results),
+        entityQuery,
+      };
+    }),
 
     // user defined actions should override defaults
     ...entity.objectActions,

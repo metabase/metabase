@@ -8,6 +8,7 @@ import { setRequestState, clearRequestState } from "metabase/redux/requests";
 export { combineReducers, compose } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
+import { compose } from "redux";
 import { createSelectorCreator } from "reselect";
 import memoize from "lodash.memoize";
 
@@ -46,6 +47,7 @@ export const resourceListToMap = resources =>
     {},
   );
 
+// DEPRECATED
 export const fetchData = async ({
   dispatch,
   getState,
@@ -97,6 +99,7 @@ export const fetchData = async ({
   }
 };
 
+// DEPRECATED
 export const updateData = async ({
   dispatch,
   getState,
@@ -187,11 +190,15 @@ export const createMemoizedSelector = createSelectorCreator(
 
 // THUNK DECORATORS
 
+/**
+ * Decorator for turning a payload creator or thunk (including one returning a promise) into a flux standard action
+ */
 export function withAction(actionType) {
-  return creator => {
-    function newCreator(...actionArgs) {
-      const payloadOrThunk = creator(...actionArgs);
+  return payloadOrThunkCreator => {
+    function newCreator(...args) {
+      const payloadOrThunk = payloadOrThunkCreator(...args);
       if (typeof payloadOrThunk === "function") {
+        // thunk, return a new thunk
         return async (dispatch, getState) => {
           try {
             let payload = await payloadOrThunk(dispatch, getState);
@@ -205,6 +212,7 @@ export function withAction(actionType) {
           }
         };
       } else {
+        // payload, return an action
         return { type: actionType, payload: payloadOrThunk };
       }
     }
@@ -213,23 +221,88 @@ export function withAction(actionType) {
   };
 }
 
-export function withRequestState(getStatePath) {
+/**
+ * Decorator that tracks the state of a request action
+ */
+export function withRequestState(getRequestStatePath) {
   // thunk decorator:
   return thunkCreator =>
     // thunk creator:
     (...args) =>
       // thunk:
       (dispatch, getState) => {
-        const statePath = getStatePath(...args);
+        const statePath = getRequestStatePath(...args);
         try {
           dispatch(setRequestState({ statePath, state: "LOADING" }));
+
           const result = thunkCreator(...args)(dispatch, getState);
-          dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+          // Dispatch `setRequestState` after clearing the call stack because
+          // we want to the actual data to be updated before we notify
+          // components that fetching the data is completed
+          setTimeout(() =>
+            dispatch(setRequestState({ statePath, state: "LOADED" })),
+          );
+
           return result;
         } catch (error) {
           console.error(`Request ${statePath.join(",")} failed:`, error);
           dispatch(setRequestState({ statePath, error }));
           throw error;
+        }
+      };
+}
+
+/**
+ * Decorator that returns cached data if appropriate, otherwise calls the composed thunk.
+ * Also tracks request state using withRequestState
+ */
+export function withCachedDataAndRequestState(
+  getExistingDataPath,
+  getRequestStatePath,
+) {
+  return compose(
+    withCachedData(getExistingDataPath, getRequestStatePath),
+    withRequestState(getRequestStatePath),
+  );
+}
+
+// NOTE: this should be used together with withRequestState, probably via withCachedDataAndRequestState
+function withCachedData(getExistingDataPath, getRequestStatePath) {
+  // thunk decorator:
+  return thunkCreator =>
+    // thunk creator:
+    (...args) =>
+      // thunk:
+      (dispatch, getState) => {
+        const options = args[args.length - 1] || {};
+        const { reload, properties } = options;
+
+        const existinDataPath = getExistingDataPath(...args);
+        const requestStatePath = [
+          "requests",
+          "states",
+          ...getRequestStatePath(...args),
+        ];
+        const existingData = getIn(getState(), existinDataPath);
+        const requestState = getIn(getState(), requestStatePath);
+
+        // return existing data if
+        if (
+          // we have existing data
+          existingData &&
+          // we don't want to reload
+          !reload &&
+          // and either
+          // we have a list of properties that all exist on the object
+          ((properties &&
+            _.all(properties, p => existingData[p] !== undefined)) ||
+            // or we have a an non-error request state
+            (requestState && !requestState.error))
+        ) {
+          return existingData;
+        } else {
+          return thunkCreator(...args)(dispatch, getState);
         }
       };
 }
