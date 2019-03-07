@@ -222,13 +222,12 @@
 (defn public-dashcard-results
   "Return the results of running a query with PARAMETERS for Card with CARD-ID belonging to Dashboard with
    DASHBOARD-ID. Throws a 404 if the Card isn't part of the Dashboard."
-  [dashboard-id card-id parameters & {:keys [context]
-                                      :or   {context :public-dashboard}}]
+  [dashboard-id card-id parameters & options]
   (check-card-is-in-dashboard card-id dashboard-id)
-  (run-query-for-card-with-id card-id (resolve-params dashboard-id (if (string? parameters)
+  (apply run-query-for-card-with-id card-id (resolve-params dashboard-id (if (string? parameters)
                                                                      (json/parse-string parameters keyword)
                                                                      parameters))
-    :context context, :dashboard-id dashboard-id))
+    :context :public-dashboard, :dashboard-id dashboard-id, options))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
