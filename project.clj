@@ -39,7 +39,7 @@
    [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
-   [org.clojure/java.jdbc "0.7.8"]                                    ; basic JDBC access from Clojure
+   [org.clojure/java.jdbc "0.7.9"]                                    ; basic JDBC access from Clojure
    [org.clojure/math.combinatorics "0.1.4"]                           ; combinatorics functions
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "0.4.1"]                                ; logging framework
@@ -73,7 +73,7 @@
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
-   [com.mchange/c3p0 "0.9.5.2"]                                       ; connection pooling library
+   [com.mchange/c3p0 "0.9.5.3"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
@@ -109,7 +109,7 @@
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [ring/ring-core "1.7.1"]
    [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [org.eclipse.jetty/jetty-server "9.4.14.v20181114"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
@@ -178,7 +178,7 @@
      [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
      :ring
-     {:handler      metabase.core/app
+     {:handler      metabase.handler/app
       :init         metabase.core/init!
       :destroy      metabase.core/destroy
       :reload-paths ["src"]}}]
