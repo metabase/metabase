@@ -374,35 +374,43 @@
     cache_field_values (assoc :cache_field_values_schedule (cron-util/schedule-map->cron-string cache_field_values))))
 
 
-(api/defendpoint POST "/"
+(defn add-database!
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
+  [name engine details is_full_sync is_on_demand schedules on-connection-error check-insert-error]
   {name         su/NonBlankString
    engine       DBEngineString
    details      su/Map
    is_full_sync (s/maybe s/Bool)
    is_on_demand (s/maybe s/Bool)
    schedules    (s/maybe ExpandedSchedulesMap)}
-  (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)]
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (db/insert! Database
-                                (merge
-                                 {:name         name
-                                  :engine       engine
-                                  :details      details-or-error
-                                  :is_full_sync is-full-sync?
-                                  :is_on_demand (boolean is_on_demand)}
-                                 (when schedules
-                                   (schedule-map->cron-strings schedules)))))
+      (u/prog1 (check-insert-error  (db/insert! Database
+                                      (merge
+                                       {:name         name
+                                        :engine       engine
+                                        :details      details-or-error
+                                        :is_full_sync is-full-sync?
+                                        :is_on_demand (boolean is_on_demand)}
+                                       (when schedules
+                                         (schedule-map->cron-strings schedules)))))
         (events/publish-event! :database-create <>))
       ;; failed to connect, return error
-      {:status 400
-       :body   details-or-error})))
+      (on-connection-error  details-or-error))))
+
+(api/defendpoint POST "/"
+  "Add a new `Database`."
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
+  (api/check-superuser)
+  (let [on-connection-error (fn [details] {:status 400
+                                           :body   details})
+        check-insert-error  api/check-500]
+    (add-database! name engine details is_full_sync is_on_demand schedules
+                   on-connection-error check-insert-error)))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

@@ -28,11 +28,16 @@
   (api/check-superuser)
   (stats/anonymous-usage-stats))
 
+(defn generate_random_token
+  []
+  (crypto-random/hex 32))
+
 (api/defendpoint GET "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
   []
-  {:token (crypto-random/hex 32)})
+  {:token (generate_random_token)})
+
 
 
 (api/define-routes)

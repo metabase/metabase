@@ -25,14 +25,13 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
-
-(api/defendpoint POST "/"
-  "Special endpoint for creating the first user during setup.
-   This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token]
-         {:keys [name engine details is_full_sync is_on_demand schedules]} :database
-         {:keys [first_name last_name email password]}                     :user
-         {:keys [allow_tracking site_name]}                                :prefs} :body}]
+(defn setup!
+  "Special function for creating the first user during setup.
+  This function both creates the user AND logs them in and returns a session ID."
+  [{:keys [token]
+   {:keys [name engine details is_full_sync is_on_demand schedules]} :database
+   {:keys [first_name last_name email password]}                     :user
+   {:keys [allow_tracking site_name]}                                :prefs}]
   {token          SetupToken
    site_name      su/NonBlankString
    first_name     su/NonBlankString
@@ -81,6 +80,12 @@
     (events/publish-event! :user-create {:user_id (:id new-user)})
     (events/publish-event! :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
     {:id session-id}))
+
+(api/defendpoint POST "/"
+   "Special endpoint for creating the first user during setup.
+   This endpoint both creates the user AND logs them in and returns a session ID."
+     [:as {body :body}]
+     (setup! body))
 
 
 (api/defendpoint POST "/validate"

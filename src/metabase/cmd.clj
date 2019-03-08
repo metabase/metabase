@@ -22,6 +22,25 @@
              [util :as u]]
             [metabase.util.date :as du]))
 
+
+
+(defn- printErrorAndExit
+  [message]
+  (println (u/format-color 'red "Command failed with exception: %s" message))
+  (System/exit 1))
+
+(defn- parse-args
+  ([args acc]
+   (if (empty? args)
+     acc
+     (let [[key value & tail] args
+           stripped-key       (subs key 1)
+           keyword-key        (keyword stripped-key)]
+       (recur tail
+         (merge acc {keyword-key value}))))))
+
+;;; ------------------------------------------------ Commands ------------------------------------------------------
+
 (defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
@@ -121,6 +140,52 @@
   (println "Starting normally with swapped i18n strings...")
   ((resolve 'metabase.core/start-normally)))
 
+(defn ^:command sync-database
+  [database-id]
+  (mdb/setup-db!)
+  (let [initPlugins (resolve 'metabase.plugins/load-plugins!)
+        sync-database! (resolve 'metabase.sync/sync-database!)
+        Database  (resolve 'metabase.models.database/Database)
+        database (Database database-id)]
+    (initPlugins)
+    (sync-database! database)))
+
+(defn ^:command add-database
+  "example for oracle: add-database -name database_name -engine oracle -host localhost -port 1521
+                          -service-name service_name -user username -password secret"
+  [& args]
+  (mdb/setup-db!)
+  (let [{:keys [name engine] :as details} (parse-args args {})
+        check (resolve 'metabase.api.common/check)
+        on-connection-error (fn [message] (printErrorAndExit message))
+        check-insert-error (fn [arg] (check arg arg))
+        initPlugins (resolve 'metabase.plugins/load-plugins!)]
+    (initPlugins)
+    (let [add-database! (resolve 'metabase.api.database/add-database!)
+          databaseInfo (add-database! name engine details nil nil nil on-connection-error check-insert-error)
+          databaseId (:id databaseInfo)]
+    (println (str "database id: " databaseId)))))
+
+(defn ^:command setup
+  "Command for creating the first user during setup
+   example: setup -first_name firstName -last_name lastName -email xxxxx@gmail.com -password secret -site_name localhost.com"
+  [& args]
+  (mdb/setup-db!)
+  (let [setup! (resolve 'metabase.api.setup/setup!)
+        {:keys [allow_tracking site_name first_name last_name email password] :as details} (parse-args args {})
+        user {:first_name first_name :last_name last_name :email email :password password}
+        prefs {:allow_tracking allow_tracking :site_name site_name}]
+    (setup! {:user user :prefs prefs})))
+
+(defn ^:command enable-embedding
+  "enable-embedding"
+  []
+  (mdb/setup-db!)
+  (let [setMethod! (resolve 'metabase.models.setting/set!)
+        random_token ((resolve 'metabase.api.util/generate_random_token))]
+    (setMethod! :enable-embedding "true")
+    (setMethod! :embedding-secret-key (str random_token))
+    (println (str "secret key: " random_token))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
@@ -140,6 +205,5 @@
   (try (apply (cmd->fn cmd) args)
        (catch Throwable e
          (.printStackTrace e)
-         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1)))
+         (printErrorAndExit (.getMessage e))))
   (System/exit 0))
