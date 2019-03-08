@@ -33,7 +33,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -261,7 +261,7 @@ function formatNumberCompact(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 

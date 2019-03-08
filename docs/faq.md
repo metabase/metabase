@@ -99,7 +99,7 @@ Metabase currently supports:
 * BigQuery
 * Druid
 * H2
-* MongoDB (version 3.0 or higher)
+* MongoDB (version 3.4 or higher)
 * MySQL (and MariaDB)
 * PostgreSQL
 * Presto

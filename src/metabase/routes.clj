@@ -51,19 +51,24 @@
       (fallback-localization *locale*)))
     (fallback-localization *locale*)))
 
+(defn- load-entrypoint-template [entrypoint-name embeddable? uri]
+  (load-template
+   (str "frontend_client/" entrypoint-name ".html")
+   {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
+    :localization_json (escape-script (load-localization))
+    :uri               (escape-script (json/generate-string uri))
+    :base_href         (escape-script (json/generate-string (base-href)))
+    :embed_code        (when embeddable? (embed/head uri))}))
+
 (defn- entrypoint
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
-  [entry embeddable? {:keys [uri]}]
-  (-> (if (init-status/complete?)
-        (load-template (str "frontend_client/" entry ".html")
-                       {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
-                        :localization_json (escape-script (load-localization))
-                        :uri               (escape-script (json/generate-string uri))
-                        :base_href         (escape-script (json/generate-string (base-href)))
-                        :embed_code        (when embeddable? (embed/head uri))})
-        (load-file-at-path "frontend_client/init.html"))
-      resp/response
-      (resp/content-type "text/html; charset=utf-8")))
+  [entrypoint-name embeddable? {:keys [uri]} respond raise]
+  (respond
+   (-> (if (init-status/complete?)
+         (load-entrypoint-template entrypoint-name embeddable? uri)
+         (load-file-at-path "frontend_client/init.html"))
+       resp/response
+       (resp/content-type "text/html; charset=utf-8"))))
 
 (def ^:private index  (partial entrypoint "index"  (not :embeddable)))
 (def ^:private public (partial entrypoint "public" :embeddable))
@@ -73,8 +78,8 @@
   "Like `resp/redirect`, but passes along query string URL params as well. This is important because the public and
    embedding routes below pass query params (such as template tags) as part of the URL."
   [url]
-  (fn [{:keys [query-string]}]
-    (resp/redirect (str url "?" query-string))))
+  (fn [{:keys [query-string]} respond _]
+    (respond (resp/redirect (str url "?" query-string)))))
 
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 (defroutes ^:private public-routes

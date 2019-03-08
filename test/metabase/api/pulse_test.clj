@@ -4,10 +4,10 @@
             [metabase
              [email-test :as et]
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api.card-test :as card-api-test]
             [metabase.integrations.slack :as slack]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -47,19 +47,13 @@
                         :created_at]))
 
 (defn- pulse-details [pulse]
-  (tu/match-$ pulse
-    {:id                  $
-     :name                $
-     :created_at          $
-     :updated_at          $
-     :creator_id          $
-     :creator             (user-details (db/select-one 'User :id (:creator_id pulse)))
-     :cards               (map pulse-card-details (:cards pulse))
-     :channels            (map pulse-channel-details (:channels pulse))
-     :collection_id       $
-     :collection_position $
-     :archived            $
-     :skip_if_empty       $}))
+  (merge
+   (select-keys
+    pulse
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty])
+   {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
+    :cards    (map pulse-card-details (:cards pulse))
+    :channels (map pulse-channel-details (:channels pulse))}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -95,8 +89,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (:body middleware/response-unauthentic) (http/client :get 401 "pulse"))
-(expect (:body middleware/response-unauthentic) (http/client :put 401 "pulse/13"))
+(expect (:body middleware.u/response-unauthentic) (http/client :get 401 "pulse"))
+(expect (:body middleware.u/response-unauthentic) (http/client :put 401 "pulse/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -162,15 +162,17 @@
 
 (defprotocol ^:private ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
-  (->iso-8601-datetime ^String [this timezone-id]
-    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+  (->iso-8601-datetime ^String [this, ^String timezone-id-or-nil]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given `timezone-id`
+    string (such as '\"UTC\"'), or `nil`, which defaults to \"UTC\" (?)"))
 
 (def ^:private ^{:arglists '([timezone-id])} ISO8601Formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
-  (memoize (fn [timezone-id]
-             (if timezone-id
-               (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
-               (time/formatters :date-time)))))
+  (memoize
+   (fn [^String timezone-id]
+     (if timezone-id
+       (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+       (time/formatters :date-time)))))
 
 (extend-protocol ISO8601
   nil                    (->iso-8601-datetime [_ _] nil)
@@ -218,7 +220,7 @@
    `Long` (ms since the epoch), or an ISO-8601 `String`. `date` defaults to the current moment in time.
 
    `date-format` is anything that can be passed to `->DateTimeFormatter`, such as `String`
-   (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   (using [the usual date format args](http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html)),
    `Keyword`, or `DateTimeFormatter`.
 
 
