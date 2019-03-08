@@ -141,6 +141,7 @@
   ((resolve 'metabase.core/start-normally)))
 
 (defn ^:command sync-database
+  "sync-database"
   [database-id]
   (mdb/setup-db!)
   (let [initPlugins (resolve 'metabase.plugins/load-plugins!)
@@ -151,7 +152,7 @@
     (sync-database! database)))
 
 (defn ^:command add-database
-  "example for oracle: add-database -name database_name -engine oracle -host localhost -port 1521
+  "Example of use for oracle: add-database -name database_name -engine oracle -host localhost -port 1521
                           -service-name service_name -user username -password secret"
   [& args]
   (mdb/setup-db!)
@@ -178,7 +179,7 @@
     (setup! {:user user :prefs prefs})))
 
 (defn ^:command enable-embedding
-  "enable-embedding"
+  "Creates and returns a secret key"
   []
   (mdb/setup-db!)
   (let [setMethod! (resolve 'metabase.models.setting/set!)
