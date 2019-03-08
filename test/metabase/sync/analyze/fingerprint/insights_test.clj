@@ -78,5 +78,5 @@
   false
   (valid-period? #inst "2015-01-01" #inst "2015-04-03" :month))
 (expect
-  true
+  false
   (valid-period? #inst "2015-01" #inst "2015-02" nil))
