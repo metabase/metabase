@@ -29,6 +29,8 @@
   (stats/anonymous-usage-stats))
 
 (defn generate_random_token
+  "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
+  Intended for use when creating a value for `embedding-secret-key`."
   []
   (crypto-random/hex 32))
 
