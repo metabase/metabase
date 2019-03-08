@@ -376,8 +376,8 @@
 
 (defn add-database!
   "Add a new `Database`."
-  [name engine details is_full_sync is_on_demand schedules on-connection-error check-insert-error]
-  {name         su/NonBlankString
+  [name_ engine details is_full_sync is_on_demand schedules on-connection-error check-insert-error]
+  {name_         su/NonBlankString
    engine       DBEngineString
    details      su/Map
    is_full_sync (s/maybe s/Bool)
@@ -391,7 +391,7 @@
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (check-insert-error  (db/insert! Database
                                       (merge
-                                       {:name         name
+                                       {:name         name_
                                         :engine       engine
                                         :details      details-or-error
                                         :is_full_sync is-full-sync?
