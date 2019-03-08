@@ -35,12 +35,14 @@
       :last-value))
 
 
+(defn- inst->day
+  [inst]
+  (some-> inst (.getTime) (#'i/ms->day)))
+
 (defn- valid-period?
-  ([from to] (valid-period? from to nil))
+  ([from to] (valid-period? from to (#'i/infer-unit (inst->day from) (inst->day to))))
   ([from to period]
-   (boolean (#'i/valid-period? (some-> from (.getTime) (#'i/ms->day))
-                               (some-> to (.getTime) (#'i/ms->day))
-                               period))))
+   (boolean (#'i/valid-period? (inst->day from) (inst->day to) period))))
 
 (expect
   true
@@ -75,3 +77,6 @@
 (expect
   false
   (valid-period? #inst "2015-01-01" #inst "2015-04-03" :month))
+(expect
+  false
+  (valid-period? #inst "2015-01" #inst "2015-02" nil))
