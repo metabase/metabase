@@ -252,3 +252,8 @@ export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
   series => series && getComputedSettingsForSeries(series),
 );
+
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);

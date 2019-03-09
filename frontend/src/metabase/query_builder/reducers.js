@@ -41,11 +41,16 @@ import {
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_EMBEDDING_PARAMS,
   SHOW_CHART_SETTINGS,
+  SET_UI_CONTROLS,
 } from "./actions";
 
 // various ui state options
 export const uiControls = handleActions(
   {
+    [SET_UI_CONTROLS]: {
+      next: (state, { payload }) => ({ ...state, ...payload }),
+    },
+
     [INITIALIZE_QB]: {
       next: (state, { payload }) => ({ ...state, ...payload.uiControls }),
     },

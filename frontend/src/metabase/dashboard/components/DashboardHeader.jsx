@@ -168,9 +168,8 @@ export default class DashboardHeader extends Component {
         triggerElement="Archive"
       >
         <ArchiveDashboardModal
-          dashboard={this.props.dashboard}
+          onArchive={() => this.onArchive(this.props.dashboard)}
           onClose={() => this.refs.archiveDashboardModal.toggle()}
-          onArchive={() => this.onArchive()}
         />
       </ModalWithTrigger>,
       <ActionButton

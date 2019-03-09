@@ -29,4 +29,11 @@ export default class MBQLClause extends Array {
   update(...args: any) {
     return this.replace(this).update(undefined, ...args);
   }
+
+  /**
+   * return the Metadata instance from the linked Query
+   */
+  metadata() {
+    return this._query.metadata();
+  }
 }

@@ -158,3 +158,15 @@ export function deactivateUser(userId) {
 export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
 }
+
+export function browseDatabase(database) {
+  return `/browse/${database.id}`;
+}
+
+export function browseSchema(table) {
+  return `/browse/${table.db.id}/schema/${table.schema}`;
+}
+
+export function browseTable(table) {
+  return `/browse/${table.db.id}/schema/${table.schema}`;
+}

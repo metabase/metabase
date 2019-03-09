@@ -5,6 +5,8 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 
 import * as Urls from "metabase/lib/urls";
+import colors, { lighten } from "metabase/lib/colors";
+
 import Collection from "metabase/entities/collections";
 
 import cx from "classnames";
@@ -17,14 +19,36 @@ import cx from "classnames";
 })
 class CollectionBadge extends React.Component {
   render() {
-    const { analyticsContext, object, className } = this.props;
+    const {
+      analyticsContext,
+      object,
+      className,
+      hasBackground,
+      style = {},
+    } = this.props;
     if (!object) {
       return null;
     }
+    const backgroundStyle = hasBackground
+      ? {
+          backgroundColor: lighten(colors["brand"], 0.5),
+          paddingTop: "0.4em",
+          paddingBottom: "0.4em",
+          borderRadius: "0.5em",
+        }
+      : {};
+
     return (
       <Link
         to={Urls.collection(object.id)}
-        className={cx(className, "block link")}
+        className={cx(className, "block cursor-pointer", {
+          px1: backgroundStyle,
+        })}
+        style={{
+          color: colors["brand"],
+          ...backgroundStyle,
+          ...style,
+        }}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
         <Flex align="center">

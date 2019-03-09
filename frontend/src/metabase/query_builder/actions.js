@@ -73,12 +73,16 @@ type UiControls = {
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   isShowingTutorial?: boolean,
+  queryBuilderMode?: "view" | "worksheet",
 };
 
 const getTemplateTagCount = (question: Question) => {
   const query = question.query();
   return query instanceof NativeQuery ? query.templateTags().length : 0;
 };
+
+export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
+export const setUIControls = createAction(SET_UI_CONTROLS);
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
@@ -1543,15 +1547,8 @@ export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
-export const toggleDataReferenceFn = toggleDataReference;
-export const onBeginEditing = beginEditing;
-export const onCancelEditing = cancelEditing;
-export const setQueryModeFn = setQueryMode;
 export const setDatabaseFn = setQueryDatabase;
 export const setSourceTableFn = setQuerySourceTable;
 export const setDisplayFn = setCardVisualization;
-export const onSetCardAttribute = setCardAttribute;
-export const reloadCardFn = reloadCard;
-export const onRestoreOriginalQuery = reloadCard;
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;

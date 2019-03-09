@@ -18,11 +18,15 @@ import type { SchemaName } from "metabase/meta/types/Table";
 export default class Database extends Base {
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
 
-  displayName: string;
+  name: string;
   description: ?string;
 
   tables: Table[];
   schemas: Schema[];
+
+  displayName(): string {
+    return this.name;
+  }
 
   tablesInSchema(schemaName: ?SchemaName) {
     return this.tables.filter(table => table.schema === schemaName);

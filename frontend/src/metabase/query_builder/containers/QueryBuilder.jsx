@@ -22,6 +22,10 @@ import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
 
+import QueryModals from "../components/QueryModals";
+import ViewHeader from "../components/view/ViewHeader";
+import ViewFooter from "../components/view/ViewFooter";
+
 import title from "metabase/hoc/Title";
 
 import {
@@ -214,6 +218,8 @@ export default class QueryBuilder extends Component {
     this.props.cancelQuery();
 
     window.removeEventListener("resize", this.handleResize);
+
+    clearTimeout(this.timeout);
   }
 
   // When the window is resized we need to re-render, mainly so that our visualization pane updates
@@ -226,8 +232,79 @@ export default class QueryBuilder extends Component {
     }
   };
 
+  // NOTE: these were lifted from QueryHeader. Move to Redux?
+  openModal = modal => {
+    this.props.setUIControls({ modal });
+  };
+  closeModal = modal => {
+    this.props.setUIControls({ modal: null });
+  };
+  setQueryBuilderMode = queryBuilderMode => {
+    this.props.setUIControls({ queryBuilderMode });
+  };
+
+  setRecentlySaved = recentlySaved => {
+    this.props.setUIControls({ recentlySaved });
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(() => {
+      this.props.setUIControls({ recentlySaved: null });
+    }, 5000);
+  };
+
+  handleCreate = async (card, showSavedModal = true) => {
+    const { question, apiCreateQuestion } = this.props;
+    const questionWithUpdatedCard = question.setCard(card);
+    await apiCreateQuestion(questionWithUpdatedCard);
+
+    this.setRecentlySaved("created");
+    if (showSavedModal) {
+      this.openModal("saved");
+    }
+  };
+
+  handleSave = async (card, showSavedModal = true) => {
+    const { question, apiUpdateQuestion } = this.props;
+    const questionWithUpdatedCard = question.setCard(card);
+    await apiUpdateQuestion(questionWithUpdatedCard);
+
+    if (this.props.fromUrl) {
+      this.props.onChangeLocation(this.props.fromUrl);
+    } else {
+      this.setRecentlySaved("updated");
+      if (showSavedModal) {
+        this.openModal("saved");
+      }
+    }
+  };
+
+  resetStateOnTimeout = () => {
+    // clear any previously set timeouts then start a new one
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(() => {
+      this.props.onSetRecentlySaved(null);
+      this.timeout = null;
+    }, 5000);
+  };
+
   render() {
-    return <LegacyQueryBuilder {...this.props} />;
+    const {
+      uiControls: { modal, recentlySaved, queryBuilderMode },
+    } = this.props;
+    return (
+      <LegacyQueryBuilder
+        {...this.props}
+        // NOTE: these were lifted from QueryHeader. Move to Redux?
+        modal={modal}
+        onOpenModal={this.openModal}
+        onCloseModal={this.closeModal}
+        queryBuilderMode={queryBuilderMode}
+        onSetQueryBuilderMode={this.setQueryBuilderMode}
+        recentlySaved={recentlySaved}
+        onSetRecentlySaved={this.setRecentlySaved}
+        onSave={this.handleSave}
+        onCreate={this.handleCreate}
+      />
+    );
   }
 }
 
@@ -252,26 +329,28 @@ class LegacyQueryBuilder extends Component {
             "QueryBuilder--showSideDrawer": showDrawer,
           })}
         >
-          <div id="react_qb_header">
-            <QueryHeader {...this.props} />
-          </div>
+          <ViewHeader {...this.props} />
 
-          <div id="react_qb_editor" className="z2 hide sm-show">
-            {query instanceof NativeQuery ? (
-              <NativeQueryEditor
-                {...this.props}
-                isOpen={!card.dataset_query.native.query || isDirty}
-                datasetQuery={card && card.dataset_query}
-              />
-            ) : query instanceof StructuredQuery ? (
-              <div className="wrapper">
-                <GuiQueryEditor
+          {/*<QueryHeader {...this.props} />*/}
+
+          {uiControls.queryBuilderMode === "worksheet" && (
+            <div id="react_qb_editor" className="z2 hide sm-show">
+              {query instanceof NativeQuery ? (
+                <NativeQueryEditor
                   {...this.props}
+                  isOpen={!card.dataset_query.native.query || isDirty}
                   datasetQuery={card && card.dataset_query}
                 />
-              </div>
-            ) : null}
-          </div>
+              ) : query instanceof StructuredQuery ? (
+                <div className="wrapper">
+                  <GuiQueryEditor
+                    {...this.props}
+                    datasetQuery={card && card.dataset_query}
+                  />
+                </div>
+              ) : null}
+            </div>
+          )}
 
           <div
             ref="viz"
@@ -281,6 +360,7 @@ class LegacyQueryBuilder extends Component {
           >
             <QueryVisualization
               {...this.props}
+              noHeader
               className="full wrapper mb2 z1"
             />
           </div>
@@ -288,6 +368,8 @@ class LegacyQueryBuilder extends Component {
           {ModeFooter && (
             <ModeFooter {...this.props} className="flex-no-shrink" />
           )}
+
+          <ViewFooter {...this.props} />
         </div>
 
         <div
@@ -321,7 +403,7 @@ class LegacyQueryBuilder extends Component {
           />
         )}
 
-        <ActionsWidget {...this.props} className="z2 absolute bottom right" />
+        <QueryModals {...this.props} />
       </div>
     );
   }

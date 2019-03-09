@@ -19,13 +19,21 @@ import _ from "underscore";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-  displayName: string;
+  display_name: string;
   description: string;
 
   schema: ?SchemaName;
   db: Database;
 
   fields: FieldMetadata[];
+
+  displayName(): string {
+    return this.display_name;
+  }
+
+  hasSchema(): boolean {
+    return (this.schema && this.db.schemaNames().length > 1) || false;
+  }
 
   // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
   get database() {
