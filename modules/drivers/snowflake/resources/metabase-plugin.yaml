@@ -1,0 +1,41 @@
+info:
+  name: Metabase Snowflake Driver
+  version: 1.0.0-SNAPSHOT-3.6.20
+  description: Allows Metabase to connect to Snowflake databases.
+driver:
+  name: snowflake
+  display-name: Snowflake
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: account
+      display-name: Account
+      placeholder: Your snowflake account name.
+      required: true
+    - user
+    - merge:
+        - password
+        - required: true
+    - name: warehouse
+      display-name: Warehouse
+      placeholder: my_warehouse
+      required: true
+    - merge:
+        - dbname
+        - name: db
+          required: true
+    - name: regionid
+      display-name: Region ID
+      placeholder: my_region
+    - name: schema
+      display-name: Schema
+      placeholder: my_schema
+    - name: role
+      display-name: Role
+      placeholder: my_role
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.snowflake
+  - step: register-jdbc-driver
+    class: net.snowflake.client.jdbc.SnowflakeDriver

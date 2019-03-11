@@ -43,7 +43,6 @@ import CollectionPermissionsModal from "metabase/admin/permissions/containers/Co
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
-import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
@@ -87,6 +86,7 @@ import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
 import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
+import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
@@ -219,6 +219,7 @@ export const getRoutes = store => (
         >
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
+          <ModalRoute path="copy" modal={DashboardCopyModal} />
         </Route>
 
         <Route path="/question">
@@ -323,7 +324,6 @@ export const getRoutes = store => (
         <Route path="create" component={PulseEditApp} />
         <Route path=":pulseId">
           <IndexRoute component={PulseEditApp} />
-          <ModalRoute path="move" modal={PulseMoveModal} />
         </Route>
       </Route>
 

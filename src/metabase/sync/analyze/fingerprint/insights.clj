@@ -1,6 +1,9 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [kixi.stats
+  (:require [clj-time
+              [coerce :as t.coerce]
+              [core :as t]]
+            [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
@@ -131,9 +134,38 @@
        (= (count datetimes) 1)
        (empty? others)))
 
-(def ^:private ms->day
-  "We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities."
-  #(/ % (* 1000 60 60 24)))
+;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
+(def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
+
+(defn- ms->day
+  [dt]
+  (/ dt ms-in-a-day))
+
+(defn- about=
+  [a b]
+  (< 0.9 (/ a b) 1.1))
+
+(def ^:private unit->duration
+  {:minute  (/ 1 24 60)
+   :hour    (/ 24)
+   :day     1
+   :week    7
+   :month   30.5
+   :quarter (* 30.4 3)
+   :year    365.1})
+
+(defn- infer-unit
+  [from to]
+  (when (and from to)
+    (some (fn [[unit duration]]
+            (when (about= (- to from) duration)
+              unit))
+          unit->duration)))
+
+(defn- valid-period?
+  [from to unit]
+  (when (and from to unit)
+    (about= (- to from) (unit->duration unit))))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -150,22 +182,30 @@
                      ;; unit=year workaround. While the field is in this case marked as :type/Text,
                      ;; at this stage in the pipeline the value is still an int, so we can use it
                      ;; directly.
-                     (comp (stats/somef ms->day) #(nth % x-position)))]
-    (apply redux/juxt (for [number-col numbers]
-                        (redux/post-complete
-                         (let [y-position (:position number-col)
-                               yfn        #(nth % y-position)]
-                           (redux/juxt ((map yfn) (last-n 2))
-                                       (stats/simple-linear-regression xfn yfn)
-                                       (best-fit xfn yfn)))
-                         (fn [[[previous current] [offset slope] best-fit]]
-                           {:last-value     current
-                            :previous-value previous
-                            :last-change    (change current previous)
-                            :slope          slope
-                            :offset         offset
-                            :best-fit       best-fit
-                            :col            (:name number-col)}))))))
+                     #(some-> % (nth x-position) t/date-time t.coerce/to-long ms->day))]
+    (apply redux/juxt
+           (for [number-col numbers]
+             (redux/post-complete
+              (let [y-position (:position number-col)
+                    yfn        #(nth % y-position)]
+                (redux/juxt ((map yfn) (last-n 2))
+                            ((map xfn) (last-n 2))
+                            (stats/simple-linear-regression xfn yfn)
+                            (best-fit xfn yfn)))
+              (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
+                (let [unit         (if (contains? #{:default nil} (:unit datetime))
+                                     (infer-unit x-previous x-current)
+                                     (:unit datetime))
+                      show-change? (valid-period? x-previous x-current unit)]
+                  {:last-value     y-current
+                   :previous-value (when show-change?
+                                     y-previous)
+                   :last-change    (when show-change?
+                                     (change y-current y-previous))
+                   :slope          slope
+                   :offset         offset
+                   :best-fit       best-fit
+                   :col            (:name number-col)})))))))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and

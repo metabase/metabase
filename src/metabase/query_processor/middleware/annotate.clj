@@ -4,14 +4,13 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor
-             [interface :as i]
-             [store :as qp.store]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -47,8 +46,8 @@
          {:name         (name col)
           :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
                             (u/keyword->qualified-name col))
-          :base_type    (or (driver/values->base-type (for [row rows]
-                                                        (nth row i)))
+          :base_type    (or (driver.common/values->base-type (for [row rows]
+                                                               (nth row i)))
                             :type/*)
           :source       :native})))
 
@@ -90,13 +89,19 @@
      :display_name (humanization/name->human-readable-name field-name)}
 
     [:expression expression-name]
-    {:name         expression-name
-     :display_name expression-name
-     :base_type    :type/Float
-     :special_type :type/Number}
+    {:name            expression-name
+     :display_name    expression-name
+     :base_type       :type/Float
+     :special_type    :type/Number
+     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+     :expression_name expression-name}
 
     [:field-id id]
-    (dissoc (qp.store/field id) :database_type)
+    (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
+      (if-not parent-id
+        field
+        (let [parent (col-info-for-field-clause [:field-id parent-id])]
+          (update field :name #(str (:name parent) \. %)))))
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
@@ -136,12 +141,12 @@
   true}` will cause a name to be generated that will appear in the results, other names with a leading __ will be
   trimmed on some backends."
   [ag-clause :- mbql.s/Aggregation & [{:keys [top-level?]}]]
-  (when-not i/*driver*
-    (throw (Exception. (str (tru "metabase.query-processor.interface/*driver* is unbound.")))))
+  (when-not driver/*driver*
+    (throw (Exception. (str (tru "*driver* is unbound.")))))
   (mbql.u/match-one ag-clause
     ;; if a custom name was provided use it
     [:named _ ag-name]
-    (driver/format-custom-field-name i/*driver* ag-name)
+    (driver/format-custom-field-name driver/*driver* ag-name)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
     ;; Top level expressions need a name without a leading __ as those are automatically removed from the results
@@ -269,7 +274,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               GENERAL MIDDLEWARE                                               |
+;;; |                                           add-column-info middleware                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private add-column-info* :- {:cols ColsWithUniqueNames, s/Keyword s/Any}
@@ -296,3 +301,71 @@
   [qp]
   (fn [query]
     (add-column-info* query (qp query))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     result-rows-maps-to-vectors middleware                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- uniquify-aggregations [query]
+  (update-in query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations aggregation-name)))
+
+(s/defn ^:private expected-column-sort-order :- [s/Keyword]
+  "Determine query result row column names (as keywords) sorted in the appropriate order based on a `query`."
+  [{query-type :type, :as query} {[first-row] :rows, :as results}]
+  (if (= query-type :query)
+    (map (comp keyword :name) (mbql-cols (uniquify-aggregations query) results))
+    (map keyword (keys first-row))))
+
+(defn- result-rows-maps->vectors* [query {[first-row :as rows] :rows, columns :columns, :as results}]
+  (when (or (map? first-row)
+            ;; if no rows were returned and the driver didn't return `:columns`, go ahead and calculate them so we can
+            ;; add them -- drivers that rely on this behavior still need us to do that for them for queries that
+            ;; return no results
+            (and (empty? rows)
+                 (nil? columns)))
+    (let [sorted-columns (expected-column-sort-order query results)]
+      (assoc results
+        ;; TODO - we don't really use `columns` any more and can remove this at some point
+        :columns (map u/keyword->qualified-name sorted-columns)
+        :rows    (for [row rows]
+                   (for [col sorted-columns]
+                     (get row col)))))))
+
+(defn result-rows-maps->vectors
+  "For drivers that return query result rows as a sequence of maps rather than a sequence of vectors, determine
+  appropriate column sort order and convert rows to sequences (the expected MBQL result format).
+
+  Certain databases like MongoDB and Druid always return result rows as maps, rather than something sequential (e.g.
+  vectors). Rather than require those drivers to duplicate the logic in this and other QP middleware namespaces for
+  determining expected column sort order, drivers have the option of leaving the `:rows` as a sequence of maps, and
+  this middleware will handle things for them.
+
+  Because the order of `:columns` is determined by this middleware, it adds `:columns` to the results as well as the
+  updated `:rows`; drivers relying on this middleware should return a map containing only `:rows`.
+
+  IMPORTANT NOTES:
+
+  *  Determining correct sort order only works for MBQL queries. For native queries, the sort order is the result of
+     calling `keys` on the first row. It is reccomended that you utilize Flatland `ordered-map` when possible to
+     preserve key ordering in maps.
+
+  *  For obvious reasons, drivers that returns rows as maps cannot support duplicate column names. Thus it is expected
+     that drivers that use functionality provided by this middleware return deduplicated column names, e.g. `:sum` and
+     `:sum_2` for queries with multiple `:sum` aggregations.
+
+     Call `mbql.u/pre-alias-and-uniquify-aggregations` on your query before processing it tp add appropriate aliases to
+     aggregations. Currently this assumes you are passing `annotate/aggregation-name` as the function to generate
+     aggregation names; if your driver is doing something drastically different, you may need to tweak the keys in the
+     result row maps so they match up with the keys generated by that function.
+
+  *  For *nested* Fields, this namespace assumes result row maps will come back flattened, and Field name keys will
+     come back qualified by names of their ancestors, e.g. `parent.child`, `grandparent.parent.child`, etc. This is done
+     to remove any ambiguity between nested columns with the same name (e.g. a document with both `user.id` and
+     `venue.id`). Be sure to follow this convention if your driver supports nested Fields (e.g., MongoDB)."
+  [qp]
+  (fn [query]
+    (let [results (qp query)]
+      (or
+       (result-rows-maps->vectors* query results)
+       results))))

@@ -10,6 +10,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
@@ -97,5 +98,5 @@
     ;; Hopefully this is never the case.
     (doseq [table (:tables (fetch-metadata/db-metadata database))]
       (when (is-metabase-metadata-table? table)
-        (sync-metabase-metadata-table! (driver/->driver database) database table)))
+        (sync-metabase-metadata-table! (driver.u/database->driver database) database table)))
     {}))

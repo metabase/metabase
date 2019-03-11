@@ -22,7 +22,7 @@
             [toucan.util.test :as tt]))
 
 ;;; single column
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
    :columns     [(data/format-name "user_id")
                  "count"]
@@ -39,7 +39,7 @@
 
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:cols        [(breakout-col (checkins-col :user_id))]
    :columns     [(data/format-name "user_id")]
    :rows        [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]
@@ -54,7 +54,7 @@
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order-by`
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
    :columns     [(data/format-name "user_id")
                  (data/format-name "venue_id")
@@ -73,7 +73,7 @@
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order-by`
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
    :columns     [(data/format-name "user_id")
                  (data/format-name "venue_id")
@@ -91,7 +91,7 @@
        (format-rows-by [int int int])
        tu/round-fingerprint-cols))
 
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [[2 8 "Artisan"]
                  [3 2 "Asian"]
                  [4 2 "BBQ"]
@@ -122,7 +122,7 @@
          (format-rows-by [int int str])
          tu/round-fingerprint-cols)))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :foreign-keys)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
    ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
   (data/with-data
@@ -142,21 +142,21 @@
            rows
            (map last))]))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
             {:aggregation [[:count]]
              :breakout    [[:binning-strategy $latitude :num-bins 20]]}))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[0.0 1] [20.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
             {:aggregation [[:count]]
              :breakout    [[:binning-strategy $latitude :num-bins 3]]}))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
@@ -166,14 +166,14 @@
 
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [30.0 90] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
             {:aggregation [[:count]]
              :breakout    [[:binning-strategy $latitude :default]]}))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
@@ -182,7 +182,7 @@
                :breakout    [[:binning-strategy $latitude :default]]})))))
 
 ;; Testing bin-width
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
@@ -190,14 +190,14 @@
              :breakout    [[:binning-strategy $latitude :bin-width 1]]}))))
 
 ;; Testing bin-width using a float
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-mbql-query venues
             {:aggregation [[:count]]
              :breakout    [[:binning-strategy $latitude :bin-width 2.5]]}))))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   [[33.0 4] [34.0 57]]
   (tu/with-temporary-setting-values [breakout-bin-width 1.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
@@ -217,7 +217,7 @@
         (update-in [:binning_info :max_value] round-to-decimal))))
 
 ;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
     :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width})
   (-> (data/run-mbql-query venues
@@ -227,7 +227,7 @@
       (get-in [:data :cols])
       first))
 
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   (assoc (breakout-col (venues-col :latitude))
     :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins})
   (-> (data/run-mbql-query venues
@@ -238,7 +238,7 @@
       first))
 
 ;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   {:status :failed
    :class  Exception
    :error  "Unable to bin Field without a min/max value"}
@@ -260,7 +260,7 @@
               :breakout     [[:binning-strategy [:field-literal (data/format-name :latitude) :type/Float] :num-bins 20]]}})
 
 ;; Binning should be allowed on nested queries that have result metadata
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning :nested-queries)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (tt/with-temp Card [card {:dataset_query   {:database (data/id)
                                               :type     :query
@@ -272,7 +272,7 @@
          (format-rows-by [(partial u/round-to-decimals 1) int]))))
 
 ;; Binning is not supported when there is no fingerprint to determine boundaries
-(datasets/expect-with-engines (non-timeseries-engines-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning :nested-queries)
   Exception
   (tu.log/suppress-output
     (tt/with-temp Card [card {:dataset_query {:database (data/id)

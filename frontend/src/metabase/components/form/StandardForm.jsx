@@ -20,6 +20,7 @@ const StandardForm = ({
   handleSubmit,
   resetForm,
 
+  submitTitle,
   formDef: form,
   className,
   resetButton = false,
@@ -51,6 +52,7 @@ const StandardForm = ({
     </div>
     <div className={cx("flex", { "Form-offset": !newForm })}>
       <div className="ml-auto flex align-center">
+        {error && <FormMessage message={error} formError />}
         {onClose && (
           <Button
             type="button"
@@ -64,7 +66,7 @@ const StandardForm = ({
           disabled={submitting || invalid}
           className="mr1"
         >
-          {values.id != null ? t`Update` : t`Create`}
+          {submitTitle || (values.id != null ? t`Update` : t`Create`)}
         </Button>
         {resetButton && (
           <Button
@@ -75,7 +77,6 @@ const StandardForm = ({
             {t`Reset`}
           </Button>
         )}
-        {error && <FormMessage message={error} formError />}
       </div>
     </div>
   </form>

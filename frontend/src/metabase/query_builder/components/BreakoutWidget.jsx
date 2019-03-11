@@ -58,7 +58,7 @@ export default class BreakoutWidget extends Component {
         >
           <FieldList
             className={"text-green"}
-            tableMetadata={this.props.tableMetadata}
+            table={this.props.tableMetadata}
             field={this.props.field}
             fieldOptions={this.props.fieldOptions}
             customFieldOptions={this.props.customFieldOptions}

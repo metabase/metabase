@@ -10,7 +10,7 @@ import Visualization, {
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -48,7 +48,7 @@ export default class DashCard extends Component {
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
-      ReactDOM.findDOMNode(this).scrollIntoView();
+      ReactDOM.findDOMNode(this).scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
   }
@@ -238,7 +238,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     }
     triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1"
   >
-    <ChartSettings
+    <ChartSettingsWithState
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard

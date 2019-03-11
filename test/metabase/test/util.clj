@@ -12,7 +12,6 @@
              [driver :as driver]
              [task :as task]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -34,16 +33,11 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.test.data :as data]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :refer [*driver*]]]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import com.mchange.v2.c3p0.PooledDataSource
-           java.util.TimeZone
-           org.apache.log4j.Logger
-           org.joda.time.DateTimeZone
+  (:import org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
@@ -309,15 +303,21 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (let [original-column->value (db/select-one (vec (cons model (keys column->temp-value)))
-                                 :id (u/get-id object-or-id))]
+  ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
+  ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
+  (let [model                    (db/resolve-model model)
+        [original-column->value] (db/query {:select (keys column->temp-value)
+                                            :from   [model]
+                                            :where  [:= :id (u/get-id object-or-id)]})]
     (try
       (db/update! model (u/get-id object-or-id)
         column->temp-value)
       (f)
       (finally
-        (db/update! model (u/get-id object-or-id)
-          original-column->value)))))
+        (db/execute!
+         {:update model
+          :set    original-column->value
+          :where  [:= :id (u/get-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -471,9 +471,10 @@
 (defn do-with-temp-scheduler [f]
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
-      (try (f)
-           (finally
-             (qs/shutdown temp-scheduler))))))
+      (try
+        (f)
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
   "Execute BODY with a temporary scheduler in place.
@@ -508,60 +509,21 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn clear-connection-pool
-  "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
-  the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
-  timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
-  connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
-  [db]
-  (when-let [^PooledDataSource conn-pool (:datasource (sql/db->pooled-connection-spec db))]
-    (.softResetAllUsers conn-pool)))
-
 (defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with `metabase.test.data.datasets/*driver*` bound,
-  such as via `metabase.test.data.datasets/with-engine`"
+  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
   []
-  (assert (bound? #'*driver*))
+  (assert driver/*driver*)
   (let [db (data/db)]
-    (clear-connection-pool db)
+    ;; clear the connection pool for SQL JDBC drivers. It's possible that a previous test ran and set the session's
+    ;; timezone to something, then returned the session to the pool. Sometimes that connection's session can remain
+    ;; intact and subsequent queries will continue in that timezone. That causes problems for tests that we can
+    ;; determine the database's timezone.
+    (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
-      (-> (driver/current-db-time *driver* db)
+      (-> (driver/current-db-time driver/*driver* db)
           .getChronology
           .getZone
           .getID))))
-
-(defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
-  it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'metabase.driver.generic-sql/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
-  [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
 
 (defmulti ^:private do-model-cleanup! class)
 

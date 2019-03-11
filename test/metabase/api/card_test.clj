@@ -7,15 +7,16 @@
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api.card :as card-api]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
              [collection :refer [Collection]]
-             [database :refer [Database]]
              [dashboard :refer [Dashboard]]
+             [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [pulse :as pulse :refer [Pulse]]
@@ -160,8 +161,8 @@
        3 (card-returned? :database db        card-2)))))
 
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "card"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "card"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
 ;; Make sure `model_id` is required when `f` is :database
@@ -409,12 +410,12 @@
       (tt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (tu/with-model-cleanup [Card]
-          ;; Rebind the `cancellable-run-query` function so that we can capture the generated SQL and inspect it
-          (let [orig-fn    (var-get #'metabase.driver.generic-sql.query-processor/cancellable-run-query)
+          ;; Rebind the `cancelable-run-query` function so that we can capture the generated SQL and inspect it
+          (let [orig-fn    (var-get #'sql-jdbc.execute/cancelable-run-query)
                 sql-result (atom [])]
-            (with-redefs [metabase.driver.generic-sql.query-processor/cancellable-run-query (fn [db sql params opts]
-                                                                                              (swap! sql-result conj sql)
-                                                                                              (orig-fn db sql params opts))]
+            (with-redefs [sql-jdbc.execute/cancelable-run-query (fn [db sql params opts]
+                                                                  (swap! sql-result conj sql)
+                                                                  (orig-fn db sql params opts))]
               ;; create a card with the metadata
               ((user->client :rasta) :post 200 "card"
                (assoc (card-with-name-and-query card-name)

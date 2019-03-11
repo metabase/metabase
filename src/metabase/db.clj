@@ -10,16 +10,16 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [connection-pool :as connection-pool]
+             [spec :as dbspec]]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import com.mchange.v2.c3p0.ComboPooledDataSource
-           java.io.StringWriter
-           java.util.Properties
+  (:import java.io.StringWriter
+           [liquibase Contexts Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
-           liquibase.Liquibase
            liquibase.exception.LockException
            liquibase.resource.ClassLoaderResourceAccessor))
 
@@ -30,21 +30,22 @@
 (def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
-  (delay (if (config/config-bool :mb-db-in-memory)
-           ;; In-memory (i.e. test) DB
-           "mem:metabase;DB_CLOSE_DELAY=-1"
-           ;; File-based DB
-           (let [db-file-name (config/config-str :mb-db-file)
-                 db-file      (io/file db-file-name)
-                 ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
-                 ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
-                 ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
-                 options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;"]
-             (apply str "file:" (if (.isAbsolute db-file)
-                                  ;; when an absolute path is given for the db file then don't mess with it
-                                  [db-file-name options]
-                                  ;; if we don't have an absolute path then make sure we start from "user.dir"
-                                  [(System/getProperty "user.dir") "/" db-file-name options]))))))
+  (delay
+   (if (config/config-bool :mb-db-in-memory)
+     ;; In-memory (i.e. test) DB
+     "mem:metabase;DB_CLOSE_DELAY=-1"
+     ;; File-based DB
+     (let [db-file-name (config/config-str :mb-db-file)
+           ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
+           ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
+           ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
+           ;;
+           ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+           options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+       ;; H2 wants file path to always be absolute
+       (str "file:"
+            (.getAbsolutePath (io/file db-file-name))
+             options)))))
 
 (def ^:private jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
@@ -55,18 +56,28 @@
   return a broken-out map."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
-    (merge {:type     (case (keyword protocol)
-                        :postgres   :postgres
-                        :postgresql :postgres
-                        :mysql      :mysql)
-            :user     user
-            :password pass
-            :host     host
-            :port     port
-            :dbname   db}
-           (some-> query
-                   codec/form-decode
-                   walk/keywordize-keys))))
+    (u/prog1 (merge {:type     (case (keyword protocol)
+                                 :postgres   :postgres
+                                 :postgresql :postgres
+                                 :mysql      :mysql)
+                     :user     user
+                     :password pass
+                     :host     host
+                     :port     port
+                     :dbname   db}
+                    (some-> query
+                            codec/form-decode
+                            walk/keywordize-keys))
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let
+      ;; them know about that to make their lives a little easier. See https://github.com/metabase/metabase/issues/8908
+      ;; for more details.
+      (when (and (= (:type <>) :postgres)
+                 (= (:ssl <>) "true")
+                 (not (:sslmode <>)))
+        (log/warn (trs "Warning: Postgres connection string with `ssl=true` detected.")
+                  (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+                  (trs "If Metabase fails to launch, please add it and try again.")
+                  (trs "See https://github.com/metabase/metabase/issues/8908 for more details."))))))
 
 (def ^:private connection-string-details
   (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
@@ -78,25 +89,34 @@
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
-(def db-connection-details
+(def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
-  (delay (or @connection-string-details
-             (case (db-type)
-               :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
-                          :db       @db-file}
-               :mysql    {:type     :mysql
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}
-               :postgres {:type     :postgres
-                          :host     (config/config-str :mb-db-host)
-                          :port     (config/config-int :mb-db-port)
-                          :dbname   (config/config-str :mb-db-dbname)
-                          :user     (config/config-str :mb-db-user)
-                          :password (config/config-str :mb-db-pass)}))))
+  (delay
+   (when (= (db-type) :h2)
+     (log/warn
+      (u/format-color 'red
+          (str
+           (trs "WARNING: Using Metabase with an H2 application database is not recomended for production deployments.")
+           (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
+           (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
+           (trs "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information.")))))
+   (or @connection-string-details
+       (case (db-type)
+         :h2       {:type     :h2 ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
+                    :db       @db-file}
+         :mysql    {:type     :mysql
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}
+         :postgres {:type     :postgres
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for JDBC."
@@ -115,7 +135,7 @@
 ;;; |                                                    MIGRATE!                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "liquibase.yaml")
+(def ^:private ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
@@ -130,7 +150,9 @@
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
   filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
-  because it keeps the code simple and doesn't make a significant performance difference."
+  because it keeps the code simple and doesn't make a significant performance difference.
+
+  As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
   (for [line  (s/split-lines (migrations-sql liquibase))
         :when (not (or (s/blank? line)
@@ -140,14 +162,17 @@
 (defn- has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
-  It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because
-  `migrations-sql` will always contain SQL to create and release migration locks, which is both slightly dangerous and
-  a waste of time when we won't be using them."
+  It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
+  skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
+  using them.
+
+  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
+  `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil))))
 
 (defn- migration-lock-exists?
-  "Is a migration lock in place for LIQUIBASE?"
+  "Is a migration lock in place for `liquibase`?"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
@@ -166,12 +191,7 @@
          (trs "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))))
 
 (defn- migrate-up-if-needed!
-  "Run any unrun `liquibase` migrations, if needed.
-
-  This creates SQL for the migrations to be performed, then executes each DDL statement. Running `.update` directly
-  doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at the end
-  of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do
-  the trick."
+  "Run any unrun `liquibase` migrations, if needed."
   [conn, ^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
   (when (has-unrun-migrations? liquibase)
@@ -182,8 +202,8 @@
     (if (has-unrun-migrations? liquibase)
       (do
         (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (doseq [line (migrations-lines liquibase)]
-          (jdbc/execute! conn [line])))
+        (let [^Contexts contexts nil]
+          (.update liquibase contexts)))
       (log/info
        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
@@ -191,7 +211,8 @@
   "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
   1.  This doesn't check to make sure the DB locks are cleared
-  2.  Any DDL statements that fail are ignored
+  2.  This generates a sequence of individual DDL statements with `migrations-lines` and runs them each in turn
+  3.  Any DDL statements that fail are ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295.
@@ -214,7 +235,8 @@
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
   "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
   otherwise it adds 2 seconds to startup time."
-  (partial deref (future (DatabaseFactory/getInstance))))
+  (when-not *compile-files*
+    (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."
@@ -260,13 +282,13 @@
   [liquibase]
   (when (has-unrun-migrations? liquibase)
     (let [sql (migrations-sql liquibase)]
-      (println (str "Database Upgrade Required\n\n"
-                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                    "Please execute the following sql commands on your database before proceeding.\n\n"
-                    sql
-                    "\n\n"
-                    "Once your database is updated try running the application again.\n"))
-      (throw (Exception. "Database requires manual upgrade.")))))
+      (log/info (str "Database Upgrade Required\n\n"
+                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                     "Please execute the following sql commands on your database before proceeding.\n\n"
+                     sql
+                     "\n\n"
+                     "Once your database is updated try running the application again.\n"))
+      (throw (Exception. "Database requires manual upgrade."))))
 
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
@@ -330,31 +352,17 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private application-db-connection-pool-properties
+  "c3p0 connection pool properties for the application DB. See
+  https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
+  {"minPoolSize"     1
+   "initialPoolSize" 1
+   "maxPoolSize"     15})
+
 (defn connection-pool
   "Create a C3P0 connection pool for the given database `spec`."
-  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
-    :or   {minimum-pool-size           3
-           idle-connection-test-period 0
-           excess-timeout              (* 30 60)}
-    :as   spec}]
-  {:datasource (doto (ComboPooledDataSource.)
-                 (.setDriverClass                  classname)
-                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
-                 (.setMaxIdleTimeExcessConnections excess-timeout)
-                 (.setMaxIdleTime                  (* 3 60 60))
-                 (.setInitialPoolSize              3)
-                 (.setMinPoolSize                  minimum-pool-size)
-                 (.setMaxPoolSize                  15)
-                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
-                 (.setTestConnectionOnCheckin      false)
-                 (.setTestConnectionOnCheckout     false)
-                 (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (Properties.)
-                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname
-                                                                                :naming :delimiters :alias-delimiter
-                                                                                :excess-timeout :minimum-pool-size
-                                                                                :idle-connection-test-period)]
-                                                       (.setProperty <> (name k) (str v))))))})
+  [spec]
+  (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
@@ -398,13 +406,13 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
-  ([engine details]
-   {:pre [(keyword? engine) (map? details)]}
-   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name engine))))
+  ([driver details]
+   {:pre [(keyword? driver) (map? details)]}
+   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver)
-             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
-     (format "Unable to connect to Metabase %s DB." (name engine)))
+             (require 'metabase.driver.util)
+             ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
+     (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
 
 
@@ -434,6 +442,8 @@
     ;; first place, and launch normally.
     (u/auto-retry 1
       (migrate! db-details :up))
+    ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
+    ;; to start normally
     (migrate! db-details :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
@@ -450,11 +460,12 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (verify-db-connection db-details)
-  (run-schema-migrations! auto-migrate db-details)
-  (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!)
-  (reset! setup-db-has-been-called? true))
+  (u/with-us-locale
+    (verify-db-connection db-details)
+    (run-schema-migrations! auto-migrate db-details)
+    (create-connection-pool! (jdbc-details db-details))
+    (run-data-migrations!)
+    (reset! setup-db-has-been-called? true)))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

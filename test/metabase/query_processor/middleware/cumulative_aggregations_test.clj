@@ -65,18 +65,18 @@
 (expect
   {:fully-realized-after-taking-2? false
    :fully-realized-after-taking-3? true}
-  (with-local-vars [fully-realized? false]
-    (let [a-lazy-seq (lazy-cat
-                      '((1 1 1))
-                      '((2 2 2))
-                      (do
-                        (var-set fully-realized? true)
-                        '((3 3 3))))
-          realize-n  (fn [n]
-                       (dorun (take n (#'cumulative-aggregations/sum-rows #{1} a-lazy-seq)))
-                       @fully-realized?)]
-      {:fully-realized-after-taking-2? (realize-n 2)
-       :fully-realized-after-taking-3? (realize-n 3)})))
+  (let [fully-realized? (atom false)
+        a-lazy-seq (lazy-cat
+                    '((1 1 1))
+                    '((2 2 2))
+                    (do
+                      (reset! fully-realized? true)
+                      '((3 3 3))))
+        realize-n  (fn [n]
+                     (dorun (take n (#'cumulative-aggregations/sum-rows #{1} a-lazy-seq)))
+                     @fully-realized?)]
+    {:fully-realized-after-taking-2? (realize-n 2)
+     :fully-realized-after-taking-3? (realize-n 3)}))
 
 
 ;; can it go forever without a stack overflow?

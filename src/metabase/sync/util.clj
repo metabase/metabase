@@ -13,6 +13,7 @@
              [driver :as driver]
              [events :as events]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]]
@@ -136,7 +137,7 @@
   {:style/indent 1}
   [database f]
   (fn []
-    (driver/sync-in-context (driver/->driver database) database
+    (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
 
@@ -443,9 +444,28 @@
     (log-sync-summary operation database sync-metadata)))
 
 (defn sum-numbers
-  "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`"
+  "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`. Used mainly for
+  logging purposes, such as to count and log the number of Fields updated by a sync operation. See also
+  `sum-for`, a `for`-style macro version."
   [f coll]
   (reduce + (for [item coll
                   :let [result (f item)]
                   :when (number? result)]
               result)))
+
+(defn sum-for*
+  "Impl for `sum-for` macro; see its docstring;"
+  [results]
+  (reduce + (filter number? results)))
+
+(defmacro sum-for
+  "Basically the same as `for`, but sums the results of each iteration of `body` that returned a number. See also
+  `sum-numbers`.
+
+  As an added bonus, unlike normal `for`, this wraps `body` in an implicit `do`, so you can have more than one form
+  inside the loop. Nice"
+  {:style/indent 1}
+  [[item-binding coll & more-for-bindings] & body]
+  `(sum-for* (for [~item-binding ~coll
+                   ~@more-for-bindings]
+               (do ~@body))))

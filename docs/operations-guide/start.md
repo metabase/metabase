@@ -58,6 +58,10 @@ How you upgrade Metabase depends on how you are running it. See below for inform
 #### Docker Image
 If you are running Metabase via docker, then you simply need to kill the Docker process and start a new container with the latest Metabase image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
+To pull the latest Metabase:
+
+    $ docker pull metabase/metabase:latest
+
 #### Jar file
 If you are running the JVM Jar file directly, then you simply kill the process, replace the .jar file with the newer version and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it's finished you'll be running the new version.
 
@@ -340,33 +344,4 @@ Diagnosing performance related issues can be a challenge. Luckily the JVM ships 
 
 # Java Versions
 
-Metabase will run on Java version 8 or greater; Java 8 is the easiest and most common choice.
-
-## Running on Java 8
-
-Running on Java 8 is the easiest path to running Metabase. There are no additional parameters required, if launching from a Jar the below invocation will work:
-
-    java -jar metabase.jar
-
-## Running on Java 9 or Newer
-
-To use Metabase on Java 9 with Oracle, Vertica, SparkSQL, or other drivers that require external dependencies,
-you'll need to tweak the way you launch Metabase.
-
-Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
-Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
-launch time. Run Metabase as follows:
-
-```bash
-# Unix
-java -cp metabase.jar:plugins/* metabase.core
-```
-
-On Windows, use a semicolon instead:
-
-```powershell
-# Windows
-java -cp metabase.jar;plugins/* metabase.core
-```
-
-The default Docker images use Java 8 so this step is only needed when running the JAR directly.
+Metabase will run on Java version 8, 9, or 10. Java 11 support is still a work in progress, so please be patient while we get everything working.

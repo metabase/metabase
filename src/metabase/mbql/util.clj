@@ -341,16 +341,26 @@
 
 
 (s/defn fk-clause->join-info :- (s/maybe mbql.s/JoinInfo)
-  "Return the matching info about the JOINed for the 'destination' Field in an `fk->` clause.
+  "Return the matching info about the JOINed for the 'destination' Field in an `fk->` clause, for the current level of
+  nesting (`0` meaning this `fk->` clause was found in the top-level query; `1` meaning it was found in the first
+  `source-query`, and so forth.)
 
-     (fk-clause->join-alias [:fk-> [:field-id 1] [:field-id 2]])
+     (fk-clause->join-info query [:fk-> [:field-id 1] [:field-id 2]] 0)
      ;; -> \"orders__via__order_id\""
-  [query :- mbql.s/Query, [_ source-field-clause] :- mbql.s/fk->]
-  (let [source-field-id (field-clause->id-or-literal source-field-clause)]
-    (some (fn [{:keys [fk-field-id], :as info}]
-            (when (= fk-field-id source-field-id)
-              info))
-          (-> query :query :join-tables))))
+  [query :- mbql.s/Query, nested-query-level :- su/NonNegativeInt, [_ source-field-clause :as fk-clause] :- mbql.s/fk->]
+  ;; if we're dealing with something that's not at the top-level go ahead and recurse a level until we get to the
+  ;; query we want to work with
+  (if (pos? nested-query-level)
+    (recur {:query (or (get-in query [:query :source-query])
+                       (throw (Exception. (str (tru "Bad nested-query-level: query does not have a source query")))))}
+           (dec nested-query-level)
+           fk-clause)
+    ;; ok, when we've reached the right level of nesting, look in `:join-tables` to find the appropriate info
+    (let [source-field-id (field-clause->id-or-literal source-field-clause)]
+      (some (fn [{:keys [fk-field-id], :as info}]
+              (when (= fk-field-id source-field-id)
+                info))
+            (-> query :query :join-tables)))))
 
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
@@ -389,10 +399,29 @@
   (ga-id? id))
 
 (defn datetime-field?
-  "Does `field` have a base type or special type that derives from `:type/DateTime`?"
+  "Is `field` used to record something date or time related, i.e. does `field` have a base type or special type that
+  derives from `:type/DateTime`?
+
+  For historical reasons `:type/Time` derivies from `:type/DateTime`, meaning this function will still return true for
+  Fields that record only time. You can use `datetime-but-not-time-field?` instead if you want to exclude time
+  Fields."
   [field]
   (or (isa? (:base_type field)    :type/DateTime)
       (isa? (:special_type field) :type/DateTime)))
+
+(defn time-field?
+  "Is `field` used to record a time of day (e.g. hour/minute/second), but not the date itself? i.e. does `field` have a
+  base type or special type that derives from `:type/Time`?"
+  [field]
+  (or (isa? (:base_type field)    :type/Time)
+      (isa? (:special_type field) :type/Time)))
+
+(defn datetime-but-not-time-field?
+  "Is `field` used to record a specific moment in time, i.e. does `field` have a base type or special type that derives
+  from `:type/DateTime` but not `:type/Time`?"
+  [field]
+  (and (datetime-field? field)
+       (not (time-field? field))))
 
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
@@ -447,3 +476,34 @@
   [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
+
+(defn query->max-rows-limit
+  "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
+  doing the equivalent of
+
+    java.sql.Statement statement = ...;
+    statement.setMaxRows(<max-rows-limit>).
+
+  to ensure the DB cursor or equivalent doesn't fetch more rows than will be consumed.
+
+  This is calculated as follows:
+
+  *  If query is `MBQL` and has a `:limit` or `:page` clause, returns appropriate number
+  *  If query has `:constraints` with `:max-results-bare-rows` or `:max-results`, returns the appropriate number
+     *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
+     *  `:max-results` is returned otherwise
+  *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
+     `max-rows-limit`"
+  [{{:keys [max-results max-results-bare-rows]}                      :constraints
+    {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
+    query-type                                                       :type}]
+  (let [safe-min          (fn [& args]
+                            (when-let [args (seq (filter some? args))]
+                              (reduce min args)))
+        mbql-limit        (when (= query-type :query)
+                            (safe-min items limit))
+        constraints-limit (or
+                           (when-not aggregations
+                             max-results-bare-rows)
+                           max-results)]
+    (safe-min mbql-limit constraints-limit)))

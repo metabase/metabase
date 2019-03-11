@@ -1,10 +1,13 @@
 (ns metabase.query-processor-test.query-cancellation-test
+  "TODO - This is sql-jdbc specific, so it should go in a sql-jdbc test namespace."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
-            [metabase.test.util :as tu]))
+            [expectations :refer [expect]]
+            [metabase.test.util :as tu]
+            [metabase.test.util.log :as tu.log]))
 
 (deftype FakePreparedStatement [called-cancel?]
   java.sql.PreparedStatement
+  (closeOnCompletion [_]) ; no-op
   (cancel [_] (deliver called-cancel? true))
   (close [_] true))
 
@@ -38,17 +41,19 @@
    true  ;; Cancel should have been called now
    true  ;; The paused query can proceed now
    ]
-  (tu/call-with-paused-query
-   (fn [query-thunk called-query? called-cancel? pause-query]
-     (let [ ;; This fake prepared statement is cancellable like a prepared statement, but will allow us to tell the
-           ;; difference between our Prepared statement and the real thing
-           fake-prep-stmt             (->FakePreparedStatement called-cancel?)
-           ;; Much of the underlying plumbing of MB requires a working jdbc/query and jdbc/prepared-statement (such
-           ;; as queryies for the application database). Let binding the original versions of the functions allows
-           ;; us to delegate to them when it's not the query we're trying to test
-           orig-jdbc-query            jdbc/query
-           orig-prep-stmt             jdbc/prepare-statement]
-       (future
-         (with-redefs [jdbc/prepare-statement (make-fake-prep-stmt orig-prep-stmt (fn [table-name] (re-find #"CHECKINS" table-name)) fake-prep-stmt)
-                       jdbc/query             (fake-query orig-jdbc-query #(deliver called-query? true) #(deref pause-query))]
-           (query-thunk)))))))
+  ;; this might dump messages about the connection being closed; we don't need to worry about that
+  (tu.log/suppress-output
+    (tu/call-with-paused-query
+     (fn [query-thunk called-query? called-cancel? pause-query]
+       (let [ ;; This fake prepared statement is cancelable like a prepared statement, but will allow us to tell the
+             ;; difference between our Prepared statement and the real thing
+             fake-prep-stmt  (->FakePreparedStatement called-cancel?)
+             ;; Much of the underlying plumbing of MB requires a working jdbc/query and jdbc/prepared-statement (such
+             ;; as queryies for the application database). Let binding the original versions of the functions allows
+             ;; us to delegate to them when it's not the query we're trying to test
+             orig-jdbc-query jdbc/query
+             orig-prep-stmt  jdbc/prepare-statement]
+         (future
+           (with-redefs [jdbc/prepare-statement (make-fake-prep-stmt orig-prep-stmt (fn [table-name] (re-find #"CHECKINS" table-name)) fake-prep-stmt)
+                         jdbc/query             (fake-query orig-jdbc-query #(deliver called-query? true) #(deref pause-query))]
+             (query-thunk))))))))

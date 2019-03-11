@@ -55,7 +55,7 @@
   ;; No need to check this if we don't have a data-timezone
   (when (and data-timezone driver)
     (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
-      (if ((resolve 'metabase.driver/driver-supports?) driver :set-timezone)
+      (if ((resolve 'metabase.driver/supports?) driver :set-timezone)
         ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
@@ -77,8 +77,8 @@
 (defn call-with-effective-timezone
   "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
   [db f]
-  (let [driver    ((resolve 'metabase.driver/->driver) db)
-        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver/report-timezone-if-supported) driver))]
+  (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
+        report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
                     (coerce-to-timezone report-tz-id))
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
@@ -162,15 +162,17 @@
 
 (defprotocol ^:private ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
-  (->iso-8601-datetime ^String [this timezone-id]
-    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+  (->iso-8601-datetime ^String [this, ^String timezone-id-or-nil]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given `timezone-id`
+    string (such as '\"UTC\"'), or `nil`, which defaults to \"UTC\" (?)"))
 
 (def ^:private ^{:arglists '([timezone-id])} ISO8601Formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
-  (memoize (fn [timezone-id]
-             (if timezone-id
-               (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
-               (time/formatters :date-time)))))
+  (memoize
+   (fn [^String timezone-id]
+     (if timezone-id
+       (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+       (time/formatters :date-time)))))
 
 (extend-protocol ISO8601
   nil                    (->iso-8601-datetime [_ _] nil)
@@ -218,7 +220,7 @@
    `Long` (ms since the epoch), or an ISO-8601 `String`. `date` defaults to the current moment in time.
 
    `date-format` is anything that can be passed to `->DateTimeFormatter`, such as `String`
-   (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   (using [the usual date format args](http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html)),
    `Keyword`, or `DateTimeFormatter`.
 
 

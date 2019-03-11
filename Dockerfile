@@ -12,13 +12,11 @@ ENV LC_CTYPE en_US.UTF-8
 # bash:    various shell scripts
 # wget:    installing lein
 # git:     ./bin/version
-# nodejs:  frontend building
+# yarn:  frontend building
 # make:    backend building
 # gettext: translations
-RUN apk add --update bash nodejs nodejs-npm git wget make gettext
 
-# yarn:    frontend dependencies
-RUN npm install -g yarn
+RUN apk add --update bash yarn git wget make gettext
 
 # lein:    backend dependencies and building
 ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
@@ -32,7 +30,7 @@ ADD project.clj .
 RUN lein deps
 
 # frontend dependencies
-ADD yarn.lock package.json ./
+ADD yarn.lock package.json .yarnrc ./
 RUN yarn
 
 # add the rest of the source
@@ -72,6 +70,10 @@ COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib
 RUN mkdir -p bin target/uberjar
 COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/bin/start /app/bin/
+
+# create the plugins directory, with writable permissions
+RUN mkdir -p /plugins
+RUN chmod a+rwx /plugins
 
 # expose our default runtime port
 EXPOSE 3000

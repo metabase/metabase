@@ -13,18 +13,17 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 * Amazon Redshift
 * [Google BigQuery](databases/bigquery.md)
 * H2
-* MongoDB (version 3.0 or higher)
+* MongoDB (version 3.4 or higher)
 * MySQL (version 4.1 or higher, as well as MariaDB)
 * Postgres
 * SQLite
 * SQL Server
 * Druid
-* [CrateDB](databases/cratedb.md)
 * [Oracle](databases/oracle.md)
 * [Vertica](databases/vertica.md)
 * Presto
 * Google Analytics
-* [SparkSQL](databases/spark.md)
+* SparkSQL
 * Snowflake
 
 To add a database, you'll need its connection information.

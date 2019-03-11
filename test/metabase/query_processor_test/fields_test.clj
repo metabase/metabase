@@ -5,7 +5,7 @@
 
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the
 ;; order of the IDs in the `fields` clause
-(qp-expect-with-all-engines
+(qp-expect-with-all-drivers
   {:rows        [["Red Medicine"                  1]
                  ["Stout Burgers & Beers"         2]
                  ["The Apple Pan"                 3]

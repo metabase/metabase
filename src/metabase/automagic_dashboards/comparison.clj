@@ -93,7 +93,8 @@
                                                  :card                   card
                                                  :card_id                (:id card)
                                                  :series                 series
-                                                 :visualization_settings {:graph.y_axis.auto_split false}
+                                                 :visualization_settings {:graph.y_axis.auto_split false
+                                                                          :graph.series_labels [(:name card) (:name (first series))]}
                                                  :id                     (gensym)}))
         (let [width        (/ populate/grid-width 2)
               series-left  (map clone-card (:series card-left))

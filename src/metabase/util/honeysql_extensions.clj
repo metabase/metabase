@@ -25,25 +25,6 @@
   (intern 'honeysql.format 'quote-fns
           (assoc quote-fns :h2 (comp english-upper-case ansi-quote-fn))))
 
-
-;; `:crate` quote style that correctly quotes nested column identifiers
-(defn- str-insert
-  "Insert C in string S at index I."
-  [s c i]
-  (str c (subs s 0 i) c (subs s i)))
-
-(defn- crate-column-identifier
-  [^CharSequence s]
-  (let [idx (s/index-of s "[")]
-    (if (nil? idx)
-      (str \" s \")
-      (str-insert s "\"" idx))))
-
-(let [quote-fns @(resolve 'honeysql.format/quote-fns)]
-  (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :crate crate-column-identifier)))
-
-
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
 (defmethod hformat/fn-handler "extract" [_ unit expr]
@@ -63,6 +44,12 @@
 (extend-protocol honeysql.format/ToSql
   java.lang.Number
   (to-sql [x] (str x)))
+
+;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
+;; queries. The easiest way around this is to convert them to their decimal representations.
+(extend-protocol honeysql.format/ToSql
+  clojure.lang.Ratio
+  (to-sql [x] (hformat/to-sql (double x))))
 
 ;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
 ;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with
@@ -154,6 +141,7 @@
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
 (def ^{:arglists '([& exprs])} hour    "SQL `hour` function."   (partial hsql/call :hour))
 (def ^{:arglists '([& exprs])} minute  "SQL `minute` function." (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."    (partial hsql/call :day))
 (def ^{:arglists '([& exprs])} week    "SQL `week` function."   (partial hsql/call :week))
 (def ^{:arglists '([& exprs])} month   "SQL `month` function."  (partial hsql/call :month))
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))

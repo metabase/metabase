@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.desugar-test
-  (:require [metabase.query-processor.middleware.desugar :as desugar]
-            [expectations :refer [expect]]))
+  (:require [expectations :refer [expect]]
+            [metabase.query-processor.middleware.desugar :as desugar]))
 
 (def ^:private ^{:arglists '([query])} desugar
   (desugar/desugar identity))
@@ -42,6 +42,65 @@
     :type     :query
     :query    {:source-table 1
                :filter       [:time-interval [:field-id 1] 2 :month {:include-current true}]}}))
+
+
+;; `time-interval` with value = 1 or = -1 should generate an `=` clause
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:=
+                             [:datetime-field [:field-id 1] :month]
+                             [:relative-datetime 1 :month]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] 1 :month]}}))
+
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:=
+                             [:datetime-field [:field-id 1] :week]
+                             [:relative-datetime -1 :week]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] -1 :week]}}))
+
+
+;; test the `include-current` option -- interval with value = 1 or = -1 should generate a `between` clause
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:between
+                             [:datetime-field [:field-id 1] :month]
+                             [:relative-datetime 0 :month]
+                             [:relative-datetime 1 :month]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] 1 :month {:include-current true}]}}))
+
+(expect
+  {:database 1
+   :type     :query
+   :query    {:source-table 1
+              :filter       [:between
+                             [:datetime-field [:field-id 1] :day]
+                             [:relative-datetime -1 :day]
+                             [:relative-datetime 0 :day]]}}
+  (desugar
+   {:database 1
+    :type     :query
+    :query    {:source-table 1
+               :filter       [:time-interval [:field-id 1] -1 :day {:include-current true}]}}))
+
 
 ;; test using keywords like `:current`
 (expect

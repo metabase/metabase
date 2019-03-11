@@ -3,14 +3,13 @@ import { t } from "c-3po";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import Task from "metabase/entities/tasks";
 
 import Code from "metabase/components/Code";
 import ModalContent from "metabase/components/ModalContent";
 
-@entityObjectLoader({
-  entityType: "tasks",
-  entityId: (state, props) => props.params.taskId,
+@Task.load({
+  id: (state, props) => props.params.taskId,
 })
 @connect(null, { goBack })
 class TaskModal extends React.Component {

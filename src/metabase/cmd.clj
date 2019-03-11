@@ -92,9 +92,16 @@
   (require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
+(defn ^:command driver-methods
+  "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
+  driver."
+  []
+  (require 'metabase.cmd.driver-methods)
+  ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
+
 (defn ^:command check-i18n
   "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
-  things need to be translated."
+  things need to be wrapped with i18n forms."
   []
   (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
   (require 'puppetlabs.i18n.core)

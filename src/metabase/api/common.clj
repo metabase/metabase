@@ -368,6 +368,16 @@
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
+(defn create-check
+  "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
+
+  This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
+  not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
+  hardcoded into this -- this should be considered an antipattern and be refactored out going forward."
+  {:added "0.32.0", :style/indent 2}
+  [entity m]
+  (check-403 (mi/can-create? entity m)))
+
 ;;; --------------------------------------------------- STREAMING ----------------------------------------------------
 
 (def ^:private ^:const streaming-response-keep-alive-interval-ms
@@ -462,13 +472,13 @@
      :error-channel   error-chan
      :response-future response-fut}))
 
-(defn cancellable-json-response
-  "Invokes `cancellable-thunk` in a future. If there's an immediate exception, throw it. If there's not an immediate
+(defn cancelable-json-response
+  "Invokes `cancelable-thunk` in a future. If there's an immediate exception, throw it. If there's not an immediate
   exception, return a ring response with a channel. The channel will potentially include newline characters before the
-  full response is delivered as a keepalive to the client. Eventually the results of `cancellable-thunk` will be put
+  full response is delivered as a keepalive to the client. Eventually the results of `cancelable-thunk` will be put
   to the channel"
-  [cancellable-thunk]
-  (let [{:keys [output-channel error-channel]} (invoke-thunk-with-keepalive cancellable-thunk)]
+  [cancelable-thunk]
+  (let [{:keys [output-channel error-channel]} (invoke-thunk-with-keepalive cancelable-thunk)]
     ;; If there's an immediate exception, it will be in `error-chan`, if not, `error-chan` will close and we'll assume
     ;; the response is a success
     (if-let [ex (async/<!! error-channel)]

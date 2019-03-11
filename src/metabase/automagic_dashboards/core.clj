@@ -37,8 +37,9 @@
              [table :refer [Table]]]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
-            [metabase.util.date :as date]
-            [metabase.util.i18n :refer [trs tru] :as ui18n]
+            [metabase.util
+             [date :as date]
+             [i18n :as ui18n :refer [trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -571,11 +572,12 @@
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (string? form)
-           (let [new-form (fill-templates :string context bindings form)]
-             (if (not= new-form form)
-               (capitalize-first new-form)
-               new-form))
+         (if (ui18n/localized-string? form)
+           (let [s     (str form)
+                 new-s (fill-templates :string context bindings s)]
+             (if (not= new-s s)
+               (capitalize-first new-s)
+               s))
            form))
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
@@ -584,7 +586,7 @@
   [{:keys [base_type engine fingerprint aggregation]}]
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
-      (and (driver/driver-supports? (driver/engine->driver engine) :binning)
+      (and (driver/supports? engine :binning)
            (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
@@ -1121,14 +1123,14 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (and (filters/periodic-datetime? field) unit) (tru "{0} of {1}" (unit-name unit)))))
+     (some-> unit date/date-extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (if (or (filters/datetime? field)
-            (filters/periodic-datetime? field))
+    (if (or (isa? (:base_type field) :type/DateTime)
+            (field/unix-timestamp? field))
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 
@@ -1228,6 +1230,7 @@
                                         :group-by [:table_id]
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
+          ;; Table comprised entierly of join keys
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
@@ -1267,7 +1270,7 @@
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
-          (remove (comp (some-fn :link-table? :list-like? (comp zero? :num-fields)) :stats))
+          (remove (comp (some-fn :link-table? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
@@ -1277,7 +1280,10 @@
                    {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
                     :score       (+ (math/sq (:specificity rule))
-                                    (math/log (-> table :stats :num-fields)))
+                                    (math/log (-> table :stats :num-fields))
+                                    (if (-> table :stats :list-like?)
+                                      -10
+                                      0))
                     :description (:description dashboard)
                     :table       table
                     :rule        (:rule rule)})))

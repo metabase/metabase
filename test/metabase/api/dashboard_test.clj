@@ -4,11 +4,11 @@
             [medley.core :as m]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api
              [card-test :as card-api-test]
              [dashboard :as dashboard-api]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -97,8 +97,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "dashboard"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "dashboard"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -542,6 +542,60 @@
       [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
        (Dashboard dashboard-id)])))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         COPY /api/dashboard/:id/copy                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; A plain copy with nothing special
+(expect (merge dashboard-defaults
+               {:name               "Test Dashboard"
+                :description        "A description"
+                :creator_id         (user->id :rasta)
+                :collection_id      false})
+        (tt/with-temp Dashboard  [{dashboard-id :id} {:name         "Test Dashboard"
+                                                      :description  "A description"
+                                                      :creator_id   (user->id :rasta)}]
+          (tu/with-model-cleanup [Dashboard]
+            (dashboard-response ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))
+
+;; Ensure name / description / user set when copying
+(expect (merge dashboard-defaults
+               {:name           "Test Dashboard - Duplicate"
+                :description    "A new description"
+                :creator_id     (user->id :crowberto)
+                :collection_id  false})
+        (tt/with-temp Dashboard [{dashboard-id :id}  {:name           "Test Dashboard"
+                                                      :description    "An old description"}]
+          (tu/with-model-cleanup [Dashboard]
+            (dashboard-response ((user->client :crowberto) :post 200 (format "dashboard/%d/copy" dashboard-id)
+              {:name             "Test Dashboard - Duplicate"
+               :description      "A new description"})))))
+
+;; Ensure dashboard cards are copied
+(expect
+  2
+  (tt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
+                  Card          [{card-id :id}]
+                  Card          [{card-id2 :id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
+    (tu/with-model-cleanup [Dashboard]
+      (count (db/select-ids DashboardCard, :dashboard_id
+        (u/get-id ((user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))))
+
+;; Ensure the correct collection is set when copying
+(expect
+  (tu/with-model-cleanup [Dashboard]
+    (dashboard-test/with-dash-in-collection [db collection dash]
+      (tt/with-temp Collection [new-collection]
+        ;; grant Permissions for both new and old collections
+        (doseq [coll [collection new-collection]]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
+        ;; Check to make sure the ID of the collection is correct
+        (= (db/select-one-field :collection_id Dashboard :id
+              (u/get-id ((user->client :rasta) :post 200 (format "dashboard/%d/copy" (u/get-id dash)) {:collection_id (u/get-id new-collection)})))
+          (u/get-id new-collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/dashboard/:id/cards                                          |
