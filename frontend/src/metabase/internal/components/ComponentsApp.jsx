@@ -20,11 +20,15 @@ const Section = ({ title, children }) => (
   </div>
 );
 
+const getComponentName = component =>
+  component && (component.displayName || getComponentName(component));
+
 export default class ComponentsApp extends Component {
   static routes: ?[React$Element<Route>];
   render() {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
+    const showExampleCode = !!componentName;
     return (
       <div className="flex full">
         <nav
@@ -35,14 +39,15 @@ export default class ComponentsApp extends Component {
           <ul className="py2">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
-                !componentName || componentName === slugify(component.name),
+                !componentName ||
+                componentName === slugify(getComponentName(component)),
             ).map(({ component, description, examples }) => (
               <li>
                 <a
                   className="py1 block link h3 text-bold"
-                  href={`/_internal/components#${component.name}`}
+                  href={`/_internal/components#${getComponentName(component)}`}
                 >
-                  {component.name}
+                  {getComponentName(component)}
                 </a>
               </li>
             ))}
@@ -52,15 +57,18 @@ export default class ComponentsApp extends Component {
           <div className="p4">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
-                !componentName || componentName === slugify(component.name),
+                !componentName ||
+                componentName === slugify(getComponentName(component)),
             ).map(({ component, description, examples }, index) => (
-              <div id={component.name} key={index}>
+              <div id={getComponentName(component)} key={index}>
                 <h2>
                   <Link
-                    to={`_internal/components/${slugify(component.name)}`}
+                    to={`_internal/components/${slugify(
+                      getComponentName(component),
+                    )}`}
                     className="no-decoration"
                   >
-                    {component.name}
+                    {getComponentName(component)}
                   </Link>
                 </h2>
                 {description && <p className="my2">{description}</p>}
@@ -93,31 +101,33 @@ export default class ComponentsApp extends Component {
                           <h4 className="my1">
                             <Link
                               to={`_internal/components/${slugify(
-                                component.name,
+                                getComponentName(component),
                               )}/${slugify(name)}`}
                               className="no-decoration"
                             >
-                              {name}
+                              {name}:
                             </Link>
                           </h4>
                           <div className="flex flex-column">
-                            <div className="p2 bordered flex align-center flex-full">
+                            <div className="p2 bordered rounded flex align-center flex-full border-light">
                               <div className="full">{element}</div>
                             </div>
-                            <div className="relative">
-                              <AceEditor
-                                value={reactElementToJSXString(element)}
-                                mode="ace/mode/jsx"
-                                theme="ace/theme/metabase"
-                                readOnly
-                              />
-                              <div className="absolute top right text-brand-hover cursor-pointer z2">
-                                <CopyButton
-                                  className="p1"
+                            {showExampleCode && (
+                              <div className="relative">
+                                <AceEditor
                                   value={reactElementToJSXString(element)}
+                                  mode="ace/mode/jsx"
+                                  theme="ace/theme/metabase"
+                                  readOnly
                                 />
+                                <div className="absolute top right text-brand-hover cursor-pointer z2">
+                                  <CopyButton
+                                    className="p1"
+                                    value={reactElementToJSXString(element)}
+                                  />
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       ))}
