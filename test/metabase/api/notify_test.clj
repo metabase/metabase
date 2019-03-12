@@ -17,9 +17,11 @@
 ;; database must exist or we get a 404
 (expect
   {:status 404
-   :body "Not found."}
-  (try (client/post (http/build-url "notify/db/10000" {}) {:accept  :json
-                                                           :headers {"X-METABASE-APIKEY" "test-api-key"}})
+   :body   "Not found."}
+  (try (client/post (http/build-url "notify/db/10000" {})
+                    {:accept  :json
+                     :headers {"X-METABASE-APIKEY" "test-api-key"
+                               "Content-Type"      "application/json"}})
        (catch clojure.lang.ExceptionInfo e
          (select-keys (:object (ex-data e)) [:status :body]))))
 

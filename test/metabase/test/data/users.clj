@@ -128,12 +128,20 @@
 
 (defonce ^:private tokens (atom {}))
 
-(defn- username->token [username]
+(defn username->token
+  "Return cached session token for a test User, logging in first if needed."
+  [username]
   (or (@tokens username)
       (u/prog1 (http/authenticate (user->credentials username))
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
+
+(defn clear-cached-session-tokens!
+  "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
+  `401` unauthenticated response, and then retry the request."
+  []
+  (reset! tokens {}))
 
 (defn- client-fn [username & args]
   (try
@@ -143,7 +151,7 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (reset! tokens {})
+        (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
 (defn user->client
