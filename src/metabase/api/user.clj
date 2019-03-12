@@ -237,7 +237,8 @@
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email! user @api/*current-user* join-url))))
+      (email/send-new-user-email! user @api/*current-user* join-url)))
+  {:success true})
 
 
 (api/define-routes)
