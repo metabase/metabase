@@ -435,12 +435,11 @@ export default class Question {
   }
 
   getUrl(originalQuestion?: Question): string {
-    const isDirty =
-      !originalQuestion || this.isDirtyComparedTo(originalQuestion);
-
-    return isDirty
-      ? Urls.question(null, this._serializeForUrl())
-      : Urls.question(this.id(), "");
+    if (!this.id() || (originalQuestion && this.isDirtyComparedTo(originalQuestion))) {
+      return Urls.question(null, this._serializeForUrl())
+    } else {
+      return Urls.question(this.id(), "");
+    }
   }
 
   getAutomaticDashboardUrl(filters /*?: Filter[] = []*/) {

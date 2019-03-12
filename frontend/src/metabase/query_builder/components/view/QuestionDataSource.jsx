@@ -7,7 +7,7 @@ import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
 import cx from "classnames";
 
-const DataSource = ({ question, subHead }) => {
+const QuestionDataSource = ({ question, subHead }) => {
   const parts = [];
 
   const database = question.query().database();
@@ -41,7 +41,7 @@ const DataSource = ({ question, subHead }) => {
   );
 };
 
-export default DataSource;
+export default QuestionDataSource;
 
 const SubHeadBreadcrumbs = ({ parts }) => (
   <span className="flex align-center text-medium text-bold">
@@ -55,7 +55,7 @@ const SubHeadBreadcrumbs = ({ parts }) => (
 );
 
 const HeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center mr2 h2">
+  <span className="flex align-center mr2">
     {parts.map(({ name, icon, href }, index) => [
       <MaybeLink
         key={index}

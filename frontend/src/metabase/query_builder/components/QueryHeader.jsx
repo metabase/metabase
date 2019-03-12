@@ -18,19 +18,13 @@ import cx from "classnames";
 import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import EntityMenu from "metabase/components/EntityMenu";
-import { AlertListPopoverContent } from "metabase/query_builder/components/AlertListPopoverContent";
-import {
-  getQuestionAlerts,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
+import AlertListPopoverContent from "metabase/query_builder/components/AlertListPopoverContent";
 import { getUser } from "metabase/home/selectors";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import Collections from "metabase/entities/collections";
 
 const mapStateToProps = (state, props) => ({
-  questionAlerts: getQuestionAlerts(state),
-  visualizationSettings: getVisualizationSettings(state),
   user: getUser(state),
   initialCollectionId: Collections.selectors.getInitialCollectionId(
     state,

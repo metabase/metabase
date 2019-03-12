@@ -8,7 +8,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import ShrinkableList from "metabase/components/ShrinkableList";
 
-import RunButton from "./RunButton.jsx";
+import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import VisualizationSettings from "./VisualizationSettings.jsx";
 
 import VisualizationError from "./VisualizationError.jsx";
@@ -18,9 +18,8 @@ import Warnings from "./Warnings.jsx";
 import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
 import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 
-import { formatNumber, duration } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
@@ -32,8 +31,6 @@ import type { Database } from "metabase/meta/types/Database";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { ParameterValues } from "metabase/meta/types/Parameter";
-
-const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 type Props = {
   question: Question,
@@ -112,18 +109,6 @@ export default class QueryVisualization extends Component {
       cancelQuery,
     } = this.props;
 
-    let runButtonTooltip;
-    if (
-      !isResultDirty &&
-      result &&
-      result.cached &&
-      result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD
-    ) {
-      runButtonTooltip = t`This question will take approximately ${duration(
-        result.average_execution_time,
-      )} to refresh`;
-    }
-
     const messages = [];
     if (result && result.cached) {
       messages.push({
@@ -153,9 +138,6 @@ export default class QueryVisualization extends Component {
         ),
       });
     }
-
-    const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("embedding");
     return (
       <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
         <div className="z4 absolute left hide sm-show">
@@ -164,15 +146,15 @@ export default class QueryVisualization extends Component {
           )}
         </div>
         <div className="z3 sm-absolute left right">
-          <Tooltip tooltip={runButtonTooltip}>
-            <RunButton
-              isRunnable={isRunnable}
-              isDirty={isResultDirty}
-              isRunning={isRunning}
-              onRun={this.runQuery}
-              onCancel={cancelQuery}
-            />
-          </Tooltip>
+          <RunButtonWithTooltip
+            className="block ml-auto mr-auto"
+            result={result}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            onRun={this.runQuery}
+            onCancel={cancelQuery}
+          />
         </div>
         <div
           className="z4 absolute right flex align-center justify-end"
@@ -200,21 +182,19 @@ export default class QueryVisualization extends Component {
               size={18}
             />
           )}
-          {!isResultDirty && result && !result.error ? (
+          {QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
             <QueryDownloadWidget
               className="mx1 hide sm-show"
               card={question.card()}
               result={result}
             />
-          ) : null}
-          {question.isSaved() &&
-          ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
-            (isEmbeddingEnabled && isAdmin)) ? (
+          )}
+          {QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
             <QuestionEmbedWidget
               className="mx1 hide sm-show"
               card={question.card()}
             />
-          ) : null}
+          )}
         </div>
       </div>
     );

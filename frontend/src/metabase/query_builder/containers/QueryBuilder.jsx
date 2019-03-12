@@ -55,6 +55,8 @@ import {
   getOriginalQuestion,
   getSettings,
   getRawSeries,
+  getQuestionAlerts,
+  getVisualizationSettings,
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -122,6 +124,9 @@ const mapStateToProps = (state, props) => {
     isRunning: state.qb.uiControls.isRunning,
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+
+    questionAlerts: getQuestionAlerts(state),
+    visualizationSettings: getVisualizationSettings(state),
 
     loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
@@ -334,7 +339,7 @@ class LegacyQueryBuilder extends Component {
           {/*<QueryHeader {...this.props} />*/}
 
           {uiControls.queryBuilderMode === "worksheet" && (
-            <div id="react_qb_editor" className="z2 hide sm-show">
+            <div className="z2 hide sm-show mb1 mt2">
               {query instanceof NativeQuery ? (
                 <NativeQueryEditor
                   {...this.props}

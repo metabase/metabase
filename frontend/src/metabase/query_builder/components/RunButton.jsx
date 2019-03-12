@@ -7,6 +7,7 @@ import cx from "classnames";
 
 export default class RunButton extends Component {
   static propTypes = {
+    className: PropTypes.string,
     isRunnable: PropTypes.bool.isRequired,
     isRunning: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
@@ -15,7 +16,14 @@ export default class RunButton extends Component {
   };
 
   render() {
-    let { isRunnable, isRunning, isDirty, onRun, onCancel } = this.props;
+    let {
+      isRunnable,
+      isRunning,
+      isDirty,
+      onRun,
+      onCancel,
+      className,
+    } = this.props;
     let buttonText = null;
     if (isRunning) {
       buttonText = (
@@ -34,18 +42,20 @@ export default class RunButton extends Component {
         </div>
       );
     }
-    let actionFn = isRunning ? onCancel : onRun;
-    let classes = cx(
-      "Button Button--medium circular RunButton ml-auto mr-auto block",
-      {
-        "RunButton--hidden": !buttonText,
-        "Button--primary": isDirty,
-        "text-medium": !isDirty,
-        "text-brand-hover": !isDirty,
-      },
-    );
     return (
-      <button className={classes} onClick={() => actionFn()}>
+      <button
+        className={cx(
+          "Button Button--medium circular RunButton",
+          {
+            "RunButton--hidden": !buttonText,
+            "Button--primary": isDirty,
+            "text-medium": !isDirty,
+            "text-brand-hover": !isDirty,
+          },
+          className,
+        )}
+        onClick={isRunning ? onCancel : onRun}
+      >
         {buttonText}
       </button>
     );

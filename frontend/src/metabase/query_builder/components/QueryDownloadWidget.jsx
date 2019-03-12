@@ -180,4 +180,7 @@ QueryDownloadWidget.defaultProps = {
   params: {},
 };
 
+QueryDownloadWidget.shouldRender = ({ result, isResultDirty }) =>
+  !isResultDirty && result && !result.error;
+
 export default QueryDownloadWidget;

@@ -23,7 +23,7 @@ import {
   state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
   null,
 )
-export class AlertListPopoverContent extends Component {
+export default class AlertListPopoverContent extends Component {
   props: {
     questionAlerts: any[],
     setMenuFreeze: boolean => void,
