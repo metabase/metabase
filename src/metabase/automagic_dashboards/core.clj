@@ -363,9 +363,15 @@
 
 (def ^:private field-filters
   {:fieldspec       (fn [fieldspec]
-                      (if (and (string? fieldspec)
+                      (cond
+                        (nil? fieldspec)
+                        true
+
+                        (and (string? fieldspec)
                                (rules/ga-dimension? fieldspec))
                         (comp #{fieldspec} :name)
+
+                        :else
                         (fn [{:keys [special_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries

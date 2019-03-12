@@ -1,0 +1,97 @@
+title: GitHub Pull Requests
+transient_title: "A summary of your pull requests"
+metrics:
+ - Count: ["count"]
+ - DistinctContributors: ["distinct", [dimension, Contributor]]
+dimensions:
+ - CreatedAt:
+     field_type: CreationTimestamp
+ - MergedAt:
+     field_type: DateTime
+     named: merged_at
+ - Contributor:
+     field_type: Text
+     named: user__login
+ - State:
+     field_type: Text
+     named: state
+ - ID:
+     field_type: Number
+     named: number
+ - Title:
+     field_type: Title
+filters:
+  - Merged:
+      filter: ["not-null", [dimension, MergedAt]]
+  - Open:
+      filter: ["=", [dimension, State], "open"]
+  - NotMerged:
+      filter: ["is-null", [dimension, MergedAt]]
+  - Last30Days:
+      filter: ["time-interval", [dimension, CreatedAt], -30, day]
+groups:
+  - Overview:
+      title: Overview
+  - Contributors:
+      title: Contributors
+dashboard_filters:
+- CreatedAt
+cards:
+- Last10OpenedPRs:
+    title: Last 10 submitted PRs
+    visualization: table
+    dimensions:
+    - Title
+    - ID
+    order_by:
+      - CreatedAt: descending
+    limit: 10
+    filters:
+     - Open
+     - NotMerged
+    group: Overview
+    width: 9
+    height: 10
+- Last10MergedPRs:
+    title: Last 10 merged PRs
+    visualization: table
+    dimensions:
+    - Title
+    - ID
+    order_by:
+      - MergedAt: descending
+    limit: 10
+    filters: Merged
+    group: Overview
+    width: 9
+    height: 10
+- TopContributorsAllTime:
+    title: Top all time contributors
+    visualization: row
+    dimensions: Contributor
+    metrics: Count
+    order_by:
+      - Count: descending
+    limit: 10
+    group: Contributors
+    width: 9
+    height: 8
+- TopContributorsLast30Days:
+    title: Top contributors in the last 30 days
+    visualization: row
+    dimensions: Contributor
+    metrics: Count
+    order_by:
+      - Count: descending
+    limit: 10
+    filters: Last30Days
+    group: Contributors
+    width: 9
+    height: 8
+- TotalContributors:
+    title: Distinct contributors per month
+    visualization: line
+    dimensions: CreatedAt
+    metrics: DistinctContributors
+    group: Contributors
+    width: 18

@@ -1,0 +1,122 @@
+title: GitHub Issues
+transient_title: "A summary of your issues"
+metrics:
+ - Count: ["count"]
+ - DistinctContributors: ["distinct", [dimension, Contributor]]
+ - NumComments: ["sum", [dimension, Comments]]
+dimensions:
+ - CreatedAt:
+     field_type: CreationTimestamp
+ - ClosedAt:
+     field_type: DateTime
+     named: closed_at
+ - Contributor:
+     field_type: Text
+     named: user__login
+ - State:
+     field_type: Text
+     named: state
+ - ID:
+     field_type: Number
+     named: number
+ - Title:
+     field_type: Title
+ - Comments:
+     field_type: Number
+     named: comments
+filters:
+  - Open:
+      filter: ["=", [dimension, State], "open"]
+  - Closed:
+      filter: ["not-null", [dimension, ClosedAt]]
+  - Last30Days:
+      filter: ["time-interval", [dimension, CreatedAt], -30, day]
+groups:
+  - Overview:
+      title: Overview
+  - Engagement:
+      title: Engagement
+  - Contributors:
+      title: Contributors
+dashboard_filters:
+- CreatedAt
+cards:
+- TotalOpenIssues:
+    title: Total open issues
+    visualization: scalar
+    metrics: Count
+    filters: Open
+    group: Overview
+    width: 4
+- OpenIssues:
+    title: Opend issues
+    visualization: line
+    metrics: Count
+    dimensions: CreatedAt
+    filters: Open
+    group: Overview
+    width: 7
+- ClosedIssues:
+    title: Closed issues
+    visualization: line
+    metrics: Count
+    dimensions: ClosedAt
+    filters: Closed
+    group: Overview
+    width: 7
+- Last10Issues:
+    title: Last 10 submitted issues
+    visualization: table
+    dimensions:
+    - Title
+    - ID
+    order_by:
+      - CreatedAt: descending
+    limit: 10
+    group: Overview
+    width: 9
+    height: 10
+- MostCommented:
+    title: Most commented still open issues
+    visualization: row
+    dimensions:
+    - Title
+    metrics: NumComments
+    order_by:
+      - NumComments: descending
+    limit: 10
+    filters:
+     - Open
+    group: Engagement
+    width: 9
+    height: 10
+- TopContributorsAllTime:
+    title: Top all time contributors
+    visualization: row
+    dimensions: Contributor
+    metrics: Count
+    order_by:
+      - Count: descending
+    limit: 10
+    group: Contributors
+    width: 9
+    height: 8
+- TopContributorsLast30Days:
+    title: Top contributors in the last 30 days
+    visualization: row
+    dimensions: Contributor
+    metrics: Count
+    order_by:
+      - Count: descending
+    limit: 10
+    filters: Last30Days
+    group: Contributors
+    width: 9
+    height: 8
+- TotalContributors:
+    title: Distinct contributors per month
+    visualization: line
+    dimensions: CreatedAt
+    metrics: DistinctContributors
+    group: Contributors
+    width: 18

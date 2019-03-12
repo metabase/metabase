@@ -71,7 +71,7 @@
                                    [TableType]
                                    [(s/one TableType "table") FieldType]))
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type)      AppliesTo
+(def ^:private Dimension {Identifier {(s/optional-key :field_type)      AppliesTo
                                       (s/required-key :score)           Score
                                       (s/optional-key :links_to)        TableType
                                       (s/optional-key :named)           s/Str

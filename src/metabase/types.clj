@@ -22,7 +22,13 @@
 (derive :entity/ProductTable :entity/GenericTable)
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
+
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
+
+(derive :entity/GHCommitsTable :entity/*)
+(derive :entity/GHIssuesTable :entity/*)
+(derive :entity/GHPRsTable :entity/*)
+(derive :entity/GHStargazersTable :entity/*)
 
 
 ;;; Numeric Types

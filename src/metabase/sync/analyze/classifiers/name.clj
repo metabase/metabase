@@ -167,7 +167,12 @@
    [(prefix-or-postfix "subscription") :entity/SubscriptionTable]
    [(prefix-or-postfix "company")      :entity/CompanyTable]
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
-   [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
+   [(prefix-or-postfix "vendor")       :entity/CompanyTable]
+   ;; GitHub
+   [(prefix-or-postfix "pull_requests") :entity/GHPRsTable]
+   [(prefix-or-postfix "issues")        :entity/GHIssuesTable]
+   [(prefix-or-postfix "stargazers")    :entity/GHStargazersTable]
+   [(prefix-or-postfix "commits")       :entity/GHCommitsTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
   "Classifer that infers the special type of a TABLE based on its name."
