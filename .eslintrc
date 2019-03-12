@@ -17,7 +17,33 @@
         "react/no-find-dom-node": 0,
         "flowtype/define-flow-type": 1,
         "flowtype/use-flow-type": 1,
-        "no-color-literals": 1
+        "no-color-literals": 1,
+        "spellcheck/spell-checker": [1, {
+            "comments": false,
+            "identifiers": false,
+            "strings": false,
+            "templates": true,
+            "skipWords": [
+                "metabase",
+                "analytics",
+                "mailto",
+                "metadata",
+                "frontend",
+                "metabot",
+                "auth",
+                "checkbox",
+                "adhoc",
+                "queryable",
+                "schemas",
+                "dropdown"
+            ],
+            "minLength": 2,
+            "skipIfMatch": [
+                "http://[^s]*",
+                "https://[^s]*",
+                '="(.*?)"',
+            ],
+        }]
     },
     "globals": {
         "pending": false
@@ -31,7 +57,8 @@
     "parser": "babel-eslint",
     "plugins": [
         "react",
-        "flowtype"
+        "flowtype",
+        "spellcheck"
     ],
     "extends": [
       "eslint:recommended",

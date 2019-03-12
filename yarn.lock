@@ -4349,6 +4349,15 @@ eslint-plugin-react@^6.3.0:
     jsx-ast-utils "^1.3.4"
     object.assign "^4.0.4"
 
+eslint-plugin-spellcheck@^0.0.11:
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-spellcheck/-/eslint-plugin-spellcheck-0.0.11.tgz#f3fcff70a0446e1f04eacd5ebaa8cab23e691b4a"
+  integrity sha512-P8NCB9Y9u3PLSdW5PeVY6kcBR/WkP/FB3toik5ahaGc13s+Di+Op+ItinB89Z+61+IrXQX//qeGh1mgCGrp7LA==
+  dependencies:
+    globals "^11.3.0"
+    hunspell-spellchecker "^1.0.2"
+    lodash "^4.14.2"
+
 eslint@^3.5.0:
   version "3.19.0"
   resolved "https://registry.yarnpkg.com/eslint/-/eslint-3.19.0.tgz#c8fc6201c7f40dd08941b87c085767386a679acc"
@@ -5308,6 +5317,11 @@ globals-docs@^2.3.0:
   resolved "https://registry.yarnpkg.com/globals-docs/-/globals-docs-2.4.0.tgz#f2c647544eb6161c7c38452808e16e693c2dafbb"
   integrity sha512-B69mWcqCmT3jNYmSxRxxOXWfzu3Go8NQXPfl2o0qPd1EEFhwW0dFUg9ztTu915zPQzqwIhWAlw6hmfIcCK4kkQ==
 
+globals@^11.3.0:
+  version "11.11.0"
+  resolved "https://registry.yarnpkg.com/globals/-/globals-11.11.0.tgz#dcf93757fa2de5486fbeed7118538adf789e9c2e"
+  integrity sha512-WHq43gS+6ufNOEqlrDBxVEbb8ntfXrfAUU2ZOpCxrBdGKW3gyv8mCxAfIBD0DroPKGrJ2eSsXsLtY9MPntsyTw==
+
 globals@^9.14.0, globals@^9.18.0:
   version "9.18.0"
   resolved "https://registry.yarnpkg.com/globals/-/globals-9.18.0.tgz#aa3896b3e69b487f17e31ed2143d69a8e30c2d8a"
@@ -5903,6 +5917,11 @@ humanize-plus@^1.8.1:
   version "1.8.2"
   resolved "https://registry.yarnpkg.com/humanize-plus/-/humanize-plus-1.8.2.tgz#a65b34459ad6367adbb3707a82a3c9f916167030"
   integrity sha1-pls0RZrWNnrbs3B6gqPJ+RYWcDA=
+
+hunspell-spellchecker@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/hunspell-spellchecker/-/hunspell-spellchecker-1.0.2.tgz#a10b0bd2fa00a65ab62a4c6b734ce496d318910e"
+  integrity sha1-oQsL0voAplq2Kkxrc0zkltMYkQ4=
 
 icepick@2.3.0:
   version "2.3.0"
@@ -7820,6 +7839,11 @@ lodash@^4.12.0, lodash@^4.17.5:
   version "4.17.10"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.10.tgz#1b7793cf7259ea38fb3661d4d38b3260af8ae4e7"
   integrity sha512-UejweD1pDoXu+AD825lWwp4ZGtSwgnpZxb3JDViD7StjQz+Nb/6l093lx4OQ0foGWNRoc19mWy7BzL+UAK2iVg==
+
+lodash@^4.14.2:
+  version "4.17.11"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.11.tgz#b39ea6229ef607ecd89e2c8df12536891cac9b8d"
+  integrity sha512-cQKh8igo5QUhZ7lg38DYWAxMvjSAKG0A8wGSVimP07SIUEK2UO+arSRKbRZWtelMtN5V0Hkwh5ryOto/SshYIg==
 
 log-symbols@^1.0.2:
   version "1.0.2"
