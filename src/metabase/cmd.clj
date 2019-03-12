@@ -147,7 +147,7 @@
   (let [initPlugins (resolve 'metabase.plugins/load-plugins!)
         sync-database! (resolve 'metabase.sync/sync-database!)
         Database  (resolve 'metabase.models.database/Database)
-        database (Database database-id)]
+        database (Database (Integer/parseInt database-id))]
     (initPlugins)
     (sync-database! database)))
 
