@@ -1,4 +1,4 @@
-
+**Metabase is hiring! https://www.metabase.com/jobs**
 
 ###### Before submitting the PR, please make sure you do the following
 - [ ] If you're attempting to fix a translation issue, please submit your changes to our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) instead of opening a PR.
