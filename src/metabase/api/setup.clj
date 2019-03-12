@@ -25,21 +25,10 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
-(defn setup!
-  "Special function for creating the first user during setup.
-  This function both creates the user AND logs them in and returns a session ID."
-  [{:keys [token]
-   {:keys [name engine details is_full_sync is_on_demand schedules]} :database
-   {:keys [first_name last_name email password]}                     :user
-   {:keys [allow_tracking site_name]}                                :prefs}]
-  {token          SetupToken
-   site_name      su/NonBlankString
-   first_name     su/NonBlankString
-   last_name      su/NonBlankString
-   email          su/Email
-   password       su/ComplexPassword
-   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules      (s/maybe database-api/ExpandedSchedulesMap)}
+
+
+(defn- setup-internal!
+  [token name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name]
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -81,11 +70,36 @@
     (events/publish-event! :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
     {:id session-id}))
 
+(defn setup!
+  "Special function for creating the first user during setup.
+  This function both creates the user AND logs them in and returns a session ID."
+  [token name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name]
+  (s/validate SetupToken token)
+  (s/validate su/NonBlankString site_name)
+  (s/validate su/NonBlankString first_name)
+  (s/validate su/NonBlankString last_name)
+  (s/validate su/Email email)
+  (s/validate su/ComplexPassword password)
+  (s/validate (s/maybe (s/cond-pre s/Bool su/BooleanString)) allow_tracking)
+  (s/validate (s/maybe database-api/ExpandedSchedulesMap) schedules)
+  (setup-internal! token name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name))
+
 (api/defendpoint POST "/"
    "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-     [:as {body :body}]
-     (setup! body))
+     [:as {{:keys [token]
+            {:keys [name engine details is_full_sync is_on_demand schedules]} :database
+            {:keys [first_name last_name email password]}                     :user
+            {:keys [allow_tracking site_name]}                                :prefs} :body}]
+     {token          SetupToken
+      site_name      su/NonBlankString
+      first_name     su/NonBlankString
+      last_name      su/NonBlankString
+      email          su/Email
+      password       su/ComplexPassword
+      allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
+      schedules      (s/maybe database-api/ExpandedSchedulesMap)}
+     (setup-internal! token name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name))
 
 
 (api/defendpoint POST "/validate"
