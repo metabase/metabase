@@ -2,16 +2,46 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require [metabase
              [config :as config]
-             [db :as mdb]]
+             [db :as mdb]
+             [public-settings :as public-settings]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [toucan.db :as db]))
+            [ring.util.response :as resp]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.net.URL
+           java.util.UUID))
 
-(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+(def ^:private ^String metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^String metabase-session-header "x-metabase-session")
+
+(s/defn set-session-cookie
+  "Add a `Set-Cookie` header to `response` to persist the Metabase session."
+  [response, session-id :- UUID]
+  (if-not (and (map? response) (:body response))
+    (recur {:body response, :status 200} session-id)
+    (resp/set-cookie
+     response
+     metabase-session-cookie
+     (str session-id)
+     (merge
+      {:same-site :lax
+       :http-only true
+       :path      "/api"
+       :max-age   (config/config-int :max-session-age)}
+      ;; If Metabase is running over HTTPS (hopefully always except for local dev instances) then make sure to make this
+      ;; cookie HTTPS-only
+      (when (some-> (public-settings/site-url) URL. .getProtocol (= "https"))
+        {:secure true})))))
+
+(defn clear-session-cookie
+  "Add a header to `response` to clear the current Metabase session cookie."
+  [response]
+  (println "response:" response "->" (resp/set-cookie response nil {:expires "01 Jan 1970 00:00:00 GMT"})) ; NOCOMMIT
+  #_(resp/set-cookie response nil {:expires "01 Jan 1970 00:00:00 GMT"}))
 
 (defn- wrap-session-id* [{:keys [cookies headers] :as request}]
   (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
