@@ -1,3 +1,5 @@
+**Metabase is hiring! https://www.metabase.com/jobs**
+
 ------
 Before filing an issue we'd appreciate it if you could take a moment to ensure
 there isn't already an open issue or pull-request.
