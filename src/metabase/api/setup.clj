@@ -28,7 +28,7 @@
 
 
 (defn- setup-internal!
-  [token name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name]
+  [token db-display-name engine details is_full_sync is_on_demand schedules first_name last_name email password allow_tracking site_name]
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -50,7 +50,7 @@
     (when (some-> engine driver/available?)
       (let [db (db/insert! Database
                  (merge
-                  {:name         name
+                  {:name         db-display-name
                    :engine       engine
                    :details      details
                    :is_on_demand (boolean is_on_demand)
