@@ -172,11 +172,9 @@
    example: setup -first_name firstName -last_name lastName -email xxxxx@gmail.com -password secret -site_name localhost.com"
   [& args]
   (mdb/setup-db!)
-  (let [setup! (resolve 'metabase.api.setup/setup!)
-        {:keys [allow_tracking site_name first_name last_name email password] :as details} (parse-args args {})
-        user {:first_name first_name :last_name last_name :email email :password password}
-        prefs {:allow_tracking allow_tracking :site_name site_name}]
-    (setup! {:user user :prefs prefs})))
+  (let [setup-user! (resolve 'metabase.api.setup/setup-user!)
+        {:keys [allow_tracking site_name first_name last_name email password] :as details} (parse-args args {})]
+    (setup-user! allow_tracking site_name first_name last_name email password)))
 
 (defn ^:command enable-embedding
   "Creates and returns a secret key"
