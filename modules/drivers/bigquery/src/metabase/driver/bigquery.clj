@@ -6,6 +6,7 @@
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [format :as hformat]
@@ -38,7 +39,7 @@
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
-           [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
+           [com.google.api.services.bigquery Bigquery BigqueryRequest Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
             TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
@@ -73,14 +74,14 @@
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder.
-                 google/http-transport
-                 google/json-factory
-                 (reify HttpRequestInitializer
-                   (initialize [this httpRequest]
-                     (.initialize credential httpRequest)
-                     (.setConnectTimeout httpRequest 0)
-                     (.setReadTimeout httpRequest 0))))
-            (.setApplicationName google/application-name))))
+                  google/http-transport
+                  google/json-factory
+                  (reify HttpRequestInitializer
+                         (initialize [this httpRequest]
+                                     (.initialize credential httpRequest)
+                                     (.setConnectTimeout httpRequest 0)
+                                     (.setReadTimeout httpRequest 0))))
+                (.setApplicationName google/application-name))))
 
 (def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
   (partial google/database->credential (Collections/singleton BigqueryScopes/BIGQUERY)))
@@ -106,7 +107,7 @@
   ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
    {:pre [client (seq project-id) (seq dataset-id)]}
    (google/execute (u/prog1 (.list (.tables client) project-id dataset-id)
-                     (.setPageToken <> page-token-or-nil)))))
+                            (.setPageToken <> page-token-or-nil)))))
 
 (defmethod driver/describe-database :bigquery [_ database]
   {:pre [(map? database)]}
@@ -168,18 +169,31 @@
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
-(defn- ^QueryResponse execute-bigquery
+(defn- ^BigqueryRequest create-query-request
   ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-bigquery (database->client database) project-id query-string))
+   (create-query-request (database->client database) project-id query-string))
 
-  ([^Bigquery client, ^String project-id, ^String query-string]
-   {:pre [client (seq project-id) (seq query-string)]}
+  ([client project-id query-string]
    (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 1000))
-                   ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
-                   (.setQuery query-string))]
-     (google/execute (.query (.jobs client) project-id request)))))
+                       (.setTimeoutMs (* query-timeout-seconds 1000))
+                       ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                       (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
+                       (.setQuery query-string))]
+     (.query (.jobs client) project-id request))))
+
+(defn- ^BigqueryRequest create-get-results-request [request, response]
+  (let [client     (.getAbstractGoogleClient request)
+        job-id     (.getJobId (.getJobReference response))
+        project-id (.getProjectId (.getJobReference response))]
+    (.getQueryResults (.jobs client) project-id job-id)))
+
+(defn- ^QueryResponse execute-bigquery
+  ([^BigqueryRequest request]
+   (log/debug (u/format-color 'cyan (str "execute-bigquery -> request:\n" request)))
+   (google/execute request))
+
+  ([{{:keys [project-id]} :details, :as database}, ^QueryRequest query-request]
+   (execute-bigquery (.query (.jobs (database->client database)) project-id query-request))))
 
 (def ^:private ^:dynamic *bigquery-timezone*
   "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
@@ -226,10 +240,46 @@
    "TIMESTAMP" parse-timestamp-str
    "TIME"      parse-bigquery-time})
 
+(defn- process-rows [response]
+  (let [^TableSchema schema (.getSchema response)
+        parsers             (doall
+                             (for [^TableFieldSchema field (.getFields schema)
+                                   :let                    [parser-fn (type->parser (.getType field))]]
+                               (parser-fn *bigquery-timezone*)))
+        columns             (for [column (table-schema->metabase-field-info schema)]
+                              (-> column
+                                  (set/rename-keys {:base-type :base_type})
+                                  (dissoc :database-type)))]
+    (log/debug
+     (u/format-color 'cyan
+                     (str "process-rows -> total rows to process: " (count (.getRows response)))))
+    {:columns (map (comp u/keyword->qualified-name :name) columns)
+     :cols    columns
+     :rows    (for [^TableRow row (.getRows response)]
+                (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+                  (when-let [v (.getV cell)]
+                    ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+                    ;; See https://jira.talendforge.org/browse/TBD-1592
+                    ;; Everything else comes back as a String luckily so we can proceed normally.
+                    (when-not (= (class v) Object)
+                      (parser v)))))}))
+
+(defn- page-results [response request rows]
+  (let [fetched-rows (concat rows (.getRows response))
+        page-token   (.getPageToken response)
+        next-request (.set request "pageToken" page-token)]
+    (log/debug
+     (u/format-color 'cyan
+                     (str "page-results -> Total: " (.getTotalRows response) " Fetched: " (count fetched-rows) " Page: " (count (.getRows response)) " Token: " page-token)))
+    (if (some? page-token)
+      (recur (execute-bigquery next-request) next-request fetched-rows)
+      (.setRows response fetched-rows))))
+
 (defn- post-process-native
-  ([^QueryResponse response]
-   (post-process-native response query-timeout-seconds))
-  ([^QueryResponse response, ^Integer timeout-seconds]
+  ([^QueryResponse response, ^BigqueryRequest request, paginate]
+   (post-process-native response request paginate query-timeout-seconds))
+
+  ([^QueryResponse response, ^BigqueryRequest request, paginate, ^Integer timeout-seconds]
    (if-not (.getJobComplete response)
      ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
      ;; wait a few seconds for the job to finish.
@@ -237,34 +287,22 @@
        (when (zero? timeout-seconds)
          (throw (ex-info "Query timed out." (into {} response))))
        (Thread/sleep 1000)
-       (post-process-native response (dec timeout-seconds)))
+       (post-process-native response request paginate (dec timeout-seconds)))
      ;; Otherwise the job *is* complete
-     (let [^TableSchema schema (.getSchema response)
-           parsers             (doall
-                                (for [^TableFieldSchema field (.getFields schema)
-                                      :let [parser-fn (type->parser (.getType field))]]
-                                  (parser-fn *bigquery-timezone*)))
-           columns             (for [column (table-schema->metabase-field-info schema)]
-                                 (-> column
-                                     (set/rename-keys {:base-type :base_type})
-                                     (dissoc :database-type)))]
-       {:columns (map (comp u/keyword->qualified-name :name) columns)
-        :cols    columns
-        :rows    (for [^TableRow row (.getRows response)]
-                   (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                     (when-let [v (.getV cell)]
-                       ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-                       ;; See https://jira.talendforge.org/browse/TBD-1592
-                       ;; Everything else comes back as a String luckily so we can proceed normally.
-                       (when-not (= (class v) Object)
-                         (parser v)))))}))))
+     (if (and paginate (.getPageToken response))
+       ;; In order to paginate results, we need to create a GetQueryResults request. The
+       ;; page-results function will take care of setting the page token per request.
+       (process-rows (page-results response (create-get-results-request request response) ()))
+       (process-rows response)))))
 
-(defn- process-native* [database query-string]
+(defn- process-native* [database query-string paginate]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute` so operations going through `process-native*` may be retried up to 3 times.
-  (u/auto-retry 1
-    (post-process-native (execute-bigquery database query-string))))
+  (log/debug
+   (u/format-color 'cyan (str "process-native -> query:\n" query-string "\npaginate? " paginate)))
+  (let [request (create-query-request database query-string)]
+    (u/auto-retry 1 (post-process-native (execute-bigquery request) request paginate))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -325,12 +363,12 @@
     ;; to do so)
     (when dataset-name
       (assert (valid-bigquery-identifier? dataset-name)
-        (tru "Invalid BigQuery identifier: ''{0}''" dataset-name)))
+              (tru "Invalid BigQuery identifier: ''{0}''" dataset-name)))
     (assert (valid-bigquery-identifier? table-name)
-      (tru "Invalid BigQuery identifier: ''{0}''" table-name))
+            (tru "Invalid BigQuery identifier: ''{0}''" table-name))
     (when (seq field-name)
       (assert (valid-bigquery-identifier? field-name)
-        (tru "Invalid BigQuery identifier: ''{0}''" field-name)))
+              (tru "Invalid BigQuery identifier: ''{0}''" field-name)))
     ;; BigQuery identifiers should look like `dataset.table` or `dataset.table`.`field` (SAD!)
     (let [dataset-name (or dataset-name (dataset-name-for-current-query))]
       (str
@@ -506,14 +544,18 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
+;; Paginate for downloads only
+(defn paginate? [{{context :context} :info}]
+  (contains? #{:csv-download :json-download :xlsx-download} context))
+
 (defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
-                                                   :as                                                    outer-query}]
+                                                   :as                                                    query-request}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
-      (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare driver (cons sql params))
-                                                                     sql))]
-        (process-native* database sql)))))
+      (let [sql (str "" (if (seq params)
+                          (unprepare/unprepare driver (cons sql params))
+                          sql))]
+        (process-native* database sql (paginate? query-request))))))
 
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
 
