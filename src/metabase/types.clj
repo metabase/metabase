@@ -25,10 +25,10 @@
 
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
-(derive :entity/GHCommitsTable :entity/*)
-(derive :entity/GHIssuesTable :entity/*)
-(derive :entity/GHPRsTable :entity/*)
-(derive :entity/GHStargazersTable :entity/*)
+(derive :entity/GHCommitsTable :entity/GenericTable)
+(derive :entity/GHIssuesTable :entity/GenericTable)
+(derive :entity/GHPRsTable :entity/GenericTable)
+(derive :entity/GHStargazersTable :entity/GenericTable)
 
 
 ;;; Numeric Types
