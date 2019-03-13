@@ -65,7 +65,7 @@
 (expect "cam_s_awesome_toucan_emporium" (slugify "Cam's awesome toucan emporium"))
 (expect "frequently_used_cards"         (slugify "Frequently-Used Cards"))
 ;; check that diactrics get removed
-(expect "cam_saul_s_toucannery"         (slugify "Cam Saül's Toucannery"))
+(expect "cam_saul_s_toucannery"         (slugify "Cam Saul's Toucannery"))
 (expect "toucans_dislike_pinatas___"    (slugify "toucans dislike piñatas :("))
 ;; check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)
 (expect "%E5%8B%87%E5%A3%AB"            (slugify "勇士")) ; go dubs

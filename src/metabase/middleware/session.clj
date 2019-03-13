@@ -13,7 +13,8 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.net.URL
-           java.util.UUID))
+           java.util.UUID
+           org.joda.time.DateTime))
 
 (def ^:private ^String metabase-session-cookie "metabase.SESSION_ID")
 (def ^:private ^String metabase-session-header "x-metabase-session")
@@ -40,14 +41,14 @@
 (defn clear-session-cookie
   "Add a header to `response` to clear the current Metabase session cookie."
   [response]
-  (println "response:" response "->" (resp/set-cookie response nil {:expires "01 Jan 1970 00:00:00 GMT"})) ; NOCOMMIT
-  #_(resp/set-cookie response nil {:expires "01 Jan 1970 00:00:00 GMT"}))
+  (resp/set-cookie response metabase-session-cookie nil {:expires (DateTime. 0)}))
 
 (defn- wrap-session-id* [{:keys [cookies headers] :as request}]
-  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                          (headers metabase-session-header))]
-    (assoc request :metabase-session-id session-id)
-    request))
+  (let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                       (headers metabase-session-header))]
+    (if (seq session-id)
+      (assoc request :metabase-session-id session-id)
+      request)))
 
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.

@@ -77,7 +77,7 @@
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (db/insert! Session
-                :id      (str session-id)
+      :id      (str session-id)
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event! :user-create {:user_id (:id new-user)})
