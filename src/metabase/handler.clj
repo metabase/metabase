@@ -32,9 +32,9 @@
    mw.session/wrap-session-id              ; looks for a Metabase Session ID and assoc as :metabase-session-id
    mw.auth/wrap-api-key                    ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
    mw.misc/maybe-set-site-url              ; set the value of `site-url` if it hasn't been set yet
+   mw.json/check-application-type-headers  ; Reject non-GET requests without Content-Type: application/json headers, we don't support them
    mw.misc/bind-user-locale                ; Binds *locale* for i18n
    wrap-cookies                            ; Parses cookies in the request map and assocs as :cookies
-   #_wrap-session                            ; reads in current HTTP session and sets :session key TODO - don't think we need this
    mw.misc/add-content-type                ; Adds a Content-Type header for any response that doesn't already have one
    mw.misc/wrap-gzip                       ; GZIP response if client can handle it
    ))

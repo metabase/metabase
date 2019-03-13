@@ -78,14 +78,15 @@
 ;;; client
 
 (defn- build-request-map [credentials http-body]
-  (cond-> {:accept  :json
-           :headers {"X-METABASE-SESSION" (when credentials
-                                            (if (map? credentials)
-                                              (authenticate credentials)
-                                              credentials))}}
-    (seq http-body) (assoc
-                      :content-type :json
-                      :body         (json/generate-string http-body))))
+  (merge
+   {:accept       :json
+    :headers      {"X-METABASE-SESSION" (when credentials
+                                          (if (map? credentials)
+                                            (authenticate credentials)
+                                            credentials))}
+    :content-type :json}
+   (when (seq http-body)
+     {:body (json/generate-string http-body)})))
 
 (defn- check-status-code
   "If an EXPECTED-STATUS-CODE was passed to the client, check that the actual status code matches, or throw an exception."
