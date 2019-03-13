@@ -215,8 +215,21 @@ export const getResultsMetadata = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [getQuestion, getQueryResults, getIsObjectDetail, getLastRunDatasetQuery],
-  (question, results, isObjectDetail, lastRunDatasetQuery) => {
+  [
+    getQuestion,
+    getQueryResults,
+    getIsObjectDetail,
+    getLastRunDatasetQuery,
+    getUiControls,
+  ],
+  (question, results, isObjectDetail, lastRunDatasetQuery, uiControls) => {
+    let display = question && question.display();
+    if (isObjectDetail) {
+      display = "object";
+    } else if (uiControls.isShowingTable && display !== "scalar") {
+      display = "table";
+    }
+
     // we want to provide the visualization with a card containing the latest
     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
     // BUT the last executed "dataset_query" (to ensure data matches the query)
@@ -225,7 +238,7 @@ export const getRawSeries = createSelector(
       question.atomicQueries().map((metricQuery, index) => ({
         card: {
           ...question.card(),
-          display: isObjectDetail ? "object" : question.card().display,
+          display: display,
           dataset_query: lastRunDatasetQuery,
         },
         data: results[index] && results[index].data,

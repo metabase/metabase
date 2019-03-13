@@ -4,27 +4,13 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { t } from "c-3po";
-import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
-
-import QueryHeader from "../components/QueryHeader.jsx";
-import GuiQueryEditor from "../components/GuiQueryEditor.jsx";
-import NativeQueryEditor from "../components/NativeQueryEditor.jsx";
-import QueryVisualization from "../components/QueryVisualization.jsx";
-import DataReference from "../components/dataref/DataReference.jsx";
-import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
-import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
-import ActionsWidget from "../components/ActionsWidget.jsx";
-
-import QueryModals from "../components/QueryModals";
-import ViewHeader from "../components/view/ViewHeader";
-import ViewFooter from "../components/view/ViewFooter";
+import View from "../components/view/View";
 
 import title from "metabase/hoc/Title";
 
@@ -66,9 +52,6 @@ import * as actions from "../actions";
 import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
-
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function autocompleteResults(card, prefix) {
   let databaseId = card && card.dataset_query && card.dataset_query.database;
@@ -118,10 +101,9 @@ const mapStateToProps = (state, props) => {
     databaseFields: getDatabaseFields(state),
     sampleDatasetId: getSampleDatasetId(state),
 
-    isShowingDataReference: state.qb.uiControls.isShowingDataReference,
-    isShowingTutorial: state.qb.uiControls.isShowingTutorial,
-    isEditing: state.qb.uiControls.isEditing,
-    isRunning: state.qb.uiControls.isRunning,
+    // includes isShowingDataReference, isShowingTutorial, isEditing, isRunning, etc
+    ...state.qb.uiControls,
+
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
 
@@ -205,9 +187,12 @@ export default class QueryBuilder extends Component {
       this.props.initializeQB(nextProps.location, nextProps.params);
     }
 
+    // NOTE: not sure if there's a better way to bind an action to something returned in mapStateToProps
+    // Could stack like so  and do it in a selector but ugh
+    //    @connect(null, { updateQuestion })
+    //    @connect(mapStateToProps, mapDispatchToProps)
     if (nextProps.question) {
-      nextProps.question._update = question =>
-        nextProps.setCardAndRun(question.card());
+      nextProps.question._update = nextProps.updateQuestion;
     }
   }
 
@@ -296,7 +281,7 @@ export default class QueryBuilder extends Component {
       uiControls: { modal, recentlySaved, queryBuilderMode },
     } = this.props;
     return (
-      <LegacyQueryBuilder
+      <View
         {...this.props}
         // NOTE: these were lifted from QueryHeader. Move to Redux?
         modal={modal}
@@ -309,107 +294,6 @@ export default class QueryBuilder extends Component {
         onSave={this.handleSave}
         onCreate={this.handleCreate}
       />
-    );
-  }
-}
-
-class LegacyQueryBuilder extends Component {
-  render() {
-    const { query, card, isDirty, databases, uiControls, mode } = this.props;
-
-    // if we don't have a card at all or no databases then we are initializing, so keep it simple
-    if (!card || !databases) {
-      return <div />;
-    }
-
-    const showDrawer =
-      uiControls.isShowingDataReference ||
-      uiControls.isShowingTemplateTagsEditor;
-    const ModeFooter = mode && mode.ModeFooter;
-
-    return (
-      <div className={this.props.fitClassNames}>
-        <div
-          className={cx("QueryBuilder flex flex-column bg-white spread", {
-            "QueryBuilder--showSideDrawer": showDrawer,
-          })}
-        >
-          <ViewHeader {...this.props} />
-
-          {/*<QueryHeader {...this.props} />*/}
-
-          {uiControls.queryBuilderMode === "worksheet" && (
-            <div className="z2 hide sm-show mb1 mt2">
-              {query instanceof NativeQuery ? (
-                <NativeQueryEditor
-                  {...this.props}
-                  isOpen={!card.dataset_query.native.query || isDirty}
-                  datasetQuery={card && card.dataset_query}
-                />
-              ) : query instanceof StructuredQuery ? (
-                <div className="wrapper">
-                  <GuiQueryEditor
-                    {...this.props}
-                    datasetQuery={card && card.dataset_query}
-                  />
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          <div
-            ref="viz"
-            id="react_qb_viz"
-            className="flex z1"
-            style={{ transition: "opacity 0.25s ease-in-out" }}
-          >
-            <QueryVisualization
-              {...this.props}
-              noHeader
-              className="full wrapper mb2 z1"
-            />
-          </div>
-
-          {ModeFooter && (
-            <ModeFooter {...this.props} className="flex-no-shrink" />
-          )}
-
-          <ViewFooter {...this.props} />
-        </div>
-
-        <div
-          className={cx("SideDrawer hide sm-show", {
-            "SideDrawer--show": showDrawer,
-          })}
-        >
-          {uiControls.isShowingDataReference && (
-            <DataReference
-              {...this.props}
-              onClose={() => this.props.toggleDataReference()}
-            />
-          )}
-
-          {uiControls.isShowingTemplateTagsEditor &&
-            query instanceof NativeQuery && (
-              <TagEditorSidebar
-                {...this.props}
-                onClose={() => this.props.toggleTemplateTagsEditor()}
-              />
-            )}
-        </div>
-
-        {uiControls.isShowingTutorial && (
-          <QueryBuilderTutorial onClose={() => this.props.closeQbTutorial()} />
-        )}
-
-        {uiControls.isShowingNewbModal && (
-          <SavedQuestionIntroModal
-            onClose={() => this.props.closeQbNewbModal()}
-          />
-        )}
-
-        <QueryModals {...this.props} />
-      </div>
     );
   }
 }

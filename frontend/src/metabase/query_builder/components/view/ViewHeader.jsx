@@ -3,12 +3,11 @@ import React from "react";
 import { t } from "c-3po";
 
 import Button from "metabase/components/Button";
-import Subhead from "metabase/components/Subhead";
-import ViewSection from "./ViewSection";
+import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
-import ViewFilters from "./ViewFilters";
+import QuestionFilters, { questionHasFilters } from "./QuestionFilters";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionEntityMenu from "./QuestionEntityMenu";
@@ -20,7 +19,75 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-export default class ViewHeader extends React.Component {
+export const ViewTitleHeader = ({
+  className,
+  question,
+  onOpenModal,
+  originalQuestion,
+  isDirty,
+  isNew,
+  queryBuilderMode,
+  onSetQueryBuilderMode,
+}) => (
+  <ViewSection className={className}>
+    {question.isSaved() ? (
+      <div>
+        <div className="flex align-center">
+          <CollectionBadge
+            hasBackground
+            collectionId={question.collectionId()}
+            className="mr2"
+          />
+          <ViewHeading>{question.displayName()}</ViewHeading>
+          <QuestionEntityMenu
+            className="ml1"
+            question={question}
+            onOpenModal={onOpenModal}
+          />
+        </div>
+        <div className="p1">
+          <ViewSubHeading>
+            <QuestionDataSource question={question} subHead />
+          </ViewSubHeading>
+        </div>
+      </div>
+    ) : (
+      <div>
+        <ViewHeading>
+          <QuestionDataSource question={question} />
+        </ViewHeading>
+        {QuestionLineage.shouldRender({ question, originalQuestion }) && (
+          <div className="mt1">
+            <ViewSubHeading>
+              <QuestionLineage
+                question={question}
+                originalQuestion={originalQuestion}
+              />
+            </ViewSubHeading>
+          </div>
+        )}
+      </div>
+    )}
+    <div className="ml-auto flex align-center">
+      {isDirty || isNew ? (
+        <Button onClick={() => onOpenModal("save")}>{t`Save`}</Button>
+      ) : null}
+      <Button
+        icon="list"
+        borderless
+        onClick={() =>
+          onSetQueryBuilderMode(
+            queryBuilderMode === "worksheet" ? "view" : "worksheet",
+          )
+        }
+      >
+        Custom question
+      </Button>
+    </div>
+  </ViewSection>
+);
+
+export class ViewSubHeader extends React.Component {
   state = {
     isFiltersExpanded: false,
   };
@@ -30,24 +97,10 @@ export default class ViewHeader extends React.Component {
   removeFilter = index => alert("NYI remove");
   expandFilters = () => this.setState({ isFiltersExpanded: true });
 
-  getIsFiltersExpanded() {
-    const { question } = this.props;
-    const { isFiltersExpanded } = this.state;
-    return (
-      isFiltersExpanded ||
-      (!question.isSaved() && question.query().filters().length > 0)
-    );
-  }
-
   render() {
     const {
       question,
-      originalQuestion,
-      isDirty,
-      isNew,
       onOpenModal,
-      queryBuilderMode,
-      onSetQueryBuilderMode,
 
       result,
       isAdmin,
@@ -61,86 +114,33 @@ export default class ViewHeader extends React.Component {
       visualizationSettings,
     } = this.props;
 
-    const isFiltersExpanded = this.getIsFiltersExpanded();
+    const isFiltersExpanded =
+      this.state.isFiltersExpanded && questionHasFilters(question);
 
     return (
       <div>
-        <ViewSection>
-          {question.isSaved() ? (
-            <div>
-              <div className="flex align-center">
-                <CollectionBadge
-                  hasBackground
-                  collectionId={question.collectionId()}
-                  className="mr2"
-                />
-                <ViewHeading>{question.displayName()}</ViewHeading>
-                <QuestionEntityMenu
-                  className="ml1"
-                  question={question}
-                  onOpenModal={onOpenModal}
-                />
-              </div>
-              <div className="p1">
-                <ViewSubHeading>
-                  <QuestionDataSource question={question} subHead />
-                </ViewSubHeading>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <ViewHeading>
-                <QuestionDataSource question={question} />
-              </ViewHeading>
-              {QuestionLineage.shouldRender({ question, originalQuestion }) && (
-                <div className="mt1">
-                  <ViewSubHeading>
-                    <QuestionLineage
-                      question={question}
-                      originalQuestion={originalQuestion}
-                    />
-                  </ViewSubHeading>
-                </div>
-              )}
-            </div>
+        {isFiltersExpanded &&
+          QuestionFilters.shouldRender({ question }) && (
+            <ViewSection>
+              <QuestionFilters
+                question={question}
+                expanded
+                onAdd={this.addFilter}
+                onEdit={this.editFilter}
+                onRemove={this.removeFilter}
+              />
+            </ViewSection>
           )}
-          <div className="ml-auto flex align-center">
-            {isDirty || isNew ? (
-              <Button onClick={() => onOpenModal("save")}>{t`Save`}</Button>
-            ) : null}
-            <Button
-              icon="list"
-              borderless
-              onClick={() =>
-                onSetQueryBuilderMode(
-                  queryBuilderMode === "worksheet" ? "view" : "worksheet",
-                )
-              }
-            >
-              Custom question
-            </Button>
-          </div>
-        </ViewSection>
-        {isFiltersExpanded && (
-          <ViewSection>
-            <ViewFilters
-              question={question}
-              expanded
-              onAdd={this.addFilter}
-              onEdit={this.editFilter}
-              onRemove={this.removeFilter}
-            />
-          </ViewSection>
-        )}
         <ViewSection className="flex">
           <div className="flex-full flex-basis-none flex align-center">
-            {!isFiltersExpanded && (
-              <ViewFilters
-                question={question}
-                onAdd={this.addFilter}
-                onExpand={this.expandFilters}
-              />
-            )}
+            {!isFiltersExpanded &&
+              QuestionFilters.shouldRender({ question }) && (
+                <QuestionFilters
+                  question={question}
+                  onAdd={this.addFilter}
+                  onExpand={this.expandFilters}
+                />
+              )}
           </div>
           <div>
             <RunButtonWithTooltip
@@ -190,9 +190,3 @@ export default class ViewHeader extends React.Component {
     );
   }
 }
-
-const ViewHeading = ({ ...props }) => <Subhead {...props} />;
-
-const ViewSubHeading = ({ ...props }) => (
-  <div className="text-medium text-bold" {...props} />
-);

@@ -758,8 +758,8 @@ export const navigateToNewCardInsideQB = createThunkAction(
  * Also shows/hides the template tag editor if the number of template tags has changed.
  */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
-export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
-  return (dispatch, getState) => {
+export const updateQuestion = (newQuestion, { doNotClearNameAndId = false, run = false } = {}) => {
+  return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
@@ -771,7 +771,7 @@ export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
     }
 
     // Replace the current question with a new one
-    dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
+    await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
     // See if the template tags editor should be shown/hidden
     const oldQuestion = getQuestion(getState());
@@ -782,6 +782,11 @@ export const updateQuestion = (newQuestion, { doNotClearNameAndId } = {}) => {
       dispatch(setIsShowingTemplateTagsEditor(true));
     } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
       dispatch(setIsShowingTemplateTagsEditor(false));
+    }
+
+    // run updated query
+    if (run) {
+      dispatch(runQuestionQuery());
     }
   };
 };
@@ -859,41 +864,10 @@ export const apiUpdateQuestion = question => {
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(
   SET_DATASET_QUERY,
-  (dataset_query, run = false) => {
-    return (dispatch, getState) => {
-      const { qb: { uiControls } } = getState();
+  (datasetQuery, run = false) => (dispatch, getState) => {
       const question = getQuestion(getState());
-
-      let newQuestion = question;
-
-      // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (!uiControls.isEditing && question.isSaved()) {
-        newQuestion = newQuestion.withoutNameAndId();
-      }
-
-      newQuestion = newQuestion.setDatasetQuery(dataset_query);
-
-      const oldTagCount = getTemplateTagCount(question);
-      const newTagCount = getTemplateTagCount(newQuestion);
-
-      let openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
-      if (newTagCount > oldTagCount) {
-        openTemplateTagsEditor = true;
-      } else if (newTagCount === 0) {
-        openTemplateTagsEditor = false;
-      }
-
-      // run updated query
-      if (run) {
-        dispatch(runQuestionQuery({ overrideWithCard: newQuestion.card() }));
-      }
-
-      return {
-        card: newQuestion.card(),
-        openTemplateTagsEditor,
-      };
-    };
-  },
+      dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), { run }));
+    }
 );
 
 // setQueryMode

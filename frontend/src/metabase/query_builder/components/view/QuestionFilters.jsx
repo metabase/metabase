@@ -3,7 +3,9 @@ import React from "react";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 
-const ViewFilters = ({
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+const QuestionFilters = ({
   question,
   expanded,
   onAdd,
@@ -45,8 +47,16 @@ const ViewFilters = ({
   );
 };
 
+QuestionFilters.shouldRender = ({ question }) =>
+  question && question.query() instanceof StructuredQuery;
+
+export const questionHasFilters = question =>
+  question &&
+  question.query() instanceof StructuredQuery &&
+  question.query().filters().length > 0;
+
 const FilterContainer = ({ children }) => (
   <div className="flex align-stretch">{children}</div>
 );
 
-export default ViewFilters;
+export default QuestionFilters;

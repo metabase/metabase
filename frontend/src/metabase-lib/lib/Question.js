@@ -434,9 +434,16 @@ export default class Question {
     return this._card && this._card.public_uuid;
   }
 
+  database(): ?Database {
+    return this.query().database();
+  }
+
   getUrl(originalQuestion?: Question): string {
-    if (!this.id() || (originalQuestion && this.isDirtyComparedTo(originalQuestion))) {
-      return Urls.question(null, this._serializeForUrl())
+    if (
+      !this.id() ||
+      (originalQuestion && this.isDirtyComparedTo(originalQuestion))
+    ) {
+      return Urls.question(null, this._serializeForUrl());
     } else {
       return Urls.question(this.id(), "");
     }

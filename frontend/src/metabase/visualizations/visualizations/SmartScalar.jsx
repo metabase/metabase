@@ -19,7 +19,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
-  static uiName = "Smart Number";
+  static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 

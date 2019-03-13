@@ -28,7 +28,6 @@ import {
   SET_QUERY_SOURCE_TABLE,
   SET_QUERY_MODE,
   UPDATE_QUESTION,
-  SET_DATASET_QUERY,
   RUN_QUERY,
   CLEAR_QUERY_RESULT,
   CANCEL_QUERY,
@@ -74,12 +73,6 @@ export const uiControls = handleActions(
         ...state,
         isShowingTemplateTagsEditor,
         isShowingDataReference: false,
-      }),
-    },
-    [SET_DATASET_QUERY]: {
-      next: (state, { payload }) => ({
-        ...state,
-        isShowingTemplateTagsEditor: payload.openTemplateTagsEditor,
       }),
     },
     [CLOSE_QB_TUTORIAL]: {
@@ -160,7 +153,6 @@ export const card = handleActions(
     [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
     [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
     [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
-    [SET_DATASET_QUERY]: { next: (state, { payload }) => payload.card },
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {

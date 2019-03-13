@@ -13,7 +13,7 @@ import {
 } from "../lib/settings/graph";
 
 export default class LineChart extends LineAreaBarChart {
-  static uiName = t`Line + Bar`;
+  static uiName = t`Combo`;
   static identifier = "combo";
   static iconName = "lineandbar";
   static noun = t`line and bar chart`;

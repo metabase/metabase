@@ -38,6 +38,8 @@ const LINE_HEIGHT = 16;
 const MIN_HEIGHT_LINES = 1;
 const MAX_AUTO_SIZE_LINES = 12;
 
+const ICON_SIZE = 16;
+
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
 import Question from "metabase-lib/lib/Question";
@@ -53,6 +55,9 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+
+import DataReferenceButton from "./view/DataReferenceButton";
+import NativeVariablesButton from "./view/NativeVariablesButton";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -287,12 +292,14 @@ export default class NativeQueryEditor extends Component {
 
   render() {
     const { query, setParameterValue, location } = this.props;
+    const { showEditor } = this.state;
+
     const database = query.database();
     const databases = query.databases();
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
-    if (this.state.showEditor && databases.length > 0) {
+    if (showEditor && databases.length > 0) {
       // we only render a db selector if there are actually multiple to choose from
       if (
         databases.length > 1 &&
@@ -303,7 +310,6 @@ export default class NativeQueryEditor extends Component {
             key="db_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
-            <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -328,7 +334,6 @@ export default class NativeQueryEditor extends Component {
             key="table_selector"
             className="GuiBuilder-section GuiBuilder-data flex align-center"
           >
-            <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
             <SchemaAndTableDataSelector
               selectedTableId={selectedTable ? selectedTable.id : null}
               selectedDatabaseId={database && database.id}
@@ -347,7 +352,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     let editorClasses, toggleEditorText, toggleEditorIcon;
-    if (this.state.showEditor) {
+    if (showEditor) {
       editorClasses = "";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
@@ -362,41 +367,59 @@ export default class NativeQueryEditor extends Component {
     }
 
     return (
-      <div className="wrapper">
-        <div className="NativeQueryEditor bordered rounded shadowed">
-          <div className="flex align-center" style={{ minHeight: 50 }}>
-            {dataSelectors}
-            <Parameters
-              parameters={parameters}
-              query={location.query}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              syncQueryString
-              isEditing
-              isQB
-              commitImmediately
-            />
+      <div className="NativeQueryEditor bg-light full">
+        <div className="flex align-center" style={{ minHeight: 55 }}>
+          {dataSelectors}
+          <Parameters
+            parameters={parameters}
+            query={location.query}
+            setParameterValue={setParameterValue}
+            setParameterIndex={this.setParameterIndex}
+            syncQueryString
+            isEditing
+            isQB
+            commitImmediately
+          />
+          <div className="flex-align-right flex align-center text-medium pr1">
+            {showEditor &&
+              DataReferenceButton.shouldRender(this.props) && (
+                <DataReferenceButton
+                  {...this.props}
+                  size={ICON_SIZE}
+                  className="mx1"
+                />
+              )}
+            {showEditor &&
+              NativeVariablesButton.shouldRender(this.props) && (
+                <NativeVariablesButton
+                  {...this.props}
+                  size={ICON_SIZE}
+                  className="mx1"
+                />
+              )}
             <a
-              className="Query-label no-decoration flex-align-right flex align-center px2"
+              className="Query-label no-decoration flex align-center mx1"
               onClick={this.toggleEditor}
             >
-              <span className="mx2">{toggleEditorText}</span>
+              <span className="mr2" style={{ minWidth: 70 }}>
+                {toggleEditorText}
+              </span>
               <Icon name={toggleEditorIcon} size={20} />
             </a>
           </div>
-          <ResizableBox
-            ref="resizeBox"
-            className={"border-top " + editorClasses}
-            height={this.state.initialHeight}
-            minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-            axis="y"
-            onResizeStop={(e, data) => {
-              this._editor.resize();
-            }}
-          >
-            <div id="id_sql" ref="editor" />
-          </ResizableBox>
         </div>
+        <ResizableBox
+          ref="resizeBox"
+          className={"border-top " + editorClasses}
+          height={this.state.initialHeight}
+          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
+          axis="y"
+          onResizeStop={(e, data) => {
+            this._editor.resize();
+          }}
+        >
+          <div id="id_sql" ref="editor" />
+        </ResizableBox>
       </div>
     );
   }

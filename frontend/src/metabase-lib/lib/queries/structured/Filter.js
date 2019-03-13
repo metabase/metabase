@@ -82,9 +82,7 @@ export default class Filter extends MBQLClause {
     // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
     if (operator && operator.multi && args.length > maxDisplayValues) {
       const n = args.length;
-      return  [
-        ngettext(msgid`${n} selection`, `${n} selections`, n),
-      ];
+      return [ngettext(msgid`${n} selection`, `${n} selections`, n)];
     } else if (dimension.field().isDate() && !dimension.field().isTime()) {
       return generateTimeFilterValuesDescriptions(this);
     } else {
@@ -98,13 +96,13 @@ export default class Filter extends MBQLClause {
           ([value, options], index) =>
             // FIXME: remapping
             value,
-            // <Value
-            //   key={index}
-            //   value={value}
-            //   column={dimension.field()}
-            //   remap
-            //   {...options}
-            // />
+          // <Value
+          //   key={index}
+          //   value={value}
+          //   column={dimension.field()}
+          //   remap
+          //   {...options}
+          // />
         );
     }
   }
