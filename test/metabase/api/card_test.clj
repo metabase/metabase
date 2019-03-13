@@ -8,7 +8,6 @@
              [email-test :as et]
              [http-client :as http :refer :all]
              [util :as u]]
-            [metabase.api.card :as card-api]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
@@ -25,6 +24,7 @@
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
+            [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.test
              [data :as data]
@@ -353,7 +353,7 @@
           card-name (tu/random-name)]
       (tt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (tu/throw-if-called card-api/result-metadata-for-query
+        (tu/throw-if-called qp.async/result-metadata-for-query-async
           (tu/with-model-cleanup [Card]
             ;; create a card with the metadata
             ((user->client :rasta) :post 200 "card"

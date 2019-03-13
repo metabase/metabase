@@ -3,10 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.middleware.security :as middleware.security]
+            [metabase.middleware.security :as mw.security]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs]])
-  (:import java.sql.SQLException))
+  (:import java.sql.SQLException
+           org.eclipse.jetty.io.EofException))
 
 (defn genericize-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead. This minimizes
@@ -34,9 +35,12 @@
         (catch Throwable e
           (raise e))))))
 
-(defn- api-exception-response
+(defmulti api-exception-response
   "Convert an exception from an API endpoint into an appropriate HTTP response."
-  [^Throwable e]
+  {:arglists '([e])}
+  class)
+
+(defmethod api-exception-response Throwable [^Throwable e]
   (let [{:keys [status-code], :as info}
         (ex-data e)
 
@@ -62,19 +66,23 @@
           ;; Otherwise it's a 500. Return a body that includes exception & filtered
           ;; stacktrace for debugging purposes
           :else
-          (let [stacktrace (u/filtered-stacktrace e)]
-            (merge
-             (assoc other-info
-               :message    message
-               :type       (class e)
-               :stacktrace stacktrace)
-             (when (instance? SQLException e)
-               {:sql-exception-chain
-                (str/split (with-out-str (jdbc/print-sql-exception-chain e))
-                           #"\s*\n\s*")}))))]
+          (assoc other-info
+            :message    message
+            :type       (class e)
+            :stacktrace (u/filtered-stacktrace e)))]
     {:status  (or status-code 500)
-     :headers (middleware.security/security-headers)
+     :headers (mw.security/security-headers)
      :body    body}))
+
+(defmethod api-exception-response SQLException [e]
+  (->
+   ((get-method api-exception-response (.getSuperclass SQLException)) e)
+   (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                     #"\s*\n\s*"))))
+
+(defmethod api-exception-response EofException [e]
+  (log/info (trs "Request canceled before finishing."))
+  {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
 (defn catch-api-exceptions
   "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
@@ -91,8 +99,16 @@
   "Middleware that catches any unexpected Exceptions that reroutes them thru `raise` where they can be handled
   appropriately."
   [handler]
-  (fn [request response raise]
+  (fn [request respond raise]
     (try
-      (handler request response raise)
+      (handler
+       request
+       ;; for people that accidentally pass along an Exception, e.g. from qp.async, do the nice thing and route it to
+       ;; the write place for them
+       (fn [response]
+         ((if (instance? Throwable response)
+            raise
+            respond) response))
+       raise)
       (catch Throwable e
         (raise e)))))

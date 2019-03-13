@@ -1,3 +1,4 @@
+
 (ns metabase.driver.sql-jdbc.execute
   "Code related to actually running a SQL query against a JDBC database (including setting the session timezone when
   appropriate), and for properly encoding/decoding types going in and out of the database."
