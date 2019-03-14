@@ -543,8 +543,7 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-;; Paginate for downloads only
-(defn paginate? [{{context :context} :info}]
+(defn- paginate? [{{context :context} :info}]
   (contains? #{:csv-download :json-download :xlsx-download} context))
 
 (defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
