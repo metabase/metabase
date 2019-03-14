@@ -4,7 +4,6 @@
              [core :as json]
              [generate :refer [add-encoder encode-str]]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
             [ring.middleware.json :as ring.json]
             [ring.util
              [io :as rui]
@@ -63,7 +62,7 @@
         (respond ring.json/default-malformed-response))
       (handler request respond raise))))
 
-(defn check-application-type-headers
+#_(defn check-application-type-headers
   "We don't support API requests with any type of content encoding other than JSON so let's be nice and make that
   explicit. Added benefit is that it reduces CSRF surface because POSTing a form with JSON content encoding isn't so
   easy to do."

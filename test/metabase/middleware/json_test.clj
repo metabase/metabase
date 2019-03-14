@@ -1,10 +1,6 @@
 (ns metabase.middleware.json-test
   (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [expectations :refer [expect]]
-            [metabase.http-client :as mb-http]
-            [metabase.test.data.users :as test-users])
-  (:import clojure.lang.ExceptionInfo))
+            [expectations :refer [expect]]))
 
 ;;; JSON encoding tests
 ;; Required here so so custom Cheshire encoders are loaded
@@ -18,7 +14,7 @@
 
 ;; Make sure we send you an informative error message if you try to send an API request without Content-Type:
 ;; application/json headers
-(expect
+#_(expect
   {:body "Metabase only supports JSON requests. Make sure you set a Content-Type: application/json header."
    :status 400}
   (try
