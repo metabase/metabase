@@ -26,9 +26,8 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table]]
-            [metabase.query-processor
-             [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
@@ -38,7 +37,7 @@
             [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
-           [com.google.api.services.bigquery Bigquery BigqueryRequest Bigquery$Builder BigqueryScopes]
+           [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryRequest BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
             TableList$Tables TableReference TableRow TableSchema]
            honeysql.format.ToSql
