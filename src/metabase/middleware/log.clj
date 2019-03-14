@@ -39,6 +39,7 @@
                         (.toUpperCase (name request-method)) uri status elapsed-time db-call-count
                         (when stats?
                           (jetty-stats-coll (jetty-stats))))
+                 (format " active threads: %d" (Thread/activeCount))
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))

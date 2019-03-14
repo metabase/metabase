@@ -3,11 +3,11 @@
              [data :refer [diff]]
              [set :as set]
              [string :as str]]
+            [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
              [events :as events]
              [public-settings :as public-settings]
-             [query-processor :as qp]
              [util :as u]]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
@@ -20,7 +20,7 @@
              [permissions :as perms]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
-            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.async :as qp.async]
             [metabase.util.i18n :as ui18n]
             [toucan
              [db :as db]
@@ -217,11 +217,11 @@
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
 
+;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
-  (binding [qpi/*disable-qp-logging* true]
-    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+  (a/<!! (qp.async/result-metadata-for-query-async query)))
 
 (defn- save-card!
   [card]
