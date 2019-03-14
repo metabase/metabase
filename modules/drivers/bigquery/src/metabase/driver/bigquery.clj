@@ -173,7 +173,7 @@
   ([{{:keys [project-id]} :details, :as database} query-string]
    (create-query-request (database->client database) project-id query-string))
 
-  ([client project-id query-string]
+  ([^Bigquery client, project-id, query-string]
    (let [request (doto (QueryRequest.)
                        (.setTimeoutMs (* query-timeout-seconds 1000))
                        ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
@@ -181,10 +181,10 @@
                        (.setQuery query-string))]
      (.query (.jobs client) project-id request))))
 
-(defn- ^BigqueryRequest create-get-results-request [request, response]
-  (let [client     (.getAbstractGoogleClient request)
-        job-id     (.getJobId (.getJobReference response))
-        project-id (.getProjectId (.getJobReference response))]
+(defn- ^BigqueryRequest create-get-results-request [^BigqueryRequest request, ^QueryResponse response]
+  (let [^Bigquery client     (.getAbstractGoogleClient request)
+        job-id               (.getJobId (.getJobReference response))
+        project-id           (.getProjectId (.getJobReference response))]
     (.getQueryResults (.jobs client) project-id job-id)))
 
 (defn- ^QueryResponse execute-bigquery
@@ -240,7 +240,7 @@
    "TIMESTAMP" parse-timestamp-str
    "TIME"      parse-bigquery-time})
 
-(defn- process-rows [response]
+(defn- process-rows [^QueryResponse response]
   (let [^TableSchema schema (.getSchema response)
         parsers             (doall
                              (for [^TableFieldSchema field (.getFields schema)
@@ -264,7 +264,7 @@
                     (when-not (= (class v) Object)
                       (parser v)))))}))
 
-(defn- page-results [response request rows]
+(defn- page-results [^QueryResponse response, ^BigqueryRequest request, rows]
   (let [fetched-rows (concat rows (.getRows response))
         page-token   (.getPageToken response)
         next-request (.set request "pageToken" page-token)]
