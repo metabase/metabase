@@ -27,8 +27,7 @@
              [field :refer [Field]]
              [table :as table]]
             [metabase.query-processor
-             [store :as qp.store]
-             [util :as qputil]]
+             [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
