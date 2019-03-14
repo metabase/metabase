@@ -29,7 +29,8 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
+
 import Parameters from "metabase/parameters/components/Parameters";
 
 const SCROLL_MARGIN = 8;
@@ -77,7 +78,6 @@ type Props = {
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
 };
 type State = {
-  showEditor: boolean,
   initialHeight: number,
 };
 
@@ -97,7 +97,6 @@ export default class NativeQueryEditor extends Component {
     );
 
     this.state = {
-      showEditor: !props.question || !props.question.isSaved(),
       initialHeight: getEditorLineHeight(lines),
     };
 
@@ -110,6 +109,11 @@ export default class NativeQueryEditor extends Component {
   static defaultProps = {
     isOpen: false,
   };
+
+  componentWillMount() {
+    const { question, setIsNativeEditorOpen } = this.props;
+    setIsNativeEditorOpen(!question || !question.isSaved());
+  }
 
   componentDidMount() {
     this.loadAceEditor();
@@ -265,7 +269,7 @@ export default class NativeQueryEditor extends Component {
   }
 
   toggleEditor = () => {
-    this.setState({ showEditor: !this.state.showEditor });
+    this.props.setIsNativeEditorOpen(!this.props.isNativeEditorOpen);
   };
 
   /// Change the Database we're currently editing a query for.
@@ -291,15 +295,19 @@ export default class NativeQueryEditor extends Component {
   };
 
   render() {
-    const { query, setParameterValue, location } = this.props;
-    const { showEditor } = this.state;
+    const {
+      query,
+      setParameterValue,
+      location,
+      isNativeEditorOpen,
+    } = this.props;
 
     const database = query.database();
     const databases = query.databases();
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
-    if (showEditor && databases.length > 0) {
+    if (isNativeEditorOpen && databases.length > 0) {
       // we only render a db selector if there are actually multiple to choose from
       if (
         databases.length > 1 &&
@@ -352,7 +360,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     let editorClasses, toggleEditorText, toggleEditorIcon;
-    if (showEditor) {
+    if (isNativeEditorOpen) {
       editorClasses = "";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
@@ -381,7 +389,7 @@ export default class NativeQueryEditor extends Component {
             commitImmediately
           />
           <div className="flex-align-right flex align-center text-medium pr1">
-            {showEditor &&
+            {isNativeEditorOpen &&
               DataReferenceButton.shouldRender(this.props) && (
                 <DataReferenceButton
                   {...this.props}
@@ -389,7 +397,7 @@ export default class NativeQueryEditor extends Component {
                   className="mx1"
                 />
               )}
-            {showEditor &&
+            {isNativeEditorOpen &&
               NativeVariablesButton.shouldRender(this.props) && (
                 <NativeVariablesButton
                   {...this.props}

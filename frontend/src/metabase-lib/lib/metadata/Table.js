@@ -15,6 +15,8 @@ import type { ConcreteField, DatetimeUnit } from "metabase/meta/types/Query";
 
 import Dimension from "../Dimension";
 
+type EntityType = string; // TODO: move somewhere central
+
 import _ from "underscore";
 
 /** This is the primary way people interact with tables */
@@ -26,6 +28,8 @@ export default class Table extends Base {
   db: Database;
 
   fields: FieldMetadata[];
+
+  entity_type: ?EntityType;
 
   displayName(): string {
     return this.display_name;
@@ -41,8 +45,30 @@ export default class Table extends Base {
   }
 
   newQuestion(): Question {
-    // $FlowFixMe
-    return new Question();
+    // NOTE: special case for Google Analytics which doesn't allow raw queries:
+    if (this.entity_type === "entity/GoogleAnalyticsTable") {
+      const dateField = _.findWhere(this.fields, { name: "ga:date" });
+      if (dateField) {
+        return Question.create()
+          .setDatasetQuery({
+            database: this.db_id,
+            type: "query",
+            query: {
+              "source-table": this.id,
+              aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
+              breakout: [
+                ["datetime-field", ["field-id", dateField.id], "as", "week"],
+              ],
+              filter: ["time-interval", ["field-id", dateField.id], -365, "day"],
+            },
+          })
+          .setDisplay("line");
+      }
+    }
+    return Question.create({
+      databaseId: this.db_id,
+      tableId: this.id,
+    });
   }
 
   dimensions(): Dimension[] {

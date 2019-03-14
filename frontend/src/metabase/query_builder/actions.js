@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -44,6 +44,7 @@ import {
   getTransformedSeries,
   getResultsMetadata,
   getFirstQueryResult,
+  getIsPreviewing,
 } from "./selectors";
 
 import {
@@ -75,6 +76,8 @@ type UiControls = {
   isShowingTutorial?: boolean,
   queryBuilderMode?: "view" | "worksheet",
 };
+
+const PREVIEW_RESULT_LIMIT = 10;
 
 const getTemplateTagCount = (question: Question) => {
   const query = question.query();
@@ -405,6 +408,16 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
   type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   isShowingTemplateTagsEditor,
 });
+
+export const setIsPreviewing = isPreviewing => ({
+  type: SET_UI_CONTROLS,
+  payload: { isPreviewing }
+})
+
+export const setIsNativeEditorOpen = isNativeEditorOpen => ({
+  type: SET_UI_CONTROLS,
+  payload: { isNativeEditorOpen }
+})
 
 export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
@@ -1180,7 +1193,7 @@ export const runQuestionQuery = ({
     const questionFromCard = (c: Card): Question =>
       c && new Question(getMetadata(getState()), c);
 
-    const question: Question = overrideWithCard
+    let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
     const originalQuestion: ?Question = getOriginalQuestion(getState());
@@ -1191,6 +1204,10 @@ export const runQuestionQuery = ({
 
     if (shouldUpdateUrl) {
       dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+    }
+
+    if (getIsPreviewing(getState())) {
+      question = question.setDatasetQuery(assocIn(question.datasetQuery(), ["constraints", "max-results"], PREVIEW_RESULT_LIMIT))
     }
 
     const startTime = new Date();

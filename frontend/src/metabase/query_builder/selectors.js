@@ -13,6 +13,7 @@ import { isCardDirty } from "metabase/lib/card";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import { getIn } from "icepick";
 
@@ -269,4 +270,37 @@ export const getVisualizationSettings = createSelector(
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
   uiControls => uiControls.queryBuilderMode,
+);
+
+/**
+ * Returns whether the current question is a native query
+ */
+export const getIsNative = createSelector(
+  [getQuestion],
+  question => question && question.query() instanceof NativeQuery,
+);
+
+/**
+ * Returns whether the native query editor is open
+ */
+export const getIsNativeEditorOpen = createSelector(
+  [getIsNative, getUiControls],
+  (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
+);
+
+/**
+ * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
+ */
+export const getIsPreviewable = createSelector(
+  [getIsNativeEditorOpen, getQuestion],
+  (isNativeEditorOpen, question) =>
+    isNativeEditorOpen && question && question.display() === "table",
+);
+
+/**
+ * Returns whether the query builder is in native query "preview" mode
+ */
+export const getIsPreviewing = createSelector(
+  [getIsPreviewable, getUiControls],
+  (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
 );

@@ -12,7 +12,9 @@ import EntityItem from "metabase/components/EntityItem";
 
 import { normal } from "metabase/lib/colors";
 import Question from "metabase-lib/lib/Question";
+
 import { getXraysEnabled } from "metabase/selectors/settings";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -22,33 +24,6 @@ import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
 
 import _ from "underscore";
-
-/** Returns a default Question instance for the provided table */
-function getDefaultQuestionForTable(table) {
-  if (table.entity_type === "entity/GoogleAnalyticsTable") {
-    const dateField = _.findWhere(table.fields, { name: "ga:date" });
-    if (dateField) {
-      return Question.create()
-        .setDatasetQuery({
-          database: table.db_id,
-          type: "query",
-          query: {
-            "source-table": table.id,
-            aggregation: [["metric", "ga:users"], ["metric", "ga:pageviews"]],
-            breakout: [
-              ["datetime-field", ["field-id", dateField.id], "as", "week"],
-            ],
-            filter: ["time-interval", ["field-id", dateField.id], -365, "day"],
-          },
-        })
-        .setDisplay("line");
-    }
-  }
-  return Question.create({
-    databaseId: table.db_id,
-    tableId: table.id,
-  });
-}
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
@@ -114,11 +89,12 @@ export class SchemaBrowser extends React.Component {
 }
 
 @connect(state => ({
+  metadata: getMetadata(state),
   xraysEnabled: getXraysEnabled(state),
 }))
 export class TableBrowser extends React.Component {
   render() {
-    const { dbId, schemaName } = this.props.params;
+    const { metadata, params: { dbId, schemaName } } = this.props;
     return (
       <Box>
         <Table.ListLoader query={{ dbId, schemaName }}>
@@ -140,7 +116,10 @@ export class TableBrowser extends React.Component {
                 </Box>
                 <Grid>
                   {tables.map(table => {
-                    const link = getDefaultQuestionForTable(table).getUrl();
+                    // NOTE: currently tables entities doesn't integrate with Metadata objects
+                    const metadataTable = metadata.table(table.id);
+                    const link =
+                      metadataTable && metadataTable.newQuestion().getUrl();
                     return (
                       <GridItem w={ITEM_WIDTHS} key={table.id}>
                         <Card

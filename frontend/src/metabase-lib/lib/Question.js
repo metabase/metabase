@@ -223,6 +223,10 @@ export default class Question {
     return this;
   }
 
+  datasetQuery(): DatasetQuery {
+    return this.card().dataset_query
+  }
+
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
   }

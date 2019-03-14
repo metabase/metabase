@@ -8,22 +8,28 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 const QuestionFilters = ({
   question,
   expanded,
-  onAdd,
-  onEdit,
-  onRemove,
+  onOpenAddFilter,
+  onOpenEditFilter,
+  onCloseFilter,
   onExpand,
 }) => {
   const filters = question.query().filters();
   return filters.length === 0 ? (
     <FilterContainer>
-      <Button medium icon="filter" onClick={onAdd}>
+      <Button medium icon="filter" onClick={onOpenAddFilter}>
         {`Filter`}
       </Button>
     </FilterContainer>
   ) : expanded ? (
     <FilterContainer>
       {filters.map((filter, index) => (
-        <Button medium key={index} purple mr={1} onClick={() => onEdit(index)}>
+        <Button
+          medium
+          key={index}
+          purple
+          mr={1}
+          onClick={() => onOpenEditFilter(index)}
+        >
           {filter.displayName()}
           <Icon
             name="close"
@@ -32,11 +38,12 @@ const QuestionFilters = ({
             onClick={e => {
               e.stopPropagation(); // prevent parent button from triggering
               filter.remove().update();
+              onCloseFilter();
             }}
           />
         </Button>
       ))}
-      <Button medium icon="add" onClick={onAdd} />
+      <Button medium icon="add" onClick={onOpenAddFilter} />
     </FilterContainer>
   ) : (
     <FilterContainer>
@@ -56,7 +63,7 @@ export const questionHasFilters = question =>
   question.query().filters().length > 0;
 
 const FilterContainer = ({ children }) => (
-  <div className="flex align-stretch">{children}</div>
+  <div className="flex align-stretch scroll-x">{children}</div>
 );
 
 export default QuestionFilters;

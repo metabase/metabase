@@ -43,10 +43,13 @@ import {
   getRawSeries,
   getQuestionAlerts,
   getVisualizationSettings,
+  getIsNativeEditorOpen,
+  getIsPreviewing,
+  getIsPreviewable,
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
 import { push } from "react-router-redux";
@@ -64,6 +67,7 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
   return {
+    user: getUser(state, props),
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 
@@ -92,17 +96,21 @@ const mapStateToProps = (state, props) => {
     results: getQueryResults(state),
     rawSeries: getRawSeries(state),
 
+    uiControls: getUiControls(state),
+    // includes isShowingDataReference, isShowingTutorial, isEditing, isRunning, etc
+    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
+    ...state.qb.uiControls,
+
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
+    isPreviewing: getIsPreviewing(state),
+    isPreviewable: getIsPreviewable(state),
+    isNativeEditorOpen: getIsNativeEditorOpen(state),
 
-    uiControls: getUiControls(state),
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
     sampleDatasetId: getSampleDatasetId(state),
-
-    // includes isShowingDataReference, isShowingTutorial, isEditing, isRunning, etc
-    ...state.qb.uiControls,
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -226,7 +234,7 @@ export default class QueryBuilder extends Component {
   openModal = modal => {
     this.props.setUIControls({ modal });
   };
-  closeModal = modal => {
+  closeModal = () => {
     this.props.setUIControls({ modal: null });
   };
   setQueryBuilderMode = queryBuilderMode => {
@@ -267,6 +275,27 @@ export default class QueryBuilder extends Component {
     }
   };
 
+  handleOpenAddFilter = () => {
+    this.props.setUIControls({
+      isAddingFilter: true,
+      isEditingFilterIndex: null,
+    });
+  };
+
+  handleOpenEditFilter = index => {
+    this.props.setUIControls({
+      isAddingFilter: false,
+      isEditingFilterIndex: index,
+    });
+  };
+
+  handleCloseFilter = index => {
+    this.props.setUIControls({
+      isAddingFilter: false,
+      isEditingFilterIndex: null,
+    });
+  };
+
   resetStateOnTimeout = () => {
     // clear any previously set timeouts then start a new one
     clearTimeout(this.timeout);
@@ -287,12 +316,19 @@ export default class QueryBuilder extends Component {
         modal={modal}
         onOpenModal={this.openModal}
         onCloseModal={this.closeModal}
+        // query builder mode
         queryBuilderMode={queryBuilderMode}
         onSetQueryBuilderMode={this.setQueryBuilderMode}
+        // recently saved indication
         recentlySaved={recentlySaved}
         onSetRecentlySaved={this.setRecentlySaved}
+        // save/create actions
         onSave={this.handleSave}
         onCreate={this.handleCreate}
+        // filter sidebar
+        onOpenAddFilter={this.handleOpenAddFilter}
+        onOpenEditFilter={this.handleOpenEditFilter}
+        onCloseFilter={this.handleCloseFilter}
       />
     );
   }

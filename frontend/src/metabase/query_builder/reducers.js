@@ -43,6 +43,16 @@ import {
   SET_UI_CONTROLS,
 } from "./actions";
 
+const DEFAULT_UI_CONTROLS = {
+  isShowingDataReference: false,
+  isShowingTemplateTagsEditor: false,
+  isShowingTutorial: false,
+  isShowingNewbModal: false,
+  isEditing: false,
+  isRunning: false,
+  chartSettings: null,
+};
+
 // various ui state options
 export const uiControls = handleActions(
   {
@@ -51,7 +61,10 @@ export const uiControls = handleActions(
     },
 
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({ ...state, ...payload.uiControls }),
+      next: (state, { payload }) => ({
+        ...DEFAULT_UI_CONTROLS,
+        ...payload.uiControls,
+      }),
     },
 
     [TOGGLE_DATA_REFERENCE]: {
@@ -110,15 +123,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, chartSettings: payload }),
     },
   },
-  {
-    isShowingDataReference: false,
-    isShowingTemplateTagsEditor: false,
-    isShowingTutorial: false,
-    isShowingNewbModal: false,
-    isEditing: false,
-    isRunning: false,
-    chartSettings: null,
-  },
+  DEFAULT_UI_CONTROLS,
 );
 
 // the card that is actively being worked on

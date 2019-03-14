@@ -31,6 +31,7 @@ const QuestionDataSource = ({ question, subHead }) => {
     parts.push({
       icon: "table2",
       name: table.displayName(),
+      href: question.isSaved() ? table.newQuestion().getUrl() : null,
     });
   }
 

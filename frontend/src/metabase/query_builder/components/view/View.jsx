@@ -19,12 +19,15 @@ import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./ChartSettingsSidebar";
 import ChartTypeSidebar from "./ChartTypeSidebar";
 
+import FilterSidebar from "./FilterSidebar";
+
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export default class View extends React.Component {
   render() {
     const {
+      question,
       query,
       card,
       isDirty,
@@ -35,6 +38,8 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingChartTypeSidebar,
       isShowingChartSettingsSidebar,
+      isAddingFilter,
+      isEditingFilterIndex,
       queryBuilderMode,
       mode,
     } = this.props;
@@ -46,11 +51,18 @@ export default class View extends React.Component {
 
     const ModeFooter = mode && mode.ModeFooter;
 
-    const leftSideBar = isShowingChartSettingsSidebar ? (
-      <ChartSettingsSidebar {...this.props} />
-    ) : isShowingChartTypeSidebar ? (
-      <ChartTypeSidebar {...this.props} />
-    ) : null;
+    const leftSideBar =
+      isEditingFilterIndex != null || isAddingFilter ? (
+        <FilterSidebar
+          question={question}
+          index={isEditingFilterIndex}
+          onClose={this.props.onCloseFilter}
+        />
+      ) : isShowingChartSettingsSidebar ? (
+        <ChartSettingsSidebar {...this.props} />
+      ) : isShowingChartTypeSidebar ? (
+        <ChartTypeSidebar {...this.props} />
+      ) : null;
 
     const rightSideBar =
       isShowingTemplateTagsEditor && query instanceof NativeQuery ? (

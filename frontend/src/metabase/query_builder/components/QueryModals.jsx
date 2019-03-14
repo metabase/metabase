@@ -1,6 +1,7 @@
 import React from "react";
 
 import { t } from "c-3po";
+import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
 
@@ -15,6 +16,24 @@ import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHist
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 
 export default class QueryModals extends React.Component {
+  showAlertsAfterQuestionSaved = () => {
+    const { questionAlerts, user, onCloseModal, onOpenModal } = this.props;
+
+    const hasAlertsCreatedByCurrentUser = _.any(
+      questionAlerts,
+      alert => alert.creator.id === user.id,
+    );
+
+    if (hasAlertsCreatedByCurrentUser) {
+      // TODO Atte Keinänen 11/10/17: The question was replaced and there is already an alert created by current user.
+      // Should we show pop up the alerts list in this case or do nothing (as we do currently)?
+      onCloseModal();
+    } else {
+      // HACK: in a timeout because save modal closes itself
+      setTimeout(() => onOpenModal("create-alert"));
+    }
+  };
+
   render() {
     const { modal, question, onCloseModal, onOpenModal } = this.props;
     return modal === "save" ? (
@@ -46,11 +65,11 @@ export default class QueryModals extends React.Component {
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           saveFn={async card => {
-            await this.onSave(card, false);
+            await this.props.onSave(card, false);
             onOpenModal("add-to-dashboard");
           }}
           createFn={async card => {
-            await this.onCreate(card, false);
+            await this.props.onCreate(card, false);
             onOpenModal("add-to-dashboard");
           }}
           multiStep
@@ -78,18 +97,14 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           saveFn={async card => {
-            await this.onSave(card, false);
+            await this.props.onSave(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
           createFn={async card => {
-            await this.onCreate(card, false);
+            await this.props.onCreate(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          // only close the modal if we are closing the dialog without saving
-          // otherwise we are in some alerts modal already
-          onClose={() =>
-            modal === "save-question-before-alert" && onCloseModal()
-          }
+          onClose={onCloseModal}
           multiStep
           initialCollectionId={this.props.initialCollectionId}
         />

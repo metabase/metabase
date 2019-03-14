@@ -1,7 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
+
+import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
@@ -11,6 +13,7 @@ export default class RunButton extends Component {
     isRunnable: PropTypes.bool.isRequired,
     isRunning: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
+    isPreviewing: PropTypes.bool,
     onRun: PropTypes.func.isRequired,
     onCancel: PropTypes.func,
   };
@@ -20,11 +23,13 @@ export default class RunButton extends Component {
       isRunnable,
       isRunning,
       isDirty,
+      isPreviewing,
       onRun,
       onCancel,
       className,
     } = this.props;
     let buttonText = null;
+    let isSmall = false;
     if (isRunning) {
       buttonText = (
         <div className="flex align-center">
@@ -33,7 +38,12 @@ export default class RunButton extends Component {
         </div>
       );
     } else if (isRunnable && isDirty) {
-      buttonText = t`Get Answer`;
+      if (isPreviewing) {
+        isSmall = true;
+        buttonText = <Icon name="right" />;
+      } else {
+        buttonText = t`Get Answer`;
+      }
     } else if (isRunnable && !isDirty) {
       buttonText = (
         <div className="flex align-center">
@@ -43,21 +53,23 @@ export default class RunButton extends Component {
       );
     }
     return (
-      <button
+      <Button
+        medium
+        primary={isDirty}
         className={cx(
-          "Button Button--medium circular RunButton",
+          "RunButton circular",
           {
             "RunButton--hidden": !buttonText,
-            "Button--primary": isDirty,
             "text-medium": !isDirty,
             "text-brand-hover": !isDirty,
           },
           className,
         )}
+        style={isSmall ? { minWidth: "5em" } : {}}
         onClick={isRunning ? onCancel : onRun}
       >
         {buttonText}
-      </button>
+      </Button>
     );
   }
 }

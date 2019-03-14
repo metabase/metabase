@@ -342,22 +342,6 @@ export default class QueryHeader extends Component {
     );
   }
 
-  showAlertsAfterQuestionSaved = () => {
-    const { questionAlerts, user } = this.props;
-
-    const hasAlertsCreatedByCurrentUser = Object.values(questionAlerts).some(
-      alert => alert.creator.id === user.id,
-    );
-
-    if (hasAlertsCreatedByCurrentUser) {
-      // TODO Atte Keinänen 11/10/17: The question was replaced and there is already an alert created by current user.
-      // Should we show pop up the alerts list in this case or do nothing (as we do currently)?
-      this.closeModal();
-    } else {
-      this.openModal("create-alert");
-    }
-  };
-
   render() {
     return (
       <div className="relative px2 sm-px0">

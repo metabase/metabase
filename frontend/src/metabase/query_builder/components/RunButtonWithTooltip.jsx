@@ -8,18 +8,11 @@ import RunButton from "./RunButton";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
-const RunButtonWithTooltip = ({
-  result,
-  isRunnable,
-  isResultDirty,
-  isRunning,
-  onRun,
-  onCancel,
-  className,
-}) => {
+const RunButtonWithTooltip = props => {
+  const { isDirty, result } = props;
   let runButtonTooltip;
   if (
-    !isResultDirty &&
+    !isDirty &&
     result &&
     result.cached &&
     result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD
@@ -31,14 +24,7 @@ const RunButtonWithTooltip = ({
 
   return (
     <Tooltip tooltip={runButtonTooltip}>
-      <RunButton
-        className={className}
-        isRunnable={isRunnable}
-        isDirty={isResultDirty}
-        isRunning={isRunning}
-        onRun={onRun}
-        onCancel={onCancel}
-      />
+      <RunButton {...props} />
     </Tooltip>
   );
 };
