@@ -54,8 +54,12 @@ const QuestionFilters = ({
   );
 };
 
-QuestionFilters.shouldRender = ({ question }) =>
-  question && question.query() instanceof StructuredQuery;
+QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
+  question &&
+  question.query() instanceof StructuredQuery &&
+  question.query().table() &&
+  // NOTE: remove queryBuilderMode check once legacy query builder is removed
+  queryBuilderMode !== "worksheet";
 
 export const questionHasFilters = question =>
   question &&

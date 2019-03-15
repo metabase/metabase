@@ -11,6 +11,7 @@ import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import QuestionFilters, { questionHasFilters } from "./QuestionFilters";
 
 import QuestionDataSource from "./QuestionDataSource";
+import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionRowCount from "./QuestionRowCount";
@@ -35,6 +36,8 @@ export const ViewTitleHeader = ({
   onSetQueryBuilderMode,
 }) => {
   const isNative = question.query() instanceof NativeQuery;
+  const isCustomQuestion = queryBuilderMode === "worksheet";
+
   return (
     <ViewSection className={className}>
       {question.isSaved() ? (
@@ -64,7 +67,7 @@ export const ViewTitleHeader = ({
             {isNative ? (
               t`New question`
             ) : (
-              <QuestionDataSource question={question} />
+              <QuestionDescription question={question} />
             )}
           </ViewHeading>
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
@@ -80,20 +83,21 @@ export const ViewTitleHeader = ({
         </div>
       )}
       <div className="ml-auto flex align-center">
-        {isDirty || isNew ? (
-          <Button onClick={() => onOpenModal("save")}>{t`Save`}</Button>
+        {isDirty ? (
+          <Button medium onClick={() => onOpenModal("save")}>{t`Save`}</Button>
         ) : null}
         {!isNative && (
           <Button
             icon="list"
-            borderless
+            medium
+            ml={1}
+            borderless={!isCustomQuestion}
+            primary={isCustomQuestion}
             onClick={() =>
-              onSetQueryBuilderMode(
-                queryBuilderMode === "worksheet" ? "view" : "worksheet",
-              )
+              onSetQueryBuilderMode(isCustomQuestion ? "view" : "worksheet")
             }
           >
-            Custom question
+            {t`Custom question`}
           </Button>
         )}
       </div>
@@ -119,7 +123,6 @@ export class ViewSubHeader extends React.Component {
       isRunning,
       isResultDirty,
 
-      isNativeEditorOpen,
       isPreviewable,
       isPreviewing,
       setIsPreviewing,
@@ -129,15 +132,104 @@ export class ViewSubHeader extends React.Component {
 
       questionAlerts,
       visualizationSettings,
+
+      queryBuilderMode,
     } = this.props;
 
     const isFiltersExpanded =
       this.state.isFiltersExpanded && questionHasFilters(question);
 
+    const left = [];
+    const middle = [];
+    const right = [];
+
+    if (
+      !isFiltersExpanded &&
+      QuestionFilters.shouldRender({ question, queryBuilderMode })
+    ) {
+      left.push(
+        <QuestionFilters
+          key="filters"
+          question={question}
+          onOpenAddFilter={this.props.onOpenAddFilter}
+          onCloseFilter={this.props.onCloseFilter}
+          onExpand={this.expandFilters}
+        />,
+      );
+    }
+    if (isRunnable) {
+      middle.push(
+        <RunButtonWithTooltip
+          key="run"
+          result={result}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          isPreviewing={isPreviewing}
+          onRun={() => runQuestionQuery({ ignoreCache: true })}
+          onCancel={() => cancelQuery()}
+        />,
+      );
+    }
+    if (QuestionRowCount.shouldRender(this.props) && !isPreviewing) {
+      right.push(
+        <QuestionRowCount key="row_count" className="mx1" {...this.props} />,
+      );
+    }
+    if (isPreviewable) {
+      right.push(
+        <QuestionPreviewToggle
+          key="preview"
+          className="mx2"
+          isPreviewing={isPreviewing}
+          setIsPreviewing={setIsPreviewing}
+        />,
+      );
+    }
+    if (QueryDownloadWidget.shouldRender({ result, isResultDirty })) {
+      right.push(
+        <QueryDownloadWidget
+          key="download"
+          className="mx1 hide sm-show"
+          card={question.card()}
+          result={result}
+        />,
+      );
+    }
+    if (QuestionEmbedWidget.shouldRender({ question, isAdmin })) {
+      right.push(
+        <QuestionEmbedWidget
+          key="embed"
+          className="mx1 hide sm-show"
+          card={question.card()}
+        />,
+      );
+    }
+    if (
+      QuestionAlertWidget.shouldRender({
+        question,
+        visualizationSettings,
+      })
+    ) {
+      right.push(
+        <QuestionAlertWidget
+          key="alerts"
+          className="mx1 hide sm-show"
+          question={question}
+          questionAlerts={questionAlerts}
+          onCreateAlert={() =>
+            question.isSaved()
+              ? onOpenModal("create-alert")
+              : onOpenModal("save-question-before-alert")
+          }
+        />,
+      );
+    }
+
     return (
       <div>
         {isFiltersExpanded &&
-          QuestionFilters.shouldRender({ question }) && (
+          QuestionFilters.shouldRender({ question, queryBuilderMode }) && (
             <ViewSection>
               <QuestionFilters
                 question={question}
@@ -148,71 +240,17 @@ export class ViewSubHeader extends React.Component {
               />
             </ViewSection>
           )}
-        <ViewSection className="flex">
-          <div className="flex-full flex-basis-none flex align-center">
-            {!isFiltersExpanded &&
-              QuestionFilters.shouldRender({ question }) && (
-                <QuestionFilters
-                  question={question}
-                  onOpenAddFilter={this.props.onOpenAddFilter}
-                  onCloseFilter={this.props.onCloseFilter}
-                  onExpand={this.expandFilters}
-                />
-              )}
-          </div>
-          <div>
-            <RunButtonWithTooltip
-              result={result}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isDirty={isResultDirty}
-              isPreviewing={isPreviewing}
-              onRun={() => runQuestionQuery({ ignoreCache: true })}
-              onCancel={() => cancelQuery()}
-            />
-          </div>
-          <div className="flex-full flex-basis-none flex align-center justify-end text-medium text-bold">
-            {QuestionRowCount.shouldRender(this.props) &&
-              !isPreviewing && (
-                <QuestionRowCount className="mx1" {...this.props} />
-              )}
-            {isPreviewable && (
-              <QuestionPreviewToggle
-                className="mx2"
-                isPreviewing={isPreviewing}
-                setIsPreviewing={setIsPreviewing}
-              />
-            )}
-            {QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
-              <QueryDownloadWidget
-                className="mx1 hide sm-show"
-                card={question.card()}
-                result={result}
-              />
-            )}
-            {QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
-              <QuestionEmbedWidget
-                className="mx1 hide sm-show"
-                card={question.card()}
-              />
-            )}
-            {QuestionAlertWidget.shouldRender({
-              question,
-              visualizationSettings,
-            }) && (
-              <QuestionAlertWidget
-                className="mx1 hide sm-show"
-                question={question}
-                questionAlerts={questionAlerts}
-                onCreateAlert={() =>
-                  question.isSaved()
-                    ? onOpenModal("create-alert")
-                    : onOpenModal("save-question-before-alert")
-                }
-              />
-            )}
-          </div>
-        </ViewSection>
+        {(left.length > 0 || middle.length > 0 || right.length > 0) && (
+          <ViewSection className="flex text-medium text-bold">
+            <div className="flex-full flex-basis-none flex align-center">
+              {left}
+            </div>
+            <div>{middle}</div>
+            <div className="flex-full flex-basis-none flex align-center justify-end">
+              {right}
+            </div>
+          </ViewSection>
+        )}
       </div>
     );
   }

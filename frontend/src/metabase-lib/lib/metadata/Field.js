@@ -35,11 +35,16 @@ import type { FieldValues } from "metabase/meta/types/Field";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
-  displayName: string;
+  name: string;
+  display_name: string;
   description: string;
 
   table: Table;
   name_field: ?Field;
+
+  displayName() {
+    return this.display_name;
+  }
 
   fieldType() {
     return getFieldType(this);

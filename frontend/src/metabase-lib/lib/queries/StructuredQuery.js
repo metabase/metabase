@@ -5,12 +5,8 @@
  */
 
 import * as Q from "metabase/lib/query/query";
-import Q_deprecated, {
-  AggregationClause,
-  NamedClause,
-} from "metabase/lib/query";
+import Q_deprecated from "metabase/lib/query";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
-import { getAggregator } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 import { chain, assoc, updateIn } from "icepick";
@@ -338,37 +334,12 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * @deprecated use this.aggregations()[index].displayName() directly
    * @returns the formatted named of the aggregation at the provided index.
    */
   aggregationName(index: number = 0): ?string {
     const aggregation = this.aggregations()[index];
-    if (NamedClause.isNamed(aggregation)) {
-      return NamedClause.getName(aggregation);
-    } else if (AggregationClause.isCustom(aggregation)) {
-      return this.formatExpression(aggregation);
-    } else if (AggregationClause.isMetric(aggregation)) {
-      const metricId = AggregationClause.getMetric(aggregation);
-      const metric = this._metadata.metrics[metricId];
-      if (metric) {
-        return metric.name;
-      }
-    } else {
-      const selectedAggregation = getAggregator(
-        AggregationClause.getOperator(aggregation),
-      );
-      if (selectedAggregation) {
-        let aggregationName = selectedAggregation.name.replace(" of ...", "");
-        const fieldId = Q_deprecated.getFieldTargetId(
-          AggregationClause.getField(aggregation),
-        );
-        const field = fieldId && this._metadata.fields[fieldId];
-        if (field) {
-          aggregationName += " of " + field.display_name;
-        }
-        return aggregationName;
-      }
-    }
-    return null;
+    return aggregation && aggregation.displayName();
   }
 
   formatExpression(expression) {

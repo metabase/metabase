@@ -52,7 +52,9 @@ export default class View extends React.Component {
     const ModeFooter = mode && mode.ModeFooter;
 
     const leftSideBar =
-      isEditingFilterIndex != null || isAddingFilter ? (
+      (isEditingFilterIndex != null || isAddingFilter) &&
+      // NOTE: remove queryBuilderMode check once legacy query builder is removed
+      queryBuilderMode !== "worksheet" ? (
         <FilterSidebar
           question={question}
           index={isEditingFilterIndex}

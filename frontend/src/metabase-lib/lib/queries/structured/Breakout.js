@@ -24,4 +24,9 @@ export default class Breakout extends MBQLClause {
   dimension(): Dimension {
     return this._query.parseFieldReference(this);
   }
+
+  displayName(): ?string {
+    const dimension = this.dimension();
+    return dimension && dimension.displayName();
+  }
 }

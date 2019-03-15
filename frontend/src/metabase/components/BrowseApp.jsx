@@ -11,7 +11,6 @@ import Table from "metabase/entities/tables";
 import EntityItem from "metabase/components/EntityItem";
 
 import { normal } from "metabase/lib/colors";
-import Question from "metabase-lib/lib/Question";
 
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,8 +21,6 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
-
-import _ from "underscore";
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];

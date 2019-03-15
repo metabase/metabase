@@ -2,14 +2,14 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon.jsx";
-import TagEditorParam from "./TagEditorParam.jsx";
-import TagEditorHelp from "./TagEditorHelp.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "c-3po";
 import cx from "classnames";
 
+import TagEditorParam from "./TagEditorParam";
+import TagEditorHelp from "./TagEditorHelp";
 import SidebarHeader from "../SidebarHeader";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase/meta/types/Card";

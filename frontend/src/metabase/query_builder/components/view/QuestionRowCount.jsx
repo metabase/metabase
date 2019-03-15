@@ -7,6 +7,7 @@ import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Input from "metabase/components/Input";
+import Radio from "metabase/components/Radio";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -48,35 +49,28 @@ const QuestionRowCount = ({
       >
         {({ onClose }) => (
           <div className="p2 text-bold text-medium">
-            <div
-              className={cx("mb2 mx1 cursor-pointer text-brand-hover", {
-                "text-brand": limit == null,
-              })}
-              onClick={() => {
-                query.clearLimit().update();
-                onClose();
-              }}
-            >
-              {t`Show maximum`}
-            </div>
-            <div>
-              <Input
-                defaultValue={limit}
-                className={cx({ "text-brand border-brand": limit != null })}
-                placeholder={t`Pick a limit`}
-                onKeyPress={e => {
-                  if (e.key === "Enter") {
-                    const value = parseInt(e.target.value, 10);
-                    if (value > 0) {
-                      query.updateLimit(value).update();
-                    } else {
-                      query.clearLimit().update();
-                    }
-                    onClose();
-                  }
-                }}
-              />
-            </div>
+            <Radio
+              vertical
+              value={limit == null ? "maximum" : "custom"}
+              options={[
+                { name: t`Show maximum`, value: "maximum" },
+                {
+                  name: (
+                    <CustomRowLimit
+                      key={limit == null ? "a" : "b"}
+                      query={query}
+                      onClose={onClose}
+                    />
+                  ),
+                  value: "custom",
+                },
+              ]}
+              onChange={value =>
+                value === "maximum"
+                  ? query.clearLimit().update()
+                  : query.updateLimit(2000).update()
+              }
+            />
           </div>
         )}
       </PopoverWithTrigger>
@@ -86,6 +80,30 @@ const QuestionRowCount = ({
   }
 
   return <span className={className}>{content}</span>;
+};
+
+const CustomRowLimit = ({ query, onClose }) => {
+  const limit = query.limit();
+
+  return (
+    <Input
+      small
+      defaultValue={limit}
+      className={cx({ "text-brand border-brand": limit != null })}
+      placeholder={t`Pick a limit`}
+      onKeyPress={e => {
+        if (e.key === "Enter") {
+          const value = parseInt(e.target.value, 10);
+          if (value > 0) {
+            query.updateLimit(value).update();
+          } else {
+            query.clearLimit().update();
+          }
+          onClose();
+        }
+      }}
+    />
+  );
 };
 
 QuestionRowCount.shouldRender = ({ question, result, isObjectDetail }) =>

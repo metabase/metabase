@@ -126,6 +126,8 @@ const mapStateToProps = (state, props) => {
 
 const getURL = location => location.pathname + location.search + location.hash;
 
+const isSavedQuestionUrl = url => /\/question\/\d+$/.test(url);
+
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
@@ -192,6 +194,12 @@ export default class QueryBuilder extends Component {
       getURL(this.props.location) !== "/question"
     ) {
       // "New Question" link was clicked
+      this.props.initializeQB(nextProps.location, nextProps.params);
+    } else if (
+      isSavedQuestionUrl(getURL(nextProps.location)) &&
+      getURL(this.props.location) !== getURL(nextProps.location)
+    ) {
+      // a saved question link was clicked, e.x. lineage
       this.props.initializeQB(nextProps.location, nextProps.params);
     }
 

@@ -2,7 +2,9 @@
 
 import MBQLClause from "./MBQLClause";
 
-import { AggregationClause as AggregationClause_DEPRECATED } from "metabase/lib/query";
+import { t} from "c-3po"
+
+import { AggregationClause as AggregationClause_DEPRECATED, NamedClause as NamedClause_DEPRECATED } from "metabase/lib/query";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
@@ -12,6 +14,31 @@ import type { MetricId } from "metabase/meta/types/Metric";
 import type { FieldId } from "metabase/meta/types/Field";
 
 export default class Aggregation extends MBQLClause {
+  displayName() {
+    if (this.isNamed()) {
+      return NamedClause_DEPRECATED.getName(this);
+    } else if (this.isCustom()) {
+      return this._query.formatExpression(this);
+    } else if (this.isMetric()) {
+      const metric = this.metadata().metric(this.getMetric());
+      if (metric) {
+        return metric.displayName();
+      }
+    } else if (this.isStandard()) {
+      const option = this.getOption()
+      if (option) {
+        const aggregationName = option.name.replace(" of ...", "");
+        const dimension = this.dimension();
+        if (dimension) {
+          return t`${aggregationName} of ${dimension.displayName()}`;
+        } else {
+          return aggregationName;
+        }
+      }
+    }
+    return null;
+  }
+
   /**
    * Replaces the aggregation in the parent query and returns the new StructuredQuery
    */
@@ -28,7 +55,7 @@ export default class Aggregation extends MBQLClause {
 
   dimension(): ?Dimension {
     if (this.isStandard() && this.length > 1) {
-      return this._query.parseFieldReference(this[1]);
+      return this._query.parseFieldReference(this.getFieldReference());
     }
   }
 
@@ -81,6 +108,10 @@ export default class Aggregation extends MBQLClause {
     return AggregationClause_DEPRECATED.getAggregation(this);
   }
 
+  isNamed() {
+    return NamedClause_DEPRECATED.isNamed(this)
+  }
+
   /**
    * Get metricId from a metric aggregation clause
    * Returns `null` if the clause doesn't represent a metric
@@ -101,7 +132,7 @@ export default class Aggregation extends MBQLClause {
    * Get the fieldId from a standard aggregation clause
    * Returns `null` if the clause isn't in a standard format
    */
-  getField(): ?FieldId {
+  getFieldReference(): ?FieldId {
     return AggregationClause_DEPRECATED.getField(this);
   }
 }

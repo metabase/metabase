@@ -7,7 +7,12 @@ import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { hasFilterOptions } from "metabase/lib/query/filter";
+import {
+  isSegmentFilter,
+  isCompoundFilter,
+  isFieldFilter,
+  hasFilterOptions
+} from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "c-3po";
@@ -15,12 +20,6 @@ import { t, ngettext, msgid } from "c-3po";
 type FilterOperator = {
   name: string, // MBQL filter clause
 };
-
-import {
-  isSegmentFilter,
-  isCompoundFilter,
-  isFieldFilter,
-} from "metabase/lib/query/filter";
 
 export default class Filter extends MBQLClause {
   /**
@@ -75,7 +74,6 @@ export default class Filter extends MBQLClause {
   }
 
   formattedArguments(maxDisplayValues = 1) {
-    let formattedArguments;
     const dimension = this.dimension();
     const operator = this.operator();
     const args = this.arguments();
@@ -136,15 +134,16 @@ export default class Filter extends MBQLClause {
   displayName() {
     if (this.isSegmentFilter()) {
       const segment = this.segment();
-      return `Matches ${segment ? segment.displayName() : `Unknown Segment`}`;
+      return t`Matches ${segment ? segment.displayName() : t`Unknown Segment`}`;
     } else if (this.isFieldFilter()) {
       const dimension = this.dimension();
       const operator = this.operator();
-      return `${(dimension && dimension.displayName()) || ""} ${(operator &&
-        operator.moreVerboseName) ||
-        ""} ${this.formattedArguments().join(" ")}`;
+      const dimensionName = dimension && dimension.displayName();
+      const operatorName = operator && operator.moreVerboseName;
+      const argumentNames = this.formattedArguments().join(" ");
+      return t`${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else {
-      return `Unknown Filter`;
+      return t`Unknown Filter`;
     }
   }
 }
