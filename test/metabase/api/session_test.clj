@@ -13,12 +13,11 @@
             [metabase.test
              [data :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :as test-users :refer :all]
+            [metabase.test.data.users :refer :all]
             [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
-            [toucan.util.test :as tt])
-  (:import java.util.UUID))
+            [toucan.util.test :as tt]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -62,16 +61,10 @@
 ;; Test that we can logout
 (expect
   nil
-  (do
-    ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
-    ;; Session
-    (test-users/clear-cached-session-tokens!)
-    (let [session-id (test-users/username->token :rasta)]
-      ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
-      ;; in on the next API call
-      ((user->client :rasta) :delete 204 "session")
-      ;; check whether it's still there -- should be GONE
-      (Session session-id))))
+  (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
+    (assert session_id)
+    ((user->client :rasta) :delete 204 "session" :session_id session_id)
+    (Session session_id)))
 
 
 ;; ## POST /api/session/forgot_password
@@ -241,15 +234,18 @@
                    [:first_name :last_name :email]))))
 
 
-;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
+;;; tests for google-auth-fetch-or-create-user!
+
+(defn- is-session? [session]
+  (u/ignore-exceptions
+    (tu/is-uuid-string? (:id session))))
 
 ;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from
 ;; their account should return a Session
 (expect
-  UUID
   (tt/with-temp User [user {:email "cam@sf-toucannery.com"}]
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-      (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com"))))
+      (is-session? (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
 
 ;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an
 ;; exception
@@ -262,14 +258,11 @@
 ;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets
 ;; created
 (expect
-  UUID
   (et/with-fake-inbox
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
-      (try
-        (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
-        (finally
-          (db/delete! User :email "rasta@sf-toucannery.com")))))) ; clean up after ourselves
+      (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
+        (db/delete! User :email "rasta@sf-toucannery.com"))))) ; clean up after ourselves
 
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------

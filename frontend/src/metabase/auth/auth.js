@@ -6,6 +6,7 @@ import {
 
 import { push } from "react-router-redux";
 
+import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -35,8 +36,10 @@ export const login = createThunkAction(LOGIN, function(
     }
 
     try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.create(credentials);
+      let newSession = await SessionApi.create(credentials);
+
+      // since we succeeded, lets set the session cookie
+      MetabaseCookies.setSessionCookie(newSession.id);
 
       MetabaseAnalytics.trackEvent("Auth", "Login");
       // TODO: redirect after login (carry user to intended destination)
@@ -56,10 +59,12 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
 ) {
   return async function(dispatch, getState) {
     try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.createWithGoogleAuth({
+      let newSession = await SessionApi.createWithGoogleAuth({
         token: googleUser.getAuthResponse().id_token,
       });
+
+      // since we succeeded, lets set the session cookie
+      MetabaseCookies.setSessionCookie(newSession.id);
 
       MetabaseAnalytics.trackEvent("Auth", "Google Auth Login");
 
@@ -82,12 +87,13 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, function() {
   return function(dispatch, getState) {
-    // actively delete the session and remove the cookie
-    SessionApi.delete();
+    // TODO: as part of a logout we want to clear out any saved state that we have about anything
 
-    // clear Google auth credentials if any are present
-    clearGoogleAuthCredentials();
-
+    let sessionId = MetabaseCookies.setSessionCookie();
+    if (sessionId) {
+      // actively delete the session
+      SessionApi.delete({ session_id: sessionId });
+    }
     MetabaseAnalytics.trackEvent("Auth", "Logout");
 
     dispatch(push("/auth/login"));
@@ -112,11 +118,15 @@ export const passwordReset = createThunkAction(PASSWORD_RESET, function(
     }
 
     try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.reset_password({
+      let result = await SessionApi.reset_password({
         token: token,
         password: credentials.password,
       });
+
+      if (result.session_id) {
+        // we should have a valid session that we can use immediately!
+        MetabaseCookies.setSessionCookie(result.session_id);
+      }
 
       MetabaseAnalytics.trackEvent("Auth", "Password Reset");
 
