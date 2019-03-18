@@ -23,8 +23,7 @@
 (defn- jetty-config []
   (cond-> (m/filter-vals
            some?
-           {:async?        true
-            :port          (config/config-int :mb-jetty-port)
+           {:port          (config/config-int :mb-jetty-port)
             :host          (config/config-str :mb-jetty-host)
             :max-threads   (config/config-int :mb-jetty-maxthreads)
             :min-threads   (config/config-int :mb-jetty-minthreads)
@@ -49,10 +48,17 @@
   ^Server []
   @instance*)
 
-(defn- create-server
+(defn create-server
+  "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
+  creating one-off web servers for tests and REPL usage."
   ^Server [handler options]
-  (doto ^Server (#'ring-jetty/create-server options)
-    (.setHandler (#'ring-jetty/async-proxy-handler handler 0))))
+  (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
+    (.setHandler (#'ring-jetty/async-proxy-handler
+                  handler
+                  ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results
+                  ;; later after 30 seconds we're in serious trouble. Kill the request.
+                  (or (config/config-int :mb-jetty-async-response-timeout)
+                      (* 30 1000))))))
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a

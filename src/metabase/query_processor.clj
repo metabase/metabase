@@ -14,7 +14,6 @@
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
-             [add-query-throttle :as query-throttle]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
@@ -51,7 +50,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [date :as du]
-             [i18n :refer [tru]]]
+             [i18n :refer [trs tru]]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -59,12 +58,12 @@
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- execute-query
+(s/defn ^:private execute-query
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
   Processor methods. This function takes the fully pre-processed query, runs it, and returns the results, which then
   run through the various post-processing steps."
-  [query]
-  {:pre [(map? query) (:driver query)]}
+  [query :- {:driver   s/Keyword
+             s/Keyword s/Any}]
   (driver/execute-query (:driver query) query))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
@@ -142,7 +141,6 @@
       resolve-database/resolve-database
       fetch-source-query/fetch-source-query
       store/initialize-store
-      query-throttle/maybe-add-query-throttle
       log-query/log-initial-query
       ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
@@ -344,13 +342,11 @@
         (assert-query-status-successful result)
         (save-and-return-successful-query! query-execution result))
       (catch Throwable e
-        (if (= (:type (ex-data e)) ::query-throttle/concurrent-query-limit-reached)
-          (throw e)
-          (do
-            (log/warn (u/format-color 'red "Query failure: %s\n%s"
-                                      (.getMessage e)
-                                      (u/pprint-to-str (u/filtered-stacktrace e))))
-            (save-and-return-failed-query! query-execution e)))))))
+        (log/warn (u/format-color 'red (trs "Query failure")
+                    (.getMessage e)
+                    "\n"
+                    (u/pprint-to-str (u/filtered-stacktrace e))))
+        (save-and-return-failed-query! query-execution e)))))
 
 (s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
   (assoc query :info (assoc options

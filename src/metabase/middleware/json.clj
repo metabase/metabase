@@ -62,6 +62,29 @@
         (respond ring.json/default-malformed-response))
       (handler request respond raise))))
 
+#_(defn check-application-type-headers
+  "We don't support API requests with any type of content encoding other than JSON so let's be nice and make that
+  explicit. Added benefit is that it reduces CSRF surface because POSTing a form with JSON content encoding isn't so
+  easy to do."
+  [handler]
+  (fn
+    [{:keys [request-method body], {:strs [content-type]} :headers, :as request} respond raise]
+    ;; GET or DELETE requests with no body we can go ahead and proceed without Content-Type headers, since they
+    ;; generally don't have bodies.
+    ;;
+    ;; POST/PUT requests always require Content-Type: application/json. GET/DELETE requests that specify any other
+    ;; content type aren't allowed.
+    (if (or (and (#{:get :delete} request-method)
+                 (nil? content-type))
+            (#'ring.json/json-request? request))
+      (handler request respond raise)
+      (respond
+       {:status  400
+        :headers {"Content-Type" "text/plain"}
+        :body    (str (tru "Metabase only supports JSON requests.")
+                      " "
+                      (tru "Make sure you set a 'Content-Type: application/json' header."))}))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Streaming JSON Responses                                            |

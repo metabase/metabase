@@ -33,12 +33,14 @@
                                        (=  status 403) [true  'red   log-warn false]
                                        (>= status 400) [true  'red   log-debug false]
                                        :else           [false 'green log-debug true])]
-    (log-fn (str (apply u/format-color color (str "%s %s %d (%s) (%d DB calls)."
-                                                  (when stats?
-                                                    " Jetty threads: %s/%s (%s busy, %s idle, %s queued)"))
+    (log-fn (str (apply u/format-color color
+                        (str "%s %s %d (%s) (%d DB calls)."
+                             (when stats?
+                               " Jetty threads: %s/%s (%s busy, %s idle, %s queued) (%d total active threads)"))
                         (.toUpperCase (name request-method)) uri status elapsed-time db-call-count
                         (when stats?
-                          (jetty-stats-coll (jetty-stats))))
+                          (conj (vec (jetty-stats-coll (jetty-stats)))
+                                (Thread/activeCount))))
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))

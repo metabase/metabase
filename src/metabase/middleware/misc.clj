@@ -5,6 +5,7 @@
              [db :as mdb]
              [public-settings :as public-settings]]
             [metabase.middleware.util :as middleware.u]
+            [metabase.util.i18n :refer [trs]]
             [puppetlabs.i18n.core :as puppet-i18n]
             [ring.middleware.gzip :as ring.gzip])
   (:import [java.io File InputStream]))
@@ -42,7 +43,7 @@
   (when (mdb/db-is-setup?)
     (when-not (public-settings/site-url)
       (when-let [site-url (or origin host)]
-        (log/info "Setting Metabase site URL to" site-url)
+        (log/info (trs "Setting Metabase site URL to {0}" site-url))
         (public-settings/site-url site-url)))))
 
 (defn maybe-set-site-url

@@ -12,7 +12,6 @@
    :min-threads    10
    :host           "10"
    :daemon?        false
-   :async?         true
    :ssl?           true
    :trust-password "10"
    :key-password   "10"
