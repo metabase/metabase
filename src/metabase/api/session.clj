@@ -174,11 +174,8 @@
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [session-id (create-session! user)]
-          (mw.session/set-session-cookie
-           {:success    true
-            :session_id (str session-id)}
-           session-id)))
+        {:success    true
+         :session_id (create-session! user)})
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 

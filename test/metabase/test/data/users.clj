@@ -8,10 +8,8 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.middleware.session :as mw.session]
             [metabase.models.user :as user :refer [User]]
-            [schema.core :as s]
             [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           metabase.models.user.UserInstance))
+  (:import clojure.lang.ExceptionInfo))
 
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
@@ -44,11 +42,8 @@
                :password "birdseed"
                :active   false}})
 
-(def ^:private usernames
+(def ^:private ^:const usernames
   (set (keys user->info)))
-
-(def ^:private TestUserName
-  (apply s/enum usernames))
 
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
@@ -72,8 +67,8 @@
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
-      :or   {superuser false
-             active    true}}]
+      :or {superuser false
+           active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (wait-for-initiailization)
   (or (User :email email)
@@ -87,18 +82,19 @@
         :is_active    active)))
 
 
-(s/defn fetch-user :- UserInstance
+(defn fetch-user
   "Fetch the User object associated with USERNAME. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
-  [username :- TestUserName]
+  [username]
+  {:pre [(contains? usernames username)]}
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(s/defn create-users-if-needed!
+(defn create-users-if-needed!
   "Force creation of the test users if they don't already exist."
   ([]
    (apply create-users-if-needed! usernames))
-  ([& usernames :- [TestUserName]]
+  ([& usernames]
    (doseq [username usernames]
      ;; fetch-user will force creation of users
      (fetch-user username))))
@@ -108,15 +104,15 @@
 
     (user->id :rasta) -> 4"
   (memoize
-   (s/fn :- s/Int [username :- TestUserName]
+   (fn [username]
      {:pre [(contains? usernames username)]}
-     (u/get-id (fetch-user username)))))
+     (:id (fetch-user username)))))
 
-(s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
+(defn user->credentials
   "Return a map with `:username` and `:password` for User with USERNAME.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
-  [username :- TestUserName]
+  [username]
   {:pre [(contains? usernames username)]}
   (let [{:keys [email password]} (user->info username)]
     {:username email
@@ -132,9 +128,9 @@
 
 (defonce ^:private tokens (atom {}))
 
-(s/defn username->token :- u/uuid-regex
+(defn username->token
   "Return cached session token for a test User, logging in first if needed."
-  [username :- TestUserName]
+  [username]
   (or (@tokens username)
       (u/prog1 (http/authenticate (user->credentials username))
         (swap! tokens assoc username <>))
@@ -158,18 +154,18 @@
         (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
-(s/defn user->client :- (s/pred fn?)
+(defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")"
-  [username :- TestUserName]
+  [username]
   (create-users-if-needed! username)
   (partial client-fn username))
 
-(s/defn do-with-test-user
+(defn do-with-test-user
   "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
-  [user-kwd :- TestUserName, f :- (s/pred fn?)]
+  [user-kwd f]
   ((mw.session/bind-current-user (fn [_ respond _] (respond (f))))
    (let [user-id (user->id user-kwd)]
      {:metabase-user-id user-id
