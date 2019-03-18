@@ -123,7 +123,10 @@ export default class PublicDashboard extends Component {
   }
 
   componentWillReceiveProps(nextProps: Props) {
-    if (isMounted && !_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+    if (
+      isMounted &&
+      !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
+    ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
