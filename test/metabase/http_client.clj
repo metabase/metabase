@@ -2,14 +2,12 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
             [clj-http.client :as client]
-            [clojure.string :as str]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.middleware.session :as mw.session]
-            [metabase.util.date :as du]
-            [schema.core :as s]))
+            [metabase.util.date :as du]))
 
 ;;; build-url
 
@@ -24,7 +22,7 @@
   [url url-param-kwargs]
   {:pre [(string? url) (u/maybe? map? url-param-kwargs)]}
   (str *url-prefix* url (when (seq url-param-kwargs)
-                          (str "?" (str/join \& (for [[k v] url-param-kwargs]
+                          (str "?" (s/join \& (for [[k v] url-param-kwargs]
                                                 (str (if (keyword? k) (name k) k)
                                                      \=
                                                      (if (keyword? v) (name v) v))))))))
@@ -58,7 +56,7 @@
     (try
       (auto-deserialize-dates (json/parse-string body keyword))
       (catch Throwable _
-        (when-not (str/blank? body)
+        (when-not (s/blank? body)
           body)))))
 
 
@@ -66,14 +64,15 @@
 
 (declare client)
 
-(s/defn authenticate
+(defn authenticate
   "Authenticate a test user with USERNAME and PASSWORD, returning their Metabase Session token;
    or throw an Exception if that fails."
-  [credentials :- {:username s/Str, :password s/Str}]
+  [{:keys [username password], :as credentials}]
+  {:pre [(string? username) (string? password)]}
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e))))
+      (println "Failed to authenticate with username:" username "and password:" password ":" (.getMessage e)))))
 
 
 ;;; client
@@ -81,11 +80,10 @@
 (defn- build-request-map [credentials http-body]
   (merge
    {:accept       :json
-    :headers      {@#'mw.session/metabase-session-header
-                   (when credentials
-                     (if (map? credentials)
-                       (authenticate credentials)
-                       credentials))}
+    :headers      {"X-METABASE-SESSION" (when credentials
+                                          (if (map? credentials)
+                                            (authenticate credentials)
+                                            credentials))}
     :content-type :json}
    (when (seq http-body)
      {:body (json/generate-string http-body)})))
@@ -121,7 +119,7 @@
   (let [request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url url-param-kwargs)
-        method-name (str/upper-case (name method))
+        method-name (s/upper-case (name method))
         ;; Now perform the HTTP request
         {:keys [status body] :as resp} (try (request-fn url request-map)
                                             (catch clojure.lang.ExceptionInfo e
