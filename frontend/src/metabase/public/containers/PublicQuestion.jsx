@@ -32,6 +32,8 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 
 import { updateIn } from "icepick";
 
+let isWorking = false;
+
 type Props = {
   params: { uuid?: string, token?: string },
   location: { query: { [key: string]: string } },
@@ -129,9 +131,10 @@ export default class PublicQuestion extends Component {
     const { setErrorPage, params: { uuid, token } } = this.props;
     const { card, parameterValues } = this.state;
 
-    if (!card) {
+    if (isWorking || !card) {
       return;
     }
+    isWorking = true;
 
     const parameters = getParameters(card);
 
@@ -156,8 +159,10 @@ export default class PublicQuestion extends Component {
         throw { status: 404 };
       }
 
-      this.setState({ result: newResult });
+      await this.setState({ result: newResult });
+      isWorking = false;
     } catch (error) {
+      isWorking = false;
       console.error("error", error);
       setErrorPage(error);
     }

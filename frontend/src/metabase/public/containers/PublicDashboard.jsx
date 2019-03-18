@@ -36,6 +36,8 @@ import type { Parameter } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 
+let isMounted = false;
+
 const mapStateToProps = (state, props) => {
   return {
     dashboardId:
@@ -105,9 +107,11 @@ export default class PublicDashboard extends Component {
 
     initialize();
     try {
+      isMounted = false;
       // $FlowFixMe
       await fetchDashboard(uuid || token, location.query);
       await fetchDashboardCardData({ reload: false, clear: true });
+      isMounted = true;
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -119,7 +123,7 @@ export default class PublicDashboard extends Component {
   }
 
   componentWillReceiveProps(nextProps: Props) {
-    if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+    if (isMounted && !_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
