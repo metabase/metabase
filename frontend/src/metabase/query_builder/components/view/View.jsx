@@ -2,14 +2,14 @@ import React from "react";
 
 import cx from "classnames";
 
-import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
+import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial";
 
-import GuiQueryEditor from "../GuiQueryEditor.jsx";
-import NativeQueryEditor from "../NativeQueryEditor.jsx";
-import QueryVisualization from "../QueryVisualization.jsx";
-import DataReference from "../dataref/DataReference.jsx";
-import TagEditorSidebar from "../template_tags/TagEditorSidebar.jsx";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
+import GuiQueryEditor from "../GuiQueryEditor";
+import NativeQueryEditor from "../NativeQueryEditor";
+import QueryVisualization from "../QueryVisualization";
+import DataReference from "../dataref/DataReference";
+import TagEditorSidebar from "../template_tags/TagEditorSidebar";
+import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 
 import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
@@ -54,7 +54,7 @@ export default class View extends React.Component {
     const leftSideBar =
       (isEditingFilterIndex != null || isAddingFilter) &&
       // NOTE: remove queryBuilderMode check once legacy query builder is removed
-      queryBuilderMode !== "worksheet" ? (
+      queryBuilderMode !== "notebook" ? (
         <FilterSidebar
           question={question}
           index={isEditingFilterIndex}
@@ -99,13 +99,10 @@ export default class View extends React.Component {
               )}
 
               {query instanceof StructuredQuery &&
-                queryBuilderMode === "worksheet" && (
+                queryBuilderMode === "notebook" && (
                   <div className="z2 hide sm-show mb1 mt2">
                     <div className="wrapper">
-                      <GuiQueryEditor
-                        {...this.props}
-                        datasetQuery={card && card.dataset_query}
-                      />
+                      <GuiQueryEditor {...this.props} />
                     </div>
                   </div>
                 )}

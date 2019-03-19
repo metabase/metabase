@@ -9,7 +9,7 @@ const FilterSidebar = ({ question, index, onClose }) => {
       <FilterPopover
         query={question.query()}
         filter={index != null ? query.filters()[index] : null}
-        onCommitFilter={filter => {
+        onChangeFilter={filter => {
           if (index != null) {
             query.updateFilter(index, filter).update();
           } else {

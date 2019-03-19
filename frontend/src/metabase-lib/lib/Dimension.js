@@ -31,6 +31,19 @@ type DimensionOption = {
   name?: string,
 };
 
+/* Heirarchy:
+ *
+ * - Dimension (abstract)
+ *   - FieldDimension
+ *     - FieldIDDimension
+ *     - FieldLiteralDimension
+ *     - FKDimension
+ *     - BinnedDimension
+ *     - DatetimeFieldDimension
+ *   - ExpressionDimension
+ *   - AggregationDimension
+ */
+
 /**
  * Dimension base class, represents an MBQL field reference.
  *
@@ -407,6 +420,35 @@ export class FieldIDDimension extends FieldDimension {
 }
 
 /**
+ * Field Literal-based dimension, `["field-literal", field-name, base-type]`
+ */
+export class FieldLiteralDimension extends FieldDimension {
+  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
+    if (Array.isArray(mbql) && mbql[0] === "field-literal") {
+      return new FieldLiteralDimension(null, mbql.slice(1), metadata);
+    }
+    return null;
+  }
+
+  mbql(): LocalFieldReference {
+    return ["field-literal", ...this._args];
+  }
+
+  displayName(): string {
+    return this._args[0];
+  }
+
+  field() {
+    return new Field({
+      id: this.mbql(),
+      name: this._args[0],
+      display_name: this._args[0],
+      base_type: this._args[1],
+    });
+  }
+}
+
+/**
  * Foreign key-based dimension, `["fk->", fk-field-id, dest-field-id]`
  */
 export class FKDimension extends FieldDimension {
@@ -683,6 +725,7 @@ export class AggregationDimension extends Dimension {
 
 const DIMENSION_TYPES: typeof Dimension[] = [
   FieldIDDimension,
+  FieldLiteralDimension,
   FKDimension,
   DatetimeFieldDimension,
   ExpressionDimension,

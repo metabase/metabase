@@ -224,7 +224,7 @@ export default class Question {
   }
 
   datasetQuery(): DatasetQuery {
-    return this.card().dataset_query
+    return this.card().dataset_query;
   }
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
@@ -506,6 +506,22 @@ export default class Question {
       result_metadata: metadataColumns,
       metadata_checksum: metadataChecksum,
     });
+  }
+
+  /**
+   * Returns true if the questions are equivalent (including id, card, and parameters)
+   */
+  isEqual(other) {
+    if (!other) {
+      return false;
+    } else if (this.id() != other.id()) {
+      return false
+    } else if (!_.isEqual(this.card(), other.card())){
+      return false;
+    } else if (!_.isEqual(this.parameters(), other.parameters())) {
+      return false;
+    }
+    return true;
   }
 
   /**

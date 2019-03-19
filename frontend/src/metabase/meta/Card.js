@@ -67,24 +67,6 @@ export function isNative(card: Card): boolean {
   return card.dataset_query.type === "native";
 }
 
-export function canRun(card: Card): boolean {
-  if (card.dataset_query.type === "query") {
-    const query = getQuery(card);
-    return (
-      query != null &&
-      query["source-table"] != undefined &&
-      Query.hasValidAggregation(query)
-    );
-  } else if (card.dataset_query.type === "native") {
-    const native: NativeQuery = card.dataset_query.native;
-    return (
-      native && card.dataset_query.database != undefined && native.query !== ""
-    );
-  } else {
-    return false;
-  }
-}
-
 export function cardVisualizationIsEquivalent(
   cardA: Card,
   cardB: Card,

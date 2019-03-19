@@ -55,12 +55,14 @@ export default class NativeQuery extends AtomicQuery {
 
   /* Query superclass methods */
 
-  canRun() {
+  hasData() {
     return (
-      this.databaseId() != null &&
-      this.queryText().length > 0 &&
-      (!this.requiresTable() || this.collection())
+      this.databaseId() != null && (!this.requiresTable() || this.collection())
     );
+  }
+
+  canRun() {
+    return this.hasData() && this.queryText().length > 0;
   }
 
   isEmpty() {

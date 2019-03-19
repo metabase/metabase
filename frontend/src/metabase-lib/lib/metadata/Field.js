@@ -6,7 +6,7 @@ import Table from "./Table";
 import _ from "underscore";
 import moment from "moment";
 
-import { FieldIDDimension } from "../Dimension";
+import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
 
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -43,7 +43,7 @@ export default class Field extends Base {
   name_field: ?Field;
 
   displayName() {
-    return this.display_name;
+    return this.display_name || this.name;
   }
 
   fieldType() {
@@ -122,6 +122,9 @@ export default class Field extends Base {
   }
 
   dimension() {
+    if (Array.isArray(this.id) && this.id[0] === "field-literal") {
+      return new FieldLiteralDimension(null, this.id.slice(1), this.metadata);
+    }
     return new FieldIDDimension(null, [this.id], this.metadata);
   }
 

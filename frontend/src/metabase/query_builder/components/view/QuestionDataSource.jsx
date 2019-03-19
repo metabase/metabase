@@ -7,10 +7,14 @@ import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
 import cx from "classnames";
 
-const QuestionDataSource = ({ question, subHead }) => {
+const QuestionDataSource = ({
+  question,
+  query = question.query(),
+  subHead,
+}) => {
   const parts = [];
 
-  const database = question.query().database();
+  const database = query.database();
   if (database) {
     parts.push({
       icon: "database",
@@ -19,7 +23,7 @@ const QuestionDataSource = ({ question, subHead }) => {
     });
   }
 
-  const table = question.query().table();
+  const table = query.table();
   if (table && table.hasSchema()) {
     parts.push({
       icon: "folder",
@@ -31,7 +35,8 @@ const QuestionDataSource = ({ question, subHead }) => {
     parts.push({
       icon: "table2",
       name: table.displayName(),
-      href: question.isSaved() ? table.newQuestion().getUrl() : null,
+      href:
+        question && question.isSaved() ? table.newQuestion().getUrl() : null,
     });
   }
 

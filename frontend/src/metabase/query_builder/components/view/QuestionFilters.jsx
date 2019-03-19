@@ -59,7 +59,7 @@ QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
   question.query() instanceof StructuredQuery &&
   question.query().table() &&
   // NOTE: remove queryBuilderMode check once legacy query builder is removed
-  queryBuilderMode !== "worksheet";
+  queryBuilderMode !== "notebook";
 
 export const questionHasFilters = question =>
   question &&

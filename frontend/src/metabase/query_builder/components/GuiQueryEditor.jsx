@@ -179,7 +179,7 @@ export default class GuiQueryEditor extends Component {
             <FilterPopover
               isNew
               query={query}
-              onCommitFilter={filter =>
+              onChangeFilter={filter =>
                 query.addFilter(filter).update(setDatasetQuery)
               }
               onClose={() => this.refs.filterPopover.close()}

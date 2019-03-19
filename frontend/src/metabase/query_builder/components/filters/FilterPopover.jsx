@@ -39,7 +39,7 @@ type Props = {
   maxHeight?: number,
   query: StructuredQuery,
   filter?: Filter,
-  onCommitFilter: (filter: Filter) => void,
+  onChangeFilter: (filter: Filter) => void,
   onClose: () => void,
   showFieldPicker?: boolean,
 };
@@ -81,7 +81,7 @@ export default class FilterPopover extends Component {
   };
 
   commitFilter = (filter: FieldFilter) => {
-    this.props.onCommitFilter(filter);
+    this.props.onChangeFilter(filter);
     this.props.onClose();
   };
 
@@ -349,10 +349,12 @@ export default class FilterPopover extends Component {
                     onClick={this.clearField}
                   >
                     <Icon name="chevronleft" size={16} />
-                    <h3 className="ml1">{singularize(table.display_name)}</h3>
+                    {table.display_name && (
+                      <h3 className="ml1">{singularize(table.display_name)}</h3>
+                    )}
                   </span>
-                  <h3 className="mx1">-</h3>
-                  <h3 className="text-default">{formatField(field)}</h3>
+                  {table.display_name && <h3 className="ml1">-</h3>}
+                  <h3 className="ml1 text-default">{formatField(field)}</h3>
                 </div>
               )}
               {showOperatorSelector && (

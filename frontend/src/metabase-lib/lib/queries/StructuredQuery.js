@@ -6,6 +6,7 @@
 
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated from "metabase/lib/query";
+import {addValidOperatorsToFields}from "metabase/lib/schema_metadata"
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import _ from "underscore";
@@ -35,7 +36,6 @@ import Dimension, {
   AggregationDimension,
 } from "metabase-lib/lib/Dimension";
 
-import type Table from "../metadata/Table";
 import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import type Database from "../metadata/Database";
@@ -49,6 +49,11 @@ import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
+
+
+import Table from "../metadata/Table";
+import Field from "../metadata/Field";
+import { augmentDatabase }from "metabase/lib/table"
 
 import { TYPE } from "metabase/lib/types";
 
@@ -118,7 +123,8 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
-    return Q_deprecated.canRun(this.query());
+    // TODO: do we need other logic here or do we now ensure queries are always valid?
+    return !!this.table();
   }
 
   /**
@@ -229,10 +235,37 @@ export default class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns the table object, if a table is selected and loaded.
-   * FIXME: actual return type should be `?Table`
    */
   table(): Table {
-    return this._metadata.tables[this.tableId()];
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery) {
+      return sourceQuery.resultTable();
+    }
+    return this.metadata().table(this.tableId());
+  }
+
+  /**
+   * @returns the a table corresponding to the query result, e.x. for queries with "source-query" instead of "source-table"
+   */
+  resultTable(): Table {
+    const table= new Table({
+      name: "",
+      display_name: "",
+      db: this.database(),
+      fields: this.columnDimensions().map(d =>
+        new Field({
+          ...d.column(),
+          id: ["field-literal", d.columnName(), d.field().special_type || d.field().base_type || "type/Float" ]
+        })
+      ),
+      segments:[],
+      metrics: [],
+    })
+    // HACK: ugh various parts of the UI still expect this stuff
+    addValidOperatorsToFields(table);
+    augmentDatabase({ tables: [table] });
+
+    return table;
   }
 
   /**
@@ -617,6 +650,10 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.removeExpression, arguments);
   }
 
+  clearExpressions() {
+    return this._updateQuery(Q.clearExpressions, arguments);
+  }
+
   // FIELDS
 
   fields() {
@@ -831,12 +868,47 @@ export default class StructuredQuery extends AtomicQuery {
       query: StructuredQueryObject,
       ...args: any[]
     ) => StructuredQueryObject,
-    args: any[],
+    args: any[] = [],
   ): StructuredQuery {
     return this.setDatasetQuery(
       updateIn(this._datasetQuery, ["query"], query =>
         updateFunction(query, ...args),
       ),
     );
+  }
+
+  nest() {
+    return this._updateQuery(query => ({ "source-query": query }));
+  }
+
+  sourceQuery(): ?Query {
+    const sourceQuery = this.query()["source-query"];
+    if (sourceQuery) {
+      return new NestedStructuredQuery(this._originalQuestion, { ...this.datasetQuery(), query: sourceQuery }, this)
+    }
+  }
+
+  setSourceQuery(sourceQuery) {
+    return this._updateQuery(query => chain(query).dissoc("source-table").assoc("source-query", sourceQuery).value());
+  }
+}
+
+// subclass of StructuredQuery that's returned by query.sourceQuery() to allow manipulation of source-query
+class NestedStructuredQuery extends StructuredQuery {
+  constructor(question, datasetQuery, parent) {
+    super(question,  datasetQuery)
+    this._parent = parent;
+  }
+
+  setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
+    return new NestedStructuredQuery(this._originalQuestion, datasetQuery, this._parent);
+  }
+
+  // TODO: if the source query is modified in ways that make the parent query invalid we should "clean" those clauses
+  parentQuery() {
+    return this._parent.setSourceQuery(this.query())
+  }
+  question() {
+    return this.parentQuery().question();
   }
 }

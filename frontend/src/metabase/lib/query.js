@@ -87,37 +87,6 @@ const Query = {
     return dataset_query && dataset_query.type === "native";
   },
 
-  canRun(query, tableMetadata) {
-    if (
-      !query ||
-      query["source-table"] == null ||
-      !Query.hasValidAggregation(query)
-    ) {
-      return false;
-    }
-    // check that the table supports this aggregation, if we have tableMetadata
-    if (tableMetadata) {
-      let aggs = Query.getAggregations(query);
-      if (aggs.length === 0) {
-        if (
-          !_.findWhere(tableMetadata.aggregation_options, { short: "rows" })
-        ) {
-          return false;
-        }
-      } else {
-        for (const [agg] of aggs) {
-          if (
-            agg !== "metric" &&
-            !_.findWhere(tableMetadata.aggregation_options, { short: agg })
-          ) {
-            // return false;
-          }
-        }
-      }
-    }
-    return true;
-  },
-
   cleanQuery(query) {
     if (!query) {
       return query;

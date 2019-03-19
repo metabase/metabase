@@ -62,11 +62,10 @@ export class QuestionResultLoader extends React.Component {
   }
 
   componentWillReceiveProps(nextProps: Props) {
-    // if the question is different, we need to do a fresh load, check the
-    // difference by comparing the URL we'd generate for the question
+    // if the question is different, we need to do a fresh load
     if (
-      (nextProps.question && nextProps.question.getUrl()) !==
-      (this.props.question && this.props.question.getUrl())
+      nextProps.question &&
+      !nextProps.question.isEqual(this.props.question)
     ) {
       this._loadResult(nextProps.question);
     }
@@ -135,10 +134,9 @@ export class QuestionResultLoader extends React.Component {
         results,
         result: results && results[0],
         // convienence for <Visualization /> component. Only support single series for now
-        rawSeries:
-          question && results
-            ? [{ card: question.card(), data: results[0].data }]
-            : null,
+        rawSeries: [
+          { card: question.card(), data: results && results[0].data },
+        ],
         loading,
         error,
         cancel: this._cancel,

@@ -74,7 +74,7 @@ type UiControls = {
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   isShowingTutorial?: boolean,
-  queryBuilderMode?: "view" | "worksheet",
+  queryBuilderMode?: "view" | "notebook",
 };
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -207,6 +207,8 @@ export const initializeQB = (location, params) => {
     let uiControls: UiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
+      // NOCOMMIT
+      queryBuilderMode: "notebook",
     };
 
     // always start the QB by loading up the databases for the application
@@ -344,8 +346,11 @@ export const initializeQB = (location, params) => {
     }
 
     // if it's a new MBQL query, start in worksheet mode
-    if (card.dataset_query.type === "query" && card.dataset_query.database == null) {
-      uiControls.queryBuilderMode = "worksheet";
+    if (
+      card.dataset_query.type === "query" &&
+      card.dataset_query.database == null
+    ) {
+      uiControls.queryBuilderMode = "notebook";
     }
 
     /**** All actions are dispatched here ****/
@@ -416,13 +421,13 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
 
 export const setIsPreviewing = isPreviewing => ({
   type: SET_UI_CONTROLS,
-  payload: { isPreviewing }
-})
+  payload: { isPreviewing },
+});
 
 export const setIsNativeEditorOpen = isNativeEditorOpen => ({
   type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen }
-})
+  payload: { isNativeEditorOpen },
+});
 
 export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
@@ -776,7 +781,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
  * Also shows/hides the template tag editor if the number of template tags has changed.
  */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
-export const updateQuestion = (newQuestion, { doNotClearNameAndId = false, run = false } = {}) => {
+export const updateQuestion = (
+  newQuestion,
+  { doNotClearNameAndId = false, run = false } = {},
+) => {
   return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
@@ -883,9 +891,9 @@ export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(
   SET_DATASET_QUERY,
   (datasetQuery, run = false) => (dispatch, getState) => {
-      const question = getQuestion(getState());
-      dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), { run }));
-    }
+    const question = getQuestion(getState());
+    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), { run }));
+  },
 );
 
 // setQueryMode
@@ -1212,7 +1220,13 @@ export const runQuestionQuery = ({
     }
 
     if (getIsPreviewing(getState())) {
-      question = question.setDatasetQuery(assocIn(question.datasetQuery(), ["constraints", "max-results"], PREVIEW_RESULT_LIMIT))
+      question = question.setDatasetQuery(
+        assocIn(
+          question.datasetQuery(),
+          ["constraints", "max-results"],
+          PREVIEW_RESULT_LIMIT,
+        ),
+      );
     }
 
     const startTime = new Date();

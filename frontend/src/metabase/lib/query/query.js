@@ -133,7 +133,7 @@ export const updateExpression = (
   );
 export const removeExpression = (query: SQ, name: ExpressionName) =>
   setExpressionClause(query, E.removeExpression(query.expressions, name));
-export const clearExpression = (query: SQ) =>
+export const clearExpressions = (query: SQ) =>
   setExpressionClause(query, E.clearExpressions(query.expressions));
 
 // we can enforce various constraints in these functions:

@@ -11,6 +11,7 @@ import { loadTableAndForeignKeys } from "metabase/lib/table";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
+import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
 
@@ -317,8 +318,11 @@ export default class QueryBuilder extends Component {
     const {
       uiControls: { modal, recentlySaved, queryBuilderMode },
     } = this.props;
+
+    const Panel = queryBuilderMode === "notebook" ? Notebook : View;
+
     return (
-      <View
+      <Panel
         {...this.props}
         // NOTE: these were lifted from QueryHeader. Move to Redux?
         modal={modal}

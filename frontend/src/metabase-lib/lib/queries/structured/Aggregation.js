@@ -2,9 +2,12 @@
 
 import MBQLClause from "./MBQLClause";
 
-import { t} from "c-3po"
+import { t } from "c-3po";
 
-import { AggregationClause as AggregationClause_DEPRECATED, NamedClause as NamedClause_DEPRECATED } from "metabase/lib/query";
+import {
+  AggregationClause as AggregationClause_DEPRECATED,
+  NamedClause as NamedClause_DEPRECATED,
+} from "metabase/lib/query";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
@@ -25,7 +28,7 @@ export default class Aggregation extends MBQLClause {
         return metric.displayName();
       }
     } else if (this.isStandard()) {
-      const option = this.getOption()
+      const option = this.getOption();
       if (option) {
         const aggregationName = option.name.replace(" of ...", "");
         const dimension = this.dimension();
@@ -109,7 +112,7 @@ export default class Aggregation extends MBQLClause {
   }
 
   isNamed() {
-    return NamedClause_DEPRECATED.isNamed(this)
+    return NamedClause_DEPRECATED.isNamed(this);
   }
 
   /**

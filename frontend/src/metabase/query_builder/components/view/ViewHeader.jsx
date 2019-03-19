@@ -36,7 +36,7 @@ export const ViewTitleHeader = ({
   onSetQueryBuilderMode,
 }) => {
   const isNative = question.query() instanceof NativeQuery;
-  const isCustomQuestion = queryBuilderMode === "worksheet";
+  const isCustomQuestion = queryBuilderMode === "notebook";
 
   return (
     <ViewSection className={className}>
@@ -94,7 +94,7 @@ export const ViewTitleHeader = ({
             borderless={!isCustomQuestion}
             primary={isCustomQuestion}
             onClick={() =>
-              onSetQueryBuilderMode(isCustomQuestion ? "view" : "worksheet")
+              onSetQueryBuilderMode(isCustomQuestion ? "view" : "notebook")
             }
           >
             {t`Custom question`}

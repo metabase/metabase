@@ -11,7 +11,7 @@ import {
   isSegmentFilter,
   isCompoundFilter,
   isFieldFilter,
-  hasFilterOptions
+  hasFilterOptions,
 } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 

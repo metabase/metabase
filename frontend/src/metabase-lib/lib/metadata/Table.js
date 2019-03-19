@@ -59,7 +59,12 @@ export default class Table extends Base {
               breakout: [
                 ["datetime-field", ["field-id", dateField.id], "as", "week"],
               ],
-              filter: ["time-interval", ["field-id", dateField.id], -365, "day"],
+              filter: [
+                "time-interval",
+                ["field-id", dateField.id],
+                -365,
+                "day",
+              ],
             },
           })
           .setDisplay("line");

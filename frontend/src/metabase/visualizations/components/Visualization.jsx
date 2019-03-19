@@ -54,6 +54,7 @@ type Props = {
   rawSeries: RawSeries,
 
   className: string,
+  style: { [key: string]: any },
 
   showTitle: boolean,
   isDashboard: boolean,
@@ -325,6 +326,7 @@ export default class Visualization extends Component {
     const {
       actionButtons,
       className,
+      style,
       showTitle,
       isDashboard,
       width,
@@ -426,7 +428,7 @@ export default class Visualization extends Component {
     }
 
     return (
-      <div className={cx(className, "flex flex-column")}>
+      <div className={cx(className, "flex flex-column")} style={style}>
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||
