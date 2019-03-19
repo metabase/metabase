@@ -13,7 +13,6 @@
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.ldap :as ldap]
-            [metabase.middleware.session :as mw.session]
             [metabase.models
              [session :refer [Session]]
              [setting :refer [defsetting]]
@@ -24,21 +23,19 @@
              [schema :as su]]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan.db :as db])
-  (:import com.unboundid.util.LDAPSDKException
-           java.util.UUID))
+            [toucan.db :as db]))
 
-(s/defn ^:private create-session! :- UUID
+(defn- create-session!
   "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
-  [user :- {:id         su/IntGreaterThanZero
-            :last_login s/Any
-            s/Keyword   s/Any}]
-  (u/prog1 (UUID/randomUUID)
+  [user]
+  {:pre  [(map? user) (integer? (:id user)) (contains? user :last_login)]
+   :post [(string? %)]}
+  (u/prog1 (str (java.util.UUID/randomUUID))
     (db/insert! Session
-      :id      (str <>)
+      :id      <>
       :user_id (:id user))
     (events/publish-event! :user-login
-      {:user_id (:id user), :session_id (str <>), :first_login (nil? (:last_login user))})))
+      {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
 ;;; ## API Endpoints
 
@@ -50,7 +47,7 @@
 (def ^:private password-fail-message (tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (tru "did not match stored password"))
 
-(s/defn ^:private ldap-login :- (s/maybe UUID)
+(defn- ldap-login
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password]
@@ -64,16 +61,18 @@
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
-        (create-session! (ldap/fetch-or-create-user! user-info password)))
-      (catch LDAPSDKException e
-        (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
+        {:id (create-session! (ldap/fetch-or-create-user! user-info password))})
+      (catch com.unboundid.util.LDAPSDKException e
+        (log/error
+         (u/format-color 'red
+             (trs "Problem connecting to LDAP server, will fall back to local authentication: {0}" (.getMessage e))))))))
 
-(s/defn ^:private email-login :- (s/maybe UUID)
+(defn- email-login
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password]
   (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
-      (create-session! user))))
+      {:id (create-session! user)})))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -83,20 +82,6 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(s/defn ^:private login :- UUID
-  "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
-  throwing an Exception if login could not be completed."
-  [username :- su/NonBlankString, password :- su/NonBlankString]
-  ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
-  (or (ldap-login username password)    ; First try LDAP if it's enabled
-      (email-login username password)   ; Then try local authentication
-      ;; If nothing succeeded complain about it
-      ;; Don't leak whether the account doesn't exist or the password was incorrect
-      (throw
-       (ui18n/ex-info password-fail-message
-         {:status-code 400
-          :errors      {:password password-fail-snippet}}))))
-
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, remote-address :remote-addr}]
@@ -104,17 +89,23 @@
    password su/NonBlankString}
   (throttle-check (login-throttlers :ip-address) remote-address)
   (throttle-check (login-throttlers :username)   username)
-  (let [session-id (login username password)
-        response   {:id session-id}]
-    (mw.session/set-session-cookie response session-id)))
+  ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
+  (or (ldap-login username password)  ; First try LDAP if it's enabled
+      (email-login username password) ; Then try local authentication
+      ;; If nothing succeeded complain about it
+      ;; Don't leak whether the account doesn't exist or the password was incorrect
+      (throw (ui18n/ex-info password-fail-message
+               {:status-code 400
+                :errors      {:password password-fail-snippet}}))))
 
 
 (api/defendpoint DELETE "/"
   "Logout."
-  [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (db/delete! Session :id metabase-session-id)
-  (mw.session/clear-session-cookie api/generic-204-no-content))
+  [session_id]
+  {session_id su/NonBlankString}
+  (api/check-exists? Session session_id)
+  (db/delete! Session :id session_id)
+  api/generic-204-no-content)
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -174,11 +165,8 @@
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [session-id (create-session! user)]
-          (mw.session/set-session-cookie
-           {:success    true
-            :session_id (str session-id)}
-           session-id)))
+        {:success    true
+         :session_id (create-session! user)})
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 
@@ -243,13 +231,12 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe UUID)
-  [first-name last-name email]
-  (when-let [user (or (db/select-one [User :id :last_login] :email email)
-                      (google-auth-create-new-user! {:first_name first-name
-                                                     :last_name  last-name
-                                                     :email      email}))]
-    (create-session! user)))
+(defn- google-auth-fetch-or-create-user! [first-name last-name email]
+  (if-let [user (or (db/select-one [User :id :last_login] :email email)
+                    (google-auth-create-new-user! {:first_name first-name
+                                                   :last_name  last-name
+                                                   :email      email}))]
+    {:id (create-session! user)}))
 
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."
@@ -259,9 +246,7 @@
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-    (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
-          response   {:id session-id}]
-      (mw.session/set-session-cookie response session-id))))
+    (google-auth-fetch-or-create-user! given_name family_name email)))
 
 
 (api/define-routes)

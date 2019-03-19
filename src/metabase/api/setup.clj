@@ -10,7 +10,6 @@
              [common :as api]
              [database :as database-api :refer [DBEngineString]]]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.session :as mw.session]
             [metabase.models
              [database :refer [Database]]
              [session :refer [Session]]
@@ -19,8 +18,7 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+            [toucan.db :as db]))
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
@@ -44,12 +42,12 @@
    allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules      (s/maybe database-api/ExpandedSchedulesMap)}
   ;; Now create the user
-  (let [session-id (UUID/randomUUID)
+  (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
                      :email        email
                      :first_name   first_name
                      :last_name    last_name
-                     :password     (str (UUID/randomUUID))
+                     :password     (str (java.util.UUID/randomUUID))
                      :is_superuser true)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! (:id new-user) password)
@@ -77,12 +75,12 @@
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (db/insert! Session
-      :id      (str session-id)
+      :id      session-id
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event! :user-create {:user_id (:id new-user)})
-    (events/publish-event! :user-login {:user_id (:id new-user), :session_id (str session-id), :first_login true})
-    (mw.session/set-session-cookie {:id (str session-id)} session-id)))
+    (events/publish-event! :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
+    {:id session-id}))
 
 
 (api/defendpoint POST "/validate"
