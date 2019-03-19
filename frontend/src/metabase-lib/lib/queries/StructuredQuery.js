@@ -198,11 +198,18 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Database set.
    */
   setDatabase(database: Database): StructuredQuery {
-    if (database.id !== this.databaseId()) {
+    return this.setDatabaseId(database.id)
+  }
+
+  /**
+   * @returns a new query with the provided Database ID set.
+   */
+  setDatabaseId(databaseId: DatabaseId): StructuredQuery {
+    if (databaseId !== this.databaseId()) {
       // TODO: this should reset the rest of the query?
       return new StructuredQuery(
         this._originalQuestion,
-        assoc(this.datasetQuery(), "database", database.id),
+        assoc(this.datasetQuery(), "database", databaseId),
       );
     } else {
       return this;
@@ -213,12 +220,19 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Table set.
    */
   setTable(table: Table): StructuredQuery {
-    if (table.id !== this.tableId()) {
+    return this.setTableId(table.id);
+  }
+
+  /**
+   * @returns a new query with the provided Table ID set.
+   */
+  setTableId(tableId: TableId): StructuredQuery {
+    if (tableId !== this.tableId()) {
       return new StructuredQuery(
         this._originalQuestion,
         chain(this.datasetQuery())
-          .assoc("database", table.database.id)
-          .assocIn(["query", "source-table"], table.id)
+          .assoc("database", this.metadata().table(tableId).database.id)
+          .assocIn(["query", "source-table"], tableId)
           .value(),
       );
     } else {

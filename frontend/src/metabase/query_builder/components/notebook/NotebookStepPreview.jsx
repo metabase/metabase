@@ -2,6 +2,7 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 import { Box, Flex } from "grid-styled";
+import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -12,7 +13,7 @@ const NotebookStepPreview = ({ step, onClose, ...props }) => {
   const query = step.previewQuery;
   const question = Question.create().setQuery(query.updateLimit(10));
   return (
-    <Box p={2}>
+    <Box pt={2}>
       <Flex align="center" mb={1}>
         <span className="text-bold">{`Preview`}</span>
         <Icon
@@ -23,11 +24,18 @@ const NotebookStepPreview = ({ step, onClose, ...props }) => {
       </Flex>
       <QuestionResultLoader question={question}>
         {props => (
-          <Visualization
-            {...props}
-            className="bordered shadowed rounded bg-white"
-            style={{ height: getPreviewHeightForResult(props.result) }}
-          />
+          <Motion
+            defaultStyle={{ height: 36 }}
+            style={{ height: spring(getPreviewHeightForResult(props.result)) }}
+          >
+            {({ height }) => (
+              <Visualization
+                {...props}
+                className="bordered shadowed rounded bg-white"
+                style={{ height }}
+              />
+            )}
+          </Motion>
         )}
       </QuestionResultLoader>
     </Box>
@@ -35,7 +43,7 @@ const NotebookStepPreview = ({ step, onClose, ...props }) => {
 };
 
 function getPreviewHeightForResult(result) {
-  const rowCount = result ? result.data.rows.length : 10;
+  const rowCount = result ? result.data.rows.length : 1;
   return rowCount * 36 + 36 + 2;
 }
 

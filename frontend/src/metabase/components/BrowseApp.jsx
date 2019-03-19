@@ -35,15 +35,12 @@ export class SchemaBrowser extends React.Component {
           {({ schemas }) =>
             schemas.length > 1 ? (
               <Box>
-                <Box my={2}>
-                  <BrowserCrumbs
-                    analyticsContext={ANALYTICS_CONTEXT}
-                    crumbs={[
-                      { title: t`Our data`, to: "browse" },
-                      { title: <Database.Name id={dbId} /> },
-                    ]}
-                  />
-                </Box>
+                <BrowseHeader
+                  crumbs={[
+                    { title: t`Our data`, to: "browse" },
+                    { title: <Database.Name id={dbId} /> },
+                  ]}
+                />
                 <Grid>
                   {schemas.map(schema => (
                     <GridItem w={ITEM_WIDTHS} key={schema.id}>
@@ -98,19 +95,16 @@ export class TableBrowser extends React.Component {
           {({ tables, loading, error }) => {
             return (
               <Box>
-                <Box mt={3} mb={2}>
-                  <BrowserCrumbs
-                    analyticsContext={ANALYTICS_CONTEXT}
-                    crumbs={[
-                      { title: t`Our data`, to: "browse" },
-                      {
-                        title: <Database.Name id={dbId} />,
-                        to: `browse/${dbId}`,
-                      },
-                      schemaName != null && { title: schemaName },
-                    ]}
-                  />
-                </Box>
+                <BrowseHeader
+                  crumbs={[
+                    { title: t`Our data`, to: "browse" },
+                    {
+                      title: <Database.Name id={dbId} />,
+                      to: `browse/${dbId}`,
+                    },
+                    schemaName != null && { title: schemaName },
+                  ]}
+                />
                 <Grid>
                   {tables.map(table => {
                     // NOTE: currently tables entities doesn't integrate with Metadata objects
@@ -196,12 +190,7 @@ export class DatabaseBrowser extends React.Component {
   render() {
     return (
       <Box>
-        <Box my={2}>
-          <BrowserCrumbs
-            crumbs={[{ title: t`Our data` }]}
-            analyticsContext={ANALYTICS_CONTEXT}
-          />
-        </Box>
+        <BrowseHeader crumbs={[{ title: t`Our data` }]} />
         <Database.ListLoader>
           {({ databases, loading, error }) => {
             return (
@@ -226,4 +215,12 @@ export class DatabaseBrowser extends React.Component {
       </Box>
     );
   }
+}
+
+function BrowseHeader({ crumbs }) {
+  return (
+    <Box mt={3} mb={2}>
+      <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+    </Box>
+  );
 }

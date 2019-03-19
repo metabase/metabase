@@ -11,6 +11,7 @@ const QuestionDataSource = ({
   question,
   query = question.query(),
   subHead,
+  noLink,
 }) => {
   const parts = [];
 
@@ -19,7 +20,7 @@ const QuestionDataSource = ({
     parts.push({
       icon: "database",
       name: database.displayName(),
-      href: browseDatabase(database),
+      href: !noLink && browseDatabase(database),
     });
   }
 
@@ -28,7 +29,7 @@ const QuestionDataSource = ({
     parts.push({
       icon: "folder",
       name: table.schema,
-      href: browseSchema(table),
+      href: !noLink && browseSchema(table),
     });
   }
   if (table) {
@@ -36,7 +37,9 @@ const QuestionDataSource = ({
       icon: "table2",
       name: table.displayName(),
       href:
-        question && question.isSaved() ? table.newQuestion().getUrl() : null,
+        !noLink && question && question.isSaved()
+          ? table.newQuestion().getUrl()
+          : null,
     });
   }
 

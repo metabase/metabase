@@ -335,7 +335,6 @@ export default class GuiQueryEditor extends Component {
         {this.props.features.data ? (
           <DatabaseSchemaAndTableDataSelector
             databases={databases}
-            selected={sourceTableId}
             selectedDatabaseId={databaseId}
             selectedTableId={sourceTableId}
             setDatabaseFn={this.props.setDatabaseFn}

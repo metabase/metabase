@@ -6,6 +6,7 @@ import Button from "metabase/components/Button";
 import { Flex } from "grid-styled";
 
 const NotebookHeader = ({
+  className,
   isRunnable,
   isDirty,
   isResultDirty,
@@ -13,7 +14,7 @@ const NotebookHeader = ({
   onSetQueryBuilderMode,
   onOpenModal,
 }) => (
-  <Flex p={2} align="center" justify="flex-end">
+  <Flex p={2} align="center" justify="flex-end" className={className}>
     {isRunnable && (
       <Button
         medium

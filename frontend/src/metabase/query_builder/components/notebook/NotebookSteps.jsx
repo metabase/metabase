@@ -3,12 +3,13 @@ import React from "react";
 import NotebookStep from "./NotebookStep";
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class NotebookSteps extends React.Component {
   state = {
     openSteps: {
-      "0:filter": true,
-      "0:aggregate": true,
+      "0:filter": false,
+      "0:aggregate": false,
     },
   };
 
@@ -17,15 +18,16 @@ export default class NotebookSteps extends React.Component {
   };
 
   render() {
-    const { question } = this.props;
+    const { question, className } = this.props;
     const { openSteps } = this.state;
 
     const steps = getQuestionSteps(question, openSteps);
 
     return (
-      <div className="wrapper">
+      <div className={cx(className, "wrapper")}>
         {steps.map(step => (
           <NotebookStep
+            key={step.id}
             step={step}
             query={question.query()}
             openStep={this.handleOpenStep}
@@ -40,6 +42,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function getQuestionSteps(question, openSteps) {
   const steps = [];
+
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const stages = getStages(query);
@@ -47,17 +50,17 @@ function getQuestionSteps(question, openSteps) {
       const stageSteps = getStageSteps(stageQuery, stageIndex, openSteps);
       steps.push(...stageSteps);
     }
-  }
 
-  const last = steps[steps.length - 1];
-  if (last.type === "breakout") {
-    last.actions.push({
-      type: "filter",
-      action: ({ query, openStep }) => {
-        query.nest().update();
-        openStep(`${last.stage + 1}:filter`);
-      },
-    });
+    const last = steps[steps.length - 1];
+    if (last.type === "breakout" || last.type === "sort") {
+      last.actions.push({
+        type: "filter",
+        action: ({ query, openStep }) => {
+          query.nest().update();
+          openStep(`${last.stage + 1}:filter`);
+        },
+      });
+    }
   }
 
   return steps;
@@ -103,6 +106,14 @@ const STEPS = [
     visible: query => query.breakouts().length > 0,
     revert: query => query.clearBreakouts(),
   },
+  // {
+  //   type: "sort",
+  //   valid: query =>
+  //     !!query.table() &&
+  //     (query.aggregations().length === 0 || query.breakouts().length > 0),
+  //   visible: query => query.sorts().length > 0,
+  //   revert: query => query.clearSort(),
+  // },
 ];
 
 function getStageSteps(query, stageIndex, openSteps) {
@@ -137,7 +148,7 @@ function getStageSteps(query, stageIndex, openSteps) {
     } else {
       // if the step isn't visible but it's valid add it to the `actions` accumulator
       if (STEP.valid(query)) {
-        actions.push({
+        actions.unshift({
           type: STEP.type,
           action: ({ openStep }) => openStep(getId(STEP)),
         });

@@ -395,8 +395,14 @@ export default class DataSelector extends Component {
       className,
       style,
       triggerIconSize,
+      triggerElement,
       getTriggerElementContent,
     } = this.props;
+
+    if (triggerElement) {
+      return triggerElement;
+    }
+
     const {
       selectedDatabase,
       selectedSegment,

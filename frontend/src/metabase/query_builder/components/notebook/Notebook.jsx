@@ -6,14 +6,17 @@ import GuiQueryEditor from "../GuiQueryEditor";
 import NotebookHeader from "./NotebookHeader";
 import NotebookSteps from "./NotebookSteps";
 
+import { Box } from "grid-styled";
+
+import cx from "classnames";
+
 const legacy = false;
 
-const Notebook = props => {
+const Notebook = ({ className, ...props }) => {
   return (
-    <div className="pb4">
-      <NotebookHeader {...props} />
-
-      <NotebookSteps {...props} />
+    <Box className={cx(className, "relative")}>
+      <NotebookHeader {...props} className="absolute top right" />
+      <NotebookSteps {...props} className="pt3" />
 
       {legacy && (
         <div className="fixed bottom left right p2">
@@ -22,7 +25,7 @@ const Notebook = props => {
       )}
 
       <QueryModals {...props} />
-    </div>
+    </Box>
   );
 };
 

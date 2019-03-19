@@ -4,6 +4,7 @@ import { t } from "c-3po";
 
 import colors, { lighten } from "metabase/lib/colors";
 
+import Tooltip from "metabase/components/Tooltip";
 import Button from "metabase/components/Button";
 import { Box } from "grid-styled";
 
@@ -15,6 +16,7 @@ import ExpressionStep from "./steps/ExpressionStep";
 import FilterStep from "./steps/FilterStep";
 import AggregateStep from "./steps/AggregateStep";
 import BreakoutStep from "./steps/BreakoutStep";
+import SortStep from "./steps/SortStep";
 
 const STEP_UI = {
   data: {
@@ -44,6 +46,12 @@ const STEP_UI = {
     icon: "segment",
     component: BreakoutStep,
   },
+  sort: {
+    title: t`Sort`,
+    color: colors["text-medium"],
+    icon: "sort",
+    component: SortStep,
+  },
 };
 
 export default class NotebookStep extends React.Component {
@@ -58,12 +66,15 @@ export default class NotebookStep extends React.Component {
     const { title, color, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
+    const canPreview = step.previewQuery && step.previewQuery.canRun();
+
     const actionButtons = [];
-    if (!showPreview && step.previewQuery) {
+    if (!showPreview && canPreview) {
       actionButtons.push(
         <ActionButton
           mr={1}
           icon="right"
+          title={t`Preview`}
           onClick={() => this.setState({ showPreview: true })}
         />,
       );
@@ -79,7 +90,7 @@ export default class NotebookStep extends React.Component {
     );
 
     return (
-      <Box mb={2}>
+      <Box mb={2} pb={2} className="border-row-divider">
         {title && (
           <Box mb={1} className="text-bold" style={{ color }}>
             {title}
@@ -91,7 +102,7 @@ export default class NotebookStep extends React.Component {
         )}
 
         {showPreview &&
-          step.previewQuery && (
+          canPreview && (
             <NotebookStepPreview
               step={step}
               onClose={() => this.setState({ showPreview: false })}
@@ -104,16 +115,18 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ActionButton = ({ icon, color, onClick, ...props }) => {
+const ActionButton = ({ icon, title, color, onClick, ...props }) => {
   return (
-    <Button
-      icon={icon}
-      style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
-      small
-      borderless
-      className="text-medium bg-medium"
-      onClick={onClick}
-      {...props}
-    />
+    <Tooltip tooltip={title}>
+      <Button
+        icon={icon}
+        style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
+        small
+        borderless
+        className="text-medium bg-medium"
+        onClick={onClick}
+        {...props}
+      />
+    </Tooltip>
   );
 };
