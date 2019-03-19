@@ -288,7 +288,7 @@
                      sql
                      "\n\n"
                      "Once your database is updated try running the application again.\n"))
-      (throw (Exception. "Database requires manual upgrade."))))
+      (throw (Exception. "Database requires manual upgrade.")))))
 
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
