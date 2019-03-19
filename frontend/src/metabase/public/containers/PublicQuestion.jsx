@@ -136,6 +136,8 @@ export default class PublicQuestion extends Component {
     const parameters = getParameters(card);
 
     try {
+      this.setState({ result: null });
+
       let newResult;
       if (token) {
         // embeds apply parameter values server-side

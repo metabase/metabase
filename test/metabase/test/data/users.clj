@@ -4,9 +4,9 @@
             [metabase
              [config :as config]
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.middleware.session :as mw.session]
             [metabase.models.user :as user :refer [User]]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo))
@@ -128,12 +128,20 @@
 
 (defonce ^:private tokens (atom {}))
 
-(defn- username->token [username]
+(defn username->token
+  "Return cached session token for a test User, logging in first if needed."
+  [username]
   (or (@tokens username)
       (u/prog1 (http/authenticate (user->credentials username))
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
+
+(defn clear-cached-session-tokens!
+  "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
+  `401` unauthenticated response, and then retry the request."
+  []
+  (reset! tokens {}))
 
 (defn- client-fn [username & args]
   (try
@@ -143,7 +151,7 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (reset! tokens {})
+        (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
 (defn user->client
@@ -158,10 +166,12 @@
 (defn do-with-test-user
   "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
   [user-kwd f]
-  ((middleware/bind-current-user (fn [_] (f)))
+  ((mw.session/bind-current-user (fn [_ respond _] (respond (f))))
    (let [user-id (user->id user-kwd)]
      {:metabase-user-id user-id
-      :is-superuser?    (db/select-one-field :is_superuser User :id user-id)})))
+      :is-superuser?    (db/select-one-field :is_superuser User :id user-id)})
+   identity
+   (fn [e] (throw e))))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by

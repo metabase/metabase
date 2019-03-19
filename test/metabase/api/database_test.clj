@@ -118,6 +118,7 @@
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
+;; TODO - this test fails if we're running Postgres locally & it requires a password...
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
          (match-$ db
