@@ -117,6 +117,7 @@
   (doseq [{schema :schema, table-name :name, :as table} old-tables]
     (db/update-where! Table {:db_id  (u/get-id database)
                              :schema schema
+                             :name table-name
                              :active true}
       :active false)))
 
