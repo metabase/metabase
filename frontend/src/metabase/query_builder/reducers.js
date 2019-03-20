@@ -10,15 +10,11 @@ import {
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   CLOSE_QB_TUTORIAL,
   CLOSE_QB_NEWB_MODAL,
-  BEGIN_EDITING,
-  CANCEL_EDITING,
   LOAD_TABLE_METADATA,
-  LOAD_DATABASE_FIELDS,
   RELOAD_CARD,
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  SET_CARD_ATTRIBUTE,
   SET_CARD_VISUALIZATION,
   UPDATE_CARD_VISUALIZATION_SETTINGS,
   REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
@@ -95,12 +91,6 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
 
-    [BEGIN_EDITING]: {
-      next: (state, { payload }) => ({ ...state, isEditing: true }),
-    },
-    [CANCEL_EDITING]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
     [API_UPDATE_QUESTION]: {
       next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
@@ -134,17 +124,10 @@ export const card = handleActions(
       next: (state, { payload }) => (payload ? payload.card : null),
     },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
-    [CANCEL_EDITING]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [SET_CARD_ATTRIBUTE]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.attr]: payload.value,
-      }),
-    },
     [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
     [UPDATE_CARD_VISUALIZATION_SETTINGS]: {
       next: (state, { payload }) => payload,
@@ -202,9 +185,6 @@ export const originalCard = handleActions(
     [RELOAD_CARD]: {
       next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
     },
-    [CANCEL_EDITING]: {
-      next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
-    },
     [SET_CARD_AND_RUN]: {
       next: (state, { payload }) =>
         payload.originalCard ? Utils.copy(payload.originalCard) : null,
@@ -228,15 +208,6 @@ export const tableForeignKeys = handleActions(
     },
   },
   null,
-);
-
-export const databaseFields = handleActions(
-  {
-    [LOAD_DATABASE_FIELDS]: {
-      next: (state, { payload }) => ({ [payload.id]: payload.fields }),
-    },
-  },
-  {},
 );
 
 // references to FK tables specifically used on the ObjectDetail page.

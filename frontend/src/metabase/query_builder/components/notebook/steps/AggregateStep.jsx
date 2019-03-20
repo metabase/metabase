@@ -4,7 +4,12 @@ import ClauseStep from "./ClauseStep";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
-export default function AggregateStep({ color, query, ...props }) {
+export default function AggregateStep({
+  color,
+  query,
+  isLastOpened,
+  ...props
+}) {
   return (
     <ClauseStep
       color={color}
@@ -20,6 +25,7 @@ export default function AggregateStep({ color, query, ...props }) {
           }
         />
       )}
+      isLastOpened={isLastOpened}
       onRemove={aggregation => aggregation.remove().update()}
     />
   );

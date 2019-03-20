@@ -99,7 +99,7 @@ export const getSampleDatasetId = createSelector(
 
 export const getDatabaseFields = createSelector(
   [getDatabaseId, state => state.qb.databaseFields],
-  (databaseId, databaseFields) => databaseFields[databaseId],
+  (databaseId, databaseFields) => [], // FIXME!
 );
 
 import { getMode as getMode_ } from "metabase/modes/lib/modes";

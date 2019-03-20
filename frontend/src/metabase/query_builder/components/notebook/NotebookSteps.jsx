@@ -11,15 +11,23 @@ export default class NotebookSteps extends React.Component {
       "0:filter": false,
       "0:aggregate": false,
     },
+    lastOpenedStep: null,
   };
 
   handleOpenStep = id => {
-    this.setState({ openSteps: { ...this.state.openSteps, [id]: true } });
+    this.setState({
+      openSteps: { ...this.state.openSteps, [id]: true },
+      lastOpenedStep: id,
+    });
   };
 
   render() {
     const { question, className } = this.props;
-    const { openSteps } = this.state;
+    const { openSteps, lastOpenedStep } = this.state;
+
+    if (!question) {
+      return null;
+    }
 
     const steps = getQuestionSteps(question, openSteps);
 
@@ -31,6 +39,7 @@ export default class NotebookSteps extends React.Component {
             step={step}
             query={question.query()}
             openStep={this.handleOpenStep}
+            isLastOpened={lastOpenedStep === step.id}
           />
         ))}
       </div>

@@ -421,7 +421,6 @@ export default class Question {
   collectionId(): ?number {
     return this._card && this._card.collection_id;
   }
-
   setCollectionId(collectionId: number) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
@@ -439,7 +438,20 @@ export default class Question {
   }
 
   database(): ?Database {
-    return this.query().database();
+    const query = this.query();
+    return query && query.database && query.database();
+  }
+  databaseId() {
+    const db = this.database();
+    return db && db.id;
+  }
+  table() {
+    const query = this.query();
+    return query && query.table && query.table();
+  }
+  tableId() {
+    const table = this.table();
+    return table && table.id;
   }
 
   getUrl(originalQuestion?: Question): string {
@@ -515,8 +527,8 @@ export default class Question {
     if (!other) {
       return false;
     } else if (this.id() != other.id()) {
-      return false
-    } else if (!_.isEqual(this.card(), other.card())){
+      return false;
+    } else if (!_.isEqual(this.card(), other.card())) {
       return false;
     } else if (!_.isEqual(this.parameters(), other.parameters())) {
       return false;

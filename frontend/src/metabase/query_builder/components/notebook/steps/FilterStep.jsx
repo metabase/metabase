@@ -4,7 +4,7 @@ import ClauseStep from "./ClauseStep";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-export default function FilterStep({ color, query, ...props }) {
+export default function FilterStep({ color, query, isLastOpened, ...props }) {
   return (
     <ClauseStep
       color={color}
@@ -20,6 +20,7 @@ export default function FilterStep({ color, query, ...props }) {
           }
         />
       )}
+      isLastOpened={isLastOpened}
       onRemove={filter => filter.remove().update()}
     />
   );

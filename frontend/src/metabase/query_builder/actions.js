@@ -24,7 +24,7 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { formatSQL } from "metabase/lib/formatting";
-import Query, { createQuery } from "metabase/lib/query";
+import { createQuery } from "metabase/lib/query";
 import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
@@ -444,30 +444,6 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   };
 });
 
-export const BEGIN_EDITING = "metabase/qb/BEGIN_EDITING";
-export const beginEditing = createAction(BEGIN_EDITING, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Begin");
-});
-
-export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
-export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
-  return (dispatch, getState) => {
-    // clone
-    let card = Utils.copy(getOriginalCard(getState()));
-
-    dispatch(loadMetadataForCard(card));
-
-    // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-    dispatch(
-      runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }),
-    );
-    dispatch(updateUrl(card, { dirty: false }));
-
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
-    return card;
-  };
-});
-
 // TODO Atte Keinänen 6/8/17: Could (should?) use the stored question by default instead of always requiring the explicit `card` parameter
 export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(
@@ -475,29 +451,14 @@ export const loadMetadataForCard = createThunkAction(
   card => {
     return async (dispatch, getState) => {
       // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card && !card.dataset_query) {
+      if (!card || !card.dataset_query) {
         return;
       }
-
-      const query = card && new Question(getMetadata(getState()), card).query();
-
-      async function loadMetadataForAtomicQuery(singleQuery) {
-        if (
-          singleQuery instanceof StructuredQuery &&
-          singleQuery.tableId() != null
-        ) {
-          await dispatch(loadTableMetadata(singleQuery.tableId()));
-        }
-
-        // NOTE Atte Keinänen 1/29/18:
-        // For native queries we don't normally know which table(s) we are working on.
-        // We could load all tables of the current database but historically that has caused
-        // major performance problems with users having large databases.
-        // Now components needing table metadata fetch it on-demand.
-      }
-
-      if (query) {
-        await loadMetadataForAtomicQuery(query);
+      const query = new Question(getMetadata(getState()), card).query();
+      const sourceTable =
+        query instanceof StructuredQuery && query.sourceTable();
+      if (sourceTable) {
+        await dispatch(loadTableMetadata(sourceTable.id));
       }
     };
   },
@@ -515,34 +476,6 @@ export const loadTableMetadata = createThunkAction(
         return { foreignKeys };
       } catch (error) {
         console.error("error getting table metadata", error);
-        return {};
-      }
-    };
-  },
-);
-
-// TODO Atte Keinänen 7/5/17: Move the API call to redux/metadata for being able to see the db fields in the new metadata object
-export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
-export const loadDatabaseFields = createThunkAction(
-  LOAD_DATABASE_FIELDS,
-  dbId => {
-    return async (dispatch, getState) => {
-      // if we already have the metadata loaded for the given table then we are done
-      const { qb: { databaseFields } } = getState();
-      try {
-        let fields;
-        if (databaseFields[dbId]) {
-          fields = databaseFields[dbId];
-        } else {
-          fields = await MetabaseApi.db_fields({ dbId: dbId });
-        }
-
-        return {
-          id: dbId,
-          fields: fields,
-        };
-      } catch (error) {
-        console.error("error getting database fields", error);
         return {};
       }
     };
@@ -590,12 +523,6 @@ function updateVisualizationSettings(
 
   return updatedCard;
 }
-
-export const SET_CARD_ATTRIBUTE = "metabase/qb/SET_CARD_ATTRIBUTE";
-export const setCardAttribute = createAction(
-  SET_CARD_ATTRIBUTE,
-  (attr, value) => ({ attr, value }),
-);
 
 export const SET_CARD_VISUALIZATION = "metabase/qb/SET_CARD_VISUALIZATION";
 export const setCardVisualization = createThunkAction(
@@ -786,6 +713,8 @@ export const updateQuestion = (
   { doNotClearNameAndId = false, run = false } = {},
 ) => {
   return async (dispatch, getState) => {
+    const oldQuestion = getQuestion(getState());
+
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
@@ -800,14 +729,20 @@ export const updateQuestion = (
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
     // See if the template tags editor should be shown/hidden
-    const oldQuestion = getQuestion(getState());
     const oldTagCount = getTemplateTagCount(oldQuestion);
     const newTagCount = getTemplateTagCount(newQuestion);
-
     if (newTagCount > oldTagCount) {
       dispatch(setIsShowingTemplateTagsEditor(true));
     } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
       dispatch(setIsShowingTemplateTagsEditor(false));
+    }
+
+    if (
+      (newQuestion.databaseId() &&
+        oldQuestion.databaseId() !== newQuestion.databaseId()) ||
+      (newQuestion.tableId() && oldQuestion.tableId() !== newQuestion.tableId())
+    ) {
+      dispatch(loadMetadataForCard(newQuestion.card()));
     }
 
     // run updated query
@@ -1085,106 +1020,6 @@ export const setQuerySourceTable = createThunkAction(
       }
     };
   },
-);
-
-function createQueryAction(action, updaterFunction, event) {
-  return createThunkAction(action, (...args) => (dispatch, getState) => {
-    const { qb: { card } } = getState();
-    if (card.dataset_query.type === "query") {
-      const datasetQuery = Utils.copy(card.dataset_query);
-      updaterFunction(datasetQuery.query, ...args);
-      dispatch(setDatasetQuery(datasetQuery));
-      MetabaseAnalytics.trackEvent(
-        ...(typeof event === "function" ? event(...args) : event),
-      );
-    }
-    return null;
-  });
-}
-
-export const addQueryBreakout = createQueryAction(
-  "metabase/qb/ADD_QUERY_BREAKOUT",
-  Query.addBreakout,
-  ["QueryBuilder", "Add GroupBy"],
-);
-export const updateQueryBreakout = createQueryAction(
-  "metabase/qb/UPDATE_QUERY_BREAKOUT",
-  Query.updateBreakout,
-  ["QueryBuilder", "Modify GroupBy"],
-);
-export const removeQueryBreakout = createQueryAction(
-  "metabase/qb/REMOVE_QUERY_BREAKOUT",
-  Query.removeBreakout,
-  ["QueryBuilder", "Remove GroupBy"],
-);
-// Exported for integration tests
-export const ADD_QUERY_FILTER = "metabase/qb/ADD_QUERY_FILTER";
-export const addQueryFilter = createQueryAction(
-  ADD_QUERY_FILTER,
-  Query.addFilter,
-  ["QueryBuilder", "Add Filter"],
-);
-export const UPDATE_QUERY_FILTER = "metabase/qb/UPDATE_QUERY_FILTER";
-export const updateQueryFilter = createQueryAction(
-  UPDATE_QUERY_FILTER,
-  Query.updateFilter,
-  ["QueryBuilder", "Modify Filter"],
-);
-export const REMOVE_QUERY_FILTER = "metabase/qb/REMOVE_QUERY_FILTER";
-export const removeQueryFilter = createQueryAction(
-  REMOVE_QUERY_FILTER,
-  Query.removeFilter,
-  ["QueryBuilder", "Remove Filter"],
-);
-export const addQueryAggregation = createQueryAction(
-  "metabase/qb/ADD_QUERY_AGGREGATION",
-  Query.addAggregation,
-  ["QueryBuilder", "Add Aggregation"],
-);
-export const updateQueryAggregation = createQueryAction(
-  "metabase/qb/UPDATE_QUERY_AGGREGATION",
-  Query.updateAggregation,
-  ["QueryBuilder", "Set Aggregation"],
-);
-export const removeQueryAggregation = createQueryAction(
-  "metabase/qb/REMOVE_QUERY_AGGREGATION",
-  Query.removeAggregation,
-  ["QueryBuilder", "Remove Aggregation"],
-);
-export const addQueryOrderBy = createQueryAction(
-  "metabase/qb/ADD_QUERY_ORDER_BY",
-  Query.addOrderBy,
-  ["QueryBuilder", "Add OrderBy"],
-);
-export const updateQueryOrderBy = createQueryAction(
-  "metabase/qb/UPDATE_QUERY_ORDER_BY",
-  Query.updateOrderBy,
-  ["QueryBuilder", "Set OrderBy"],
-);
-export const removeQueryOrderBy = createQueryAction(
-  "metabase/qb/REMOVE_QUERY_ORDER_BY",
-  Query.removeOrderBy,
-  ["QueryBuilder", "Remove OrderBy"],
-);
-export const updateQueryLimit = createQueryAction(
-  "metabase/qb/UPDATE_QUERY_LIMIT",
-  Query.updateLimit,
-  ["QueryBuilder", "Update Limit"],
-);
-export const addQueryExpression = createQueryAction(
-  "metabase/qb/ADD_QUERY_EXPRESSION",
-  Query.addExpression,
-  ["QueryBuilder", "Add Expression"],
-);
-export const updateQueryExpression = createQueryAction(
-  "metabase/qb/UPDATE_QUERY_EXPRESSION",
-  Query.updateExpression,
-  ["QueryBuilder", "Set Expression"],
-);
-export const removeQueryExpression = createQueryAction(
-  "metabase/qb/REMOVE_QUERY_EXPRESSION",
-  Query.removeExpression,
-  ["QueryBuilder", "Remove Expression"],
 );
 
 /**

@@ -4,7 +4,12 @@ import ClauseStep from "./ClauseStep";
 
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
 
-export default function ExpressionStep({ color, query, ...props }) {
+export default function ExpressionStep({
+  color,
+  query,
+  isLastOpened,
+  ...props
+}) {
   return (
     <ClauseStep
       color={color}
@@ -22,6 +27,7 @@ export default function ExpressionStep({ color, query, ...props }) {
           }
         />
       )}
+      isLastOpened={isLastOpened}
       onRemove={([name, expression]) => query.removeExpression(name).update()}
     />
   );

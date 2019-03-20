@@ -9,7 +9,6 @@ import Button from "metabase/components/Button";
 import { Box } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
-import NotebookCell from "./NotebookCell";
 
 import DataStep from "./steps/DataStep";
 import ExpressionStep from "./steps/ExpressionStep";
@@ -60,7 +59,7 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const { step, openStep } = this.props;
+    const { step, openStep, isLastOpened } = this.props;
     const { showPreview } = this.state;
 
     const { title, color, component: NotebookStepComponent } =
@@ -98,7 +97,11 @@ export default class NotebookStep extends React.Component {
         )}
 
         {NotebookStepComponent && (
-          <NotebookStepComponent color={color} query={step.query} />
+          <NotebookStepComponent
+            color={color}
+            query={step.query}
+            isLastOpened={isLastOpened}
+          />
         )}
 
         {showPreview &&

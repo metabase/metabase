@@ -10,7 +10,8 @@ export default function ClauseStep({
   items,
   renderName = item => item.displayName(),
   renderPopover,
-  onRemove,
+  onRemove = null,
+  isLastOpened = false,
   ...props
 }) {
   return (
@@ -42,6 +43,7 @@ export default function ClauseStep({
             <Icon name="add" className="text-white" />
           </NotebookCellItem>
         }
+        isInitiallyOpen={isLastOpened}
       >
         {renderPopover()}
       </PopoverWithTrigger>
