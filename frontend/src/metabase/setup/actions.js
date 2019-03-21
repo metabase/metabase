@@ -1,9 +1,7 @@
-//import _ from "underscore";
 import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { SetupApi, UtilApi } from "metabase/services";
@@ -50,6 +48,7 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
     let { setup: { allowTracking, databaseDetails, userDetails } } = getState();
 
     try {
+      // NOTE: this request will return a Set-Cookie header for the session
       let response = await SetupApi.create({
         token: MetabaseSettings.get("setup_token"),
         prefs: {
@@ -75,9 +74,6 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
 export const completeSetup = createAction(COMPLETE_SETUP, function(
   apiResponse,
 ) {
-  // setup user session
-  MetabaseCookies.setSessionCookie(apiResponse.id);
-
   // clear setup token from settings
   MetabaseSettings.setAll({ setup_token: null });
 

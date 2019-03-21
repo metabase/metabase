@@ -2,22 +2,82 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require [metabase
              [config :as config]
-             [db :as mdb]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
+             [db :as mdb]
+             [public-settings :as public-settings]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
+                                         *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [toucan.db :as db]))
+            [ring.util.response :as resp]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.net.URL
+           java.util.UUID
+           org.joda.time.DateTime))
 
-(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
+;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
+;; cookie and thus can't be viewed by FE code.
+;;
+;; If that cookie is isn't present, we look for the `metabase.SESSION_ID`, which is the old session cookie set in
+;; 0.31.x and older. Unlike `metabase.SESSION`, this cookie was set directly by the frontend and thus was not
+;; HttpOnly; for 0.32.x we'll continue to accept it rather than logging every one else out on upgrade. (We've
+;; switched to a new Cookie name for 0.32.x because the new cookie includes a `path` attribute, thus browsers consider
+;; it to be a different Cookie; Ring cookie middleware does not handle multiple cookies with the same name.)
+;;
+;; Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
+;; Session ID and thus are definitely not authenticated
+(def ^:private ^String metabase-session-cookie        "metabase.SESSION")
+(def ^:private ^String metabase-legacy-session-cookie "metabase.SESSION_ID") ; this can be removed in 0.33.x
+(def ^:private ^String metabase-session-header        "x-metabase-session")
+
+(defn- clear-cookie [response cookie-name]
+  (resp/set-cookie response cookie-name nil {:expires (DateTime. 0)}))
+
+(defn- wrap-body-if-needed
+  "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
+  wrap `response` if needed."
+  [response]
+  (if (and (map? response) (contains? response :body))
+    response
+    {:body response, :status 200}))
+
+(s/defn set-session-cookie
+  "Add a `Set-Cookie` header to `response` to persist the Metabase session."
+  [response, session-id :- UUID]
+  (-> response
+      wrap-body-if-needed
+      (clear-cookie metabase-legacy-session-cookie)
+      (resp/set-cookie
+       metabase-session-cookie
+       (str session-id)
+       (merge
+        {:same-site :lax
+         :http-only true
+         :path      "/api"
+         :max-age   (config/config-int :max-session-age)}
+        ;; If Metabase is running over HTTPS (hopefully always except for local dev instances) then make sure to
+        ;; make this cookie HTTPS-only
+        (when (some-> (public-settings/site-url) URL. .getProtocol (= "https"))
+          {:secure true})))))
+
+(defn clear-session-cookie
+  "Add a header to `response` to clear the current Metabase session cookie."
+  [response]
+  (-> response
+      wrap-body-if-needed
+      (clear-cookie metabase-session-cookie)
+      (clear-cookie metabase-legacy-session-cookie)))
 
 (defn- wrap-session-id* [{:keys [cookies headers] :as request}]
-  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                          (headers metabase-session-header))]
-    (assoc request :metabase-session-id session-id)
-    request))
+  (let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                       (get-in cookies [metabase-legacy-session-cookie :value])
+                       (headers metabase-session-header))]
+    (if (seq session-id)
+      (assoc request :metabase-session-id session-id)
+      request)))
 
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
