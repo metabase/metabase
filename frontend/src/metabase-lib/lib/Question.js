@@ -630,7 +630,7 @@ export default class Question {
       return true;
     } else {
       // if it's saved, then it's dirty when the current card doesn't match the last saved version
-      const origCardSerialized = originalQuestion._serializeForUrl({
+      const origCardSerialized = originalQuestion && originalQuestion._serializeForUrl({
         includeOriginalCardId: false,
       });
       const currentCardSerialized = this._serializeForUrl({
