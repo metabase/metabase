@@ -42,13 +42,6 @@ export const getFirstQueryResult = state =>
 // get instance settings, used for determining whether to display certain actions
 export const getSettings = state => state.settings.values;
 
-export const getIsDirty = createSelector(
-  [getCard, getOriginalCard],
-  (card, originalCard) => {
-    return isCardDirty(card, originalCard);
-  },
-);
-
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getDatabaseId = createSelector(
@@ -187,6 +180,13 @@ export const getOriginalQuestion = createSelector(
   (metadata, card) => {
     // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
     return metadata && card && new Question(metadata, card);
+  },
+);
+
+export const getIsDirty = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) => {
+    return question && question.isDirtyComparedTo(originalQuestion);
   },
 );
 

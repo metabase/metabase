@@ -37,7 +37,7 @@ const BreakoutPopover = ({
       className="text-green"
       maxHeight={maxHeight}
       field={breakout}
-      fieldOptions={breakoutOptions || query.breakoutOptions()}
+      fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
       onFieldChange={field => {
         onChangeBreakout(field);
         if (onClose) {

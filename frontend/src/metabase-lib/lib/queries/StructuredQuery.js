@@ -10,7 +10,7 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import _ from "underscore";
-import { chain, assoc, updateIn } from "icepick";
+import { chain, assoc, dissoc, updateIn } from "icepick";
 
 import type {
   StructuredQuery as StructuredQueryObject,
@@ -187,6 +187,10 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(() => query, []);
   }
 
+  clearQuery() {
+    return this._updateQuery(() => ({}));
+  }
+
   updateQuery(
     fn: (q: StructuredQueryObject) => StructuredQueryObject,
   ): StructuredQuery {
@@ -208,7 +212,10 @@ export default class StructuredQuery extends AtomicQuery {
       // TODO: this should reset the rest of the query?
       return new StructuredQuery(
         this._originalQuestion,
-        assoc(this.datasetQuery(), "database", databaseId),
+        chain(this.datasetQuery())
+          .assoc("database", databaseId)
+          .assoc("query", {})
+          .value(),
       );
     } else {
       return this;
@@ -231,7 +238,7 @@ export default class StructuredQuery extends AtomicQuery {
         this._originalQuestion,
         chain(this.datasetQuery())
           .assoc("database", this.metadata().table(tableId).database.id)
-          .assocIn(["query", "source-table"], tableId)
+          .assoc("query", { "source-table": tableId })
           .value(),
       );
     } else {
@@ -677,6 +684,10 @@ export default class StructuredQuery extends AtomicQuery {
   fields() {
     // FIMXE: implement field functions in query lib
     return this.query().fields || [];
+  }
+
+  clearFields() {
+    return this._updateQuery(query => dissoc(query, "fields"));
   }
 
   /**
