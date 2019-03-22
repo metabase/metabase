@@ -5415,8 +5415,7 @@ msgstr "aquest minut"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:28
 msgid "this hour"
-msgstr "aquesta hora\n"
-""
+msgstr "aquesta hora"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.jsx:290
 msgid "not implemented {0}"
@@ -7836,8 +7835,7 @@ msgstr "Hi ha una bloqueig de la migració a la base de dades: no podem executar
 
 #: src/metabase/db.clj
 msgid "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."
-msgstr "Pots forçar l'alliberació d'aquests bloquejos amb:  `java -jar metabase.jar migrate release-locks`.\n"
-""
+msgstr "Pots forçar l'alliberació d'aquests bloquejos amb:  `java -jar metabase.jar migrate release-locks`."
 
 #: src/metabase/db.clj
 msgid "Checking if Database has unrun migrations..."
@@ -7980,13 +7978,11 @@ msgstr "Error: metabase.driver.FixedHiveDriver està registrat però sembla que 
 
 #: src/metabase/driver/sparksql.clj
 msgid "Found metabase.driver.FixedHiveDriver."
-msgstr "S'ha trobat metabase.driver.FixedHiveDriver.\n"
-""
+msgstr "S'ha trobat metabase.driver.FixedHiveDriver."
 
 #: src/metabase/driver/sparksql.clj
 msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
-msgstr "S'ha registrat metabase.driver.FixedHiveDriver a través de JDBC.\n"
-""
+msgstr "S'ha registrat metabase.driver.FixedHiveDriver a través de JDBC."
 
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
@@ -9173,8 +9169,7 @@ msgstr "hive"
 
 #: src/metabase/driver/redshift.clj
 msgid "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-msgstr "nom-del-meu-cluster.abcd1234.us-east-1.redshift.amazonaws.com\n"
-""
+msgstr "nom-del-meu-cluster.abcd1234.us-east-1.redshift.amazonaws.com"
 
 #: src/metabase/driver/redshift.clj
 msgid "toucan_sightings"
@@ -9929,8 +9924,7 @@ msgstr "No se com obtenir informació del Camp:"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "metabase.query-processor.interface/*driver* is unbound."
-msgstr "El metabase.query-processor.interface/*driver* no està definit\n"
-""
+msgstr "El metabase.query-processor.interface/*driver* no està definit"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Query processor error: mismatched number of columns in query and results."
@@ -10147,8 +10141,7 @@ msgstr "Esdeveniments per hora del dia"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Singleton]]"
-msgstr "[[Singleton]]\n"
-""
+msgstr "[[Singleton]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
@@ -10647,8 +10640,7 @@ msgstr "Primeres 10 províncies per ventes"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Timestamp]]"
-msgstr "[[Timestamp]]\n"
-""
+msgstr "[[Timestamp]]"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Where these transactions happened"
@@ -11550,8 +11542,7 @@ msgstr "Si decideixes seguir utilitzant H2, asegura't de fer una copia del arxiu
 
 #: src/metabase/db.clj
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
-msgstr "Per més informació consulta: https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres.\n"
-""
+msgstr "Per més informació consulta: https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres."
 
 #: src/metabase/db.clj
 msgid "Unable to connect to Metabase {0} DB."
