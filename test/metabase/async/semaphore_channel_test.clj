@@ -17,8 +17,12 @@
 (expect
   nil
   (tu.async/with-open-channels [semaphore-chan (semaphore-channel/semaphore-channel 3)]
-    (let [_ (get-permits semaphore-chan 3)]
-      (first (a/alts!! [semaphore-chan (a/timeout 100)])))))
+    (let [permits  (get-permits semaphore-chan 3)
+          response (first (a/alts!! [semaphore-chan (a/timeout 100)]))]
+      ;; make sure we're actually doint something with the permits after we get `response`, otherwise there's a very
+      ;; small chance they'll get garbage collected and `alts!!` will actually manage to get a permit
+      (count permits)
+      response)))
 
 ;; check that when a permit is returned, whoever was waiting will get their permit
 (expect

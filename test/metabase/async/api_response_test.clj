@@ -63,19 +63,20 @@
 ;; when we send a single message to the input channel, it should get closed automatically by the async code
 (expect
   (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
+    (with-response [{:keys [os-closed-chan]} input-chan]
       ;; send the result to the input channel
       (a/>!! input-chan {:success true})
-      (wait-for-close output-chan)
+      (wait-for-close os-closed-chan)
       ;; now see if input-chan is closed
       (wait-for-close input-chan))))
 
 ;; when we send a message to the input channel, output-chan should *also* get closed
 (expect
   (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
+    (with-response [{:keys [os-closed-chan output-chan]} input-chan]
       ;; send the result to the input channel
       (a/>!! input-chan {:success true})
+      (wait-for-close os-closed-chan)
       ;; now see if output-chan is closed
       (wait-for-close output-chan))))
 
