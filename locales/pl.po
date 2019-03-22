@@ -3868,16 +3868,16 @@ msgid "Cumulative sum of ..."
 msgstr "Skumulowana suma..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr "Addytywna suma wszystkich wartości kolumny. \\nnp. całkowity przychód w czasie."
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
+msgstr "Addytywna suma wszystkich wartości kolumny. \\\\nnp. całkowity przychód w czasie."
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
 msgid "Cumulative count of rows"
 msgstr "Skumulowana liczba wierszy"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
-msgstr "Addytywna liczba wierszy.\\nnp. łączna ilość transakcji w czasie."
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
+msgstr "Addytywna liczba wierszy.\\\\nnp. łączna ilość transakcji w czasie."
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
 msgid "Standard deviation of ..."

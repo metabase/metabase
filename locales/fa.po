@@ -3863,16 +3863,16 @@ msgid "Cumulative sum of ..."
 msgstr "جمع تجمعی ..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr "مجموع افزودنی تمام مقادیر یک ستون. \\ ne.x. درآمد کل در طول زمان."
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
+msgstr "مجموع افزودنی تمام مقادیر یک ستون. \\\\ ne.x. درآمد کل در طول زمان."
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
 msgid "Cumulative count of rows"
 msgstr "تعداد تجمعی ردیف"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
-msgstr "تعداد افزودنی تعداد ردیفها. \\ ne.x. تعداد کل فروش در طول زمان."
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
+msgstr "تعداد افزودنی تعداد ردیفها. \\\\ ne.x. تعداد کل فروش در طول زمان."
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
 msgid "Standard deviation of ..."

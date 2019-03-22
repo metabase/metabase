@@ -654,7 +654,7 @@ msgstr "S'il vous plaît, sélectionnez une colonne à utiliser pour l'affichage
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:771
 msgid "Tip:"
-msgstr "Astuce :"
+msgstr "Astuce:"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:433
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
@@ -671,7 +671,7 @@ msgstr "Metabase peut analyser les valeurs de ce champ pour proposer des filtres
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:14
 msgid "Re-scan this field"
-msgstr "Analyse à nouveau ce champ"
+msgstr "Analyser à nouveau ce champ"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:22
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:116
@@ -773,7 +773,7 @@ msgstr "Sera affiché dans l'historique des révisions de cette métrique afin d
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:49
 msgid "At least one filter is required"
-msgstr "Un filter minimum est requis"
+msgstr "Au moins un filtre est requis"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:116
 msgid "Edit Your Segment"
@@ -805,7 +805,7 @@ msgstr "Décrivez votre segment"
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:171
 msgid "Give your segment a description to help others understand what it's about."
-msgstr "Donner une description à votre segment pour aider les autres à mieux l'utiliser."
+msgstr "Donnez une description à votre segment pour aider les autres à mieux l'utiliser."
 
 #: frontend/src/metabase/admin/datamodel/containers/SegmentForm.jsx:175
 msgid "This is a good place to be more specific about less obvious segment rules"
@@ -1017,7 +1017,7 @@ msgstr "Utilisateurs"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:192
 msgid "Who do you want to add?"
-msgstr "Que voulez vous ajouter?"
+msgstr "Que voulez-vous ajouter?"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:207
 msgid "Edit {0}'s details"
@@ -1384,7 +1384,7 @@ msgstr "Ce n'est pas un entier valide"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:223
 msgid "Changes saved!"
-msgstr "Modifications sauvegardées  !"
+msgstr "Modifications sauvegardées!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:157
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:132
@@ -3857,7 +3857,7 @@ msgid "Cumulative sum of ..."
 msgstr "Somme cumulée de ..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
 msgstr "Somme cumulée de toutes les valeurs d'une colonne. Ex : Gain total au cours du temps."
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
@@ -3865,7 +3865,7 @@ msgid "Cumulative count of rows"
 msgstr "Nombre cumulé de lignes"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
 msgstr "Nombre cumulé de lignes. Ex : Nombre total de ventes au cours du temps."
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
@@ -4213,7 +4213,7 @@ msgstr "Les 30 derniers jours"
 msgid "Week"
 msgid_plural "Weeks"
 msgstr[0] "Semaine"
-msgstr[1] ""
+msgstr[1] "Semaines"
 
 #: frontend/src/metabase/lib/query_time.js:197
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
@@ -4222,7 +4222,7 @@ msgstr[1] ""
 msgid "Month"
 msgid_plural "Months"
 msgstr[0] "Mois"
-msgstr[1] ""
+msgstr[1] "Mois"
 
 #: frontend/src/metabase/lib/query_time.js:201
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
@@ -4231,7 +4231,7 @@ msgstr[1] ""
 msgid "Year"
 msgid_plural "Years"
 msgstr[0] "Année"
-msgstr[1] ""
+msgstr[1] "Années"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -7482,26 +7482,26 @@ msgstr "Aucun binning"
 msgid "Day"
 msgid_plural "Days"
 msgstr[0] "Jour"
-msgstr[1] ""
+msgstr[1] "Jours"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase/lib/query_time.js:189 src/metabase/api/table.clj
 msgid "Minute"
 msgid_plural "Minutes"
 msgstr[0] "Minute"
-msgstr[1] ""
+msgstr[1] "Minutes"
 
 #: frontend/src/metabase/lib/query_time.js:191 src/metabase/api/table.clj
 msgid "Hour"
 msgid_plural "Hours"
 msgstr[0] "Heure"
-msgstr[1] ""
+msgstr[1] "Heures"
 
 #: frontend/src/metabase/lib/query_time.js:199 src/metabase/api/table.clj
 msgid "Quarter"
 msgid_plural "Quarters"
-msgstr[0] "Semestre"
-msgstr[1] ""
+msgstr[0] "Trimestre"
+msgstr[1] "Trimestres"
 
 #: src/metabase/api/table.clj
 msgid "Minute of Hour"
@@ -11340,19 +11340,19 @@ msgstr "Exemple en profondeur"
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:29
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:17
 msgid "Key"
-msgstr ""
+msgstr "Clé"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:30
 msgid "Class"
-msgstr ""
+msgstr "Classe"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 msgid "Triggers"
-msgstr ""
+msgstr "Déclencheurs"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
 msgid "View triggers"
-msgstr ""
+msgstr "Voir les déclencheurs"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:82
 msgid "Scheduler Info"
@@ -11360,7 +11360,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:20
 msgid "Priority"
-msgstr ""
+msgstr "Priorité"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:21
 msgid "Last Fired"
@@ -11388,11 +11388,11 @@ msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:75
 msgid "Triggers for {0}"
-msgstr ""
+msgstr "Déclencheurs pour {0}"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:25
 msgid "Tasks"
-msgstr ""
+msgstr "Tâches"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:30
 msgid "Jobs"
@@ -11404,28 +11404,28 @@ msgstr ""
 
 #: frontend/src/metabase/components/EntityItem.jsx:55
 msgid "Duplicate this item"
-msgstr ""
+msgstr "Dupliquer cet élément"
 
 #: frontend/src/metabase/components/EntityItem.jsx:61
 msgid "Archive this item"
-msgstr ""
+msgstr "Archiver cet élément"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:330
 msgid "Duplicate dashboard"
-msgstr ""
+msgstr "Dupliquer le tableau de bord"
 
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:16
 msgid "Duplicate \"{0}\""
-msgstr ""
+msgstr "Dupliquer \"{0}\""
 
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:21
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 msgid "Duplicate"
-msgstr ""
+msgstr "Dupliquer"
 
 #: frontend/src/metabase/lib/query_time.js:115
 msgid "Tomorrow"
-msgstr ""
+msgstr "Demain"
 
 #: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/lib/query_time.js:143
@@ -11434,37 +11434,37 @@ msgstr ""
 
 #: frontend/src/metabase/lib/query_time.js:132
 msgid "Next {0}"
-msgstr ""
+msgstr "Suivant {0}"
 
 #: frontend/src/metabase/lib/query_time.js:135
 msgid "Previous {0}"
-msgstr ""
+msgstr "Précédent {0}"
 
 #: frontend/src/metabase/lib/query_time.js:139
 msgid "Previous {0} {1}"
-msgstr ""
+msgstr "Précédent {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:141
 msgid "Next {0} {1}"
-msgstr ""
+msgstr "Suivant {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:171
 msgid "Now"
-msgstr ""
+msgstr "Maintenant"
 
 #: frontend/src/metabase/lib/query_time.js:174
 msgid "{0} {1} ago"
-msgstr ""
+msgstr "Il y a {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:175
 msgid "{0} {1} from now"
-msgstr ""
+msgstr "Il y a {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:187
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Période par défaut"
+msgstr[1] "Périodes par défaut"
 
 #: frontend/src/metabase/lib/query_time.js:203
 msgid "Minute of hour"
@@ -11475,44 +11475,44 @@ msgstr[1] ""
 #: frontend/src/metabase/lib/query_time.js:205
 msgid "Hour of day"
 msgid_plural "Hours of day"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Heure du jour"
+msgstr[1] "Heures du jour"
 
 #: frontend/src/metabase/lib/query_time.js:207
 msgid "Day of week"
 msgid_plural "Days of week"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Jour de la semaine"
+msgstr[1] "Jours de la semaine"
 
 #: frontend/src/metabase/lib/query_time.js:209
 msgid "Day of month"
 msgid_plural "Days of month"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Jour du mois"
+msgstr[1] "Jours du mois"
 
 #: frontend/src/metabase/lib/query_time.js:211
 msgid "Day of year"
 msgid_plural "Days of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Jour de l'année"
+msgstr[1] "Jours de l'année"
 
 #: frontend/src/metabase/lib/query_time.js:213
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Semaine de l'année"
+msgstr[1] "Semaines de l'année"
 
 #: frontend/src/metabase/lib/query_time.js:215
 msgid "Month of year"
 msgid_plural "Months of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Mois de l'année"
+msgstr[1] "Mois de l'année"
 
 #: frontend/src/metabase/lib/query_time.js:217
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Trimestre de l'année"
+msgstr[1] "Trimestres de l'année"
 
 #: frontend/src/metabase/parameters/components/widgets/CategoryWidget.jsx:62
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:58
@@ -11553,39 +11553,39 @@ msgstr ""
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host for URL `{0}`"
-msgstr ""
+msgstr "Connexion refusée par l'hôte pour l'URL `{0}`"
 
 #: src/metabase/db.clj
 msgid "Warning: Postgres connection string with `ssl=true` detected."
-msgstr ""
+msgstr "Attention : La chaîne de connexion Postgres contient `ssl=true`."
 
 #: src/metabase/db.clj
 msgid "You may need to add `?sslmode=require` to your application DB connection string."
-msgstr ""
+msgstr "Vous devrez peut-être ajouter `?sslmode=true` à la chaîne de connexion de votre application à la base de données."
 
 #: src/metabase/db.clj
 msgid "If Metabase fails to launch, please add it and try again."
-msgstr ""
+msgstr "Si Metabase échoue à démarrer, ajoutez le et essayez à nouveau."
 
 #: src/metabase/db.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
-msgstr ""
+msgstr "Consultez https://github.com/metabase/metabase/issues/8908 pour plus de détails."
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
-msgstr ""
+msgstr "ATTENTION : l'utilisation de base de données H2 n'est pas recommandée en production."
 
 #: src/metabase/db.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
-msgstr ""
+msgstr "Pour le déploiement en production, nous recommendons vivement l'utilisation de Postgres, MySQL ou MariaDB à la place."
 
 #: src/metabase/db.clj
 msgid "If you decide to continue to use H2, please be sure to back up the database file regularly."
-msgstr ""
+msgstr "Si vous décidez de continuer à utiliser H2, assurez vous de sauvegarder régulièrement le fichier de base de données"
 
 #: src/metabase/db.clj
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
-msgstr ""
+msgstr "Consultez https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres pour plus de détails"
 
 #: src/metabase/db.clj
 msgid "Unable to connect to Metabase {0} DB."
@@ -11601,7 +11601,7 @@ msgstr ""
 
 #: src/metabase/driver.clj
 msgid "Loading driver {0} {1}"
-msgstr ""
+msgstr "Chargement du driver {0} {1}"
 
 #: src/metabase/driver.clj
 msgid "Load driver {0}"
@@ -11633,7 +11633,7 @@ msgstr ""
 
 #: src/metabase/driver.clj
 msgid "Reason:"
-msgstr ""
+msgstr "Raison :"
 
 #: src/metabase/driver.clj
 msgid "Invalid driver feature: {0}"
@@ -11769,11 +11769,11 @@ msgstr ""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
-msgstr ""
+msgstr "Classe non trouvée: {0}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin ''{0}'' depends on plugin ''{1}''"
-msgstr ""
+msgstr "Le plugin ''{0}'' dépend du plugin ''{1}''"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
@@ -11789,7 +11789,7 @@ msgstr ""
 
 #: src/metabase/plugins/files.clj
 msgid "Resource does not exist."
-msgstr ""
+msgstr "La ressource n'existe pas."
 
 #: src/metabase/plugins/init_steps.clj
 msgid "Loading plugin namespace {0}..."
@@ -11839,31 +11839,31 @@ msgstr ""
 
 #: src/metabase/pulse/render.clj
 msgid "Last week"
-msgstr ""
+msgstr "Semaine dernière"
 
 #: src/metabase/pulse/render.clj
 msgid "This week"
-msgstr ""
+msgstr "Semaine en cours"
 
 #: src/metabase/pulse/render.clj
 msgid "Last month"
-msgstr ""
+msgstr "Mois dernier"
 
 #: src/metabase/pulse/render.clj
 msgid "This month"
-msgstr ""
+msgstr "Mois en cours"
 
 #: src/metabase/pulse/render.clj
 msgid "Last quarter"
-msgstr ""
+msgstr "Dernier trimestre"
 
 #: src/metabase/pulse/render.clj
 msgid "This quarter"
-msgstr ""
+msgstr "Ce trimestre"
 
 #: src/metabase/pulse/render.clj
 msgid "Last year"
-msgstr ""
+msgstr "Année dernière"
 
 #: src/metabase/pulse/render.clj
 msgid "This year"
@@ -11883,7 +11883,7 @@ msgstr ""
 
 #: src/metabase/sync/sync_metadata/fields/common.clj
 msgid "Field"
-msgstr ""
+msgstr "Champ"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error checking if Fields {0} need to be created or reactivated"
@@ -11929,11 +11929,11 @@ msgstr ""
 #. namespaces we can log it
 #: src/metabase/task.clj
 msgid "Initializing task {0}"
-msgstr ""
+msgstr "Initialisation de la tâche {0}"
 
 #: src/metabase/task.clj
 msgid "Error initializing task {0}"
-msgstr ""
+msgstr "Erreur lors de l'initialisation de la tâche {0}"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Problem sending abandonment email"
@@ -11965,7 +11965,7 @@ msgstr ""
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Cleaning up task history"
-msgstr ""
+msgstr "Nettoyage de l'historique des tâches"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, rows were deleted"
@@ -12118,20 +12118,20 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/containers/NewUserModal.jsx:13
 msgid "New user"
-msgstr ""
+msgstr "Nouvel utilisateur"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:204
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:69
 msgid "Reset password"
-msgstr ""
+msgstr "Réinitialiser le mot de passe"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:209
 msgid "Deactivate user"
-msgstr ""
+msgstr "Désactiver l'utilisateur"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:47
 msgid "Reactivate {0}?"
-msgstr ""
+msgstr "Réactiver {0}?"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:63
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
@@ -12139,23 +12139,23 @@ msgstr ""
 
 #: frontend/src/metabase/entities/collections.js:21
 msgid "collection"
-msgstr ""
+msgstr "collection"
 
 #: frontend/src/metabase/entities/collections.js:22
 msgid "collections"
-msgstr ""
+msgstr "collections"
 
 #: frontend/src/metabase/entities/dashboards.js:29
 msgid "dashboard"
-msgstr ""
+msgstr "tableau de bord"
 
 #: frontend/src/metabase/entities/dashboards.js:30
 msgid "dashboards"
-msgstr ""
+msgstr "tableaux de bord"
 
 #: frontend/src/metabase/entities/users.js:125
 msgid "First name is required"
-msgstr ""
+msgstr "Le prénom est obligatoire"
 
 #: frontend/src/metabase/entities/users.js:126
 #: frontend/src/metabase/entities/users.js:133
@@ -12172,7 +12172,7 @@ msgstr ""
 
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:90
 msgid "Items you archive will appear here."
-msgstr ""
+msgstr "Les éléments archivés apparaîtront ici"
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"

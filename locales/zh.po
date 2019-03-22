@@ -3839,16 +3839,16 @@ msgid "Cumulative sum of ..."
 msgstr "累积求和"
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr "一个字段所有数值的累积加和。\\n比如：随着时间推移的总收入。"
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
+msgstr "一个字段所有数值的累积加和。\\\\n比如：随着时间推移的总收入。"
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
 msgid "Cumulative count of rows"
 msgstr "累积行数"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
-msgstr "累积的数据行数。\\ n比如：随着时间的推移销售数量。"
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
+msgstr "累积的数据行数。\\\\ n比如：随着时间的推移销售数量。"
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
 msgid "Standard deviation of ..."

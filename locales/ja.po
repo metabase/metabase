@@ -3837,16 +3837,16 @@ msgid "Cumulative sum of ..."
 msgstr "累積合計"
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr "列の全値の合計\\ne.x. 経年の全収入"
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
+msgstr "列の全値の合計\\\\ne.x. 経年の全収入"
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
 msgid "Cumulative count of rows"
 msgstr "行の累積AE計数"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
-msgstr "行数の合計\\ne.x.経年の販売数合計"
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
+msgstr "行数の合計\\\\ne.x.経年の販売数合計"
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
 msgid "Standard deviation of ..."

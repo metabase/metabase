@@ -3849,16 +3849,16 @@ msgid "Cumulative sum of ..."
 msgstr "...nın Birikmiş toplam "
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
-msgstr "Bir sütunun tüm değerlerinin toplamı. \\ ne.x. Zaman içinde toplam gelir."
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
+msgstr "Bir sütunun tüm değerlerinin toplamı. \\\\ ne.x. Zaman içinde toplam gelir."
 
 #: frontend/src/metabase/lib/schema_metadata.js:499
 msgid "Cumulative count of rows"
 msgstr "Kümülatif satır sayısı"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
-msgstr "Satırların sayısının toplam sayısı. \\ ne.x. Zaman içinde toplam satış sayısı."
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
+msgstr "Satırların sayısının toplam sayısı. \\\\ ne.x. Zaman içinde toplam satış sayısı."
 
 #: frontend/src/metabase/lib/schema_metadata.js:507
 msgid "Standard deviation of ..."
@@ -11302,83 +11302,83 @@ msgstr "Derinleme örneği"
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:29
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:17
 msgid "Key"
-msgstr ""
+msgstr "Anahtar"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:30
 msgid "Class"
-msgstr ""
+msgstr "Sınıf"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 msgid "Triggers"
-msgstr ""
+msgstr "Tetikleyici"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
 msgid "View triggers"
-msgstr ""
+msgstr "Tetikleyicileri izle"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:82
 msgid "Scheduler Info"
-msgstr ""
+msgstr "Zamanlayıcı bilgisi"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:20
 msgid "Priority"
-msgstr ""
+msgstr "Öncelik"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:21
 msgid "Last Fired"
-msgstr ""
+msgstr "Son tetiklenen"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:22
 msgid "Next Fire Time"
-msgstr ""
+msgstr "Bir sonraki tetiklenme zamanı"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:23
 msgid "Start Time"
-msgstr ""
+msgstr "Başlangıç zamanı"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:24
 msgid "End Time"
-msgstr ""
+msgstr "Bitiş zamanı"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:25
 msgid "Final Fire Time"
-msgstr ""
+msgstr "Son tetikleme zamanı"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:26
 msgid "May Fire Again?"
-msgstr ""
+msgstr "Tekrar tetiklensin mi?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:75
 msgid "Triggers for {0}"
-msgstr ""
+msgstr "{0} için tetikleyiciler"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:25
 msgid "Tasks"
-msgstr ""
+msgstr "Görevler"
 
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:30
 msgid "Jobs"
-msgstr ""
+msgstr "İşler"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:740
 msgid "Duplicated {0}"
-msgstr ""
+msgstr "{0} kopyalandı"
 
 #: frontend/src/metabase/components/EntityItem.jsx:55
 msgid "Duplicate this item"
-msgstr ""
+msgstr "Bu ögeyi kopyala"
 
 #: frontend/src/metabase/components/EntityItem.jsx:61
 msgid "Archive this item"
-msgstr ""
+msgstr "Bu ögeyi arşivle"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:330
 msgid "Duplicate dashboard"
-msgstr ""
+msgstr "Bu panoyu kopyala"
 
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:16
 msgid "Duplicate \"{0}\""
-msgstr ""
+msgstr "\"{0}\"ı kopyala"
 
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:21
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
@@ -11490,56 +11490,56 @@ msgstr ""
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:28
 msgid "This"
-msgstr ""
+msgstr "Bu"
 
 #: frontend/src/metabase/query_builder/components/AggregationName.jsx:64
 #: frontend/src/metabase/query_builder/components/AggregationName.jsx:96
 msgid "Invalid"
-msgstr ""
+msgstr "Geçersiz"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SpecificDatePicker.jsx:147
 msgid "Add a time"
-msgstr ""
+msgstr "Bir zaman ekleyin"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:170
 msgid "Nothing to compare for the previous {0}."
-msgstr ""
+msgstr "Önceki {0} ile karşılaştırılacak bir şey yok."
 
 #: frontend/src/metabase-lib/lib/Dimension.js:517
 msgid "by {0}"
-msgstr ""
+msgstr "{0} bazında"
 
 #: src/metabase/api/database.clj
 msgid "value must be a valid database engine."
-msgstr ""
+msgstr "Değer geçerli bir veritabanı olamalıdır."
 
 #: src/metabase/api/geojson.clj
 msgid "Connection refused by host for URL `{0}`"
-msgstr ""
+msgstr "URL '{0}'a erişim sistem tarafından reddedildi"
 
 #: src/metabase/db.clj
 msgid "Warning: Postgres connection string with `ssl=true` detected."
-msgstr ""
+msgstr "Uyarı: Postgres bağlantı dizininde 'ssl=true' dizgesi tespit edildi."
 
 #: src/metabase/db.clj
 msgid "You may need to add `?sslmode=require` to your application DB connection string."
-msgstr ""
+msgstr "Veritabanı bağlantı dizgesine '?sslmode=require' eklemeniz gerekebilir."
 
 #: src/metabase/db.clj
 msgid "If Metabase fails to launch, please add it and try again."
-msgstr ""
+msgstr "Eğer Metabase başlatılamazsa, lütfen tekrar ekeleyip deneyin."
 
 #: src/metabase/db.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
-msgstr ""
+msgstr "Ayrıntılar için https://github.com/metabase/metabase/issues/8908'i inceleyin."
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
-msgstr ""
+msgstr "Uyarı: Metabase'i bir H2 uygulama veritabanı ile kullanmak canlı sistemlerde tavsiye edilmemektedir."
 
 #: src/metabase/db.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
-msgstr ""
+msgstr "Canlı sistemlerde kullanılmak üzere, Postgres, MySQL ya da Maria DB'yi tavsiye ediyoruz."
 
 #: src/metabase/db.clj
 msgid "If you decide to continue to use H2, please be sure to back up the database file regularly."

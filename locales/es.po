@@ -1602,7 +1602,7 @@ msgstr "Embebido Premium habilitado"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
 msgid "Enter the token you bought from the Metabase Store"
-msgstr "Ingresa el token que compraste en la Tienda Metabase"
+msgstr "Introduce el token que compraste en la Tienda Metabase"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
@@ -1976,7 +1976,7 @@ msgstr "La alerta fue eliminada correctamente."
 
 #: frontend/src/metabase/auth/auth.js:33
 msgid "Please enter a valid formatted email address."
-msgstr "Por favor ingresa una dirección de correo electrónico con formato válido."
+msgstr "Por favor introduce una dirección de correo electrónico con formato válido."
 
 #: frontend/src/metabase/auth/auth.js:116
 #: frontend/src/metabase/setup/components/UserStep.jsx:110
@@ -3858,7 +3858,7 @@ msgid "Cumulative sum of ..."
 msgstr "Suma acumulada de ..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:493
-msgid "Additive sum of all the values of a column.\\ne.x. total revenue over time."
+msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
 msgstr "Suma aditiva de todos los valores de una columna.\n"
 " e.g. los ingresos totales a lo largo del tiempo"
 
@@ -3867,7 +3867,7 @@ msgid "Cumulative count of rows"
 msgstr "Recuento acumulado de filas"
 
 #: frontend/src/metabase/lib/schema_metadata.js:501
-msgid "Additive count of the number of rows.\\ne.x. total number of sales over time."
+msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
 msgstr "Recuento aditiva del número de filas.\n"
 " e.g. número total de ventas en el tiempo"
 
@@ -4247,11 +4247,11 @@ msgstr "Semana Pasada"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:164
 msgid "Last Month"
-msgstr "Mes Pasado"
+msgstr "El mes pasado"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:168
 msgid "Last Year"
-msgstr "Año Pasado"
+msgstr "El año pasado"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:172
 msgid "This Week"
@@ -4606,7 +4606,7 @@ msgstr "Omitir un pulso programado si ninguna de sus preguntas tiene resultado"
 
 #: frontend/src/metabase/pulse/components/RecipientPicker.jsx:65
 msgid "Enter email addresses you'd like this data to go to"
-msgstr "Ingresa las direcciones de correo electrónico a las que quieres que vayan estos datos"
+msgstr "Introduce las direcciones de correo electrónico a las que quieres que vayan estos datos"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:16
 msgid "Help everyone on your team stay in sync with your data."
@@ -5467,7 +5467,7 @@ msgstr "Activado"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/NumberPicker.jsx:47
 msgid "Enter desired number"
-msgstr "Ingresa el número deseado"
+msgstr "Introduce el número deseado"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:83
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:100
@@ -5488,11 +5488,11 @@ msgstr "Mostrar calendario"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/TextPicker.jsx:97
 msgid "You can enter multiple values separated by commas"
-msgstr "Puedes ingresar varios valores separados por comas"
+msgstr "Puedes introducir varios valores separados por comas"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/TextPicker.jsx:38
 msgid "Enter desired text"
-msgstr "Ingresa el texto deseado"
+msgstr "Introduce el texto deseado"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:83
 msgid "Try it"
@@ -5580,7 +5580,7 @@ msgstr "¿Archivar esta pregunta?"
 
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:57
 msgid "This question will be removed from any dashboards or pulses using it."
-msgstr "Esta pregunta se eliminará de cualquier cuadto de mando o pulso que lo usen."
+msgstr "Esta pregunta se eliminará de cualquier cuadro de mando o pulso que lo usen."
 
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:136
 msgid "Question"
@@ -7391,7 +7391,7 @@ msgstr "Establecer credenciales de Slack"
 
 #: src/metabase/api/setup.clj
 msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
-msgstr "¿Tu equipo usa Slack? Si es así, puedes enviar actualizaciones automáticas por pulsos y hacer preguntas con MedaBot."
+msgstr "¿Tu equipo usa Slack? Si es así, puedes enviar actualizaciones automáticas por pulsos y hacer preguntas con MetaBot."
 
 #: src/metabase/api/setup.clj
 msgid "Invite team members"
@@ -8352,7 +8352,7 @@ msgstr "Por favor, obtiene nuevos datos e intenta de nuevo"
 
 #: src/metabase/models/permissions_group.clj
 msgid "Created magic permissions group ''{0}'' (ID = {1})"
-msgstr "Creado grupo de permisos mágicos ''{0}'' (ID = {1}"
+msgstr "Creado grupo de permisos mágicos ''{0}'' (ID = {1})"
 
 #: src/metabase/models/permissions_group.clj
 msgid "A group with that name already exists."
@@ -8499,7 +8499,7 @@ msgstr "El idioma predeterminado para esta instancia de Metabase."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
-msgstr " Esto solo se aplica a correos electrónicos, pulsos, etc. Los navegadores de los usuarios especificarán el idioma utilizado en la interfaz de usuario."
+msgstr "Esto solo se aplica a correos electrónicos, pulsos, etc. Los navegadores de los usuarios especificarán el idioma utilizado en la interfaz de usuario."
 
 #: src/metabase/public_settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
@@ -8547,7 +8547,7 @@ msgstr "Para determinar cuánto tiempo debe permanecer el resultado guardado en 
 
 #: src/metabase/public_settings.clj
 msgid "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."
-msgstr "Así que, si una consulta tarda un promedio de 2 minutos en ejecutarse, e ingresas 10 para su multiplicador, su entrada en la memoria caché se mantendrá por 20 minutos."
+msgstr "Así que, si una consulta tarda un promedio de 2 minutos en ejecutarse, e introduces 10 para su multiplicador, su entrada en la memoria caché se mantendrá por 20 minutos."
 
 #: src/metabase/public_settings.clj
 msgid "When using the default binning strategy and a number of bins is not provided, this number will be used as the default."
@@ -8765,7 +8765,7 @@ msgstr "La zona horaria de la JVM es {0} y la zona horaria de la base de datos e
 
 #: src/metabase/util/date.clj
 msgid "Configure a report timezone to ensure proper date and time conversions."
-msgstr "Configura un informe con huso horario para comprobar las conversiones correctas de fecha y hora."
+msgstr "Configura una zona horaria de los informes para realizar conversiones correctas de fecha y hora."
 
 #: src/metabase/util/embed.clj
 msgid "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints."
@@ -9685,7 +9685,7 @@ msgstr "Fijaciones de dimensiones:n{0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "Using definitions:nMetrics:n{0}nFilters:n{1}"
-msgstr "Utilizando definiciones:\nMétricas{0}\nFiltros:\n{1}"
+msgstr "Utilizando definiciones:\\nMétricas{0}\\nFiltros:\\n{1}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "minute"
@@ -10082,7 +10082,7 @@ msgstr "Si hay o no patrones para cuando suceden."
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Users per state"
-msgstr "Usuarios por estado"
+msgstr "Usuarios por provincia"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Sessions"
@@ -10219,7 +10219,7 @@ msgstr "[[this]] por país"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Income per state"
-msgstr "Ingreso por estado"
+msgstr "Ingresos por provincia"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per [[GenericCategoryMedium]]"
@@ -10287,7 +10287,7 @@ msgstr "Eventos por [[GenericCategoryMedium]]"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events per state"
-msgstr "Eventos por estado"
+msgstr "Eventos por provincia"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Top landing pages"
@@ -10303,7 +10303,7 @@ msgstr "Suma de [[this]] por [[Country]]"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "States that are performing best"
-msgstr "Los estados con mejores resultados"
+msgstr "Las provincia con mejores resultados"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Created At by month of the year"
@@ -10335,7 +10335,7 @@ msgstr "Una visión general de tu [[this]] y cómo se distribuye en el tiempo, e
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Average income per state"
-msgstr "Ingreso medio por estado"
+msgstr "Ingresos medios por provincia"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -10399,7 +10399,7 @@ msgstr "Número de usuarios por origen"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Transactions per state"
-msgstr "Transacciones por estado"
+msgstr "Transacciones por provincia"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "[[this]] by [[Timestamp]]"
@@ -10482,7 +10482,7 @@ msgstr "Una mirada más profunda al rendimiento de los diferentes países."
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Sales per state"
-msgstr "Ventas por estado"
+msgstr "Ventas por provincia"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "Events by [[GenericNumber]]"
@@ -10533,7 +10533,7 @@ msgstr "Cómo se distribuye esta métrica en diferentes categorías."
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[this.short-name]] per state"
-msgstr "[[this.short-name]] por estado"
+msgstr "[[this.short-name]] por provincia"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Weekdays when [[this.short-name]] joined"
@@ -10553,7 +10553,7 @@ msgstr "Un desglose de tu [[this]] a lo largo del tiempo, y su mínimo, máximo,
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Average quantity per state"
-msgstr "Cantidad media por estado"
+msgstr "Cantidad media por provincia"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare by across different numbers"
@@ -10651,11 +10651,11 @@ msgstr "La correlación entre [[Number1]] y [[Number2]]"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Top 10 states by sales in the last 30 days"
-msgstr "Primeros 10 estados por venta en los últimos 30 días"
+msgstr "Primeras 10 provincias por venta en los últimos 30 días"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Top 10 states by sales"
-msgstr "Primeros 10 estados por ventas"
+msgstr "Primeras 10 provincia por ventas"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Timestamp]]"
@@ -10671,7 +10671,7 @@ msgstr "Primeros 10 paises por ventas"
 
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Sales by state"
-msgstr "Ventas por estado"
+msgstr "Ventas por provincia"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Where most of your sessions originate from"
@@ -10714,7 +10714,7 @@ msgstr "Como se distribuyen estas transacciones"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Per state"
-msgstr "Por estado"
+msgstr "Por provincias"
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 msgid "Count of [[GenericCategoryMedium]] by [[this]]"
@@ -10750,7 +10750,7 @@ msgstr "Una mirada a tu tabla [[this]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 msgid "How many [[GenericTable]] there are per state, and how each state is represented across other categories."
-msgstr "Cuántos [[GenericTable]] hay por estado y cómo se representa cada estado en otras categorías."
+msgstr "Cuántos [[GenericTable]] hay por provincia y cómo se representa cada estado en otras categorías."
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Most-viewed pages"
@@ -10939,7 +10939,7 @@ msgstr "Algunas métricas interesantes sobre tus estadísticas de GA para empeza
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "[[this]] per state"
-msgstr "[[this]] por estado"
+msgstr "[[this]] por provincia"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/table/EventTable.yaml
@@ -11054,7 +11054,7 @@ msgstr "[[this.short-name]] por coordenadas"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Heres a closer look at your [[this]] per state"
-msgstr "Una mirada detallada a los [[this]] por estado"
+msgstr "Una mirada detallada a los [[this]] por provincia"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Created At by day of the month"
@@ -11163,7 +11163,7 @@ msgstr "Unir fecha por día de la semana"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "We crunched the numbers for your [[this]]"
-msgstr "Hemos procesado los números de tu [[this[["
+msgstr "Hemos procesado los números de tu [[this]]"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Months when [[this.short-name]] joined"
@@ -11815,7 +11815,7 @@ msgstr "Error al ejecutar la consulta para la tarjeta {0}"
 
 #: src/metabase/pulse/render.clj
 msgid "Last week"
-msgstr "La semana anterior"
+msgstr "La semana pasada"
 
 #: src/metabase/pulse/render.clj
 msgid "This week"
@@ -11823,7 +11823,7 @@ msgstr "Esta semana"
 
 #: src/metabase/pulse/render.clj
 msgid "Last month"
-msgstr "El mes anterior"
+msgstr "El mes pasado"
 
 #: src/metabase/pulse/render.clj
 msgid "This month"
@@ -11831,7 +11831,7 @@ msgstr "Este mes"
 
 #: src/metabase/pulse/render.clj
 msgid "Last quarter"
-msgstr "El trimestre anterior"
+msgstr "El trimestre pasado"
 
 #: src/metabase/pulse/render.clj
 msgid "This quarter"
@@ -12090,283 +12090,283 @@ msgstr "[[CreateDate]] por trimestre del año"
 #: frontend/src/metabase/admin/people/containers/EditUserModal.jsx:12
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:200
 msgid "Edit user"
-msgstr ""
+msgstr "Editar usuario"
 
 #: frontend/src/metabase/admin/people/containers/NewUserModal.jsx:13
 msgid "New user"
-msgstr ""
+msgstr "Nuevo usuario"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:204
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:69
 msgid "Reset password"
-msgstr ""
+msgstr "Restablecer contraseña"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:209
 msgid "Deactivate user"
-msgstr ""
+msgstr "Desactivar usuario"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:47
 msgid "Reactivate {0}?"
-msgstr ""
+msgstr "¿Reactivar {0}?"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:63
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
-msgstr ""
+msgstr "No se ha podido enviar la invitación por correo electrónico, así que asegúrate de decirles que inicien sesión utilizando {0} y esta contraseña que hemos generado para ellos:"
 
 #: frontend/src/metabase/entities/collections.js:21
 msgid "collection"
-msgstr ""
+msgstr "colección"
 
 #: frontend/src/metabase/entities/collections.js:22
 msgid "collections"
-msgstr ""
+msgstr "colecciones"
 
 #: frontend/src/metabase/entities/dashboards.js:29
 msgid "dashboard"
-msgstr ""
+msgstr "cuadro de mando"
 
 #: frontend/src/metabase/entities/dashboards.js:30
 msgid "dashboards"
-msgstr ""
+msgstr "cuadros de mando"
 
 #: frontend/src/metabase/entities/users.js:125
 msgid "First name is required"
-msgstr ""
+msgstr "El nombre es obligatorio"
 
 #: frontend/src/metabase/entities/users.js:126
 #: frontend/src/metabase/entities/users.js:133
 msgid "Must be 100 characters or less"
-msgstr ""
+msgstr "Debe ser 100 caracteres o menos"
 
 #: frontend/src/metabase/entities/users.js:132
 msgid "Last name is required"
-msgstr ""
+msgstr "El apellido es obligatorio"
 
 #: frontend/src/metabase/entities/users.js:138
 msgid "Email is required"
-msgstr ""
+msgstr "El email es obligatorio"
 
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:90
 msgid "Items you archive will appear here."
-msgstr ""
+msgstr "Los artículos que archives aparecerán aquí."
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
-msgstr ""
+msgstr "Sin descripción"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:175
 msgid "Sum of all values"
-msgstr ""
+msgstr "Suma de todos los valores"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:183
 msgid "See all distinct values"
-msgstr ""
+msgstr "Ver todos los valores distintos"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:12
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started"
-msgstr ""
+msgstr "Examina el contenido de tus bases de datos, tablas y columnas. Elija una base de datos para empezar"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is VALID. Thanks!"
-msgstr ""
+msgstr "Los metadatos de resultados de tarjetas pasados a API son VÁLIDOS. ¡Gracias!"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Los metadatos de resultados de tarjetas pasados a API son INVÁLIDOS. Ejecutando la consulta para obtener los metadatos correctos."
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is  ISSING. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Los metadatos de resultados de tarjetas pasados a API NO ESTÁN. Ejecutando la consulta para obtener los metadatos correctos."
 
 #: src/metabase/api/email.clj
 msgid "{0} was autocorrected to {1}"
-msgstr ""
+msgstr "se ha autocorregido {0} a {1}"
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
-msgstr ""
+msgstr "DELETE /api/metric/:id está obsoleta. En su lugar cambia el valor de `archivado` con PUT /api/metric/:id."
 
 #: src/metabase/api/segment.clj
 msgid "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
-msgstr ""
+msgstr "DELETE /api/segment/:id está obsoleta. En su lugar cambia el valor de `archivado` con PUT /api/segment/:id."
 
 #: src/metabase/api/user.clj
 msgid "Value of is_superuser must correspond to presence of Admin group ID in group_ids."
-msgstr ""
+msgstr "El valor de is_superuser debe corresponder a la presencia de ID de grupo de administración en group_ids."
 
 #: src/metabase/async/api_response.clj
 msgid "Unexpected error writing keepalive characters"
-msgstr ""
+msgstr "Error inesperado al escribir caracteres keepalive"
 
 #: src/metabase/async/api_response.clj
 msgid "Unexpected output in async API response"
-msgstr ""
+msgstr "Salida inesperada en la respuesta de la API asíncrona"
 
 #: src/metabase/async/api_response.clj
 msgid "starting streaming response"
-msgstr ""
+msgstr "iniciando la respuesta de streaming"
 
 #: src/metabase/async/api_response.clj
 msgid "Output chan closed, canceling keepalive request."
-msgstr ""
+msgstr "Salida cerrada, cancelando la solicitud de keepalive."
 
 #: src/metabase/async/api_response.clj
 msgid "Async response finished, closing channels."
-msgstr ""
+msgstr "Respuesta asincrónica finalizada, cerando canales."
 
 #: src/metabase/async/api_response.clj
 msgid "No response after waiting {0}. Canceling request."
-msgstr ""
+msgstr "No hay respuesta después de esperar {0}. Cancelando solicitud."
 
 #: src/metabase/async/api_response.clj
 msgid "Input channel unexpectedly closed."
-msgstr ""
+msgstr "Se ha cerrado inesperadamente el canal de entrada."
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "f finished, permit will be returned"
-msgstr ""
+msgstr "f ha terminado, se devolverá el permiso"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "request canceled, permit will be returned"
-msgstr ""
+msgstr "solicitud cancelada, se devolverá el permiso"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Unexpected error attempting to run function after obtaining permit"
-msgstr ""
+msgstr "Error inesperado al intentar ejecutar la función después de obtener el permiso"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Not running pending function call: output channel already closed."
-msgstr ""
+msgstr "No se está ejecutando la llamada de función pendiente: el canal de salida ya está cerrado."
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Current thread already has a permit for {0}, will not wait to acquire another"
-msgstr ""
+msgstr "El hilo actual ya tiene un permiso para {0}, no esperamos a adquirir otro"
 
 #: src/metabase/async/util.clj
 msgid "Output channel closed, will skip running {0}."
-msgstr ""
+msgstr "Canal de salida cerrado, no se ejecutará {0}."
 
 #: src/metabase/async/util.clj
 msgid "Running {0} on separate thread..."
-msgstr ""
+msgstr "Ejecutando {0} en un hilo separado..."
 
 #: src/metabase/async/util.clj
 msgid "Caught error running {0}"
-msgstr ""
+msgstr "Error capturado ejecutando {0}"
 
 #: src/metabase/async/util.clj
 msgid "Request canceled, canceling future"
-msgstr ""
+msgstr "Solicitud cancelada, cancelando futuro"
 
 #: src/metabase/driver/sql_jdbc/connection.clj
 msgid "Closing old connection pool for database {0} ..."
-msgstr ""
+msgstr "Cerrando el grupo de conexiones antiguas de la base de datos {0} ..."
 
 #: src/metabase/metabot/command.clj
 msgid "Here''s your {0} most recent cards:"
-msgstr ""
+msgstr "Aquí están tus {0} tarjetas más recientes:"
 
 #: src/metabase/metabot/command.clj
 msgid "Could you be a little more specific, or use the ID? I found these cards with names that matched:"
-msgstr ""
+msgstr "¿Podrías ser un poco más específico, o usar la identificación? He encontrado estas tarjetas con nombres que coinciden:"
 
 #: src/metabase/metabot/command.clj
 msgid "Card {0} not found."
-msgstr ""
+msgstr "No se ha encontrado la tarjeta {0}"
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Exception in API call"
-msgstr ""
+msgstr "Excepción en la llamada a la API"
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Request canceled before finishing."
-msgstr ""
+msgstr "Solicitud cancelada antes de terminar."
 
 #: src/metabase/middleware/json.clj
 msgid "Metabase only supports JSON requests."
-msgstr ""
+msgstr "Metabase solo admite solicitudes JSON."
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
-msgstr ""
+msgstr "Asegúrate de establecer un encabezado 'Content-Type: application / json'."
 
 #: src/metabase/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
-msgstr ""
+msgstr "Estableciendo la URL de Metabase a {0}"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
-msgstr ""
+msgstr "Error programando tareas para DB"
 
 #: src/metabase/models/database.clj
 msgid "Error unscheduling tasks for DB."
-msgstr ""
+msgstr "Error desprogramando tareas para DB"
 
 #: src/metabase/models/database.clj
 msgid "{0} Database ''{1}'' sync/analyze schedules have changed!"
-msgstr ""
+msgstr "\"{1}\" tiempos de sincronización/análisis han cambiado en {0}"
 
 #: src/metabase/models/database.clj
 msgid "Sync metadata was: ''{0}'' is now: ''{1}''"
-msgstr ""
+msgstr "Sincronización de metadatos: ''{0}'' es ahora: ''{1}''"
 
 #: src/metabase/models/database.clj
 msgid "Cache FieldValues was: ''{0}'', is now: ''{1}''"
-msgstr ""
+msgstr "Valor de campo en cache era: ''{0}'', ahora es: ''{1}''"
 
 #: src/metabase/models/metric.clj
 msgid "You cannot update the creator_id of a Metric."
-msgstr ""
+msgstr "No se puede cambiar el creado de una métrica."
 
 #: src/metabase/models/permissions.clj
 msgid "MetaBot can only have Collection permissions."
-msgstr ""
+msgstr "MetaBot solo puede tener permisos de Colección."
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
-msgstr ""
+msgstr "Error al otorgar permisos"
 
 #: src/metabase/models/permissions.clj
 msgid "Changing permissions"
-msgstr ""
+msgstr "Cambiando los permisos"
 
 #: src/metabase/models/permissions.clj
 msgid "FROM:"
-msgstr ""
+msgstr "DE:"
 
 #: src/metabase/models/permissions.clj
 msgid "TO:"
-msgstr ""
+msgstr "A:"
 
 #: src/metabase/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
-msgstr ""
+msgstr "No se puede cambiar el creador de un segmento."
 
 #: src/metabase/models/setting.clj
 msgid "Attempted to set Setting {0} to obfuscated value. Ignoring change."
-msgstr ""
+msgstr "Se intentó establecer la configuración {0} en un valor obfuscado. Ignorando el cambio."
 
 #: src/metabase/models/setting.clj
 msgid "Using value of env var {0}"
-msgstr ""
+msgstr "Utilizando el valor de la variable de entorno {0}"
 
 #: src/metabase/models/user.clj
 msgid "Adding User {0} to All Users permissions group..."
-msgstr ""
+msgstr "Agregando el usuario {0} al grupo de todos los usuarios..."
 
 #: src/metabase/models/user.clj
 msgid "Adding User {0} to Admin permissions group..."
-msgstr ""
+msgstr "Agregando el usuario {0} al grupo de permisos de administrador..."
 
 #: src/metabase/query_processor.clj
 msgid "Query failure"
-msgstr ""
+msgstr "Fallo en la consulta"
 
 #: src/metabase/query_processor/async.clj
 msgid "Maximum number of simultaneous queries to allow per connected Database."
-msgstr ""
+msgstr "Número máximo de consultas simultáneas permitidas por base de datos conectada."
 
 #: src/metabase/util.clj
 msgid "Timed out after {0} milliseconds."
-msgstr ""
+msgstr "Tiempo agotado después de {0} milisegundos."
 
