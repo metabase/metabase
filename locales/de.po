@@ -11590,8 +11590,7 @@ msgstr "Wenn Metabase nicht startet, füge es bitte hinzu und versuche es noch e
 
 #: src/metabase/db.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
-msgstr "Siehe https://github.com/metabase/metabase/issues/8908 für mehr Details.\n"
-""
+msgstr "Siehe https://github.com/metabase/metabase/issues/8908 für mehr Details."
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
