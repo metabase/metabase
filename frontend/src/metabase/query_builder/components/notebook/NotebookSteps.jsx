@@ -54,8 +54,7 @@ function getQuestionSteps(question, openSteps) {
 
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    const stages = getStages(query);
-    for (const [stageIndex, stageQuery] of stages.entries()) {
+    for (const [stageIndex, stageQuery] of query.queries().entries()) {
       const stageSteps = getStageSteps(stageQuery, stageIndex, openSteps);
       steps.push(...stageSteps);
     }
@@ -73,15 +72,6 @@ function getQuestionSteps(question, openSteps) {
   }
 
   return steps;
-}
-
-function getStages(query) {
-  const stages = [];
-  do {
-    stages.unshift(query);
-    query = query.sourceQuery();
-  } while (query);
-  return stages;
 }
 
 const STEPS = [

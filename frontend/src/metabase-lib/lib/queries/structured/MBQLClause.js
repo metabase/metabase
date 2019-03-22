@@ -12,6 +12,10 @@ export default class MBQLClause extends Array {
     this._query = query;
   }
 
+  set(mbql) {
+    return new this.constructor(mbql, this._index, this._query);
+  }
+
   replace(replacement: any): StructuredQuery {
     throw new Error("Abstract method `replace` not implemented");
   }

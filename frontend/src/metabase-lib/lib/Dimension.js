@@ -64,19 +64,29 @@ export default class Dimension {
   /**
    * Dimension constructor
    */
-  constructor(parent: ?Dimension, args: any[], metadata?: Metadata) {
+  constructor(
+    parent: ?Dimension,
+    args: any[],
+    metadata?: Metadata,
+    query?: ?StructuredQuery,
+  ) {
     this._parent = parent;
     this._args = args;
     this._metadata = metadata || (parent && parent._metadata);
+    this._query = query || (parent && parent._query);
   }
 
   /**
    * Parses an MBQL expression into an appropriate Dimension subclass, if possible.
    * Metadata should be provided if you intend to use the display name or render methods.
    */
-  static parseMBQL(mbql: ConcreteField, metadata?: Metadata): ?Dimension {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
     for (const D of DIMENSION_TYPES) {
-      const dimension = D.parseMBQL(mbql, metadata);
+      const dimension = D.parseMBQL(mbql, metadata, query);
       if (dimension != null) {
         return dimension;
       }
@@ -92,12 +102,12 @@ export default class Dimension {
       a instanceof Dimension
         ? a
         : // $FlowFixMe
-          Dimension.parseMBQL(a, this._metadata);
+          Dimension.parseMBQL(a);
     let dimensionB: ?Dimension =
       b instanceof Dimension
         ? b
         : // $FlowFixMe
-          Dimension.parseMBQL(b, this._metadata);
+          Dimension.parseMBQL(b);
     return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
   }
 
@@ -195,7 +205,7 @@ export default class Dimension {
     } else {
       mbql = fieldRef;
     }
-    let dimension = Dimension.parseMBQL(mbql, this._metadata);
+    let dimension = Dimension.parseMBQL(mbql, this._metadata, this._query);
     if (option.name) {
       dimension._subDisplayName = option.name;
       dimension._subTriggerDisplayName = option.name;
@@ -214,7 +224,7 @@ export default class Dimension {
     let otherDimension: ?Dimension =
       other instanceof Dimension
         ? other
-        : Dimension.parseMBQL(other, this._metadata);
+        : Dimension.parseMBQL(other, this._metadata, this._query);
     if (!otherDimension) {
       return false;
     }
@@ -233,7 +243,7 @@ export default class Dimension {
     let otherDimension: ?Dimension =
       other instanceof Dimension
         ? other
-        : Dimension.parseMBQL(other, this._metadata);
+        : Dimension.parseMBQL(other, this._metadata, this._query);
 
     const baseDimensionA = this.baseDimension();
     const baseDimensionB = otherDimension && otherDimension.baseDimension();
@@ -268,16 +278,28 @@ export default class Dimension {
 
   /**
    * Valid filter operators on this dimension
+   * TODO: rename filterOperator()
    */
-  operators() {
-    return this.field().operators || [];
+  operatorOptions() {
+    return this.baseDimension().field().operators || [];
   }
 
   /**
    * The operator with the provided operator name (e.x. `=`, `<`, etc)
+   * TODO: rename filterOperators()
    */
   operator(op) {
     return this.field().operator(op);
+  }
+
+  /**
+   * The default operator for this
+   */
+  defaultOperator() {
+    // let the DatePicker choose the default operator, otherwise use the first one
+    // TODO: replace with a defaultFilter()- or similar which includes arguments
+    const operators = this.operatorOptions();
+    return this.field().isDate() ? null : operators[0] && operators[0].name;
   }
 
   /**
@@ -397,12 +419,16 @@ export class FieldDimension extends Dimension {
  * Field ID-based dimension, `["field-id", field-id]`
  */
 export class FieldIDDimension extends FieldDimension {
-  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ) {
     if (typeof mbql === "number") {
       // DEPRECATED: bare field id
-      return new FieldIDDimension(null, [mbql], metadata);
+      return new FieldIDDimension(null, [mbql], metadata, query);
     } else if (Array.isArray(mbql) && mbql[0] === "field-id") {
-      return new FieldIDDimension(null, mbql.slice(1), metadata);
+      return new FieldIDDimension(null, mbql.slice(1), metadata, query);
     }
     return null;
   }
@@ -423,9 +449,13 @@ export class FieldIDDimension extends FieldDimension {
  * Field Literal-based dimension, `["field-literal", field-name, base-type]`
  */
 export class FieldLiteralDimension extends FieldDimension {
-  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ) {
     if (Array.isArray(mbql) && mbql[0] === "field-literal") {
-      return new FieldLiteralDimension(null, mbql.slice(1), metadata);
+      return new FieldLiteralDimension(null, mbql.slice(1), metadata, query);
     }
     return null;
   }
@@ -434,16 +464,46 @@ export class FieldLiteralDimension extends FieldDimension {
     return ["field-literal", ...this._args];
   }
 
-  displayName(): string {
+  columnDimension() {
+    if (this._query) {
+      const query = this._query.sourceQuery();
+      const columnNames = query.columnNames();
+      const index = _.findIndex(columnNames, name => this._args[0] === name);
+      if (index >= 0) {
+        return query.columnDimensions()[index];
+      }
+    }
+  }
+
+  name() {
     return this._args[0];
   }
 
+  displayName() {
+    return this.field().displayName();
+  }
+
   field() {
+    if (this._query) {
+      // TODO: more efficient lookup
+      const field = _.findWhere(this._query.table().fields, {
+        name: this.name(),
+      });
+      if (field) {
+        return field;
+      }
+    }
     return new Field({
       id: this.mbql(),
-      name: this._args[0],
-      display_name: this._args[0],
+      name: this.name(),
+      display_name: this.name(),
       base_type: this._args[1],
+      // HACK: need to thread the query through to this fake Field
+      query: this._query,
+      operators: [{ name: "=", verboseName: t`Is`, fields: [] }],
+      operators_lookup: {
+        "=": { name: "=", verboseName: t`Is`, fields: [] },
+      },
     });
   }
 }
@@ -452,12 +512,16 @@ export class FieldLiteralDimension extends FieldDimension {
  * Foreign key-based dimension, `["fk->", fk-field-id, dest-field-id]`
  */
 export class FKDimension extends FieldDimension {
-  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
     if (Array.isArray(mbql) && mbql[0] === "fk->") {
       // $FlowFixMe
       const fkRef: ForeignFieldReference = mbql;
-      const parent = Dimension.parseMBQL(fkRef[1], metadata);
-      return new FKDimension(parent, fkRef.slice(2), metadata);
+      const parent = Dimension.parseMBQL(fkRef[1], metadata, query);
+      return new FKDimension(parent, fkRef.slice(2), metadata, query);
     }
     return null;
   }
@@ -467,16 +531,27 @@ export class FKDimension extends FieldDimension {
       const field = parent.field();
       if (field.target && field.target.table) {
         return field.target.table.fields.map(
-          field => new FKDimension(parent, [field.id], parent._metadata),
+          field =>
+            new FKDimension(
+              parent,
+              [field.id],
+              parent._metadata,
+              parent._query,
+            ),
         );
       }
     }
     return [];
   }
 
-  constructor(parent: ?Dimension, args: any[], metadata?: Metadata): Dimension {
-    super(parent, args, metadata);
-    this._dest = Dimension.parseMBQL(args[0], metadata);
+  constructor(
+    parent: ?Dimension,
+    args: any[],
+    metadata?: Metadata,
+    query?: ?StructuredQuery,
+  ): Dimension {
+    super(parent, args, metadata, query);
+    this._dest = Dimension.parseMBQL(args[0], metadata, query);
   }
 
   mbql(): ForeignFieldReference {
@@ -520,14 +595,28 @@ const isFieldDimension = dimension =>
  * DatetimeField dimension, `["datetime-field", field-reference, datetime-unit]`
  */
 export class DatetimeFieldDimension extends FieldDimension {
-  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
     if (Array.isArray(mbql) && mbql[0] === "datetime-field") {
-      const parent = Dimension.parseMBQL(mbql[1], metadata);
+      const parent = Dimension.parseMBQL(mbql[1], metadata, query);
       // DEPRECATED: ["datetime-field", id, "of", unit]
       if (mbql.length === 4) {
-        return new DatetimeFieldDimension(parent, mbql.slice(3));
+        return new DatetimeFieldDimension(
+          parent,
+          mbql.slice(3),
+          metadata,
+          query,
+        );
       } else {
-        return new DatetimeFieldDimension(parent, mbql.slice(2));
+        return new DatetimeFieldDimension(
+          parent,
+          mbql.slice(2),
+          metadata,
+          query,
+        );
       }
     }
     return null;
@@ -536,7 +625,13 @@ export class DatetimeFieldDimension extends FieldDimension {
   static dimensions(parent: Dimension): Dimension[] {
     if (isFieldDimension(parent) && parent.field().isDate()) {
       return DATETIME_UNITS.map(
-        unit => new DatetimeFieldDimension(parent, [unit]),
+        unit =>
+          new DatetimeFieldDimension(
+            parent,
+            [unit],
+            this._metadata,
+            this._query,
+          ),
       );
     }
     return [];
@@ -544,9 +639,12 @@ export class DatetimeFieldDimension extends FieldDimension {
 
   static defaultDimension(parent: Dimension): ?Dimension {
     if (isFieldDimension(parent) && parent.field().isDate()) {
-      return new DatetimeFieldDimension(parent, [
-        parent.field().getDefaultDateTimeUnit(),
-      ]);
+      return new DatetimeFieldDimension(
+        parent,
+        [parent.field().getDefaultDateTimeUnit()],
+        this._metadata,
+        this._query,
+      );
     }
     return null;
   }
@@ -580,9 +678,13 @@ export class DatetimeFieldDimension extends FieldDimension {
  * Binned dimension, `["binning-strategy", field-reference, strategy, ...args]`
  */
 export class BinnedDimension extends FieldDimension {
-  static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ) {
     if (Array.isArray(mbql) && mbql[0] === "binning-strategy") {
-      const parent = Dimension.parseMBQL(mbql[1], metadata);
+      const parent = Dimension.parseMBQL(mbql[1], metadata, query);
       return new BinnedDimension(parent, mbql.slice(2));
     }
     return null;
@@ -649,19 +751,20 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
+const INTEGER_AGGREGATIONS = new Set("count", "cum-count", "distinct");
+
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
 export class AggregationDimension extends Dimension {
-  static parseMBQL(mbql: any, metadata?: ?Metadata): ?Dimension {
+  static parseMBQL(
+    mbql: any,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
     if (Array.isArray(mbql) && mbql[0] === "aggregation") {
-      return new AggregationDimension(null, mbql.slice(1), metadata);
+      return new AggregationDimension(null, mbql.slice(1), metadata, query);
     }
-  }
-
-  constructor(parent, args, metadata, query) {
-    super(parent, args, metadata);
-    this._query = query;
   }
 
   aggregationIndex(): number {
@@ -678,12 +781,26 @@ export class AggregationDimension extends Dimension {
   fieldDimension() {
     const aggregation = this.aggregation();
     if (aggregation.length === 2 && aggregation[1]) {
-      return Dimension.parseMBQL(aggregation[1], this._metadata);
+      return Dimension.parseMBQL(aggregation[1], this._metadata, this._query);
     }
     return null;
   }
 
+  column() {
+    const [short] = this.aggregation() || [];
+    return {
+      ...super.column(),
+      base_type: INTEGER_AGGREGATIONS.has(short)
+        ? "type/Integer"
+        : "type/Float",
+      display_name: short,
+      name: short,
+      source: "aggregation",
+    };
+  }
+
   field() {
+    // FIXME: it isn't really correct to return the unaggregated field. return a fake Field object?
     const dimension = this.fieldDimension();
     return dimension ? dimension.field() : super.field();
   }

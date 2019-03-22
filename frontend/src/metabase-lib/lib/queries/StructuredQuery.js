@@ -12,6 +12,8 @@ import { format as formatExpression } from "metabase/lib/expressions/formatter";
 import _ from "underscore";
 import { chain, assoc, dissoc, updateIn } from "icepick";
 
+import { memoize } from "metabase-lib/lib/utils";
+
 import type {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -34,6 +36,7 @@ import Dimension, {
   FKDimension,
   ExpressionDimension,
   AggregationDimension,
+  FieldLiteralDimension,
 } from "metabase-lib/lib/Dimension";
 
 import type Segment from "../metadata/Segment";
@@ -256,41 +259,34 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns the table object, if a table is selected and loaded.
    */
+  @memoize
   table(): Table {
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      return sourceQuery.resultTable();
+      const table = new Table({
+        name: "",
+        display_name: "",
+        db: sourceQuery.database(),
+        fields: sourceQuery.columns().map(
+          (column, index) =>
+             new Field({
+              ...column,
+              id: ["field-literal", column.name, column.base_type],
+              source: "fields",
+              // HACK: need to thread the query through to this fake Field
+              query: this
+            })
+        ),
+        segments: [],
+        metrics: [],
+      });
+      // HACK: ugh various parts of the UI still expect this stuff
+      addValidOperatorsToFields(table);
+      augmentDatabase({ tables: [table] });
+      return table;
+    } else {
+      return this.metadata().table(this.tableId());
     }
-    return this.metadata().table(this.tableId());
-  }
-
-  /**
-   * @returns the a table corresponding to the query result, e.x. for queries with "source-query" instead of "source-table"
-   */
-  resultTable(): Table {
-    const table = new Table({
-      name: "",
-      display_name: "",
-      db: this.database(),
-      fields: this.columnDimensions().map(
-        d =>
-          new Field({
-            ...d.column(),
-            id: [
-              "field-literal",
-              d.columnName(),
-              d.field().special_type || d.field().base_type || "type/Float",
-            ],
-          }),
-      ),
-      segments: [],
-      metrics: [],
-    });
-    // HACK: ugh various parts of the UI still expect this stuff
-    addValidOperatorsToFields(table);
-    augmentDatabase({ tables: [table] });
-
-    return table;
   }
 
   /**
@@ -606,7 +602,7 @@ export default class StructuredQuery extends AtomicQuery {
     } else if (this.hasValidBreakout()) {
       for (const breakout of this.breakouts()) {
         sortOptions.dimensions.push(
-          Dimension.parseMBQL(breakout, this._metadata),
+          this.parseFieldReference(breakout),
         );
         sortOptions.count++;
       }
@@ -769,14 +765,14 @@ export default class StructuredQuery extends AtomicQuery {
   expressionDimensions(): Dimension[] {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
-        return new ExpressionDimension(null, [expressionName]);
+        return new ExpressionDimension(null, [expressionName], this._metadata, this);
       },
     );
   }
 
   breakoutDimensions() {
     return this.breakouts().map(breakout =>
-      Dimension.parseMBQL(breakout, this._metadata),
+      this.parseFieldReference(breakout),
     );
   }
 
@@ -789,22 +785,22 @@ export default class StructuredQuery extends AtomicQuery {
 
   fieldDimensions() {
     return this.fields().map((fieldClause, index) =>
-      Dimension.parseMBQL(fieldClause, this._metadata),
+      this.parseFieldReference(fieldClause),
     );
   }
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
+  @memoize
   columnDimensions() {
     const aggregations = this.aggregationDimensions();
     const breakouts = this.breakoutDimensions();
     const fields = this.fieldDimensions();
-    const expressions = this.expressionDimensions();
-    const table = this.tableDimensions();
-    let dimensions;
     if (aggregations.length || breakouts.length || fields.length) {
-      dimensions = [...breakouts, ...aggregations, ...fields];
+      return [...breakouts, ...aggregations, ...fields];
     } else {
+      const expressions = this.expressionDimensions();
+      const table = this.tableDimensions();
       const sorted = _.chain(table)
         .filter(d => d.field().visibility_type !== "hidden")
         .sortBy(d => d.field().name)
@@ -814,12 +810,12 @@ export default class StructuredQuery extends AtomicQuery {
         })
         .sortBy(d => d.field().position)
         .value();
-      dimensions = [...sorted, ...expressions];
+      return [...sorted, ...expressions];
     }
-    return dimensions;
   }
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
+  @memoize
   columnNames() {
     // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
     const nameCounts = new Map();
@@ -866,14 +862,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // TODO: better name may be parseDimension?
   parseFieldReference(fieldRef): ?Dimension {
-    const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
-    if (dimension) {
-      // HACK: we should probably pass the query into parseMBQL like we do for metadata
-      if (dimension instanceof AggregationDimension) {
-        dimension._query = this;
-      }
-      return dimension;
-    }
+    return Dimension.parseMBQL(fieldRef, this._metadata, this);
   }
 
   dimensionForColumn(column) {
@@ -951,6 +940,14 @@ export default class StructuredQuery extends AtomicQuery {
         .assoc("source-query", sourceQuery)
         .value(),
     );
+  }
+
+  queries() {
+    const queries = [];
+    for (let query = this; query; query = query.sourceQuery()) {
+      queries.unshift(query);
+    }
+    return queries;
   }
 }
 

@@ -209,6 +209,7 @@ export default class QueryBuilder extends Component {
     //    @connect(null, { updateQuestion })
     //    @connect(mapStateToProps, mapDispatchToProps)
     if (nextProps.question) {
+      window.question = nextProps.question;
       nextProps.question._update = nextProps.updateQuestion;
     }
   }

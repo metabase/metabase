@@ -123,9 +123,9 @@ export default class Field extends Base {
 
   dimension() {
     if (Array.isArray(this.id) && this.id[0] === "field-literal") {
-      return new FieldLiteralDimension(null, this.id.slice(1), this.metadata);
+      return new FieldLiteralDimension(null, this.id.slice(1), this.metadata, this.query);
     }
-    return new FieldIDDimension(null, [this.id], this.metadata);
+    return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
   operator(op) {
