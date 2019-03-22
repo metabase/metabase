@@ -55,11 +55,9 @@ export const ViewTitleHeader = ({
               onOpenModal={onOpenModal}
             />
           </div>
-          <div className="p1">
-            <ViewSubHeading>
-              <QuestionDataSource question={question} subHead />
-            </ViewSubHeading>
-          </div>
+          <ViewSubHeading>
+            <QuestionDataSource question={question} subHead />
+          </ViewSubHeading>
         </div>
       ) : (
         <div>
@@ -70,6 +68,9 @@ export const ViewTitleHeader = ({
               <QuestionDescription question={question} />
             )}
           </ViewHeading>
+          {question.query().aggregations().length > 0 && (
+            <QuestionDataSource question={question} subHead />
+          )}
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
             <div className="mt1">
               <ViewSubHeading>
