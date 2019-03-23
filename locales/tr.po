@@ -10687,8 +10687,7 @@ msgstr "Ülke başına ortalama gelir"
 #: resources/automagic_dashboards/comparison/Country.yaml
 #: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "How [[this]] is distributed"
-msgstr "[[this]]'in nasıl dağıtılması\n"
-""
+msgstr "[[this]]'in nasıl dağıtılması"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Distinct [[FK]]"
