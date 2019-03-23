@@ -11572,8 +11572,7 @@ msgstr "Se você decidir continuar a usar H2, por favor certifique-se de fazer b
 
 #: src/metabase/db.clj
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
-msgstr "Veja https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres para mais informações.\n"
-""
+msgstr "Veja https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres para mais informações."
 
 #: src/metabase/db.clj
 msgid "Unable to connect to Metabase {0} DB."
@@ -12220,8 +12219,7 @@ msgstr "Iniciando a transmissão da resposta"
 
 #: src/metabase/async/api_response.clj
 msgid "Output chan closed, canceling keepalive request."
-msgstr "Canal de saída fechado, cancelando requisição de manutenção de abertura\n"
-""
+msgstr "Canal de saída fechado, cancelando requisição de manutenção de abertura"
 
 #: src/metabase/async/api_response.clj
 msgid "Async response finished, closing channels."
@@ -12301,8 +12299,7 @@ msgstr "Metabase suporta apenas requisições JSON"
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
-msgstr "Esteja seguro de colocar um cabeçalho 'Tipo de conteúdo: aplicação/json'\n"
-""
+msgstr "Esteja seguro de colocar um cabeçalho 'Tipo de conteúdo: aplicação/json'"
 
 #: src/metabase/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
