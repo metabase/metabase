@@ -4537,8 +4537,7 @@ msgstr "Виберіть дані"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:162
 msgid "Choose questions you'd like to send in this pulse"
-msgstr "Виберіть запити, які будуть надіслані в цьому Пульс\n"
-""
+msgstr "Виберіть запити, які будуть надіслані в цьому Пульс"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
 msgid "Emails"
@@ -4760,8 +4759,7 @@ msgstr "Довільний вираз"
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:20
 msgid "Common Metrics"
-msgstr "Загальні метрики\n"
-""
+msgstr "Загальні метрики"
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:209
 msgid "Metabasics"
