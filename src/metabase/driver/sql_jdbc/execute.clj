@@ -2,7 +2,9 @@
 (ns metabase.driver.sql-jdbc.execute
   "Code related to actually running a SQL query against a JDBC database (including setting the session timezone when
   appropriate), and for properly encoding/decoding types going in and out of the database."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
@@ -13,6 +15,7 @@
              [interface :as qp.i]
              [store :as qp.store]
              [util :as qputil]]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
@@ -163,9 +166,20 @@
   [[conn-binding db] & body]
   `(do-with-ensured-connection ~db (fn [~conn-binding] ~@body)))
 
+
+(defn- results-reducer
+  [ostream report-timezone]
+  (fn [rs]
+    (let [row-mapper (format-rows/map-row-builder report-timezone)]
+      (with-open [writer (io/writer ostream)]
+      (let [header (mapv name (first rs))]
+        (csv/write-csv writer (map row-mapper (cons header (rest rs)))))
+        (.flush writer)))))
+
+
 (defn- cancelable-run-query
   "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
-  [db sql params opts]
+  [db sql params ostream report-timezone opts]
   (with-ensured-connection [conn db]
     ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
     (with-open [^PreparedStatement stmt (jdbc/prepare-statement conn sql opts)]
@@ -175,31 +189,39 @@
         (.closeOnCompletion stmt))
       ;; Need to run the query in another thread so that this thread can cancel it if need be
       (try
-        (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
-          ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
-          ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
-          ;; we can give up on the query running in the future
-          @query-future)
+        (if (nil? ostream)
+          (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
+            ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
+            ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
+            ;; we can give up on the query running in the future
+            @query-future)
+          (let [new-opts (assoc opts :result-set-fn (results-reducer ostream report-timezone))]
+            (jdbc/query conn (into [stmt] params) new-opts)))
         (catch InterruptedException e
           (log/warn e (tru "Client closed connection, cancelling query"))
           ;; This is what does the real work of cancelling the query. We aren't checking the result of
+
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
           (throw e))))))
 
 (defn- run-query
   "Run the query itself."
-  [driver {sql :query, :keys [params remark max-rows]}, ^TimeZone timezone, connection]
+  [driver {sql :query, :keys [params remark max-rows ostream]}, report-timezone, ^TimeZone timezone, connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
-        [columns & rows] (cancelable-run-query
-                          connection sql params
-                          {:identifiers    identity
-                           :as-arrays?     true
-                           :read-columns   (read-columns driver (some-> timezone Calendar/getInstance))
-                           :set-parameters (set-parameters-with-timezone timezone)
-                           :max-rows       max-rows})]
-    {:rows    (or rows [])
-     :columns (map u/keyword->qualified-name columns)}))
+        res              (cancelable-run-query
+                            connection sql params ostream report-timezone
+                            {:identifiers    identity
+                             :as-arrays?     true
+                             :read-columns   (read-columns driver (some-> timezone Calendar/getInstance))
+                             :set-parameters (set-parameters-with-timezone timezone)
+                             :max-rows       max-rows})]
+    (if (nil? ostream)
+      (let [[columns & rows] res]
+        {:rows    (or rows [])
+         :columns (map u/keyword->qualified-name columns)})
+      {:rows    []
+       :columns []})))
 
 
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------
@@ -254,7 +276,7 @@
     (jdbc/db-do-prepared connection [sql])))
 
 (defn- run-query-without-timezone [driver _ connection query]
-  (do-in-transaction connection (partial run-query driver query nil)))
+  (do-in-transaction connection (partial run-query driver query nil nil)))
 
 (defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
   (try
@@ -262,6 +284,7 @@
                                     (set-timezone! driver settings transaction-connection)
                                     (run-query driver
                                                query
+                                               report-timezone
                                                (some-> report-timezone TimeZone/getTimeZone)
                                                transaction-connection)))
     (catch SQLException e
@@ -276,10 +299,11 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {settings :settings, query :native, :as outer-query}]
+  [driver {ostream :ostream, settings :settings, query :native, :as outer-query}]
   (let [query (assoc query
                 :remark   (qputil/query->remark outer-query)
-                :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
+                :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results)
+                :ostream ostream)]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))]

@@ -67,8 +67,8 @@
   "Async version of `metabase.query-processor/process-query-and-save-execution!`. Runs query asynchronously, and returns
   a `core.async` channel that can be used to fetch the results once the query finishes running. Closing the channel
   will cancel the query."
-  [query options]
-  (do-async (:database query) qp/process-query-and-save-execution! query options))
+  [query options ostream]
+  (do-async (:database query) qp/process-query-and-save-execution! query options ostream))
 
 (defn process-query-and-save-with-max!
   "Async version of `metabase.query-processor/process-query-and-save-with-max!`. Runs query asynchronously, and returns

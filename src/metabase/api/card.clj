@@ -609,7 +609,7 @@
   "Run the query for Card with `parameters` and `constraints`, and return results in a core.async channel. Will throw an
   Exception if preconditions (such as read perms) are not met before returning a channel."
   {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id middleware]
+  [card-id & {:keys [parameters constraints context dashboard-id middleware ostream]
               :or   {constraints qp/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
@@ -620,7 +620,7 @@
                  :card-id      card-id
                  :dashboard-id dashboard-id}]
     (api/check-not-archived card)
-    (qp.async/process-query-and-save-execution! query options)))
+    (qp.async/process-query-and-save-execution! query options ostream)))
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -637,12 +637,13 @@
    export-format dataset-api/ExportFormat}
   (binding [cache/*ignore-cached-results* true]
     (dataset-api/as-format-async export-format respond raise
-      (run-query-for-card-async (Integer/parseUnsignedInt card-id)
+      (fn [ostream]
+       (run-query-for-card-async (Integer/parseUnsignedInt card-id)
         :parameters  (json/parse-string parameters keyword)
         :constraints nil
         :context     (dataset-api/export-format->context export-format)
-        :middleware  {:skip-results-metadata? true}))))
-
+        :middleware  {:skip-results-metadata? true}
+        :ostream     ostream)))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

@@ -20,7 +20,9 @@
              [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           [java.io PipedInputStream
+                    PipedOutputStream]))
 
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -112,7 +114,16 @@
       {:status 500
        :body   (:error response)})))
 
-(s/defn as-format-async
+
+(defn- as-format-response-piped-csv
+  [stream]
+  (api/let-404 [export-conf (ex/export-formats "csv")]
+    {:status  200
+     :body    stream
+     :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
+               "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}))
+
+(s/defn as-format-async-internal
   "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
   core.async channel that can be used to fetch the results of the query."
   {:style/indent 3}
@@ -128,6 +139,35 @@
       (finally
         (a/close! in-chan))))
   nil)
+
+(s/defn as-format-async-piped-csv
+  "Triggers the results builder of an async query. `in-chan` should be a
+  core.async channel that can be used to fetch the results of the query."
+  {:style/indent 3}
+  [export-format :- ExportFormat, raise :- (s/pred fn?), in-chan :- ManyToManyChannel]
+  (a/go
+   (try
+     (let [results (a/<! in-chan)]
+       (if (instance? Throwable results)
+         (raise results)))
+     (catch Throwable e
+       (raise e))
+     (finally
+       (a/close! in-chan))))
+  nil)
+
+(s/defn as-format-async
+  "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
+  core.async channel that can be used to fetch the results of the query."
+  [export-format respond raise results-builder]
+      (if (= export-format "csv")
+        (let [input   (PipedInputStream.)
+              ostream (PipedOutputStream.)
+              in-chan (results-builder ostream)]
+          (.connect input ostream)
+          (as-format-async-piped-csv export-format raise in-chan)
+          (respond (as-format-response-piped-csv input)))
+        (as-format-async export-format respond raise (results-builder nil))))
 
 (def export-format-regex
   "Regex for matching valid export formats (e.g., `json`) for queries.
@@ -145,11 +185,13 @@
     (when-not (= database database/virtual-id)
       (api/read-check Database database))
     (as-format-async export-format respond raise
-      (qp.async/process-query-and-save-execution!
-       (-> query
-           (dissoc :constraints)
-           (assoc-in [:middleware :skip-results-metadata?] true))
-       {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
+      (fn [ostream]
+        (qp.async/process-query-and-save-execution!
+         (-> query
+             (dissoc :constraints)
+             (assoc-in [:middleware :skip-results-metadata?] true))
+         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}
+         ostream)))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

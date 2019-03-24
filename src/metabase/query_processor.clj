@@ -348,10 +348,11 @@
                     (u/pprint-to-str (u/filtered-stacktrace e))))
         (save-and-return-failed-query! query-execution e)))))
 
-(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
+(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info, ostream]
   (assoc query :info (assoc options
                        :query-hash (qputil/query-hash query)
-                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))))
+                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))
+               :ostream ostream))
 
 ;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
@@ -367,8 +368,8 @@
 
   OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
-  [query, options :- mbql.s/Info]
-  (run-and-save-query! (assoc-query-info query options)))
+  [query, options :- mbql.s/Info, ostream]
+  (run-and-save-query! (assoc-query-info query options ostream)))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."

@@ -309,7 +309,8 @@
   [{{:keys [token export-format]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (run-query-for-unsigned-token-async (eu/unsign token) (m/map-keys keyword query-params), :constraints nil)))
+    (fn [ostream]
+      (run-query-for-unsigned-token-async (eu/unsign token) (m/map-keys keyword query-params), :constraints nil, :ostream ostream))))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -436,11 +437,13 @@
   [{{:keys [token export-format dashcard-id card-id]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (card-for-signed-token-async token
-      (Integer/parseUnsignedInt dashcard-id)
-      (Integer/parseUnsignedInt card-id)
-      (m/map-keys keyword query-params)
-      :constraints nil)))
+    (fn [ostream]
+      (card-for-signed-token-async token
+        (Integer/parseUnsignedInt dashcard-id)
+        (Integer/parseUnsignedInt card-id)
+        (m/map-keys keyword query-params)
+        :constraints nil
+        :ostream ostream))))
 
 
 (api/define-routes)

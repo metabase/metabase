@@ -113,7 +113,8 @@
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (run-query-for-card-with-public-uuid-async uuid (json/parse-string parameters keyword), :constraints nil)))
+    (fn [ostream]
+      (run-query-for-card-with-public-uuid-async uuid (json/parse-string parameters keyword), :constraints nil, :ostream ostream))))
 
 
 
