@@ -8,8 +8,8 @@ import cx from "classnames";
 export default class NotebookSteps extends React.Component {
   state = {
     openSteps: {
-      "0:filter": false,
-      "0:aggregate": false,
+      "0:filter": true,
+      "0:aggregate": true,
     },
     lastOpenedStep: null,
   };
