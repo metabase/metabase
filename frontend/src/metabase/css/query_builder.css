@@ -1,5 +1,6 @@
 :root {
   --selection-color: var(--color-text-light);
+  --filter-color: var(--color-accent7);
 }
 
 #react_qb_viz {
@@ -23,7 +24,7 @@
 .QueryHeader-section {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid color(var(--color-accent2) alpha(-80%));
+  border-right: 1px solid color(var(--filter-color) alpha(-80%));
 }
 
 .QueryHeader-section:last-child {
@@ -88,7 +89,7 @@
 }
 
 .Query-filter.selected {
-  border-color: var(--color-accent2);
+  border-color: var(--filter-color);
 }
 
 .Filter-section {
@@ -411,19 +412,19 @@
 
 .Filter-section-field,
 .Filter-section-operator {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 
 .Filter-section-field .QueryOption {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 .Filter-section-operator .QueryOption {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 .Filter-section-value .QueryOption {
   color: white;
-  background-color: var(--color-accent2);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--filter-color);
+  border: 1px solid var(--filter-color);
   border-radius: 6px;
   padding: 0.5em;
   padding-top: 0.3em;
@@ -443,10 +444,10 @@
 
 .FilterPopover .ColumnarSelector-row--selected,
 .FilterPopover .PopoverHeader-item.selected {
-  color: var(--color-accent2) !important;
+  color: var(--filter-color) !important;
 }
 .FilterPopover .ColumnarSelector-row:hover {
-  background-color: var(--color-accent2) !important;
+  background-color: var(--filter-color) !important;
 }
 
 /* VIEW SECTION */
@@ -612,7 +613,7 @@
 
 .List-item--segment .Icon,
 .List-item--segment .List-item-title {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 
 .List-item--customfield .Icon,
@@ -623,7 +624,7 @@
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
-  border-left: 2px solid color(var(--color-accent2) alpha(-90%));
+  border-left: 2px solid color(var(--filter-color) alpha(-90%));
   color: color(var(--color-text-white) alpha(-50%));
 }
 
@@ -657,8 +658,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-accent2);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--filter-color);
+  border: 1px solid var(--filter-color);
   transition: opacity 0.3s ease-out;
 }
 

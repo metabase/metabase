@@ -1,4 +1,5 @@
 import React from "react";
+import { Flex } from "grid-styled";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -30,17 +31,19 @@ const QuestionFilters = ({
           mr={1}
           onClick={() => onOpenEditFilter(index)}
         >
-          {filter.displayName()}
-          <Icon
-            name="close"
-            className="text-light text-medium-hover cursor-pointer ml1"
-            size={12}
-            onClick={e => {
-              e.stopPropagation(); // prevent parent button from triggering
-              filter.remove().update();
-              onCloseFilter();
-            }}
-          />
+          <Flex align="center">
+            {filter.displayName()}
+            <Icon
+              name="close"
+              ml={1}
+              size={12}
+              onClick={e => {
+                e.stopPropagation(); // prevent parent button from triggering
+                filter.remove().update();
+                onCloseFilter();
+              }}
+            />
+          </Flex>
         </Button>
       ))}
       <Button medium icon="add" onClick={onOpenAddFilter} />
