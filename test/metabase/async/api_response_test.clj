@@ -186,12 +186,14 @@
 (expect
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
-      (with-response [_ input-chan]
+      (with-response [{:keys [os-closed-chan]} input-chan]
+        (wait-for-close os-closed-chan)
         (wait-for-close input-chan)))))
 
 ;; output chan should get closed
 (expect
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
-      (with-response [{:keys [output-chan]} input-chan]
+      (with-response [{:keys [output-chan os-closed-chan]} input-chan]
+        (wait-for-close os-closed-chan)
         (wait-for-close output-chan)))))
