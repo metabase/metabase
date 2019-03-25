@@ -408,4 +408,4 @@
 (s/defn process-query-without-save!
   "Invokes `process-query` with info needed for the included remark."
   [user query]
-  (process-query (assoc-query-info query {:executed-by user})))
+  (process-query (assoc-query-info query {:executed-by user} nil)))
