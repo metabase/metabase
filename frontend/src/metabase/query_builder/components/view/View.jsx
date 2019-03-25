@@ -118,7 +118,7 @@ export default class View extends React.Component {
                 <QueryVisualization
                   {...this.props}
                   noHeader
-                  className="full wrapper mb2 z1"
+                  className="full mb2 z1"
                 />
               </div>
 
