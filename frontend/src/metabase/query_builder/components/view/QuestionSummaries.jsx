@@ -22,6 +22,7 @@ const QuestionSummaries = ({ question }) => (
   </div>
 );
 
-QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) => true;
+QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
+  question.query().aggregations().length === 0;
 
 export default QuestionSummaries;
