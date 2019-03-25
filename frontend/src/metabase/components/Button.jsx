@@ -17,6 +17,7 @@ const BUTTON_VARIANTS = [
   "cancel",
   "success",
   "purple",
+  "white",
   "borderless",
   "onlyIcon",
 ];
