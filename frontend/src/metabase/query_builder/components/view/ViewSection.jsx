@@ -8,11 +8,9 @@ import Subhead from "metabase/components/Subhead";
 const ViewSection = ({ bottom, className, ...props }) => (
   <Flex
     align="center"
-    className={cx(
-      "wrapper py2",
-      bottom ? "border-top" : "border-bottom",
-      className,
-    )}
+    px={3}
+    py={2}
+    className={cx(bottom ? "border-top" : "border-bottom", className)}
     {...props}
   />
 );

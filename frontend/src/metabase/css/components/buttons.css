@@ -1,5 +1,5 @@
 :root {
-  --default-button-border-radius: 4px;
+  --default-button-border-radius: 6px;
 }
 
 .Button {
@@ -7,8 +7,8 @@
   box-sizing: border-box;
   text-decoration: none;
   padding: 0.5rem 0.75rem;
-  background: var(--color-bg-light);
-  border: 1px solid var(--color-border);
+  background: transparent;
+  border: 1px solid color(var(--color-border) alpha(+80%));
   color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
@@ -18,6 +18,9 @@
 }
 .Button:hover {
   color: var(--color-brand);
+  border-color: color(var(--color-border) alpha(+22%));
+  background: var(--color-bg-light);
+  transition: border-color 200ms linear, background 100ms linear;
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -30,10 +33,6 @@
   .Button {
     padding: 1rem 1.5rem;
   }
-}
-
-.Button:hover {
-  transition: border 0.3s linear;
 }
 
 .Button--small {
@@ -68,7 +67,7 @@
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
-  background-color: var(--color-brand);
+  background-color: color(var(--color-brand) alpha(-12%));
 }
 
 .Button--warning {
@@ -103,7 +102,6 @@
   color: white;
   background-color: color(var(--color-accent7) alpha(-12%));
   border-color: color(var(--color-accent7) alpha(-12%));
-  transition: background 100ms linear;
 }
 
 .Button--borderless {

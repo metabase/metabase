@@ -247,7 +247,7 @@ export class ViewSubHeader extends React.Component {
             </ViewSection>
           )}
         {(left.length > 0 || middle.length > 0 || right.length > 0) && (
-          <ViewSection className="flex text-medium text-bold">
+          <ViewSection className="flex text-medium text-bold borderless">
             <div className="flex-full flex-basis-none flex align-center">
               {left}
             </div>
