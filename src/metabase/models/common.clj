@@ -74,6 +74,7 @@
    "Europe/London"
    "Europe/Minsk"
    "Europe/Moscow"
+   "Europe/Stockholm"
    "Europe/Warsaw"
    "Pacific/Auckland"
    "Pacific/Fiji"
