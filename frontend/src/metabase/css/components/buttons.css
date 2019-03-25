@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color(var(--color-border) alpha(+80%));
+  border: 1px solid color(var(--color-border) blackness(+ 5%));
   color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
@@ -16,11 +16,12 @@
   font-family: "Lato", sans-serif;
   border-radius: var(--default-button-border-radius);
 }
+
 .Button:hover {
   color: var(--color-brand);
-  border-color: color(var(--color-border) alpha(+22%));
+  border-color: color(var(--color-border) blackness(+ 12%));
   background: var(--color-bg-light);
-  transition: border-color 200ms linear, background 100ms linear;
+  transition: all 200ms linear;
 }
 
 @media screen and (--breakpoint-min-lg) {
