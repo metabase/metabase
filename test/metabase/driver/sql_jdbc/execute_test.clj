@@ -7,6 +7,8 @@
   (:import java.sql.PreparedStatement))
 
 (defn- do-with-max-rows [f]
+  ;; force loading of the test data before swapping out `jdbc/query`, otherwise things might not sync correctly
+  (data/id)
   (let [orig-query jdbc/query
         max-rows   (atom nil)]
     (with-redefs [jdbc/query (fn [conn sql-params & [opts]]

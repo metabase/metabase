@@ -180,6 +180,7 @@
      :ring
      {:handler      metabase.handler/app
       :init         metabase.core/init!
+      :async?       true
       :destroy      metabase.core/destroy
       :reload-paths ["src"]}}]
 
