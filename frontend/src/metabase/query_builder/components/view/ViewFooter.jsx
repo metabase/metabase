@@ -77,13 +77,15 @@ const VizTypeButton = ({ className, question, result, selected, onClick }) => {
   ]);
 
   return (
-    <span className="h3 flex align-center">
+    <span
+      className="h3 flex align-center bg-light rounded p1 cursor-pointer"
+      onClick={onClick}
+    >
       {`Visualization`}:
       <span
         className={cx("ml1 text-brand flex align-center", {
           "cursor-pointer": onClick,
         })}
-        onClick={onClick}
       >
         {CardVisualization ? CardVisualization.uiName : `[${t`Unknown`}]`}
         {onClick && (
