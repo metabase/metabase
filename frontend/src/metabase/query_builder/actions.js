@@ -207,7 +207,7 @@ export const initializeQB = (location, params) => {
     let uiControls: UiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
-      queryBuilderMode: "notebook",
+      queryBuilderMode: "view",
     };
 
     // always start the QB by loading up the databases for the application
