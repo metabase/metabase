@@ -17,7 +17,7 @@ const QuestionFilters = ({
   const filters = question.query().filters();
   return filters.length === 0 ? (
     <FilterContainer>
-      <Button medium icon="filter" onClick={onOpenAddFilter}>
+      <Button medium icon="filter" color="#7172AD" onClick={onOpenAddFilter}>
         {`Filter`}
       </Button>
     </FilterContainer>
