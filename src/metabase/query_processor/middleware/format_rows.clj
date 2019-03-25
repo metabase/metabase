@@ -20,6 +20,7 @@
        :else cell))))
 
 (defn map-row-builder
+  "Returns row mappe. Ex: format temporal values as iso8601 strings w/ timezone."
   [report-timezone]
   (let [map-fn (map-cell-builder report-timezone)]
     (fn [row]

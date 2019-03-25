@@ -3,8 +3,9 @@
   "Code related to actually running a SQL query against a JDBC database (including setting the session timezone when
   appropriate), and for properly encoding/decoding types going in and out of the database."
   (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
+            [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]

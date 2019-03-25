@@ -368,8 +368,10 @@
 
   OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
   {:style/indent 1}
-  [query, options :- mbql.s/Info, ostream]
-  (run-and-save-query! (assoc-query-info query options ostream)))
+  ([query, options :- mbql.s/Info]
+   (process-query-and-save-execution! query options nil))
+  ([query, options :- mbql.s/Info, ostream]
+    (run-and-save-query! (assoc-query-info query options ostream))))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
