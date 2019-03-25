@@ -9,6 +9,7 @@ import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import QuestionFilters, { questionHasFilters } from "./QuestionFilters";
+import QuestionSummaries from "./QuestionSummaries";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -143,6 +144,10 @@ export class ViewSubHeader extends React.Component {
     const left = [];
     const middle = [];
     const right = [];
+
+    if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
+      left.push(<QuestionSummaries key="summaries" question={question} />);
+    }
 
     if (
       !isFiltersExpanded &&
