@@ -74,6 +74,13 @@ name), last name (surname), and email address are included as
 attributes of the first assertion returned in the identity provider's
 SAML response.
 
+##### IMPORTANT NOTE!
+
+The email address *attribute* is used to log in an end user into a
+corresponding Metabase account (creating it if needed). Thus it is
+extremely critical that this email address MUST NOT be editable by end
+users themselves. Otherwise they could potentially access Metabase
+accounts other than their own by changing their email address.
 
 #### Settings for signing SSO requests (optional)
 These are additional settings you can fill in to sign SSO requests to
