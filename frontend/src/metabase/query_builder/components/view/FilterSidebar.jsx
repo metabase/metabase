@@ -1,14 +1,14 @@
 import React from "react";
 
 import Icon from "metabase/components/Icon";
-import FilterPopover from "../filters/FilterPopover";
+import ViewFilters from "./ViewFilters";
 
 const FilterSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
     <div>
       <Icon name="close" onClick={() => onClose()} />
-      <FilterPopover
+      <ViewFilters
         query={question.query()}
         filter={index != null ? query.filters()[index] : null}
         onChangeFilter={filter => {
