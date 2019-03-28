@@ -233,6 +233,7 @@ export default class QueryVisualization extends Component {
             onOpenChartSettings={initial => this.refs.settings.open(initial)}
             {...this.props}
             className="spread"
+            showTitle={false}
           />
         );
       }

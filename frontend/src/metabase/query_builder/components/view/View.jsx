@@ -11,6 +11,11 @@ import DataReference from "../dataref/DataReference";
 import TagEditorSidebar from "../template_tags/TagEditorSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 
+import Button from "metabase/components/Button";
+import BreakoutName from "metabase/query_builder/components/BreakoutName";
+import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import ViewFooter from "./ViewFooter";
@@ -124,6 +129,34 @@ export default class View extends React.Component {
 
               {ModeFooter && (
                 <ModeFooter {...this.props} className="flex-no-shrink" />
+              )}
+              {question.query().breakouts().length > 0 && (
+                <div className="flex py2">
+                  <div className="ml-auto mr-auto">
+                    <PopoverWithTrigger
+                      triggerElement={
+                        <Button medium>
+                          <BreakoutName
+                            breakout={query.breakouts()[0]}
+                            query={query}
+                          />
+                        </Button>
+                      }
+                    >
+                      <BreakoutPopover
+                        query={query}
+                        breakout={query.breakouts()[0]}
+                        onChangeBreakout={newBreakout => {
+                          query
+                            .breakouts()[0]
+                            .replace(newBreakout)
+                            .update();
+                          this.props.runQuestionQuery();
+                        }}
+                      />
+                    </PopoverWithTrigger>
+                  </div>
+                </div>
               )}
             </div>
 

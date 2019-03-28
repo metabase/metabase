@@ -20,6 +20,7 @@ import QuestionRowCount from "./QuestionRowCount";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionAlertWidget from "./QuestionAlertWidget";
 
+import AggregationName from "metabase/query_builder/components/AggregationName";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
@@ -277,9 +278,11 @@ export class ViewSubHeader extends React.Component {
               .query()
               .aggregations()
               .map((agg, index) => (
-                <div className="text-brand">
-                  {agg[0]}{" "}
+                <div className="flex align-center hover-parent hover--visibility mr1">
+                  <AggregationName aggregation={agg} query={question.query()} />
                   <Icon
+                    className="hover-child"
+                    ml={1}
                     name="close"
                     onClick={() => {
                       question
@@ -292,7 +295,7 @@ export class ViewSubHeader extends React.Component {
                 </div>
               ))}
             <QuestionSummaries
-              triggerElement={<Icon name="add" />}
+              triggerElement={<Icon name="add" ml={1} />}
               question={question}
               onRun={() => runQuestionQuery()}
             />
