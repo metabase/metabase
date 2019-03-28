@@ -36,10 +36,7 @@ const QuestionDataSource = ({
     parts.push({
       icon: "table2",
       name: table.displayName(),
-      href:
-        !noLink && question && question.isSaved()
-          ? table.newQuestion().getUrl()
-          : null,
+      href: !noLink && subHead && table.newQuestion().getUrl(),
     });
   }
 
@@ -56,7 +53,7 @@ const SubHeadBreadcrumbs = ({ parts }) => (
   <span className="flex align-center text-medium text-bold">
     {parts.map(({ name, icon, href }, index) => (
       <MaybeLink key={index} to={href} className="flex align-center mr2">
-        {icon && <Icon name={icon} className="mr1" />}
+        {icon && <Icon name={icon} className="mr1" size={12} />}
         {name}
       </MaybeLink>
     ))}
@@ -82,5 +79,9 @@ const HeadBreadcrumbs = ({ parts }) => (
   </span>
 );
 
-const MaybeLink = ({ to, ...props }) =>
-  to ? <Link to={to} {...props} /> : <span {...props} />;
+const MaybeLink = ({ to, className, ...props }) =>
+  to ? (
+    <Link to={to} {...props} className={cx(className, "text-brand-hover")} />
+  ) : (
+    <span {...props} className={className} />
+  );
