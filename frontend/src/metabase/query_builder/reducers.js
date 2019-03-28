@@ -47,6 +47,8 @@ const DEFAULT_UI_CONTROLS = {
   isEditing: false,
   isRunning: false,
   chartSettings: null,
+  isShowingChartSettingsSidebar: false,
+  isShowingChartTypeSidebar: false,
 };
 
 // various ui state options
@@ -59,6 +61,7 @@ export const uiControls = handleActions(
     [INITIALIZE_QB]: {
       next: (state, { payload }) => ({
         ...DEFAULT_UI_CONTROLS,
+        ...state,
         ...payload.uiControls,
       }),
     },

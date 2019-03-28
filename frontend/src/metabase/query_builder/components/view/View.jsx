@@ -66,7 +66,15 @@ export default class View extends React.Component {
           onClose={this.props.onCloseFilter}
         />
       ) : isShowingChartSettingsSidebar ? (
-        <ChartSettingsSidebar {...this.props} />
+        <ChartSettingsSidebar
+          {...this.props}
+          onClose={() =>
+            this.props.setUIControls({
+              isShowingChartSettingsSidebar: false,
+              isShowingChartTypeSidebar: false,
+            })
+          }
+        />
       ) : isShowingChartTypeSidebar ? (
         <ChartTypeSidebar {...this.props} />
       ) : null;

@@ -211,7 +211,7 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
+      <div>
         {sectionNames.length > 1 && (
           <div className="border-bottom flex flex-no-shrink pl4">
             {sectionPicker}
