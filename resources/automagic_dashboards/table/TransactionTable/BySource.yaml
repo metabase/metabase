@@ -101,7 +101,7 @@ cards:
 - OrderBySource:
     group: Financial
     title: Total orders per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceLarge
     metrics: TotalOrders
     order_by:
@@ -111,7 +111,7 @@ cards:
 - IncomeBySource:
     group: Financial
     title: Total income per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceMedium
     metrics: TotalIncome
     order_by:
@@ -121,7 +121,7 @@ cards:
 - AvgQuantityBySource:
     group: Financial
     title: Average quantity per source
-    visualization: row
+    visualization: smart-row
     dimensions: SourceMedium
     metrics: AvgQuantity
     order_by:
@@ -131,7 +131,7 @@ cards:
 - AvgIncomeBySource:
    group: Financial
    title: Average income per source
-   visualization: row
+   visualization: smart-row
    dimensions: SourceMedium
    metrics: AvgIncome
    order_by:
@@ -140,7 +140,7 @@ cards:
    height: 8
 - UsersBySource:
     group: UserAcquisition
-    visualization: row
+    visualization: smart-row
     title: Number of users per source
     dimensions: SourceMedium
     metrics: TotalUsers
@@ -150,7 +150,7 @@ cards:
     height: 8
 - NewUsersBySource:
     group: UserAcquisition
-    visualization: row
+    visualization: smart-row
     title: New users per source in the last 30 days
     dimensions: SourceMedium
     metrics: TotalUsers

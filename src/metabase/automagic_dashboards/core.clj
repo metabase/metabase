@@ -602,6 +602,21 @@
          (map filters/field-reference->id)
          set)))
 
+(def ^:private ^:const ^Long smart-row-table-threshold 10)
+
+(defn- expand-visualization
+  [card dimensions]
+  (case (-> card :visualization first)
+    "smart-row"
+    (assoc card :visualization (if (->> dimensions
+                                        (keep #(get-in % [:fingerprint :global :distinct-count]))
+                                        (apply max 0)
+                                        (>= smart-row-table-threshold))
+                                 ["row" {}]
+                                 ["table" {}]))
+
+    card))
+
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
@@ -646,6 +661,7 @@
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
+                      (expand-visualization (map (comp bindings second) dimensions))
                       (assoc :dataset_query query
                              :metrics       (for [metric metrics]
                                               {:name ((some-fn :name (comp metric-name :metric)) metric)
