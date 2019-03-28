@@ -6,7 +6,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
-const QuestionSummaries = ({ question }) => (
+const QuestionSummaries = ({ question, onRun }) => (
   <div>
     <PopoverWithTrigger
       triggerElement={
@@ -15,12 +15,13 @@ const QuestionSummaries = ({ question }) => (
     >
       <AggregationPopover
         query={question.query()}
-        onChangeAggregation={newAggregation =>
+        onChangeAggregation={newAggregation => {
           question
             .query()
             .addAggregation(newAggregation)
-            .update()
-        }
+            .update();
+          onRun();
+        }}
       />
     </PopoverWithTrigger>
   </div>

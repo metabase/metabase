@@ -146,7 +146,13 @@ export class ViewSubHeader extends React.Component {
     const right = [];
 
     if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
-      left.push(<QuestionSummaries key="summaries" question={question} />);
+      left.push(
+        <QuestionSummaries
+          key="summaries"
+          question={question}
+          onRun={() => runQuestionQuery({ ignoreCache: true })}
+        />,
+      );
     }
 
     if (
