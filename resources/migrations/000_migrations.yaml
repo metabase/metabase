@@ -5262,3 +5262,16 @@ databaseChangeLog:
                 WHERE dbcl.id = '84'
                   AND metric.updated_at < dbcl.dateexecuted
               )
+
+# Very helpful for performance reasons. See #9519
+  - changeSet:
+      id: 101
+      author: camsaul
+      comment: 'Added 0.32.0'
+      changes:
+        - createIndex:
+            indexName: idx_field_parent_id
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: parent_id
