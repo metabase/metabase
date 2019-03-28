@@ -13,6 +13,7 @@ const NotebookHeader = ({
   runQuestionQuery,
   onSetQueryBuilderMode,
   onOpenModal,
+  setUIControls,
 }) => (
   <Flex p={2} align="center" justify="flex-end" className={className}>
     {isRunnable && (
@@ -25,6 +26,7 @@ const NotebookHeader = ({
             runQuestionQuery();
           }
           onSetQueryBuilderMode("view");
+          setUIControls({ isShowingChartTypeSidebar: true });
         }}
       >{t`Visualize`}</Button>
     )}
