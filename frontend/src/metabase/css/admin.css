@@ -195,11 +195,16 @@
 .AdminSelect {
   display: inline-block;
   padding: 0.6em;
-  border: 1px solid var(--color-border);
+  border: 1px solid color(var(--color-border) blackness(+5%));
+  background-color: var(--color-bg-white);
   border-radius: var(--default-border-radius);
   font-size: 14px;
   font-weight: 700;
   min-width: 90px;
+}
+
+.AdminSelect:hover {
+  border-color: color(var(--color-border) blackness(+10%));
 }
 
 .AdminSelectBorderless {
