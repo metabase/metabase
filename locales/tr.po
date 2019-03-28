@@ -4202,7 +4202,7 @@ msgstr "Geçmiş 30 gün "
 msgid "Week"
 msgid_plural "Weeks"
 msgstr[0] "Hafta"
-msgstr[1] ""
+msgstr[1] "Haftalar"
 
 #: frontend/src/metabase/lib/query_time.js:197
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
@@ -4211,7 +4211,7 @@ msgstr[1] ""
 msgid "Month"
 msgid_plural "Months"
 msgstr[0] "Ay"
-msgstr[1] ""
+msgstr[1] "Aylar"
 
 #: frontend/src/metabase/lib/query_time.js:201
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
@@ -4220,7 +4220,7 @@ msgstr[1] ""
 msgid "Year"
 msgid_plural "Years"
 msgstr[0] "Yıl"
-msgstr[1] ""
+msgstr[1] "Yıllar"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:152
 msgid "Past 7 Days"
@@ -5790,7 +5790,7 @@ msgstr "Alan adı"
 
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:49
 msgid "X-ray this field"
-msgstr "Bualana x-ışı"
+msgstr "Bu alana x-ray"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
 msgid "Metabase is no fun without any data"
@@ -7448,26 +7448,26 @@ msgstr "Silme"
 msgid "Day"
 msgid_plural "Days"
 msgstr[0] "Gün"
-msgstr[1] ""
+msgstr[1] "Günler"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase/lib/query_time.js:189 src/metabase/api/table.clj
 msgid "Minute"
 msgid_plural "Minutes"
 msgstr[0] "Dakika"
-msgstr[1] ""
+msgstr[1] "Dakikalar"
 
 #: frontend/src/metabase/lib/query_time.js:191 src/metabase/api/table.clj
 msgid "Hour"
 msgid_plural "Hours"
 msgstr[0] "Saat"
-msgstr[1] ""
+msgstr[1] "Saat"
 
 #: frontend/src/metabase/lib/query_time.js:199 src/metabase/api/table.clj
 msgid "Quarter"
 msgid_plural "Quarters"
 msgstr[0] "Çeyrek"
-msgstr[1] ""
+msgstr[1] "Çeyrekler"
 
 #: src/metabase/api/table.clj
 msgid "Minute of Hour"
@@ -11382,110 +11382,110 @@ msgstr "\"{0}\"ı kopyala"
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:21
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 msgid "Duplicate"
-msgstr ""
+msgstr "Kopyala"
 
 #: frontend/src/metabase/lib/query_time.js:115
 msgid "Tomorrow"
-msgstr ""
+msgstr "Yarın"
 
 #: frontend/src/metabase/lib/query_time.js:129
 #: frontend/src/metabase/lib/query_time.js:143
 msgid "This {0}"
-msgstr ""
+msgstr "Bu {0}"
 
 #: frontend/src/metabase/lib/query_time.js:132
 msgid "Next {0}"
-msgstr ""
+msgstr "Sonraki {0}"
 
 #: frontend/src/metabase/lib/query_time.js:135
 msgid "Previous {0}"
-msgstr ""
+msgstr "Önceki {0}"
 
 #: frontend/src/metabase/lib/query_time.js:139
 msgid "Previous {0} {1}"
-msgstr ""
+msgstr "Önceki {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:141
 msgid "Next {0} {1}"
-msgstr ""
+msgstr "Sonraki {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:171
 msgid "Now"
-msgstr ""
+msgstr "Şimdi"
 
 #: frontend/src/metabase/lib/query_time.js:174
 msgid "{0} {1} ago"
-msgstr ""
+msgstr "Geçen {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:175
 msgid "{0} {1} from now"
-msgstr ""
+msgstr "Şu andan itibaren {0} {1}"
 
 #: frontend/src/metabase/lib/query_time.js:187
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Güncel aralık"
+msgstr[1] "Güncel aralıklar"
 
 #: frontend/src/metabase/lib/query_time.js:203
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Dakika"
+msgstr[1] "Dakikalar"
 
 #: frontend/src/metabase/lib/query_time.js:205
 msgid "Hour of day"
 msgid_plural "Hours of day"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Saat"
+msgstr[1] "Saatler"
 
 #: frontend/src/metabase/lib/query_time.js:207
 msgid "Day of week"
 msgid_plural "Days of week"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Gün"
+msgstr[1] "Günler"
 
 #: frontend/src/metabase/lib/query_time.js:209
 msgid "Day of month"
 msgid_plural "Days of month"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Ayın günü"
+msgstr[1] "Ayın günleri"
 
 #: frontend/src/metabase/lib/query_time.js:211
 msgid "Day of year"
 msgid_plural "Days of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Yılın günü"
+msgstr[1] "Yılın günleri"
 
 #: frontend/src/metabase/lib/query_time.js:213
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Yılın haftası"
+msgstr[1] "Yılın haftaları"
 
 #: frontend/src/metabase/lib/query_time.js:215
 msgid "Month of year"
 msgid_plural "Months of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Yılın ayı"
+msgstr[1] "Yılın ayları"
 
 #: frontend/src/metabase/lib/query_time.js:217
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Yılın çeyreği"
+msgstr[1] "Yılın çeyrekleri"
 
 #: frontend/src/metabase/parameters/components/widgets/CategoryWidget.jsx:62
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget.jsx:58
 #: frontend/src/metabase/query_builder/components/Filter.jsx:79
 msgid "{0} selection"
 msgid_plural "{0} selections"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{0} seçim"
+msgstr[1] "{0} seçim"
 
 #: frontend/src/metabase/parameters/components/widgets/DateQuarterYearWidget.jsx:11
 msgid "[Q]Q"
-msgstr ""
+msgstr "[Q]Q"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:28
 msgid "This"
@@ -11542,167 +11542,167 @@ msgstr "Canlı sistemlerde kullanılmak üzere, Postgres, MySQL ya da Maria DB'y
 
 #: src/metabase/db.clj
 msgid "If you decide to continue to use H2, please be sure to back up the database file regularly."
-msgstr ""
+msgstr "Şayet H2'yi kullanmaya devam etmeye karar verirseniz, lütfen veritabanı dosyasını düzenli olarak yedeklediğinizden emin olun."
 
 #: src/metabase/db.clj
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
-msgstr ""
+msgstr "Lütfen daha fazla bilgi için https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres inceleyiniz."
 
 #: src/metabase/db.clj
 msgid "Unable to connect to Metabase {0} DB."
-msgstr ""
+msgstr "Metabase {0} veritabanına bağlanılamıyor."
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
-msgstr ""
+msgstr "Eski SQL sorgusunun BigQuery ile kaydedilen soruya eklenmesi sırasında hata"
 
 #: src/metabase/driver.clj
 msgid "Failed to notify {0} Database {1} updated"
-msgstr ""
+msgstr "Veritabanı {1}'in güncelleme bildirimi {0} hatalı"
 
 #: src/metabase/driver.clj
 msgid "Loading driver {0} {1}"
-msgstr ""
+msgstr "Sürücü {0} {1} yükleniyor"
 
 #: src/metabase/driver.clj
 msgid "Load driver {0}"
-msgstr ""
+msgstr "Sürücü {0}'ı yükle"
 
 #: src/metabase/driver.clj
 msgid "Driver not registered after loading: {0}"
-msgstr ""
+msgstr "Sürücü yükleme sonrası kaydedilemedi: {0}"
 
 #: src/metabase/driver.clj
 msgid "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-msgstr ""
+msgstr "Hata: {0} `:abstract?` özelliği {1}'den {2}'ye değiştirilirken"
 
 #: src/metabase/driver.clj
 msgid "Registered abstract driver {0}"
-msgstr ""
+msgstr "Soyut sürücü {0} kaydedildi"
 
 #: src/metabase/driver.clj
 msgid "Registered driver {0}"
-msgstr ""
+msgstr "Sürücü {0} kaydedildi"
 
 #: src/metabase/driver.clj
 msgid "(parents: {0})"
-msgstr ""
+msgstr "(atalar: {0})"
 
 #: src/metabase/driver.clj
 msgid "Initializing driver {0}..."
-msgstr ""
+msgstr "Sürücü {0} başlatılıyor..."
 
 #: src/metabase/driver.clj
 msgid "Reason:"
-msgstr ""
+msgstr "Neden:"
 
 #: src/metabase/driver.clj
 msgid "Invalid driver feature: {0}"
-msgstr ""
+msgstr "Geçersiz sürücü özelliği: {0}"
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "Invalid HoneySQL form:"
-msgstr ""
+msgstr "Geçersiz HoneySQL formu:"
 
 #: src/metabase/driver/sql_jdbc/connection.clj
 msgid "Closing connection pool for database {0} ..."
-msgstr ""
+msgstr "Veritabanı {0} için bağlantı havuzu sonlandırılıyor..."
 
 #: src/metabase/driver/util.clj
 msgid "Error loading namespace"
-msgstr ""
+msgstr "Ad alanı yüklenirken hata oluştu"
 
 #: src/metabase/events.clj
 msgid "Starting events listener:"
-msgstr ""
+msgstr "Olay dinleyici başlatılıyor:"
 
 #: src/metabase/events.clj
 msgid "Unexpected error listening on events"
-msgstr ""
+msgstr "Olayları izlerken beklenmeyen bir hata oluştu"
 
 #: src/metabase/events/sync_database.clj
 msgid "Error syncing Database {0}"
-msgstr ""
+msgstr "Veritabanı eşleştirme hatası"
 
 #: src/metabase/events/sync_database.clj
 msgid "Failed to process sync-database event."
-msgstr ""
+msgstr "Veritabanı eşleştirme olayının işlenmesi gerçekleştirilemedi."
 
 #: src/metabase/mbql/util.clj
 msgid "Bad nested-query-level: query does not have a source query"
-msgstr ""
+msgstr "Hatalı yuvalanmış sorgu füzeryi: sorgunun kaynak sorgusu yok"
 
 #: src/metabase/metabot/command.clj
 msgid "I don''t know how to `{0}`."
-msgstr ""
+msgstr "'{0}'ın nasıl yapılcağını bilmiyorum."
 
 #: src/metabase/metabot/command.clj
 msgid "Here''s what I can do: "
-msgstr ""
+msgstr "Yapabileceğim şey şudur: "
 
 #: src/metabase/metabot/slack.clj
 msgid "Error in Metabot command"
-msgstr ""
+msgstr "Hatalı Metabot komutu"
 
 #: src/metabase/metabot/websocket.clj
 msgid "Websocket associated with this Slack event is different from the websocket we're currently using."
-msgstr ""
+msgstr "Güncel Slack olayı ile bağlantılı Websocket kullanılandan farklı."
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues for Field {0} remain unchanged. Skipping..."
-msgstr ""
+msgstr "Alan {0}'a ait FieldValues değişmiyor. Atlanıyor..."
 
 #: src/metabase/models/interface.clj
 msgid "Unable to normalize:"
-msgstr ""
+msgstr "Düzgelenemiyor:"
 
 #: src/metabase/models/params.clj
 msgid "Could not find matching Field ID for target:"
-msgstr ""
+msgstr "Hedef için Field ID bulunamadı:"
 
 #: src/metabase/plugins.clj
 msgid "Metabase does not have permissions to write to plugins directory {0}"
-msgstr ""
+msgstr "Metabase'in eklentiler dizinine kayıt izni yok"
 
 #: src/metabase/plugins.clj
 msgid "Metabase cannot use the plugins directory {0}"
-msgstr ""
+msgstr "Metabase eklenti dizini {0}'u kullanamıyor"
 
 #: src/metabase/plugins.clj
 msgid "Please make sure the directory exists and that Metabase has permission to write to it."
-msgstr ""
+msgstr "Lütfen dizinin varolduğundan emin olun ve Metabase'in bu dizine kayıt izni olduğunu kontrol edin."
 
 #: src/metabase/plugins.clj
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
-msgstr ""
+msgstr "Metabase'in modüller için kullandığı dizini, MB_PLUGINS_DIR çevre değişkenini belirleyerek değiştirebilirsiniz. "
 
 #: src/metabase/plugins.clj
 msgid "Falling back to a temporary directory for now."
-msgstr ""
+msgstr "Şimdilik geçici bir dizin kullanılacak."
 
 #: src/metabase/plugins.clj
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr ""
+msgstr "Metabase geçici dizine yazamıyor. Lütfen MB_PLUGINS_DIR'ü yazılabilir bir dizine ayarlayarak Metabase'i yeniden başlatın."
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr ""
+msgstr "spark-deps.jar'a artık Metabase 1.0+ tarafından ihtiyaç duyulmuyor. Eklentiler dizininden silebilirsiniz."
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
-msgstr ""
+msgstr "Eklenti {0} başlatılırken hata oluştu."
 
 #: src/metabase/plugins.clj
 msgid "Loading plugins in {0}..."
-msgstr ""
+msgstr "{0}'daki eklentiler yükleniyor..."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using Clojure base loader as shared context classloader: {0}"
-msgstr ""
+msgstr "Clojure temel yükleyicisi paylaşımlı ortam sınıf yükleyicisi olarak kullanılıyor: {0}"
 
 #: src/metabase/plugins/classloader.clj
 msgid "Setting current thread context classloader to shared classloader {0}..."
-msgstr ""
+msgstr "Güncel iş parçası ortam sınıf yükleyicisi, paylaşımlı sınıf yükleyici {0} olarak ayarlanıyor..."
 
 #. it's important that we deref the promise again here instead of using the one we just created because it is
 #. possible thru a race condition that somebody else delivered the promise before we did; in that case,
@@ -11710,318 +11710,318 @@ msgstr ""
 #. value of it rather than one that ends up getting discarded
 #: src/metabase/plugins/classloader.clj
 msgid "Setting current thread context classloader to NEWLY CREATED classloader {0}..."
-msgstr ""
+msgstr "Güncel iş parçası ortam sınıf yükleyicisi, yeni oluşturulan sınıf yükleyici {0} olarak ayarlanıyor..."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Added URL {0} to classpath"
-msgstr ""
+msgstr "URL {0} sınıf yoluna eklendi"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
-msgstr ""
+msgstr "Eklenti {0} Metabase'in anlamadığı bir bağımlılık tanımlıyor: {1}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:"
-msgstr ""
+msgstr "Geçerli eklenti bağımlılıklarının tam listesi için eklenti referansına başvurunuz:"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Metabase cannot initialize plugin {0} due to required dependencies."
-msgstr ""
+msgstr "Gerekli bağımlılıklar yüzünden Metabase ekelnti {0}'ı başlatamıyor."
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
-msgstr ""
+msgstr "Sınıf bulunamadı: {0}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin ''{0}'' depends on plugin ''{1}''"
-msgstr ""
+msgstr "Eklenti \"{0}\" eklenti \"{1}\" bağımlı"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
-msgstr ""
+msgstr "{0} bağımlığı {1}'i yerine getirdi mi? {2}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugins with unsatisfied deps: {0}"
-msgstr ""
+msgstr "Yerine getirilmeyen bağımlığı olan eklentiler: {0}"
 
 #: src/metabase/plugins/files.clj
 msgid "Extract file {0} -> {1}"
-msgstr ""
+msgstr "Dosya {0} -> {1} çıkarılıyor"
 
 #: src/metabase/plugins/files.clj
 msgid "Resource does not exist."
-msgstr ""
+msgstr "Kaynak mevcut değil."
 
 #: src/metabase/plugins/init_steps.clj
 msgid "Loading plugin namespace {0}..."
-msgstr ""
+msgstr "Eklenti alan adı {0} yükleniyor..."
 
 #: src/metabase/plugins/initialize.clj
 msgid "Dependencies satisfied; these plugins will now be loaded: {0}"
-msgstr ""
+msgstr "Bağımlılıklar yerine getirildi; bu eklentiler şimdi yükleniyor: {0}"
 
 #: src/metabase/plugins/jdbc_proxy.clj
 msgid "Registering JDBC proxy driver for {0}..."
-msgstr ""
+msgstr "{0} için JDBC vekil sunucu sürücüsü kaydedilyor..."
 
 #: src/metabase/plugins/jdbc_proxy.clj
 msgid "Deregistering original JDBC driver {0}..."
-msgstr ""
+msgstr "{0} için JDBC vekil sunucu sürücüsü kaydı siliniyor..."
 
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Default connection property {0} does not exist."
-msgstr ""
+msgstr "Standart bağlantı özelliği {0} mevcut değil."
 
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Invalid connection property {0}: not a string or map."
-msgstr ""
+msgstr "Geçersiz bağlantı özelliği {0}: string ya da map değil."
 
 #. ok, do the init steps listed in the plugin mainfest
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Load lazy loading driver {0}"
-msgstr ""
+msgstr "Geciktirmeli yükleme sürücü {0}'ı yükle"
 
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Cannot initialize plugin: missing required property `driver-name`"
-msgstr ""
+msgstr "Eklenti başlatılamıyor: Gerekli özellik 'driver-name' eksik"
 
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Warning: plugin manifest for {0} does not include connection properties"
-msgstr ""
+msgstr "Uyarı: {0} için eklenti manifestosu bağlnatı özelliklerini içermiyor"
 
 #. finally, register the Metabase driver
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Registering lazy loading driver {0}..."
-msgstr ""
+msgstr "Geciktirmeli yükleme sürücü {0} kaydediliyor..."
 
 #: src/metabase/pulse.clj
 msgid "Error running query for Card {0}"
-msgstr ""
+msgstr "Kart {0}'a dair sorgu çalıştırılırken hata oluştu"
 
 #: src/metabase/pulse/render.clj
 msgid "Last week"
-msgstr ""
+msgstr "Geçen hafta"
 
 #: src/metabase/pulse/render.clj
 msgid "This week"
-msgstr ""
+msgstr "Bu hafta"
 
 #: src/metabase/pulse/render.clj
 msgid "Last month"
-msgstr ""
+msgstr "Geçen ay"
 
 #: src/metabase/pulse/render.clj
 msgid "This month"
-msgstr ""
+msgstr "Bu ay"
 
 #: src/metabase/pulse/render.clj
 msgid "Last quarter"
-msgstr ""
+msgstr "Geçen çeyrek"
 
 #: src/metabase/pulse/render.clj
 msgid "This quarter"
-msgstr ""
+msgstr "Bu çeyrek"
 
 #: src/metabase/pulse/render.clj
 msgid "Last year"
-msgstr ""
+msgstr "Geçen yıl"
 
 #: src/metabase/pulse/render.clj
 msgid "This year"
-msgstr ""
+msgstr "Bu yıl"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "*driver* is unbound."
-msgstr ""
+msgstr "*sürücü* bağlı değil."
 
 #: src/metabase/sync/sync_metadata/fields.clj
 msgid "Error syncing Fields for Table ''{0}''"
-msgstr ""
+msgstr "Tablo \"{0}\"'a ait alanlar eşleştirilirken hata oluştu"
 
 #: src/metabase/sync/sync_metadata/fields.clj
 msgid "Hash of {0} matches stored hash, skipping Fields sync"
-msgstr ""
+msgstr "{0}'ın sağlaması kayıtlı sağlama ile eşleşti, alan eşleştirmesi atlanıyor"
 
 #: src/metabase/sync/sync_metadata/fields/common.clj
 msgid "Field"
-msgstr ""
+msgstr "Alan"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error checking if Fields {0} need to be created or reactivated"
-msgstr ""
+msgstr "{0} alanlarının oluşturulması ya da yeniden etkinleştirilmesi denetlenirken hata oluştu"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Marking Field ''{0}'' as inactive."
-msgstr ""
+msgstr "Alan \"{0}\" etkisiz olarak işaretlendi."
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error retiring {0}"
-msgstr ""
+msgstr "{0} geri çekilirken hata oluştu"
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Database type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "{0} veritabanı tipi \"{1}\"den \"{2}\"e değişti."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Base type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "{0} taban tipi \"{1}\"den \"{2}\"e değişti."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Special type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "{0} özel tipi \"{1}\"den \"{2}\"e değişti."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Comment has been added for {0}."
-msgstr ""
+msgstr "{0}'a yorum eklendi."
 
 #: src/metabase/task.clj
 msgid "Stopping Quartz Scheduler {0}"
-msgstr ""
+msgstr "Quartz zamanlayıcı {0} durduruldu"
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr ""
+msgstr "Quartz zamanlayıcı {0} başlatıldı"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"
-msgstr ""
+msgstr "Görev alan adları {0} yüklenirken hata oluştu"
 
 #. don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
 #. namespaces we can log it
 #: src/metabase/task.clj
 msgid "Initializing task {0}"
-msgstr ""
+msgstr "Görev {0} başlatılıyor"
 
 #: src/metabase/task.clj
 msgid "Error initializing task {0}"
-msgstr ""
+msgstr "Görev {0} başlatılırken hata oluştu"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Problem sending abandonment email"
-msgstr ""
+msgstr "Terk email'i gönderilirken sorun oluştu"
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Sending anonymous usage stats."
-msgstr ""
+msgstr "Anonim kullanım istatistikleri gönderiliyor."
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Error sending anonymous usage stats"
-msgstr ""
+msgstr "Anonim kullanım istatistikleri gönderilirken hata oluştu"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Error sending Pulse {0}"
-msgstr ""
+msgstr "Pulse {0} gönderilirken hata oluştu"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Sending scheduled pulses..."
-msgstr ""
+msgstr "Zamanlanmış pulse'lar gönderiliyor..."
 
 #: src/metabase/task/send_pulses.clj
 msgid "SendPulses task failed"
-msgstr ""
+msgstr "SendPulses görevi başarısız"
 
 #: src/metabase/task/sync_databases.clj
 msgid "Failed to scheduler tasks for Database {0}"
-msgstr ""
+msgstr "Veritabanı {0} için görevlerin zamanlaması başarısız"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Cleaning up task history"
-msgstr ""
+msgstr "Görev geçmişi temizleniyor"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, rows were deleted"
-msgstr ""
+msgstr "Görev geçmişi başarı ile temizlendi, satırlar silindi"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, no rows were deleted"
-msgstr ""
+msgstr "Görev geçmişi başarı ile temizlendi, hiçbir satır silinmedi"
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Checking for new Metabase version info."
-msgstr ""
+msgstr "Yeni Metabase sürüm bilgisi kontrol ediliyor."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
-msgstr ""
+msgstr "Sürüm bilgisi alınırken hata oluştu"
 
 #: src/metabase/util.clj
 msgid "Maximum memory available to JVM: {0}"
-msgstr ""
+msgstr "JVM için kullanılabilir bellek: {0}"
 
 #: src/metabase/util.clj
 msgid "Not something with an ID: {0}"
-msgstr ""
+msgstr "Bu ID ile bir şey yok: {0}"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by month of the year"
-msgstr ""
+msgstr " [[CreateDate]] yılın ayı bazında"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Here's a quick look at your [[this]]"
-msgstr ""
+msgstr "[[this]]'e hızlı bir bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by hour of the day"
-msgstr ""
+msgstr "[[CreateTimestamp]] günün saatine göre"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Where you've acquired your users"
-msgstr ""
+msgstr "Kullanıcılarınız edindiğinizde"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How it's distributed across time and other categories."
-msgstr ""
+msgstr "Zaman ve diğer sınıflandırmalar bazında nasıl dağıldığı."
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Here's a closer look at your [[this]] per source"
-msgstr ""
+msgstr "[[this]]'e kaynak bazında hızlı bir bakış"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "Here's a quick look at the [[this]]"
-msgstr ""
+msgstr "[[this]]'e hızlı bir bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by day of the month"
-msgstr ""
+msgstr "[[CreateTimestamp]] ayın gününe göre"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Here's an overview of the people in your [[this]]"
-msgstr ""
+msgstr "[[this]]'inizdeki kişilere genel bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by quarter of the year"
-msgstr ""
+msgstr "[[CreateTimestamp]] yılın çeyreğine göre"
 
 #: resources/automagic_dashboards/field/Number.yaml
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
-msgstr ""
+msgstr "Yerlerine göre karşılaştırma"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at your [[this]] by products"
-msgstr ""
+msgstr "[[this]]'e ürün bazında yakından bir bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by month of the year"
-msgstr ""
+msgstr "[[CreateTimestamp]] yılın ayına göre"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "An overview of your [[this]] and how it's distributed across time, place, and categories."
-msgstr ""
+msgstr "[[this]]'inize genel bir bakış ve zaman, yer ve sınıf bazında dağılımları."
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/question/GenericQuestion.yaml
 msgid "Here's a closer look at your [[this]]"
-msgstr ""
+msgstr "[[this]]'inize yakından bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by day of the week"
-msgstr ""
+msgstr "[[CreateTimestamp]] haftanın günlerine göre"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Here's an overview of your [[this]] data from Google Analytics"
-msgstr ""
+msgstr "[[this]]'inize Google Analytics verileri bazında genel bakış"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/GenericField.yaml
@@ -12030,328 +12030,328 @@ msgstr ""
 #: resources/automagic_dashboards/comparison/Country.yaml
 #: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "Here's an overview of your [[this]]"
-msgstr ""
+msgstr "[[this]]'inize genel bakış"
 
 #: resources/automagic_dashboards/field/Country.yaml
 msgid "Here's a closer look at your [[this]] field"
-msgstr ""
+msgstr "[[this]] alanına yakından bakış"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Here's a closer look at your [[this]] per country"
-msgstr ""
+msgstr "[[this]]'inize ülke bazında yakından bakış"
 
 #: resources/automagic_dashboards/table/GenericTable/Correlations.yaml
 msgid "If you're into correlations, this is the x-ray for you."
-msgstr ""
+msgstr "İlintiler ile ilgileniyorsanız, size uygun x-ray budur."
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by day of the week"
-msgstr ""
+msgstr "[[CreateDate]] haftanın gününe göre"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "It looks like your [[this]] has transactions, so here's a look at them"
-msgstr ""
+msgstr "[[this]]'inizin hareketleri mevcut görünüyor, onlara bir bakış"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Here's a closer look at your [[this]] per state"
-msgstr ""
+msgstr "[[this]]'inize durum bazında yakından bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by day of the month"
-msgstr ""
+msgstr "[[CreateDate]] ayın gününe göre"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTime]] by hour of the day"
-msgstr ""
+msgstr "[[CreateDate]] günün saatine göre"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Here's a closer look at your [[this]] over time"
-msgstr ""
+msgstr "[[this]]'inize zaman bazında yakından bakış"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by quarter of the year"
-msgstr ""
+msgstr "[[CreateDate]] yılın çeyreğine göre"
 
 #: frontend/src/metabase/admin/people/containers/EditUserModal.jsx:12
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:200
 msgid "Edit user"
-msgstr ""
+msgstr "Kullanıcıyı düzenle"
 
 #: frontend/src/metabase/admin/people/containers/NewUserModal.jsx:13
 msgid "New user"
-msgstr ""
+msgstr "Yeni kullanıcı"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:204
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:69
 msgid "Reset password"
-msgstr ""
+msgstr "Şifreyi sıfırla"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:209
 msgid "Deactivate user"
-msgstr ""
+msgstr "Kullanıcıyı etkisiz kıl"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:47
 msgid "Reactivate {0}?"
-msgstr ""
+msgstr "{0} yeniden etkinleştirilsin mi?"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:63
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
-msgstr ""
+msgstr "Onlara mail ile davetiye gönderemedik, {0}'ı  ve oluşturduğumuz bu şifreyi kullanarak giriş yapmalarını bildirin:"
 
 #: frontend/src/metabase/entities/collections.js:21
 msgid "collection"
-msgstr ""
+msgstr "derlem"
 
 #: frontend/src/metabase/entities/collections.js:22
 msgid "collections"
-msgstr ""
+msgstr "derlemler"
 
 #: frontend/src/metabase/entities/dashboards.js:29
 msgid "dashboard"
-msgstr ""
+msgstr "bilgi panosu"
 
 #: frontend/src/metabase/entities/dashboards.js:30
 msgid "dashboards"
-msgstr ""
+msgstr "bilgi panoları"
 
 #: frontend/src/metabase/entities/users.js:125
 msgid "First name is required"
-msgstr ""
+msgstr "Ön adınız gerekli"
 
 #: frontend/src/metabase/entities/users.js:126
 #: frontend/src/metabase/entities/users.js:133
 msgid "Must be 100 characters or less"
-msgstr ""
+msgstr "En fazla 100 karakter ya da daha az olmalı"
 
 #: frontend/src/metabase/entities/users.js:132
 msgid "Last name is required"
-msgstr ""
+msgstr "Soyadınız gerekli"
 
 #: frontend/src/metabase/entities/users.js:138
 msgid "Email is required"
-msgstr ""
+msgstr "E-Mail gerekli"
 
 #: frontend/src/metabase/home/containers/ArchiveApp.jsx:90
 msgid "Items you archive will appear here."
-msgstr ""
+msgstr "Arşivlediğiniz kalemler burada görülecek."
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
-msgstr ""
+msgstr "Açıklama yok"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:175
 msgid "Sum of all values"
-msgstr ""
+msgstr "Tüm değerlerin toplamı"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:183
 msgid "See all distinct values"
-msgstr ""
+msgstr "Tüm ayrık  değerleri gör"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:12
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started"
-msgstr ""
+msgstr "Veritabanlarınızın, tablo ve sütunlarınızın içeriğini gezin. Başlamak için bir veritabanı seçin"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is VALID. Thanks!"
-msgstr ""
+msgstr "Kart sonuçlarına dair API'ye iletilen veriler GEÇERLİ. Teşekkürler!"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Kart sonuçlarına dair API'ye iletilen veriler GEÇERSİZ. Doğru verileri almak için sorgulama yapılıyor."
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is  ISSING. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Kart sonuçlarına dair API'ye iletilen veriler EKSİK. Doğru verileri almak için sorgulama yapılıyor."
 
 #: src/metabase/api/email.clj
 msgid "{0} was autocorrected to {1}"
-msgstr ""
+msgstr "{0} {1} olarak düzeltildi."
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
-msgstr ""
+msgstr "DELETE /api/metric/:id artık kullanılmıyor. Onun yerine, `archived` değerini PUT /api/metric/:id yardımı ile değiştirin."
 
 #: src/metabase/api/segment.clj
 msgid "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
-msgstr ""
+msgstr "DELETE /api/segment/:id artık kullanılmıyor. Onun yerine, `archived` değerini PUT /api/segment/:id yardımı ile değiştirin."
 
 #: src/metabase/api/user.clj
 msgid "Value of is_superuser must correspond to presence of Admin group ID in group_ids."
-msgstr ""
+msgstr "is_superuser'ın değeri group_ids'teki Admin group ID'nın varlığı ile uyuşmalı."
 
 #: src/metabase/async/api_response.clj
 msgid "Unexpected error writing keepalive characters"
-msgstr ""
+msgstr "Canlı tutma karakterlerinin kaydı sırasında beklenilmeyen hata"
 
 #: src/metabase/async/api_response.clj
 msgid "Unexpected output in async API response"
-msgstr ""
+msgstr "Async API cevabında beklenilmeyen sonuç"
 
 #: src/metabase/async/api_response.clj
 msgid "starting streaming response"
-msgstr ""
+msgstr "Duraksız cevap başlatılıyor"
 
 #: src/metabase/async/api_response.clj
 msgid "Output chan closed, canceling keepalive request."
-msgstr ""
+msgstr "Çıktı kanalı kapandı, canlı tutma talepleri iptal ediliyor."
 
 #: src/metabase/async/api_response.clj
 msgid "Async response finished, closing channels."
-msgstr ""
+msgstr "Async cevap tamamlandı, kanallar kapatılıyor."
 
 #: src/metabase/async/api_response.clj
 msgid "No response after waiting {0}. Canceling request."
-msgstr ""
+msgstr "{0} beklenildikten sonra cevap alınamadı. Talep iptal ediliyorç"
 
 #: src/metabase/async/api_response.clj
 msgid "Input channel unexpectedly closed."
-msgstr ""
+msgstr "Giriş kanalaı beklenilmedik bir şekilde kapatıldı."
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "f finished, permit will be returned"
-msgstr ""
+msgstr "Sonlandırıdığında, izin geri alınacak"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "request canceled, permit will be returned"
-msgstr ""
+msgstr "Talep iptal edildi, izin geri alınacak"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Unexpected error attempting to run function after obtaining permit"
-msgstr ""
+msgstr "İzin alındıktan sonra fonksiyonu işleme denemesinde beklenilmedik hata"
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Not running pending function call: output channel already closed."
-msgstr ""
+msgstr "Süren fonksiyon çağrısı koşturulmuyor: Çıkış kanalı kapanmış."
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "Current thread already has a permit for {0}, will not wait to acquire another"
-msgstr ""
+msgstr "Güncel iş parçasının {0} için izni var, başka biri için beklenilmeyecek"
 
 #: src/metabase/async/util.clj
 msgid "Output channel closed, will skip running {0}."
-msgstr ""
+msgstr "Çıkış kanalı kapalı, {0} koşturma atlanacak."
 
 #: src/metabase/async/util.clj
 msgid "Running {0} on separate thread..."
-msgstr ""
+msgstr "{0} başka bir iş parçacığı olarak koşturuluyor..."
 
 #: src/metabase/async/util.clj
 msgid "Caught error running {0}"
-msgstr ""
+msgstr "{0} koşturulurken hata oluştu"
 
 #: src/metabase/async/util.clj
 msgid "Request canceled, canceling future"
-msgstr ""
+msgstr "Talep iptal edildi, gelecek olanlar iptal ediliyor"
 
 #: src/metabase/driver/sql_jdbc/connection.clj
 msgid "Closing old connection pool for database {0} ..."
-msgstr ""
+msgstr "Veritabanı {0}{ için eski bağlantı havuzu kapatılıyor..."
 
 #: src/metabase/metabot/command.clj
 msgid "Here''s your {0} most recent cards:"
-msgstr ""
+msgstr "Sizin en son {0} kartınız:"
 
 #: src/metabase/metabot/command.clj
 msgid "Could you be a little more specific, or use the ID? I found these cards with names that matched:"
-msgstr ""
+msgstr "Lütfen biraz daha kesin olabilir misiniz, ya da bir ID kullanabilir misiniz? İsimler ile eşleşen şu kartları buldum:"
 
 #: src/metabase/metabot/command.clj
 msgid "Card {0} not found."
-msgstr ""
+msgstr "Kart {0} bulunamadı."
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Exception in API call"
-msgstr ""
+msgstr "API çağrısında hata"
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Request canceled before finishing."
-msgstr ""
+msgstr "Talep sonlandırılamadan iptal edildi."
 
 #: src/metabase/middleware/json.clj
 msgid "Metabase only supports JSON requests."
-msgstr ""
+msgstr "Metabase sadece JSON taleplerini destekliyor."
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
-msgstr ""
+msgstr "Lütfen 'Content-Type: application/json' başlığını kullandığınızdan emin olun."
 
 #: src/metabase/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
-msgstr ""
+msgstr "Metabase site URL'si {0}'a ayarlandı"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
-msgstr ""
+msgstr "DB için görevlerin çizelgelemesinde hata"
 
 #: src/metabase/models/database.clj
 msgid "Error unscheduling tasks for DB."
-msgstr ""
+msgstr "DB için görevlerin çizelgeleme dışına alınmasında hata"
 
 #: src/metabase/models/database.clj
 msgid "{0} Database ''{1}'' sync/analyze schedules have changed!"
-msgstr ""
+msgstr " {0} Veritabanı ''{1}'' eşleştirme/analiz zamanlamarı değişti!"
 
 #: src/metabase/models/database.clj
 msgid "Sync metadata was: ''{0}'' is now: ''{1}''"
-msgstr ""
+msgstr "Eşleştirme verisi: ''{0}'' idi, şimdi: ''{1}''"
 
 #: src/metabase/models/database.clj
 msgid "Cache FieldValues was: ''{0}'', is now: ''{1}''"
-msgstr ""
+msgstr "Arabellek FieldValues: ''{0}'' idi, şimdi: ''{1}''"
 
 #: src/metabase/models/metric.clj
 msgid "You cannot update the creator_id of a Metric."
-msgstr ""
+msgstr "Bri metriğin creator_id'sini güncelleyemezsiniz."
 
 #: src/metabase/models/permissions.clj
 msgid "MetaBot can only have Collection permissions."
-msgstr ""
+msgstr "MetaBot sadece Collection izinlerine sahip olabilir."
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
-msgstr ""
+msgstr "İzinlerin verilmesi başarısız oldu"
 
 #: src/metabase/models/permissions.clj
 msgid "Changing permissions"
-msgstr ""
+msgstr "İzinler değiştiriliyor"
 
 #: src/metabase/models/permissions.clj
 msgid "FROM:"
-msgstr ""
+msgstr "Kimden:"
 
 #: src/metabase/models/permissions.clj
 msgid "TO:"
-msgstr ""
+msgstr "Kime:"
 
 #: src/metabase/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
-msgstr ""
+msgstr "Bir bölümün creator_id'sini güncelleyemezsiniz."
 
 #: src/metabase/models/setting.clj
 msgid "Attempted to set Setting {0} to obfuscated value. Ignoring change."
-msgstr ""
+msgstr "Setting {0}'ı gizlenmiş değere atama denendi .Değişiklik dikkate alınmayacak."
 
 #: src/metabase/models/setting.clj
 msgid "Using value of env var {0}"
-msgstr ""
+msgstr "env'in değeri {0} kullanılıyor"
 
 #: src/metabase/models/user.clj
 msgid "Adding User {0} to All Users permissions group..."
-msgstr ""
+msgstr "Kullanıcı {0} tüm kullanıcılar izin grubuna ekleniyor..."
 
 #: src/metabase/models/user.clj
 msgid "Adding User {0} to Admin permissions group..."
-msgstr ""
+msgstr "Kullanıcı {0} yöneticiler izin grubuna ekleniyor..."
 
 #: src/metabase/query_processor.clj
 msgid "Query failure"
-msgstr ""
+msgstr "Sorgu hatası"
 
 #: src/metabase/query_processor/async.clj
 msgid "Maximum number of simultaneous queries to allow per connected Database."
-msgstr ""
+msgstr "Veritabanı başına izin verilen en fazla eşzamanlı sorgu sayısı."
 
 #: src/metabase/util.clj
 msgid "Timed out after {0} milliseconds."
-msgstr ""
+msgstr "{0} milisaniyenin ardından zaman aşımı."
 

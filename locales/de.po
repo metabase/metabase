@@ -11614,11 +11614,11 @@ msgstr "Verbindung zur Metabase {0} DB nicht möglich."
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
-msgstr ""
+msgstr "Fehler beim Hinzufügen der Legacy-SQL-Anweisung zur BigQuery Abfrage"
 
 #: src/metabase/driver.clj
 msgid "Failed to notify {0} Database {1} updated"
-msgstr ""
+msgstr "Fehlgeschlagene Information an {0} Datenbank {1} aktualisiert"
 
 #: src/metabase/driver.clj
 msgid "Loading driver {0} {1}"
@@ -11646,7 +11646,7 @@ msgstr "Treiber {0} registriert"
 
 #: src/metabase/driver.clj
 msgid "(parents: {0})"
-msgstr ""
+msgstr "(Eltern: {0})"
 
 #: src/metabase/driver.clj
 msgid "Initializing driver {0}..."
@@ -11662,7 +11662,7 @@ msgstr "Ungültiges Treiber-Feature"
 
 #: src/metabase/driver/sql/query_processor.clj
 msgid "Invalid HoneySQL form:"
-msgstr ""
+msgstr "Ungültige HoneySQL Anfrage:"
 
 #: src/metabase/driver/sql_jdbc/connection.clj
 msgid "Closing connection pool for database {0} ..."
@@ -11710,7 +11710,7 @@ msgstr "Der Websocket der mit diesem Slack-Event verbunden ist unterscheidet sic
 
 #: src/metabase/models/field_values.clj
 msgid "FieldValues for Field {0} remain unchanged. Skipping..."
-msgstr ""
+msgstr "Feldwerte für das Feld {0} bleiben unverändert. Überspringe..."
 
 #: src/metabase/models/interface.clj
 msgid "Unable to normalize:"
@@ -11734,19 +11734,19 @@ msgstr "Bitte stelle sicher, dass das Verzeichnis existiert und dass Metabase di
 
 #: src/metabase/plugins.clj
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
-msgstr ""
+msgstr "Du kannst das Modul-Verzeichnis von Metabase ändern, indem du die Umgebungsvariable MB_PLUGINS_DIR setzt."
 
 #: src/metabase/plugins.clj
 msgid "Falling back to a temporary directory for now."
-msgstr ""
+msgstr "Falle vorerst auf ein temporäres Verzeichnis zurück."
 
 #: src/metabase/plugins.clj
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr ""
+msgstr "Metabase kann nicht in das temporäre Verzeichnis schreiben. Bitte setze den Wert MB_PLUGINS_DIR auf ein schreibbares Verzeichnis und starte Metabase neu."
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr ""
+msgstr "spark-deps.jar wird nicht länger für Metabase 1.0+ benötigt. Du kannst es aus deinem Modul-Verzeichnis entfernen."
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -11794,7 +11794,7 @@ msgstr "Klasse nicht gefunden: {0}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin ''{0}'' depends on plugin ''{1}''"
-msgstr ""
+msgstr "Plugin \"{0}\" hängt ab von Plugin \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
@@ -11826,7 +11826,7 @@ msgstr "Registriere JDBC-Proxy-Treiber für {0}..."
 
 #: src/metabase/plugins/jdbc_proxy.clj
 msgid "Deregistering original JDBC driver {0}..."
-msgstr ""
+msgstr "Deregistriere den originalen JDBC-Treiber {0}..."
 
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Default connection property {0} does not exist."
@@ -11856,7 +11856,7 @@ msgstr ""
 
 #: src/metabase/pulse.clj
 msgid "Error running query for Card {0}"
-msgstr ""
+msgstr "Fehler in der Abfrage für Karte {0}"
 
 #: src/metabase/pulse/render.clj
 msgid "Last week"
@@ -11896,7 +11896,7 @@ msgstr ""
 
 #: src/metabase/sync/sync_metadata/fields.clj
 msgid "Error syncing Fields for Table ''{0}''"
-msgstr ""
+msgstr "Fehler beim Synchronisieren der Felder für Tabelle \"{0}\""
 
 #: src/metabase/sync/sync_metadata/fields.clj
 msgid "Hash of {0} matches stored hash, skipping Fields sync"
@@ -11908,53 +11908,53 @@ msgstr "Feld"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error checking if Fields {0} need to be created or reactivated"
-msgstr ""
+msgstr "Fehler bei der Prüfung, ob die Felder {0} erstellt oder reaktiviert werden müssen"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Marking Field ''{0}'' as inactive."
-msgstr ""
+msgstr "Markiere Feld \"{0}\" als inaktiv"
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error retiring {0}"
-msgstr ""
+msgstr "Fehler beim Ausblenden {0}"
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Database type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "Datenbanktyp von {0} hat sich von \"{1}\" auf \"{2}\" geändert."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Base type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "Basistyp von {0} hat sich von \"{1}\" auf \"{2}\" geändert."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Special type of {0} has changed from ''{1}'' to ''{2}''."
-msgstr ""
+msgstr "Spezialtyp von {0} hat sich von \"{1}\" auf \"{2}\" geändert."
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Comment has been added for {0}."
-msgstr ""
+msgstr "Kommentar für {0} hinzugefügt."
 
 #: src/metabase/task.clj
 msgid "Stopping Quartz Scheduler {0}"
-msgstr ""
+msgstr "Stoppe Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr ""
+msgstr "Starte Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"
-msgstr ""
+msgstr "Fehler beim Laden des \"task namespace\" {0}"
 
 #. don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
 #. namespaces we can log it
 #: src/metabase/task.clj
 msgid "Initializing task {0}"
-msgstr ""
+msgstr "Initialisiere Aufgabe {0}"
 
 #: src/metabase/task.clj
 msgid "Error initializing task {0}"
-msgstr ""
+msgstr "Fehler beim Initialisieren der Aufgabe {0}"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Problem sending abandonment email"
@@ -11962,15 +11962,15 @@ msgstr ""
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Sending anonymous usage stats."
-msgstr ""
+msgstr "Sende anonyme Nutzungsstatistiken."
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Error sending anonymous usage stats"
-msgstr ""
+msgstr "Fehler beim Senden anonymer Nutzungsstatistiken"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Error sending Pulse {0}"
-msgstr ""
+msgstr "Fehler beim Senden des Pulse {0}"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Sending scheduled pulses..."
@@ -11978,36 +11978,38 @@ msgstr ""
 
 #: src/metabase/task/send_pulses.clj
 msgid "SendPulses task failed"
-msgstr ""
+msgstr "Aufgabe \"Puls Senden\" fehlgeschlagen"
 
+#. Is this a typo in the original snippet? I think it should read "Failed to schedule tasks for Database {0}"
 #: src/metabase/task/sync_databases.clj
 msgid "Failed to scheduler tasks for Database {0}"
-msgstr ""
+msgstr "Fehler beim Planen von Aufgaben zur Datenbank {0}"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Cleaning up task history"
-msgstr ""
+msgstr "Aufgabenhistorie wird bereinigt"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, rows were deleted"
-msgstr ""
+msgstr "Bereinigung der Aufgabenhistorie erfolgreich, es wurden Einträge entfernt"
 
 #: src/metabase/task/task_history_cleanup.clj
 msgid "Task history cleanup successful, no rows were deleted"
-msgstr ""
+msgstr "Bereinigung der Aufgabenhistorie erfolgreich, es wurden keine Einträge entfernt"
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Checking for new Metabase version info."
-msgstr ""
+msgstr "Prüfe auf neue Metabase Versionsinfo"
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
-msgstr ""
+msgstr "Fehler beim Ermitteln der Versions-Informationen"
 
 #: src/metabase/util.clj
 msgid "Maximum memory available to JVM: {0}"
-msgstr ""
+msgstr "Maximal für die JVM verfügbarer Speicher: {0}"
 
+#. Whithout any context, it is almost impossible to get the real meaning of this.
 #: src/metabase/util.clj
 msgid "Not something with an ID: {0}"
 msgstr ""
@@ -12030,15 +12032,15 @@ msgstr "Woher du deine Benutzer bekommen hast"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How it's distributed across time and other categories."
-msgstr ""
+msgstr "Wie es über die Zeit und andere Kategorien verteilt ist."
 
 #: resources/automagic_dashboards/table/TransactionTable/BySource.yaml
 msgid "Here's a closer look at your [[this]] per source"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]], nach Quelle"
 
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "Here's a quick look at the [[this]]"
-msgstr ""
+msgstr "Dies ist ein kurzer Blick auf [[this]]"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by day of the month"
@@ -12056,32 +12058,32 @@ msgstr "[[CreateTimestamp]] pro Quartal des Jahres"
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
-msgstr ""
+msgstr "Wie sie über Orte verteilt sind"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at your [[this]] by products"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]], nach Produkten"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by month of the year"
-msgstr ""
+msgstr " [[CreateTimestamp]] pro Monat des Jahres"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "An overview of your [[this]] and how it's distributed across time, place, and categories."
-msgstr ""
+msgstr "Eine Übersicht über deine [[this]] und deren Verteilung über Zeit, Ort und Kategorie."
 
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/question/GenericQuestion.yaml
 msgid "Here's a closer look at your [[this]]"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]]"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by day of the week"
-msgstr ""
+msgstr "[[CreateTimestamp]] nach Wochentag"
 
 #: resources/automagic_dashboards/table/GoogleAnalyticsTable.yaml
 msgid "Here's an overview of your [[this]] data from Google Analytics"
-msgstr ""
+msgstr "Dies ist eine Übersicht über deine Daten von Google Analytics zu [[this]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/GenericField.yaml
@@ -12090,31 +12092,31 @@ msgstr ""
 #: resources/automagic_dashboards/comparison/Country.yaml
 #: resources/automagic_dashboards/comparison/GenericField.yaml
 msgid "Here's an overview of your [[this]]"
-msgstr ""
+msgstr "Dies ist eine Übersicht über deine [[this]]"
 
 #: resources/automagic_dashboards/field/Country.yaml
 msgid "Here's a closer look at your [[this]] field"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf dein Feld [[this]]"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Here's a closer look at your [[this]] per country"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]], nach Produkten "
 
 #: resources/automagic_dashboards/table/GenericTable/Correlations.yaml
 msgid "If you're into correlations, this is the x-ray for you."
-msgstr ""
+msgstr "Wenn dich Korrelationen interessieren, ist dies das X-Ray für dich."
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by day of the week"
-msgstr ""
+msgstr "[[CreateDate]] nach Wochentag"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "It looks like your [[this]] has transactions, so here's a look at them"
-msgstr ""
+msgstr "Es sieht so aus, als gäbe es Transaktionen für [[this]]. Hier sind sie"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByState.yaml
 msgid "Here's a closer look at your [[this]] per state"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]], nach Staat"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by day of the month"
@@ -12126,7 +12128,7 @@ msgstr "[[CreateDate]] pro Stunde des Tages"
 
 #: resources/automagic_dashboards/table/TransactionTable/Seasonality.yaml
 msgid "Here's a closer look at your [[this]] over time"
-msgstr ""
+msgstr "Dies ist ein genauer Blick auf deine [[this]], über die Zeit"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateDate]] by quarter of the year"
@@ -12156,7 +12158,7 @@ msgstr "{0} wieder aktivieren?"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:63
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
-msgstr ""
+msgstr "Wir konnten ihnen keine Einladung per E-Mail schicken, also bitte sie auf anderem Wege, sich als {0} einzuloggen. Das Kennwort lautet:"
 
 #: frontend/src/metabase/entities/collections.js:21
 msgid "collection"
@@ -12168,11 +12170,11 @@ msgstr "Sammlungen"
 
 #: frontend/src/metabase/entities/dashboards.js:29
 msgid "dashboard"
-msgstr ""
+msgstr "dashboard"
 
 #: frontend/src/metabase/entities/dashboards.js:30
 msgid "dashboards"
-msgstr ""
+msgstr "dashboards"
 
 #: frontend/src/metabase/entities/users.js:125
 msgid "First name is required"
@@ -12209,23 +12211,23 @@ msgstr "Alle unterschiedlichen Werte ansehen"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:12
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started"
-msgstr ""
+msgstr "Durchstöbere den Inhalt deiner Datenbanken, Tabellen und Spalten. Wähle eine Datenbank um loszulegen."
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is VALID. Thanks!"
-msgstr ""
+msgstr "Die an die API übergebenen Metatdaten zum Ergebnis der Karte sind GÜLTIG. Vielen Dank!"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Die an die API übergebenen Metatdaten zum Ergebnis der Karte sind UNGÜLTIG. Führe Abfrage zum Ermitteln der korrekten Metadaten aus."
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is  ISSING. Running query to fetch correct metadata."
-msgstr ""
+msgstr "Die an die API übergebenen Metatdaten zum Ergebnis der Karte FEHLEN. Führe Abfrage zum Ermitteln der korrekten Metadaten aus."
 
 #: src/metabase/api/email.clj
 msgid "{0} was autocorrected to {1}"
-msgstr ""
+msgstr "{0} wurde automatisch korrigiert zu {1}"
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
@@ -12249,23 +12251,23 @@ msgstr ""
 
 #: src/metabase/async/api_response.clj
 msgid "starting streaming response"
-msgstr ""
+msgstr "Starte den Antwort-Stream"
 
 #: src/metabase/async/api_response.clj
 msgid "Output chan closed, canceling keepalive request."
-msgstr ""
+msgstr "Ausgabekanal geschlossen, stoppe Keepalive-Anfrage."
 
 #: src/metabase/async/api_response.clj
 msgid "Async response finished, closing channels."
-msgstr ""
+msgstr "Ansynchrone Antwort abgeschlossen, schließe Kanäle."
 
 #: src/metabase/async/api_response.clj
 msgid "No response after waiting {0}. Canceling request."
-msgstr ""
+msgstr "Keine Antwort nach {0}. Breche Anfrage ab."
 
 #: src/metabase/async/api_response.clj
 msgid "Input channel unexpectedly closed."
-msgstr ""
+msgstr "Der Eingabekanal wurde unerwartet geschlossen."
 
 #: src/metabase/async/semaphore_channel.clj
 msgid "f finished, permit will be returned"
@@ -12289,15 +12291,15 @@ msgstr ""
 
 #: src/metabase/async/util.clj
 msgid "Output channel closed, will skip running {0}."
-msgstr ""
+msgstr "Ausgabekanal geschlossen, überspringe {0}."
 
 #: src/metabase/async/util.clj
 msgid "Running {0} on separate thread..."
-msgstr ""
+msgstr "Führe {0} auf separatem Thread aus..."
 
 #: src/metabase/async/util.clj
 msgid "Caught error running {0}"
-msgstr ""
+msgstr "Fehler abgefangen in {0}"
 
 #: src/metabase/async/util.clj
 msgid "Request canceled, canceling future"
@@ -12305,39 +12307,39 @@ msgstr ""
 
 #: src/metabase/driver/sql_jdbc/connection.clj
 msgid "Closing old connection pool for database {0} ..."
-msgstr ""
+msgstr "Schließe alten Verbindungspool für Datenbank {0} ..."
 
 #: src/metabase/metabot/command.clj
 msgid "Here''s your {0} most recent cards:"
-msgstr ""
+msgstr "Hier sind deine letzten {0} Karten:"
 
 #: src/metabase/metabot/command.clj
 msgid "Could you be a little more specific, or use the ID? I found these cards with names that matched:"
-msgstr ""
+msgstr "Kannst du etwas genauer sein oder die ID verwenden? Ich habe folgende passende Karten gefunden:"
 
 #: src/metabase/metabot/command.clj
 msgid "Card {0} not found."
-msgstr ""
+msgstr "Karte {0} nicht gefunden."
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Exception in API call"
-msgstr ""
+msgstr "Fehler in API-Anfrage"
 
 #: src/metabase/middleware/exceptions.clj
 msgid "Request canceled before finishing."
-msgstr ""
+msgstr "Die Anfrage wurde vorzeitig abgebrochen."
 
 #: src/metabase/middleware/json.clj
 msgid "Metabase only supports JSON requests."
-msgstr ""
+msgstr "Metabase unterstützt nur JSON-Anfragen."
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
-msgstr ""
+msgstr "Verwende den Header 'Content-Type: application/json'"
 
 #: src/metabase/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
-msgstr ""
+msgstr "Setze Metabase-URL auf {0}"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
@@ -12365,15 +12367,15 @@ msgstr ""
 
 #: src/metabase/models/permissions.clj
 msgid "MetaBot can only have Collection permissions."
-msgstr ""
+msgstr "MetaBot kann ausschließlich Sammlungsberechtigungen besitzen"
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
-msgstr ""
+msgstr "Fehler beim Gewähren der Berechtigungen"
 
 #: src/metabase/models/permissions.clj
 msgid "Changing permissions"
-msgstr ""
+msgstr "Ändere Berechtigungen"
 
 #: src/metabase/models/permissions.clj
 msgid "FROM:"
@@ -12393,7 +12395,7 @@ msgstr ""
 
 #: src/metabase/models/setting.clj
 msgid "Using value of env var {0}"
-msgstr ""
+msgstr "Verwende den Wert der Umgebungsvariable {0}"
 
 #: src/metabase/models/user.clj
 msgid "Adding User {0} to All Users permissions group..."
@@ -12413,5 +12415,5 @@ msgstr ""
 
 #: src/metabase/util.clj
 msgid "Timed out after {0} milliseconds."
-msgstr ""
+msgstr "Zeitüberschreitung nach {0} Millisekunden."
 
