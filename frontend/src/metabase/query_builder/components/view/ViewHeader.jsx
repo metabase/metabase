@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "c-3po";
 
 import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
@@ -148,6 +149,13 @@ export class ViewSubHeader extends React.Component {
     if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
       left.push(
         <QuestionSummaries
+          triggerElement={
+            <Button
+              medium
+              icon="insight"
+              color="#84BB4C"
+            >{t`Summarize`}</Button>
+          }
           key="summaries"
           question={question}
           onRun={() => runQuestionQuery({ ignoreCache: true })}
@@ -261,6 +269,33 @@ export class ViewSubHeader extends React.Component {
             <div className="flex-full flex-basis-none flex align-center justify-end">
               {right}
             </div>
+          </ViewSection>
+        )}
+        {question.query().aggregations().length > 0 && (
+          <ViewSection className="borderless">
+            {question
+              .query()
+              .aggregations()
+              .map((agg, index) => (
+                <div className="text-brand">
+                  {agg[0]}{" "}
+                  <Icon
+                    name="close"
+                    onClick={() => {
+                      question
+                        .query()
+                        .removeAggregation(index)
+                        .update();
+                      runQuestionQuery();
+                    }}
+                  />
+                </div>
+              ))}
+            <QuestionSummaries
+              triggerElement={<Icon name="add" />}
+              question={question}
+              onRun={() => runQuestionQuery()}
+            />
           </ViewSection>
         )}
       </div>

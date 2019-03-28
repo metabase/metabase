@@ -6,13 +6,9 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
-const QuestionSummaries = ({ question, onRun }) => (
+const QuestionSummaries = ({ question, onRun, triggerElement }) => (
   <div>
-    <PopoverWithTrigger
-      triggerElement={
-        <Button medium icon="insight" color="#84BB4C">{t`Summarize`}</Button>
-      }
-    >
+    <PopoverWithTrigger triggerElement={triggerElement}>
       <AggregationPopover
         query={question.query()}
         onChangeAggregation={newAggregation => {
