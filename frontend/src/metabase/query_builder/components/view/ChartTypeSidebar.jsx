@@ -15,7 +15,7 @@ const FIXED_LAYOUT = [
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
-const ChartTypeSidebar = ({ question, result, ...props }) => {
+const ChartTypeSidebar = ({ question, result, setUIControls, ...props }) => {
   const other = Array.from(visualizations)
     .filter(
       ([type, visualization]) =>
@@ -45,9 +45,10 @@ const ChartTypeSidebar = ({ question, result, ...props }) => {
                     visualization.isSensible &&
                     visualization.isSensible(result.data)
                   }
-                  onClick={() =>
-                    question.setDisplay(type).update(null, { reload: false })
-                  }
+                  onClick={() => {
+                    question.setDisplay(type).update(null, { reload: false });
+                    setUIControls({ isShowingChartSettingsSidebar: true });
+                  }}
                 />
               )
             );
