@@ -298,8 +298,11 @@
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
-     (-> (dbspec/mysql (set/rename-keys details {:dbname :db}))
-         (sql-jdbc.common/handle-additional-options details)))))
+     (let [details (-> details
+                       (set/rename-keys {:dbname :db})
+                       (dissoc :ssl))]
+       (-> (dbspec/mysql details)
+           (sql-jdbc.common/handle-additional-options details))))))
 
 
 (defmethod sql-jdbc.sync/active-tables :mysql [& args]
