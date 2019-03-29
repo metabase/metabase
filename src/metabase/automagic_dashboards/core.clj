@@ -606,20 +606,22 @@
 
 (defn- expand-visualization
   [card dimensions metrics]
-  (case (-> card :visualization first)
-    "smart-row"
-    (assoc card :visualization (if (->> dimensions
-                                        (keep #(get-in % [:fingerprint :global :distinct-count]))
-                                        (apply max 0)
-                                        (>= smart-row-table-threshold))
-                                 ["row" {}]
-                                 ["table" {:column_settings {(->> metrics
-                                                                  first
-                                                                  :op
-                                                                  (format "[\"name\",\"%s\"]")
-                                                                  keyword) {:show_mini_bar true}}}]))
+  (let [[display settings] (:visualization card)]
+    (case display
+      "smart-row"
+      (assoc card :visualization (if (->> dimensions
+                                          (keep #(get-in % [:fingerprint :global :distinct-count]))
+                                          (apply max 0)
+                                          (>= smart-row-table-threshold))
+                                   ["row" settings]
+                                   ["table" (merge {:column_settings {(->> metrics
+                                                                           first
+                                                                           :op
+                                                                           (format "[\"name\",\"%s\"]")
+                                                                           keyword) {:show_mini_bar true}}}
+                                                   settings)]))
 
-    card))
+      card)))
 
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
