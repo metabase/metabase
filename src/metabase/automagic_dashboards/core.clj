@@ -605,7 +605,7 @@
 (def ^:private ^:const ^Long smart-row-table-threshold 10)
 
 (defn- expand-visualization
-  [card dimensions]
+  [card dimensions metrics]
   (case (-> card :visualization first)
     "smart-row"
     (assoc card :visualization (if (->> dimensions
@@ -613,7 +613,11 @@
                                         (apply max 0)
                                         (>= smart-row-table-threshold))
                                  ["row" {}]
-                                 ["table" {}]))
+                                 ["table" {:column_settings {(->> metrics
+                                                                  first
+                                                                  :op
+                                                                  (format "[\"name\",\"%s\"]")
+                                                                  keyword) {:show_mini_bar true}}}]))
 
     card))
 
@@ -648,24 +652,25 @@
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
-                (let [query (if query
-                              (build-query context bindings query)
-                              (build-query context bindings
-                                           filters
-                                           metrics
-                                           dimensions
-                                           limit
-                                           order_by))]
+                (let [query   (if query
+                                (build-query context bindings query)
+                                (build-query context bindings
+                                             filters
+                                             metrics
+                                             dimensions
+                                             limit
+                                             order_by))
+                      metrics (for [metric metrics]
+                                {:name ((some-fn :name (comp metric-name :metric)) metric)
+                                 :op   (-> metric :metric metric-op)})]
                   (-> card
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
-                      (expand-visualization (map (comp bindings second) dimensions))
+                      (expand-visualization (map (comp bindings second) dimensions) metrics)
                       (assoc :dataset_query query
-                             :metrics       (for [metric metrics]
-                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
-                                               :op   (-> metric :metric metric-op)})
+                             :metrics       metrics
                              :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
