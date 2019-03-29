@@ -5,7 +5,9 @@
              [server :as server]
              [util :as u]]
             [metabase.middleware.util :as middleware.u]
-            [metabase.util.date :as du]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]]
             [toucan.db :as db])
   (:import org.eclipse.jetty.util.thread.QueuedThreadPool))
 
@@ -63,6 +65,9 @@
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
           (let [respond (fn [response]
-                          (log-response request response (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))
+                          (try
+                            (log-response request response (du/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))
+                            (catch Throwable e
+                              (log/error e (trs "Error logging API request"))))
                           (respond response))]
             (handler request respond raise)))))))
