@@ -11806,8 +11806,7 @@ msgstr "Wtyczka \"{0}\" zależy od wtyczki \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
-msgstr "{0} zależności {1} zadowolony? {2}\n"
-""
+msgstr "{0} zależności {1} zadowolony? {2}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugins with unsatisfied deps: {0}"
@@ -12424,4 +12423,3 @@ msgstr "Maksymalna liczba równoczesnych zapytań umożliwiających połączenie
 #: src/metabase/util.clj
 msgid "Timed out after {0} milliseconds."
 msgstr "Przekroczono limit czasu po {0} milisekundach."
-
