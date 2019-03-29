@@ -26,5 +26,5 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 ---
 
-## That's it!
-Still need help? Feel free to reach out to us at the support email address you were provided.
+## Next: Copying contents of one Metabase instance to another
+Learn how to use [serialization](serialization.md) to create and load data dumps of the contents of a Metabase instance.
