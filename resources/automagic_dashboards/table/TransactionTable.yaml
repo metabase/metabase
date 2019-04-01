@@ -155,8 +155,6 @@ cards:
       dimensions:
         - ProductMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
       group: General
@@ -166,8 +164,6 @@ cards:
       dimensions:
         - ProductCategoryMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
       group: General
@@ -189,8 +185,6 @@ cards:
       visualization: smart-row
       dimensions: SourceMedium
       metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
       score: 90
       height: 8
       group: General

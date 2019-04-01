@@ -5,8 +5,7 @@ metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
-  - Avg:
-      metric: [avg, [dimension, GenericNumber]]
+  - Avg: [avg, [dimension, GenericNumber]]
 dimensions:
   - Country:
       field_type: GenericTable.Country
@@ -144,8 +143,6 @@ cards:
       score: 80
       height: 8
       group: General
-      order_by:
-        - Count: descending
 # Geographical
   - CountByCountry:
       title: "[[this.short-name]] per country"

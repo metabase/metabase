@@ -104,8 +104,6 @@ cards:
     visualization: smart-row
     dimensions: SourceLarge
     metrics: TotalOrders
-    order_by:
-      - TotalOrders: descending
     score: 80
     height: 8
 - IncomeBySource:
@@ -114,8 +112,6 @@ cards:
     visualization: smart-row
     dimensions: SourceMedium
     metrics: TotalIncome
-    order_by:
-      - TotalIncome: descending
     score: 80
     height: 8
 - AvgQuantityBySource:
@@ -124,8 +120,6 @@ cards:
     visualization: smart-row
     dimensions: SourceMedium
     metrics: AvgQuantity
-    order_by:
-      - AvgQuantity: descending
     score: 80
     height: 8
 - AvgIncomeBySource:
@@ -134,8 +128,6 @@ cards:
    visualization: smart-row
    dimensions: SourceMedium
    metrics: AvgIncome
-   order_by:
-     - AvgIncome: descending
    score: 80
    height: 8
 - UsersBySource:
@@ -144,8 +136,6 @@ cards:
     title: Number of users per source
     dimensions: SourceMedium
     metrics: TotalUsers
-    order_by:
-      - TotalUsers: descending
     score: 90
     height: 8
 - NewUsersBySource:
@@ -157,8 +147,6 @@ cards:
     filters: NewUsers
     score: 90
     height: 8
-    order_by:
-      - TotalUsers: descending
 - IncomeBySource:
     group: Financial
     title: Total income per source

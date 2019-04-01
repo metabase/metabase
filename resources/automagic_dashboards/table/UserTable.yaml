@@ -142,8 +142,6 @@ cards:
       score: 70
       height: 8
       group: General
-      order_by:
-        - Count: descending
   - CountBySource:
       title: "Per [[Source]]"
       dimensions: Source

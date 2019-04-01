@@ -48,6 +48,4 @@ cards:
     dimensions:
       - ProductCategoryMedium
     metrics: TotalOrders
-    order_by:
-     - TotalOrders: descending
     height: 8

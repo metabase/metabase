@@ -90,8 +90,6 @@ cards:
       score: 80
       height: 8
       group: General
-      order_by:
-        - Count: descending
 # Geographical
   - EventsByCountry:
       title: Events per country
