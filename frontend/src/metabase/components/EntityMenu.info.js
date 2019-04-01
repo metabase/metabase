@@ -5,7 +5,7 @@ import { t } from "c-3po";
 export const component = EntityMenu;
 
 export const description = `
-    A menu with varios entity related options grouped by context.
+    A menu with various entity related options grouped by context.
 `;
 
 const DemoAlignRight = ({ children }) => (

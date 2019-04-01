@@ -12296,7 +12296,7 @@ msgstr ""
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
-msgstr ""
+msgstr "Dobbeltsjekk at det er satt opp 'Content-Type: application/json' på spørringshodet."
 
 #: src/metabase/middleware/misc.clj
 msgid "Setting Metabase site URL to {0}"
@@ -12340,11 +12340,11 @@ msgstr ""
 
 #: src/metabase/models/permissions.clj
 msgid "FROM:"
-msgstr ""
+msgstr "Fra:"
 
 #: src/metabase/models/permissions.clj
 msgid "TO:"
-msgstr ""
+msgstr "Til:"
 
 #: src/metabase/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."

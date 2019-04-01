@@ -4191,7 +4191,7 @@ msgstr "30 ngày vừa qua"
 #: src/metabase/api/table.clj
 msgid "Week"
 msgid_plural "Weeks"
-msgstr[0] "Tuần"
+msgstr[0] "tuần"
 
 #: frontend/src/metabase/lib/query_time.js:197
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
@@ -4199,7 +4199,7 @@ msgstr[0] "Tuần"
 #: src/metabase/api/table.clj
 msgid "Month"
 msgid_plural "Months"
-msgstr[0] "Tháng"
+msgstr[0] "tháng"
 
 #: frontend/src/metabase/lib/query_time.js:201
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
@@ -7427,7 +7427,7 @@ msgstr "Không ngăn"
 #: frontend/src/metabase/lib/query_time.js:193 src/metabase/api/table.clj
 msgid "Day"
 msgid_plural "Days"
-msgstr[0] "Ngày"
+msgstr[0] "ngày"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
 #: frontend/src/metabase/lib/query_time.js:189 src/metabase/api/table.clj
@@ -7438,7 +7438,7 @@ msgstr[0] "Phút"
 #: frontend/src/metabase/lib/query_time.js:191 src/metabase/api/table.clj
 msgid "Hour"
 msgid_plural "Hours"
-msgstr[0] "Giờ"
+msgstr[0] "giờ"
 
 #. Quý
 #: frontend/src/metabase/lib/query_time.js:199 src/metabase/api/table.clj
@@ -11454,7 +11454,7 @@ msgstr[0] "lựa chọn"
 
 #: frontend/src/metabase/parameters/components/widgets/DateQuarterYearWidget.jsx:11
 msgid "[Q]Q"
-msgstr ""
+msgstr "[Q]Q"
 
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:28
 msgid "This"
@@ -11555,7 +11555,7 @@ msgstr "Trình điều khiển đã đăng ký {0}"
 
 #: src/metabase/driver.clj
 msgid "(parents: {0})"
-msgstr ""
+msgstr "(cha mẹ: {0})"
 
 #: src/metabase/driver.clj
 msgid "Initializing driver {0}..."
@@ -11825,7 +11825,7 @@ msgstr " Đánh dấu Trường '' {0} '' là không hoạt động."
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error retiring {0}"
-msgstr ""
+msgstr "Lỗi khi nghỉ hưu {0}"
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Database type of {0} has changed from ''{1}'' to ''{2}''."
@@ -11845,11 +11845,11 @@ msgstr "Nhận xét đã được thêm cho {0}."
 
 #: src/metabase/task.clj
 msgid "Stopping Quartz Scheduler {0}"
-msgstr ""
+msgstr "Dừng lại Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr ""
+msgstr "Bắt đầu Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"

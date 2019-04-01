@@ -45,7 +45,7 @@ export default class LoadingAndErrorWrapper extends Component {
       error.message;
 
     if (!errorMessage || typeof errorMessage === "object") {
-      errorMessage = t`An error occured`;
+      errorMessage = t`An error occurred`;
     }
     return errorMessage;
   }

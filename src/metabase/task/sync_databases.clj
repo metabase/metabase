@@ -192,4 +192,4 @@
     (try
       (schedule-tasks-for-db! database)
       (catch Throwable e
-        (log/error e (trs "Failed to scheduler tasks for Database {0}" (:id database)))))))
+        (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))

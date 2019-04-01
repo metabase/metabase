@@ -7,6 +7,7 @@
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
@@ -22,6 +23,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
+             [i18n :refer [trs]]
              [ssh :as ssh]]
             [schema.core :as s])
   (:import [java.sql ResultSet Time Timestamp Types]
@@ -45,6 +47,7 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/default-ssl-details
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
@@ -282,14 +285,24 @@
    ;; but we still want to test that we can handle it correctly for older ones
    :sessionVariables     "sql_mode='ALLOW_INVALID_DATES'"})
 
-(defmethod sql-jdbc.conn/connection-details->spec :mysql [_ {ssl? :ssl, :as details}]
-  (merge
-   default-connection-args
-   ;; newer versions of MySQL will complain if you don't specify this when not using SSL
-   (when-not ssl?
-     {:useSSL false})
-   (-> (dbspec/mysql (set/rename-keys details {:dbname :db}))
-       (sql-jdbc.common/handle-additional-options details))))
+(defmethod sql-jdbc.conn/connection-details->spec :mysql [_ {ssl? :ssl, :keys [additional-options], :as details}]
+  ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
+  ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
+  ;;
+  ;; TODO - should this be fixed by a data migration instead?
+  (let [ssl? (or ssl? (some-> additional-options (str/includes? "useSSL=true")))]
+    (when (and ssl?
+               (not (some->  additional-options (str/includes? "trustServerCertificate"))))
+      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+    (merge
+     default-connection-args
+     ;; newer versions of MySQL will complain if you don't specify this when not using SSL
+     {:useSSL (boolean ssl?)}
+     (let [details (-> details
+                       (set/rename-keys {:dbname :db})
+                       (dissoc :ssl))]
+       (-> (dbspec/mysql details)
+           (sql-jdbc.common/handle-additional-options details))))))
 
 
 (defmethod sql-jdbc.sync/active-tables :mysql [& args]

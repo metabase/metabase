@@ -14,7 +14,7 @@ msgstr "Seu banco de dados foi adicionado!"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:28
 msgid "We took a look at your data, and we have some automated explorations that we can show you!"
-msgstr "Analisamos seus dados e temos algumas explorações automatizadas  que podemos mostrar para você!"
+msgstr "Analisamos seus dados e temos algumas explorações automatizadas que podemos mostrar para você!"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:35
 msgid "I'm good thanks"
@@ -56,9 +56,7 @@ msgstr "Sincronizando Banco de Dados"
 msgid "This is a lightweight process that checks for\n"
 "updates to this database’s schema. In most cases, you should be fine leaving this\n"
 "set to sync hourly."
-msgstr "Este é um processo rápido que procura \n"
-"atualizações para o esquema deste banco de dados. Na maior parte dos casos, tudo bem você deixar isso \n"
-"configurado para sincronizar a cada hora."
+msgstr "Este é um processo rápido que procura atualizações no esquema deste banco de dados. Na maior parte dos casos, tudo bem você deixar isso configurado para sincronizar de hora em hora."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:147
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:184
@@ -74,10 +72,8 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase pode digitalizar os valores presentes em cada \n"
-"campo neste banco de dados para ativar filtros checkbox em painéis e perguntas. Isso \n"
-"Pode ser um processo que consome muitos recursos, especialmente se você tiver um \n"
-"grande banco de dados."
+msgstr "Metabase pode varrer os valores presentes em cada \n"
+"campo neste banco de dados para ativar filtros checkbox em painéis e perguntas. Isso pode ser um processo que consome muitos recursos, especialmente se você tiver um banco de dados grande."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:159
 msgid "When should Metabase automatically scan and cache field values?"
@@ -7649,7 +7645,7 @@ msgstr "{0} campo"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "\"{0}\" question"
-msgstr "\"{0}\"questão"
+msgstr "\"{0}\" questão"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 #: src/metabase/automagic_dashboards/core.clj
@@ -8647,7 +8643,7 @@ msgstr "Não foi possível localizar o campo com ID: {0}"
 
 #: src/metabase/query_processor/middleware/parameters/sql.clj
 msgid "''{0}'' is a required param."
-msgstr "''{0}''é um parâmetro requerido."
+msgstr "''{0}'' é um parâmetro requerido."
 
 #: src/metabase/query_processor/middleware/parameters/sql.clj
 msgid "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
