@@ -122,6 +122,13 @@
 ;;; |                                               JAR FILE CONTENTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn file-exists-in-archive?
+  "True is a file exists in an archive."
+  [^Path archive-path & path-components]
+  (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
+    (let [file-path (apply get-path-in-filesystem fs path-components)]
+      (exists? file-path))))
+
 (defn slurp-file-from-archive
   "Read the entire contents of a file from a archive (such as a JAR)."
   [^Path archive-path & path-components]
