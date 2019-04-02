@@ -103,8 +103,16 @@
                                  (trs "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.")))))]
     path))
 
+(defn- has-manifest? ^Boolean [^Path path]
+  (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
+
 (defn- init-plugins! [paths]
-  (doseq [^Path path paths]
+  ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
+  ;; driver `ojdbc8.jar`) always get initialized (i.e., added to the classpath) first; that way, Metabase drivers that
+  ;; depend on them (such as Oracle) can be initialized the first time we see them.
+  ;;
+  ;; In Clojure world at least `false` < `true` so we can use `sort-by` to get non-Metabase-plugin JARs in front
+  (doseq [^Path path (sort-by has-manifest? paths)]
     (try
       (init-plugin! path)
       (catch Throwable e
