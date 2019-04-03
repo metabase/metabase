@@ -500,7 +500,7 @@
                                                         {:type :fieldAccess, :fieldName count-name}]}]}])
 
       [:count-where _] [[(or output-name-kwd :count-where)]
-                        {:aggregations [(ag:count-where ag-field output-name-kwd)]}]
+                        {:aggregations [(ag:countWhere ag-field output-name-kwd)]}]
 
       [:share    _]    (let [total-count-name (name (gensym "___total_count_"))
                              true-count-name  (name (gensym "___true_count_"))]

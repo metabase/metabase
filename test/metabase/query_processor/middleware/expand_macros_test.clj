@@ -219,11 +219,11 @@
 ;; segments in :share clauses
 (expect
   (mbql-query
-   {:aggretagtion [[:share [:and
-                            [:= [:field-id 5] "abc"]
-                            [:or
-                             [:is-null [:field-id 7]]
-                             [:> [:field-id 4] 1]]]]]})
+   {:aggregation [[:share [:and
+                           [:= [:field-id 5] "abc"]
+                           [:or
+                            [:is-null [:field-id 7]]
+                            [:> [:field-id 4] 1]]]]]})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}     {:db_id database-id}]
                   Segment  [{segment-1-id :id} {:table_id   table-id
