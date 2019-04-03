@@ -401,13 +401,14 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} share,    pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} avg,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,     field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} distinct,    field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} min,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} max,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} count-where, pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} share,       pred Filter)
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev, field-or-expression FieldOrExpressionDef)
 
@@ -441,7 +442,7 @@
 ;; ag:/ isn't a valid token
 
 (def ^:private UnnamedAggregation
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share))
+  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where))
 
 ;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
 ;; a `:named`

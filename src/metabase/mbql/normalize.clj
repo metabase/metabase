@@ -364,8 +364,8 @@
     [:metric _]
     &match
 
-    [:share pred]
-    [:share (canonicalize-filter pred)]
+    [(ag-type :guard #{:share :count-where}) pred]
+    [ag-type (canonicalize-filter pred)]
 
     ;; something with an arg like [:sum [:field-id 41]]
     [ag-type field]

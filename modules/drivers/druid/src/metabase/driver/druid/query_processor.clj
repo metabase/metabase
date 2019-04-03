@@ -482,39 +482,45 @@
     (match [ag-type ag-field]
       ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name
       ;; it :___count so it gets discarded automatically
-      [nil     nil] [[(or output-name-kwd :___count)] {:aggregations [(ag:count (or output-name :___count))]}]
+      [nil     nil]    [[(or output-name-kwd :___count)] {:aggregations [(ag:count (or output-name :___count))]}]
 
-      [:count  nil] [[(or output-name-kwd :count)] {:aggregations [(ag:count (or output-name :count))]}]
+      [:count  nil]    [[(or output-name-kwd :count)] {:aggregations [(ag:count (or output-name :count))]}]
 
-      [:count    _] [[(or output-name-kwd :count)] {:aggregations [(ag:count ag-field (or (name output-name) :count))]}]
+      [:count    _]    [[(or output-name-kwd :count)] {:aggregations [(ag:count ag-field (or (name output-name) :count))]}]
 
-      [:avg      _] (let [count-name (name (gensym "___count_"))
-                          sum-name   (name (gensym "___sum_"))]
-                      [[(keyword count-name) (keyword sum-name) (or output-name-kwd :avg)]
-                       {:aggregations     [(ag:count ag-field count-name)
-                                           (ag:doubleSum ag-field sum-name)]
-                        :postAggregations [{:type   :arithmetic
-                                            :name   (or output-name :avg)
-                                            :fn     :/
-                                            :fields [{:type :fieldAccess, :fieldName sum-name}
-                                                     {:type :fieldAccess, :fieldName count-name}]}]}])
+      [:avg      _]    (let [count-name (name (gensym "___count_"))
+                             sum-name   (name (gensym "___sum_"))]
+                         [[(keyword count-name) (keyword sum-name) (or output-name-kwd :avg)]
+                          {:aggregations     [(ag:count ag-field count-name)
+                                              (ag:doubleSum ag-field sum-name)]
+                           :postAggregations [{:type   :arithmetic
+                                               :name   (or output-name :avg)
+                                               :fn     :/
+                                               :fields [{:type :fieldAccess, :fieldName sum-name}
+                                                        {:type :fieldAccess, :fieldName count-name}]}]}])
 
-      [:share    _] (let [total-count-name (name (gensym "___total_count_"))
-                          true-count-name  (name (gensym "___true_count_"))]
-                      [[(keyword total-count-name) (keyword true-count-name) (or output-name-kwd :share)]
-                       {:aggregations     [(ag:count total-count-name)
-                                           (ag:countWhere ag-field true-count-name)]
-                        :postAggregations [{:type   :arithmetic
-                                            :name   (or output-name :share)
-                                            :fn     :/
-                                            :fields [{:type :fieldAccess, :fieldName true-count-name}
-                                                     {:type :fieldAccess, :fieldName total-count-name}]}]}])
+      [:count-where _] [[(or output-name-kwd :count-where)]
+                        {:aggregations [(ag:count-where ag-field output-name-kwd)]}]
 
-      [:distinct _] [[(or output-name-kwd :distinct___count)]
-                     {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
-      [:sum      _] [[(or output-name-kwd :sum)] {:aggregations [(ag:doubleSum ag-field (or (name output-name) :sum))]}]
-      [:min      _] [[(or output-name-kwd :min)] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
-      [:max      _] [[(or output-name-kwd :max)] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
+      [:share    _]    (let [total-count-name (name (gensym "___total_count_"))
+                             true-count-name  (name (gensym "___true_count_"))]
+                         [[(keyword total-count-name) (keyword true-count-name) (or output-name-kwd :share)]
+                          {:aggregations     [(ag:count total-count-name)
+                                              (ag:countWhere ag-field true-count-name)]
+                           :postAggregations [{:type   :arithmetic
+                                               :name   (or output-name :share)
+                                               :fn     :/
+                                               :fields [{:type :fieldAccess, :fieldName true-count-name}
+                                                        {:type :fieldAccess, :fieldName total-count-name}]}]}])
+
+      [:distinct _]    [[(or output-name-kwd :distinct___count)]
+                        {:aggregations [(ag:distinct ag-field (or output-name :distinct___count))]}]
+      [:sum      _]    [[(or output-name-kwd :sum)]
+                        {:aggregations [(ag:doubleSum ag-field (or (name output-name) :sum))]}]
+      [:min      _]    [[(or output-name-kwd :min)]
+                        {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
+      [:max      _]    [[(or output-name-kwd :max)]
+                        {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
 (defn- handle-aggregation [query-type ag-clause updated-query]
   (let [output-name        (annotate/aggregation-name ag-clause)

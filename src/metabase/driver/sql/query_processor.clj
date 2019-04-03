@@ -244,13 +244,15 @@
                                          (hsql/call := arg 0) nil
                                          :else                arg)))))
 
+(defmethod ->honeysql [:sql :count-where]
+  [driver [_ pred]]
+  (hsql/call :sum (hsql/call :case
+                    (->honeysql driver pred) 1.0
+                    :else                    0.0)))
+
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
-  (hsql/call :/
-             (hsql/call :sum (hsql/call :case
-                                        (->honeysql driver pred) 1.0
-                                        :else                    0.0))
-             :%count.*))
+  (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 (defmethod ->honeysql [:sql :named] [driver [_ ag ag-name]]
   (->honeysql driver ag))
