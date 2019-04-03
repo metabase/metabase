@@ -1,11 +1,10 @@
 (ns metabase.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [metabase
+  (:require [clojure.string :as str]
+            [metabase
              [config :as config]
-             [db :as mdb]
-             [public-settings :as public-settings]]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set*
-                                         *is-superuser?*]]
+             [db :as mdb]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
             [metabase.models
              [session :refer [Session]]
@@ -13,8 +12,7 @@
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.net.URL
-           java.util.UUID
+  (:import java.util.UUID
            org.joda.time.DateTime))
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
@@ -44,9 +42,38 @@
     response
     {:body response, :status 200}))
 
+(defn- https-request?
+  "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+
+  In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
+  request handled by Jetty will be over HTTP."
+  [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
+    :keys                                                                                                [scheme]}]
+  (cond
+    ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+    ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+    (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+    (= "https" (str/lower-case (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+
+    ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
+    ;; will be set to `on` if the original request was over HTTPS.
+    (or x-forwarded-ssl front-end-https)
+    (= "on" (str/lower-case (or x-forwarded-ssl front-end-https)))
+
+    ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
+    ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
+    ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+    origin
+    (str/starts-with? (str/lower-case origin) "https")
+
+    ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
+    ;; front of us), we can look directly at the scheme of the request sent to Jetty.
+    scheme
+    (= scheme :https)))
+
 (s/defn set-session-cookie
   "Add a `Set-Cookie` header to `response` to persist the Metabase session."
-  [response, session-id :- UUID]
+  [request response, session-id :- UUID]
   (-> response
       wrap-body-if-needed
       (clear-cookie metabase-legacy-session-cookie)
@@ -58,9 +85,9 @@
          :http-only true
          :path      "/api"
          :max-age   (config/config-int :max-session-age)}
-        ;; If Metabase is running over HTTPS (hopefully always except for local dev instances) then make sure to
-        ;; make this cookie HTTPS-only
-        (when (some-> (public-settings/site-url) URL. .getProtocol (= "https"))
+        ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
+        ;; add `Secure` attribute so the cookie is only sent over HTTPS.
+        (when (https-request? request)
           {:secure true})))))
 
 (defn clear-session-cookie
