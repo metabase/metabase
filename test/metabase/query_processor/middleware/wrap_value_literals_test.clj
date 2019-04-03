@@ -143,10 +143,10 @@
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
       {:source-table (data/id :incidents)
-       :aggregatinon [[:share
-                       [:>
-                        [:datetime-field [:field-id $timestamp] :day]
-                        [:absolute-datetime  (du/->Timestamp "2015-06-01" "UTC") :day]]]]}))
+       :aggregation [[:share
+                      [:>
+                       [:datetime-field [:field-id $timestamp] :day]
+                       [:absolute-datetime  (du/->Timestamp "2015-06-01" "UTC") :day]]]]}))
 
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
