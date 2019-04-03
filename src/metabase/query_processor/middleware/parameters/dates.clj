@@ -177,7 +177,7 @@
               {:start date, :end date})
     :filter (fn [{:keys [date]} field-id-clause]
               (let [iso8601date (day->iso8601 date)]
-                [:= [:datetime-field field-id-clause :day] :between]))}
+                [:= [:datetime-field field-id-clause :day] iso8601date]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
