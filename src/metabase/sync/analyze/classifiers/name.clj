@@ -81,6 +81,7 @@
    [#"create"                      date-type        :type/CreationDate]
    [#"create"                      time-type        :type/CreationTime]
    [#"create"                      timestamp-type   :type/CreationTimestamp]
+   [#"close"                       timestamp-type   :type/CloseTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
    [#"share"                       float-type       :type/Share]
@@ -103,7 +104,13 @@
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
-   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]
+   [#"commit"                      timestamp-type   :type/SourceControlCommitTimestamp]
+   [#"merge"                       timestamp-type   :type/SourceControlMergeTimestamp]
+   [#"star"                        timestamp-type   :type/LikeTimestamp]
+   [#"like"                        timestamp-type   :type/LikeTimestamp]
+   [#"^sha"                        text-type        :type/SHA]
+   [#"user"                        int-or-text-type :type/User]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?
@@ -169,10 +176,10 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]
    ;; GitHub
-   [(prefix-or-postfix "pull_requests") :entity/GHPRsTable]
-   [(prefix-or-postfix "issues")        :entity/GHIssuesTable]
-   [(prefix-or-postfix "stargazers")    :entity/GHStargazersTable]
-   [(prefix-or-postfix "commits")       :entity/GHCommitsTable]])
+   [(prefix-or-postfix "pull_requests") :entity/SourceControlPRsTable]
+   [(prefix-or-postfix "issues")        :entity/SourceControlIssuesTable]
+   [(prefix-or-postfix "stargazers")    :entity/SourceControlStatsTable]
+   [(prefix-or-postfix "commits")       :entity/SourceControlCommitsTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
   "Classifer that infers the special type of a TABLE based on its name."

@@ -4,12 +4,8 @@ metrics:
   - Count: ["count"]
   - CumCount: ["cum-count", [dimension, Sha]]
 dimensions:
- - CommitedAt:
-     field_type: DateTime
-     named: commit__author__date
- - Sha:
-     field_type: Text
-     named: "^sha"
+ - CommitedAt: SourceControlCommitTimestamp
+ - Sha: SHA
 groups:
   - Overview:
       title: Overview

@@ -4,27 +4,13 @@ metrics:
  - Count: ["count"]
  - DistinctContributors: ["distinct", [dimension, Contributor]]
 dimensions:
- - CreatedAt:
-     field_type: CreationTimestamp
- - MergedAt:
-     field_type: DateTime
-     named: merged_at
- - Contributor:
-     field_type: Text
-     named: user__login
- - State:
-     field_type: Text
-     named: state
- - ID:
-     field_type: Number
-     named: number
- - Title:
-     field_type: Title
+ - CreatedAt: CreationTimestamp
+ - MergedAt: SourceControlMergeTimestamp
+ - Contributor: User
+ - Title: Title
 filters:
   - Merged:
       filter: ["not-null", [dimension, MergedAt]]
-  - Open:
-      filter: ["=", [dimension, State], "open"]
   - NotMerged:
       filter: ["is-null", [dimension, MergedAt]]
   - Last30Days:
@@ -42,12 +28,10 @@ cards:
     visualization: table
     dimensions:
     - Title
-    - ID
     order_by:
       - CreatedAt: descending
     limit: 10
     filters:
-     - Open
      - NotMerged
     group: Overview
     width: 9
@@ -57,7 +41,6 @@ cards:
     visualization: table
     dimensions:
     - Title
-    - ID
     order_by:
       - MergedAt: descending
     limit: 10

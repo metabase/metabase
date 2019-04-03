@@ -25,10 +25,10 @@
 
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
-(derive :entity/GHCommitsTable :entity/GenericTable)
-(derive :entity/GHIssuesTable :entity/GenericTable)
-(derive :entity/GHPRsTable :entity/GenericTable)
-(derive :entity/GHStargazersTable :entity/GenericTable)
+(derive :entity/SourceControlCommitsTable :entity/GenericTable)
+(derive :entity/SourceControlIssuesTable :entity/GenericTable)
+(derive :entity/SourceControlPRsTable :entity/GenericTable)
+(derive :entity/SourceControlStatsTable :entity/GenericTable)
 
 
 ;;; Numeric Types
@@ -103,11 +103,18 @@
 (derive :type/CreationDate :type/Date)
 (derive :type/CreationDate :type/CreationTimestamp)
 
+(derive :type/CloseTimestamp :type/DateTime)
+
 (derive :type/JoinTimestamp :type/DateTime)
 (derive :type/JoinTime :type/Date)
 (derive :type/JoinTime :type/CreationTimestamp)
 (derive :type/JoinDate :type/Date)
 (derive :type/JoinDate :type/CreationTimestamp)
+
+(derive :type/SourceControlCommitTimestamp :type/DateTime)
+(derive :type/SourceControlMergeTimestamp :type/DateTime)
+
+(derive :type/LikeTimestamp :type/DateTime)
 
 (derive :type/Birthdate :type/Date)
 
@@ -124,6 +131,7 @@
 (derive :type/TextLike :type/*)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/SHA :type/TextLike)
 
 ;;; "Virtual" Types
 

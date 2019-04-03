@@ -2,13 +2,9 @@ title: GitHub Stargazers
 transient_title: "A summary of GitHub stars"
 metrics:
  - Count: ["count"]
- - CumCount: ["cum-count", [dimension, User]]
+ - CumCount: ["cum-count", [dimension, StarredAt]]
 dimensions:
- - StarredAt:
-     field_type: DateTime
-     named: starred_at
- - User:
-     named: user_id
+ - StarredAt: LikeTimestamp
 groups:
   - Overview:
       title: Overview

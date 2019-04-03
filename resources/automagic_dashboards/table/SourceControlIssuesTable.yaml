@@ -3,30 +3,12 @@ transient_title: "A summary of your issues"
 metrics:
  - Count: ["count"]
  - DistinctContributors: ["distinct", [dimension, Contributor]]
- - NumComments: ["sum", [dimension, Comments]]
 dimensions:
- - CreatedAt:
-     field_type: CreationTimestamp
- - ClosedAt:
-     field_type: DateTime
-     named: closed_at
- - Contributor:
-     field_type: Text
-     named: user__login
- - State:
-     field_type: Text
-     named: state
- - ID:
-     field_type: Number
-     named: number
- - Title:
-     field_type: Title
- - Comments:
-     field_type: Number
-     named: comments
+ - CreatedAt: CreationTimestamp
+ - ClosedAt: CloseTimestamp
+ - Contributor: User
+ - Title: Title
 filters:
-  - Open:
-      filter: ["=", [dimension, State], "open"]
   - Closed:
       filter: ["not-null", [dimension, ClosedAt]]
   - Last30Days:
@@ -42,18 +24,16 @@ dashboard_filters:
 - CreatedAt
 cards:
 - TotalOpenIssues:
-    title: Total open issues
+    title: Total issues
     visualization: scalar
     metrics: Count
-    filters: Open
     group: Overview
     width: 4
 - OpenIssues:
-    title: Opend issues
+    title: Total issues
     visualization: line
     metrics: Count
     dimensions: CreatedAt
-    filters: Open
     group: Overview
     width: 7
 - ClosedIssues:
@@ -69,25 +49,10 @@ cards:
     visualization: table
     dimensions:
     - Title
-    - ID
     order_by:
       - CreatedAt: descending
     limit: 10
     group: Overview
-    width: 9
-    height: 10
-- MostCommented:
-    title: Most commented still open issues
-    visualization: row
-    dimensions:
-    - Title
-    metrics: NumComments
-    order_by:
-      - NumComments: descending
-    limit: 10
-    filters:
-     - Open
-    group: Engagement
     width: 9
     height: 10
 - TopContributorsAllTime:
