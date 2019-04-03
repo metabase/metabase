@@ -348,7 +348,7 @@
    "initialPoolSize" 1
    "maxPoolSize"     15})
 
-(defn connection-pool
+(defn- new-connection-pool
   "Create a C3P0 connection pool for the given database `spec`."
   [spec]
   (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
@@ -358,7 +358,7 @@
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (connection-pool spec)))
+  (db/set-default-db-connection! (new-connection-pool spec)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
