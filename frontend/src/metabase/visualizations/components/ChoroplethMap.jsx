@@ -239,7 +239,11 @@ export default class ChoroplethMap extends Component {
       domain.push(getRowValue(row));
     }
 
-    const heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+    const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+    const heatMapColors =
+      domain.length < _heatMapColors.length
+        ? _heatMapColors.slice(_heatMapColors.length - domain.length)
+        : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
