@@ -731,6 +731,7 @@
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
                                      :visibility_type "normal"
+                                     :preview_display true
                                      :active          true)
                                    field/with-targets
                                    (map #(assoc % :engine engine))
