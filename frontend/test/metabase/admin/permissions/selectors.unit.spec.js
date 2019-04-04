@@ -20,17 +20,6 @@ import {
 
 /******** INITIAL TEST STATE ********/
 
-const groups = [
-  {
-    id: 1,
-    name: "Group starting with full access",
-  },
-  {
-    id: 2,
-    name: "Group starting with no access at all",
-  },
-];
-
 const initialPermissions: GroupsPermissions = {
   1: {
     // Sample dataset
@@ -75,7 +64,6 @@ const initialState = {
     permissions: {
       permissions: initialPermissions,
       originalPermissions: initialPermissions,
-      groups,
     },
   },
   entities: normalizedMetadata,

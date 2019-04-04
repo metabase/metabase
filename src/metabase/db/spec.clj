@@ -24,7 +24,7 @@
   (merge
    {:classname                     "org.postgresql.Driver"
     :subprotocol                   "postgresql"
-    :subname                       (make-subname host port db)
+    :subname                       (make-subname host (or port 5432) db)
     ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
     :OpenSourceSubProtocolOverride true}
    (dissoc opts :host :port :db)))
@@ -37,7 +37,7 @@
   (merge
    {:classname   "org.mariadb.jdbc.Driver"
     :subprotocol "mysql"
-    :subname     (make-subname host port db)}
+    :subname     (make-subname host (or port 3306) db)}
    (dissoc opts :host :port :db)))
 
 

@@ -6,6 +6,12 @@ import { t } from "c-3po";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
+import NewUserModal from "metabase/admin/people/containers/NewUserModal";
+import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
+import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
+
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 
@@ -27,6 +33,7 @@ import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
+import Logs from "metabase/admin/tasks/containers/Logs";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -76,9 +83,23 @@ const getRoutes = (store, IsAdmin) => (
     {/* PEOPLE */}
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
+
+      {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />
         <Route path=":groupId" component={GroupDetailApp} />
+      </Route>
+
+      <Route path="" component={PeopleListingApp}>
+        <ModalRoute path="new" modal={NewUserModal} />
+      </Route>
+
+      <Route path=":userId" component={PeopleListingApp}>
+        <ModalRoute path="edit" modal={EditUserModal} />
+        <ModalRoute path="success" modal={UserSuccessModal} />
+        <ModalRoute path="reset" modal={UserPasswordResetModal} />
+        <ModalRoute path="deactivate" modal={UserActivationModal} />
+        <ModalRoute path="reactivate" modal={UserActivationModal} />
       </Route>
     </Route>
 
@@ -99,6 +120,7 @@ const getRoutes = (store, IsAdmin) => (
           modalProps={{ wide: true }}
         />
       </Route>
+      <Route path="logs" component={Logs} />
     </Route>
 
     {/* SETTINGS */}

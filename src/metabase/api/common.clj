@@ -1,10 +1,6 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as async]
-            [clojure.core.async.impl.protocols :as async-proto]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
@@ -17,11 +13,8 @@
             [metabase.util
              [i18n :as ui18n :refer [trs tru]]
              [schema :as su]]
-            [ring.core.protocols :as protocols]
-            [ring.util.response :as response]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.io.OutputStream))
+            [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -296,6 +289,27 @@
           ~@validate-param-calls
           (wrap-response-if-needed (do ~@body)))))))
 
+(defmacro defendpoint-async
+  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
+  {:arglists '([method route docstr? args schemas-map? & body])}
+  [method route & more]
+  (let [fn-name                (route-fn-name method route)
+        route                  (typify-route route)
+        [docstr [args & more]] (u/optional string? more)
+        [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
+        validate-param-calls   (validate-params arg->schema)]
+    (when-not docstr
+      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+    `(def ~(vary-meta fn-name assoc
+                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
+                      ;; their API error messages
+                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+                      :is-endpoint? true)
+       (~method ~route []
+        (fn ~args
+          ~@validate-param-calls
+          ~@body)))))
+
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
@@ -368,114 +382,15 @@
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
 
-;;; --------------------------------------------------- STREAMING ----------------------------------------------------
+(defn create-check
+  "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
 
-(def ^:private ^:const streaming-response-keep-alive-interval-ms
-  "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
-  time to complete."
-  (* 1 1000))
-
-;; Handle ring response maps that contain a core.async chan in the :body key:
-;;
-;; {:status 200
-;;  :body (async/chan)}
-;;
-;; and send strings (presumibly \n) as heartbeats to the client until the real results (a seq) is received, then
-;; stream that to the client
-(extend-protocol protocols/StreamableResponseBody
-  clojure.core.async.impl.channels.ManyToManyChannel
-  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/debug (u/format-color 'green (trs "starting streaming request")))
-    (with-open [out (io/writer output-stream)]
-      (loop [chunk (async/<!! output-queue)]
-        (cond
-          (char? chunk)
-          (do
-            (try
-              (.write out (str chunk))
-              (.flush out)
-              (catch org.eclipse.jetty.io.EofException e
-                (log/info e (u/format-color 'yellow (trs "connection closed, canceling request")))
-                (async/close! output-queue)
-                (throw e)))
-            (recur (async/<!! output-queue)))
-
-          ;; An error has occurred, let the user know
-          (instance? Exception chunk)
-          (json/generate-stream {:error (.getMessage ^Exception chunk)} out)
-
-          ;; We've recevied the response, write it to the output stream and we're done
-          (seq chunk)
-          (json/generate-stream chunk out)
-
-          ;;chunk is nil meaning the output channel has been closed
-          :else
-          out)))))
-
-(def ^:private InvokeWithKeepAliveSchema
-  {;; Channel that contains any number of newlines followed by the results of the invoked query thunk
-   :output-channel  (s/protocol async-proto/Channel)
-   ;; This channel will have an exception if that error condition is hit before the first heartbeat time, if a
-   ;; heartbeat has been sent, this channel is closed and its no longer useful
-   :error-channel   (s/protocol async-proto/Channel)
-   ;; Future that is invoking the query thunk. This is mainly useful for testing metadata to see if the future has been
-   ;; cancelled or was completed successfully
-   :response-future java.util.concurrent.Future})
-
-(s/defn ^:private invoke-thunk-with-keepalive :- InvokeWithKeepAliveSchema
-  "This function does the heavy lifting of invoking `query-thunk` on a background thread and returning it's results
-  along with a heartbeat while waiting for the results. This function returns a map that includes the relevate
-  execution information, see `InvokeWithKeepAliveSchema` for more information"
-  [query-thunk]
-  (let [response-chan (async/chan 1)
-        output-chan   (async/chan 1)
-        error-chan    (async/chan 1)
-        response-fut  (future
-                        (try
-                          (async/>!! response-chan (query-thunk))
-                          (catch Exception e
-                            (async/>!! error-chan e)
-                            (async/>!! response-chan e))
-                          (finally
-                            (async/close! error-chan))))]
-    (async/go-loop []
-      (let [[response-or-timeout c] (async/alts! [response-chan (async/timeout streaming-response-keep-alive-interval-ms)])]
-        (if response-or-timeout
-          ;; We have a response since it's non-nil, write the results and close, we're done
-          (do
-            ;; If output-chan is closed, it's already too late, nothing else we need to do
-            (async/>! output-chan response-or-timeout)
-            (async/close! output-chan))
-          (do
-            ;; We don't have a result yet, but enough time has passed, let's assume it's not an error
-            (async/close! error-chan)
-            ;; a newline padding character as it's harmless and will allow us to check if the client is connected. If
-            ;; sending this character fails because the connection is closed, the chan will then close.  Newlines are
-            ;; no-ops when reading JSON which this depends upon.
-            (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
-            (if (async/>! output-chan \newline)
-              ;; Success put the channel, wait and see if we get the response next time
-              (recur)
-              ;; The channel is closed, client has given up, we should give up too
-              (future-cancel response-fut))))))
-    {:output-channel  output-chan
-     :error-channel   error-chan
-     :response-future response-fut}))
-
-(defn cancelable-json-response
-  "Invokes `cancelable-thunk` in a future. If there's an immediate exception, throw it. If there's not an immediate
-  exception, return a ring response with a channel. The channel will potentially include newline characters before the
-  full response is delivered as a keepalive to the client. Eventually the results of `cancelable-thunk` will be put
-  to the channel"
-  [cancelable-thunk]
-  (let [{:keys [output-channel error-channel]} (invoke-thunk-with-keepalive cancelable-thunk)]
-    ;; If there's an immediate exception, it will be in `error-chan`, if not, `error-chan` will close and we'll assume
-    ;; the response is a success
-    (if-let [ex (async/<!! error-channel)]
-      (throw ex)
-      (assoc (response/response output-channel)
-        :content-type "applicaton/json"))))
-
+  This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
+  not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
+  hardcoded into this -- this should be considered an antipattern and be refactored out going forward."
+  {:added "0.32.0", :style/indent 2}
+  [entity m]
+  (check-403 (mi/can-create? entity m)))
 
 ;;; ------------------------------------------------ OTHER HELPER FNS ------------------------------------------------
 
@@ -588,3 +503,19 @@
        (do
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
+
+(defmacro catch-and-raise
+  "Catches exceptions thrown in `body` and passes them along to the `raise` function. Meant for writing async
+  endpoints.
+
+  You only need to `raise` Exceptions that happen outside the initial thread of the API endpoint function; things like
+  normal permissions checks are usually done within the same thread that called the endpoint, meaning the middleware
+  that catches Exceptions will automatically handle them."
+  {:style/indent 1}
+  ;; using 2+ args so we can catch cases where people forget to pass in `raise`
+  [raise body & more]
+  `(try
+     ~body
+     ~@more
+     (catch Throwable e#
+       (~raise e#))))

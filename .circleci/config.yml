@@ -41,7 +41,8 @@ jobs:
           command: >
             for file in `find ./src -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
-            done
+            done;
+            echo `md5sum $project.clj` >> backend-checksums.txt
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -233,14 +234,14 @@ jobs:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:3.2
+      - image: circleci/mongo:3.4
     steps:
       - attach_workspace:
           at: /home/circleci/
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests (MongoDB 3.2)
+          name: Run backend unit tests (MongoDB 3.4)
           environment:
             DRIVERS: h2,mongo
           command: >
@@ -293,6 +294,20 @@ jobs:
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
             lein with-profile +ci test
           no_output_timeout: 10m
+
+  yaml-linter:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Install yamllint
+          command: npm install yaml-lint
+          no_output_timeout: 2m
+      - run:
+          name: Lint YAML files
+          command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
+          no_output_timeout: 2m
 
   be-tests-sqlserver:
     <<: *defaults
@@ -674,6 +689,9 @@ workflows:
       - be-tests-snowflake:
           requires:
             - be-tests
+      - yaml-linter:
+          requires:
+            - checkout
       - fe-deps:
           requires:
             - checkout
@@ -725,6 +743,8 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+
+            - yaml-linter
 
             - fe-linter-eslint
             - fe-linter-prettier

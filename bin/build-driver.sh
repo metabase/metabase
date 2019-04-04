@@ -19,6 +19,20 @@ target_jar="$driver_project_dir/target/uberjar/$driver_jar"
 parents=''
 checksum_file="$driver_project_dir/target/checksum.txt"
 
+################################ DELETING OLD INCORRECTLY BUILT DRIVERS ###############################
+
+verify_existing_build() {
+    verification_failed=''
+    ./bin/verify-driver "$driver" || verification_failed=true
+
+    if [ "$verification_failed" ]; then
+        echo 'No existing build, or existing build is invalid. (Re)building driver.'
+        # By removing the checksum it will force rebuilding the driver
+        rm -f "$checksum_file"
+    fi
+}
+
+
 ######################################## CALCULATING CHECKSUMS ########################################
 
 md5_command=''
@@ -137,7 +151,7 @@ build_driver_uberjar() {
 
     if [ ! -f "$target_jar" ]; then
         echo "Error: could not find $target_jar. Build failed."
-        return -1
+        return -3
     fi
 }
 
@@ -153,6 +167,26 @@ strip_and_compress() {
     done
 }
 
+# copy finished JAR to the resources dir
+copy_target_to_dest() {
+    echo "Copying $target_jar -> $dest_location"
+    cp "$target_jar" "$dest_location"
+}
+
+# check that JAR in resources dir looks correct
+verify_build () {
+    verification_failed=''
+    ./bin/verify-driver "$driver" || verification_failed=true
+
+    if [ "$verification_failed" ]; then
+        echo "./bin/build-driver.sh $driver FAILED."
+        rm -f "$checksum_file"
+        rm -f "$target_jar"
+        rm -f "$dest_location"
+        return -4
+    fi
+}
+
 # Save the checksum for the newly built JAR
 save_checksum() {
     echo "Saving checksum for source files to $checksum_file"
@@ -160,22 +194,18 @@ save_checksum() {
     echo "$checksum" > "$checksum_file"
 }
 
-copy_target_to_dest() {
-    # ok, finally, copy finished JAR to the resources dir
-    echo "Copying $target_jar -> $dest_location"
-    cp "$target_jar" "$dest_location"
-}
-
 # Runs all the steps needed to build the driver.
 build_driver() {
-    delete_old_drivers &&
+    verify_existing_build &&
+        delete_old_drivers &&
         install_metabase_core &&
         build_metabase_uberjar &&
         build_parents &&
         build_driver_uberjar &&
         strip_and_compress &&
-        save_checksum &&
-        copy_target_to_dest
+        copy_target_to_dest &&
+        verify_build &&
+        save_checksum
 }
 
 ######################################## PUTTING IT ALL TOGETHER ########################################
@@ -202,5 +232,5 @@ elif [ ! "$(checksum_is_same)" ]; then
     build_driver || retry_clean_build
 # Either way, always copy the target uberjar to the dest location
 else
-    copy_target_to_dest
+    (copy_target_to_dest && verify_build) || retry_clean_build
 fi

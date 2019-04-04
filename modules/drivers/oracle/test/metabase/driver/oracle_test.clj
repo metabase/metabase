@@ -1,7 +1,7 @@
 (ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]

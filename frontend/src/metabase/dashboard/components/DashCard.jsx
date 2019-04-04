@@ -48,7 +48,7 @@ export default class DashCard extends Component {
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
-      ReactDOM.findDOMNode(this).scrollIntoView();
+      ReactDOM.findDOMNode(this).scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
   }

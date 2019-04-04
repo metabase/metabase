@@ -794,6 +794,7 @@ export default class StructuredQuery extends AtomicQuery {
         nameCounts.set(name, count);
         return `${name}_${count}`;
       } else {
+        nameCounts.set(name, 1);
         return name;
       }
     });
@@ -815,17 +816,19 @@ export default class StructuredQuery extends AtomicQuery {
     } else if (column.expression_name != null) {
       return ["expression", column.expression_name];
     } else if (column.source === "aggregation") {
-      const aggregationIndex = _.findIndex(
-        this.aggregationDimensions(),
-        dimension => dimension.columnName() === column.name,
+      // HACK: ideally column would include the aggregation index directly
+      const columnIndex = _.findIndex(
+        this.columnNames(),
+        name => name === column.name,
       );
-      if (aggregationIndex >= 0) {
-        return ["aggregation", aggregationIndex];
+      if (columnIndex >= 0) {
+        return this.columnDimensions()[columnIndex].mbql();
       }
     }
     return null;
   }
 
+  // TODO: better name may be parseDimension?
   parseFieldReference(fieldRef): ?Dimension {
     const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
     if (dimension) {

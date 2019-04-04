@@ -16,7 +16,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import RetinaImage from "react-retina-image";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import User from "metabase/entities/users";
 
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
@@ -574,7 +574,7 @@ export class AlertEditSchedule extends Component {
   }
 }
 
-@entityListLoader({ entityType: "users" })
+@User.loadList()
 @connect(
   (state, props) => ({
     user: getUser(state),
