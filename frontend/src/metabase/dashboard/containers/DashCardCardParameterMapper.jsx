@@ -10,6 +10,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
@@ -57,6 +58,19 @@ const mapDispatchToProps = {
   setParameterMapping,
   fetchDatabaseMetadata,
 };
+
+function isEqualParameterTargets(x, y) {
+  return (
+    _.isEqual(x, y) ||
+    (x &&
+      y &&
+      x[0] &&
+      y[0] &&
+      x[0] === y[0] &&
+      x[0] === "dimension" &&
+      Dimension.isEqual(x[1], y[1]))
+  );
+}
 
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class DashCardCardParameterMapper extends Component {
@@ -115,7 +129,9 @@ export default class DashCardCardParameterMapper extends Component {
 
     // TODO: move some of these to selectors?
     const disabled = mappingOptions.length === 0;
-    const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
+    const selected = _.find(mappingOptions, o =>
+      isEqualParameterTargets(o.target, target),
+    );
 
     const mapping = getIn(mappingsByParameter, [
       parameter.id,
@@ -212,7 +228,9 @@ export default class DashCardCardParameterMapper extends Component {
             style={{ maxHeight: 600 }}
             sections={sections}
             onChange={this.onChange}
-            itemIsSelected={item => _.isEqual(item.target, target)}
+            itemIsSelected={item =>
+              isEqualParameterTargets(item.target, target)
+            }
             renderItemIcon={item => (
               <Icon name={item.icon || "unknown"} size={18} />
             )}
