@@ -2,6 +2,7 @@
   (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
+            [metabase.util :as u]
             [schema.core :as s]))
 
 (defn- desugar-inside [query]
@@ -78,13 +79,13 @@
 
 (s/defn ^:private desugar* :- mbql.s/Query
   [query]
-  (update query :query (comp mbql.u/simplify-compound-filter
-                             desugar-inside
-                             desugar-is-null-and-not-null
-                             desugar-time-interval
-                             desugar-does-not-contain
-                             desugar-equals-and-not-equals-with-extra-args
-                             desugar-current-relative-datetime)))
+  (u/update-when query :query (comp mbql.u/simplify-compound-filter
+                                    desugar-inside
+                                    desugar-is-null-and-not-null
+                                    desugar-time-interval
+                                    desugar-does-not-contain
+                                    desugar-equals-and-not-equals-with-extra-args
+                                    desugar-current-relative-datetime)))
 
 (defn desugar
   "Middleware that replaces high-level 'syntactic sugar' clauses with lower-level clauses. This is done to minimize the
