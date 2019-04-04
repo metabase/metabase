@@ -94,13 +94,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift [_ {:keys [host port db], :as opts}]
-  (merge
-   {:classname                     "com.amazon.redshift.jdbc.Driver" ; must be in classpath
-    :subprotocol                   "redshift"
-    :subname                       (str "//" host ":" port "/" db)
-    :ssl                           true
-    :OpenSourceSubProtocolOverride false}
-   (dissoc opts :host :port :db)))
+  (-> (merge
+       {:classname                     "com.amazon.redshift.jdbc.Driver" ; must be in classpath
+        :subprotocol                   "redshift"
+        :subname                       (str "//" host ":" port "/" db)
+        :ssl                           true
+        :OpenSourceSubProtocolOverride false}
+       (dissoc opts :host :port :db))
+    (sql-jdbc.common/handle-additional-options opts))
 
 ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
 ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas

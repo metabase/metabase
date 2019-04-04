@@ -20,6 +20,8 @@ driver:
           placeholder: toucan_sightings
     - user
     - password
+    - merge:
+        - additional-options
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace
