@@ -102,33 +102,8 @@
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Custom `ClassLoadHelper` implementation that makes sure to require the namespaces that tasks live in (to make sure
-;; record types are loaded) and that uses our canonical ClassLoader.
-
-(defn- task-class-name->namespace-str
-  "Determine the namespace we need to load for one of our tasks.
-
-    (task-class-name->namespace-str \"metabase.task.upgrade_checks.CheckForNewVersions\")
-    ;; -> \"metabase.task.upgrade-checks\""
-  [class-name]
-  (-> class-name
-      (str/replace \_ \-)
-      (str/replace #"\.\w+$" "")))
-
-(defn- require-task-namespace
-  "Since Metabase tasks are defined in Clojure-land we need to make sure we `require` the namespaces where they are
-  defined before we try to load the task classes."
-  [class-name]
-  ;; call `the-classloader` to force side-effects of making it the current thread context classloader
-  (classloader/the-classloader)
-  ;; only try to `require` metabase.task classes; don't do this for other stuff that gets shuffled thru here like
-  ;; Quartz classes
-  (when (str/starts-with? class-name "metabase.task.")
-    (require (symbol (task-class-name->namespace-str class-name)))))
-
 (defn- load-class ^Class [^String class-name]
-  (require-task-namespace class-name)
-  (.loadClass (classloader/the-classloader) class-name))
+  (Class/forName class-name true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
