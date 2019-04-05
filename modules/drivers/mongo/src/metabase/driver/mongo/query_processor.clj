@@ -410,7 +410,7 @@
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)
-    arg
+    (recur arg)
     ag))
 
 (s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
@@ -426,10 +426,7 @@
                                        {$size "$count"} ; HACK
                                        true)])))
 
-(defmulti ^:private expand-aggregation (fn [[ag-type arg]]
-                                         (if (= ag-type :named)
-                                           (recur arg)
-                                           ag-type)))
+(defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
@@ -456,8 +453,7 @@
   (let [expanded-ags (map expand-aggregation aggregations)
         group-ags    (mapcat first expanded-ags)
         post-ags     (mapcat second expanded-ags)]
-    [{$group (merge (into (ordered-map/ordered-map) group-ags)
-                    {"_id" id})}
+    [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
 
@@ -476,27 +472,25 @@
    [;; create a totally sweet made-up column called `___group` to store the fields we'd
     ;; like to group by
     (when (seq breakout-fields)
-      [{$project (merge (into
-                         (ordered-map/ordered-map)
-                         (comp (map (comp second unwrap-named-ag))
-                               (mapcat (fn [ag-fields]
-                                         (for [ag-field (mbql.u/match ag-fields lvalue?)]
-                                           [(->lvalue ag-field) (->rvalue ag-field)]))))
-                         aggregations)
-                        {"_id"      "$_id"
-                         "___group" (into
-                                     (ordered-map/ordered-map)
-                                     (for [field breakout-fields]
-                                       [(->lvalue field) (->rvalue field)]))})}])
+      [{$project (into
+                  (ordered-map/ordered-map "_id"      "$_id"
+                                           "___group" (into
+                                                        (ordered-map/ordered-map)
+                                                        (for [field breakout-fields]
+                                                          [(->lvalue field) (->rvalue field)])))
+                  (comp (map (comp second unwrap-named-ag))
+                        (mapcat (fn [ag-fields]
+                                  (for [ag-field (mbql.u/match ag-fields lvalue?)]
+                                    [(->lvalue ag-field) (->rvalue ag-field)]))))
+                  aggregations)}])
     ;; Now project onto the __group and the aggregation rvalue
     (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
     [;; Sort by _id (___group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
-     {$project (merge (into
-                       (ordered-map/ordered-map)
-                       projected-fields)
-                      {"_id" false})}]]))
+     {$project (into
+                (ordered-map/ordered-map "_id" false)
+                projected-fields)}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
