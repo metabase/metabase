@@ -58,7 +58,7 @@
        (map (fn [[k v]]
               [(int k) v]))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
   1.47
   (->> {:aggregation [[:+ [:/ [:share [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
        (data/run-mbql-query venues)

@@ -58,7 +58,7 @@
        (map (fn [[k v]]
               [(long k) (long v)]))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
   48
   (->> {:aggregation [[:+ [:/ [:count-where [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
        (data/run-mbql-query venues)
