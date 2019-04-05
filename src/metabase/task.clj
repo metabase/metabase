@@ -53,9 +53,11 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- find-and-load-tasks!
+(defn- find-and-load-task-namespaces!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
+  ;; make sure current thread is using canonical MB classloader
+  (classloader/the-classloader)
   ;; first, load all the task namespaces
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
@@ -63,8 +65,11 @@
       (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))
       (require ns-symb)
       (catch Throwable e
-        (log/error e (trs "Error loading tasks namespace {0}" ns-symb)))))
-  ;; next, call all implementations of `init!`
+        (log/error e (trs "Error loading tasks namespace {0}" ns-symb))))))
+
+(defn- init-tasks!
+  "Call all implementations of `init!`"
+  []
   (doseq [[k f] (methods init!)]
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
@@ -158,8 +163,9 @@
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! quartz-scheduler nil new-scheduler)
+        (find-and-load-task-namespaces!)
         (qs/start new-scheduler)
-        (find-and-load-tasks!)))))
+        (init-tasks!)))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
