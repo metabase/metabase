@@ -271,20 +271,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
-;;; ----------------------------------------------- initial projection -----------------------------------------------
-
-(s/defn ^:private add-initial-projection :- {:projections Projections, :query Pipeline}
-  [inner-query pipeline-ctx]
-  (let [all-fields (distinct (mbql.u/match inner-query #{:field-id :datetime-field}))]
-    (if-not (seq all-fields)
-      pipeline-ctx
-      (let [projection+initial-rvalue (for [field all-fields]
-                                        [(->lvalue field) (->initial-rvalue field)])]
-        (-> pipeline-ctx
-            (assoc  :projections (doall (map (comp keyword first) projection+initial-rvalue)))
-            (update :query conj {$project (into (ordered-map/ordered-map) projection+initial-rvalue)}))))))
-
-
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defmethod ->rvalue ::not [[_ value]]
@@ -341,9 +327,16 @@
   (parse-filter (negate subclause)))
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
-  (if-not filter-clause
-    pipeline-ctx
-    (update pipeline-ctx :query conj {$match (parse-filter filter-clause)})))
+  (if filter-clause
+    (let [projections (into (ordered-map/ordered-map)
+                            (for [field (distinct (mbql.u/match filter-clause :datetime-field))]
+                              [(->lvalue field) (->initial-rvalue field)]))]
+      (cond-> pipeline-ctx
+        (seq projections) (->
+                           (assoc  :projections (map (comp keyword key) projections))
+                           (update :query conj {$project projections}))
+        :finally          (update :query conj {$match (parse-filter filter-clause)})))
+    pipeline-ctx))
 
 (defmulti ^:private parse-cond first)
 
@@ -569,8 +562,7 @@
     (reduce (fn [pipeline-ctx f]
               (f inner-query pipeline-ctx))
             {:projections [], :query []}
-            [add-initial-projection
-             handle-filter
+            [handle-filter
              handle-breakout+aggregation
              handle-order-by
              handle-fields
