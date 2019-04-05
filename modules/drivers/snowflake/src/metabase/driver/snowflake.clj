@@ -44,6 +44,9 @@
             :subname                                    (str "//" host ".snowflakecomputing.com/")
             :client_metadata_request_use_connection_ctx true
             :ssl                                        true
+            ;; keep open connections open indefinitely instead of closing them. See #9674 and
+            ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
+            :client_session_keep_alive                  true
             ;; other SESSION parameters
             ;; use the same week start we use for all the other drivers
             :week_start                                 7
