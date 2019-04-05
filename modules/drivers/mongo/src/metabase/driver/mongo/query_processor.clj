@@ -461,6 +461,13 @@
      (when (not-empty post-ags)
        {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
 
+(defn- lvalue?
+  [x]
+  (try
+    (some? (->lvalue x))
+    (catch IllegalArgumentException _
+      false)))
+
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
@@ -471,10 +478,11 @@
     (when (seq breakout-fields)
       [{$project (merge (into
                          (ordered-map/ordered-map)
-                         (for [ag    aggregations
-                               :let  [[_ ag-field] (unwrap-named-ag ag)]
-                               :when ag-field]
-                           [(->lvalue ag-field) (->rvalue ag-field)]))
+                         (comp (map (comp second unwrap-named-ag))
+                               (mapcat (fn [ag-fields]
+                                         (for [ag-field (mbql.u/match ag-fields lvalue?)]
+                                           [(->lvalue ag-field) (->rvalue ag-field)]))))
+                         aggregations)
                         {"_id"      "$_id"
                          "___group" (into
                                      (ordered-map/ordered-map)
