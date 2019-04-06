@@ -296,70 +296,6 @@
     [:field-id field]
     field))
 
-(defn- canonicalize-aggregation-subclause
-  "Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present, and wrap
-  `:field-ids` where appropriate."
-  [ag-subclause]
-  (mbql.u/replace ag-subclause
-    seq? (recur (vec &match))
-
-    [:rows & _]
-    nil
-
-    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is an just canonicalize the ag it names
-    [:named ag ag-name]
-    [:named (canonicalize-aggregation-subclause ag) ag-name]
-
-    [(ag-type :guard #{:+ :- :* :/}) & args]
-    (apply
-     vector
-     ag-type
-     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
-     (for [arg args]
-       (cond-> arg
-         (mbql-clause? arg) canonicalize-aggregation-subclause)))
-
-    ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
-    [:metric _]
-    &match
-
-    ;; something with an arg like [:sum [:field-id 41]]
-    [ag-type field]
-    [ag-type (wrap-implicit-field-id field)]))
-
-(defn- wrap-single-aggregations
-  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
-  multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
-  [aggregations]
-  (mbql.u/replace aggregations
-    seq? (recur (vec &match))
-
-    ;; something like {:aggregations :count} -- MBQL 95 single aggregation
-    keyword?
-    [[&match]]
-
-    ;; special-case: MBQL 98 multiple aggregations using unwrapped :count or :rows
-    ;; e.g. {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
-    [(_ :guard (every-pred keyword? (complement #{:named :+ :- :* :/})))
-     (_ :guard aggregation-subclause?)
-     & _]
-    (vec (reduce concat (map wrap-single-aggregations aggregations)))
-
-    ;; something like {:aggregations [:sum 10]} -- MBQL 95 single aggregation
-    [(_ :guard keyword?) & _]
-    [&match]
-
-    _
-    &match))
-
-(defn- canonicalize-aggregations
-  "Canonicalize subclauses (see above) and make sure `:aggregation` is a sequence of clauses instead of a single
-  clause."
-  [aggregations]
-  (->> (wrap-single-aggregations aggregations)
-       (map canonicalize-aggregation-subclause)
-       (filterv identity)))
-
 (defn- canonicalize-filter [filter-clause]
   (mbql.u/replace filter-clause
     seq? (recur (vec &match))
@@ -400,6 +336,73 @@
     &match
     _
     (throw (IllegalArgumentException. (str (tru "Illegal filter clause: {0}" filter-clause))))))
+
+(defn- canonicalize-aggregation-subclause
+  "Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present, and wrap
+  `:field-ids` where appropriate."
+  [ag-subclause]
+  (mbql.u/replace ag-subclause
+    seq? (recur (vec &match))
+
+    [:rows & _]
+    nil
+
+    ;; For named aggregations (`[:named <ag> <name>]`) we want to leave as-is and just canonicalize the ag it names
+    [:named ag ag-name]
+    [:named (canonicalize-aggregation-subclause ag) ag-name]
+
+    [(ag-type :guard #{:+ :- :* :/}) & args]
+    (apply
+     vector
+     ag-type
+     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
+     (for [arg args]
+       (cond-> arg
+         (mbql-clause? arg) canonicalize-aggregation-subclause)))
+
+    ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
+    [:metric _]
+    &match
+
+    [(ag-type :guard #{:share :count-where}) pred]
+    [ag-type (canonicalize-filter pred)]
+
+    ;; something with an arg like [:sum [:field-id 41]]
+    [ag-type field]
+    [ag-type (wrap-implicit-field-id field)]))
+
+(defn- wrap-single-aggregations
+  "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
+  multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
+  [aggregations]
+  (mbql.u/replace aggregations
+    seq? (recur (vec &match))
+
+    ;; something like {:aggregations :count} -- MBQL 95 single aggregation
+    keyword?
+    [[&match]]
+
+    ;; special-case: MBQL 98 multiple aggregations using unwrapped :count or :rows
+    ;; e.g. {:aggregations [:count [:sum 10]]} or {:aggregations [:count :count]}
+    [(_ :guard (every-pred keyword? (complement #{:named :+ :- :* :/})))
+     (_ :guard aggregation-subclause?)
+     & _]
+    (vec (reduce concat (map wrap-single-aggregations aggregations)))
+
+    ;; something like {:aggregations [:sum 10]} -- MBQL 95 single aggregation
+    [(_ :guard keyword?) & _]
+    [&match]
+
+    _
+    &match))
+
+(defn- canonicalize-aggregations
+  "Canonicalize subclauses (see above) and make sure `:aggregation` is a sequence of clauses instead of a single
+  clause."
+  [aggregations]
+  (->> (wrap-single-aggregations aggregations)
+       (map canonicalize-aggregation-subclause)
+       (filterv identity)))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
