@@ -179,7 +179,7 @@
              [&match])
           subclauses))
 
-(s/defn simplify-compound-filter :- (s/maybe mbql.s/Filter)
+(defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."

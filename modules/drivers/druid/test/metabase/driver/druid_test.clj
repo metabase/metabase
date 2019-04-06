@@ -194,6 +194,12 @@
     {:aggregation [[:avg [:* $id $venue_price]]]
      :breakout    [$venue_price]}))
 
+;; share
+(expect-with-driver :druid
+  [[0.951]]
+  (druid-query-returning-rows
+    {:aggregation [[:share [:< $venue_price 4]]]}))
+
 ;; post-aggregation math w/ 2 args: count + sum
 (expect-with-driver :druid
   [["1"  442.0]
