@@ -33,10 +33,11 @@
     (when-let [card (Card :id card-id, :archived false)]
       (let [{:keys [creator_id dataset_query]} card]
         {:card   card
-         :result (qp/process-query-and-save-with-max! dataset_query (merge {:executed-by creator_id,
-                                                                            :context     :pulse,
-                                                                            :card-id     card-id}
-                                                                           options))}))
+         :result (qp/process-query-and-save-with-max-results-constraints! dataset_query
+                   (merge {:executed-by creator_id,
+                           :context     :pulse,
+                           :card-id     card-id}
+                          options))}))
     (catch Throwable t
       (log/warn t (trs "Error running query for Card {0}" card-id)))))
 

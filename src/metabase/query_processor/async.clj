@@ -70,12 +70,12 @@
   [query options]
   (do-async (:database query) qp/process-query-and-save-execution! query options))
 
-(defn process-query-and-save-with-max!
-  "Async version of `metabase.query-processor/process-query-and-save-with-max!`. Runs query asynchronously, and returns
-  a `core.async` channel that can be used to fetch the results once the query finishes running. Closing the channel
-  will cancel the query."
+(defn process-query-and-save-with-max-results-constraints!
+  "Async version of `metabase.query-processor/process-query-and-save-with-max-results-constraints!`. Runs query
+  asynchronously, and returns a `core.async` channel that can be used to fetch the results once the query finishes
+  running. Closing the channel will cancel the query."
   [query options]
-  (do-async (:database query) qp/process-query-and-save-with-max! query options))
+  (do-async (:database query) qp/process-query-and-save-with-max-results-constraints! query options))
 
 (defn process-query-without-save!
   "Async version of `metabase.query-processor/process-query-without-save!`. Runs query asynchronously, and returns a
