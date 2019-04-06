@@ -341,9 +341,9 @@ export default class FilterPopover extends Component {
           }}
         >
           {showHeader && (
-            <div className="FilterPopover-header border-bottom text-medium p1 flex align-center">
+            <div className="FilterPopover-header border-bottom p1 flex align-center">
               {showFieldPicker && (
-                <div className="flex py1">
+                <div className="flex py1 text-medium">
                   <span
                     className="cursor-pointer text-purple-hover transition-color flex align-center"
                     onClick={this.clearField}
