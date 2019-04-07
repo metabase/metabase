@@ -169,6 +169,10 @@
   text-overflow: ellipsis;
 }
 
+.text-wrap {
+  word-wrap: anywhere;
+}
+
 .text-nowrap {
   white-space: nowrap;
 }
