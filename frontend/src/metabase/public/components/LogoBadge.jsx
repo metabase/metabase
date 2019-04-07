@@ -11,7 +11,7 @@ type Props = {
 
 const LogoBadge = ({ dark }: Props) => (
   <a
-    href="http://www.metabase.com/"
+    href="https://metabase.com/"
     target="_blank"
     className="h4 flex text-bold align-center no-decoration"
   >

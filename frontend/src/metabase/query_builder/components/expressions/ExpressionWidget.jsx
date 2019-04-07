@@ -58,7 +58,7 @@ export default class ExpressionWidget extends Component {
               &nbsp;<a
                 className="link"
                 target="_blank"
-                href="http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#creating-a-custom-field"
+                href="https://metabase.com/docs/latest/users-guide/04-asking-questions.html#creating-a-custom-field"
               >{t`Learn more`}</a>
             </p>
           </div>
