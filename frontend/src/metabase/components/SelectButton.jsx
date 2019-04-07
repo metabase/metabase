@@ -13,7 +13,7 @@ const SelectButton = ({ className, style, children, hasValue = true }) => (
       "text-medium": !hasValue,
     })}
   >
-    <span className="AdminSelect-content mr1 text-wrap">{children}</span>
+    <span className="AdminSelect-content mr1">{children}</span>
     <Icon
       className="AdminSelect-chevron flex-align-right"
       name="chevrondown"
