@@ -24,7 +24,7 @@ const DatabasePane = ({ database, show, ...props }) => (
             className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
             onClick={() => show("table", table)}
           >
-            {table.name}
+            {table.display_name}
           </a>
         </li>
       ))}

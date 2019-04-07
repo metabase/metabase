@@ -138,7 +138,7 @@ export default class TablePane extends Component {
                   onClick={() => this.props.show(itemType, item)}
                   className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
                 >
-                  {item.name}
+                  {item.display_name}
                 </a>
               </li>
             ))}
@@ -151,7 +151,7 @@ export default class TablePane extends Component {
           <div className="ml1">
             <div className="flex align-center">
               <Icon name="table2" className="text-medium pr1" size={16} />
-              <h3>{table.name}</h3>
+              <h3>{table.display_name}</h3>
             </div>
             {description}
             <div className="my2 Button-group Button-group--brand text-uppercase">

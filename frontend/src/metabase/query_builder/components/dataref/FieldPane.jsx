@@ -136,8 +136,8 @@ export default class FieldPane extends Component {
       query.metadata().fields[field.id] &&
       query.metadata().fields[field.id].values;
 
-    let fieldName = field.name;
-    let tableName = query.table() ? query.table().name : "";
+    let fieldName = field.display_name;
+    let tableName = query.table() ? query.table().display_name : "";
 
     let useForCurrentQuestion = [],
       usefulQuestions = [];

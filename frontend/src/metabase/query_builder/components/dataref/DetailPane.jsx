@@ -19,7 +19,7 @@ const DetailPane = ({ name, description, extra, values }) => (
     {values &&
       values.length > 0 && (
         <div>
-          <h5 className="text-uppercase mt4 mb2">Sample values</h5>
+          <h5 className="text-uppercase mt4 mb2">{t`Sample values`}</h5>
           <Card>
             <ul>
               {values.map((value, i) => (
