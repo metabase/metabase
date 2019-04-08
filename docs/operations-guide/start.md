@@ -83,8 +83,6 @@ The application database is where Metabase stores information about users, saved
 
 **NOTE:** you cannot change the application database while the application is running.  these values are read only once when the application starts up and will remain constant throughout the running of the application.
 
-**NOTE:** currently Metabase does not provide automated support for migrating data from one application database to another, so if you start with H2 and then want to move to Postgres you'll have to dump the data from H2 and import it into Postgres before relaunching the application.
-
 #### [H2](http://www.h2database.com/) (default)
 
 To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
@@ -344,4 +342,4 @@ Diagnosing performance related issues can be a challenge. Luckily the JVM ships 
 
 # Java Versions
 
-Metabase will run on Java version 8, 9, or 10. Java 11 support is still a work in progress, so please be patient while we get everything working.
+Metabase will run on Java 8 and Java 11.
