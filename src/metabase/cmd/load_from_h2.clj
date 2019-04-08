@@ -14,7 +14,10 @@
    mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
    ```"
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
+            [clojure.string :as str]
             [colorize.core :as color]
             [medley.core :as m]
             [metabase
@@ -97,9 +100,13 @@
    ;; above this line)
    DataMigrations])
 
+(defn- add-file-prefix-if-needed [connection-string-or-filename]
+  (if (str/starts-with? connection-string-or-filename "file:")
+    connection-string-or-filename
+    (str "file:" (.getAbsolutePath (io/file connection-string-or-filename)))))
 
 (defn- h2-details [h2-connection-string-or-nil]
-  (let [h2-filename (or h2-connection-string-or-nil @metabase.db/db-file)]
+  (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @metabase.db/db-file))]
     (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
