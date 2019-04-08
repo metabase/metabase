@@ -85,6 +85,8 @@ The application database is where Metabase stores information about users, saved
 
 #### [H2](http://www.h2database.com/) (default)
 
+**For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
+
 To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
 
 You can see these database files from the terminal:
@@ -105,8 +107,6 @@ If for any reason you want to use an H2 database file in a separate location fro
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in you path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
 
 #### [Postgres](http://www.postgresql.org/)
-
-**For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
 
 You can change the application database to use Postgres using a few simple environment variables. For example:
 
