@@ -34,7 +34,8 @@
   [:as {{:keys [token]
          {:keys [name engine details is_full_sync is_on_demand schedules]} :database
          {:keys [first_name last_name email password]}                     :user
-         {:keys [allow_tracking site_name]}                                :prefs} :body}]
+         {:keys [allow_tracking site_name]}                                :prefs} :body
+        :as request}]
   {token          SetupToken
    site_name      su/NonBlankString
    first_name     su/NonBlankString
@@ -82,7 +83,7 @@
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event! :user-create {:user_id (:id new-user)})
     (events/publish-event! :user-login {:user_id (:id new-user), :session_id (str session-id), :first_login true})
-    (mw.session/set-session-cookie {:id (str session-id)} session-id)))
+    (mw.session/set-session-cookie request {:id (str session-id)} session-id)))
 
 
 (api/defendpoint POST "/validate"

@@ -397,6 +397,29 @@
                                       [:= [:field-id 7] 8]
                                       [:= [:field-id 9] 10]]]]))
 
+;; `simplify-compound-filter` should also work with more complex structures
+(expect
+  {:aggregation [[:share [:and
+                          [:= [:field-id 1] 2]
+                          [:= [:field-id 3] 4]
+                          [:= [:field-id 5] 6]
+                          [:= [:field-id 7] 8]
+                          [:= [:field-id 9] 10]]]]}
+  (mbql.u/simplify-compound-filter {:aggregation [[:share [:and
+                                                           nil
+                                                           [:= [:field-id 1] 2]
+                                                           [:and
+                                                            [:= [:field-id 3] 4]]
+                                                           nil
+                                                           [:and
+                                                            [:and
+                                                             [:and
+                                                              [:= [:field-id 5] 6]
+                                                              nil
+                                                              nil]
+                                                             [:= [:field-id 7] 8]
+                                                             [:= [:field-id 9] 10]]]]]]}))
+
 ;; can we add an order-by clause to a query?
 (expect
   {:database 1, :type :query, :query {:source-table 1, :order-by [[:asc [:field-id 10]]]}}

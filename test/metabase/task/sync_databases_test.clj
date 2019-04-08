@@ -3,7 +3,7 @@
   testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
   (:require [clojure.string :as str]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.database :refer [Database]]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test.util :as tu]
@@ -13,6 +13,13 @@
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
+
+;; make sure our annotations are present
+(expect
+  (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
+
+(expect
+  (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))
 
 (defn- replace-trailing-id-with-<id> [s]
   (str/replace s #"\d+$" "<id>"))

@@ -137,3 +137,19 @@
     (wrap-value-literals
       {:source-query {:source-table (data/id :checkins)
                       :filter       [:> [:field-id $date] "2014-01-01"]}})))
+
+;; Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`
+(expect
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      {:source-table (data/id :incidents)
+       :aggregation [[:share
+                      [:>
+                       [:datetime-field [:field-id $timestamp] :day]
+                       [:absolute-datetime  (du/->Timestamp "2015-06-01" "UTC") :day]]]]}))
+
+  (data/dataset sad-toucan-incidents
+    (data/$ids incidents
+      (wrap-value-literals
+        {:source-table (data/id :incidents)
+         :aggregation  [[:share [:> [:datetime-field [:field-id $timestamp] :day] "2015-06-01"]]]}))))
