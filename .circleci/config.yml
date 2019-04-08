@@ -162,10 +162,85 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests (MySQL)
+          name: Run backend unit tests (MySQL 5.7.23)
           environment:
             DRIVERS: h2,mysql
             MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+            MB_DB_TYPE: mysql
+            MB_DB_HOST: localhost
+            MB_DB_PORT: 3306
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: root
+            MB_MYSQL_TEST_USER: root
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-mysql-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mysql:latest
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (MySQL Latest)
+          environment:
+            DRIVERS: h2,mysql
+            MB_DB_TYPE: mysql
+            MB_DB_HOST: localhost
+            MB_DB_PORT: 3306
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: root
+            MB_MYSQL_TEST_USER: root
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-mariadb:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mariadb:10.2.23
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (MariaDB 10.2.23)
+          environment:
+            DRIVERS: h2,mysql
+            MB_DB_TYPE: mysql
+            MB_DB_HOST: localhost
+            MB_DB_PORT: 3306
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: root
+            MB_MYSQL_TEST_USER: root
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-mariadb-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mariadb:latest
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (MariaDB Latest)
+          environment:
+            DRIVERS: h2,mysql
             MB_DB_TYPE: mysql
             MB_DB_HOST: localhost
             MB_DB_PORT: 3306
@@ -191,7 +266,35 @@ jobs:
       - restore_cache:
           <<: *restore-be-deps-cache
       - run:
-          name: Run backend unit tests (Postgres)
+          name: Run backend unit tests (Postgres 9.6)
+          environment:
+            DRIVERS: h2,postgres
+            MB_DB_TYPE: postgres
+            MB_DB_PORT: 5432
+            MB_DB_HOST: localhost
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: circle_test
+            MB_POSTGRESQL_TEST_USER: circle_test
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh postgres ||
+            lein with-profile +ci test
+          no_output_timeout: 5m
+
+  be-tests-postgres-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/postgres:latest
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Run backend unit tests (Postgres Latest)
           environment:
             DRIVERS: h2,postgres
             MB_DB_TYPE: postgres
@@ -650,7 +753,19 @@ workflows:
       - be-tests-mysql:
           requires:
             - be-tests
+      - be-tests-mysql-latest:
+          requires:
+            - be-tests
+      - be-tests-mariadb:
+          requires:
+            - be-tests
+      - be-tests-mariadb-latest:
+          requires:
+            - be-tests
       - be-tests-postgres:
+          requires:
+            - be-tests
+      - be-tests-postgres-latest:
           requires:
             - be-tests
       - be-tests-sparksql:
@@ -730,7 +845,11 @@ workflows:
 
             - be-tests
             - be-tests-mysql
+            - be-tests-mysql-latest
+            - be-tests-mariadb
+            - be-tests-mariadb-latest
             - be-tests-postgres
+            - be-tests-postgres-latest
             - be-tests-sparksql
             - be-tests-mongo
             - be-tests-sqlserver
