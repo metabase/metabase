@@ -83,7 +83,6 @@
        (merge
         {:same-site :lax
          :http-only true
-         :path      "/api"
          :max-age   (config/config-int :max-session-age)}
         ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
         ;; add `Secure` attribute so the cookie is only sent over HTTPS.
