@@ -29,8 +29,8 @@
        :native      (native-query)
        :constraints {:max-results 5}})))
 
-;; does it also work when running via `process-query-and-save-with-max!`, the function that powers endpoints like
-;; `POST /api/dataset`?
+;; does it also work when running via `process-query-and-save-with-max-results-constraints!`, the function that powers
+;; endpoints like `POST /api/dataset`?
 (qp.test/expect-with-non-timeseries-dbs
   [["Red Medicine"]
    ["Stout Burgers & Beers"]
@@ -38,7 +38,7 @@
    ["Wurstküche"]
    ["Brite Spot Family Restaurant"]]
   (qp.test/rows
-    (qp/process-query-and-save-with-max!
+    (qp/process-query-and-save-with-max-results-constraints!
         {:database    (data/id)
          :type        :native
          :native      (native-query)

@@ -54,7 +54,7 @@
   (when (io/resource "modules")
     (let [plugins-path (plugins-dir)]
       (files/with-open-path-to-resource [modules-path "modules"]
-        (files/copy-files-if-not-exists! modules-path plugins-path)))))
+        (files/copy-files! modules-path plugins-path)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

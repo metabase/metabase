@@ -395,7 +395,7 @@
      {:max-results-bare-rows max-results})
    m))
 
-(s/defn process-query-and-save-with-max!
+(s/defn process-query-and-save-with-max-results-constraints!
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
   {:style/indent 1}

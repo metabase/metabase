@@ -13,6 +13,7 @@
              [common :as driver.common]
              [sql-jdbc :as sql-jdbc]]
             [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
@@ -39,22 +40,26 @@
                account)]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
-            :subprotocol                                "snowflake"
-            :subname                                    (str "//" host ".snowflakecomputing.com/")
-            :client_metadata_request_use_connection_ctx true
-            :ssl                                        true
-            ;; other SESSION parameters
-            ;; use the same week start we use for all the other drivers
-            :week_start                                 7
-            ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
-            ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-            :timezone                                   "UTC"}
-           (-> opts
-               ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
-               ;; `db`. If we run across `dbname`, correct our behavior
-               (set/rename-keys {:dbname :db})
-               (dissoc :host :port :timezone)))))
+    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+                :subprotocol                                "snowflake"
+                :subname                                    (str "//" host ".snowflakecomputing.com/")
+                :client_metadata_request_use_connection_ctx true
+                :ssl                                        true
+                ;; keep open connections open indefinitely instead of closing them. See #9674 and
+                ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
+                :client_session_keep_alive                  true
+                ;; other SESSION parameters
+                ;; use the same week start we use for all the other drivers
+                :week_start                                 7
+                ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
+                ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
+                :timezone                                   "UTC"}
+               (-> opts
+                   ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
+                   ;; `db`. If we run across `dbname`, correct our behavior
+                   (set/rename-keys {:dbname :db})
+                   (dissoc :host :port :timezone)))
+        (sql-jdbc.common/handle-additional-options opts))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake [_ base-type]
   ({:NUMBER                     :type/Number

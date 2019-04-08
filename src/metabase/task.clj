@@ -53,9 +53,11 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- find-and-load-tasks!
+(defn- find-and-load-task-namespaces!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
+  ;; make sure current thread is using canonical MB classloader
+  (classloader/the-classloader)
   ;; first, load all the task namespaces
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
@@ -63,8 +65,11 @@
       (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))
       (require ns-symb)
       (catch Throwable e
-        (log/error e (trs "Error loading tasks namespace {0}" ns-symb)))))
-  ;; next, call all implementations of `init!`
+        (log/error e (trs "Error loading tasks namespace {0}" ns-symb))))))
+
+(defn- init-tasks!
+  "Call all implementations of `init!`"
+  []
   (doseq [[k f] (methods init!)]
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
@@ -97,33 +102,8 @@
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Custom `ClassLoadHelper` implementation that makes sure to require the namespaces that tasks live in (to make sure
-;; record types are loaded) and that uses our canonical ClassLoader.
-
-(defn- task-class-name->namespace-str
-  "Determine the namespace we need to load for one of our tasks.
-
-    (task-class-name->namespace-str \"metabase.task.upgrade_checks.CheckForNewVersions\")
-    ;; -> \"metabase.task.upgrade-checks\""
-  [class-name]
-  (-> class-name
-      (str/replace \_ \-)
-      (str/replace #"\.\w+$" "")))
-
-(defn- require-task-namespace
-  "Since Metabase tasks are defined in Clojure-land we need to make sure we `require` the namespaces where they are
-  defined before we try to load the task classes."
-  [class-name]
-  ;; call `the-classloader` to force side-effects of making it the current thread context classloader
-  (classloader/the-classloader)
-  ;; only try to `require` metabase.task classes; don't do this for other stuff that gets shuffled thru here like
-  ;; Quartz classes
-  (when (str/starts-with? class-name "metabase.task.")
-    (require (symbol (task-class-name->namespace-str class-name)))))
-
 (defn- load-class ^Class [^String class-name]
-  (require-task-namespace class-name)
-  (.loadClass (classloader/the-classloader) class-name))
+  (Class/forName class-name true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
@@ -158,8 +138,9 @@
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! quartz-scheduler nil new-scheduler)
+        (find-and-load-task-namespaces!)
         (qs/start new-scheduler)
-        (find-and-load-tasks!)))))
+        (init-tasks!)))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
