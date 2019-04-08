@@ -79,11 +79,20 @@ Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Configuring the Metabase Application Database
 
-The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an embedded H2 database, but this is configurable.
+The application database is where Metabase stores information about users, saved questions, dashboards, and any other
+data needed to run the application. The default settings use an embedded H2 database, but this is configurable.
 
-**NOTE:** you cannot change the application database while the application is running.  these values are read only once when the application starts up and will remain constant throughout the running of the application.
+##### Notes
 
-**NOTE:** currently Metabase does not provide automated support for migrating data from one application database to another, so if you start with H2 and then want to move to Postgres you'll have to dump the data from H2 and import it into Postgres before relaunching the application.
+*  Using Metabase with an H2 application database is not recommended for production deployments. For production
+   deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2,
+   please be sure to back up the database file regularly.
+*  You cannot change the application database while the application is running. Connection configuration information is
+   read only once when the application starts up and will remain constant throughout the running of the application.
+*  Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
+   production-ready database. See [Migrating from H2 to MySQL or
+   Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres) for more details.
+
 
 #### [H2](http://www.h2database.com/) (default)
 
