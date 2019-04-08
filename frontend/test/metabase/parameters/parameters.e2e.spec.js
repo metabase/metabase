@@ -457,7 +457,7 @@ async function sharedParametersTests(getAppAndStore) {
         [],
         [],
         [],
-      ])
+      ]);
     });
   });
 
