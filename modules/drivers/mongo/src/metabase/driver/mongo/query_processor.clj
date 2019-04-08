@@ -326,16 +326,22 @@
 (defmethod parse-filter :not [[_ subclause]]
   (parse-filter (negate subclause)))
 
+(defn- add-initial-projection
+  [pipeline-ctx fields]
+  (let [projections (into (ordered-map/ordered-map)
+                          (for [field (distinct fields)]
+                            [(->lvalue field) (->initial-rvalue field)]))]
+    (if (seq projections)
+      (-> pipeline-ctx
+       (update :projections into (map (comp keyword key)) projections)
+       (update :query conj {$project projections}))
+      pipeline-ctx)))
+
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if filter-clause
-    (let [projections (into (ordered-map/ordered-map)
-                            (for [field (distinct (mbql.u/match filter-clause :datetime-field))]
-                              [(->lvalue field) (->initial-rvalue field)]))]
-      (cond-> pipeline-ctx
-        (seq projections) (->
-                           (assoc  :projections (map (comp keyword key) projections))
-                           (update :query conj {$project projections}))
-        :finally          (update :query conj {$match (parse-filter filter-clause)})))
+    (-> pipeline-ctx
+        (add-initial-projection (mbql.u/match filter-clause :datetime-field))
+        (update :query conj {$match (parse-filter filter-clause)}))
     pipeline-ctx))
 
 (defmulti ^:private parse-cond first)
@@ -495,9 +501,9 @@
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
     (let [projected-fields (breakouts-and-ags->projected-fields breakout-fields aggregations)]
       (-> pipeline-ctx
+          (add-initial-projection (mbql.u/match [breakout-fields aggregations] #{:field-id :datetime-field}))
           ;; add :projections key which is just a sequence of the names of projections from above
-          (assoc :projections (vec (for [[field] projected-fields]
-                                     (keyword field))))
+          (update :projections into (map (comp keyword first)) projected-fields)
           ;; now add additional clauses to the end of :query as applicable
           (update :query into (breakouts-and-ags->pipeline-stages projected-fields breakout-fields aggregations))))))
 
@@ -525,7 +531,7 @@
     (let [new-projections (for [field fields]
                             [(->lvalue field) (->rvalue field)])]
       (-> pipeline-ctx
-          (assoc :projections (map (comp keyword first) new-projections))
+          (update :projections into (map (comp keyword first)) new-projections)
           ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
           (update :query conj {$project (into
                                          (ordered-map/ordered-map "_id" false)
@@ -559,15 +565,19 @@
   [inner-query :- mbql.s/MBQLQuery]
   (let [inner-query (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations
                                                               annotate/aggregation-name))]
-    (reduce (fn [pipeline-ctx f]
-              (f inner-query pipeline-ctx))
-            {:projections [], :query []}
-            [handle-filter
-             handle-breakout+aggregation
-             handle-order-by
-             handle-fields
-             handle-limit
-             handle-page])))
+    (transduce identity
+               (fn
+                 ([] {:projections [], :query []})
+                 ([pipeline-ctx f]
+                  (f inner-query pipeline-ctx))
+                 ([pipeline-ctx]
+                  (update pipeline-ctx :projections distinct)))
+               [handle-filter
+                handle-breakout+aggregation
+                handle-order-by
+                handle-fields
+                handle-limit
+                handle-page])))
 
 (s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
   [original-keys :- Projections]
