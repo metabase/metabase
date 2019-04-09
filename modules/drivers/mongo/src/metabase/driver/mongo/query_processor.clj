@@ -337,10 +337,16 @@
        (update :query conj {$project projections}))
       pipeline-ctx)))
 
+(defn- needs-initial-projection?
+  [[op arg & _]]
+  (or (= op :datetime-field)
+      (-> arg qp.store/field :parent_id)))
+
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if filter-clause
     (-> pipeline-ctx
-        (add-initial-projection (mbql.u/match filter-clause :datetime-field))
+        (add-initial-projection (filter needs-initial-projection?
+                                        (mbql.u/match filter-clause #{:datetime-field :field-id})))
         (update :query conj {$match (parse-filter filter-clause)}))
     pipeline-ctx))
 
