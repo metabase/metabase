@@ -459,6 +459,55 @@ jobs:
             lein with-profile +ci test
           no_output_timeout: 5m
 
+  be-tests-migrate-to-postgres:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Test migrating from H2 -> Postgres
+          environment:
+            MB_DB_TYPE: postgres
+            MB_DB_PORT: 5432
+            MB_DB_HOST: localhost
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: circle_test
+          # Test with relative path / no file: prefix
+          command: >
+            lein run load-from-h2 ./frontend/test/__runner__/test_db_fixture.db
+          no_output_timeout: 5m
+
+  be-tests-migrate-to-mysql:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mysql:5.7.23
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - restore_cache:
+          <<: *restore-be-deps-cache
+      - run:
+          name: Test migrating from H2 -> MySQL
+          environment:
+            MB_DB_TYPE: mysql
+            MB_DB_HOST: localhost
+            MB_DB_PORT: 3306
+            MB_DB_DBNAME: circle_test
+            MB_DB_USER: root
+          # Test including file: prefix & absolute path
+          command: >
+            lein run load-from-h2 file:/home/circleci/metabase/metabase/frontend/test/__runner__/test_db_fixture.db
+          no_output_timeout: 5m
+
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -689,6 +738,12 @@ workflows:
       - be-tests-snowflake:
           requires:
             - be-tests
+      - be-tests-migrate-to-postgres:
+          requires:
+            - be-tests
+      - be-tests-migrate-to-mysql:
+          requires:
+            - be-tests
       - yaml-linter:
           requires:
             - checkout
@@ -743,6 +798,8 @@ workflows:
             - be-tests-redshift
             - be-tests-vertica
             - be-tests-snowflake
+            - be-tests-migrate-to-postgres
+            - be-tests-migrate-to-mysql
 
             - yaml-linter
 
