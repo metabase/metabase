@@ -405,7 +405,8 @@ function transformSingleSeries(s, series, seriesIndex) {
           _transformed: true,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
-          _seriesKey: col ? col.name : name,
+          // EXCEPT for dashboard multiseries, so check seriesIndex == 0
+          _seriesKey: seriesIndex === 0 && col ? col.name : name,
         },
         data: {
           rows: rows.map((row, rowIndex) => {

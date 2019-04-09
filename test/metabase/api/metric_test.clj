@@ -1,10 +1,10 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [database :refer [Database]]
              [metric :as metric :refer [Metric]]
@@ -49,8 +49,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "metric"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "metric/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "metric"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "metric/13"))
 
 
 ;; ## POST /api/metric

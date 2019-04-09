@@ -86,7 +86,7 @@ class CollectionList extends React.Component {
                     id: "users",
                   }}
                   iconName="person"
-                  event={`${analyticsContext};Collection List;All user collecetions click`}
+                  event={`${analyticsContext};Collection List;All user collections click`}
                   asCard={asCards}
                 />
               </GridItem>

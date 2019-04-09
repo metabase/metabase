@@ -134,9 +134,12 @@
        (= (count datetimes) 1)
        (empty? others)))
 
-(def ^:private ms->day
-  "We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities."
-  #(/ % (* 1000 60 60 24)))
+;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
+(def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
+
+(defn- ms->day
+  [dt]
+  (/ dt ms-in-a-day))
 
 (defn- about=
   [a b]
@@ -151,13 +154,18 @@
    :quarter (* 30.4 3)
    :year    365.1})
 
+(defn- infer-unit
+  [from to]
+  (when (and from to)
+    (some (fn [[unit duration]]
+            (when (about= (- to from) duration)
+              unit))
+          unit->duration)))
+
 (defn- valid-period?
   [from to unit]
-  (when (and from to)
-    (let [delta (- to from)]
-      (if unit
-        (about= delta (unit->duration unit))
-        (some (partial about= delta) (vals unit->duration))))))
+  (when (and from to unit)
+    (about= (- to from) (unit->duration unit))))
 
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
@@ -185,7 +193,10 @@
                             (stats/simple-linear-regression xfn yfn)
                             (best-fit xfn yfn)))
               (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                (let [show-change? (valid-period? x-previous x-current (:unit datetime))]
+                (let [unit         (if (contains? #{:default nil} (:unit datetime))
+                                     (infer-unit x-previous x-current)
+                                     (:unit datetime))
+                      show-change? (valid-period? x-previous x-current unit)]
                   {:last-value     y-current
                    :previous-value (when show-change?
                                      y-previous)

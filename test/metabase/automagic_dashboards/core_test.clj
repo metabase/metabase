@@ -2,8 +2,8 @@
   (:require [clj-time
              [core :as t]
              [format :as t.format]]
+            [clojure.core.async :as a]
             [expectations :refer :all]
-            [metabase.api.card :as card.api]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -17,6 +17,7 @@
              [permissions-group :as perms-group]
              [query :as query]
              [table :as table :refer [Table]]]
+            [metabase.query-processor.async :as qp.async]
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]
@@ -146,6 +147,12 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
 
+(defn- result-metadata-for-query [query]
+  (first
+   (a/alts!!
+    [(qp.async/result-metadata-for-query-async query)
+     (a/timeout 1000)])))
+
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:query    {:source-table (data/id :venues)}
@@ -155,7 +162,7 @@
                       Card [{source-id :id} {:table_id      (data/id :venues)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (#'card.api/result-metadata-for-query source-query))}]
+                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
                       Card [{card-id :id} {:table_id      (data/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
@@ -190,7 +197,7 @@
                       Card [{source-id :id} {:table_id        nil
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (#'card.api/result-metadata-for-query source-query))}]
+                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
                       Card [{card-id :id} {:table_id      nil
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]

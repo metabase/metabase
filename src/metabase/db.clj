@@ -98,8 +98,11 @@
       (u/format-color 'red
           (str
            (trs "WARNING: Using Metabase with an H2 application database is not recomended for production deployments.")
+           " "
            (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
+           " "
            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
+           " "
            (trs "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information.")))))
    (or @connection-string-details
        (case (db-type)
@@ -345,7 +348,7 @@
    "initialPoolSize" 1
    "maxPoolSize"     15})
 
-(defn connection-pool
+(defn- new-connection-pool
   "Create a C3P0 connection pool for the given database `spec`."
   [spec]
   (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
@@ -355,7 +358,7 @@
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (connection-pool spec)))
+  (db/set-default-db-connection! (new-connection-pool spec)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

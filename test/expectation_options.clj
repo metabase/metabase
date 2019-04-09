@@ -1,5 +1,53 @@
 (ns expectation-options
-  "Namespace expectations will automatically load before running a tests")
+  "Namespace expectations will automatically load before running a tests"
+  (:require [clojure
+             [data :as data]
+             [set :as set]]
+            [expectations :as expectations]
+            [metabase.util :as u]))
+
+;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
+
+;; ## EXPECTATIONS FORMATTING OVERRIDES
+
+;; These overrides the methods Expectations usually uses for printing failed tests.
+;; These are basically the same as the original implementations, but they colorize and pretty-print the
+;; output, which makes it an order of magnitude easier to read, especially for tests that compare a
+;; lot of data, like Query Processor or API tests.
+(defn- format-failure [e a str-e str-a]
+  {:type             :fail
+   :expected-message (when-let [in-e (first (data/diff e a))]
+                       (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'green in-e)))
+   :actual-message   (when-let [in-a (first (data/diff a e))]
+                       (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
+   :raw              [str-e str-a]
+   :result           ["\nexpected:\n"
+                      (u/pprint-to-str 'green e)
+                      "\nwas:\n"
+                      (u/pprint-to-str 'red a)]})
+
+(defmethod expectations/compare-expr :expectations/maps [e a str-e str-a]
+  (let [[in-e in-a] (data/diff e a)]
+    (if (and (nil? in-e) (nil? in-a))
+      {:type :pass}
+      (format-failure e a str-e str-a))))
+
+(defmethod expectations/compare-expr :expectations/sets [e a str-e str-a]
+  (format-failure e a str-e str-a))
+
+(defmethod expectations/compare-expr :expectations/sequentials [e a str-e str-a]
+  (let [diff-fn (fn [e a] (seq (set/difference (set e) (set a))))]
+    (assoc (format-failure e a str-e str-a)
+           :message (cond
+                      (and (= (set e) (set a))
+                           (= (count e) (count a))
+                           (= (count e) (count (set a)))) "lists appear to contain the same items with different ordering"
+                      (and (= (set e) (set a))
+                           (< (count e) (count a)))       "some duplicate items in actual are not expected"
+                      (and (= (set e) (set a))
+                           (> (count e) (count a)))       "some duplicate items in expected are not actual"
+                      (< (count e) (count a))             "actual is larger than expected"
+                      (> (count e) (count a))             "expected is larger than actual"))))
 
 ;;; ---------------------------------------------- check-for-slow-tests ----------------------------------------------
 

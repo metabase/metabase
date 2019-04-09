@@ -8,6 +8,7 @@
              [sync :as sync]
              [util :as u]]
             [metabase.driver.mysql :as mysql]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.test
@@ -161,3 +162,35 @@
              :native     {:query "SELECT cast({{date}} as date)"
                           :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
              :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
+
+(def ^:private sample-connection-details
+  {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
+
+(def ^:private sample-jdbc-spec
+  {:password             "bad-password"
+   :characterSetResults  "UTF8"
+   :characterEncoding    "UTF8"
+   :classname            "org.mariadb.jdbc.Driver"
+   :subprotocol          "mysql"
+   :zeroDateTimeBehavior "convertToNull"
+   :sessionVariables     "sql_mode='ALLOW_INVALID_DATES'"
+   :user                 "cam"
+   :subname              "//localhost:3306/my_db"
+   :useCompression       true
+   :useUnicode           true})
+
+;; Do `:ssl` connection details give us the connection spec we'd expect?
+(expect
+  (assoc sample-jdbc-spec :useSSL true)
+  (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl true)))
+
+;; what about non-SSL connections?
+(expect
+  (assoc sample-jdbc-spec :useSSL false)
+  (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))
+
+;; Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)
+(expect
+  (assoc sample-jdbc-spec :useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
+  (sql-jdbc.conn/connection-details->spec :mysql
+    (assoc sample-connection-details :ssl false, :additional-options "useSSL=true&trustServerCertificate=true")))

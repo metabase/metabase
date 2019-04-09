@@ -19,12 +19,27 @@ if [ "$1" == clean ]; then
     done
 fi
 
-for driver in `ls modules/drivers/ | sed 's|/$||'`; do # strip trailing slashes if `ls` is set to include them
-    echo "Build: $driver"
-    ./bin/build-driver.sh "$driver"
+# strip trailing slashes if `ls` is set to include them
+drivers=`ls modules/drivers/ | sed 's|/$||'`
 
-    if [ $? -ne 0 ]; then
+for driver in $drivers; do
+    echo "Build: $driver"
+
+    build_failed=''
+    ./bin/build-driver.sh "$driver" || build_failed=true
+
+    if [ "$build_failed" ]; then
         echo "Failed to build driver $driver."
         exit -1
+    fi
+done
+
+# Double-check that all drivers were built successfully
+for driver in $drivers; do
+    verification_failed=''
+    ./bin/verify-driver "$driver" || verification_failed=true
+
+    if [ "$verification_failed" ]; then
+        exit -2
     fi
 done

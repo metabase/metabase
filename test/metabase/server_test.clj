@@ -1,8 +1,8 @@
-(ns metabase.core-test
+(ns metabase.server-test
   (:require [expectations :refer [expect]]
             [metabase
              [config :as config]
-             [core :as core]]))
+             [server :as server]]))
 
 ;; Make sure our Jetty config functions work as expected/we don't accidentally break things (#9333)
 (expect
@@ -20,4 +20,4 @@
    :max-idle-time  10
    :ssl-port       10}
   (with-redefs [config/config-str (constantly "10")]
-    (#'core/jetty-config)))
+    (#'server/jetty-config)))

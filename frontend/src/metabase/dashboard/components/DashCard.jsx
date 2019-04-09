@@ -50,7 +50,7 @@ export default class DashCard extends Component {
     if (dashcard.justAdded) {
       const element = ReactDOM.findDOMNode(this);
       if (element && element.scrollIntoView) {
-        element.scrollIntoView();
+        element.scrollIntoView({ block: "nearest" });
       }
       markNewCardSeen(dashcard.id);
     }
