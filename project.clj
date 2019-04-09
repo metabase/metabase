@@ -71,7 +71,7 @@
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
-   [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
+   [com.h2database/h2 "1.4.199"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.3"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
