@@ -2,12 +2,14 @@
 
 import {
   combineReducers,
-  createThunkAction,
-  fetchData,
   handleEntities,
+  compose,
+  withAction,
+  withAnalytics,
+  withRequestState,
+  withCachedDataAndRequestState,
 } from "metabase/lib/redux";
 
-import { setRequestState } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
@@ -17,8 +19,6 @@ import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
 import { getIn, dissocIn, merge } from "icepick";
 import _ from "underscore";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
 //
@@ -118,10 +118,7 @@ export type Entity = {
     FETCH_LIST: ActionType,
   },
   actionDecorators: {
-    create: {
-      pre: Function,
-      post: Function,
-    },
+    [name: string]: Function, // TODO: better type
   },
   actions: {
     [name: string]: ActionCreator,
@@ -165,6 +162,9 @@ export type Entity = {
 
   writableProperties?: string[],
   getAnalyticsMetadata?: () => any,
+
+  normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
+  normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
 
   HACK_getObjectFromAction: (action: Action) => any,
 };
@@ -227,7 +227,7 @@ export function createEntity(def: EntityDefinition): Entity {
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
   const INVALIDATE_LISTS_ACTION = `metabase/entities/${
     entity.name
-  }/INVALIDATE_LISTS_ACTION`;
+  }/INVALIDATE_LISTS`;
 
   entity.actionTypes = {
     CREATE: CREATE_ACTION,
@@ -243,85 +243,81 @@ export function createEntity(def: EntityDefinition): Entity {
     ...(entity.actionDecorators || {}),
   };
 
-  function runActionDecorator(action, type, object, ...extra) {
-    const decorator = getIn(entity, ["actionDecorators", action, type]);
-    if (decorator) {
-      return decorator(object, ...extra);
-    } else {
-      return object;
-    }
+  // normalize helpers
+  entity.normalize = (object, schema = entity.schema) => ({
+    // include raw `object` (and alias under nameOne) for convienence
+    object,
+    [entity.nameOne]: object,
+    // include standard normalizr properties, `result` and `entities`
+    ...normalize(object, schema),
+  });
+
+  entity.normalizeList = (list, schema = entity.schema) => ({
+    // include raw `list` (and alias under nameMany) for convienence
+    list,
+    [entity.nameMany]: list,
+    // include standard normalizr properties, `result` and `entities`
+    ...normalize(list, [schema]),
+  });
+
+  // thunk decorators:
+
+  // same as withRequestState, but with automatic prefix
+  function withEntityRequestState(getSubStatePath) {
+    return withRequestState((...args) => [
+      "entities",
+      entity.name,
+      ...getSubStatePath(...args),
+    ]);
+  }
+
+  // same as withRequestState, but with category/label
+  function withEntityAnalytics(action) {
+    return withAnalytics(
+      "entities",
+      entity.name,
+      action,
+      entity.getAnalyticsMetadata,
+    );
+  }
+
+  function withEntityActionDecorators(action) {
+    return entity.actionDecorators[action] || (_ => _);
   }
 
   entity.objectActions = {
-    create: createThunkAction(
-      CREATE_ACTION,
-      entityObject => async (dispatch, getState) => {
-        trackAction("create", entityObject, getState);
-        const statePath = ["entities", entity.name, "create"];
-        entityObject = runActionDecorator(
-          "create",
-          "pre",
-          entityObject,
-          dispatch,
-          getState,
-        );
-        try {
-          dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const object = await entity.api.create(
-            getWritableProperties(entityObject),
-          );
-          const result = normalize(object, entity.schema);
-          dispatch(setRequestState({ statePath, state: "LOADED" }));
-          return runActionDecorator(
-            "create",
-            "post",
-            {
-              // include raw object (and alias under nameOne) for convienence
-              object,
-              [entity.nameOne]: object,
-              // include normalizr properties "entities" and "result"
-              ...result,
-            },
-            entityObject,
-            dispatch,
-            getState,
-          );
-        } catch (error) {
-          console.error(`${CREATE_ACTION} failed:`, error);
-          dispatch(setRequestState({ statePath, error }));
-          throw error;
-        }
-      },
+    fetch: compose(
+      withAction(FETCH_ACTION),
+      withCachedDataAndRequestState(
+        ({ id }) => [...getObjectStatePath(id)],
+        ({ id }) => [...getObjectStatePath(id), "fetch"],
+      ),
+      withEntityActionDecorators("fetch"),
+    )(entityObject => async (dispatch, getState) =>
+      entity.normalize(await entity.api.get({ id: entityObject.id })),
     ),
 
-    fetch: createThunkAction(
-      FETCH_ACTION,
-      (entityObject, { reload = false, properties = null } = {}) => (
-        dispatch,
-        getState,
-      ) =>
-        fetchData({
-          dispatch,
-          getState,
-          reload,
-          properties,
-          requestStatePath: getObjectStatePath(entityObject.id),
-          existingStatePath: getObjectStatePath(entityObject.id),
-          getData: async () =>
-            normalize(
-              await entity.api.get({ id: entityObject.id }),
-              entity.schema,
-            ),
-        }),
-    ),
+    create: compose(
+      withAction(CREATE_ACTION),
+      withEntityAnalytics("create"),
+      withEntityRequestState(() => ["create"]),
+      withEntityActionDecorators("create"),
+    )(entityObject => async (dispatch, getState) => {
+      return entity.normalize(
+        await entity.api.create(getWritableProperties(entityObject)),
+      );
+    }),
 
-    update: createThunkAction(
-      UPDATE_ACTION,
+    update: compose(
+      withAction(UPDATE_ACTION),
+      withEntityAnalytics("update"),
+      withEntityRequestState(object => [object.id, "update"]),
+      withEntityActionDecorators("update"),
+    )(
       (entityObject, updatedObject = null, { notify } = {}) => async (
         dispatch,
         getState,
       ) => {
-        trackAction("update", updatedObject, getState);
         // save the original object for undo
         const originalObject = entity.selectors.getObject(getState(), {
           entityId: entityObject.id,
@@ -333,88 +329,52 @@ export function createEntity(def: EntityDefinition): Entity {
         if (updatedObject) {
           entityObject = { id: entityObject.id, ...updatedObject };
         }
-        entityObject = runActionDecorator(
-          "update",
-          "pre",
-          entityObject,
-          dispatch,
-          getState,
+
+        const result = entity.normalize(
+          await entity.api.update(getWritableProperties(entityObject)),
         );
-        const statePath = [...getObjectStatePath(entityObject.id), "update"];
-        try {
-          dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const object = await entity.api.update(
-            getWritableProperties(entityObject),
-          );
-          const result = normalize(object, entity.schema);
-          dispatch(setRequestState({ statePath, state: "LOADED" }));
-          if (notify) {
-            if (notify.undo) {
-              // pick only the attributes that were updated
-              // $FlowFixMe
-              const undoObject = _.pick(
-                originalObject,
-                ...Object.keys(updatedObject || {}),
-              );
-              dispatch(
-                addUndo({
-                  actions: [
-                    entity.objectActions.update(
-                      entityObject,
-                      undoObject,
-                      // don't show an undo for the undo
-                      { notify: false },
-                    ),
-                  ],
-                  ...notify,
-                }),
-              );
-            } else {
-              dispatch(addUndo(notify));
-            }
+
+        if (notify) {
+          if (notify.undo) {
+            // pick only the attributes that were updated
+            // $FlowFixMe
+            const undoObject = _.pick(
+              originalObject,
+              ...Object.keys(updatedObject || {}),
+            );
+            dispatch(
+              addUndo({
+                actions: [
+                  entity.objectActions.update(
+                    entityObject,
+                    undoObject,
+                    // don't show an undo for the undo
+                    { notify: false },
+                  ),
+                ],
+                ...notify,
+              }),
+            );
+          } else {
+            dispatch(addUndo(notify));
           }
-          return runActionDecorator(
-            "update",
-            "post",
-            {
-              // include raw object (and alias under nameOne) for convienence
-              object,
-              [entity.nameOne]: object,
-              // include normalizr properties "entities" and "result"
-              ...result,
-            },
-            entityObject,
-            dispatch,
-            getState,
-          );
-        } catch (error) {
-          console.error(`${UPDATE_ACTION} failed:`, error);
-          dispatch(setRequestState({ statePath, error }));
-          throw error;
         }
+        return result;
       },
     ),
 
-    delete: createThunkAction(
-      DELETE_ACTION,
-      entityObject => async (dispatch, getState) => {
-        trackAction("delete", getState);
-        const statePath = [...getObjectStatePath(entityObject.id), "delete"];
-        try {
-          dispatch(setRequestState({ statePath, state: "LOADING" }));
-          await entity.api.delete({ id: entityObject.id });
-          dispatch(setRequestState({ statePath, state: "LOADED" }));
-          return {
-            entities: { [entity.name]: { [entityObject.id]: null } },
-            result: entityObject.id,
-          };
-        } catch (error) {
-          console.error(`${DELETE_ACTION} failed:`, error);
-          dispatch(setRequestState({ statePath, error }));
-          throw error;
-        }
-      },
-    ),
+    delete: compose(
+      withAction(DELETE_ACTION),
+      withEntityAnalytics("delete"),
+      withEntityRequestState(object => [object.id, "delete"]),
+      withEntityActionDecorators("delete"),
+    )(entityObject => async (dispatch, getState) => {
+      await entity.api.delete({ id: entityObject.id });
+      return {
+        entities: { [entity.name]: { [entityObject.id]: null } },
+        result: entityObject.id,
+      };
+    }),
 
     // user defined object actions should override defaults
     ...(def.objectActions || {}),
@@ -422,40 +382,23 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // ACTION CREATORS
   entity.actions = {
-    fetchList: createThunkAction(
-      FETCH_LIST_ACTION,
-      (entityQuery = null, { reload = false } = {}) => (dispatch, getState) =>
-        fetchData({
-          dispatch,
-          getState,
-          reload,
-          requestStatePath: getListStatePath(entityQuery),
-          existingStatePath: getListStatePath(entityQuery),
-          getData: async () => {
-            const fetched = await entity.api.list(entityQuery || {});
-            let results = fetched;
-
-            // for now at least paginated endpoints have a 'data' property that
-            // contains the actual entries, if that is on the response we should
-            // use that as the 'results'
-            if (fetched.data) {
-              results = fetched.data;
-            }
-            const { result, entities } = normalize(results, [entity.schema]);
-            return {
-              result,
-              entities,
-              entityQuery,
-              // capture some extra details from the result just in case?
-              resultDetails: {
-                total: fetched.total,
-                offset: fetched.offset,
-                limit: fetched.limit,
-              },
-            };
-          },
-        }),
-    ),
+    fetchList: compose(
+      withAction(FETCH_LIST_ACTION),
+      withCachedDataAndRequestState(
+        entityQuery => [...getListStatePath(entityQuery)],
+        entityQuery => [...getListStatePath(entityQuery), "fetch"],
+      ),
+    )((entityQuery = null) => async (dispatch, getState) => {
+      const fetched = await entity.api.list(entityQuery || {});
+      // for now at least paginated endpoints have a 'data' property that
+      // contains the actual entries, if that is on the response we should
+      // use that as the 'results'
+      const results = fetched.data ? fetched.data : fetched;
+      return {
+        ...entity.normalizeList(results),
+        entityQuery,
+      };
+    }),
 
     // user defined actions should override defaults
     ...entity.objectActions,
@@ -688,20 +631,6 @@ export function createEntity(def: EntityDefinition): Entity {
 
     entity.wrapEntity = (object, dispatch = null) =>
       new EntityWrapper(object, dispatch);
-  }
-
-  function trackAction(action, object, getState) {
-    try {
-      MetabaseAnalytics.trackEvent(
-        "entity actions",
-        entity.name,
-        action,
-        entity.getAnalyticsMetadata &&
-          entity.getAnalyticsMetadata(action, object, getState),
-      );
-    } catch (e) {
-      console.warn("trackAction threw an error:", e);
-    }
   }
 
   // add container components and HOCs
