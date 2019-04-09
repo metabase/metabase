@@ -72,7 +72,7 @@ If for some reason x-rays aren't a good fit for your team or your data, administ
 We're reworking the way we do things like time series growth analysis, which was present in past versions of x-rays. In the meantime, we've removed those previous x-rays, and will bring those features back in a more elegant and streamlined way in a future version of Metabase.
 
 ### Need help?
-If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](http://discourse.metabase.com/). See you there!
+If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](https://discourse.metabase.com/). See you there!
 
 ---
 

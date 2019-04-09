@@ -18,7 +18,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 - View data in Slack anytime with [MetaBot](https://metabase.com/docs/latest/users-guide/11-metabot.html)
 - [Humanize data](https://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
 
-For more information check out [metabase.com](http://www.metabase.com)
+For more information check out [metabase.com](https://metabase.com/)
 
 ## Supported databases
 
@@ -40,7 +40,7 @@ Don't see your favorite database? File an issue to let us know.
 
 ## Installation
 
-Metabase can be run just about anywhere so checkout our [Installation Guides](http://www.metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
+Metabase can be run just about anywhere so checkout our [Installation Guides](https://metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
 
 ### Docker
 
@@ -68,7 +68,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.51-b03, mixed mode)
 
 you are good to go. Otherwise, download the Java Runtime Environment at http://java.com/
 
-Go to the [Metabase Download Page](http://www.metabase.com/start/) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
+Go to the [Metabase Download Page](https://metabase.com/start/) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
 
 ```sh
 java -jar metabase.jar

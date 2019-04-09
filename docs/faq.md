@@ -134,7 +134,7 @@ Yes, to the extent that we are able to and have time.
 
 If you're sure you've found a bug, please [open an issue](https://github.com/metabase/metabase/issues/new). Otherwise, try checking out the [troubleshooting guide](https://metabase.com/troubleshooting/) first to see if the answer to your problem is there.
 
-If you're still having trouble, please start a conversation at our [discussion forum](http://discourse.metabase.com) and check out the other threads. Someone else might have experienced the same problem.
+If you're still having trouble, please start a conversation at our [discussion forum](https://discourse.metabase.com/) and check out the other threads. Someone else might have experienced the same problem.
 
 ### Do you offer paid support?
 
