@@ -153,6 +153,9 @@
 (defmethod ->initial-rvalue :field-literal [[_ field-name]] (str \$ (name field-name)))
 (defmethod ->rvalue         :field-literal [[_ field-name]] (str \$ (name field-name))) ; TODO - not sure if right?
 
+(defmethod ->lvalue         :time-interval [[_ field]] (->lvalue         field))
+(defmethod ->initial-rvalue :time-interval [[_ field]] (->initial-rvalue field))
+(defmethod ->rvalue         :time-interval [[_ field]] (->rvalue         field))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
@@ -339,14 +342,14 @@
 
 (defn- needs-initial-projection?
   [[op arg & _]]
-  (or (= op :datetime-field)
+  (or (not= op :field-id)
       (-> arg qp.store/field :parent_id)))
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if filter-clause
     (-> pipeline-ctx
         (add-initial-projection (filter needs-initial-projection?
-                                        (mbql.u/match filter-clause #{:datetime-field :field-id})))
+                                        (mbql.u/match filter-clause #{:datetime-field :field-id :time-interval})))
         (update :query conj {$match (parse-filter filter-clause)}))
     pipeline-ctx))
 
