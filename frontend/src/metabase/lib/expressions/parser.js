@@ -1,7 +1,7 @@
 import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   formatFieldName,
   formatExpressionName,

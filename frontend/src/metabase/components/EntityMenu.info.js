@@ -1,7 +1,7 @@
 import React from "react";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import { t } from "c-3po";
+import { t } from "ttag";
 export const component = EntityMenu;
 
 export const description = `

@@ -11,7 +11,7 @@ import E from "metabase/reference/components/EditButton.css";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import colors from "metabase/lib/colors";
 
 const ReferenceHeader = ({

@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import ExternalLink from "metabase/components/ExternalLink";
 import CodeSample from "./CodeSample";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,

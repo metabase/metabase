@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 

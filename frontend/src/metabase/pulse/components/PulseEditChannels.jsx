@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { assoc, assocIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 

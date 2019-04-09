@@ -5,7 +5,7 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import { utf8_to_b64url } from "metabase/lib/card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 

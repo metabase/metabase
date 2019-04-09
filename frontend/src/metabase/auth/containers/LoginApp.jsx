@@ -3,7 +3,7 @@ import { findDOMNode } from "react-dom";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import SSOLoginButton from "../components/SSOLoginButton.jsx";
 import Button from "metabase/components/Button";

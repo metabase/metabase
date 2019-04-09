@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import moment from "moment";
-import { t } from "c-3po";
+import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import { isQueryable } from "metabase/lib/table";
 import * as Urls from "metabase/lib/urls";

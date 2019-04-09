@@ -15,7 +15,7 @@ import type {
   DimensionTarget,
   VariableTarget,
 } from "./types/Parameter";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";

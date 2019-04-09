@@ -1,4 +1,4 @@
-import { addLocale, useLocale } from "c-3po";
+import { addLocale, useLocale } from "ttag";
 import moment from "moment";
 
 // NOTE: loadLocalization not currently used, and we need to be sure to set the

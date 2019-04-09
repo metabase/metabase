@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import Code from "metabase/components/Code.jsx";
 
 const EXAMPLES = {

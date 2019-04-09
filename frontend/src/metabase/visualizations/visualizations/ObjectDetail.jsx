@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import DirectionalButton from "metabase/components/DirectionalButton";
 import ExpandableString from "metabase/query_builder/components/ExpandableString.jsx";
 import Icon from "metabase/components/Icon.jsx";

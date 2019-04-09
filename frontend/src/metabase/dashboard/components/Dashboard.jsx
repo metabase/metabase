@@ -9,7 +9,7 @@ import { Box } from "grid-styled";
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
 import EmptyState from "metabase/components/EmptyState";
 

@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 import Card from "metabase/components/Card.jsx";

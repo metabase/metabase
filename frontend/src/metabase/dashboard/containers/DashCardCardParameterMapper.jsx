@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./DashCardCardParameterMapper.css";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";

@@ -2,7 +2,7 @@ import React from "react";
 import { compose } from "redux";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import User from "metabase/entities/users";
 

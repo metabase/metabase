@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";

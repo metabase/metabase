@@ -1,6 +1,6 @@
 import _ from "underscore";
 import inflection from "inflection";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 const mb_settings = _.clone(window.MetabaseBootstrap);

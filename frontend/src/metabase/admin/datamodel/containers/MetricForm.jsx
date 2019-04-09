@@ -7,7 +7,7 @@ import FormTextArea from "../components/FormTextArea.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
 import { metricFormSelectors } from "../selectors";

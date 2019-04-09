@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import { TYPE, isa } from "metabase/lib/types";
 import _ from "underscore";
 

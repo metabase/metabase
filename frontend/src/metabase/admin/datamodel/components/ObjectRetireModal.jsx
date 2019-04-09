@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class ObjectRetireModal extends Component {

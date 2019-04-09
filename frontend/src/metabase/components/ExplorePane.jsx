@@ -11,7 +11,7 @@ import Card from "metabase/components/Card";
 import { Flex } from "grid-styled";
 import colors from "metabase/lib/colors";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { DatabaseCandidates, Candidate } from "metabase/meta/types/Auto";

@@ -9,7 +9,7 @@ import TogglePropagateAction from "./containers/TogglePropagateAction";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import colors, { alpha } from "metabase/lib/colors";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import _ from "underscore";
 import { getIn, assocIn } from "icepick";

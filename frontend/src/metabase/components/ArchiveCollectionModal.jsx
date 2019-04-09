@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Box, Flex } from "grid-styled";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";

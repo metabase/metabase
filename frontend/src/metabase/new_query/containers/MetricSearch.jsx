@@ -5,7 +5,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EntitySearch from "metabase/containers/EntitySearch";
 import { getMetadata } from "metabase/selectors/metadata";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import EmptyState from "metabase/components/EmptyState";

@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AdminLayout from "metabase/components/AdminLayout.jsx";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
