@@ -14,14 +14,15 @@
    mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
    ```"
-  (:require [clojure.java
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java
              [io :as io]
              [jdbc :as jdbc]]
-            [clojure.string :as str]
             [colorize.core :as color]
             [medley.core :as m]
             [metabase
-             [config :as config]
              [db :as mdb]
              [util :as u]]
             [metabase.db.migrations :refer [DataMigrations]]
@@ -58,7 +59,6 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]
              [view-log :refer [ViewLog]]]
-            [clojure.set :as set]
             [toucan.db :as db])
   (:import java.sql.SQLException))
 
