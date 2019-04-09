@@ -182,7 +182,7 @@
           @query-future)
         (catch InterruptedException e
           (log/warn e (tru "Client closed connection, cancelling query"))
-          ;; This is what does the real work of cancelling the query. We aren't checking the result of
+          ;; This is what does the real work of canceling the query. We aren't checking the result of
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
           (throw e))))))
