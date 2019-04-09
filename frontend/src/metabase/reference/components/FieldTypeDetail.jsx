@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";

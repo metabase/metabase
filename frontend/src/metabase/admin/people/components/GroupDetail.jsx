@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/groups";
 
 import { PermissionsApi } from "metabase/services";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";

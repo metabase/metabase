@@ -7,7 +7,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class QueryModeButton extends Component {
   constructor(props, context) {

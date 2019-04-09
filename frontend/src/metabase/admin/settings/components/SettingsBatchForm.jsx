@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";

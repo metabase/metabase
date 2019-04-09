@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";

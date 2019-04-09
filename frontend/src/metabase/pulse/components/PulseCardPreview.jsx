@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import colors, { alpha } from "metabase/lib/colors";
 

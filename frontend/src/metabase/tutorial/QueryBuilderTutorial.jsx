@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Tutorial, { qs, qsWithContent } from "./Tutorial.jsx";
 
 import RetinaImage from "react-retina-image";

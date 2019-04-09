@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
 

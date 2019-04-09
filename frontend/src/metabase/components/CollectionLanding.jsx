@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, msgid, ngettext } from "c-3po";
+import { t, msgid, ngettext } from "ttag";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";

@@ -1,4 +1,4 @@
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const SPECIAL_GROUP_NAMES = new Map([
   ["All Users", t`All Users`],

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 export default class SaveStatus extends Component {
